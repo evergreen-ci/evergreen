@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -385,7 +386,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 
 	errChan := make(chan error)
 	go func() {
-		err := errors.WithStack(s3pc.putWithRetry(ctx, comm, logger))
+		err := errors.WithStack(s3pc.putWithRetry(ctx, comm, logger, conf))
 		select {
 		case errChan <- err:
 			return
@@ -406,12 +407,12 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 }
 
 // Wrapper around the Put() function to retry it.
-func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, logger client.LoggerProducer) error {
+func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	backoffCounter := getS3OpBackoff()
 
 	var (
 		err               error
-		uploadedFiles     []string
+		uploadedFiles     []task.FileMetrics
 		filesList         []string
 		skippedFilesCount int
 	)
@@ -460,7 +461,7 @@ retryLoop:
 			}
 
 			// reset to avoid duplicated uploaded references
-			uploadedFiles = []string{}
+			uploadedFiles = []task.FileMetrics{}
 			skippedFilesCount = 0
 
 		uploadLoop:
@@ -524,11 +525,16 @@ retryLoop:
 					continue retryLoop
 				}
 
+				uploadPath := fpath
 				if s3pc.preservePath {
-					uploadedFiles = append(uploadedFiles, remoteName)
-				} else {
-					uploadedFiles = append(uploadedFiles, fpath)
+					uploadPath = remoteName
 				}
+
+				uploadedFiles = append(uploadedFiles, task.FileMetrics{
+					LocalPath:  uploadPath,
+					RemotePath: remoteName,
+				})
+
 			}
 
 			break retryLoop
@@ -540,7 +546,30 @@ retryLoop:
 		return nil
 	}
 
-	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile))
+	uploadedFiles, totalFileSize, totalPutRequests := task.CalculateUploadMetrics(
+		logger.Task(),
+		uploadedFiles,
+		task.S3BucketTypeLarge,
+		task.S3UploadMethodPut,
+	)
+
+	if s3pc.isMulti() {
+		logger.Task().Infof("Multi-file upload completed: files=%d, total_size=%d bytes, total_puts=%d",
+			len(uploadedFiles), totalFileSize, totalPutRequests)
+	} else if len(uploadedFiles) > 0 {
+		logger.Task().Infof("Single file upload completed: size=%d bytes, total_puts=%d",
+			totalFileSize, totalPutRequests)
+	}
+
+	conf.Task.S3Usage.IncrementPutRequests(totalPutRequests)
+
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Int64("s3_put.total_bytes", totalFileSize),
+		attribute.Int("s3_put.total_put_requests", totalPutRequests),
+		attribute.Int("s3_put.file_count", len(uploadedFiles)),
+	)
+
+	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile, conf))
 	if err != nil {
 		return err
 	}
@@ -559,33 +588,25 @@ retryLoop:
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, localFiles []string, remoteFile string) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []task.FileMetrics, remoteFile string, conf *internal.TaskConfig) error {
 	files := []*artifact.File{}
 
-	for _, fn := range localFiles {
-		remoteFileName := filepath.ToSlash(remoteFile)
-
-		if s3pc.isMulti() {
-			if s3pc.preservePath {
-				remoteFileName = fn
-			} else {
-				remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
-			}
-
-		}
-
+	for _, uploadInfo := range uploadedFiles {
+		remoteFileName := filepath.ToSlash(uploadInfo.RemotePath)
 		fileLink := agentutil.S3DefaultURL(s3pc.Bucket, remoteFileName)
 
 		displayName := s3pc.ResourceDisplayName
 		if displayName == "" {
-			displayName = filepath.Base(fn)
+			displayName = filepath.Base(uploadInfo.LocalPath)
 		} else if s3pc.isMulti() {
-			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
+			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(uploadInfo.LocalPath))
 		}
-		var key, secret, bucket, fileKey string
+
+		bucket := s3pc.Bucket
+		fileKey := remoteFileName
+
+		var key, secret string
 		if s3pc.Visibility == artifact.Signed {
-			bucket = s3pc.Bucket
-			fileKey = remoteFileName
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
 		}
@@ -601,6 +622,8 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			Bucket:      bucket,
 			FileKey:     fileKey,
 			ContentType: s3pc.ContentType,
+			FileSize:    uploadInfo.FileSize,
+			PutRequests: uploadInfo.PutRequests,
 		})
 	}
 

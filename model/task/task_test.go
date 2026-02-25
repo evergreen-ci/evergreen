@@ -1959,12 +1959,10 @@ func TestGetFormattedTimeSpent(t *testing.T) {
 }
 
 func TestUpdateDependsOn(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}
-	assert.NoError(t, t1.Insert(t.Context()))
+	assert.NoError(t, t1.Insert(ctx))
 	t2 := &Task{
 		Id: "t2",
 		DependsOn: []Dependency{
@@ -1972,7 +1970,7 @@ func TestUpdateDependsOn(t *testing.T) {
 			{TaskId: "t5", Status: evergreen.TaskSucceeded},
 		},
 	}
-	assert.NoError(t, t2.Insert(t.Context()))
+	assert.NoError(t, t2.Insert(ctx))
 
 	var err error
 	assert.NoError(t, t1.UpdateDependsOn(ctx, evergreen.TaskFailed, []string{"t3", "t4"}))
@@ -1992,6 +1990,15 @@ func TestUpdateDependsOn(t *testing.T) {
 		require.NotZero(t, dbTask1)
 		for _, d := range dbTask1.DependsOn {
 			assert.NotEqual(t, t1.Id, d.TaskId, "task should not add dependency on itself")
+		}
+	})
+	t.Run("AddingSelfDependencyThroughExistingParentDependencyShouldNoop", func(t *testing.T) {
+		assert.NoError(t, t2.UpdateDependsOn(ctx, evergreen.TaskSucceeded, []string{t1.Id}))
+		dbTask2, err := FindOneId(ctx, t2.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbTask2)
+		for _, d := range dbTask2.DependsOn {
+			assert.NotEqual(t, t2.Id, d.TaskId, "task should not add a dependency on itself transitively through a parent dependency")
 		}
 	})
 }
@@ -5470,4 +5477,40 @@ func TestTaskCostIsZero(t *testing.T) {
 	assert.False(t, nonZeroAdjusted.IsZero())
 	nonZeroBoth := cost.Cost{OnDemandEC2Cost: 0.1, AdjustedEC2Cost: 0.2}
 	assert.False(t, nonZeroBoth.IsZero())
+}
+
+func TestHasValidDistro(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
+
+	validDistro := distro.Distro{
+		Id: "valid-distro",
+	}
+	require.NoError(t, validDistro.Insert(ctx))
+
+	t.Run("TaskWithValidPrimaryDistro", func(t *testing.T) {
+		task := &Task{
+			Id:       "task-with-valid-distro",
+			DistroId: validDistro.Id,
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithInvalidPrimaryDistroButValidSecondaryDistro", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-secondary",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{"nonexistent-distro-2", validDistro.Id},
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithNoValidDistros", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-no-valid-distro",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{"nonexistent-distro-2", "nonexistent-distro-3"},
+		}
+		assert.Equal(t, false, task.HasValidDistro(ctx))
+	})
 }

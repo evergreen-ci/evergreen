@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "query_file": "generator.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "generated_task",
+            "generator": {
+              "id": "generator_task",
+              "displayName": "i am a generator"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_generator.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "not_generated_task",
+            "generator": null
+          }
+        }
+      }
+    }
+  ]
+}

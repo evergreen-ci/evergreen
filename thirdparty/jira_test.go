@@ -64,6 +64,12 @@ func TestJiraIntegration(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(ticket.Key, ShouldEqual, "BF-1")
 			So(ticket.Fields.Project.Name, ShouldEqual, "Build Failures")
+
+			failingTasks := []string{"auth_audit", "causally_consistent_hedged_reads_jscore_passthrough", "concurrency_simultaneous_replication_wiredtiger_cursor_sweeps", "embedded_sdk_run_tests", "multi_stmt_txn_jscore_passthrough_with_migration", "parallel", "unittests"}
+			So(ticket.Fields.FailingTasks, ShouldHaveLength, len(failingTasks))
+			for _, task := range failingTasks {
+				So(ticket.Fields.FailingTasks, ShouldContain, task)
+			}
 		})
 	})
 }

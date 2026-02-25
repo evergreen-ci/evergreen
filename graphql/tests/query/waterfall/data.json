@@ -121,7 +121,13 @@
       "create_time": {
         "$date": "2020-01-05T12:00:00Z"
       },
-      "builds": ["evergreen_version3_build"]
+      "builds": ["evergreen_version3_build"],
+      "build_variants_status": [
+        {
+          "build_variant": "lint",
+          "build_id": "evergreen_version3_build"
+        }
+      ]
     },
     {
       "_id": "inactive1",
@@ -284,6 +290,25 @@
       "execution": 0,
       "display_task_id": "",
       "order": 45,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "task_5_v3",
+      "version": "evergreen_version3",
+      "status": "failed",
+      "display_status_cache": "system-failed",
+      "display_name": "Task C",
+      "activated": true,
+      "branch": "spruce",
+      "build_variant": "lint",
+      "build_variant_display_name": "Linter",
+      "build_id": "evergreen_version3_build",
+      "create_time": {
+        "$date": "2020-01-03T13:30:05Z"
+      },
+      "execution": 0,
+      "display_task_id": "",
+      "order": 43,
       "r": "gitter_request"
     },
     {

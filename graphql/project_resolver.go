@@ -2,25 +2,15 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
 
 // IsFavorite is the resolver for the isFavorite field.
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
-	projectIdentifier := utility.FromStringPtr(obj.Identifier)
-	p, err := model.FindBranchProjectRef(ctx, projectIdentifier)
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
-	}
-	if p == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
-	}
 	usr := mustHaveUser(ctx)
-	if utility.StringSliceContains(usr.FavoriteProjects, *obj.Identifier) {
+	if utility.StringSliceContains(usr.FavoriteProjects, utility.FromStringPtr(obj.Identifier)) {
 		return true, nil
 	}
 	return false, nil

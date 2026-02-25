@@ -154,9 +154,6 @@ type ProjectRef struct {
 	// This is used for projects that use tasks on mainline commits to trigger downstream processes, like deployments.
 	RunEveryMainlineCommit bool `bson:"run_every_mainline_commit,omitempty" json:"run_every_mainline_commit,omitempty" yaml:"run_every_mainline_commit,omitempty"`
 
-	// RunEveryMainlineCommitLimit indicates the maximum number of mainline commits to activate in a single activation run.
-	RunEveryMainlineCommitLimit int `bson:"run_every_mainline_commit_limit,omitempty" json:"run_every_mainline_commit_limit,omitempty" yaml:"run_every_mainline_commit_limit,omitempty"`
-
 	// UseGitHubAppForAPI indicates whether to use the project's GitHub app for
 	// authenticated API requests to GitHub.
 	UseGitHubAppForAPI bool `bson:"use_github_app_for_api,omitempty" json:"use_github_app_for_api,omitempty" yaml:"use_github_app_for_api,omitempty"`
@@ -542,6 +539,7 @@ var (
 	projectRefGithubMQTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubMQTriggerAliases")
 	projectRefPeriodicBuildsKey                     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefOldestAllowedMergeBaseKey             = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
+	projectRefRunEveryMainlineCommitKey             = bsonutil.MustHaveTag(ProjectRef{}, "RunEveryMainlineCommit")
 	projectRefWorkstationConfigKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey             = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
@@ -2350,6 +2348,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
+					projectRefRunEveryMainlineCommitKey: p.RunEveryMainlineCommit,
 				},
 			})
 	case ProjectPageNotificationsSection:
@@ -3280,7 +3279,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": pRef.Id,
 	}))
-	fileContents, err := thirdparty.GetGitHubFileContent(ctx, pRef.Owner, pRef.Repo, pRef.Branch, pRef.SpawnHostScriptPath, ghAppAuth, IsGitUsageForGitHubFileEnabled(ctx))
+	fileContents, err := thirdparty.GetGitHubFileContent(ctx, pRef.Owner, pRef.Repo, pRef.Branch, pRef.SpawnHostScriptPath, "", ghAppAuth, true)
 	if err != nil {
 		return "", errors.Wrapf(err, "fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
 	}
@@ -3787,4 +3786,14 @@ func FindProjectAndRepoRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectR
 	}
 
 	return append(pRefs, repoRefsAsProjectRefs...), nil
+}
+
+// FindProjectRefsWithMergeQueueEnabled returns all enabled project refs with merge queue enabled.
+func FindProjectRefsWithMergeQueueEnabled(ctx context.Context) ([]ProjectRef, error) {
+	return findProjectRefsQ(
+		ctx,
+		bson.M{
+			ProjectRefEnabledKey: true,
+			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey): true,
+		}, true)
 }

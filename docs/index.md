@@ -58,4 +58,4 @@ Logs are streamed back to the main server, along with system statistics and form
 
 ## Spruce UI
 
-Evergreen's UI is accessible at <https://spruce.mongodb.com>.
+Evergreen's UI is accessible at <https://spruce.corp.mongodb.com>.

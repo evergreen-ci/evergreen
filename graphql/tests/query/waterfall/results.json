@@ -20,8 +20,7 @@
                         "id": "task_5",
                         "displayName": "Task C",
                         "displayStatusCache": "system-failed",
-                        "execution": 0,
-                        "status": "failed"
+                        "execution": 0
                       }
                     ],
                     "version": "evergreen_version5"
@@ -49,15 +48,13 @@
                         "id": "task_6",
                         "displayName": "Task D",
                         "displayStatusCache": "success",
-                        "execution": 0,
-                        "status": "success"
+                        "execution": 0
                       },
                       {
                         "id": "task_7",
                         "displayName": "Task E",
                         "displayStatusCache": "started",
-                        "execution": 0,
-                        "status": "started"
+                        "execution": 0
                       }
                     ],
                     "version": "evergreen_version3"
@@ -67,11 +64,10 @@
                     "displayName": "03 Linter",
                     "tasks": [
                       {
-                        "id": "task_5",
+                        "id": "task_5_v3",
                         "displayName": "Task C",
                         "displayStatusCache": "system-failed",
-                        "execution": 0,
-                        "status": "failed"
+                        "execution": 0
                       }
                     ],
                     "version": "evergreen_version5"
@@ -92,15 +88,13 @@
                         "id": "task_3",
                         "displayName": "Task A",
                         "displayStatusCache": "setup-failed",
-                        "execution": 0,
-                        "status": "failed"
+                        "execution": 0
                       },
                       {
                         "id": "task_4",
                         "displayName": "Task B",
                         "displayStatusCache": "success",
-                        "execution": 0,
-                        "status": "success"
+                        "execution": 0
                       }
                     ],
                     "version": "evergreen_version2"
@@ -121,15 +115,13 @@
                         "id": "task_1",
                         "displayName": "Task A",
                         "displayStatusCache": "success",
-                        "execution": 0,
-                        "status": "success"
+                        "execution": 0
                       },
                       {
                         "id": "task_2",
                         "displayName": "Task B",
                         "displayStatusCache": "success",
-                        "execution": 1,
-                        "status": "success"
+                        "execution": 1
                       }
                     ],
                     "version": "evergreen_version1"
@@ -619,7 +611,7 @@
                     "displayName": "03 Linter",
                     "tasks": [
                       {
-                        "id": "task_5",
+                        "id": "task_5_v3",
                         "displayName": "Task C"
                       }
                     ],
@@ -778,10 +770,15 @@
                 "id": "evergreen_version4",
                 "activated": false,
                 "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version3",
+                "activated": true,
+                "requester": "gitter_request"
               }
             ],
             "pagination": {
-              "activeVersionIds": ["evergreen_version5"]
+              "activeVersionIds": ["evergreen_version5", "evergreen_version3"]
             }
           }
         }
@@ -802,10 +799,15 @@
                 "id": "evergreen_version4",
                 "activated": false,
                 "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version3",
+                "activated": true,
+                "requester": "gitter_request"
               }
             ],
             "pagination": {
-              "activeVersionIds": ["evergreen_version5"]
+              "activeVersionIds": ["evergreen_version5", "evergreen_version3"]
             }
           }
         }

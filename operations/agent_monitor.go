@@ -360,6 +360,25 @@ func (m *monitor) setupJasperConnection(ctx context.Context, retry utility.Retry
 	return nil
 }
 
+// allowAgentNice ensures that the Evergreen client used by the agent is able to
+// set its nice value, which is a way to control process-level CPU
+// prioritization. Only applies to Linux.
+func (m *monitor) allowAgentNice(ctx context.Context) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+
+	return m.jasperClient.CreateCommand(ctx).Add([]string{
+		"sudo",
+		"setcap",
+		// Set the cap_sys_nice setting. cap_sys_nice gives the agent's client
+		// the ability to set negative nice values (i.e. higher CPU priority).
+		// "p" means permitted (i.e. allow the program to set its nice).
+		// "e" means effective (i.e. the permission is active immediately).
+		"cap_sys_nice=+ep",
+		m.clientPath}).Run(ctx)
+}
+
 // createAgentProcess attempts to start an agent subprocess.
 func (m *monitor) createAgentProcess(ctx context.Context, retry utility.RetryOptions) (jasper.Process, error) {
 	agentCmdArgs := append([]string{m.clientPath, "agent"}, m.agentArgs...)
@@ -501,12 +520,19 @@ func (m *monitor) run(ctx context.Context) {
 				return true, err
 			}
 
+			// This is only a warning because it's a best-effort attempt to give
+			// the agent the ability to set its nice. Controlling nice gives the
+			// agent a mechanism to tune CPU prioritization, but it's not a
+			// guarantee and is not required for the agent to run.
+			grip.Warning(errors.Wrap(m.allowAgentNice(ctx), "allowing agent to set nice"))
+
 			grip.Info(message.Fields{
 				"message":     "starting agent on host via Jasper",
 				"client_path": m.clientPath,
 				"distro":      m.distroID,
 				"jasper_port": m.jasperPort,
 			})
+
 			if err := m.runAgent(ctx, agentMonitorDefaultRetryOptions()); err != nil {
 				grip.Error(errors.Wrap(err, "running the agent"))
 				return true, err

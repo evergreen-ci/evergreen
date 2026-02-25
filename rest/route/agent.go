@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -83,6 +84,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskOutput:         h.settings.Buckets.Credentials,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
+		PSLoggingDisabled:  h.settings.ServiceFlags.PSLoggingDisabled,
 	}
 
 	if h.settings.Tracer.Enabled {
@@ -318,7 +320,8 @@ func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
 	podID := r.Header.Get(evergreen.PodHeader)
-	if h.hostID == "" && podID == "" {
+	userKey := r.Header.Get(evergreen.AuthorizationHeader)
+	if h.hostID == "" && podID == "" && userKey == "" {
 		return errors.New("missing both host and pod ID")
 	}
 	return nil
@@ -392,6 +395,23 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		if projectVars.PrivateVars != nil {
 			res.PrivateVars = projectVars.PrivateVars
 		}
+
+		user := gimlet.GetUser(ctx)
+		isUserRequest := user != nil
+		// If from debug session request, filter out admin-only vars if user is not an admin
+		isAdmin := isUserRequest && user.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      pRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+		if isUserRequest && projectVars.AdminOnlyVars != nil && !isAdmin {
+			for adminOnlyVar := range projectVars.AdminOnlyVars {
+				if projectVars.AdminOnlyVars[adminOnlyVar] {
+					delete(res.Vars, adminOnlyVar)
+				}
+			}
+		}
 	}
 
 	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version).WithFields(model.VersionParametersKey))
@@ -454,6 +474,21 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
+	}
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+	// If from debug session request, return minimal response
+	if isUserRequest {
+		redactedProjectRef := map[string]interface{}{
+			"repo_name":      p.Repo,
+			"branch_name":    p.Branch,
+			"owner_name":     p.Owner,
+			"id":             p.Id,
+			"repo_ref_id":    p.RepoRefId,
+			"identifier":     p.Identifier,
+			"test_selection": p.TestSelection,
+		}
+		return gimlet.NewJSONResponse(redactedProjectRef)
 	}
 
 	return gimlet.NewJSONResponse(p)
@@ -638,6 +673,8 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	discoverAndCacheBucketLifecycleRules(ctx, t, h.files)
+
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
 		TaskDisplayName: t.DisplayName,
@@ -653,6 +690,53 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))
 	}
 	return gimlet.NewJSONResponse(fmt.Sprintf("Artifact files for task %s successfully attached", t.Id))
+}
+
+// discoverAndCacheBucketLifecycleRules will look at all the buckets that the files are being uploaded
+// to and check if we have lifecycle rules cached for them. If not, it will attempt to discover
+// and cache them. This is best-effort and will not fail the file upload if discovery fails.
+func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, files []artifact.File) {
+	bucketsToDiscover := make(map[string]*artifact.File)
+	for i := range files {
+		file := &files[i]
+		if file.Bucket == "" {
+			continue
+		}
+
+		if _, exists := bucketsToDiscover[file.Bucket]; !exists {
+			bucketsToDiscover[file.Bucket] = file
+		}
+	}
+
+	cachedBuckets := []string{}
+	for bucketName, file := range bucketsToDiscover {
+		region := evergreen.DefaultS3Region
+
+		var roleARN *string
+		if file.AWSRoleARN != "" {
+			roleARN = &file.AWSRoleARN
+		}
+
+		var externalID *string
+		if file.ExternalID != "" {
+			externalID = &file.ExternalID
+		}
+
+		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, cloud.NewS3LifecycleClient())
+		if wasCached {
+			cachedBuckets = append(cachedBuckets, bucketName)
+		}
+	}
+
+	if len(cachedBuckets) > 0 {
+		grip.Info(message.Fields{
+			"message":    "successfully cached bucket lifecycle rules",
+			"buckets":    cachedBuckets,
+			"task_id":    t.Id,
+			"project":    t.Project,
+			"num_cached": len(cachedBuckets),
+		})
+	}
 }
 
 // POST /rest/v2/task/{task_id}/set_results_info
@@ -914,6 +998,12 @@ func (h *fetchTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
+	}
+	// Remove secret if request is coming from debug session
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+	if isUserRequest {
+		t.Secret = ""
 	}
 	return gimlet.NewJSONResponse(t)
 }

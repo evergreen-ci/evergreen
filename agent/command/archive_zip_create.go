@@ -76,9 +76,14 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		return errors.Wrap(err, "finding files to archive")
 	}
 
+	if len(files) == 0 {
+		logger.Task().Warning("No files to archive.")
+	}
+
 	filenames := make([]string, len(files))
 	for idx := range files {
 		filenames[idx] = files[idx].path
+		logger.Task().Infof("Adding to archive: %s", filenames[idx])
 	}
 
 	if err := archiver.NewZip().Archive(filenames, c.Target); err != nil {

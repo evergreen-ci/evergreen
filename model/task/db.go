@@ -88,8 +88,9 @@ var (
 	AbortedKey                     = bsonutil.MustHaveTag(Task{}, "Aborted")
 	AbortInfoKey                   = bsonutil.MustHaveTag(Task{}, "AbortInfo")
 	TimeTakenKey                   = bsonutil.MustHaveTag(Task{}, "TimeTaken")
-	PredictedTaskCostKey           = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
 	TaskCostKey                    = bsonutil.MustHaveTag(Task{}, "TaskCost")
+	PredictedTaskCostKey           = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
+	S3UsageKey                     = bsonutil.MustHaveTag(Task{}, "S3Usage")
 	ExpectedDurationKey            = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
 	ExpectedDurationStddevKey      = bsonutil.MustHaveTag(Task{}, "ExpectedDurationStdDev")
 	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
@@ -3327,4 +3328,38 @@ func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant
 	}
 
 	return results, nil
+}
+
+// CountRunningTasksForVersions returns the number of running or dispatched tasks for the given versions.
+func CountRunningTasksForVersions(ctx context.Context, versionIDs []string) (int, error) {
+	if len(versionIDs) == 0 {
+		return 0, nil
+	}
+
+	count, err := Count(ctx, db.Query(bson.M{
+		VersionKey: bson.M{"$in": versionIDs},
+		StatusKey:  bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+	}))
+	if err != nil {
+		return 0, errors.Wrap(err, "counting running tasks")
+	}
+
+	return count, nil
+}
+
+// GetFirstTaskStartTimeForVersion returns the start time of the first task to start for a version.
+func GetFirstTaskStartTimeForVersion(ctx context.Context, versionID string) (time.Time, error) {
+	filter := bson.M{
+		VersionKey: versionID,
+		// Exclude tasks that haven't started yet.
+		StartTimeKey: bson.M{"$ne": time.Time{}},
+	}
+	task, err := FindOne(ctx, db.Query(filter).WithFields(StartTimeKey).Sort([]string{StartTimeKey}).Limit(1))
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "querying for first started task")
+	}
+	if task == nil {
+		return time.Time{}, nil
+	}
+	return task.StartTime, nil
 }

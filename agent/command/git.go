@@ -48,6 +48,7 @@ var (
 	cloneBranchAttribute  = fmt.Sprintf("%s.clone_branch", gitGetProjectAttribute)
 	cloneModuleAttribute  = fmt.Sprintf("%s.clone_module", gitGetProjectAttribute)
 	cloneAttemptAttribute = fmt.Sprintf("%s.attempt", gitGetProjectAttribute)
+	cloneErrorAttribute   = fmt.Sprintf("%s.error", gitGetProjectAttribute)
 )
 
 // gitFetchProject is a command that fetches source code from git for the project
@@ -386,7 +387,11 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		))
 		defer span.End()
 
-		return fetchSourceCmd.Run(ctx)
+		if err = fetchSourceCmd.Run(ctx); err != nil {
+			span.SetAttributes(attribute.String(cloneErrorAttribute, err.Error()))
+		}
+
+		return err
 	})
 }
 
@@ -569,6 +574,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			errOutput = strings.ReplaceAll(errOutput, "\n", fmt.Sprintf("\n%s: ", module.Name))
 			logger.Task().Error(fmt.Sprintf("%s: %s", module.Name, errOutput))
 		}
+
+		if err != nil {
+			span.SetAttributes(attribute.String(cloneErrorAttribute, err.Error()))
+		}
+
 		return err
 	})
 }
@@ -600,10 +610,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 
 	// For every module, expand the module prefix.
 	for _, moduleName := range conf.BuildVariant.Modules {
-		expanded, err := conf.NewExpansions.ExpandString(moduleName)
-		if err == nil {
-			moduleName = expanded
-		}
 		module, err := conf.Project.GetModuleByName(moduleName)
 		if err != nil {
 			return errors.Wrapf(err, "getting module '%s'", moduleName)
@@ -618,13 +624,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	g.SetLimit(10)
 
 	// Clone the project's modules in goroutines.
-	for _, name := range conf.BuildVariant.Modules {
-		// TODO (DEVPROD-3611): remove capturing the loop variable and use the loop variable directly.
-		moduleName := name
-		expanded, err := conf.NewExpansions.ExpandString(moduleName)
-		if err == nil {
-			moduleName = expanded
-		}
+	for _, moduleName := range conf.BuildVariant.Modules {
 		g.Go(func() error {
 			if err := gCtx.Err(); err != nil {
 				return nil
@@ -830,9 +830,3 @@ func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModuleP
 func isGitHub(conf *internal.TaskConfig) bool {
 	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
 }
-
-type noopWriteCloser struct {
-	*bytes.Buffer
-}
-
-func (noopWriteCloser) Close() error { return nil }

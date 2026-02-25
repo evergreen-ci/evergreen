@@ -328,73 +328,175 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 }
 
 func TestGetVersionBuilds(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
-	start := time.Now()
-	p := ProjectRef{
-		Id:         "a_project",
-		Identifier: "a_project_identifier",
-	}
-	assert.NoError(t, p.Insert(t.Context()))
+	t.Run("ReturnsBuildsWithTasksSortedByDisplayName", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+		start := time.Now()
+		p := ProjectRef{
+			Id:         "a_project",
+			Identifier: "a_project_identifier",
+		}
+		assert.NoError(t, p.Insert(t.Context()))
 
-	v := Version{
-		Id:                  "v_1",
-		Identifier:          "a_project",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 10,
-		CreateTime:          start,
-		Activated:           utility.TruePtr(),
-		BuildIds:            []string{"a", "b"},
-	}
-	assert.NoError(t, v.Insert(t.Context()))
+		v := Version{
+			Id:                  "v_1",
+			Identifier:          "a_project",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 10,
+			CreateTime:          start,
+			Activated:           utility.TruePtr(),
+			BuildIds:            []string{"a", "b"},
+		}
+		assert.NoError(t, v.Insert(t.Context()))
 
-	b := build.Build{
-		Id:          "b",
-		Activated:   true,
-		DisplayName: "Lint",
-		Version:     "v_1",
-		Tasks: []build.TaskCache{
-			{Id: "t_80"},
-			{Id: "t_79"},
-			{Id: "t_86"},
-			{Id: "t_200"},
-		},
-	}
-	assert.NoError(t, b.Insert(t.Context()))
-	b = build.Build{
-		Id:          "a",
-		Activated:   true,
-		DisplayName: "Ubuntu 2204",
-		Version:     "v_1",
-		Tasks: []build.TaskCache{
-			{Id: "t_45"},
-			{Id: "t_12"},
-			{Id: "t_66"},
-		},
-	}
-	assert.NoError(t, b.Insert(t.Context()))
+		b := build.Build{
+			Id:          "b",
+			Activated:   true,
+			DisplayName: "Lint",
+			Version:     "v_1",
+			Tasks: []build.TaskCache{
+				{Id: "t_80"},
+				{Id: "t_79"},
+				{Id: "t_86"},
+				{Id: "t_200"},
+			},
+		}
+		assert.NoError(t, b.Insert(t.Context()))
+		b = build.Build{
+			Id:          "a",
+			Activated:   true,
+			DisplayName: "Ubuntu 2204",
+			Version:     "v_1",
+			Tasks: []build.TaskCache{
+				{Id: "t_45"},
+				{Id: "t_12"},
+				{Id: "t_66"},
+			},
+		}
+		assert.NoError(t, b.Insert(t.Context()))
 
-	tsk := task.Task{Id: "t_80", DisplayName: "Task 80", Status: evergreen.TaskSucceeded}
-	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_79", DisplayName: "Task 79", Status: evergreen.TaskFailed}
-	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_86", DisplayName: "Task 86", Status: evergreen.TaskSucceeded}
-	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_200", DisplayName: "Task 200", Status: evergreen.TaskSucceeded}
-	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_45", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
-	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
-	assert.NoError(t, tsk.Insert(t.Context()))
-	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
-	assert.NoError(t, tsk.Insert(t.Context()))
+		tsk := task.Task{Id: "t_80", DisplayName: "Task 80", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
+		assert.NoError(t, tsk.Insert(t.Context()))
+		tsk = task.Task{Id: "t_79", DisplayName: "Task 79", DisplayStatusCache: evergreen.TaskFailed, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
+		assert.NoError(t, tsk.Insert(t.Context()))
+		tsk = task.Task{Id: "t_86", DisplayName: "Task 86", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
+		assert.NoError(t, tsk.Insert(t.Context()))
+		tsk = task.Task{Id: "t_200", DisplayName: "Task 200", DisplayStatusCache: evergreen.TaskSucceeded, BuildId: "b", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
+		assert.NoError(t, tsk.Insert(t.Context()))
+		tsk = task.Task{Id: "t_45", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
+		assert.NoError(t, tsk.Insert(t.Context()))
+		tsk = task.Task{Id: "t_12", DisplayName: "Task 12", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
+		assert.NoError(t, tsk.Insert(t.Context()))
+		tsk = task.Task{Id: "t_66", DisplayName: "Task 66", DisplayStatusCache: evergreen.TaskWillRun, BuildId: "a", Version: "v_1", Requester: evergreen.RepotrackerVersionRequester}
+		assert.NoError(t, tsk.Insert(t.Context()))
 
-	builds, err := GetVersionBuilds(t.Context(), v.Id)
-	assert.NoError(t, err)
-	assert.Len(t, builds, 2)
+		builds, err := GetVersionBuilds(t.Context(), v.Id, v.BuildIds)
+		assert.NoError(t, err)
+		assert.Len(t, builds, 2)
 
-	// Assert build variants are sorted alphabetically by display name.
-	assert.Equal(t, "Lint", builds[0].DisplayName)
-	assert.Equal(t, "Ubuntu 2204", builds[1].DisplayName)
+		// Assert build variants are sorted alphabetically by display name.
+		assert.Equal(t, "Lint", builds[0].DisplayName)
+		assert.Equal(t, "Ubuntu 2204", builds[1].DisplayName)
+	})
+
+	t.Run("IncludesDisplayTasksExcludesExecutionTasks", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+		start := time.Now()
+		p := ProjectRef{
+			Id:         "a_project",
+			Identifier: "a_project_identifier",
+		}
+		assert.NoError(t, p.Insert(t.Context()))
+
+		v := Version{
+			Id:                  "v_1",
+			Identifier:          "a_project",
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: 10,
+			CreateTime:          start,
+			Activated:           utility.TruePtr(),
+			BuildIds:            []string{"build_1"},
+		}
+		assert.NoError(t, v.Insert(t.Context()))
+
+		b := build.Build{
+			Id:          "build_1",
+			Activated:   true,
+			DisplayName: "Ubuntu",
+			Version:     "v_1",
+			Tasks: []build.TaskCache{
+				{Id: "display_task"},
+				{Id: "exec_task_1"},
+				{Id: "exec_task_2"},
+				{Id: "regular_task"},
+			},
+		}
+		assert.NoError(t, b.Insert(t.Context()))
+
+		// Display task (should be included)
+		displayTask := task.Task{
+			Id:                 "display_task",
+			DisplayName:        "Display Task",
+			DisplayStatusCache: evergreen.TaskSucceeded,
+			BuildId:            "build_1",
+			Version:            "v_1",
+			DisplayOnly:        true,
+			ExecutionTasks:     []string{"exec_task_1", "exec_task_2"},
+			Requester:          evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, displayTask.Insert(t.Context()))
+
+		// Execution tasks (should be excluded - grouped under display task)
+		execTask1 := task.Task{
+			Id:                 "exec_task_1",
+			DisplayName:        "Execution Task 1",
+			DisplayStatusCache: evergreen.TaskSucceeded,
+			BuildId:            "build_1",
+			Version:            "v_1",
+			DisplayTaskId:      utility.ToStringPtr("display_task"),
+			Requester:          evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, execTask1.Insert(t.Context()))
+
+		execTask2 := task.Task{
+			Id:                 "exec_task_2",
+			DisplayName:        "Execution Task 2",
+			DisplayStatusCache: evergreen.TaskSucceeded,
+			BuildId:            "build_1",
+			Version:            "v_1",
+			DisplayTaskId:      utility.ToStringPtr("display_task"),
+			Requester:          evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, execTask2.Insert(t.Context()))
+
+		// Regular task (should be included)
+		regularTask := task.Task{
+			Id:                 "regular_task",
+			DisplayName:        "Regular Task",
+			DisplayStatusCache: evergreen.TaskWillRun,
+			BuildId:            "build_1",
+			Version:            "v_1",
+			Requester:          evergreen.RepotrackerVersionRequester,
+		}
+		assert.NoError(t, regularTask.Insert(t.Context()))
+
+		builds, err := GetVersionBuilds(t.Context(), v.Id, v.BuildIds)
+		assert.NoError(t, err)
+		require.Len(t, builds, 1)
+		assert.Equal(t, "Ubuntu", builds[0].DisplayName)
+
+		// Should have 2 tasks: display_task and regular_task
+		// Execution tasks should be excluded (they're grouped under the display task)
+		require.Len(t, builds[0].Tasks, 2)
+
+		taskNames := []string{}
+		for _, tsk := range builds[0].Tasks {
+			taskNames = append(taskNames, tsk.DisplayName)
+		}
+		assert.Contains(t, taskNames, "Display Task")
+		assert.Contains(t, taskNames, "Regular Task")
+		assert.NotContains(t, taskNames, "Execution Task 1")
+		assert.NotContains(t, taskNames, "Execution Task 2")
+	})
 }
 
 func TestGetNewerActiveWaterfallVersion(t *testing.T) {

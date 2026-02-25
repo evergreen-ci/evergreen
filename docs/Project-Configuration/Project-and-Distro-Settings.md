@@ -129,6 +129,10 @@ while still allowing for other kinds of versions (periodic builds, patches, etc)
 Additionally, admins can **Force Repotracker Run** to check for new commits if needed
 (Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
 
+##### Run Every Mainline Commit
+
+Although a version gets created for every commit on a project with the repotracker, it does not necessarily activate each version. Evergreen runs a job periodically that activates the latest repotracker version. This is to avoid running unnecessary versions if there are a lot of commits in a short period of time. If you would like to activate every version created by the repotracker, you can enable "Run Every Mainline Commit". This will ensure that every version created by the repotracker gets activated and runs their tasks.
+
 ### Access and Admin Settings
 
 To set a Project Administrator edit the
@@ -306,7 +310,7 @@ one of the above fields.
 
 If you'd like for Git Tag triggered versions to be associated with the pusher,
 ensure that they've set their GitHub username in
-[their Evergreen preferences](https://spruce.mongodb.com/preferences/profile).
+[their Evergreen preferences](https://spruce.corp.mongodb.com/preferences/profile).
 
 ##### Add aliases to determine what tasks will run
 

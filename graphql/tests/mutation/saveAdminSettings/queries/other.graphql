@@ -93,6 +93,9 @@ mutation SaveAdminSettingsOther {
         savingsPlanDiscount: 0.01
         onDemandDiscount: 0.01
       }
+      debugSpawnHosts: {
+        setupScript: "echo setup"
+      }
     }
   ) {
     configDir
@@ -190,6 +193,9 @@ mutation SaveAdminSettingsOther {
       financeFormula
       savingsPlanDiscount
       onDemandDiscount
+    }
+    debugSpawnHosts {
+      setupScript
     }
   }
 }

@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -12,7 +13,7 @@ import (
 // S3LifecycleClient fetches S3 lifecycle configurations using pail.
 type S3LifecycleClient interface {
 	// GetBucketLifecycleConfiguration returns lifecycle rules for the specified S3 bucket.
-	GetBucketLifecycleConfiguration(ctx context.Context, bucket, region string, roleARN *string) ([]pail.LifecycleRule, error)
+	GetBucketLifecycleConfiguration(ctx context.Context, bucket, region string, roleARN *string, externalID *string) ([]pail.LifecycleRule, error)
 }
 
 // s3LifecycleBucket extends pail.Bucket with GetLifecycleConfiguration.
@@ -30,7 +31,7 @@ func NewS3LifecycleClient() S3LifecycleClient {
 }
 
 // GetBucketLifecycleConfiguration returns lifecycle rules for the specified S3 bucket.
-func (c *s3LifecycleClientImpl) GetBucketLifecycleConfiguration(ctx context.Context, bucketName, region string, roleARN *string) ([]pail.LifecycleRule, error) {
+func (c *s3LifecycleClientImpl) GetBucketLifecycleConfiguration(ctx context.Context, bucketName, region string, roleARN *string, externalID *string) ([]pail.LifecycleRule, error) {
 	if bucketName == "" {
 		return nil, errors.New("bucket name cannot be empty")
 	}
@@ -45,6 +46,13 @@ func (c *s3LifecycleClientImpl) GetBucketLifecycleConfiguration(ctx context.Cont
 	}
 	if roleARN != nil && *roleARN != "" {
 		opts.AssumeRoleARN = *roleARN
+		if externalID != nil && *externalID != "" {
+			opts.AssumeRoleOptions = []func(*stscreds.AssumeRoleOptions){
+				func(aro *stscreds.AssumeRoleOptions) {
+					aro.ExternalID = externalID
+				},
+			}
+		}
 	}
 
 	bucket, err := pail.NewS3Bucket(ctx, opts)

@@ -321,18 +321,71 @@ func (s *githubSuite) TestGetGithubUser() {
 }
 
 func (s *githubSuite) TestGetPullRequestMergeBase() {
-	hash, err := GetPullRequestMergeBase(s.ctx, "evergreen-ci", "evergreen", "", "", 666)
+	evergreen666PR := &github.PullRequest{
+		Base: &github.PullRequestBranch{
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Login: utility.ToStringPtr("evergreen-ci"),
+				},
+				Name: utility.ToStringPtr("evergreen"),
+			},
+		},
+		Number: utility.ToIntPtr(666),
+	}
+	hash, err := GetPullRequestMergeBase(s.ctx, evergreen666PR)
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
+
+	s.Run("TestCommitWithMergeCommitMain", func() {
+		// This test uses the commits found in https://github.com/evergreen-ci/commit-queue-sandbox/pull/802.
+		// The merge base of the branch commit in reference to the main branch commit
+		// should be 4139a07 despite the branch being cut from 4aa48dc.
+		// This is because the branch commit has a merge commit from main as its parent that
+		// contains 4139a07.
+		mainHash := "4139a07"
+		branchHash := "1c413b1"
+		expectedMergeBase := "4139a07989ec3a5dfd9c3055161f753c61ef90f8"
+
+		commitQueueSandboxPR := &github.PullRequest{
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{
+						Login: utility.ToStringPtr("evergreen-ci"),
+					},
+					Name: utility.ToStringPtr("commit-queue-sandbox"),
+				},
+				SHA: &mainHash,
+			},
+			Head: &github.PullRequestBranch{
+				SHA: &branchHash,
+			},
+			Number: utility.ToIntPtr(802),
+		}
+
+		hash, err = GetPullRequestMergeBase(s.ctx, commitQueueSandboxPR)
+		s.NoError(err)
+		s.Equal(expectedMergeBase, hash)
+	})
 
 	// This test should fail, but it triggers the retry logic which in turn
 	// causes the context to expire, so we reset the context with a longer
 	// deadline here
+	coniferPR := &github.PullRequest{
+		Base: &github.PullRequestBranch{
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Login: utility.ToStringPtr("evergreen-ci"),
+				},
+				Name: utility.ToStringPtr("conifer"),
+			},
+		},
+		Number: utility.ToIntPtr(666),
+	}
 	s.cancel()
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	s.Require().NotNil(s.ctx)
 	s.Require().NotNil(s.cancel)
-	hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "conifer", "", "", 666)
+	hash, err = GetPullRequestMergeBase(s.ctx, coniferPR)
 	s.Error(err)
 	s.Empty(hash)
 }
@@ -417,12 +470,13 @@ func TestValidatePR(t *testing.T) {
 
 	prBody, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
 	assert.NoError(err)
-	assert.Len(prBody, 24706)
+	assert.Len(prBody, 32977)
 	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
 	assert.NoError(err)
 	prEvent, ok := webhookInterface.(*github.PullRequestEvent)
 	assert.True(ok)
 	pr := prEvent.GetPullRequest()
+	require.NotNil(t, pr)
 
 	assert.NoError(ValidatePR(pr))
 
@@ -506,4 +560,94 @@ func TestValidateCheckRunOutput(t *testing.T) {
 		"checkRun output 'This is my report' specifies an annotation 'Error Detector' with no annotation level"
 	require.NotNil(t, err)
 	assert.Equal(t, expectedError, err.Error())
+}
+
+func TestExtractPRNumberFromHeadRef(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		input    string
+		expected string
+	}{
+		"ValidHeadRef": {
+			input:    "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
+			expected: "515",
+		},
+		"ValidHeadRefWithMultipleDashesInSHA": {
+			input:    "refs/heads/gh-readonly-queue/main/pr-123-abc-def",
+			expected: "123",
+		},
+		"ValidHeadBranch": {
+			input:    "gh-readonly-queue/main/pr-789-xyz",
+			expected: "789",
+		},
+		"NoPrefix": {
+			input:    "main/pr-456-abc",
+			expected: "456",
+		},
+		"EmptyString": {
+			input:    "",
+			expected: "",
+		},
+		"NoPRPrefix": {
+			input:    "refs/heads/gh-readonly-queue/main/123-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
+			expected: "",
+		},
+		"OnlyPRPrefix": {
+			input:    "pr-",
+			expected: "",
+		},
+		"InvalidFormat": {
+			input:    "some-random-string",
+			expected: "",
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			result := extractPRNumberFromHeadRef(tCase.input)
+			assert.Equal(t, tCase.expected, result)
+		})
+	}
+}
+
+func TestBuildGithubHeadPRURL(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		org      string
+		repo     string
+		headRef  string
+		expected string
+	}{
+		"ValidHeadRef": {
+			org:      "evergreen-ci",
+			repo:     "evergreen",
+			headRef:  "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
+			expected: "https://github.com/evergreen-ci/evergreen/pull/515",
+		},
+		"ValidHeadRefWithDifferentOrg": {
+			org:      "mongodb",
+			repo:     "mongo",
+			headRef:  "refs/heads/gh-readonly-queue/master/pr-123-abc",
+			expected: "https://github.com/mongodb/mongo/pull/123",
+		},
+		"EmptyHeadRef": {
+			org:      "evergreen-ci",
+			repo:     "evergreen",
+			headRef:  "",
+			expected: "",
+		},
+		"InvalidHeadRef": {
+			org:      "evergreen-ci",
+			repo:     "evergreen",
+			headRef:  "refs/heads/main",
+			expected: "",
+		},
+		"NoPRNumber": {
+			org:      "evergreen-ci",
+			repo:     "evergreen",
+			headRef:  "refs/heads/gh-readonly-queue/main/123-abc",
+			expected: "",
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			result := BuildGithubHeadPRURL(tCase.org, tCase.repo, tCase.headRef)
+			assert.Equal(t, tCase.expected, result)
+		})
+	}
 }

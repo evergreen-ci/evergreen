@@ -98,7 +98,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			}
 		}()
 		var err error
-		filesArchived, err = c.makeArchive(ctx, logger.Execution())
+		filesArchived, err = c.makeArchive(ctx, logger.Task())
 		select {
 		case errChan <- errors.WithStack(err):
 			return
@@ -123,11 +123,17 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			return errors.WithStack(err)
 		}
 		if filesArchived == 0 {
-			logger.Execution().Warning("No files were archived.")
+			logger.Task().Warning("No files were archived.")
 			deleteErr := os.Remove(c.Target)
 			if deleteErr != nil {
 				logger.Execution().Infof("Problem deleting empty archive: %s.", deleteErr.Error())
 			}
+		} else {
+			logger.Task().Info(message.Fields{
+				"target":    c.Target,
+				"num_files": filesArchived,
+				"message":   "successfully created archive",
+			})
 		}
 		return nil
 	case <-ctx.Done():

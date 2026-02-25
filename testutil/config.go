@@ -219,6 +219,9 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
+		DebugSpawnHosts: evergreen.DebugSpawnHostsConfig{
+			SetupScript: "echo 'test setup script'",
+		},
 		DomainName: "example.com",
 		Expansions: map[string]string{"k2": "v2"},
 		FWS: evergreen.FWSConfig{
@@ -413,7 +416,6 @@ func MockConfig() *evergreen.Settings {
 			ReleaseModeDisabled:             true,
 			LegacyUIAdminPageDisabled:       true,
 			DebugSpawnHostDisabled:          true,
-			UseGitForGitHubFilesDisabled:    true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{
@@ -461,7 +463,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		Ui: evergreen.UIConfig{
 			Url:                "url",
-			HelpUrl:            "helpurl",
 			HttpListenAddr:     "addr",
 			Secret:             "secret",
 			DefaultProject:     "mci",

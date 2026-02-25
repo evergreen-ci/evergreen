@@ -112,3 +112,20 @@ func (s *ZipCreateSuite) TestCreateZipOfPackage() {
 	s.NotZero(numFiles)
 	s.True(foundThisFile)
 }
+
+func (s *ZipCreateSuite) TestNoFilesMatchingIncludePattern() {
+	s.cmd.Target = filepath.Join(s.targetLocation, "empty.zip")
+	s.cmd.SourceDir = s.targetLocation
+	s.cmd.Include = []string{"*.nonexistent"}
+
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+
+	s.FileExists(s.cmd.Target)
+
+	var numFiles int
+	s.NoError(archiver.NewZip().Walk(s.cmd.Target, func(f archiver.File) error {
+		numFiles++
+		return nil
+	}))
+	s.Zero(numFiles)
+}

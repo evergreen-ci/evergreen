@@ -141,7 +141,6 @@
       "jwt_token_for_cli_disabled": false,
       "cpu_degraded_mode_disabled": false,
       "elastic_ips_disabled": false,
-      "use_git_for_github_files": false,
       "system_failed_task_restart_disabled": false
     },
     {
@@ -254,6 +253,10 @@
       "_id": "graphite",
       "ci_optimization_token": "",
       "server_url": ""
+    },
+    {
+      "_id": "debug_spawn_hosts",
+      "setup_script": "echo setup"
     },
     {
       "_id": "amboy",

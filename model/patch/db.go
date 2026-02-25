@@ -75,7 +75,11 @@ var (
 	githubPatchHeadOwnerKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
 
 	// BSON fields for thirdparty.GithubMergeGroup
-	githubMergeGroupHeadSHAKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
+	githubMergeGroupOrgKey                = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "Org")
+	githubMergeGroupRepoKey               = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "Repo")
+	githubMergeGroupHeadSHAKey            = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
+	githubMergeGroupRemovedFromQueueAtKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovedFromQueueAt")
+	githubMergeGroupRemovalReasonKey      = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovalReason")
 )
 
 // ProjectCreateTimeIndex is a partial index used to speed up finding GitHub Merge Queue patches
@@ -537,4 +541,59 @@ func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]s
 		}
 	}
 	return res, nil
+}
+
+// FindMergeQueuePatchesByProject returns all active merge queue patches for a project
+func FindMergeQueuePatchesByProject(ctx context.Context, projectID string) ([]Patch, error) {
+	timeThreshold := time.Now().Add(-24 * time.Hour)
+
+	query := bson.M{
+		ProjectKey: projectID,
+		AliasKey:   evergreen.CommitQueueAlias,
+		StatusKey: bson.M{
+			"$nin": []string{evergreen.VersionFailed, evergreen.VersionSucceeded},
+		},
+		CreateTimeKey: bson.M{
+			"$gte": timeThreshold,
+		},
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
+			"$exists": false,
+		},
+	}
+
+	return Find(ctx, db.Query(query))
+}
+
+// MarkMergeQueuePatchesRemovedFromQueue updates patches matching the given HeadSHA to mark them
+// as removed from the GitHub merge queue. Returns the number of patches updated.
+func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) (int, error) {
+	if headSHA == "" {
+		return 0, errors.New("headSHA cannot be empty")
+	}
+	if reason == "" {
+		return 0, errors.New("reason cannot be empty")
+	}
+
+	query := bson.M{
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupOrgKey):     org,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRepoKey):    repo,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): headSHA,
+		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
+			"$exists": false,
+		},
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): time.Now().UTC().Round(time.Millisecond),
+			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovalReasonKey):      reason,
+		},
+	}
+
+	info, err := UpdateAll(ctx, query, update)
+	if err != nil {
+		return 0, errors.Wrap(err, "updating patches")
+	}
+
+	return info.Updated, nil
 }

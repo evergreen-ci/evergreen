@@ -33,6 +33,7 @@ input RepoRefInput {
   repo: String
   repotrackerDisabled: Boolean
   restricted: Boolean
+  runEveryMainlineCommit: Boolean
   spawnHostScriptPath: String
   debugSpawnHostsDisabled: Boolean
   stepbackDisabled: Boolean
@@ -86,6 +87,7 @@ type RepoRef {
   repo: String!
   repotrackerDisabled: Boolean!
   restricted: Boolean!
+  runEveryMainlineCommit: Boolean!
   spawnHostScriptPath: String!
   debugSpawnHostsDisabled: Boolean!
   stepbackDisabled: Boolean!

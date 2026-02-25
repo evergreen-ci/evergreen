@@ -130,6 +130,14 @@ type SSHKeyPair {
   secretARN: String @requireAdmin
 }
 
+input DebugSpawnHostsConfigInput {
+  setupScript: String
+}
+
+type DebugSpawnHostsConfig {
+  setupScript: String
+}
+
 input SpawnHostConfigInput {
   unexpirableHostsPerUser: Int
   unexpirableVolumesPerUser: Int

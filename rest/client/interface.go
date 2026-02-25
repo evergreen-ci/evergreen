@@ -90,6 +90,9 @@ type Communicator interface {
 	ListPatchTriggerAliases(context.Context, string) ([]string, error)
 	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
 
+	// Get project settings by project ID
+	GetProject(context.Context, string) (*restmodel.APIProjectRef, error)
+
 	// Get parameters for project
 	GetParameters(context.Context, string) ([]model.ParameterInfo, error)
 

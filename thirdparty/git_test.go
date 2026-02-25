@@ -124,7 +124,7 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		file  = "README.md"
 	)
 	t.Run("RestoresSameFileAsGitHubAPI", func(t *testing.T) {
-		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, file)
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, file, "")
 		require.NoError(t, err)
 
 		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, rev, nil)
@@ -136,7 +136,7 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 	})
 	t.Run("ReturnsFileForBranchName", func(t *testing.T) {
 		const branch = "main"
-		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, branch, file)
+		gitFileContent, err := GetGitHubFileFromGit(t.Context(), owner, repo, branch, file, "")
 		require.NoError(t, err)
 
 		comparisonFile, err := GetGithubFile(t.Context(), owner, repo, file, branch, nil)
@@ -147,7 +147,7 @@ func TestGetGitHubFileFromGit(t *testing.T) {
 		assert.Equal(t, comparisonFileContent, gitFileContent, "git file content should exactly match the data retrieved directly from the GitHub API")
 	})
 	t.Run("ReturnsFileNotFoundForNonexistentFile", func(t *testing.T) {
-		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file")
+		_, err := GetGitHubFileFromGit(t.Context(), owner, repo, rev, "nonexistent-file", "")
 		assert.Error(t, err)
 		assert.True(t, IsFileNotFound(err))
 	})

@@ -332,6 +332,19 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	return apiTask, nil
 }
 
+// Errors is the resolver for the errors field.
+func (r *taskResolver) Errors(ctx context.Context, obj *restModel.APITask) ([]string, error) {
+	errors := []string{}
+	t, err := obj.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service", utility.FromStringPtr(obj.Id)))
+	}
+	if !t.HasValidDistro(ctx) {
+		errors = append(errors, evergreen.DistroNotFoundForTaskError)
+	}
+	return errors, nil
+}
+
 // EstimatedStart is the resolver for the estimatedStart field.
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	t, err := obj.ToService()
@@ -442,6 +455,25 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	name := generator.DisplayName
 
 	return &name, nil
+}
+
+// Generator is the resolver for the generator field.
+func (r *taskResolver) Generator(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	if obj.GeneratedBy == "" {
+		return nil, nil
+	}
+	generator, err := task.FindOneId(ctx, obj.GeneratedBy)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	if generator == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("generator task '%s' not found", obj.GeneratedBy))
+	}
+	apiTask := &restModel.APITask{}
+	if err = apiTask.BuildFromService(ctx, generator, nil); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting generator task '%s' to APITask: %s", generator.Id, err.Error()))
+	}
+	return apiTask, nil
 }
 
 // ImageID is the resolver for the imageId field.

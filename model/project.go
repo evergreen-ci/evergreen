@@ -46,6 +46,7 @@ type Project struct {
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
+	PS                 string                     `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
@@ -136,6 +137,8 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
+	// PS is the command to run for process diagnostics.
+	PS *string `yaml:"ps,omitempty" bson:"ps,omitempty"`
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -213,6 +216,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
+	}
+	if bvt.PS == nil {
+		bvt.PS = pt.PS
 	}
 
 	// Build variant level settings are lower priority than project task level
@@ -524,7 +530,7 @@ type PluginCommandConf struct {
 	Command string `yaml:"command,omitempty" bson:"command,omitempty"`
 
 	// Variants is used to enumerate the particular sets of buildvariants to run
-	// this command configuration on. If it is empty, it is run on all defined
+	// this command configuration on. If it is empty, it will run on all defined
 	// variants.
 	Variants []string `yaml:"variants,omitempty" bson:"variants,omitempty"`
 
@@ -740,6 +746,7 @@ type ProjectTask struct {
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
+	PS                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
 }
 
 const (
@@ -1144,23 +1151,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 		}
 		if v.IsChild() {
 			expansions.Put("parent_patch_id", v.ParentPatchID)
-			parentPatch, err := patch.FindOneId(ctx, v.ParentPatchID)
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding parent version '%s'", v.ParentPatchID)
-			}
-			var parentRef *ProjectRef
-			if parentPatch != nil {
-				parentRef, err = FindBranchProjectRef(ctx, parentPatch.Project)
-				if err != nil {
-					return nil, errors.Wrap(err, "finding project ref")
-				}
-			}
-
-			if parentRef != nil {
-				expansions.Put("parent_github_org", parentRef.Owner)
-				expansions.Put("parent_github_repo", parentRef.Repo)
-				expansions.Put("parent_github_branch", parentRef.Branch)
-			}
+			expansions.Put("parent_project_module", p.Triggers.ParentAsModule)
 		}
 	} else {
 		expansions.Put("is_patch", "")

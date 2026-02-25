@@ -74,6 +74,7 @@ type TaskConfig struct {
 	TaskGroup            *model.TaskGroup
 	CommandCleanups      []CommandCleanup
 	MaxExecTimeoutSecs   int
+	PSLoggingDisabled    bool
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
@@ -262,6 +263,18 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		taskConfig.PatchOrVersionDescription = opts.Patch.Description
 	} else if opts.Version != nil {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message
+	}
+
+	if opts.ExpansionsAndVars != nil && opts.ExpansionsAndVars.Expansions != nil {
+		expandedModules := make([]string, 0, len(taskConfig.BuildVariant.Modules))
+		for _, moduleName := range taskConfig.BuildVariant.Modules {
+			expanded, err := opts.ExpansionsAndVars.Expansions.ExpandString(moduleName)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to expand module '%s'", moduleName)
+			}
+			expandedModules = append(expandedModules, expanded)
+		}
+		taskConfig.BuildVariant.Modules = expandedModules
 	}
 
 	return taskConfig, nil

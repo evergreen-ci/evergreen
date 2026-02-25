@@ -1345,7 +1345,23 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// If the task failed, move its logs to the failed bucket if the project is not
 	// configured to use long term retention.
 	if details.Status == evergreen.TaskFailed && !t.UsesLongRetentionBucket(h.env.Settings()) {
-		j := units.NewMoveLogsToFailedBucketJob(h.env, t.Id, utility.RoundPartOfMinute(0).Format(units.TSFormat))
+		// Capture the current (source) bucket config before updating it, so the move job
+		// knows where to move logs from.
+		var sourceBucketCfg evergreen.BucketConfig
+		if t.TaskOutputInfo != nil {
+			sourceBucketCfg = t.TaskOutputInfo.TaskLogs.BucketConfig
+		}
+
+		// Update the task's bucket config to point to the failed bucket before enqueuing
+		// the move job. This allows the agent to rotate its logger immediately when it
+		// checks the bucket config, preventing cleanup logs and other logs after task completion
+		// from racing with the move job.
+		failedCfg := h.env.Settings().Buckets.LogBucketFailedTasks
+		if failedCfg.Name != "" && t.TaskOutputInfo != nil {
+			t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
+			t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
+		}
+		j := units.NewMoveLogsToFailedBucketJob(h.env, t.Id, utility.RoundPartOfMinute(0).Format(units.TSFormat), sourceBucketCfg)
 		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not enqueue job to move logs to failed bucket",

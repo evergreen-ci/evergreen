@@ -12,13 +12,13 @@ func TestS3LifecycleClient_ValidationErrors(t *testing.T) {
 	ctx := context.Background()
 
 	// Test empty bucket name
-	rules, err := client.GetBucketLifecycleConfiguration(ctx, "", "us-east-1", nil)
+	rules, err := client.GetBucketLifecycleConfiguration(ctx, "", "us-east-1", nil, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "bucket name cannot be empty")
 	assert.Nil(t, rules)
 
 	// Test empty region
-	rules, err = client.GetBucketLifecycleConfiguration(ctx, "test-bucket", "", nil)
+	rules, err = client.GetBucketLifecycleConfiguration(ctx, "test-bucket", "", nil, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "region cannot be empty")
 	assert.Nil(t, rules)

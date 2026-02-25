@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
@@ -19,14 +20,16 @@ import (
 type localDaemonREST struct {
 	executor   *taskexec.LocalExecutor
 	mu         sync.RWMutex
+	conf       *ClientSettings
 	configPath string
 	port       int
 }
 
 // newLocalDaemonREST creates a new REST daemon
-func newLocalDaemonREST(port int) *localDaemonREST {
+func newLocalDaemonREST(port int, conf *ClientSettings) *localDaemonREST {
 	return &localDaemonREST{
 		port: port,
+		conf: conf,
 	}
 }
 
@@ -37,6 +40,8 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
 	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
+	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
+	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -65,13 +70,21 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	workDir := filepath.Dir(req.ConfigPath)
+
 	opts := taskexec.LocalExecutorOptions{
-		WorkingDir: filepath.Dir(req.ConfigPath),
-		LogLevel:   "info",
-		Timeout:    7200,
+		WorkingDir: workDir,
+		ServerURL:  d.conf.getApiServerHost(true),
+		TaskID:     d.conf.TaskID,
+		OAuthToken: d.conf.OAuth.AccessToken,
 	}
 
-	executor, err := taskexec.NewLocalExecutor(opts)
+	if opts.OAuthToken == "" {
+		http.Error(w, "OAuth token is required", http.StatusUnauthorized)
+		return
+	}
+
+	executor, err := taskexec.NewLocalExecutor(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -83,7 +96,6 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	workDir := filepath.Dir(req.ConfigPath)
 	if err := executor.SetupWorkingDirectory(workDir); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -152,6 +164,64 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	}
 
 	return nil
+}
+
+// handleRunUntil runs until a specific step
+func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	index, err := strconv.Atoi(vars["index"])
+	if err != nil {
+		http.Error(w, "invalid step index", http.StatusBadRequest)
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	err = d.executor.RunUntil(ctx, index)
+	state := d.executor.GetDebugState()
+
+	response := map[string]interface{}{
+		"success":      err == nil,
+		"current_step": state.CurrentStepIndex,
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+	}
+
+	grip.Error(json.NewEncoder(w).Encode(response))
+}
+
+// handleRunAll runs all remaining steps
+func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	err := d.executor.RunAll(r.Context())
+	state := d.executor.GetDebugState()
+
+	response := map[string]interface{}{
+		"success":      err == nil,
+		"current_step": state.CurrentStepIndex,
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+	}
+
+	grip.Error(json.NewEncoder(w).Encode(response))
 }
 
 // handleStepNext executes the next step

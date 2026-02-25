@@ -470,7 +470,6 @@ func (s *AdminSuite) TestUiConfig() {
 
 	config := UIConfig{
 		Url:                "url",
-		HelpUrl:            "helpurl",
 		HttpListenAddr:     "addr",
 		Secret:             "secret",
 		DefaultProject:     "mci",

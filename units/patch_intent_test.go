@@ -379,7 +379,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 		Org:        &org,
 		Repo:       &repo,
 	}
-	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
+	intent, err := patch.NewGithubMergeIntent(s.ctx, "id", "auto", &mge)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1149,7 +1149,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 		Org:        &org,
 		Repo:       &repo,
 	}
-	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
+	intent, err := patch.NewGithubMergeIntent(s.ctx, "id", "auto", &mge)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -2231,7 +2231,8 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			j := &patchIntentProcessor{}
-			ignoredVariants := j.filterOutIgnoredVariants(tc.patchDoc, tc.project)
+			ctx := context.Background()
+			ignoredVariants := j.filterOutIgnoredVariants(ctx, tc.patchDoc, tc.project)
 
 			assert.Equal(t, tc.expectedIgnoredVariants, ignoredVariants)
 			assert.Len(t, tc.patchDoc.VariantsTasks, tc.expectedVariantsTasks)

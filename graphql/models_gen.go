@@ -478,6 +478,16 @@ type SaveDistroPayload struct {
 	HostCount int              `json:"hostCount"`
 }
 
+type ServiceFlag struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+}
+
+type ServiceFlagInput struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+}
+
 // SetCursorAPIKeyPayload is the response from setting a Cursor API key.
 type SetCursorAPIKeyPayload struct {
 	Success     bool    `json:"success"`

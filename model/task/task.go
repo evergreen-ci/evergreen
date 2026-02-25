@@ -246,6 +246,8 @@ type Task struct {
 	PredictedTaskCost cost.Cost `bson:"predicted_cost,omitempty" json:"predicted_cost,omitempty"`
 	// TaskCost is the actual cost of the task based on runtime and distro cost rates
 	TaskCost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
+	// S3Usage tracks S3 API usage for cost calculation
+	S3Usage S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -1531,7 +1533,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	return task, nil
 }
 
-// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
+// UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unschedulable threshold (e.g. one week) from
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
@@ -2398,6 +2400,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				StatusKey:             detail.Status,
 				TimeTakenKey:          t.TimeTaken,
 				TaskCostKey:           t.TaskCost,
+				S3UsageKey:            t.S3Usage,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
@@ -3831,7 +3834,8 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	var jqlClause string
 	for _, testResult := range t.LocalTestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
-			fileParts := eitherSlash.Split(testResult.TestName, -1)
+			testName := testResult.GetDisplayTestName()
+			fileParts := eitherSlash.Split(testName, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
@@ -4044,7 +4048,21 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		[]bson.M{
 			{"$set": bson.M{
 				DependsOnKey: bson.M{
-					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
+					"$concatArrays": []any{
+						"$" + DependsOnKey,
+						// Add dependencies to this task, but avoid adding a
+						// dependency if it's the task's own ID since that would
+						// create a self-dependency cycle.
+						bson.M{
+							"$filter": bson.M{
+								"input": newDependencies,
+								"as":    "dep",
+								"cond": bson.M{
+									"$ne": []any{"$$dep." + DependencyTaskIdKey, "$" + IdKey},
+								},
+							},
+						},
+					},
 				},
 			}},
 			addDisplayStatusCache,
@@ -4402,8 +4420,8 @@ func addPredictedCostToUpdate(setFields bson.M, predictedCost cost.Cost) {
 	}
 }
 
-// moveLogsByNamesToBucket moves task + test logs to the specified bucket
-func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput) error {
+// moveLogsByNamesToBucket moves task + test logs to the specified bucket.
+func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
 	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
 		// test logs and task logs will always be in the same bucket
 		return errors.New("test log and task log buckets do not match")
@@ -4412,7 +4430,12 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 	if failedCfg.Name == "" {
 		return errors.New("failed bucket is not configured")
 	}
-	srcBucket, err := newBucket(ctx, output.TestLogs.BucketConfig, output.TestLogs.AWSCredentials)
+	// Use the provided source bucket config if available, otherwise use the task's current bucket config
+	srcCfg := output.TestLogs.BucketConfig
+	if sourceBucketCfg != nil && sourceBucketCfg.Name != "" {
+		srcCfg = *sourceBucketCfg
+	}
+	srcBucket, err := newBucket(ctx, srcCfg, output.TestLogs.AWSCredentials)
 	if err != nil {
 		return errors.Wrap(err, "getting regular test log bucket")
 	}
@@ -4458,7 +4481,8 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 }
 
 // MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
-func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings) error {
+// using the provided source bucket config
+func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings, sourceBucketCfg evergreen.BucketConfig) error {
 	if t.UsesLongRetentionBucket(settings) {
 		return nil
 	}
@@ -4467,14 +4491,28 @@ func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *
 		return nil
 	}
 
-	return t.moveLogsByNamesToBucket(ctx, settings, output)
-
+	return t.moveLogsByNamesToBucket(ctx, settings, output, &sourceBucketCfg)
 }
 
 // UsesLongRetentionBucket returns true if the task failed and is not in LongRetentionProjects.
 func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 	if settings != nil && slices.Contains(settings.Buckets.LongRetentionProjects, t.Project) {
 		return true
+	}
+	return false
+}
+
+// HasValidDistro determines if the task has a valid distro.
+func (t *Task) HasValidDistro(ctx context.Context) bool {
+	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
+	if err == nil {
+		return true
+	}
+	for _, secondaryDistro := range t.SecondaryDistros {
+		_, err = distro.FindApplicableDistroIDs(ctx, secondaryDistro)
+		if err == nil {
+			return true
+		}
 	}
 	return false
 }

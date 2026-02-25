@@ -43,7 +43,7 @@ func TestVolumeExpiration(t *testing.T) {
 
 	uiConfig := &evergreen.UIConfig{
 		Url:     "https://evergreen.mongodb.com",
-		UIv2Url: "https://spruce.mongodb.com",
+		UIv2Url: "https://spruce.corp.mongodb.com",
 	}
 	require.NoError(t, uiConfig.Set(ctx))
 
