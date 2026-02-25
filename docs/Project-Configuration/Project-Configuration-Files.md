@@ -750,8 +750,9 @@ from running if a specified file has not changed. However, this does _not_ mean 
 be scheduled if a file in a specified path is changed. The tasks must still be manually selected to run through
 manual selection, alias, etc.
 
-_Merge queue behavior_: Build variant path filtering applies to the merge queue unless [explicitly disabled](#disabling-merge-queue-path-filtering). If testing multiple PRs
-in one merge queue patch, we will consider the full set of changed files to determine what tasks to run, but will
+_Merge queue behavior_: Build variant path filtering applies to the merge queue unless
+[explicitly disabled](#disabling-merge-queue-path-filtering). If testing multiple PRs in one merge queue patch,
+we will consider the full set of changed files to determine what tasks to run, but will
 not consider the changed files from other PRs in the merge group (i.e. paths changed in PRs that are ahead in the queue are not included).
 For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
@@ -799,6 +800,7 @@ to PR patches.
 
 This can be useful when you want more selective testing for PR patches but want to ensure comprehensive testing
 before merging to your main branch.
+
 ```yaml
 disable_merge_queue_path_filtering: true
 buildvariants:
