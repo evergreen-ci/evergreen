@@ -42,6 +42,7 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
 	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
 	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
+	router.HandleFunc("/variable/set", d.handleSetVariable).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -222,6 +223,30 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	grip.Error(json.NewEncoder(w).Encode(response))
+}
+
+// handleSetVariable sets a custom variable
+func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	d.executor.SetVariable(req.Key, req.Value)
+	grip.Error(json.NewEncoder(w).Encode(map[string]bool{"success": true}))
 }
 
 // handleStepNext executes the next step

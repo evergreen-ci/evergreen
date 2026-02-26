@@ -213,6 +213,13 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	return nil
 }
 
+// SetVariable sets a custom variable
+func (e *LocalExecutor) SetVariable(key, value string) {
+	e.debugState.CustomVars[key] = value
+	e.expansions.Put(key, value)
+	e.logger.Infof("Set variable %s=%s", key, value)
+}
+
 // StepNext executes the current step and advances to the next
 func (e *LocalExecutor) StepNext(ctx context.Context) error {
 	if !e.debugState.HasMoreSteps() {
