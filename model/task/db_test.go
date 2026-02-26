@@ -1028,7 +1028,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 
 func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
-	
+
 	// Set up tasks matching the ticket scenario:
 	// - example-a and example-b are execution tasks (members of "grouped" display task)
 	// - example-c is a standalone task
@@ -1062,11 +1062,11 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 		ExecutionTasks: []string{"example-a", "example-b"},
 		ActivatedTime:  time.Now(),
 	}
-	
+
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, exampleA, exampleB, exampleC, grouped))
-	
+
 	ctx := context.TODO()
-	
+
 	// Test 1: Filter by "example" should return all three tasks (example-a, example-b, example-c)
 	// Previously, only example-c would be returned because example-a and example-b were filtered out
 	opts := GetTasksByVersionOptions{
@@ -1081,7 +1081,7 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	assert.Equal(t, "example-a", tasks[0].DisplayName)
 	assert.Equal(t, "example-b", tasks[1].DisplayName)
 	assert.Equal(t, "example-c", tasks[2].DisplayName)
-	
+
 	// Test 2: Filter by "example-a" should return only example-a
 	opts = GetTasksByVersionOptions{
 		TaskNames: []string{"example-a"},
@@ -1090,7 +1090,7 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count, "Should return only example-a")
 	assert.Equal(t, "example-a", tasks[0].DisplayName)
-	
+
 	// Test 3: Filter by "grouped" should return only the display task
 	opts = GetTasksByVersionOptions{
 		TaskNames: []string{"grouped"},
@@ -1100,7 +1100,7 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	assert.Equal(t, 1, count, "Should return only the grouped display task")
 	assert.Equal(t, "grouped", tasks[0].DisplayName)
 	assert.True(t, tasks[0].DisplayOnly)
-	
+
 	// Test 4: No filter should return display task and standalone task (not execution tasks)
 	opts = GetTasksByVersionOptions{
 		Sorts: []TasksSortOrder{
