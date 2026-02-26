@@ -158,14 +158,15 @@ func (s *UtilizationAllocatorSuite) SetupTest() {
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcNewHostsNeeded() {
-	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 0, 0, 0, true))
-	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0, 0, true))
-	s.Equal(1, calcNewHostsNeeded(1*time.Second, 30*time.Minute, 0, 0, 0, true))
-	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0, 0, true))
-	s.Equal(3, calcNewHostsNeeded(3*time.Minute, 1*time.Minute, 0, 0, 0, true))
-	s.Equal(11, calcNewHostsNeeded(6*time.Hour, 30*time.Minute, 1, 0, 0, true))
-	s.Equal(10, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 0, 0, true))
-	s.Equal(11, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 0, 1, true))
+	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 0, 0, 0, 0, true))
+	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0, 0, 0, true))
+	s.Equal(1, calcNewHostsNeeded(1*time.Second, 30*time.Minute, 0, 0, 0, 0, true))
+	s.Equal(0, calcNewHostsNeeded(0*time.Second, 30*time.Minute, 1, 0, 0, 0, true))
+	s.Equal(3, calcNewHostsNeeded(3*time.Minute, 1*time.Minute, 0, 0, 0, 0, true))
+	s.Equal(11, calcNewHostsNeeded(6*time.Hour, 30*time.Minute, 1, 0, 0, 0, true))
+	s.Equal(10, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 0, 0, 0, true))
+	s.Equal(11, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 0, 1, 0, true))
+	s.Equal(12, calcNewHostsNeeded(80*time.Hour, 30*time.Minute, 150, 0, 1, 1, true))
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {

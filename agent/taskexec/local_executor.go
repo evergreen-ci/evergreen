@@ -83,8 +83,7 @@ type LocalExecutorOptions struct {
 	Expansions map[string]string
 	ServerURL  string
 	TaskID     string
-	APIUser    string
-	APIKey     string
+	OAuthToken string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -99,7 +98,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		expansions.Put(k, v)
 	}
 
-	comm := client.NewDebugCommunicator(opts.ServerURL, opts.APIUser, opts.APIKey)
+	comm := client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken)
 	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{
@@ -188,6 +187,29 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	e.expansions.Put("workdir", path)
 	e.logger.Infof("Working directory set to: %s", path)
 
+	return nil
+}
+
+// RunUntil executes steps up until the given input index.
+func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
+	if len(e.commandBlocks) == 0 {
+		return nil
+	}
+	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
+	if untilIndex >= maxIndex {
+		e.logger.Warningf("Running until index %d out of range, falling back to %d", untilIndex, maxIndex)
+		untilIndex = maxIndex
+	}
+
+	for e.debugState.CurrentStepIndex <= untilIndex {
+		if err := e.StepNext(ctx); err != nil {
+			e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+			return err
+		}
+		if e.debugState.CurrentStepIndex > untilIndex {
+			break
+		}
+	}
 	return nil
 }
 

@@ -38,6 +38,9 @@ type Mock struct {
 
 	SendSlackNotificationData *model.APISlack
 	SendEmailNotificationData *model.APIEmail
+
+	ValidateResult validator.ValidationErrors
+	ValidateErr    error
 }
 
 func (c *Mock) Close() {}
@@ -71,6 +74,10 @@ func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostReques
 
 func (*Mock) GetSpawnHost(ctx context.Context, hostID string) (*model.APIHost, error) {
 	return nil, errors.New("(*Mock) GetSpawnHost is not implemented")
+}
+
+func (*Mock) GetProject(ctx context.Context, projectID string) (*model.APIProjectRef, error) {
+	return nil, errors.New("(*Mock) GetProject is not implemented")
 }
 
 func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
@@ -352,7 +359,7 @@ func (c *Mock) GetUiV2URL(ctx context.Context) (string, error) {
 }
 
 func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
-	return nil, nil
+	return c.ValidateResult, c.ValidateErr
 }
 
 func (c *Mock) SendPanicReport(ctx context.Context, details *model.PanicReport) error {

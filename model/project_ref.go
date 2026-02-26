@@ -539,6 +539,7 @@ var (
 	projectRefGithubMQTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubMQTriggerAliases")
 	projectRefPeriodicBuildsKey                     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 	projectRefOldestAllowedMergeBaseKey             = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
+	projectRefRunEveryMainlineCommitKey             = bsonutil.MustHaveTag(ProjectRef{}, "RunEveryMainlineCommit")
 	projectRefWorkstationConfigKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
 	projectRefTaskAnnotationSettingsKey             = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
 	projectRefBuildBaronSettingsKey                 = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
@@ -2347,6 +2348,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
+					projectRefRunEveryMainlineCommitKey: p.RunEveryMainlineCommit,
 				},
 			})
 	case ProjectPageNotificationsSection:
@@ -3784,4 +3786,14 @@ func FindProjectAndRepoRefsUsingGitHubAppForAPI(ctx context.Context) ([]ProjectR
 	}
 
 	return append(pRefs, repoRefsAsProjectRefs...), nil
+}
+
+// FindProjectRefsWithMergeQueueEnabled returns all enabled project refs with merge queue enabled.
+func FindProjectRefsWithMergeQueueEnabled(ctx context.Context) ([]ProjectRef, error) {
+	return findProjectRefsQ(
+		ctx,
+		bson.M{
+			ProjectRefEnabledKey: true,
+			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey): true,
+		}, true)
 }

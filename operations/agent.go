@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -213,6 +216,10 @@ func Agent() cli.Command {
 			agt.SetDefaultLogger(sender)
 			agt.SetHomeDirectory()
 
+			grip.Warning(message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
+				"message": "could not set nice on agent process and all of its threads, some threads may proceed with default nice",
+			}))
+
 			err = agt.Start(ctx)
 			if err != nil {
 				msg := message.Fields{
@@ -229,6 +236,47 @@ func Agent() cli.Command {
 			return nil
 		},
 	}
+}
+
+// setNiceAllThreads sets the nice for all currently-running threads in this
+// process.
+func setNiceAllThreads(nice int) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+
+	// We want to ensure all threads use the same nice so they get CPU priority.
+	// This is not as straightforward as it sounds.
+	//
+	// Threads inherit the nice of their parent process/thread. The Go runtime
+	// pre-initializes several threads, so by the time the main thread begins
+	// running (i.e. this thread), those other threads won't inherit the nice
+	// from the main thread because they already exist. Because of that, the
+	// main thread has to update both itself and all other existing threads in
+	// the process to ensure that they all use the same nice; otherwise, a
+	// goroutine that's assigned to on one of the other thread will end up with
+	// the default nice.
+	//
+	// This sets the nice on all threads by reading all thread IDs for this
+	// process and setting the nice on each one.
+	entries, err := os.ReadDir("/proc/self/task")
+	if err != nil {
+		catcher.Wrap(err, "reading thread IDs for this process")
+		return catcher.Resolve()
+	}
+
+	for _, entry := range entries {
+		tid, err := strconv.Atoi(entry.Name())
+		if err != nil {
+			continue
+		}
+
+		catcher.Wrapf(agentutil.SetNice(tid, nice), "setting agent nice on thread '%s'", tid)
+	}
+
+	return nil
 }
 
 func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc, closeAgent func(context.Context)) {

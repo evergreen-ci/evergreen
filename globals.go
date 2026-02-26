@@ -358,6 +358,7 @@ const (
 	KeyTooLargeToIndexError         = "key too large to index"
 	InvalidDivideInputError         = "$divide only supports numeric types"
 	FetchingTaskDataUnfinishedError = "fetching task data not finished"
+	DistroNotFoundForTaskError      = "distro not found"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -504,11 +505,6 @@ const (
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
-
-	// S3 usage otel attributes
-	TaskS3UserFilePutRequestsOtelAttribute = "evergreen.task.s3_user_file_put_requests"
-	TaskS3UserFileUploadBytesOtelAttribute = "evergreen.task.s3_user_file_upload_bytes"
-	TaskS3UserFileCountOtelAttribute       = "evergreen.task.s3_user_file_count"
 
 	// task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
