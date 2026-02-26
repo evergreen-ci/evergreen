@@ -803,8 +803,7 @@ before merging to your main branch.
 
 ```yaml
 disable_merge_queue_path_filtering: true
-buildvariants:
-  ...
+buildvariants: ...
 ```
 
 ### Expansions
