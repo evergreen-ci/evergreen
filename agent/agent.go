@@ -702,7 +702,18 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}
 
 	defer func() {
-		_ = a.killProcs(ctx, tc, false, "task is finished")
+		if err := a.killProcs(ctx, tc, false, "task is finished"); err != nil {
+			// If the task is finished but the agent can't clean up all the
+			// processes/Docker artifacts for the next task, disable the host.
+			// Otherwise, the next task will start with lingering state from the
+			// prior task.
+			tc.logger.Execution().Criticalf("Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
+			if disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
+				Reason: "could not clean up processes/Docker artifacts after task is finished",
+			}); disableErr != nil {
+				tc.logger.Execution().Criticalf("Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
+			}
+		}
 	}()
 
 	grip.Info(message.Fields{
@@ -1198,17 +1209,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		span.End()
 	}
 
-	if err := a.killProcs(ctx, tc, false, "task is ending"); err != nil {
-		// If the task is finished but the agent can't clean up all the
-		// processes/Docker artifacts, disable the host because the next task
-		// will start with lingering state from the prior task.
-		tc.logger.Execution().Criticalf("Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
-		if disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
-			Reason: "could not clean up processes/Docker artifacts after task is finished",
-		}); disableErr != nil {
-			tc.logger.Execution().Criticalf("Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
-		}
-	}
+	_ = a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
