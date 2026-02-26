@@ -103,15 +103,15 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/patch").Version(2).Get().Wrap(requireTask).RouteHandler(makeServePatch())
 	app.AddRoute("/task/{task_id}/version").Version(2).Get().Wrap(requireTask).RouteHandler(makeServeVersion())
 	app.AddRoute("/task/{task_id}/git/patchfile/{patchfile_id}").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGitServePatchFile())
-	app.AddRoute("/task/{task_id}/github_dynamic_access_token").Version(2).Delete().Wrap(requireTask).RouteHandler(makeRevokeGitHubDynamicAccessToken(env))
+	app.AddRoute("/task/{task_id}/github_dynamic_access_token").Version(2).Delete().Wrap(requireUserOrTask).RouteHandler(makeRevokeGitHubDynamicAccessToken(env))
 	app.AddRoute("/task/{task_id}/installation_token/{owner}/{repo}").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeCreateInstallationToken(env))
-	app.AddRoute("/task/{task_id}/github_dynamic_access_token/{owner}/{repo}").Version(2).Post().Wrap(requireTask).RouteHandler(makeCreateGitHubDynamicAccessToken(env))
+	app.AddRoute("/task/{task_id}/github_dynamic_access_token/{owner}/{repo}").Version(2).Post().Wrap(requireUserOrTask).RouteHandler(makeCreateGitHubDynamicAccessToken(env))
 	app.AddRoute("/task/{task_id}/keyval/inc").Version(2).Post().Wrap(requireTask).RouteHandler(makeKeyvalPluginInc())
 	app.AddRoute("/task/{task_id}/manifest/load").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeManifestLoad(settings))
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeCheckRun(settings))
-	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireTask, requirePodOrHost).RouteHandler(makeAWSAssumeRole(stsManager))
+	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireUserOrTask).RouteHandler(makeAWSAssumeRole(stsManager))
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())
