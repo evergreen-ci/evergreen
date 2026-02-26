@@ -869,6 +869,22 @@ func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 		if err != nil {
 			return errors.Wrapf(err, "creating new repo ref")
 		}
+	} else {
+		// Ensure project vars exist for the existing repo ref, since
+		// older repo refs may have been created without them.
+		vars, err := FindOneProjectVars(ctx, repoRef.Id)
+		if err != nil {
+			return errors.Wrapf(err, "finding project vars for repo '%s'", repoRef.Id)
+		}
+		if vars == nil {
+			allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, p.Owner, p.Repo)
+			if err != nil {
+				return errors.Wrap(err, "finding all enabled projects")
+			}
+			if err = createProjectVarsFromProjects(ctx, repoRef.Id, allEnabledProjects); err != nil {
+				return errors.Wrapf(err, "creating project vars for repo '%s'", repoRef.Id)
+			}
+		}
 	}
 	if p.RepoRefId == "" {
 		p.RepoRefId = repoRef.Id
@@ -1373,19 +1389,14 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 		"user":               u.DisplayName(),
 	}))
 
+	if err = createProjectVarsFromProjects(ctx, repoRef.Id, allEnabledProjects); err != nil {
+		return nil, errors.Wrapf(err, "creating project vars for repo '%s'", repoRef.Id)
+	}
+
 	enabledProjectIds := []string{}
 	for _, p := range allEnabledProjects {
 		enabledProjectIds = append(enabledProjectIds, p.Id)
 	}
-	commonProjectVars, err := getCommonProjectVariables(ctx, enabledProjectIds)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting common project variables")
-	}
-	commonProjectVars.Id = repoRef.Id
-	if err = commonProjectVars.Insert(ctx); err != nil {
-		return nil, errors.Wrap(err, "inserting project variables for repo")
-	}
-
 	commonAliases, err := getCommonAliases(ctx, enabledProjectIds)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting common project aliases")
@@ -1443,6 +1454,24 @@ func aliasSliceContains(slice []ProjectAlias, item ProjectAlias) bool {
 		return true
 	}
 	return false
+}
+
+// createProjectVarsFromProjects finds the common project variables across the
+// given enabled projects and inserts them as the project vars for the repo.
+func createProjectVarsFromProjects(ctx context.Context, repoRefId string, allEnabledProjects []ProjectRef) error {
+	enabledProjectIds := []string{}
+	for _, p := range allEnabledProjects {
+		enabledProjectIds = append(enabledProjectIds, p.Id)
+	}
+	commonProjectVars, err := getCommonProjectVariables(ctx, enabledProjectIds)
+	if err != nil {
+		return errors.Wrap(err, "getting common project variables")
+	}
+	commonProjectVars.Id = repoRefId
+	if err = commonProjectVars.Insert(ctx); err != nil {
+		return errors.Wrapf(err, "inserting project variables for repo '%s'", repoRefId)
+	}
+	return nil
 }
 
 func getCommonProjectVariables(ctx context.Context, projectIds []string) (*ProjectVars, error) {

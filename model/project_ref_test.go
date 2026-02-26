@@ -920,7 +920,7 @@ func TestAttachToRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, evergreen.ScopeCollection,
 		evergreen.RoleCollection, user.Collection, event.EventCollection, evergreen.ConfigCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	settings := evergreen.Settings{
@@ -1009,6 +1009,32 @@ func TestAttachToRepo(t *testing.T) {
 	assert.False(t, pRefFromDB.CommitQueue.IsEnabled())
 	assert.False(t, pRefFromDB.IsGithubChecksEnabled())
 	assert.True(t, pRefFromDB.IsPRTestingEnabled())
+
+	repoVars, err := FindOneProjectVars(t.Context(), pRef.RepoRefId)
+	assert.NoError(t, err)
+	assert.NotNil(t, repoVars)
+
+	// Attaching a new project should recreate the vars if they don't exist.
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection))
+	repoVars, err = FindOneProjectVars(t.Context(), pRef.RepoRefId)
+	assert.NoError(t, err)
+	assert.Nil(t, repoVars)
+
+	pRef = ProjectRef{
+		Id:      "myProjectMissingVars",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
+		Admins:  []string{"me"},
+		Enabled: true,
+	}
+	assert.NoError(t, pRef.Insert(t.Context()))
+	assert.NoError(t, pRef.AttachToRepo(ctx, u))
+	assert.True(t, pRef.UseRepoSettings())
+
+	repoVars, err = FindOneProjectVars(t.Context(), pRef.RepoRefId)
+	assert.NoError(t, err)
+	assert.NotNil(t, repoVars, "project vars should be recreated for repo ref missing them")
 
 	// Try attaching with a disallowed owner.
 	pRef = ProjectRef{
