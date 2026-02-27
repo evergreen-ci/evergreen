@@ -204,10 +204,10 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
 		"steps":        steps,
 		"current_step": state.CurrentStepIndex,
-	})
+	}))
 }
 
 // handleRunUntil runs until a specific step
