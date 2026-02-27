@@ -47,7 +47,6 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 
 	ops := []amboy.QueueOperation{
 		PopulateTaskMonitoring(5),
-		PopulatePodHealthCheckJobs(),
 		PopulateActivationJobs(10),
 		PopulateHostProvisioningConversionJobs(j.env),
 		PopulateHostRestartJasperJobs(j.env),

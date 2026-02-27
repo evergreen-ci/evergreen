@@ -179,7 +179,8 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	if d.HostAllocatorSettings.FeedbackRule == evergreen.HostAllocatorWaitsOverThreshFeedback {
 		numHostsForOverdueTasks = taskGroupInfo.CountWaitOverThreshold
 	}
-	numNewHosts = calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationThreshold, expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, roundDown)
+	numNewHosts = calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationThreshold,
+		expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, taskGroupInfo.CountDepFilledMergeQueueTasks, roundDown)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > taskGroupInfo.Count {
@@ -262,10 +263,10 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo model.DistroQueu
 // sum of the expected durations of all short-running (<= maxDurationPerHost) tasks that have their
 // dependencies met. It attempts to allocate enough hosts to run all short running tasks within
 // maxDurationPerHost, plus one host for each long-running task with runtime > maxDurationPerHost,
-// plus (optionally) one host for each task that have been waiting maxDurationPerHost since its dependencies
-// were met.
+// plus one host for each dependency-filled merge queue task, plus (optionally) one host for each
+// task that have been waiting maxDurationPerHost since its dependencies were met.
 func calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationPerHost time.Duration,
-	expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks int, roundDown bool) int {
+	expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, numMergeQueueTasks int, roundDown bool) int {
 
 	// Calculate the number of hosts needed to run the full totalShortRunningTasksExpectedDuration within
 	// the maxDurationPerHost turnaround requirement
@@ -273,7 +274,7 @@ func calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationPerHo
 
 	// Subtract the number of hosts that we expect to be free, add the number of long-running tasks,
 	// and add the number of overdue tasks to get the final number of hosts that need to be spun up
-	numNewHostsNeeded := numHostsForTurnaroundRequirement - float64(expectedNumFreeHosts) + float64(numLongRunningTasks) + float64(numHostsForOverdueTasks)
+	numNewHostsNeeded := numHostsForTurnaroundRequirement - float64(expectedNumFreeHosts) + float64(numLongRunningTasks) + float64(numHostsForOverdueTasks) + float64(numMergeQueueTasks)
 
 	// If we need less than 1 new host but have no existing hosts, return 1 host
 	// so that small queues are not stranded

@@ -211,9 +211,24 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.New("daemon is already running")
 	}
 
+	rootCtx := c
+	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+		rootCtx = parentCtx
+	}
+
+	confPath := rootCtx.String(ConfFlagName)
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
+	}
+
+	if err := conf.SetOAuthToken(context.Background()); err != nil {
+		return errors.Wrap(err, "obtaining OAuth token")
+	}
+
 	grip.Infof("Starting daemon on port %d...", port)
 
-	daemon := newLocalDaemonREST(port)
+	daemon := newLocalDaemonREST(port, conf)
 	return daemon.Start()
 }
 

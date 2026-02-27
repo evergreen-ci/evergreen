@@ -103,7 +103,6 @@ type ParserProject struct {
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
 	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Containers         []Container                `yaml:"containers,omitempty" bson:"containers,omitempty"`
 	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
 	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
@@ -1402,6 +1401,7 @@ func capParserPriorities(p *ParserProject) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
+
 		Stepback:                       utility.FromBoolPtr(pp.Stepback),
 		PreTimeoutSecs:                 utility.FromIntPtr(pp.PreTimeoutSecs),
 		PostTimeoutSecs:                utility.FromIntPtr(pp.PostTimeoutSecs),
@@ -1412,9 +1412,9 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Identifier:                     utility.FromStringPtr(pp.Identifier),
 		DisplayName:                    utility.FromStringPtr(pp.DisplayName),
 		CommandType:                    utility.FromStringPtr(pp.CommandType),
+		DisableMergeQueuePathFiltering: utility.FromBoolPtr(pp.DisableMergeQueuePathFiltering),
 		Ignore:                         pp.Ignore,
 		Parameters:                     pp.Parameters,
-		Containers:                     pp.Containers,
 		Pre:                            pp.Pre,
 		Post:                           pp.Post,
 		Timeout:                        pp.Timeout,
@@ -1423,7 +1423,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Functions:                      pp.Functions,
 		ExecTimeoutSecs:                utility.FromIntPtr(pp.ExecTimeoutSecs),
 		TimeoutSecs:                    utility.FromIntPtr(pp.TimeoutSecs),
-		DisableMergeQueuePathFiltering: utility.FromBoolPtr(pp.DisableMergeQueuePathFiltering),
 		NumIncludes:                    len(pp.Include),
 	}
 	catcher := grip.NewBasicCatcher()

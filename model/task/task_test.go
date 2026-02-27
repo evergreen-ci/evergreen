@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -1069,12 +1068,10 @@ func TestEndingTask(t *testing.T) {
 		Convey("a task that is allocated a container should be deallocated", func() {
 			now := time.Now()
 			task := &Task{
-				Id:                     "taskId",
-				Status:                 evergreen.TaskStarted,
-				StartTime:              now.Add(-5 * time.Minute),
-				ExecutionPlatform:      ExecutionPlatformContainer,
-				ContainerAllocated:     true,
-				ContainerAllocatedTime: time.Now(),
+				Id:                "taskId",
+				Status:            evergreen.TaskStarted,
+				StartTime:         now.Add(-5 * time.Minute),
+				ExecutionPlatform: ExecutionPlatformContainer,
 			}
 			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
@@ -1085,8 +1082,6 @@ func TestEndingTask(t *testing.T) {
 			task, err := FindOne(ctx, db.Query(ById(task.Id)))
 			So(err, ShouldBeNil)
 			So(task.Status, ShouldEqual, evergreen.TaskFailed)
-			So(task.ContainerAllocated, ShouldBeFalse)
-			So(task.ContainerAllocatedTime, ShouldBeZeroValue)
 		})
 	})
 }
@@ -2400,445 +2395,28 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 }
 
-func TestMarkAsContainerDispatched(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.Clear(Collection))
-	}()
-
-	getDispatchableContainerTasks := func() []Task {
-		return []Task{
-			{
-				Id:                 "should_not_be_dispatched",
-				Activated:          true,
-				ActivatedTime:      time.Now(),
-				Status:             evergreen.TaskUndispatched,
-				ContainerAllocated: true,
-				ExecutionPlatform:  ExecutionPlatformContainer,
-			},
-			{
-				Id:                 "should_be_dispatched",
-				Activated:          true,
-				ActivatedTime:      time.Now(),
-				Status:             evergreen.TaskUndispatched,
-				ContainerAllocated: true,
-				ExecutionPlatform:  ExecutionPlatformContainer,
-			},
-		}
-	}
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
-	const podID = "pod_id"
-
-	checkTaskDispatched := func(t *testing.T, taskID string) {
-		dbTask, err := FindOneId(ctx, taskID)
-		require.NoError(t, err)
-		require.NotZero(t, dbTask)
-		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
-		assert.False(t, utility.IsZeroTime(dbTask.DispatchTime))
-		assert.False(t, utility.IsZeroTime(dbTask.LastHeartbeat))
-		assert.Equal(t, podID, dbTask.PodID)
-		assert.Equal(t, evergreen.AgentVersion, dbTask.AgentVersion)
-		output, ok := dbTask.initializeTaskOutputInfo(env)
-		require.True(t, ok)
-		assert.Equal(t, output, dbTask.TaskOutputInfo)
-	}
-
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task){
-		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
-			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert(t.Context()))
-			}
-			require.NoError(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
-			checkTaskDispatched(t, tsks[1].Id)
-		},
-		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
-			tsks[1].ContainerAllocated = false
-			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert(t.Context()))
-			}
-
-			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
-		},
-		"FailsWithDeactivatedTasks": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
-			tsks[1].Activated = false
-			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert(t.Context()))
-			}
-
-			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
-		},
-		"FailsWithDisabledTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
-			tsks[1].Priority = evergreen.DisabledTaskPriority
-			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert(t.Context()))
-			}
-
-			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
-		},
-		"FailsWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
-			tsks[1].DependsOn = []Dependency{
-				{TaskId: "task", Finished: true, Unattainable: true},
-			}
-			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert(t.Context()))
-			}
-
-			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
-		},
-		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
-			require.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
-
-			dbTask, err := FindOneId(ctx, tsks[1].Id)
-			assert.NoError(t, err)
-			assert.Zero(t, dbTask)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithCancel(ctx)
-			defer tcancel()
-
-			require.NoError(t, db.Clear(Collection))
-
-			tCase(tctx, t, env, getDispatchableContainerTasks())
-		})
-	}
-}
-
-func TestMarkAsContainerAllocated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.Clear(Collection))
-	}()
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
-	checkTaskAllocated := func(t *testing.T, taskID string) {
-		dbTask, err := FindOneId(ctx, taskID)
-		require.NoError(t, err)
-		require.NotZero(t, dbTask)
-		assert.True(t, dbTask.ContainerAllocated)
-		assert.False(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
-		assert.Zero(t, dbTask.AgentVersion)
-		assert.NotZero(t, dbTask.ContainerAllocationAttempts)
-	}
-
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
-		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.MarkAsContainerAllocated(ctx, env))
-			checkTaskAllocated(t, tsk.Id)
-		},
-		"FailsWithAllocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ContainerAllocated = true
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsWithAllocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ContainerAllocated = true
-			require.NoError(t, tsk.Insert(t.Context()))
-			tsk.ContainerAllocated = false
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsWithTaskWithNoRemainingAllocationAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsWithDBTaskWithNoRemainingAllocationAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
-			require.NoError(t, tsk.Insert(t.Context()))
-			tsk.ContainerAllocationAttempts = 0
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsWithInactiveTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Activated = false
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsForTaskWithStatusOtherThanUndispatched": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.Status = evergreen.TaskSucceeded
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsForTaskWithUnmetDependencies": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.DependsOn = []Dependency{
-				{
-					TaskId:   "dependency",
-					Finished: false,
-				},
-			}
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsForHostTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformHost
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-		},
-		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
-
-			dbTask, err := FindOneId(ctx, tsk.Id)
-			assert.NoError(t, err)
-			assert.Zero(t, dbTask)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithCancel(ctx)
-			defer tcancel()
-
-			require.NoError(t, db.Clear(Collection))
-			tsk := Task{
-				Id:                utility.RandomString(),
-				Activated:         true,
-				ActivatedTime:     time.Now(),
-				Status:            evergreen.TaskUndispatched,
-				ExecutionPlatform: ExecutionPlatformContainer,
-			}
-
-			tCase(tctx, t, env, tsk)
-		})
-	}
-}
-
-func TestMarkAsContainerDeallocated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.Clear(Collection))
-	}()
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
-	checkTaskUnallocated := func(t *testing.T, taskID string) {
-		dbTask, err := FindOneId(ctx, taskID)
-		require.NoError(t, err)
-		require.NotZero(t, dbTask)
-		assert.False(t, dbTask.ContainerAllocated)
-		assert.True(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
-	}
-
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
-		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, tsk.MarkAsContainerDeallocated(ctx, env))
-			checkTaskUnallocated(t, tsk.Id)
-		},
-		"FailsWithUnallocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ContainerAllocated = false
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
-		},
-		"FailsWithHostTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformHost
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
-		},
-		"FailsWithUnallocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			tsk.ContainerAllocated = false
-			require.NoError(t, tsk.Insert(t.Context()))
-			tsk.ContainerAllocated = true
-
-			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
-		},
-		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
-
-			dbTask, err := FindOneId(ctx, tsk.Id)
-			assert.NoError(t, err)
-			assert.Zero(t, dbTask)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithCancel(ctx)
-			defer tcancel()
-
-			require.NoError(t, db.Clear(Collection))
-			tsk := Task{
-				Id:                     utility.RandomString(),
-				Activated:              true,
-				ActivatedTime:          time.Now(),
-				Status:                 evergreen.TaskUndispatched,
-				ContainerAllocated:     true,
-				ContainerAllocatedTime: time.Now(),
-				ExecutionPlatform:      ExecutionPlatformContainer,
-			}
-
-			tCase(tctx, t, env, tsk)
-		})
-	}
-}
-
-func TestMarkTasksAsContainerDeallocated(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.Clear(Collection))
-	}()
-
-	checkTasksUnallocated := func(t *testing.T, taskIDs []string) {
-		for _, taskID := range taskIDs {
-			dbTask, err := FindOneId(ctx, taskID)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.False(t, dbTask.ContainerAllocated)
-			assert.True(t, utility.IsZeroTime(dbTask.ContainerAllocatedTime))
-		}
-	}
-
-	for tName, tCase := range map[string]func(t *testing.T, tasks []Task){
-		"Succeeds": func(t *testing.T, tasks []Task) {
-			var taskIDs []string
-			for _, tsk := range tasks {
-				require.NoError(t, tsk.Insert(t.Context()))
-				taskIDs = append(taskIDs, tsk.Id)
-			}
-
-			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
-			checkTasksUnallocated(t, taskIDs)
-		},
-		"NoopsWithHostTask": func(t *testing.T, tasks []Task) {
-			tasks[0].ExecutionPlatform = ExecutionPlatformHost
-			var taskIDs []string
-			for _, tsk := range tasks {
-				require.NoError(t, tsk.Insert(t.Context()))
-				taskIDs = append(taskIDs, tsk.Id)
-			}
-
-			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
-			checkTasksUnallocated(t, taskIDs[1:])
-			dbHostTask, err := FindOneId(ctx, tasks[0].Id)
-			require.NoError(t, err)
-			assert.Equal(t, tasks[0].ContainerAllocated, dbHostTask.ContainerAllocated, "host task should not be updated")
-			assert.NotZero(t, dbHostTask.LastHeartbeat, "host task should not be updated")
-			assert.NotZero(t, dbHostTask.DispatchTime, "host task should not be updated")
-		},
-		"UpdatesTaskThatIsAlreadyContainerUnallocated": func(t *testing.T, tasks []Task) {
-			tasks[0].ContainerAllocated = false
-			var taskIDs []string
-			for _, tsk := range tasks {
-				require.NoError(t, tsk.Insert(t.Context()))
-				taskIDs = append(taskIDs, tsk.Id)
-			}
-
-			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
-			checkTasksUnallocated(t, taskIDs)
-		},
-		"DoesNotUpdateNonexistentTask": func(t *testing.T, tasks []Task) {
-			taskIDs := []string{tasks[0].Id}
-			for _, tsk := range tasks[1:] {
-				require.NoError(t, tsk.Insert(t.Context()))
-				taskIDs = append(taskIDs, tsk.Id)
-			}
-
-			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
-			checkTasksUnallocated(t, taskIDs[1:])
-
-			dbTask, err := FindOneId(ctx, tasks[0].Id)
-			assert.NoError(t, err)
-			assert.Zero(t, dbTask)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection))
-			ts := utility.BSONTime(time.Now())
-			tasks := []Task{
-				{
-					Id:                     utility.RandomString(),
-					Activated:              true,
-					ActivatedTime:          time.Now(),
-					Status:                 evergreen.TaskUndispatched,
-					ContainerAllocated:     true,
-					ContainerAllocatedTime: ts,
-					DispatchTime:           ts,
-					LastHeartbeat:          ts,
-					ExecutionPlatform:      ExecutionPlatformContainer,
-				},
-				{
-					Id:                     utility.RandomString(),
-					Activated:              true,
-					ActivatedTime:          ts,
-					Status:                 evergreen.TaskDispatched,
-					ContainerAllocated:     true,
-					ContainerAllocatedTime: ts,
-					DispatchTime:           ts,
-					LastHeartbeat:          ts,
-					ExecutionPlatform:      ExecutionPlatformContainer,
-				},
-				{
-					Id:                     utility.RandomString(),
-					Activated:              true,
-					ActivatedTime:          ts,
-					Status:                 evergreen.TaskStarted,
-					ContainerAllocated:     true,
-					ContainerAllocatedTime: ts,
-					DispatchTime:           ts,
-					StartTime:              ts,
-					LastHeartbeat:          ts,
-					ExecutionPlatform:      ExecutionPlatformContainer,
-				},
-			}
-
-			tCase(t, tasks)
-		})
-	}
-}
-
 func TestIsDispatchable(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
 		"ReturnsTrueForHostTask": func(t *testing.T, tsk Task) {
-			assert.True(t, tsk.IsDispatchable())
+			assert.True(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsTrueForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
 			tsk.ExecutionPlatform = ""
-			assert.True(t, tsk.IsDispatchable())
-		},
-		"ReturnsTrueForContainerTaskWithoutContainerAllocated": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
-			tsk.ContainerAllocated = false
-			assert.True(t, tsk.IsDispatchable())
-		},
-		"ReturnsTrueForContainerTaskWithContainerAllocated": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformContainer
-			tsk.ContainerAllocated = true
-			assert.True(t, tsk.IsDispatchable())
+			assert.True(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
 			tsk.Status = evergreen.TaskDispatched
-			assert.False(t, tsk.IsDispatchable())
+			assert.False(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
 			tsk.Activated = false
-			assert.False(t, tsk.IsDispatchable())
+			assert.False(t, tsk.IsHostDispatchable())
 		},
 		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
 			tsk.DisplayOnly = true
 			tsk.ExecutionPlatform = ""
 			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
-			assert.False(t, tsk.IsDispatchable())
+			assert.False(t, tsk.IsHostDispatchable())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -2890,142 +2468,6 @@ func TestIsHostDispatchable(t *testing.T) {
 			}
 			tCase(t, hostDispatchableTask)
 		})
-	}
-}
-
-func TestIsContainerDispatchable(t *testing.T) {
-	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
-		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
-			assert.True(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ""
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForTaskWithoutContainerAllocated": func(t *testing.T, tsk Task) {
-			tsk.ContainerAllocated = false
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForTaskWithUnattainableDependencies": func(t *testing.T, tsk Task) {
-			tsk.DependsOn = []Dependency{
-				{
-					TaskId:       "dependency0",
-					Unattainable: true,
-					Finished:     true,
-				},
-			}
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForTaskWithUnfinishedDependencies": func(t *testing.T, tsk Task) {
-			tsk.DependsOn = []Dependency{
-				{
-					TaskId:       "dependency0",
-					Unattainable: false,
-					Finished:     false,
-				},
-			}
-			assert.False(t, tsk.IsContainerDispatchable())
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForHostTask": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformHost
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
-			tsk.Status = evergreen.TaskDispatched
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
-			tsk.Activated = false
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
-			tsk.DisplayOnly = true
-			tsk.ExecutionPlatform = ""
-			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
-			assert.False(t, tsk.IsContainerDispatchable())
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			containerDispatchableTask := Task{
-				Id:                 "task-id",
-				Status:             evergreen.TaskUndispatched,
-				Activated:          true,
-				ContainerAllocated: true,
-				ExecutionPlatform:  ExecutionPlatformContainer,
-			}
-			tCase(t, containerDispatchableTask)
-		})
-	}
-}
-
-func TestShouldAllocateContainer(t *testing.T) {
-	for tName, tCase := range map[string]func(t *testing.T, tsk Task){
-		"ReturnsTrueForExpectedTask": func(t *testing.T, tsk Task) {
-			assert.True(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForTaskWithDefaultedHostExecutionPlatform": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ""
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForTaskAlreadyAllocatedContainer": func(t *testing.T, tsk Task) {
-			tsk.ContainerAllocated = true
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk Task) {
-			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForHostTask": func(t *testing.T, tsk Task) {
-			tsk.ExecutionPlatform = ExecutionPlatformHost
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForTaskWithoutUndispatchedStatus": func(t *testing.T, tsk Task) {
-			tsk.Status = evergreen.TaskDispatched
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForInactiveTask": func(t *testing.T, tsk Task) {
-			tsk.Activated = false
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForTaskWithIncompleteDependencies": func(t *testing.T, tsk Task) {
-			tsk.DependsOn = []Dependency{
-				{
-					TaskId:   "dependency0",
-					Finished: false,
-				},
-			}
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsTrueForTaskWithOverrideDependencies": func(t *testing.T, tsk Task) {
-			tsk.DependsOn = []Dependency{
-				{
-					TaskId:   "dependency0",
-					Finished: false,
-				},
-			}
-			tsk.OverrideDependencies = true
-			assert.True(t, tsk.ShouldAllocateContainer())
-		},
-		"ReturnsFalseForDisplayTask": func(t *testing.T, tsk Task) {
-			tsk.DisplayOnly = true
-			tsk.ExecutionPlatform = ""
-			tsk.ExecutionTasks = []string{"exec-task0", "exec-task1"}
-			assert.False(t, tsk.ShouldAllocateContainer())
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			tCase(t, getTaskThatNeedsContainerAllocation())
-		})
-	}
-}
-
-func getTaskThatNeedsContainerAllocation() Task {
-	return Task{
-		Id:                "task-id",
-		Status:            evergreen.TaskUndispatched,
-		Activated:         true,
-		ExecutionPlatform: ExecutionPlatformContainer,
 	}
 }
 
@@ -5132,7 +4574,6 @@ func TestReset(t *testing.T) {
 			HasAnnotations:          true,
 			AgentVersion:            "a1",
 			HostId:                  "h",
-			PodID:                   "p",
 			HostCreateDetails:       []HostCreateDetail{{HostId: "h"}},
 			NumNextTaskDispatches:   3,
 		}
@@ -5151,7 +4592,6 @@ func TestReset(t *testing.T) {
 		assert.False(t, dbTask.CanReset)
 		assert.Equal(t, "", dbTask.AgentVersion)
 		assert.Equal(t, "", dbTask.HostId)
-		assert.Equal(t, "", dbTask.PodID)
 		assert.Empty(t, dbTask.HostCreateDetails)
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
