@@ -1594,11 +1594,6 @@ func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context,
 	if patchDoc.IsMergeQueuePatch() {
 		// Check project-level setting first.
 		if patchedProject != nil && patchedProject.DisableMergeQueuePathFiltering {
-			grip.Info(message.Fields{
-				"message":  "merge queue path filtering is disabled at project level",
-				"patch_id": patchDoc.Id.Hex(),
-				"job":      j.ID(),
-			})
 			return true
 		}
 		// Check global service flag.
@@ -1612,11 +1607,6 @@ func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context,
 			return true
 		}
 		if flags.UseMergeQueuePathFilteringDisabled {
-			grip.Info(message.Fields{
-				"message":  "merge queue path filtering is disabled",
-				"patch_id": patchDoc.Id.Hex(),
-				"job":      j.ID(),
-			})
 			return true
 		}
 	}

@@ -2227,7 +2227,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 			expectedTasks:           1,
 		},
 		{
-			name: "MergeQueueWithDisableMergeQueuePathFiltering",
+			name: "MergeQueueWithDisabledMergeQueuePathFiltering",
 			patchDoc: &patch.Patch{
 				Id:      mgobson.NewObjectId(),
 				Project: s.project,
