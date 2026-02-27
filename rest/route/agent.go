@@ -1657,24 +1657,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	// Get the project's GitHub app auth for check run operations.
 	// If this fails or the project doesn't have a GitHub app configured,
 	// the check run functions will fall back to using the internal app.
-	var ghAppAuth *githubapp.GithubAppAuth
-	pRef, err := model.FindMergedProjectRef(ctx, t.Project, "", false)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"operation":  "check run",
-			"message":    "error finding project ref for check run, will fall back to using Evergreen-internal app",
-			"project_id": t.Project,
-		}))
-	} else if pRef != nil {
-		ghAppAuth, err = pRef.GetGitHubAppAuthForAPI(ctx)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"operation":  "check run",
-				"message":    "error getting GitHub app auth for check run, will fall back to using Evergreen-internal app",
-				"project_id": t.Project,
-			}))
-		}
-	}
+	ghAppAuth := model.GetGitHubAppAuthForProject(ctx, t.Project)
 
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {

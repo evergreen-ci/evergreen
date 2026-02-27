@@ -229,7 +229,7 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 
 }
 
-// GetGitHubAppAuthForAPI gets this project's GitHub app authga for
+// GetGitHubAppAuthForAPI gets this project's GitHub app auth for
 // usage in the GitHub API, if available.
 func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.GithubAppAuth, error) {
 	appAuth, err := p.GetGitHubAppAuth(ctx)
@@ -237,6 +237,26 @@ func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.Git
 		return nil, errors.Wrap(err, "getting GitHub app auth")
 	}
 	return appAuth, nil
+}
+
+// GetGitHubAppAuthForProject retrieves the GitHub app auth for a project.
+// Returns nil (not an error) if the project ref or app auth cannot be found,
+// allowing callers to fall back to the internal app.
+func GetGitHubAppAuthForProject(ctx context.Context, projectID string) *githubapp.GithubAppAuth {
+	pRef, _ := FindMergedProjectRef(ctx, projectID, "", false)
+	if pRef == nil {
+		return nil
+	}
+	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":            "error finding github app auth",
+			"project_id":         projectID,
+			"project_identifier": pRef.Identifier,
+		}))
+		return nil
+	}
+	return ghAppAuth
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
