@@ -145,7 +145,7 @@ func TestMiddleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		wrappedHandler := Middleware(handler)
+		wrappedHandler := DataloaderMiddleware(handler)
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		rec := httptest.NewRecorder()
@@ -155,16 +155,16 @@ func TestMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		// Verify loaders were injected
-		loaders := For(capturedCtx)
-		assert.NotNil(t, loaders)
-		assert.NotNil(t, loaders.UserLoader)
+		loaders := DataloaderFor(capturedCtx)
+		require.NotNil(t, loaders)
+		require.NotNil(t, loaders.UserLoader)
 	})
 }
 
 func TestNewLoaders(t *testing.T) {
 	loaders := NewLoaders()
-	assert.NotNil(t, loaders)
-	assert.NotNil(t, loaders.UserLoader)
+	require.NotNil(t, loaders)
+	require.NotNil(t, loaders.UserLoader)
 }
 
 // setupLoaderContext creates a context with dataloaders injected.

@@ -40,7 +40,7 @@ func (u *userReader) getUsers(ctx context.Context, userIDs []string) ([]*restMod
 	}
 
 	// Build results in the same order as input IDs
-	// Return nil for users not found (e.g., reaped users)
+	// Return nil for users not found (e.g. service users)
 	results := make([]*restModel.APIDBUser, len(userIDs))
 	errs := make([]error, len(userIDs))
 	for i, id := range userIDs {
@@ -64,7 +64,7 @@ func NewLoaders() *Loaders {
 }
 
 // Middleware injects data loaders into the request context.
-func Middleware(next http.Handler) http.Handler {
+func DataloaderMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		loader := NewLoaders()
 		r = r.WithContext(context.WithValue(r.Context(), loadersKey, loader))
@@ -73,13 +73,13 @@ func Middleware(next http.Handler) http.Handler {
 }
 
 // For returns the dataloader for a given context.
-func For(ctx context.Context) *Loaders {
+func DataloaderFor(ctx context.Context) *Loaders {
 	return ctx.Value(loadersKey).(*Loaders)
 }
 
 // GetUser returns a single user by ID efficiently using the dataloader.
 // Returns nil if the user is not found (e.g., reaped users).
 func GetUser(ctx context.Context, userID string) (*restModel.APIDBUser, error) {
-	loaders := For(ctx)
+	loaders := DataloaderFor(ctx)
 	return loaders.UserLoader.Load(ctx, userID)
 }

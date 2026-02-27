@@ -83,5 +83,5 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	})
 
 	// Wrap with dataloader middleware to batch database queries
-	return Middleware(srv).ServeHTTP
+	return DataloaderMiddleware(srv).ServeHTTP
 }
