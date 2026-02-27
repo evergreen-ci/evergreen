@@ -1791,6 +1791,8 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	requester := t.Requester
 	user := gimlet.GetUser(ctx)
 	isUserRequest := user != nil
+	// If the request is coming from a user request, then this route must be being
+	// used in debug mode.
 	if isUserRequest {
 		requester = evergreen.DebugRequester
 	}
