@@ -213,6 +213,20 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	return nil
 }
 
+// JumpTo moves to the specified step without executing
+func (e *LocalExecutor) JumpTo(index int) error {
+	if len(e.commandBlocks) == 0 {
+		return nil
+	}
+	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
+	if index >= maxIndex || index < 0 {
+		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
+	}
+	e.debugState.CurrentStepIndex = index
+	e.logger.Infof("Jumped to step %d", index)
+	return nil
+}
+
 // StepNext executes the current step and advances to the next
 func (e *LocalExecutor) StepNext(ctx context.Context) error {
 	if !e.debugState.HasMoreSteps() {

@@ -131,6 +131,12 @@ func Debug() cli.Command {
 				ArgsUsage: "<step_index>",
 				Action:    runUntilCmd,
 			},
+			{
+				Name:      "jump",
+				Usage:     "Jump to a specific step without executing",
+				ArgsUsage: "<step_index>",
+				Action:    jumpToCmd,
+			},
 		},
 	}
 }
@@ -420,6 +426,31 @@ func runUntilCmd(c *cli.Context) error {
 	} else {
 		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
 	}
+	return nil
+}
+
+// jumpToCmd jumps to a specific step
+func jumpToCmd(c *cli.Context) error {
+	if c.NArg() < 1 {
+		return errors.New("step index required")
+	}
+
+	index, err := strconv.Atoi(c.Args().Get(0))
+	if err != nil {
+		return errors.New("invalid step index")
+	}
+
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	resp, err := postJSON(fmt.Sprintf("%s/step/jump/%d", url, index), nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Jumped to step %v\n", resp["current_step"])
 	return nil
 }
 

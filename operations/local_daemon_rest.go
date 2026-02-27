@@ -42,6 +42,7 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
 	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
 	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
+	router.HandleFunc("/step/jump/{index}", d.handleJumpTo).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -164,6 +165,35 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	}
 
 	return nil
+}
+
+// handleJumpTo jumps to a specific step
+func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	index, err := strconv.Atoi(vars["index"])
+	if err != nil {
+		http.Error(w, "invalid step index", http.StatusBadRequest)
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	if err := d.executor.JumpTo(index); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	state := d.executor.GetDebugState()
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"current_step": state.CurrentStepIndex,
+	}))
 }
 
 // handleRunUntil runs until a specific step
