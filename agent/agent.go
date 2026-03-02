@@ -75,11 +75,8 @@ type Options struct {
 	// Mode determines which mode the agent will run in.
 	Mode globals.Mode
 	// HostID and HostSecret only apply in host mode.
-	HostID     string
-	HostSecret string
-	// PodID and PodSecret only apply in pod mode.
-	PodID                  string
-	PodSecret              string
+	HostID                 string
+	HostSecret             string
 	StatusPort             int
 	LogPrefix              string
 	LogOutput              globals.LogOutputType
@@ -102,9 +99,6 @@ type Options struct {
 func (o *Options) AddLoggableInfo(msg message.Fields) message.Fields {
 	if o.HostID != "" {
 		msg["host_id"] = o.HostID
-	}
-	if o.PodID != "" {
-		msg["pod_id"] = o.PodID
 	}
 	return msg
 }
@@ -138,8 +132,6 @@ func New(ctx context.Context, opts Options, serverURL string) (*Agent, error) {
 	switch opts.Mode {
 	case globals.HostMode:
 		comm = client.NewHostCommunicator(serverURL, opts.HostID, opts.HostSecret)
-	case globals.PodMode:
-		comm = client.NewPodCommunicator(serverURL, opts.PodID, opts.PodSecret)
 	default:
 		return nil, errors.Errorf("unrecognized agent mode '%s'", opts.Mode)
 	}
@@ -702,7 +694,18 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}
 
 	defer func() {
-		_ = a.killProcs(ctx, tc, false, "task is finished")
+		if err := a.killProcs(ctx, tc, false, "task is finished"); err != nil {
+			// If the task is finished but the agent can't clean up all the
+			// processes/Docker artifacts for the next task, disable the host.
+			// Otherwise, the next task will start with lingering state from the
+			// prior task.
+			tc.logger.Execution().Criticalf("Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
+			if disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
+				Reason: "could not clean up processes/Docker artifacts after task is finished",
+			}); disableErr != nil {
+				tc.logger.Execution().Criticalf("Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
+			}
+		}
 	}()
 
 	grip.Info(message.Fields{
@@ -1198,17 +1201,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		span.End()
 	}
 
-	if err := a.killProcs(ctx, tc, false, "task is ending"); err != nil {
-		// If the task is finished but the agent can't clean up all the
-		// processes/Docker artifacts, disable the host because the next task
-		// will start with lingering state from the prior task.
-		tc.logger.Execution().Criticalf("Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
-		if disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
-			Reason: "could not clean up processes/Docker artifacts after task is finished",
-		}); disableErr != nil {
-			tc.logger.Execution().Criticalf("Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
-		}
-	}
+	_ = a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
@@ -1508,20 +1501,15 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
 	}
 
-	// Agents running in containers don't have Docker available, so skip
-	// Docker cleanup for them.
-	if a.opts.Mode != globals.PodMode {
-		logger.Info("Cleaning up Docker artifacts.")
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, globals.DockerTimeout)
-		defer cancel()
-		if err := docker.Cleanup(ctx, logger); err != nil {
-			catcher.Wrap(err, "cleaning up Docker artifacts")
-			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
-		}
-		logger.Info("Cleaned up Docker artifacts.")
+	logger.Info("Cleaning up Docker artifacts.")
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, globals.DockerTimeout)
+	defer cancel()
+	if err := docker.Cleanup(ctx, logger); err != nil {
+		catcher.Wrap(err, "cleaning up Docker artifacts")
+		logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
 	}
-
+	logger.Info("Cleaned up Docker artifacts.")
 	return catcher.Resolve()
 }
 

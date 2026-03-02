@@ -18,8 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -499,26 +497,6 @@ func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
 		)
-	}
-
-	if h.reason == "could not clean up processes/Docker artifacts after task is finished" {
-		// TODO (DEVPROD-20817): remove this once done testing. This is a
-		// temporary hack to monitor how often a host would be decommissioned
-		// due to being unable to clean up processes/Docker artifacts without
-		// actually disabling the host (if it happens too often, it would be
-		// problematic).
-		grip.Debug(message.Fields{
-			"message":                 "detected that host is going to be disabled due to failing to clean up processes/Docker artifacts at the end of a task, no-oping for now",
-			"ticket":                  "DEVPROD-20817",
-			"host_id":                 host.Id,
-			"distro_id":               host.Distro.Id,
-			"running_task_id":         host.RunningTask,
-			"running_task_bv":         host.RunningTaskBuildVariant,
-			"running_task_group":      host.RunningTaskGroup,
-			"running_task_version_id": host.RunningTaskVersion,
-			"running_task_project_id": host.RunningTaskProject,
-		})
-		return gimlet.NewJSONResponse(struct{}{})
 	}
 
 	if err = units.HandlePoisonedHost(ctx, h.env, host, h.reason); err != nil {

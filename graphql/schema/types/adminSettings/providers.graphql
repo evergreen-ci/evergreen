@@ -18,7 +18,6 @@ input AWSConfigInput {
   alertableInstanceTypes: [String!]!
   allowedRegions: [String!]!
   maxVolumeSizePerUser: Int
-  pod: AWSPodConfigInput
   accountRoles: [AWSAccountRoleMappingInput!]! @redactSecrets
   ipamPoolID: String
   elasticIPUsageRate: Float
@@ -34,24 +33,9 @@ type AWSConfig {
   alertableInstanceTypes: [String!]!
   allowedRegions: [String!]!
   maxVolumeSizePerUser: Int
-  pod: AWSPodConfig
   accountRoles: [AWSAccountRoleMapping!]! @requireAdmin
   ipamPoolID: String
   elasticIPUsageRate: Float
-}
-
-input AWSPodConfigInput {
-  role: String @redactSecrets
-  region: String
-  ecs: ECSConfigInput
-  secretsManager: SecretsManagerConfigInput
-}
-
-type AWSPodConfig {
-  role: String @requireAdmin
-  region: String
-  ecs: ECSConfig
-  secretsManager: SecretsManagerConfig
 }
 
 input AWSVPCConfigInput {
@@ -116,76 +100,6 @@ type EC2Key {
   secret: String! @requireAdmin
 }
 
-input ECSConfigInput {
-  maxCPU: Int
-  maxMemoryMb: Int
-  taskDefinitionPrefix: String
-  taskRole: String
-  executionRole: String
-  logRegion: String
-  logGroup: String
-  logStreamPrefix: String
-  awsVPC: AWSVPCConfigInput
-  clusters: [ECSClusterConfigInput!]!
-  capacityProviders: [ECSCapacityProviderInput!]!
-  allowedImages: [String!]!
-}
-
-type ECSConfig {
-  maxCPU: Int
-  maxMemoryMb: Int
-  taskDefinitionPrefix: String
-  taskRole: String
-  executionRole: String
-  logRegion: String
-  logGroup: String
-  logStreamPrefix: String
-  awsVPC: AWSVPCConfig
-  clusters: [ECSClusterConfig!]!
-  capacityProviders: [ECSCapacityProvider!]!
-  allowedImages: [String!]!
-}
-
-enum ECSOperatingSystem {
-  ECSOSLinux
-  ECSOSWindows
-}
-
-enum ECSArchitecture {
-  ECS_ARCH_AMD64
-  ECS_ARCH_ARM64
-}
-
-enum ECSWindowsVersion {
-  ECS_WINDOWS_SERVER_2016
-  ECS_WINDOWS_SERVER_2019
-  ECS_WINDOWS_SERVER_2022
-}
-
-input ECSCapacityProviderInput {
-  name: String
-  os: ECSOperatingSystem
-  arch: ECSArchitecture
-  windowsVersion: ECSWindowsVersion
-}
-
-type ECSCapacityProvider {
-  name: String
-  os: ECSOperatingSystem
-  arch: ECSArchitecture
-  windowsVersion: ECSWindowsVersion
-}
-
-input ECSClusterConfigInput {
-  name: String
-  os: ECSOperatingSystem
-}
-
-type ECSClusterConfig {
-  name: String
-  os: ECSOperatingSystem
-}
-
 input OwnerRepoInput {
   owner: String!
   repo: String!
@@ -242,14 +156,6 @@ type ProjectCreationConfig {
   repoProjectLimit: Int
   repoExceptions: [OwnerRepo!]!
   jiraProject: String
-}
-
-input SecretsManagerConfigInput {
-  secretPrefix: String @redactSecrets
-}
-
-type SecretsManagerConfig {
-  secretPrefix: String @requireAdmin
 }
 
 input SubnetInput {

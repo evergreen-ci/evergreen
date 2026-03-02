@@ -9,7 +9,6 @@ enum ProjectSettingsSection {
   TRIGGERS
   PERIODIC_BUILDS
   PLUGINS
-  CONTAINERS
   VIEWS_AND_FILTERS
   TEST_SELECTION
 
@@ -43,7 +42,6 @@ input ProjectInput {
   branch: String
   buildBaronSettings: BuildBaronSettingsInput
   commitQueue: CommitQueueParamsInput
-  containerSizeDefinitions: [ContainerResourcesInput!]
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
@@ -116,13 +114,6 @@ type TriggerAlias {
   status: String!
   taskRegex: String!
   unscheduleDownstreamVersions: Boolean
-}
-
-# shared by Project and RepoRef
-type ContainerResources {
-  name: String!
-  cpu: Int!
-  memoryMb: Int!
 }
 
 # shared by Project and RepoRef

@@ -122,6 +122,9 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			if generateStatus.Finished {
 				return false, nil
 			}
+			// Reset the idle timeout so that polling for generate.tasks
+			// completion does not cause the task to hit its idle timeout.
+			comm.UpdateLastMessageTime()
 			return true, errors.New("task generation unfinished")
 		}, utility.RetryOptions{
 			MaxAttempts: pollAttempts,

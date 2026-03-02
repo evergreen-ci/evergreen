@@ -328,7 +328,7 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 		return apiUser, nil
 	}
 
-	author, err := user.FindOneById(ctx, authorId)
+	author, err := GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
@@ -339,9 +339,7 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 		}, nil
 	}
 
-	apiUser := &restModel.APIDBUser{}
-	apiUser.BuildFromService(*author)
-	return apiUser, nil
+	return author, nil
 }
 
 // VersionFull is the resolver for the versionFull field.

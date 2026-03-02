@@ -202,11 +202,6 @@
               "numNewRepoRevisionsToFetch": 2,
               "maxRepoRevisionsToSearch": 20,
               "maxConcurrentRequests": 0
-            },
-            "podLifecycle": {
-              "maxParallelPodRequests": 100,
-              "maxPodDefinitionCleanupRate": 0,
-              "maxSecretCleanupRate": 0
             }
           }
         }
@@ -515,53 +510,6 @@
                 "alertableInstanceTypes": ["m5.24xlarge", "c5.24xlarge"],
                 "allowedRegions": ["us-east-1", "us-west-1", "us-west-2"],
                 "maxVolumeSizePerUser": 1000,
-                "pod": {
-                  "role": "arn:aws:iam::123456789012:role/ECSTaskRole",
-                  "region": "us-east-1",
-                  "ecs": {
-                    "maxCPU": 1024,
-                    "maxMemoryMb": 1024,
-                    "taskDefinitionPrefix": "evergreen-",
-                    "taskRole": "arn:aws:iam::123456789012:role/ECSTaskRole",
-                    "executionRole": "arn:aws:iam::123456789012:role/ECSExecutionRole",
-                    "logRegion": "us-east-1",
-                    "logGroup": "/evergreen/ecs",
-                    "logStreamPrefix": "evergreen-task-",
-                    "awsVPC": {
-                      "subnets": ["subnet-12345678", "subnet-87654321"],
-                      "securityGroups": ["sg-12345678", "sg-87654321"]
-                    },
-                    "clusters": [
-                      {
-                        "name": "evergreen-cluster-1",
-                        "os": "ECSOSLinux"
-                      },
-                      {
-                        "name": "evergreen-cluster-2",
-                        "os": "ECSOSWindows"
-                      }
-                    ],
-                    "capacityProviders": [
-                      {
-                        "name": "FARGATE",
-                        "os": "ECSOSLinux",
-                        "arch": "ECS_ARCH_AMD64",
-                        "windowsVersion": ""
-                      },
-                      {
-                        "name": "EC2",
-                        "os": "ECSOSLinux",
-                        "arch": "ECS_ARCH_ARM64",
-                        "windowsVersion": ""
-                      }
-                    ],
-                    "allowedImages": [
-                      "amazonlinux:latest",
-                      "ubuntu:20.04",
-                      "centos:8"
-                    ]
-                  }
-                },
                 "accountRoles": [
                   {
                     "account": "123456789012",
@@ -594,7 +542,6 @@
             "serviceFlagsList": [
               { "name": "task_dispatch_disabled", "enabled": false },
               { "name": "host_init_disabled", "enabled": false },
-              { "name": "pod_init_disabled", "enabled": false },
               { "name": "large_parser_projects_disabled", "enabled": false },
               { "name": "monitor_disabled", "enabled": false },
               { "name": "alerts_disabled", "enabled": false },
@@ -610,8 +557,6 @@
               { "name": "cache_stats_endpoint_disabled", "enabled": false },
               { "name": "task_reliability_disabled", "enabled": false },
               { "name": "host_allocator_disabled", "enabled": false },
-              { "name": "pod_allocator_disabled", "enabled": false },
-              { "name": "unrecognized_pod_cleanup_disabled", "enabled": false },
               { "name": "background_reauth_disabled", "enabled": false },
               { "name": "cloud_cleanup_disabled", "enabled": false },
               { "name": "sleep_schedule_disabled", "enabled": false },

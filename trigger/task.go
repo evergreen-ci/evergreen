@@ -17,7 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/pod"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -313,11 +313,6 @@ func (t *taskTriggers) makeData(ctx context.Context, sub *event.Subscription, pa
 		attachmentFields = append(attachmentFields, &message.SlackAttachmentField{
 			Title: "Host",
 			Value: fmt.Sprintf("<%s|%s>", hostLink(t.uiConfig.Url, t.task.HostId), t.task.HostId),
-		})
-	} else if t.task.PodID != "" {
-		attachmentFields = append(attachmentFields, &message.SlackAttachmentField{
-			Title: "Pod",
-			Value: fmt.Sprintf("<%s|%s>", podLink(t.uiConfig.Url, t.task.PodID), t.task.PodID),
 		})
 	}
 	data.slack = []message.SlackAttachment{
@@ -951,14 +946,6 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		return nil, errors.Errorf("build '%s' not found while building Jira task payload", params.Task.BuildId)
 	}
 
-	var podDoc *pod.Pod
-	if params.Task.PodID != "" {
-		podDoc, err = pod.FindOneByID(ctx, params.Task.PodID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", params.Task.PodID)
-		}
-	}
-
 	versionDoc, err := model.VersionFindOneId(ctx, params.Task.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding version '%s' while building Jira task payload", params.Task.Version)
@@ -986,7 +973,6 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		Project:         projectRef,
 		Build:           buildDoc,
 		Host:            params.Host,
-		Pod:             podDoc,
 		TaskDisplayName: params.Task.DisplayName,
 	}
 	if params.Task.IsPartOfDisplay(ctx) {

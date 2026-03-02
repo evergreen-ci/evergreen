@@ -231,16 +231,6 @@ tasks:
       - command: timeout.update
         params:
           timeout_secs: 2700
-  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
-  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
-  - name: container-task
-    commands:
-      - command: shell.exec
-        params:
-          script: |
-            set -o verbose
-            set -o errexit
-            echo "container task"
 
 buildvariants:
   - name: localhost
@@ -251,26 +241,3 @@ buildvariants:
     tasks:
       - name: host_smoke_test_task_group
       - name: host_smoke_test_generate_task
-  # TODO (EVG-17658): changing the smoke container task will cause the smoke test to break unless you very carefully and
-  # manually modify the smoke test's testdata. EVG-17658 is intended to address this issue.
-  - name: pod_bv
-    display_name: Container smoke test
-    run_on:
-      - container
-    tasks:
-      - name: container-task
-
-# TODO (EVG-17658): Refactor smoke tests to allow for faking agent creation
-# The following configuration is currently unused since the container task
-# smoke test does not rely on the repotracker job to create tasks for the version.
-# A real image will be used as a part of the above ticket.
-containers:
-  - name: container
-    working_dir: /
-    image: "fake_smoke_test_image"
-    resources:
-      cpu: 1024
-      memory_mb: 1024
-    system:
-      cpu_architecture: x86_64
-      operating_system: linux
