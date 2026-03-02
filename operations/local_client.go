@@ -131,6 +131,11 @@ func Debug() cli.Command {
 				ArgsUsage: "<step_index>",
 				Action:    runUntilCmd,
 			},
+			{
+				Name:   "list-steps",
+				Usage:  "List all steps in the current task",
+				Action: listStepsCmd,
+			},
 		},
 	}
 }
@@ -420,6 +425,56 @@ func runUntilCmd(c *cli.Context) error {
 	} else {
 		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
 	}
+	return nil
+}
+
+// listStepsCmd lists all steps
+func listStepsCmd(c *cli.Context) error {
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Get(url + "/task/list-steps")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyData, _ := io.ReadAll(resp.Body)
+		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	steps := result["steps"].([]interface{})
+	currentStep := int(result["current_step"].(float64))
+
+	fmt.Println("Steps:")
+	for _, stepRaw := range steps {
+		step := stepRaw.(map[string]interface{})
+		index := int(step["index"].(float64))
+		marker := "  "
+		if index == currentStep {
+			marker = "→ "
+		}
+
+		status := ""
+		if step["executed"].(bool) {
+			if step["success"].(bool) {
+				status = " ✓"
+			} else {
+				status = " ✗"
+			}
+		}
+
+		fmt.Printf("%s%d: %s%s\n", marker, index, step["display_name"], status)
+	}
+
 	return nil
 }
 

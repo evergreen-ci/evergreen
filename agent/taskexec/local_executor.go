@@ -297,13 +297,19 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 		return nil
 	}
+	record := executionRecord{
+		StepIndex: e.debugState.CurrentStepIndex,
+		Success:   true,
+	}
 	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
+		record.Success = false
+		e.debugState.addExecutionRecord(record)
 		return err
 	}
 	if !executed {
 		return errors.Errorf("failed to execute step %d", e.debugState.CurrentStepIndex)
 	}
-
+	e.debugState.addExecutionRecord(record)
 	return nil
 }
 
