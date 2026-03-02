@@ -73,11 +73,6 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 
 	catcher.Add(populateQueueGroup(ctx, j.env, hostIPAssociationQueueGroup, hostIPAssociationJobs, ts))
 
-	// Create dedicated queues for pod allocation.
-	catcher.Add(populateQueueGroup(ctx, j.env, podAllocationQueueGroup, podAllocatorJobs, ts))
-	catcher.Add(populateQueueGroup(ctx, j.env, podDefinitionCreationQueueGroup, podDefinitionCreationJobs, ts))
-	catcher.Add(populateQueueGroup(ctx, j.env, podCreationQueueGroup, podCreationJobs, ts))
-
 	j.ErrorCount = catcher.Len()
 	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 		"id":    j.ID(),

@@ -21,17 +21,16 @@ func TestRecentTasks(t *testing.T) {
 	tasks := []Task{}
 	for i := 0; i < 5; i++ {
 		tasks = append(tasks, Task{
-			Id:                     fmt.Sprintf("taskid-%d", i),
-			Secret:                 fmt.Sprintf("secret-%d", i),
-			CreateTime:             time.Now(),
-			DispatchTime:           time.Now(),
-			ScheduledTime:          time.Now(),
-			ContainerAllocatedTime: time.Now(),
-			StartTime:              time.Now(),
-			FinishTime:             time.Now(),
-			Version:                fmt.Sprintf("version-%d", i),
-			Project:                fmt.Sprintf("project-%d", i),
-			Revision:               fmt.Sprintf("revision-%d", i),
+			Id:            fmt.Sprintf("taskid-%d", i),
+			Secret:        fmt.Sprintf("secret-%d", i),
+			CreateTime:    time.Now(),
+			DispatchTime:  time.Now(),
+			ScheduledTime: time.Now(),
+			StartTime:     time.Now(),
+			FinishTime:    time.Now(),
+			Version:       fmt.Sprintf("version-%d", i),
+			Project:       fmt.Sprintf("project-%d", i),
+			Revision:      fmt.Sprintf("revision-%d", i),
 		})
 	}
 

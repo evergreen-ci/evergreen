@@ -74,10 +74,11 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	workDir := filepath.Dir(req.ConfigPath)
 
 	opts := taskexec.LocalExecutorOptions{
-		WorkingDir: workDir,
-		ServerURL:  d.conf.getApiServerHost(true),
-		TaskID:     d.conf.TaskID,
-		OAuthToken: d.conf.OAuth.AccessToken,
+		WorkingDir:  workDir,
+		ServerURL:   d.conf.getApiServerHost(true),
+		TaskID:      d.conf.TaskID,
+		OAuthToken:  d.conf.OAuth.AccessToken,
+		SpawnHostID: d.conf.SpawnHostID,
 	}
 
 	if opts.OAuthToken == "" {
