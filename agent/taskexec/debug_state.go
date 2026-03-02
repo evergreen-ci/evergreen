@@ -23,8 +23,6 @@ type DebugState struct {
 type executionRecord struct {
 	StepIndex int
 	Success   bool
-	Output    string
-	Error     string
 }
 
 // CommandInfo represents a single command in the linear execution order.
