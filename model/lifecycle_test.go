@@ -1064,18 +1064,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		pref := &ProjectRef{
 			Id:         "projectId",
 			Identifier: "projectName",
-			ContainerSizeDefinitions: []ContainerResources{
-				{
-					Name:     "small",
-					CPU:      256,
-					MemoryMB: 128,
-				},
-				{
-					Name:     "large",
-					CPU:      512,
-					MemoryMB: 256,
-				},
-			},
 		}
 		So(pref.Insert(t.Context()), ShouldBeNil)
 
@@ -1083,31 +1071,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			Variant: ".*"}
 		So(alias.Upsert(t.Context()), ShouldBeNil)
 		mustHaveResults := true
-		container1 := Container{
-			Name:       "container1",
-			WorkingDir: "/data",
-			Image:      "ubuntu",
-			Resources: &ContainerResources{
-				MemoryMB: 1024,
-				CPU:      512,
-			},
-			System: ContainerSystem{
-				OperatingSystem: evergreen.LinuxOS,
-				CPUArchitecture: evergreen.ArchARM64,
-			},
-			Credential: "repo_creds",
-		}
-		container2 := Container{
-			Name:       "container2",
-			WorkingDir: "/dir",
-			Image:      "windows",
-			Size:       "small",
-			System: ContainerSystem{
-				OperatingSystem: evergreen.WindowsOS,
-				CPUArchitecture: evergreen.ArchAMD64,
-				WindowsVersion:  evergreen.Windows2019,
-			},
-		}
 		parserProject := &ParserProject{
 			Identifier: utility.ToStringPtr("projectId"),
 			TaskGroups: []parserTaskGroup{
@@ -1168,7 +1131,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					Name: "singleHostTaskGroup3",
 				},
 			},
-			Containers:    []Container{container1, container2},
 			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3, buildVar4, buildVar5},
 		}
 
@@ -1389,38 +1351,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
+			build, _, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(build.Tasks), ShouldEqual, 4)
-
-			bvContainerOpts := task.ContainerOptions{
-				CPU:           container1.Resources.CPU,
-				MemoryMB:      container1.Resources.MemoryMB,
-				WorkingDir:    container1.WorkingDir,
-				Image:         container1.Image,
-				OS:            container1.System.OperatingSystem,
-				Arch:          container1.System.CPUArchitecture,
-				RepoCredsName: container1.Credential,
-			}
-			taskContainerOpts := task.ContainerOptions{
-				CPU:        256,
-				MemoryMB:   128,
-				WorkingDir: container2.WorkingDir,
-				Image:      container2.Image,
-				OS:         container2.System.OperatingSystem,
-				Arch:       container2.System.CPUArchitecture,
-			}
-			for _, tsk := range tasks[:3] {
-				So(tsk.ExecutionPlatform, ShouldEqual, task.ExecutionPlatformContainer)
-				if tsk.Id != "taskE" {
-					So(tsk.Container, ShouldEqual, container1.Name)
-					So(tsk.ContainerOpts, ShouldResemble, bvContainerOpts)
-				} else {
-					So(tsk.Container, ShouldEqual, container2.Name)
-					So(tsk.ContainerOpts, ShouldResemble, taskContainerOpts)
-				}
-			}
 		})
 
 		Convey("the build should contain task caches that correspond exactly"+

@@ -64,11 +64,6 @@
         bfSuggestionUsername
         ticketCreateIssueType
       }
-      containerSizeDefinitions {
-        name
-        cpu
-        memoryMb
-      }
       taskAnnotationSettings {
         fileTicketWebhook {
           endpoint

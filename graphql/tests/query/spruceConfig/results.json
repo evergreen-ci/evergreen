@@ -143,7 +143,6 @@
               "roleARN",
               "secret",
               "secretARN",
-              "secretPrefix",
               "securityGroups",
               "senderAddress",
               "servicePassword",
