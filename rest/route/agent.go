@@ -1768,7 +1768,15 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
-	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(t.Requester)
+	requester := t.Requester
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+	// If the request is coming from a user request, then this route must be being
+	// used in debug mode.
+	if isUserRequest {
+		requester = evergreen.DebugRequester
+	}
+	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(requester)
 	// If the requester has no permissions, they should not be able to create a token.
 	// GitHub interprets an empty token as having all permissions.
 	if requesterPermissionGroup.HasNoPermissions() {
