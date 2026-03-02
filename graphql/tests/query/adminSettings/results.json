@@ -409,7 +409,6 @@
             "projectCreation": {
               "totalProjectLimit": 10,
               "repoProjectLimit": 2,
-              "jiraProject": "",
               "repoExceptions": [
                 {
                   "owner": "evergreen-ci",

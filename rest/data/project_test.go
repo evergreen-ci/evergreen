@@ -16,11 +16,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	ghAppAuthModel "github.com/evergreen-ci/evergreen/model/githubapp"
-	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -547,36 +545,6 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	require.Empty(t, eventLog.Before.ProjectRef.PeriodicBuilds)
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 	require.Empty(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
-}
-
-func TestRequestS3Creds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
-	assert.Error(t, RequestS3Creds(ctx, "", ""))
-	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err := notification.FindUnprocessed(t.Context())
-	assert.NoError(t, err)
-	assert.Empty(t, n)
-	projectCreationConfig := evergreen.ProjectCreationConfig{
-		JiraProject: "BUILD",
-	}
-	assert.NoError(t, projectCreationConfig.Set(ctx))
-	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err = notification.FindUnprocessed(t.Context())
-	assert.NoError(t, err)
-	assert.Len(t, n, 1)
-	assert.Equal(t, event.JIRAIssueSubscriberType, n[0].Subscriber.Type)
-	target := n[0].Subscriber.Target.(*event.JIRAIssueSubscriber)
-	assert.Equal(t, "BUILD", target.Project)
-	payload := n[0].Payload.(*message.JiraIssue)
-	summary := "Create AWS bucket for s3 uploads for 'identifier' project"
-	description := "Could you create an s3 bucket and role arn for the new [identifier|/project/identifier/settings/general] project?"
-	assert.Equal(t, "BUILD", payload.Project)
-	assert.Equal(t, summary, payload.Summary)
-	assert.Equal(t, description, payload.Description)
-	assert.Equal(t, "user@email.com", payload.Reporter)
 }
 
 func TestHideBranch(t *testing.T) {

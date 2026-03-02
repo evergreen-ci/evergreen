@@ -22,16 +22,12 @@ type ProjectCreationConfig struct {
 
 	// RepoExceptions is a list of repos that can override the default repo-project limit but not the total project limit
 	RepoExceptions []OwnerRepo `bson:"repo_exceptions,omitempty" json:"repo_exceptions" yaml:"repo_exceptions"`
-
-	// JiraProject is the project that will be used to create Jira tickets to request S3 credentials
-	JiraProject string `bson:"jira_project,omitempty" json:"jira_project" yaml:"jira_project"`
 }
 
 var (
 	ProjectCreationConfigTotalProjectLimitKey = bsonutil.MustHaveTag(ProjectCreationConfig{}, "TotalProjectLimit")
 	ProjectCreationConfigRepoProjectLimitKey  = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoProjectLimit")
 	ProjectCreationConfigRepoExceptionsKey    = bsonutil.MustHaveTag(ProjectCreationConfig{}, "RepoExceptions")
-	ProjectCreationConfigJiraProjectKey       = bsonutil.MustHaveTag(ProjectCreationConfig{}, "JiraProject")
 )
 
 func (*ProjectCreationConfig) SectionId() string { return "project_creation" }

@@ -432,8 +432,7 @@
                   "owner": "test-owner",
                   "repo": "test-repo"
                 }
-              ],
-              "jiraProject": "TEST"
+              ]
             },
             "githubCheckRun": {
               "checkRunLimit": 10
