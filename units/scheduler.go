@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/scheduler"
@@ -15,6 +16,7 @@ import (
 )
 
 const schedulerJobName = "distro-scheduler"
+const maxDistroSchedulerTime = time.Minute
 
 func init() {
 	registry.AddJobType(schedulerJobName, func() amboy.Job {
@@ -45,6 +47,9 @@ func NewDistroSchedulerJob(distroID string, id string) amboy.Job {
 	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", schedulerJobName, distroID)})
 	j.SetEnqueueAllScopes(true)
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxDistroSchedulerTime,
+	})
 
 	return j
 }

@@ -48,6 +48,8 @@ func PersistTaskQueue(ctx context.Context, distro string, tasks []task.Task, dis
 	}
 
 	// track scheduled time for prioritized tasks
+	// this runs every 15 seconds
+	// either the task wasn't in the list til 1:33 even though it was activated at 1:25, or there was some other delay or error
 	if err := task.SetTasksScheduledAndDepsMetTime(ctx, tasks, startAt); err != nil {
 		return errors.Wrapf(err, "setting scheduled time for prioritized tasks for distro '%s'", distro)
 	}
