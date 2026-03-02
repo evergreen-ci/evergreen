@@ -112,8 +112,6 @@ type Mode string
 const (
 	// HostMode indicates that the agent will run in a host.
 	HostMode Mode = "host"
-	// PodMode indicates that the agent will run in a pod's container.
-	PodMode Mode = "pod"
 )
 
 const (

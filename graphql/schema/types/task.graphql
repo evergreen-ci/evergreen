@@ -74,7 +74,6 @@ type Task {
   canSchedule: Boolean!
   canSetPriority: Boolean!
   canUnschedule: Boolean!
-  containerAllocatedTime: Time
   createTime: Time
   dependsOn: [Dependency!]
   details: TaskEndDetail
@@ -111,7 +110,6 @@ type Task {
   order: Int!
   patch: Patch
   patchNumber: Int
-  pod: Pod
   priority: Int
   project: Project
   projectId: String!

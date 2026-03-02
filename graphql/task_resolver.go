@@ -552,19 +552,6 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &order, nil
 }
 
-// Pod is the resolver for the pod field.
-func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restModel.APIPod, error) {
-	podID := utility.FromStringPtr(obj.PodID)
-	if podID == "" {
-		return nil, nil
-	}
-	pod, err := data.FindAPIPodByID(ctx, podID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod '%s': %s", podID, err.Error()))
-	}
-	return pod, nil
-}
-
 // Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	projectID := utility.FromStringPtr(obj.ProjectId)

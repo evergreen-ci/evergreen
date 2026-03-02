@@ -96,9 +96,19 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 }
 
 func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
+	projectYaml, err := loadProjectYAML(path, quiet, errorOnWarnings, localModuleMap, projectID)
+	if err != nil {
+		return err
+	}
+	return validateProjectRemotely(conf, projectYaml, path, quiet, errorOnWarnings, projectID)
+}
+
+// loadProjectYAML reads and parses the project config file, performs local validation,
+// and returns the marshalled YAML bytes for remote validation.
+func loadProjectYAML(path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
-		return errors.Wrapf(err, "reading file '%s'", path)
+		return nil, errors.Wrapf(err, "reading file '%s'", path)
 	}
 	project := &model.Project{}
 	ctx := context.Background()
@@ -112,23 +122,29 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool
 	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project, projectID)
 	grip.Info(validationErrs)
 	if validationErrs.Has(validator.Error) {
-		return errors.Errorf("%s is an invalid configuration", path)
+		return nil, errors.Errorf("%s is an invalid configuration", path)
 	}
 
 	projectYaml, err := yaml.Marshal(pp)
 	if err != nil {
-		return errors.Wrapf(err, "marshalling parser project into YAML")
+		return nil, errors.Wrapf(err, "marshalling parser project into YAML")
 	}
 
 	if pc != nil {
 		projectConfigYaml, err := yaml.Marshal(pc.ProjectConfigFields)
 		if err != nil {
-			return errors.Wrapf(err, "marshalling project config into YAML")
+			return nil, errors.Wrapf(err, "marshalling project config into YAML")
 		}
 		projectBytes := [][]byte{projectYaml, projectConfigYaml}
 		projectYaml = bytes.Join(projectBytes, []byte("\n"))
 	}
 
+	return projectYaml, nil
+}
+
+// validateProjectRemotely sends the project YAML to the server for validation and reports results.
+func validateProjectRemotely(conf *ClientSettings, projectYaml []byte, path string, quiet, errorOnWarnings bool, projectID string) error {
+	ctx := context.Background()
 	client, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
 		return errors.Wrap(err, "setting up REST communicator")

@@ -624,26 +624,23 @@ func TestDisplayStatus(t *testing.T) {
 	assert.NoError(t, t12.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t11)
 	t13 := Task{
-		Id:                 "t13",
-		Status:             evergreen.TaskUndispatched,
-		Activated:          true,
-		ContainerAllocated: false,
+		Id:        "t13",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
 	}
 	require.NoError(t, t13.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t13)
 	t14 := Task{
-		Id:                 "t14",
-		Status:             evergreen.TaskUndispatched,
-		Activated:          true,
-		ContainerAllocated: true,
+		Id:        "t14",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
 	}
 	require.NoError(t, t14.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t14)
 	t15 := Task{
-		Id:                 "t15",
-		Status:             evergreen.TaskUndispatched,
-		Activated:          false,
-		ContainerAllocated: false,
+		Id:        "t15",
+		Status:    evergreen.TaskUndispatched,
+		Activated: false,
 	}
 	require.NoError(t, t15.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskUnscheduled, t15)
@@ -747,151 +744,6 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 		assert.Equal(t, []string{"test-graphql", "test-something"}, buildVariantTasks)
 	})
 
-}
-
-func TestFindNeedsContainerAllocation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.Clear(Collection))
-	}()
-	getTaskThatNeedsContainerAllocation := func() Task {
-		return Task{
-			Id:                 utility.RandomString(),
-			Activated:          true,
-			ActivatedTime:      time.Now(),
-			Status:             evergreen.TaskUndispatched,
-			ContainerAllocated: false,
-			ExecutionPlatform:  ExecutionPlatformContainer,
-		}
-	}
-	for tName, tCase := range map[string]func(t *testing.T){
-		"IncludesOneContainerTaskWaitingForAllocation": func(t *testing.T) {
-			needsAllocation := getTaskThatNeedsContainerAllocation()
-			require.NoError(t, needsAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			require.Len(t, found, 1)
-			assert.Equal(t, needsAllocation.Id, found[0].Id)
-		},
-		"IncludesAllContainerTasksWaitingForAllocation": func(t *testing.T) {
-			needsAllocation0 := getTaskThatNeedsContainerAllocation()
-			require.NoError(t, needsAllocation0.Insert(t.Context()))
-			needsAllocation1 := getTaskThatNeedsContainerAllocation()
-			needsAllocation1.ActivatedTime = time.Now().Add(-time.Hour)
-			require.NoError(t, needsAllocation1.Insert(t.Context()))
-			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.Activated = false
-			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			require.Len(t, found, 2)
-			assert.Equal(t, needsAllocation1.Id, found[0].Id, "tasks should be sorted by activation time, so task with earlier activation time should be first")
-			assert.Equal(t, needsAllocation0.Id, found[1].Id, "tasks should be sorted by activation time, so task with later activation time should be second")
-		},
-		"IncludesTasksWithAllDependenciesMet": func(t *testing.T) {
-			needsAllocation := getTaskThatNeedsContainerAllocation()
-			needsAllocation.DependsOn = []Dependency{
-				{
-					TaskId:   "dependency0",
-					Finished: true,
-				},
-				{
-					TaskId:   "dependency1",
-					Status:   evergreen.TaskFailed,
-					Finished: true,
-				},
-			}
-			require.NoError(t, needsAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			require.Len(t, found, 1)
-			assert.Equal(t, needsAllocation.Id, found[0].Id)
-		},
-		"IncludesTasksWithOverriddenDependencies": func(t *testing.T) {
-			overriddenDependencies := getTaskThatNeedsContainerAllocation()
-			overriddenDependencies.DependsOn = []Dependency{
-				{
-					TaskId: "dependency0",
-				},
-			}
-			overriddenDependencies.OverrideDependencies = true
-			require.NoError(t, overriddenDependencies.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			require.Len(t, found, 1)
-			assert.Equal(t, overriddenDependencies.Id, found[0].Id)
-		},
-		"IgnoresTasksWithUnmetDependencies": func(t *testing.T) {
-			unmetDependencies := getTaskThatNeedsContainerAllocation()
-			unmetDependencies.DependsOn = []Dependency{
-				{
-					TaskId: "dependency0",
-				},
-			}
-			require.NoError(t, unmetDependencies.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			assert.Empty(t, found)
-		},
-		"IgnoresTasksWithoutExecutionPlatform": func(t *testing.T) {
-			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.ExecutionPlatform = ""
-			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			assert.Empty(t, found)
-		},
-		"IgnoresHostTasks": func(t *testing.T) {
-			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.ExecutionPlatform = ExecutionPlatformHost
-			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			assert.Empty(t, found)
-		},
-		"IgnoresDeactivatedTasks": func(t *testing.T) {
-			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.Activated = false
-			doesNotNeedAllocation.ActivatedTime = utility.ZeroTime
-			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			assert.Empty(t, found)
-		},
-		"IgnoresTasksWithContainerAlreadyAllocated": func(t *testing.T) {
-			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.ContainerAllocated = true
-			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			assert.Empty(t, found)
-		},
-		"IgnoresDisabledTasks": func(t *testing.T) {
-			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
-			doesNotNeedAllocation.Priority = evergreen.DisabledTaskPriority
-			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
-
-			found, err := FindNeedsContainerAllocation(ctx)
-			require.NoError(t, err)
-			assert.Empty(t, found)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection))
-			tCase(t)
-		})
-	}
 }
 
 func TestFindByStaleRunningTask(t *testing.T) {

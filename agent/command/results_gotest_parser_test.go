@@ -2,7 +2,6 @@ package command
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,240 +9,209 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestParserRegex(t *testing.T) {
-	Convey("With our test regexes", t, func() {
-		Convey("a test start should parse and match the test name", func() {
-			Convey("for vanilla logs", func() {
-				name, err := startInfoFromLogLine("=== RUN   TestParserFunctionality", startRegex)
-				So(err, ShouldBeNil)
-				So(name, ShouldEqual, "TestParserFunctionality")
-			})
-			Convey("and gocheck logs", func() {
-				name, err := startInfoFromLogLine("START: test_file.go:81: TestName.TearDownSuite", gocheckStartRegex)
-				So(err, ShouldBeNil)
-				So(name, ShouldEqual, "TestName.TearDownSuite")
-			})
-		})
-		Convey("a test end should parse and match the test name", func() {
-			Convey("for vanilla logs", func() {
-				name, status, dur, err := endInfoFromLogLine("--- FAIL: TestParserRegex (0.05s)", endRegex)
-				So(err, ShouldBeNil)
-				So(name, ShouldEqual, "TestParserRegex")
-				So(status, ShouldEqual, FAIL)
-				So(dur, ShouldEqual, time.Duration(50)*time.Millisecond)
-				name, status, dur, err = endInfoFromLogLine("--- PASS: TestParserRegex (0.00s)", endRegex)
-				So(err, ShouldBeNil)
-				So(name, ShouldEqual, "TestParserRegex")
-				So(status, ShouldEqual, PASS)
-				So(dur, ShouldEqual, time.Duration(0))
-				name, status, dur, err = endInfoFromLogLine("--- PASS: TestParserRegex (2m4.0s)", endRegex)
-				So(err, ShouldBeNil)
-				So(name, ShouldEqual, "TestParserRegex")
-				So(status, ShouldEqual, PASS)
-				expDur, err := time.ParseDuration("2m4s")
-				So(err, ShouldBeNil)
-				So(dur, ShouldEqual, expDur)
-			})
-			Convey("and gocheck logs", func() {
-				name, status, dur, err := endInfoFromLogLine(
-					"FAIL: adjust_test.go:40: AdjustSuite.TestAdjust", gocheckEndRegex)
-				So(err, ShouldBeNil)
-				So(name, ShouldEqual, "AdjustSuite.TestAdjust")
-				So(status, ShouldEqual, FAIL)
-				So(dur, ShouldEqual, time.Duration(0))
-				name, status, dur, err = endInfoFromLogLine(
-					"PASS: update_test.go:81: UpdateSuite.TearDownSuite	0.900s", gocheckEndRegex)
-				So(err, ShouldBeNil)
-				So(name, ShouldEqual, "UpdateSuite.TearDownSuite")
-				So(status, ShouldEqual, PASS)
-				So(dur, ShouldEqual, time.Duration(900)*time.Millisecond)
-			})
-			Convey("go test build lines", func() {
-				path, err := pathNameFromLogLine(
-					"FAIL   github.go/evergreen-ci/evergreen/model/patch.go     [build failed] ")
-				So(err, ShouldBeNil)
-				So(path, ShouldEqual, "github.go/evergreen-ci/evergreen/model/patch.go")
-
-				path, err = pathNameFromLogLine(
-					"FAIL github.go/evergreen-ci/evergreen/model/patch.go [build failed]")
-				So(err, ShouldBeNil)
-				So(path, ShouldEqual, "github.go/evergreen-ci/evergreen/model/patch.go")
-
-				_, err = pathNameFromLogLine(
-					"FAIL   github.go/evergreen-ci/evergreen/model/patch.go 2.47s")
-				So(err, ShouldNotBeNil)
-
-				_, err = pathNameFromLogLine(
-					"ok     github.go/evergreen-ci/evergreen/model/patch.go 2.47s")
-				So(err, ShouldNotBeNil)
-			})
-		})
+	t.Run("TestStartVanillaLogs", func(t *testing.T) {
+		name, err := startInfoFromLogLine("=== RUN   TestParserFunctionality", startRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "TestParserFunctionality", name)
 	})
+	t.Run("TestStartGocheckLogs", func(t *testing.T) {
+		name, err := startInfoFromLogLine("START: test_file.go:81: TestName.TearDownSuite", gocheckStartRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "TestName.TearDownSuite", name)
+	})
+	t.Run("TestEndVanillaLogs", func(t *testing.T) {
+		name, status, dur, err := endInfoFromLogLine("--- FAIL: TestParserRegex (0.05s)", endRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "TestParserRegex", name)
+		assert.Equal(t, FAIL, status)
+		assert.Equal(t, time.Duration(50)*time.Millisecond, dur)
 
+		name, status, dur, err = endInfoFromLogLine("--- PASS: TestParserRegex (0.00s)", endRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "TestParserRegex", name)
+		assert.Equal(t, PASS, status)
+		assert.Equal(t, time.Duration(0), dur)
+
+		name, status, dur, err = endInfoFromLogLine("--- PASS: TestParserRegex (2m4.0s)", endRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "TestParserRegex", name)
+		assert.Equal(t, PASS, status)
+		expDur, err := time.ParseDuration("2m4s")
+		require.NoError(t, err)
+		assert.Equal(t, expDur, dur)
+	})
+	t.Run("TestEndGocheckLogs", func(t *testing.T) {
+		name, status, dur, err := endInfoFromLogLine(
+			"FAIL: adjust_test.go:40: AdjustSuite.TestAdjust", gocheckEndRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "AdjustSuite.TestAdjust", name)
+		assert.Equal(t, FAIL, status)
+		assert.Equal(t, time.Duration(0), dur)
+
+		name, status, dur, err = endInfoFromLogLine(
+			"PASS: update_test.go:81: UpdateSuite.TearDownSuite	0.900s", gocheckEndRegex)
+		require.NoError(t, err)
+		assert.Equal(t, "UpdateSuite.TearDownSuite", name)
+		assert.Equal(t, PASS, status)
+		assert.Equal(t, time.Duration(900)*time.Millisecond, dur)
+	})
+	t.Run("GoTestBuildLines", func(t *testing.T) {
+		path, err := pathNameFromLogLine(
+			"FAIL   github.go/evergreen-ci/evergreen/model/patch.go     [build failed] ")
+		require.NoError(t, err)
+		assert.Equal(t, "github.go/evergreen-ci/evergreen/model/patch.go", path)
+
+		path, err = pathNameFromLogLine(
+			"FAIL github.go/evergreen-ci/evergreen/model/patch.go [build failed]")
+		require.NoError(t, err)
+		assert.Equal(t, "github.go/evergreen-ci/evergreen/model/patch.go", path)
+
+		_, err = pathNameFromLogLine(
+			"FAIL   github.go/evergreen-ci/evergreen/model/patch.go 2.47s")
+		assert.Error(t, err)
+
+		_, err = pathNameFromLogLine(
+			"ok     github.go/evergreen-ci/evergreen/model/patch.go 2.47s")
+		assert.Error(t, err)
+	})
 }
 
 func TestParserFunctionality(t *testing.T) {
 	cwd := testutil.GetDirectoryOfFile()
 
-	Convey("With a simple log file and parser", t, func() {
+	t.Run("SimpleLogFile", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "1_simple.log"))
-		require.NoError(t, err, "couldn't open log file")
+		require.NoError(t, err)
+
 		parser := &goTestParser{}
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
-		Convey("running parse on the given log file should succeed", func() {
-			err = parser.Parse(bytes.NewBuffer(logdata))
-			So(err, ShouldBeNil)
+		assert.Len(t, parser.Logs(), 18)
 
-			Convey("and logs should be the correct length", func() {
-				logs := parser.Logs()
-				So(len(logs), ShouldEqual, 18)
-			})
+		results := parser.Results()
+		require.Len(t, results, 2)
 
-			Convey("and there should be two test results", func() {
-				results := parser.Results()
-				So(len(results), ShouldEqual, 2)
+		assert.Equal(t, "TestFailures", results[0].Name)
+		assert.Equal(t, FAIL, results[0].Status)
+		rTime, err := time.ParseDuration("5.02s")
+		require.NoError(t, err)
+		assert.Equal(t, rTime, results[0].RunTime)
+		assert.Equal(t, 1, results[0].StartLine)
+		assert.Equal(t, 14, results[0].EndLine)
 
-				Convey("with the proper fields matching the original log file", func() {
-					So(results[0].Name, ShouldEqual, "TestFailures")
-					So(results[0].Status, ShouldEqual, FAIL)
-					rTime, _ := time.ParseDuration("5.02s")
-					So(results[0].RunTime, ShouldEqual, rTime)
-					So(results[0].StartLine, ShouldEqual, 1)
-					So(results[0].EndLine, ShouldEqual, 14)
-					So(results[1].Name, ShouldEqual, "TestFailures2")
-					So(results[1].Status, ShouldEqual, FAIL)
-					rTime, _ = time.ParseDuration("2.00s")
-					So(results[1].RunTime, ShouldEqual, rTime)
-					So(results[1].StartLine, ShouldEqual, 15)
-					So(results[1].EndLine, ShouldEqual, 15)
-				})
-			})
-		})
+		assert.Equal(t, "TestFailures2", results[1].Name)
+		assert.Equal(t, FAIL, results[1].Status)
+		rTime, err = time.ParseDuration("2.00s")
+		require.NoError(t, err)
+		assert.Equal(t, rTime, results[1].RunTime)
+		assert.Equal(t, 15, results[1].StartLine)
+		assert.Equal(t, 15, results[1].EndLine)
 	})
-	Convey("With a gocheck log file and parser", t, func() {
+	t.Run("GocheckLogFile", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "2_simple.log"))
-		require.NoError(t, err, "couldn't open log file")
+		require.NoError(t, err)
+
 		parser := &goTestParser{}
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
-		Convey("running parse on the given log file should succeed", func() {
-			err = parser.Parse(bytes.NewBuffer(logdata))
-			So(err, ShouldBeNil)
+		assert.Len(t, parser.Logs(), 15)
 
-			Convey("and logs should be the correct length", func() {
-				logs := parser.Logs()
-				So(len(logs), ShouldEqual, 15)
-			})
+		results := parser.Results()
+		require.Len(t, results, 3)
 
-			Convey("and there should be three test results", func() {
-				results := parser.Results()
-				So(len(results), ShouldEqual, 3)
-
-				Convey("with the proper fields matching the original log file", func() {
-					So(results[1].Name, ShouldEqual, "MyTestName.SetUpTest")
-					So(results[1].Status, ShouldEqual, PASS)
-					rTime, _ := time.ParseDuration("0.576s")
-					So(results[1].RunTime, ShouldEqual, rTime)
-					So(results[1].StartLine, ShouldEqual, 2)
-					So(results[1].EndLine, ShouldEqual, 4)
-				})
-			})
-		})
+		assert.Equal(t, "MyTestName.SetUpTest", results[1].Name)
+		assert.Equal(t, PASS, results[1].Status)
+		rTime, err := time.ParseDuration("0.576s")
+		require.NoError(t, err)
+		assert.Equal(t, rTime, results[1].RunTime)
+		assert.Equal(t, 2, results[1].StartLine)
+		assert.Equal(t, 4, results[1].EndLine)
 	})
-	Convey("un-terminated tests are failures", t, func() {
+	t.Run("UnterminatedTestsAreFailures", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "3_simple.log"))
-		require.NoError(t, err, "couldn't open log file")
+		require.NoError(t, err)
+
 		parser := &goTestParser{}
-		err = parser.Parse(bytes.NewBuffer(logdata))
-		So(err, ShouldBeNil)
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
 		results := parser.Results()
-		So(len(results), ShouldEqual, 1)
-		So(results[0].Name, ShouldEqual, "TestFailures")
-		So(results[0].Status, ShouldEqual, FAIL)
+		require.Len(t, results, 1)
+		assert.Equal(t, "TestFailures", results[0].Name)
+		assert.Equal(t, FAIL, results[0].Status)
 	})
-	Convey("testify suites with leading spaces", t, func() {
+	t.Run("TestifySuitesWithLeadingSpaces", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "4_simple.log"))
-		So(err, ShouldBeNil)
+		require.NoError(t, err)
 
 		parser := &goTestParser{}
-		err = parser.Parse(bytes.NewBuffer(logdata))
-		So(err, ShouldBeNil)
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
 		results := parser.Results()
-		So(len(results), ShouldEqual, 19)
-		So(results[18].Name, ShouldEqual, "TestClientSuite/TestURLGeneratiorWithoutDefaultPortInResult")
-		So(results[18].Status, ShouldEqual, PASS)
+		require.Len(t, results, 19)
+		assert.Equal(t, "TestClientSuite/TestURLGeneratiorWithoutDefaultPortInResult", results[18].Name)
+		assert.Equal(t, PASS, results[18].Status)
 	})
-	Convey("gotest log with multiple executions of the same test", t, func() {
+	t.Run("MultipleExecutionsOfSameTest", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "5_simple.log"))
-		So(err, ShouldBeNil)
+		require.NoError(t, err)
 
 		parser := &goTestParser{}
-		err = parser.Parse(bytes.NewBuffer(logdata))
-		So(err, ShouldBeNil)
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
 		results := parser.Results()
-		So(len(results), ShouldEqual, 3)
-		So(results[0].Name, ShouldEqual, "Test1")
-		So(results[1].Name, ShouldEqual, "TestSameName")
-		So(results[2].Name, ShouldEqual, "TestSameName")
-		So(results[1].Status, ShouldEqual, PASS)
-		So(results[2].Status, ShouldEqual, FAIL)
+		require.Len(t, results, 3)
+		assert.Equal(t, "Test1", results[0].Name)
+		assert.Equal(t, "TestSameName", results[1].Name)
+		assert.Equal(t, "TestSameName", results[2].Name)
+		assert.Equal(t, PASS, results[1].Status)
+		assert.Equal(t, FAIL, results[2].Status)
 	})
-
-	Convey("gotest log with negative duration", t, func() {
+	t.Run("NegativeDuration", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "6_simple.log"))
-		So(err, ShouldBeNil)
+		require.NoError(t, err)
 
 		parser := &goTestParser{}
-		err = parser.Parse(bytes.NewBuffer(logdata))
-		So(err, ShouldBeNil)
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
 		results := parser.Results()
-		So(len(results), ShouldEqual, 1)
-		So(results[0].Status, ShouldEqual, PASS)
+		require.Len(t, results, 1)
+		assert.Equal(t, PASS, results[0].Status)
 	})
-
-	Convey("deeply nested Subtests", t, func() {
+	t.Run("DeeplyNestedSubtests", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "7_simple.log"))
-		So(err, ShouldBeNil)
+		require.NoError(t, err)
 
 		parser := &goTestParser{}
-		err = parser.Parse(bytes.NewBuffer(logdata))
-		So(err, ShouldBeNil)
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
 		results := parser.Results()
-		So(len(results), ShouldEqual, 39)
+		require.Len(t, results, 39)
 		for idx, r := range results {
 			if idx == 0 {
-				// first result is the inclosing test,
-				// and we should ignore that
 				continue
 			}
 			outcome := strings.Contains(r.Name, "Basic") || strings.Contains(r.Name, "Complex")
-			if !outcome {
-				fmt.Printf("result '%s' should contain either 'Basic' or 'Complex'", r.Name)
-			}
-			So(outcome, ShouldBeTrue)
-
+			assert.True(t, outcome, "result %q should contain either 'Basic' or 'Complex'", r.Name)
 		}
 	})
-
-	Convey("gotest log with failed build", t, func() {
+	t.Run("FailedBuild", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "8_simple.log"))
-		So(err, ShouldBeNil)
+		require.NoError(t, err)
 
 		parser := &goTestParser{}
-		err = parser.Parse(bytes.NewBuffer(logdata))
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldContainSubstring, "github.com/evergreen-ci/evergreen/model/host")
-	})
+		require.NoError(t, parser.Parse(bytes.NewBuffer(logdata)))
 
+		results := parser.Results()
+		require.Len(t, results, 4) // 3 passing tests + 1 build failure
+		buildFailed := results[3]
+		assert.Equal(t, "[build failed] github.com/evergreen-ci/evergreen/model/host", buildFailed.Name)
+		assert.Equal(t, FAIL, buildFailed.Status)
+	})
 	t.Run("LargeLogLine", func(t *testing.T) {
 		logdata, err := os.ReadFile(filepath.Join(cwd, "testdata", "gotest", "large_line.log"))
 		require.NoError(t, err)

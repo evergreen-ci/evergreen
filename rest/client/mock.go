@@ -38,6 +38,9 @@ type Mock struct {
 
 	SendSlackNotificationData *model.APISlack
 	SendEmailNotificationData *model.APIEmail
+
+	ValidateResult validator.ValidationErrors
+	ValidateErr    error
 }
 
 func (c *Mock) Close() {}
@@ -356,7 +359,7 @@ func (c *Mock) GetUiV2URL(ctx context.Context) (string, error) {
 }
 
 func (c *Mock) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
-	return nil, nil
+	return c.ValidateResult, c.ValidateErr
 }
 
 func (c *Mock) SendPanicReport(ctx context.Context, details *model.PanicReport) error {

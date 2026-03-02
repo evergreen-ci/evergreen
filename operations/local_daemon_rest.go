@@ -14,30 +14,22 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 )
-
-const configPath = ".evergreen-local.yml"
-
-type clientConfig struct {
-	ServerURL string `yaml:"server_url"`
-	TaskID    string `yaml:"task_id"`
-	APIUser   string `yaml:"api_user"`
-	APIKey    string `yaml:"api_key"`
-}
 
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
 	executor   *taskexec.LocalExecutor
 	mu         sync.RWMutex
+	conf       *ClientSettings
 	configPath string
 	port       int
 }
 
 // newLocalDaemonREST creates a new REST daemon
-func newLocalDaemonREST(port int) *localDaemonREST {
+func newLocalDaemonREST(port int, conf *ClientSettings) *localDaemonREST {
 	return &localDaemonREST{
 		port: port,
+		conf: conf,
 	}
 }
 
@@ -57,26 +49,6 @@ func (d *localDaemonREST) Start() error {
 
 	grip.Infof("Starting REST daemon on port %d", d.port)
 	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
-}
-
-func (d *localDaemonREST) loadDebugClientConfig(workDir string) (*clientConfig, error) {
-	path := filepath.Join(workDir, configPath)
-	grip.Debugf("Checking for config file: %s", path)
-	if _, err := os.Stat(path); err != nil {
-		return nil, errors.Wrapf(err, "config file %s does not exist", path)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading config file %s", path)
-	}
-	var config clientConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, errors.Wrapf(err, "parsing config file %s", path)
-	}
-
-	grip.Infof("Loaded client configuration from %s (server: %s, task: %s, user: %s)",
-		path, config.ServerURL, config.TaskID, config.APIUser)
-	return &config, nil
 }
 
 // handleHealth checks if the daemon is running
@@ -100,22 +72,15 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	workDir := filepath.Dir(req.ConfigPath)
 
-	backendConfig, err := d.loadDebugClientConfig(workDir)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	opts := taskexec.LocalExecutorOptions{
 		WorkingDir: workDir,
-		ServerURL:  backendConfig.ServerURL,
-		TaskID:     backendConfig.TaskID,
-		APIUser:    backendConfig.APIUser,
-		APIKey:     backendConfig.APIKey,
+		ServerURL:  d.conf.getApiServerHost(true),
+		TaskID:     d.conf.TaskID,
+		OAuthToken: d.conf.OAuth.AccessToken,
 	}
 
-	if opts.APIUser == "" || opts.APIKey == "" {
-		http.Error(w, "API user and key are required", http.StatusUnauthorized)
+	if opts.OAuthToken == "" {
+		http.Error(w, "OAuth token is required", http.StatusUnauthorized)
 		return
 	}
 

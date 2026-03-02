@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/pod"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -193,30 +193,6 @@ func findMissingTasks(ctx context.Context, taskIDs []string, tasksPresent map[st
 	}
 
 	return missingTasks, nil
-}
-
-// DisableStaleContainerTasks disables all container tasks that have been
-// scheduled to run for a long time without actually dispatching the task.
-func DisableStaleContainerTasks(ctx context.Context, caller string) error {
-	query := task.ScheduledContainerTasksQuery()
-	query[task.ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-task.UnschedulableThreshold)}
-
-	tasks, err := task.FindAll(ctx, db.Query(query))
-	if err != nil {
-		return errors.Wrap(err, "finding tasks that need to be disabled")
-	}
-
-	grip.Info(message.Fields{
-		"message":   "disabling container tasks that are still scheduled to run but are stale",
-		"num_tasks": len(tasks),
-		"caller":    caller,
-	})
-
-	if err := DisableTasks(ctx, caller, tasks...); err != nil {
-		return errors.Wrap(err, "disabled stale container tasks")
-	}
-
-	return nil
 }
 
 // activatePreviousTask will set the active state for the first task with a
@@ -829,8 +805,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	switch t.ExecutionPlatform {
 	case task.ExecutionPlatformHost:
 		event.LogHostTaskFinished(ctx, t.Id, t.Execution, t.HostId, status)
-	case task.ExecutionPlatformContainer:
-		event.LogContainerTaskFinished(ctx, t.Id, t.Execution, t.PodID, status)
 	default:
 		event.LogTaskFinished(ctx, t.Id, t.Execution, status)
 	}
@@ -843,7 +817,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"status":             status,
 		"operation":          "MarkEnd",
 		"host_id":            t.HostId,
-		"pod_id":             t.PodID,
 		"execution_platform": t.ExecutionPlatform,
 	})
 	origin := evergreen.APIServerTaskActivator
@@ -1008,30 +981,10 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 				msg["instance_type"] = instanceType
 			}
 		}
-	} else {
-		taskPod, err := pod.FindOneByID(ctx, t.PodID)
-		if err != nil {
-			return errors.Wrapf(err, "finding pod '%s'", t.PodID)
-		}
-		if taskPod == nil {
-			return errors.Errorf("pod '%s' not found", t.PodID)
-		}
-		msg["pod_id"] = taskPod.ID
-		msg["pod_os"] = taskPod.TaskContainerCreationOpts.OS
-		msg["pod_arch"] = taskPod.TaskContainerCreationOpts.Arch
-		msg["cpu"] = taskPod.TaskContainerCreationOpts.CPU
-		msg["memory_mb"] = taskPod.TaskContainerCreationOpts.MemoryMB
-		if taskPod.TaskContainerCreationOpts.OS.Matches(evergreen.ECSOS(pod.OSWindows)) {
-			msg["windows_version"] = taskPod.TaskContainerCreationOpts.WindowsVersion
-		}
 	}
 
 	if !t.DependenciesMetTime.IsZero() {
 		msg["dependencies_met_time"] = t.DependenciesMetTime
-	}
-
-	if !t.ContainerAllocatedTime.IsZero() {
-		msg["container_allocated_time"] = t.ContainerAllocatedTime
 	}
 
 	grip.Info(msg)
@@ -2255,59 +2208,6 @@ func doRestartFailedTasks(ctx context.Context, tasks []string, user string, resu
 	return results
 }
 
-// ClearAndResetStrandedContainerTask clears the container task dispatched to a
-// pod. It also resets the task so that the current task execution is marked as
-// finished and, if necessary, a new execution is created to restart the task.
-// TODO (PM-2618): should probably block single-container task groups once
-// they're supported.
-func ClearAndResetStrandedContainerTask(ctx context.Context, settings *evergreen.Settings, p *pod.Pod) error {
-	runningTaskID := p.TaskRuntimeInfo.RunningTaskID
-	runningTaskExecution := p.TaskRuntimeInfo.RunningTaskExecution
-	if runningTaskID == "" {
-		return nil
-	}
-
-	// Note that clearing the pod and resetting the task are not atomic
-	// operations, so it's possible for the pod's running task to be cleared but
-	// the stranded task fails to reset.
-	// In this case, there are other cleanup jobs to detect when a task is
-	// stranded on a terminated pod.
-	if err := p.ClearRunningTask(ctx); err != nil {
-		return errors.Wrapf(err, "clearing running task '%s' execution %d from pod '%s'", runningTaskID, runningTaskExecution, p.ID)
-	}
-
-	t, err := task.FindOneIdAndExecution(ctx, runningTaskID, runningTaskExecution)
-	if err != nil {
-		return errors.Wrapf(err, "finding running task '%s' execution %d from pod '%s'", runningTaskID, runningTaskExecution, p.ID)
-	}
-	if t == nil {
-		return nil
-	}
-
-	if t.Archived {
-		grip.Warning(message.Fields{
-			"message":   "stranded container task has already been archived, refusing to fix it",
-			"task":      t.Id,
-			"execution": t.Execution,
-			"status":    t.Status,
-		})
-		return nil
-	}
-
-	if err := endAndResetSystemFailedTask(ctx, settings, t, evergreen.TaskDescriptionStranded); err != nil {
-		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
-	}
-
-	grip.Info(message.Fields{
-		"message":            "successfully fixed stranded container task",
-		"task":               t.Id,
-		"execution":          t.Execution,
-		"execution_platform": t.ExecutionPlatform,
-	})
-
-	return nil
-}
-
 // ClearAndResetStrandedHostTask clears the host task dispatched to the host due
 // to being stranded on a bad host (e.g. one that has been terminated). It also
 // marks the current task execution as finished and, if possible, a new
@@ -2562,7 +2462,7 @@ func tryUpdateDisplayTaskAtomically(ctx context.Context, dt task.Task) (updated 
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
 			// Need to consider tasks that have been dispatched since the last exec task finished.
-		} else if (execTask.IsDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
+		} else if (execTask.IsHostDispatchable() || execTask.IsAbortable()) && !execTask.Blocked() {
 			hasTasksToRun = true
 		}
 
@@ -2725,47 +2625,6 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 		user = evergreen.AutoRestartActivator
 	}
 	return errors.Wrap(TryResetTask(ctx, setting, t.Id, user, origin, details), "resetting display task")
-}
-
-// MarkUnallocatableContainerTasksSystemFailed marks any container task within
-// the candidate task IDs that needs to re-allocate a container but has used up
-// all of its container allocation attempts as finished due to system failure.
-func MarkUnallocatableContainerTasksSystemFailed(ctx context.Context, settings *evergreen.Settings, candidateTaskIDs []string) error {
-	var unallocatableTasks []task.Task
-	for _, taskID := range candidateTaskIDs {
-		tsk, err := task.FindOneId(ctx, taskID)
-		if err != nil {
-			return errors.Wrapf(err, "finding task '%s'", taskID)
-		}
-		if tsk == nil {
-			continue
-		}
-		if !tsk.IsContainerTask() {
-			continue
-		}
-		if !tsk.ContainerAllocated {
-			continue
-		}
-		if tsk.RemainingContainerAllocationAttempts() > 0 {
-			continue
-		}
-
-		unallocatableTasks = append(unallocatableTasks, *tsk)
-	}
-
-	catcher := grip.NewBasicCatcher()
-	for _, tsk := range unallocatableTasks {
-		details := apimodels.TaskEndDetail{
-			Status:      evergreen.TaskFailed,
-			Type:        evergreen.CommandTypeSystem,
-			Description: evergreen.TaskDescriptionContainerUnallocatable,
-		}
-		if err := MarkEnd(ctx, settings, &tsk, evergreen.APIServerTaskActivator, time.Now(), &details); err != nil {
-			catcher.Wrapf(err, "marking task '%s' as a failure due to inability to allocate", tsk.Id)
-		}
-	}
-
-	return catcher.Resolve()
 }
 
 // HandleEndTaskForGithubMergeQueueTask stops running GitHub merge queue tasks as soon as one task is finished.

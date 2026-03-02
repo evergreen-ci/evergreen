@@ -11,13 +11,11 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -3155,7 +3153,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3174,7 +3172,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble,
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble,
 				ValidationErrors{})
 		})
 		Convey("an error should be thrown if a task references a distro has a warning", func() {
@@ -3191,7 +3189,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55' with the following admin-defined warning(s): 55 is not the best number")
@@ -3211,7 +3209,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55-alias' with the following admin-defined warning: and this is not the best alias")
@@ -3226,7 +3224,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3247,7 +3245,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3262,46 +3260,9 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
-		})
-		Convey("an error should be thrown if a referenced distro for a "+
-			"buildvariant has the same name as an existing container", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name:  "enterprise",
-						RunOn: []string{"rhel55"},
-					},
-				},
-			}
-			containerNameMap := map[string]bool{
-				"rhel55": true,
-			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 2)
-			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
-			So(errs[1].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
-		})
-
-		Convey("an error should be thrown if a buildvariant references a mix of distros and containers to run on", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name:  "enterprise",
-						RunOn: []string{"rhel55", "c1"},
-					},
-				},
-			}
-			containerNameMap := map[string]bool{
-				"c1": true,
-			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
 		})
 
 		Convey("no error should be thrown if a referenced distro ID for a "+
@@ -3314,7 +3275,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -3327,7 +3288,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3351,7 +3312,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3365,7 +3326,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3398,7 +3359,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("warning should be thrown if single task distro is used"+
@@ -3422,7 +3383,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "project not specified, skipping single task distro validation")
@@ -3454,7 +3415,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "task 'allowedSingleTask' in buildvariant 'bv' runs on a single task distro 'singleTaskDistro' and cannot use the generate tasks")
@@ -3480,7 +3441,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldResemble, ValidationErrors{})
 		})
 
@@ -3504,105 +3465,10 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "display task 'displayTask' in buildvariant 'bv' references a non-existent execution task 'nonExistentTask'")
-		})
-	})
-}
-
-func TestValidateProjectConfigContainers(t *testing.T) {
-	t.Run("SucceedsWithValidContainers", func(t *testing.T) {
-		pc := model.ProjectConfig{
-			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "small",
-						CPU:      128,
-						MemoryMB: 128,
-					},
-					{
-						Name:     "large",
-						CPU:      2048,
-						MemoryMB: 2048,
-					},
-				},
-			},
-		}
-		errs := validateProjectConfigContainers(t.Context(), &pc)
-		assert.Empty(t, errs)
-	})
-	t.Run("FailsWithInvalidContainerResources", func(t *testing.T) {
-		pc := model.ProjectConfig{
-			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "invalid",
-						CPU:      -10,
-						MemoryMB: -5,
-					},
-				},
-			},
-		}
-		errs := validateProjectConfigContainers(t.Context(), &pc)
-		assert.NotEmpty(t, errs)
-	})
-	t.Run("FailsWithUnnamedContainerSize", func(t *testing.T) {
-		pc := model.ProjectConfig{
-			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "",
-						CPU:      128,
-						MemoryMB: 128,
-					},
-				},
-			},
-		}
-		errs := validateProjectConfigContainers(t.Context(), &pc)
-		assert.NotEmpty(t, errs)
-	})
-	t.Run("FailsWithContainerSizeExceedingGlobalLimits", func(t *testing.T) {
-		env := evergreen.GetEnvironment()
-		originalECSConf := env.Settings().Providers.AWS.Pod.ECS
-		defer func() {
-			env.Settings().Providers.AWS.Pod.ECS = originalECSConf
-		}()
-		env.Settings().Providers.AWS.Pod.ECS = evergreen.ECSConfig{
-			MaxCPU:      1024,
-			MaxMemoryMB: 2048,
-		}
-
-		t.Run("CPU", func(t *testing.T) {
-			pc := model.ProjectConfig{
-				ProjectConfigFields: model.ProjectConfigFields{
-					ContainerSizeDefinitions: []model.ContainerResources{
-						{
-							Name:     "xlarge",
-							CPU:      100000000,
-							MemoryMB: 100,
-						},
-					},
-				},
-			}
-			errs := validateProjectConfigContainers(t.Context(), &pc)
-			assert.NotEmpty(t, errs)
-		})
-		t.Run("Memory", func(t *testing.T) {
-			pc := model.ProjectConfig{
-				ProjectConfigFields: model.ProjectConfigFields{
-					ContainerSizeDefinitions: []model.ContainerResources{
-						{
-							Name:     "xlarge",
-							CPU:      100,
-							MemoryMB: 100000000,
-						},
-					},
-				},
-			}
-			errs := validateProjectConfigContainers(t.Context(), &pc)
-			assert.NotEmpty(t, errs)
 		})
 	})
 }
@@ -5251,160 +5117,6 @@ func TestValidateVersionControl(t *testing.T) {
 
 }
 
-func TestValidateContainers(t *testing.T) {
-	s := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				Pod: evergreen.AWSPodConfig{
-					ECS: evergreen.ECSConfig{
-						AllowedImages: []string{
-							"hadjri/evg-container-self-tests",
-						},
-					},
-				},
-			},
-		},
-	}
-	assert.NoError(t, evergreen.UpdateConfig(t.Context(), testutil.TestConfig()))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
-	}()
-	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
-		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			assert.Empty(t, verrs)
-		},
-		"FailsWithoutContainerName": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Name = ""
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "name must be defined")
-		},
-		"FailsWithoutContainerImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Image = ""
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "image must be defined")
-		},
-		"FailsWithoutContainerWorkingDirectory": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].WorkingDir = ""
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "working directory must be defined")
-		},
-		"FailsWithNotAllowedImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Image = "not_allowed"
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "image 'not_allowed' not allowed")
-		},
-		"MustSpecifyEitherContainerSizeOrResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Size = ""
-			p.Containers[0].Resources = nil
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
-		},
-		"ContainerSizeAndResourcesAreMutuallyExclusive": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Resources = &model.ContainerResources{
-				MemoryMB: 100,
-				CPU:      1,
-			}
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
-		},
-		"FailsWithNonexistentContainerSize": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Size = "s2"
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
-		},
-		"FailsWithNonexistentRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Credential = "nonexistent"
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "credential 'nonexistent' is not defined in project settings")
-		},
-		"FailsWithInvalidOSAndArch": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].System = model.ContainerSystem{
-				OperatingSystem: "oops",
-				CPUArchitecture: "oops",
-			}
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
-			assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
-		},
-		"FailsWithInvalidContainerResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Resources = &model.ContainerResources{
-				MemoryMB: 0,
-				CPU:      -1,
-			}
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
-			assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
-		},
-		"FailsWithPodSecretAsReferencedRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			ref.ContainerSecrets[0].Type = model.ContainerSecretPodSecret
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "container credential named 'c1' exists but is not valid for use as a repository credential")
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
-
-			p := &model.Project{
-				Identifier: "proj",
-				Containers: []model.Container{
-					{
-						Name:       "c1",
-						Image:      "${image}",
-						WorkingDir: "/root",
-						Size:       "s1",
-						Credential: "c1",
-					},
-				},
-			}
-
-			projVars := model.ProjectVars{
-				Id:   "proj",
-				Vars: map[string]string{"image": "hadjri/evg-container-self-tests"},
-			}
-
-			ref := &model.ProjectRef{
-				Id:         "proj",
-				Identifier: "proj",
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "s1",
-						CPU:      1,
-						MemoryMB: 100,
-					},
-					{
-						Name:     "",
-						CPU:      1,
-						MemoryMB: 100,
-					},
-				},
-				ContainerSecrets: []model.ContainerSecret{
-					{
-						Name:       "c1",
-						ExternalID: "external_id",
-						Type:       model.ContainerSecretRepoCreds,
-					},
-				},
-			}
-
-			require.NoError(t, ref.Replace(t.Context()))
-			require.NoError(t, projVars.Insert(t.Context()))
-			tCase(t, p, ref)
-		})
-	}
-}
-
 func TestTVToTaskUnit(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		expectedTVToTaskUnit map[model.TVPair]model.BuildVariantTaskUnit
@@ -6454,7 +6166,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, []string{}, evergreen.ProjectTasksPair{}, nil)
+			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{}, []string{}, evergreen.ProjectTasksPair{}, nil)
 			if testCase.expectErr {
 				assert.Equal(t, testCase.expectedErrMsg, errs[0].Message)
 			} else {
