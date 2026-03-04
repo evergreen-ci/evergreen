@@ -19,6 +19,20 @@ The yaml settings **only apply to mainline commits.** If more than one is set, m
 features interact with each other are found [here](Project-Configuration-Files#specific-activation-override-hierarchy).
 Documentation on limiting when tasks runs beyond the waterfall can be found [here](Project-Configuration-Files#limiting-when-a-task-or-variant-will-run).
 
+##### Batch Promotion Workflows
+
+Note that pushing commits in batches will not work as expected with these settings.
+Evergreen looks at the **latest commit only** and decides whether it needs
+to be activated based on cron/batchtime/activation settings. Therefore, if multiple commits are promoted at once,
+only the latest commit in that batch is evaluated, and the intermediate commits are skipped.
+
+_Example: Commits A, B, and C are added to another branch throughout the week,
+and these are batch-promoted on Friday. When Evergreen's activation job runs, it only looks at commit C (the latest). Commits A
+and B are skipped entirely and will never have their cron/batchtime considered._
+
+If you need every commit to run certain tasks or cron/batchtime to behave as expected,
+push commits individually rather than in batches.
+
 ## Activate
 
 `activate: false` prevents a build variant or task on a mainline commit from activating automatically. This can be specified in the
