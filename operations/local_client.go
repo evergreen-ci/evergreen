@@ -136,6 +136,12 @@ func Debug() cli.Command {
 				Usage:  "List all steps in the current task",
 				Action: listStepsCmd,
 			},
+			{
+				Name:      "set-var",
+				Usage:     "Set a custom variable",
+				ArgsUsage: "<key>=<value>",
+				Action:    setVariableCmd,
+			},
 		},
 	}
 }
@@ -425,6 +431,41 @@ func runUntilCmd(c *cli.Context) error {
 	} else {
 		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
 	}
+	return nil
+}
+
+// setVariableCmd sets a custom variable.
+func setVariableCmd(c *cli.Context) error {
+	if c.NArg() < 1 {
+		return errors.New("variable assignment required (key=value)")
+	}
+
+	// Parse key=value
+	assignment := c.Args().Get(0)
+	parts := bytes.SplitN([]byte(assignment), []byte("="), 2)
+	if len(parts) != 2 {
+		return errors.New("invalid format, use key=value")
+	}
+
+	key := string(parts[0])
+	value := string(parts[1])
+
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	reqBody := map[string]string{
+		"key":   key,
+		"value": value,
+	}
+
+	_, err = postJSON(url+"/variable/set", reqBody)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Set variable: %s=%s\n", key, value)
 	return nil
 }
 
