@@ -309,7 +309,11 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
 				e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
-				return err
+				if canFailTask {
+					return err
+				}
+				blockName := executor.BlockToLegacyName(blockType)
+				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
 			}
 
 			e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
@@ -602,6 +606,23 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	}
 	if expansionsAndVars == nil {
 		return nil
+	}
+	// GetExpansionsAndVars does not include build variant expansions or project
+	// parameters, so load them from the project.
+	for _, bv := range project.BuildVariants {
+		if bv.Name == e.taskConfig.Task.BuildVariant {
+			expansionsAndVars.Expansions.Update(bv.Expansions)
+			break
+		}
+	}
+	expansionsAndVars.Expansions.Update(expansionsAndVars.Vars)
+	for _, param := range project.Parameters {
+		// If the key doesn't exist, the value will default to "" anyway; this
+		// prevents an un-specified project parameter from overwriting
+		// lower-priority expansions.
+		if param.Value != "" {
+			expansionsAndVars.Expansions.Put(param.Key, param.Value)
+		}
 	}
 	for k, v := range expansionsAndVars.Expansions {
 		e.taskConfig.Expansions.Put(k, v)
