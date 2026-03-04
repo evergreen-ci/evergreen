@@ -280,7 +280,6 @@ func MockConfig() *evergreen.Settings {
 		ProjectCreation: evergreen.ProjectCreationConfig{
 			TotalProjectLimit: 400,
 			RepoProjectLimit:  10,
-			JiraProject:       "EVG",
 			RepoExceptions: []evergreen.OwnerRepo{
 				{
 					Owner: "owner",

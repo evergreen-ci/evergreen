@@ -14,6 +14,15 @@ type DebugState struct {
 	CustomVars       map[string]string
 	CommandList      []CommandInfo
 	WorkingDir       string
+	LastError        error
+	ExecutionHistory []executionRecord
+	ConfigPath       string
+}
+
+// executionRecord tracks the execution of a single command
+type executionRecord struct {
+	StepIndex int
+	Success   bool
 }
 
 // CommandInfo represents a single command in the linear execution order.
@@ -36,7 +45,12 @@ func NewDebugState() *DebugState {
 		CurrentStepIndex: 0,
 		CustomVars:       make(map[string]string),
 		CommandList:      []CommandInfo{},
+		ExecutionHistory: []executionRecord{},
 	}
+}
+
+func (ds *DebugState) addExecutionRecord(record executionRecord) {
+	ds.ExecutionHistory = append(ds.ExecutionHistory, record)
 }
 
 // HasMoreSteps returns true if there are more steps to execute
