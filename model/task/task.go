@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -228,7 +229,7 @@ type Task struct {
 	// TaskCost is the actual cost of the task based on runtime and distro cost rates
 	TaskCost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
 	// S3Usage tracks S3 API usage for cost calculation
-	S3Usage S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
+	S3Usage s3usage.S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -4100,6 +4101,12 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 			TaskCostKey: t.TaskCost,
 		},
 	})
+}
+
+// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
+// TODO (DEVPROD-25591): Implement DB persistence and cost calculation.
+func SaveS3Usage(ctx context.Context, taskID string, usage s3usage.S3Usage) error {
+	return nil
 }
 
 type CostPredictionResult struct {

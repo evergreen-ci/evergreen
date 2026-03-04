@@ -8,28 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestS3Usage(t *testing.T) {
-	t.Run("IsZero", func(t *testing.T) {
-		s3Usage := S3Usage{}
-		assert.True(t, s3Usage.IsZero())
-
-		s3Usage.NumPutRequests = 10
-		assert.False(t, s3Usage.IsZero())
-	})
-
-	t.Run("IncrementPutRequests", func(t *testing.T) {
-		s3Usage := S3Usage{}
-		assert.Equal(t, 0, s3Usage.NumPutRequests)
-
-		s3Usage.IncrementPutRequests(5)
-		assert.Equal(t, 5, s3Usage.NumPutRequests)
-
-		s3Usage.IncrementPutRequests(10)
-		assert.Equal(t, 15, s3Usage.NumPutRequests)
-	})
-}
-
-func TestCalculateS3PutCostWithConfig(t *testing.T) {
+func TestCalculateS3PutCost(t *testing.T) {
 	validConfig := &evergreen.CostConfig{
 		S3Cost: evergreen.S3CostConfig{
 			Upload: evergreen.S3UploadCostConfig{
@@ -57,64 +36,55 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 	noDiscountConfig := &evergreen.CostConfig{}
 
 	t.Run("WithValidConfig", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 1000}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(validConfig)
+		cost, err := CalculateS3PutCost(1000, validConfig)
 		require.NoError(t, err)
 		assert.InDelta(t, 0.0035, cost, 0.000001)
 	})
 
 	t.Run("WithNilConfig", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 1000}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(nil)
+		cost, err := CalculateS3PutCost(1000, nil)
 		require.NoError(t, err)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("WithZeroRequests", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 0}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(validConfig)
+		cost, err := CalculateS3PutCost(0, validConfig)
 		require.NoError(t, err)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("WithNegativeRequests", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: -10}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(validConfig)
+		cost, err := CalculateS3PutCost(-10, validConfig)
 		require.NoError(t, err)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("WithDiscountGreaterThanOne", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 1000}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(invalidHighDiscountConfig)
+		cost, err := CalculateS3PutCost(1000, invalidHighDiscountConfig)
 		require.Error(t, err)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("WithNegativeDiscount", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 1000}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(invalidNegativeDiscountConfig)
+		cost, err := CalculateS3PutCost(1000, invalidNegativeDiscountConfig)
 		require.Error(t, err)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("WithNoDiscount", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 1000}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(noDiscountConfig)
+		cost, err := CalculateS3PutCost(1000, noDiscountConfig)
 		require.NoError(t, err)
 		assert.Equal(t, 0.005, cost)
 	})
 
 	t.Run("WithSingleRequest", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 1}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(validConfig)
+		cost, err := CalculateS3PutCost(1, validConfig)
 		require.NoError(t, err)
 		assert.InDelta(t, 0.0000035, cost, 0.000000001)
 	})
 
 	t.Run("WithLargeNumberOfRequests", func(t *testing.T) {
-		s3Usage := S3Usage{NumPutRequests: 1000000}
-		cost, err := s3Usage.CalculateS3PutCostWithConfig(validConfig)
+		cost, err := CalculateS3PutCost(1000000, validConfig)
 		require.NoError(t, err)
 		assert.InDelta(t, 3.5, cost, 0.001)
 	})

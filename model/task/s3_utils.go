@@ -8,11 +8,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// S3Usage tracks S3 API usage for cost calculation
-type S3Usage struct {
-	// NumPutRequests is the number of S3 PutObject API requests made
-	NumPutRequests int `bson:"num_put_requests,omitempty" json:"num_put_requests,omitempty"`
-}
 type S3BucketType string
 type S3UploadMethod string
 
@@ -71,10 +66,9 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 	}
 }
 
-// CalculateS3PutCostWithConfig calculates the total S3 PUT request cost based on usage.
-// Caller must provide CostConfig to avoid repeated database fetches in batch operations.
-func (s *S3Usage) CalculateS3PutCostWithConfig(costConfig *evergreen.CostConfig) (float64, error) {
-	if s.NumPutRequests <= 0 {
+// CalculateS3PutCost calculates the S3 PUT request cost for a given number of PUT requests.
+func CalculateS3PutCost(putRequests int, costConfig *evergreen.CostConfig) (float64, error) {
+	if putRequests <= 0 {
 		return 0.0, nil
 	}
 
@@ -87,16 +81,7 @@ func (s *S3Usage) CalculateS3PutCostWithConfig(costConfig *evergreen.CostConfig)
 		return 0.0, errors.Errorf("invalid S3 upload discount: %f (must be between 0.0 and 1.0)", discount)
 	}
 
-	return float64(s.NumPutRequests) * S3PutRequestCost * (1 - discount), nil
-}
-
-// IsZero implements bsoncodec.Zeroer for BSON marshalling.
-func (s *S3Usage) IsZero() bool {
-	return s.NumPutRequests == 0
-}
-
-func (s *S3Usage) IncrementPutRequests(count int) {
-	s.NumPutRequests += count
+	return float64(putRequests) * S3PutRequestCost * (1 - discount), nil
 }
 
 // CalculateUploadMetrics populates file size and PUT requests for each uploaded file.

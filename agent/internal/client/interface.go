@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -137,6 +138,9 @@ type SharedCommunicator interface {
 
 	// S3Credentials returns the S3 credentials for the task when uploading to devprod owned buckets.
 	S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error)
+
+	// ReportS3Usage reports the task's S3 usage metrics for cost calculation.
+	ReportS3Usage(ctx context.Context, td TaskData, usage *s3usage.S3Usage) error
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

@@ -6,7 +6,7 @@ import (
 
 // S3UsageTracker tracks S3 API usage for cost calculation.
 type S3UsageTracker interface {
-	IncrementPutRequests(count int)
+	IncrementLogFiles(putRequests int, uploadBytes int64)
 }
 
 type s3UsageKey struct{}

@@ -561,7 +561,7 @@ retryLoop:
 			totalFileSize, totalPutRequests)
 	}
 
-	conf.Task.S3Usage.IncrementPutRequests(totalPutRequests)
+	// TODO (DEVPROD-25592): Wire user file S3 usage accumulation.
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.Int64("s3_put.total_bytes", totalFileSize),

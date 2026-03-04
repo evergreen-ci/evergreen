@@ -91,6 +91,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/heartbeat").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeHeartbeat())
 	app.AddRoute("/task/{task_id}/parser_project").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetParserProject(env))
 	app.AddRoute("/task/{task_id}/project_ref").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetProjectRef())
+	app.AddRoute("/task/{task_id}/s3_usage").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeReportS3Usage())
 	app.AddRoute("/task/{task_id}/set_results_info").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskResultsInfoHandler())
 	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeStartTask(env))
 	app.AddRoute("/task/{task_id}/test_logs").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeAttachTestLog(settings))

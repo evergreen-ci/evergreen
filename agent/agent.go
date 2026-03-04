@@ -20,6 +20,7 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
@@ -612,7 +613,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	}
 
 	// Reset S3Usage for this execution to avoid accumulating from previous restarts
-	opts.task.S3Usage = task.S3Usage{}
+	opts.task.S3Usage = s3usage.S3Usage{}
 
 	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
@@ -1211,7 +1212,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 
 	if tc.logger != nil && tc.taskConfig != nil {
-		tc.logger.Task().Infof("Task tracked %d S3 PUT requests during execution.", tc.taskConfig.Task.S3Usage.NumPutRequests)
+		tc.logger.Task().Infof("Task tracked %d S3 PUT requests during execution (user_files=%d, log_files=%d).",
+			tc.taskConfig.Task.S3Usage.UserFiles.PutRequests+tc.taskConfig.Task.S3Usage.LogFiles.PutRequests,
+			tc.taskConfig.Task.S3Usage.UserFiles.PutRequests,
+			tc.taskConfig.Task.S3Usage.LogFiles.PutRequests)
 	}
 
 	grip.Infof("Sending final task status: '%s'.", detail.Status)

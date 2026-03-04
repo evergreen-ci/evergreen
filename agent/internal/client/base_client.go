@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -600,6 +601,26 @@ func (c *baseCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	resp, err := c.retryRequest(ctx, info, taskFiles)
 	if err != nil {
 		return util.RespError(resp, errors.Wrap(err, "posting files").Error())
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+// ReportS3Usage reports the task's S3 usage metrics.
+func (c *baseCommunicator) ReportS3Usage(ctx context.Context, td TaskData, usage *s3usage.S3Usage) error {
+	if usage == nil {
+		return nil
+	}
+
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("s3_usage")
+	resp, err := c.retryRequest(ctx, info, usage)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "reporting S3 usage").Error())
 	}
 	defer resp.Body.Close()
 

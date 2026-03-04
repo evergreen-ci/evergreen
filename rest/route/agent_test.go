@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -1035,6 +1036,90 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 			// Check that the task details were stored correctly
 			assert.Equal(t, tc.expectedTrace, updatedTask.Details.TraceID)
 			assert.Equal(t, tc.expectedDisk, updatedTask.Details.DiskDevices)
+		})
+	}
+}
+
+func TestReportS3Usage(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler){
+		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler) {
+			copied := rh.Factory()
+			require.NotNil(t, copied)
+			_, ok := copied.(*reportS3UsageHandler)
+			assert.True(t, ok)
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler) {
+			usage := s3usage.S3Usage{
+				UserFiles: s3usage.UserFilesMetrics{PutRequests: 10, UploadBytes: 500, FileCount: 3},
+				LogFiles:  s3usage.LogFilesMetrics{PutRequests: 5, UploadBytes: 200},
+			}
+			body, err := json.Marshal(usage)
+			require.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodPost, "/task/t1/s3_usage", bytes.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+
+			require.NoError(t, rh.Parse(ctx, req))
+			assert.Equal(t, "t1", rh.taskID)
+			assert.Equal(t, 10, rh.s3Usage.UserFiles.PutRequests)
+			assert.Equal(t, int64(500), rh.s3Usage.UserFiles.UploadBytes)
+			assert.Equal(t, 3, rh.s3Usage.UserFiles.FileCount)
+			assert.Equal(t, 5, rh.s3Usage.LogFiles.PutRequests)
+			assert.Equal(t, int64(200), rh.s3Usage.LogFiles.UploadBytes)
+		},
+		"ParseErrorsOnMissingTaskID": func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler) {
+			req, err := http.NewRequest(http.MethodPost, "/task//s3_usage", bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": ""})
+
+			assert.ErrorContains(t, rh.Parse(ctx, req), "missing task ID")
+		},
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler) {
+			req, err := http.NewRequest(http.MethodPost, "/task/t1/s3_usage", bytes.NewReader(nil))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+
+			assert.Error(t, rh.Parse(ctx, req))
+		},
+		"ParseErrorsOnInvalidJSON": func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler) {
+			req, err := http.NewRequest(http.MethodPost, "/task/t1/s3_usage", bytes.NewReader([]byte("not json")))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
+
+			assert.Error(t, rh.Parse(ctx, req))
+		},
+		// TODO (DEVPROD-25591): Add DB assertions once SaveS3Usage has persistence.
+		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler) {
+			rh.taskID = "t1"
+			rh.s3Usage = s3usage.S3Usage{
+				UserFiles: s3usage.UserFilesMetrics{PutRequests: 100, UploadBytes: 5000, FileCount: 10},
+				LogFiles:  s3usage.LogFilesMetrics{PutRequests: 50, UploadBytes: 2000},
+			}
+
+			resp := rh.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+		},
+		"RunNoOpForZeroUsage": func(ctx context.Context, t *testing.T, rh *reportS3UsageHandler) {
+			rh.taskID = "t2"
+			rh.s3Usage = s3usage.S3Usage{}
+
+			resp := rh.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			r, ok := makeReportS3Usage().(*reportS3UsageHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, r)
 		})
 	}
 }
