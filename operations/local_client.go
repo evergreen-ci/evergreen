@@ -407,7 +407,7 @@ func runUntilCmd(c *cli.Context) error {
 
 	index, err := strconv.Atoi(c.Args().Get(0))
 	if err != nil {
-		return errors.New("invalid step index")
+		return errors.Errorf("invalid step index %d", index)
 	}
 
 	url, err := getDaemonURL()
@@ -437,7 +437,7 @@ func jumpToCmd(c *cli.Context) error {
 
 	index, err := strconv.Atoi(c.Args().Get(0))
 	if err != nil {
-		return errors.New("invalid step index")
+		return errors.Errorf("invalid step index %d", index)
 	}
 
 	url, err := getDaemonURL()
@@ -450,7 +450,7 @@ func jumpToCmd(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Jumped to step %v\n", resp["current_step"])
+	grip.Infof("Jumped to step %v\n", resp["current_step"])
 	return nil
 }
 

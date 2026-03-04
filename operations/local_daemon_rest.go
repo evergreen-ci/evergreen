@@ -64,7 +64,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, errors.Wrap(err, "loading config").Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, errors.Wrap(err, "selecting task").Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	index, err := strconv.Atoi(vars["index"])
 	if err != nil {
-		http.Error(w, "invalid step index", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid step index %d", index), http.StatusBadRequest)
 		return
 	}
 
@@ -185,7 +185,7 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := d.executor.JumpTo(index); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, errors.Wrap(err, "jumping to index").Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -201,7 +201,7 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	index, err := strconv.Atoi(vars["index"])
 	if err != nil {
-		http.Error(w, "invalid step index", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid step index %d", index), http.StatusBadRequest)
 		return
 	}
 
