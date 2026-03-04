@@ -3243,3 +3243,55 @@ func TestSetupParallelGitIncludeDirs(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRevisionForRemoteModule(t *testing.T) {
+	mod := Module{
+		Name:   "my-module",
+		Owner:  "evergreen-ci",
+		Repo:   "sample",
+		Branch: "main",
+	}
+
+	t.Run("ReturnsModuleRevisionsByRepo", func(t *testing.T) {
+		opts := GetProjectOpts{
+			ModuleRevisionsByRepo: map[string]string{
+				"evergreen-ci/sample": "abc123",
+			},
+		}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "my-module", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, "abc123", revision)
+	})
+
+	t.Run("FallsBackToBranchWhenNoMatch", func(t *testing.T) {
+		opts := GetProjectOpts{
+			ModuleRevisionsByRepo: map[string]string{
+				"other-org/other-repo": "abc123",
+			},
+		}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "my-module", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, "main", revision)
+	})
+
+	t.Run("AutoUpdateTakesPrecedence", func(t *testing.T) {
+		opts := GetProjectOpts{
+			AutoUpdateModuleRevisions: map[string]string{
+				"my-module": "auto-update-rev",
+			},
+			ModuleRevisionsByRepo: map[string]string{
+				"evergreen-ci/sample": "trigger-rev",
+			},
+		}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "my-module", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, "auto-update-rev", revision)
+	})
+
+	t.Run("FallsBackToBranchWhenNil", func(t *testing.T) {
+		opts := GetProjectOpts{}
+		revision, err := getRevisionForRemoteModule(t.Context(), mod, "my-module", opts)
+		assert.NoError(t, err)
+		assert.Equal(t, "main", revision)
+	})
+}

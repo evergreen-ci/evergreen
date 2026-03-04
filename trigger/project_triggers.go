@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -23,27 +24,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, err
 	}
 
-	// get the downstream config
-	projectInfo := model.ProjectInfo{}
-	if args.ConfigFile != "" {
-		projectInfo, err = makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-	} else {
-		return nil, errors.New("must specify a file to define downstream project config")
-	}
-
-	projectInfo.Ref = &args.DownstreamProject
-	v, err := repotracker.CreateVersionFromConfig(context.Background(), &projectInfo, metadata, false, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating version")
-	}
-	if args.SourceVersion != nil {
-		if err = args.SourceVersion.AddSatisfiedTrigger(ctx, args.DefinitionID); err != nil {
-			return nil, err
-		}
-	}
+	// Look up the upstream project early so we can pin module includes for push triggers.
 	// Since push triggers have no source version (unlike build and task level triggers), we need to
 	// extract the project ID from the trigger definition's project ID, which is populated in the TriggerID field
 	// for push triggers.
@@ -60,6 +41,37 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 	if upstreamProject == nil {
 		return nil, errors.Errorf("upstream project '%s' not found", projectID)
+	}
+
+	// For push triggers, build a map that pins module include files to the source commit
+	// so that the config and code come from the same commit.
+	var moduleRevisionsByRepo map[string]string
+	if args.TriggerType == model.ProjectTriggerLevelPush && metadata.SourceCommit != "" {
+		moduleRevisionsByRepo = map[string]string{
+			fmt.Sprintf("%s/%s", upstreamProject.Owner, upstreamProject.Repo): metadata.SourceCommit,
+		}
+	}
+
+	// get the downstream config
+	projectInfo := model.ProjectInfo{}
+	if args.ConfigFile != "" {
+		projectInfo, err = makeDownstreamProjectFromFile(ctx, args.DownstreamProject, args.ConfigFile, moduleRevisionsByRepo)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	} else {
+		return nil, errors.New("must specify a file to define downstream project config")
+	}
+
+	projectInfo.Ref = &args.DownstreamProject
+	v, err := repotracker.CreateVersionFromConfig(context.Background(), &projectInfo, metadata, false, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating version")
+	}
+	if args.SourceVersion != nil {
+		if err = args.SourceVersion.AddSatisfiedTrigger(ctx, args.DefinitionID); err != nil {
+			return nil, err
+		}
 	}
 	moduleList := projectInfo.Project.Modules
 	for i, module := range moduleList {
@@ -131,13 +143,14 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	return metadata, nil
 }
 
-func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string) (model.ProjectInfo, error) {
+func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, file string, moduleRevisionsByRepo map[string]string) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
-		Ref:          &ref,
-		RemotePath:   file,
-		Revision:     ref.Branch,
-		Identifier:   ref.Identifier,
-		ReadFileFrom: model.ReadFromGithub,
+		Ref:                   &ref,
+		RemotePath:            file,
+		Revision:              ref.Branch,
+		Identifier:            ref.Identifier,
+		ReadFileFrom:          model.ReadFromGithub,
+		ModuleRevisionsByRepo: moduleRevisionsByRepo,
 	}
 	return model.GetProjectFromFile(ctx, opts)
 }

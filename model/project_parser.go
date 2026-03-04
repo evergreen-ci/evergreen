@@ -1111,6 +1111,10 @@ type GetProjectOpts struct {
 	ReferencePatchID          string
 	ReferenceManifestID       string
 	AutoUpdateModuleRevisions map[string]string
+	// ModuleRevisionsByRepo maps "owner/repo" keys to specific revisions
+	// for module includes. Used by triggered versions to pin module
+	// include files to the source commit.
+	ModuleRevisionsByRepo map[string]string
 	// IsIncludedFile indicates whether the file being retrieved is an included
 	// YAML file.
 	IsIncludedFile bool
@@ -1255,6 +1259,16 @@ func getRevisionForRemoteModule(ctx context.Context, mod Module, modName string,
 	if opts.AutoUpdateModuleRevisions != nil {
 		if revision, ok := opts.AutoUpdateModuleRevisions[modName]; ok {
 			return revision, nil
+		}
+	}
+
+	if opts.ModuleRevisionsByRepo != nil {
+		owner, repo, err := mod.GetOwnerAndRepo()
+		if err == nil {
+			repoKey := fmt.Sprintf("%s/%s", owner, repo)
+			if revision, ok := opts.ModuleRevisionsByRepo[repoKey]; ok {
+				return revision, nil
+			}
 		}
 	}
 
