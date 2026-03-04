@@ -39,6 +39,7 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/health", d.handleHealth).Methods("GET")
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
 	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
+	router.HandleFunc("/task/list-steps", d.handleListSteps).Methods("GET")
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
 	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
 	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
@@ -74,10 +75,11 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	workDir := filepath.Dir(req.ConfigPath)
 
 	opts := taskexec.LocalExecutorOptions{
-		WorkingDir: workDir,
-		ServerURL:  d.conf.getApiServerHost(true),
-		TaskID:     d.conf.TaskID,
-		OAuthToken: d.conf.OAuth.AccessToken,
+		WorkingDir:  workDir,
+		ServerURL:   d.conf.getApiServerHost(true),
+		TaskID:      d.conf.TaskID,
+		OAuthToken:  d.conf.OAuth.AccessToken,
+		SpawnHostID: d.conf.SpawnHostID,
 	}
 
 	if opts.OAuthToken == "" {
@@ -165,6 +167,49 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	}
 
 	return nil
+}
+
+// handleListSteps lists all steps in the current task
+func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	state := d.executor.GetDebugState()
+
+	steps := []map[string]interface{}{}
+	for i, cmd := range state.CommandList {
+		executed := false
+		success := false
+
+		// Check if this step has been executed
+		for _, record := range state.ExecutionHistory {
+			if record.StepIndex == i {
+				executed = true
+				success = record.Success
+				break
+			}
+		}
+
+		steps = append(steps, map[string]interface{}{
+			"index":         i,
+			"command_type":  cmd.Command.Command,
+			"display_name":  cmd.DisplayName,
+			"is_function":   cmd.IsFunction,
+			"function_name": cmd.FunctionName,
+			"executed":      executed,
+			"success":       success,
+		})
+	}
+
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+		"steps":        steps,
+		"current_step": state.CurrentStepIndex,
+	}))
 }
 
 // handleRunUntil runs until a specific step

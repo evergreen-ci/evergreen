@@ -64,8 +64,8 @@ type Mutation {
   # project
   attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
   attachProjectToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
-  createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
-  copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
+  createProject(project: CreateProjectInput! @requireProjectAdmin): Project!
+  copyProject(project: CopyProjectInput! @requireProjectAdmin): Project! 
   deactivateStepbackTask(opts: DeactivateStepbackTaskInput!): Boolean!
   defaultSectionToRepo(opts: DefaultSectionToRepoInput!): String
   deleteGithubAppCredentials(opts: DeleteGithubAppCredentialsInput!): DeleteGithubAppCredentialsPayload

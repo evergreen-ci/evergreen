@@ -79,11 +79,12 @@ type LocalExecutor struct {
 
 // LocalExecutorOptions contains configuration for the local executor
 type LocalExecutorOptions struct {
-	WorkingDir string
-	Expansions map[string]string
-	ServerURL  string
-	TaskID     string
-	OAuthToken string
+	WorkingDir  string
+	Expansions  map[string]string
+	ServerURL   string
+	TaskID      string
+	OAuthToken  string
+	SpawnHostID string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -98,7 +99,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		expansions.Put(k, v)
 	}
 
-	comm := client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken)
+	comm := client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken, opts.SpawnHostID)
 	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{
@@ -106,8 +107,9 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 	}
 
 	taskConfig := &internal.TaskConfig{
-		Expansions: expansions,
-		WorkDir:    opts.WorkingDir,
+		Expansions:            expansions,
+		WorkDir:               opts.WorkingDir,
+		AssumeRoleInformation: map[string]internal.AssumeRoleInformation{},
 	}
 
 	jasperManager, err := jasper.NewSynchronizedManager(false)
@@ -302,13 +304,19 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 		return nil
 	}
+	record := executionRecord{
+		StepIndex: e.debugState.CurrentStepIndex,
+		Success:   true,
+	}
 	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
+		record.Success = false
+		e.debugState.addExecutionRecord(record)
 		return err
 	}
 	if !executed {
 		return errors.Errorf("failed to execute step %d", e.debugState.CurrentStepIndex)
 	}
-
+	e.debugState.addExecutionRecord(record)
 	return nil
 }
 

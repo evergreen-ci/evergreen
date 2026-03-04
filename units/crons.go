@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/utility"
@@ -33,9 +32,6 @@ const (
 	// terminateHostQueueGroup is the queue group for host-termination-jobs.
 	terminateHostQueueGroup         = "service.host.termination"
 	eventNotifierQueueGroup         = "service.event.notifier"
-	podAllocationQueueGroup         = "service.pod.allocate"
-	podDefinitionCreationQueueGroup = "service.pod.definition.create"
-	podCreationQueueGroup           = "service.pod.create"
 	spawnHostModificationQueueGroup = "service.spawnhost.modify"
 	hostIPAssociationQueueGroup     = "service.host.ip.associate"
 )
@@ -95,39 +91,6 @@ func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.
 		jobs = append(jobs, NewHostMonitoringCheckJob(env, &host, ts.Format(TSFormat)))
 	}
 	return jobs, nil
-}
-
-// PopulatePodHealthCheckJobs enqueues the jobs to check pods that have not
-// checked in recently to determine if they are still healthy.
-func PopulatePodHealthCheckJobs() amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting service flags")
-		}
-
-		if flags.MonitorDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "monitor is disabled",
-				"impact":  "not detecting pods that have not communicated recently",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		pods, err := pod.FindByLastCommunicatedBefore(ctx, time.Now().Add(-podReachabilityThreshold))
-		if err != nil {
-			return errors.Wrap(err, "finding pods that have not communicated recently")
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for _, p := range pods {
-			j := NewPodHealthCheckJob(p.ID, utility.RoundPartOfMinute(0))
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, j), "enqueueing pod health check job for pod '%s'", p.ID)
-		}
-
-		return catcher.Resolve()
-	}
 }
 
 func sendNotificationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
@@ -794,7 +757,7 @@ func backgroundStatsJobs(ctx context.Context, env evergreen.Environment, ts time
 	if flags.BackgroundStatsDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "background stats collection disabled",
-			"impact":  "host, pod, task, latency, amboy, and notification stats disabled",
+			"impact":  "host, task, latency, amboy, and notification stats disabled",
 			"mode":    "degraded",
 		})
 		return nil, nil
@@ -803,7 +766,6 @@ func backgroundStatsJobs(ctx context.Context, env evergreen.Environment, ts time
 	return []amboy.Job{
 		NewRemoteAmboyStatsCollector(env, ts.Format(TSFormat)),
 		NewHostStatsCollector(ts.Format(TSFormat)),
-		NewPodStatsCollector(ts.Format(TSFormat)),
 		NewTaskStatsCollector(ts.Format(TSFormat)),
 		NewNotificationStatsCollector(ts.Format(TSFormat)),
 		NewQueueStatsCollector(ts.Format(TSFormat)),
@@ -1067,123 +1029,6 @@ func hostIPAssociationJobs(ctx context.Context, env evergreen.Environment, ts ti
 		jobs = append(jobs, NewHostIPAssociationJob(env, &h, ts.Format(TSFormat)))
 	}
 	return jobs, nil
-}
-
-// podAllocatorJobs returns the queue operation to enqueue jobs to
-// allocate pods to tasks and disable container tasks that exceed the stale
-// undispatched threshold.
-func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting admin settings")
-	}
-
-	if settings.ServiceFlags.PodAllocatorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message": "pod allocation disabled",
-			"impact":  "container tasks will not be allocated any pods to run them",
-			"mode":    "degraded",
-		})
-		return nil, nil
-	}
-
-	if err := model.DisableStaleContainerTasks(ctx, evergreen.StaleContainerTaskMonitor); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not disable stale container tasks",
-			"context": "pod allocation",
-		}))
-	}
-
-	numInitializing, err := pod.CountByInitializing(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "counting initializing pods")
-	}
-
-	grip.Info(message.Fields{
-		"message":          "tracking statistics for number of parallel pods being requested",
-		"num_initializing": numInitializing,
-	})
-
-	remaining := settings.PodLifecycle.MaxParallelPodRequests - numInitializing
-
-	ctq, err := model.NewContainerTaskQueue(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting container task queue")
-	}
-
-	var jobs []amboy.Job
-	for ctq.HasNext() && remaining > 0 {
-		t := ctq.Next()
-		if t == nil {
-			break
-		}
-
-		jobs = append(jobs, NewPodAllocatorJob(t.Id, ts.Format(TSFormat)))
-		remaining--
-	}
-
-	grip.InfoWhen(remaining <= 0 && ctq.Len() > 0, message.Fields{
-		"message":             "reached max parallel pod request limit, not allocating any more",
-		"included_on":         evergreen.ContainerHealthDashboard,
-		"context":             "pod allocation",
-		"num_remaining_tasks": ctq.Len(),
-	})
-
-	return jobs, nil
-}
-
-func podCreationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByInitializing(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding initializing pods")
-	}
-
-	jobs := make([]amboy.Job, 0, len(pods))
-	for _, p := range pods {
-		jobs = append(jobs, NewPodCreationJob(p.ID, ts.Format(TSFormat)))
-	}
-
-	return jobs, nil
-}
-
-func podTerminationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByNeedsTermination(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding pods that need to be terminated")
-	}
-
-	var jobs []amboy.Job
-	for _, p := range pods {
-		jobs = append(jobs, NewPodTerminationJob(p.ID, "system indicates pod should be terminated", ts))
-	}
-	return jobs, nil
-}
-
-// podDefinitionCreationJobs populates the jobs to create pod
-// definitions.
-func podDefinitionCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByInitializing(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding initializing pods")
-	}
-
-	jobs := make([]amboy.Job, 0, len(pods))
-	for _, p := range pods {
-		jobs = append(jobs, NewPodDefinitionCreationJob(env.Settings().Providers.AWS.Pod.ECS, p.TaskContainerCreationOpts, ts.Format(TSFormat)))
-	}
-
-	return jobs, nil
-}
-
-// PopulatePodResourceCleanupJobs populates the jobs to clean up pod
-// resources.
-func PopulatePodResourceCleanupJobs() amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		catcher := grip.NewBasicCatcher()
-		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewPodDefinitionCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing pod definition cleanup job")
-		catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewContainerSecretCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat))), "enqueueing container secret cleanup job")
-		return catcher.Resolve()
-	}
 }
 
 // PopulateUnexpirableSpawnHostStatsJob populates jobs to collect statistics on

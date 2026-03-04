@@ -209,10 +209,15 @@ In GitHub, you can now add a new branch protection rule for the "evergreen/<vari
 **Q:** Can I reduce what variants are run in the merge queue based on what's being tested?
 
 **A:** Yes, by using [Build Variant Path Filtering](Project-Configuration-Files.md#build-variant-path-filtering)
-_(This is currently disabled, but will be rolled out by the end of 2/2026.)_
 Note that this will only run tasks that match the paths for the CURRENT merge group. For example, if the first patch in the merge queue
 modifies only the `src` directory, and the second patch modifies the `test` directory, the second patch will only run variants
 that match the `test` directory.
+
+**Q:** Can I disable path filtering for the merge queue while keeping it for PR patches?
+
+**A:** Yes, you can set `disable_merge_queue_path_filtering: true` at the [top level of your project YAML](Project-Configuration-Files.md#disabling-merge-queue-path-filtering).
+This will skip path filtering for merge queue versions while still applying it to PR patches.
+This is useful when you want selective testing for PRs but comprehensive testing before merging.
 
 **Q:** How can I turn off the merge queue to block users from merging?
 
@@ -259,7 +264,8 @@ Evergreen version, for two reasons:
 set "Only merge non-failing pull requests" to **No**. When this setting is disabled,
 if one PR in a merge group fails but another succeeds, GitHub will still merge the
 successful group. This is useful when you have flaky tasks that occasionally fail
-but don't indicate a real problem with the code. Note that this setting only affects
+but don't indicate a real problem with the code. However, this may result in slowdown as GitHub
+will not be able to merge the group until all PRs in the group have finished. Note that this setting only affects
 behavior within the merge queue (i.e. all PRs must still pass branch protection rules
 before they can be added to the queue).
 
