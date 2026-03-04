@@ -81,6 +81,27 @@ func TestTarGzPackParseParams(t *testing.T) {
 
 			})
 
+			Convey("verbose should default to false when not set", func() {
+				params := map[string]any{
+					"target":     "t",
+					"source_dir": "s",
+					"include":    []string{"i"},
+				}
+				So(cmd.ParseParams(params), ShouldBeNil)
+				So(cmd.Verbose, ShouldBeFalse)
+			})
+
+			Convey("verbose should be true when set to true", func() {
+				params := map[string]any{
+					"target":     "t",
+					"source_dir": "s",
+					"include":    []string{"i"},
+					"verbose":    true,
+				}
+				So(cmd.ParseParams(params), ShouldBeNil)
+				So(cmd.Verbose, ShouldBeTrue)
+			})
+
 		})
 	})
 }
@@ -120,7 +141,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(cmd.SourceDir, ShouldEqual, testDataDir)
 				So(cmd.Include, ShouldResemble, []string{"targz_me/dir1/**"})
 				So(cmd.ExcludeFiles, ShouldResemble, []string{"*.pdb"})
-				numFound, err := cmd.makeArchive(t.Context(), logger.Task())
+				numFound, err := cmd.makeArchive(t.Context(), logger.Task(), false)
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 3)
 
@@ -174,7 +195,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				numFound, err := cmd.makeArchive(t.Context(), logger.Task())
+				numFound, err := cmd.makeArchive(t.Context(), logger.Task(), false)
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 2)
 
@@ -212,7 +233,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				numFound, err := cmd.makeArchive(t.Context(), logger.Task())
+				numFound, err := cmd.makeArchive(t.Context(), logger.Task(), false)
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 1)
 
