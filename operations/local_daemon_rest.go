@@ -270,7 +270,7 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	grip.Error(json.NewEncoder(w).Encode(response))
 }
 
-// handleSetVariable sets a custom variable
+// handleSetVariable sets a custom variable.
 func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Key   string `json:"key"`

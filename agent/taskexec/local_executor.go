@@ -215,7 +215,7 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	return nil
 }
 
-// SetVariable sets a custom variable
+// SetVariable sets a custom variable.
 func (e *LocalExecutor) SetVariable(key, value string) {
 	e.debugState.CustomVars[key] = value
 	e.expansions.Put(key, value)

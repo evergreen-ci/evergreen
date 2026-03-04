@@ -434,7 +434,7 @@ func runUntilCmd(c *cli.Context) error {
 	return nil
 }
 
-// setVariableCmd sets a custom variable
+// setVariableCmd sets a custom variable.
 func setVariableCmd(c *cli.Context) error {
 	if c.NArg() < 1 {
 		return errors.New("variable assignment required (key=value)")
