@@ -131,12 +131,6 @@ input TriggerAliasInput {
   unscheduleDownstreamVersions: Boolean
 }
 
-input ContainerResourcesInput {
-  name: String!
-  cpu: Int!
-  memoryMb: Int!
-}
-
 input PatchTriggerAliasInput {
   alias: String!
   childProjectIdentifier: String!
@@ -253,7 +247,6 @@ type Project {
   branch: String!
   buildBaronSettings: BuildBaronSettings!
   commitQueue: CommitQueueParams!
-  containerSizeDefinitions: [ContainerResources!]
   deactivatePrevious: Boolean
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean

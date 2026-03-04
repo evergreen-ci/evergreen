@@ -37,7 +37,6 @@ type RestTask struct {
 	Activated           bool                  `json:"activated"`
 	BuildId             string                `json:"build_id"`
 	DistroId            string                `json:"distro"`
-	Container           string                `json:"container,omitempty"`
 	BuildVariant        string                `json:"build_variant"`
 	DependsOn           []task.Dependency     `json:"depends_on"`
 	DisplayName         string                `json:"display_name"`
@@ -111,7 +110,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.Activated = srcTask.Activated
 	destTask.BuildId = srcTask.BuildId
 	destTask.DistroId = srcTask.DistroId
-	destTask.Container = srcTask.Container
 	destTask.BuildVariant = srcTask.BuildVariant
 	destTask.DependsOn = srcTask.DependsOn
 	destTask.DisplayName = srcTask.DisplayName

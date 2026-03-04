@@ -329,6 +329,10 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 				},
 				Name: utility.ToStringPtr("evergreen"),
 			},
+			SHA: utility.ToStringPtr("61d770097ca0515e46d29add8f9b69e9d9272b94"),
+		},
+		Head: &github.PullRequestBranch{
+			SHA: utility.ToStringPtr("8e153d2b8781fa46ffd5e9dffb0a646bfbd12b1c"),
 		},
 		Number: utility.ToIntPtr(666),
 	}

@@ -1512,107 +1512,8 @@ func GetPullRequestMergeBase(ctx context.Context, pr *github.PullRequest) (strin
 	repo := pr.GetBase().GetRepo().GetName()
 	baseSHA := pr.GetBase().GetSHA()
 	headSHA := pr.GetHead().GetSHA()
-	prNum := pr.GetNumber()
 
-	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
-	if err == nil {
-		return mergeBase, nil
-	}
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
-		"owner":      owner,
-		"repo":       repo,
-		"head":       headSHA,
-		"head_label": pr.GetHead().GetLabel(),
-		"pr_num":     prNum,
-		"base":       baseSHA,
-		"base_label": pr.GetBase().GetLabel(),
-	}))
-
-	return getPullRequestFallback(ctx, owner, repo, prNum)
-}
-
-// getPullRequestFallback is a secondary way of determining the merge base of a PR via API. A known case where
-// we expect GetGithubMergeBaseRevision to fail is when trying to find the merge base of a PR based on a private fork
-// that our GitHub app is not installed on.
-func getPullRequestFallback(ctx context.Context, owner, repo string, prNum int) (string, error) {
-	caller := "getPullRequestFallback"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
-	defer githubClient.Close()
-
-	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNum, nil)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return "", err
-	}
-
-	if len(commits) == 0 {
-		return "", errors.New("No commits received from github")
-	}
-	if commits[0].GetSHA() == "" {
-		return "", errors.New("hash is missing from pull request commit list")
-	}
-
-	commit, err := getCommit(ctx, owner, repo, *commits[0].SHA)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting commit on %s/%s with SHA '%s'", owner, repo, *commits[0].SHA)
-	}
-	if len(commit.Parents) == 0 {
-		return "", errors.New("can't find pull request branch point")
-	}
-	if commit.Parents[0].GetSHA() == "" {
-		return "", errors.New("parent hash is missing")
-	}
-
-	return commit.Parents[0].GetSHA(), nil
-}
-
-func getCommit(ctx context.Context, owner, repo, sha string) (*github.RepositoryCommit, error) {
-	caller := "getCommit"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, sha),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
-	defer githubClient.Close()
-
-	commit, resp, err := githubClient.Repositories.GetCommit(ctx, owner, repo, sha, nil)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return nil, err
-	}
-	if commit == nil {
-		return nil, errors.New("couldn't find commit")
-	}
-
-	return commit, nil
+	return GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
 }
 
 func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
@@ -2028,8 +1929,11 @@ func makeCheckRunName(task *task.Task) string {
 	return fmt.Sprintf("%s/%s", task.BuildVariantDisplayName, task.DisplayName)
 }
 
-// CreateCheckRun creates a checkRun and returns a Github CheckRun object
-func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
+// CreateCheckRun creates a checkRun and returns a Github CheckRun object.
+// If ghAppAuth is provided, it will first attempt to use the project's GitHub app
+// credentials. If that fails or no app is available, it falls back to using the
+// internal app for installation tokens.
+func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, task *task.Task, output *github.CheckRunOutput, ghAppAuth *githubapp.GithubAppAuth) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -2037,14 +1941,6 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
 
 	opts := github.CreateCheckRunOptions{
 		Name:        makeCheckRunName(task),
@@ -2058,21 +1954,33 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		DetailsURL:  utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
 	}
 
-	checkRun, resp, err := githubClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
+	var checkRun *github.CheckRun
+	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
+		var resp *github.Response
+		var opErr error
+		checkRun, resp, opErr = ghClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if opErr != nil {
+			return errors.Wrap(opErr, "creating checkRun")
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "creating checkRun")
+		return nil, err
 	}
 
 	return checkRun, nil
 }
 
-// UpdateCheckRun updates a checkRun and returns a Github CheckRun object
-// UpdateCheckRunOptions must specify a name for the check run
-func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID int64, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
+// UpdateCheckRun updates a checkRun and returns a Github CheckRun object.
+// UpdateCheckRunOptions must specify a name for the check run.
+// If ghAppAuth is provided, it will first attempt to use the project's GitHub app
+// credentials. If that fails or no app is available, it falls back to using the
+// internal app for installation tokens.
+func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID int64, task *task.Task, output *github.CheckRunOutput, ghAppAuth *githubapp.GithubAppAuth) (*github.CheckRun, error) {
 	caller := "updateCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -2096,19 +2004,20 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 		Output:     output,
 	}
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
-
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
+	var checkRun *github.CheckRun
+	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
+		var resp *github.Response
+		var opErr error
+		checkRun, resp, opErr = ghClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if opErr != nil {
+			return opErr
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "updating checkRun")
 	}

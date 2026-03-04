@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
@@ -18,11 +16,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	ghAppAuthModel "github.com/evergreen-ci/evergreen/model/githubapp"
-	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -413,11 +409,7 @@ func TestCreateProject(t *testing.T) {
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
-
-		cocoaMock.ResetGlobalSecretCache()
 	}()
-
-	smClient := &cocoaMock.SecretsManagerClient{}
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
@@ -428,17 +420,6 @@ func TestCreateProject(t *testing.T) {
 			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
-			require.Len(t, dbProjRef.ContainerSecrets, 1, "should create pod secret for new project")
-			assert.NotZero(t, dbProjRef.ContainerSecrets[0].Name)
-			assert.Equal(t, model.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
-			assert.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalName)
-			assert.NotZero(t, dbProjRef.ContainerSecrets[0].ExternalID)
-
-			getValOut, err := smClient.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-				SecretId: utility.ToStringPtr(dbProjRef.ContainerSecrets[0].ExternalID),
-			})
-			require.NoError(t, err, "new pod secret should be stored")
-			assert.NotZero(t, utility.FromStringPtr(getValOut.SecretString))
 		},
 		"FailsWithAlreadyExistingID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
 			require.NoError(t, pRef.Insert(t.Context()))
@@ -509,8 +490,6 @@ func TestCreateProject(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
-			cocoaMock.ResetGlobalSecretCache()
-
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
@@ -566,36 +545,6 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	require.Empty(t, eventLog.Before.ProjectRef.PeriodicBuilds)
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 	require.Empty(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
-}
-
-func TestRequestS3Creds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
-	assert.Error(t, RequestS3Creds(ctx, "", ""))
-	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err := notification.FindUnprocessed(t.Context())
-	assert.NoError(t, err)
-	assert.Empty(t, n)
-	projectCreationConfig := evergreen.ProjectCreationConfig{
-		JiraProject: "BUILD",
-	}
-	assert.NoError(t, projectCreationConfig.Set(ctx))
-	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err = notification.FindUnprocessed(t.Context())
-	assert.NoError(t, err)
-	assert.Len(t, n, 1)
-	assert.Equal(t, event.JIRAIssueSubscriberType, n[0].Subscriber.Type)
-	target := n[0].Subscriber.Target.(*event.JIRAIssueSubscriber)
-	assert.Equal(t, "BUILD", target.Project)
-	payload := n[0].Payload.(*message.JiraIssue)
-	summary := "Create AWS bucket for s3 uploads for 'identifier' project"
-	description := "Could you create an s3 bucket and role arn for the new [identifier|/project/identifier/settings/general] project?"
-	assert.Equal(t, "BUILD", payload.Project)
-	assert.Equal(t, summary, payload.Summary)
-	assert.Equal(t, description, payload.Description)
-	assert.Equal(t, "user@email.com", payload.Reporter)
 }
 
 func TestHideBranch(t *testing.T) {

@@ -82,12 +82,6 @@
       "buffer_interval_seconds": 30
     },
     {
-      "_id": "pod_lifecycle",
-      "max_parallel_pod_requests": 100,
-      "max_pod_definition_cleanup_rate": 0,
-      "max_secret_cleanup_rate": 0
-    },
-    {
       "_id": "hostinit",
       "cloud_batch_size": 100,
       "host_throttle": 32,
@@ -423,50 +417,6 @@
         "alertable_instance_types": ["m5.24xlarge", "c5.24xlarge"],
         "allowed_regions": ["us-east-1", "us-west-1", "us-west-2"],
         "max_volume_size": 1000,
-        "pod": {
-          "role": "arn:aws:iam::123456789012:role/ECSTaskRole",
-          "region": "us-east-1",
-          "ecs": {
-            "max_cpu": 1024,
-            "max_memory_mb": 1024,
-            "task_definition_prefix": "evergreen-",
-            "task_role": "arn:aws:iam::123456789012:role/ECSTaskRole",
-            "execution_role": "arn:aws:iam::123456789012:role/ECSExecutionRole",
-            "log_region": "us-east-1",
-            "log_group": "/evergreen/ecs",
-            "log_stream_prefix": "evergreen-task-",
-            "awsvpc": {
-              "subnets": ["subnet-12345678", "subnet-87654321"],
-              "security_groups": ["sg-12345678", "sg-87654321"]
-            },
-            "clusters": [
-              {
-                "name": "evergreen-cluster-1",
-                "os": "linux"
-              },
-              {
-                "name": "evergreen-cluster-2",
-                "os": "windows"
-              }
-            ],
-            "capacity_providers": [
-              {
-                "name": "FARGATE",
-                "os": "linux",
-                "arch": "amd64"
-              },
-              {
-                "name": "EC2",
-                "os": "linux",
-                "arch": "arm64"
-              }
-            ],
-            "allowed_images": ["amazonlinux:latest", "ubuntu:20.04", "centos:8"]
-          },
-          "secrets_manager": {
-            "secret_prefix": "evergreen/"
-          }
-        },
         "account_roles": [
           {
             "account": "123456789012",

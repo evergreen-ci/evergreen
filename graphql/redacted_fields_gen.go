@@ -40,7 +40,6 @@ var redactedFields = map[string]bool{
 	"roleARN": true,
 	"secret": true,
 	"secretARN": true,
-	"secretPrefix": true,
 	"securityGroups": true,
 	"senderAddress": true,
 	"servicePassword": true,

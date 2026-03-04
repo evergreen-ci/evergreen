@@ -132,6 +132,17 @@ func Debug() cli.Command {
 				Action:    runUntilCmd,
 			},
 			{
+				Name:   "list-steps",
+				Usage:  "List all steps in the current task",
+				Action: listStepsCmd,
+			},
+			{
+				Name:      "set-var",
+				Usage:     "Set a custom variable",
+				ArgsUsage: "<key>=<value>",
+				Action:    setVariableCmd,
+			},
+			{
 				Name:      "jump",
 				Usage:     "Jump to a specific step without executing",
 				ArgsUsage: "<step_index>",
@@ -451,6 +462,91 @@ func jumpToCmd(c *cli.Context) error {
 	}
 
 	grip.Infof("Jumped to step %v\n", resp["current_step"])
+	return nil
+}
+
+// setVariableCmd sets a custom variable.
+func setVariableCmd(c *cli.Context) error {
+	if c.NArg() < 1 {
+		return errors.New("variable assignment required (key=value)")
+	}
+
+	// Parse key=value
+	assignment := c.Args().Get(0)
+	parts := bytes.SplitN([]byte(assignment), []byte("="), 2)
+	if len(parts) != 2 {
+		return errors.New("invalid format, use key=value")
+	}
+
+	key := string(parts[0])
+	value := string(parts[1])
+
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	reqBody := map[string]string{
+		"key":   key,
+		"value": value,
+	}
+
+	_, err = postJSON(url+"/variable/set", reqBody)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Set variable: %s=%s\n", key, value)
+	return nil
+}
+
+// listStepsCmd lists all steps
+func listStepsCmd(c *cli.Context) error {
+	url, err := getDaemonURL()
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Get(url + "/task/list-steps")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyData, _ := io.ReadAll(resp.Body)
+		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	steps := result["steps"].([]interface{})
+	currentStep := int(result["current_step"].(float64))
+
+	fmt.Println("Steps:")
+	for _, stepRaw := range steps {
+		step := stepRaw.(map[string]interface{})
+		index := int(step["index"].(float64))
+		marker := "  "
+		if index == currentStep {
+			marker = "→ "
+		}
+
+		status := ""
+		if step["executed"].(bool) {
+			if step["success"].(bool) {
+				status = " ✓"
+			} else {
+				status = " ✗"
+			}
+		}
+
+		fmt.Printf("%s%d: %s%s\n", marker, index, step["display_name"], status)
+	}
+
 	return nil
 }
 
