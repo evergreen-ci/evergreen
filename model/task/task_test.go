@@ -4953,4 +4953,13 @@ func TestHasValidDistro(t *testing.T) {
 		}
 		assert.Equal(t, false, task.HasValidDistro(ctx))
 	})
+
+	t.Run("DisplayTaskReturnsTrue", func(t *testing.T) {
+		task := &Task{
+			Id:          "display-task",
+			DisplayOnly: true,
+			DistroId:    "",
+		}
+		assert.True(t, task.HasValidDistro(ctx))
+	})
 }
