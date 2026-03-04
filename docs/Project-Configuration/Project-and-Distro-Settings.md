@@ -259,11 +259,15 @@ This supports GitHub checks on commits (i.e. to be visible at
 regexes/tags are required, and GitHub statuses will be sent with only
 the status of those tasks on the mainline commit version.
 
-##### Run Every Mainline Commit
+### Run Every Mainline Commit
 
 Definitions for this section exist under the "GitHub" tab.
 
 Although a version gets created for every commit on a project with the repotracker, it does not necessarily activate each version. Evergreen runs a job periodically that activates the latest repotracker version. This is to avoid running unnecessary versions if there are a lot of commits in a short period of time. If you would like to activate every version created by the repotracker, you can enable "Run Every Mainline Commit". This will ensure that every version created by the repotracker gets activated and runs their tasks.
+
+#### Interaction with batchtime and cron
+
+"Run Every Mainline Commit" does not override batchtime and cron. Batchtime will still result in only the latest task or build variant being activated after the specified batchtime. Cron will still result in only the latest task or build variant being activated at the specified cron time.
 
 ![run_every_mainline_commit.png](../images/run_every_mainline_commit.png)
 
