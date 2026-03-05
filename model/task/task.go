@@ -4238,6 +4238,10 @@ func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 
 // HasValidDistro determines if the task has a valid distro.
 func (t *Task) HasValidDistro(ctx context.Context) bool {
+	// Display tasks do not have distros.
+	if t.DisplayOnly {
+		return true
+	}
 	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
 	if err == nil {
 		return true

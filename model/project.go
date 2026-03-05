@@ -69,6 +69,18 @@ type Project struct {
 
 	// Number of includes in the project cached for validation
 	NumIncludes int `yaml:"-" bson:"-"`
+
+	// tasksByName is an in-memory cache for O(1) task lookups.
+	tasksByName map[string]*ProjectTask `yaml:"-" bson:"-"`
+}
+
+// buildTaskCache creates the tasksByName map for O(1) task lookups.
+// This should be called once after the Project is fully constructed.
+func (p *Project) buildTaskCache() {
+	p.tasksByName = make(map[string]*ProjectTask, len(p.Tasks))
+	for i := range p.Tasks {
+		p.tasksByName[p.Tasks[i].Name] = &p.Tasks[i]
+	}
 }
 
 type ProjectInfo struct {
@@ -1429,6 +1441,11 @@ func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string
 }
 
 func (p *Project) FindProjectTask(name string) *ProjectTask {
+	if p.tasksByName != nil {
+		return p.tasksByName[name]
+	}
+
+	// Fallback to linear search for backwards compatibility or edge cases
 	for _, t := range p.Tasks {
 		if t.Name == name {
 			return &t
