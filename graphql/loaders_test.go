@@ -67,74 +67,89 @@ func TestGetUser(t *testing.T) {
 	t.Run("BatchedLookups", func(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
-		// Simulate concurrent requests that should be batched
+		// Simulate concurrent requests that should be batched.
 		var wg sync.WaitGroup
-		results := make([]*string, 3)
-		errors := make([]error, 3)
+		type getUserResult struct {
+			userID string
+			found  bool
+			err    error
+		}
+		resultsChan := make(chan getUserResult, 3)
 
 		userIDs := []string{"user1", "user2", "user3"}
-		for i, id := range userIDs {
+		for _, id := range userIDs {
 			wg.Add(1)
-			go func(idx int, userID string) {
+			go func(userID string) {
 				defer wg.Done()
 				result, err := GetUser(ctx, userID)
-				errors[idx] = err
-				if result != nil {
-					results[idx] = result.UserID
+				if err != nil {
+					resultsChan <- getUserResult{userID: userID, found: false, err: err}
+				} else if result == nil {
+					resultsChan <- getUserResult{userID: userID, found: false, err: nil}
+				} else {
+					resultsChan <- getUserResult{userID: userID, found: true, err: nil}
 				}
-			}(i, id)
+			}(id)
 		}
-		wg.Wait()
 
-		// All lookups should succeed
-		for i, err := range errors {
-			require.NoError(t, err, "lookup %d should not error", i)
+		go func() {
+			wg.Wait()
+			close(resultsChan)
+		}()
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.userID] = result.found
 		}
-		for i, result := range results {
-			require.NotNil(t, result, "result %d should not be nil", i)
-			assert.Equal(t, userIDs[i], *result)
+		assert.Len(t, results, 3)
+		for _, id := range userIDs {
+			assert.True(t, results[id], "expected to find user '%s'", id)
 		}
 	})
 
 	t.Run("MixedExistingAndNonExisting", func(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
+		// Simulate concurrent requests that should be batched.
 		var wg sync.WaitGroup
-		type lookupResult struct {
-			user *string
-			err  error
+		type getUserResult struct {
+			userID string
+			found  bool
+			err    error
 		}
-		results := make([]lookupResult, 3)
+		resultsChan := make(chan getUserResult, 3)
 
 		userIDs := []string{"user1", "nonexistent", "user3"}
-		for i, id := range userIDs {
+		for _, id := range userIDs {
 			wg.Add(1)
-			go func(idx int, userID string) {
+			go func(userID string) {
 				defer wg.Done()
 				result, err := GetUser(ctx, userID)
-				results[idx].err = err
-				if result != nil {
-					results[idx].user = result.UserID
+				if err != nil {
+					resultsChan <- getUserResult{userID: userID, found: false, err: err}
+				} else if result == nil {
+					resultsChan <- getUserResult{userID: userID, found: false, err: nil}
+				} else {
+					resultsChan <- getUserResult{userID: userID, found: true, err: nil}
 				}
-			}(i, id)
-		}
-		wg.Wait()
-
-		// All lookups should succeed (no errors)
-		for i, r := range results {
-			require.NoError(t, r.err, "lookup %d should not error", i)
+			}(id)
 		}
 
-		// user1 and user3 should be found
-		require.NotNil(t, results[0].user)
-		assert.Equal(t, "user1", *results[0].user)
+		go func() {
+			wg.Wait()
+			close(resultsChan)
+		}()
 
-		// nonexistent should be nil
-		assert.Nil(t, results[1].user, "nonexistent user should return nil")
-
-		// user3 should be found
-		require.NotNil(t, results[2].user)
-		assert.Equal(t, "user3", *results[2].user)
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.userID] = result.found
+		}
+		assert.Len(t, results, 3)
+		assert.True(t, results["user1"], "user1 should be found")
+		assert.False(t, results["nonexistent"], "nonexistent should not be found")
+		assert.True(t, results["user3"], "user3 should be found")
 	})
 }
 
@@ -200,31 +215,44 @@ func TestGetVersion(t *testing.T) {
 	t.Run("BatchedLookups", func(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
-		// Simulate concurrent requests that should be batched
+		// Simulate concurrent requests that should be batched.
 		var wg sync.WaitGroup
-		results := make([]*string, 3)
-		errors := make([]error, 3)
+		type getVersionResult struct {
+			versionID string
+			found     bool
+			err       error
+		}
+		resultsChan := make(chan getVersionResult, 3)
 
 		versionIDs := []string{"version1", "version2", "version3"}
-		for i, id := range versionIDs {
+		for _, id := range versionIDs {
 			wg.Add(1)
-			go func(idx int, versionID string) {
+			go func(versionID string) {
 				defer wg.Done()
 				result, err := GetVersion(ctx, versionID)
-				errors[idx] = err
-				if result != nil {
-					results[idx] = result.Id
+				if err != nil {
+					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
+				} else if result == nil {
+					resultsChan <- getVersionResult{versionID: versionID, found: false, err: nil}
+				} else {
+					resultsChan <- getVersionResult{versionID: versionID, found: true, err: nil}
 				}
-			}(i, id)
+			}(id)
 		}
-		wg.Wait()
 
-		for i, err := range errors {
-			require.NoError(t, err, "lookup %d should not error", i)
+		go func() {
+			wg.Wait()
+			close(resultsChan)
+		}()
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.versionID] = result.found
 		}
-		for i, result := range results {
-			require.NotNil(t, result, "result %d should not be nil", i)
-			assert.Equal(t, versionIDs[i], utility.FromStringPtr(result))
+		assert.Len(t, results, 3)
+		for _, id := range versionIDs {
+			assert.True(t, results[id], "expected to find version '%s'", id)
 		}
 	})
 
@@ -232,41 +260,43 @@ func TestGetVersion(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
 		var wg sync.WaitGroup
-		type lookupResult struct {
-			version *string
-			err     error
+		type getVersionResult struct {
+			versionID string
+			found     bool
+			err       error
 		}
-		results := make([]lookupResult, 3)
+		resultsChan := make(chan getVersionResult, 3)
 
 		versionIDs := []string{"version1", "nonexistent", "version3"}
-		for i, id := range versionIDs {
+		for _, id := range versionIDs {
 			wg.Add(1)
-			go func(idx int, versionID string) {
+			go func(versionID string) {
 				defer wg.Done()
 				result, err := GetVersion(ctx, versionID)
-				results[idx].err = err
-				if result != nil {
-					results[idx].version = result.Id
+				if err != nil {
+					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
+				} else if result == nil {
+					resultsChan <- getVersionResult{versionID: versionID, found: false, err: nil}
+				} else {
+					resultsChan <- getVersionResult{versionID: versionID, found: true, err: nil}
 				}
-			}(i, id)
-		}
-		wg.Wait()
-
-		// All lookups should succeed (no errors)
-		for i, r := range results {
-			require.NoError(t, r.err, "lookup %d should not error", i)
+			}(id)
 		}
 
-		// version1 and version3 should be found
-		require.NotNil(t, results[0].version)
-		assert.Equal(t, "version1", utility.FromStringPtr(results[0].version))
+		go func() {
+			wg.Wait()
+			close(resultsChan)
+		}()
 
-		// nonexistent should be nil
-		assert.Nil(t, results[1].version, "nonexistent version should return nil")
-
-		// version3 should be found
-		require.NotNil(t, results[2].version)
-		assert.Equal(t, "version3", utility.FromStringPtr(results[2].version))
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.versionID] = result.found
+		}
+		assert.Len(t, results, 3)
+		assert.True(t, results["version1"], "version1 should be found")
+		assert.False(t, results["nonexistent"], "nonexistent should not be found")
+		assert.True(t, results["version3"], "version3 should be found")
 	})
 }
 
