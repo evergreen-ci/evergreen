@@ -151,8 +151,8 @@ func (h *Host) GetSSHPort() int {
 }
 
 // GetSSHOptions returns the options to SSH into this host from an application
-// server.
-func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
+// server. It relies on the SSH key already being loaded in ssh-agent.
+func (h *Host) GetSSHOptions() ([]string, error) {
 	var opts []string
 	var hasKnownHostsFile bool
 	var distroPortOption string
@@ -229,7 +229,7 @@ func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, 
 
 func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
-	sshOpts, err := h.GetSSHOptions(env.Settings())
+	sshOpts, err := h.GetSSHOptions()
 	if err != nil {
 		return "", errors.Wrap(err, "getting host's SSH options")
 	}
@@ -803,13 +803,13 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 		return nil, errors.New("hosts without any provisioning method cannot use Jasper")
 	}
 
-	settings := env.Settings()
 	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.NeedsReprovision == ReprovisionToLegacy {
-		sshOpts, err := h.GetSSHOptions(settings)
+		sshOpts, err := h.GetSSHOptions()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting host's SSH options")
 		}
 
+		settings := env.Settings()
 		var remoteOpts options.Remote
 		remoteOpts.Host = h.Host
 		remoteOpts.User = h.User
@@ -838,6 +838,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			return nil, errors.New("cannot resolve Jasper service address if neither host name nor IP is set")
 		}
 
+		settings := env.Settings()
 		addrStr := fmt.Sprintf("%s:%d", hostName, settings.HostJasper.Port)
 
 		serviceAddr, err := net.ResolveTCPAddr("tcp", addrStr)

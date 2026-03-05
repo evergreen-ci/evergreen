@@ -114,33 +114,33 @@ func TestGetSSHOptions(t *testing.T) {
 			assert.True(t, exists[expected[i]+expected[i+1]], "missing (\"%s\",\"%s\")", expected[i], expected[i+1])
 		}
 	}
-	for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
-		"ReturnsExpectedArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"ReturnsExpectedArguments": func(t *testing.T, h *Host) {
 			expected := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
-			opts, err := h.GetSSHOptions(settings)
+			opts, err := h.GetSSHOptions()
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
-		"SetsDistroPortIfHostSpecificPortIsUnspecified": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"SetsDistroPortIfHostSpecificPortIsUnspecified": func(t *testing.T, h *Host) {
 			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=123")
 			expected := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
-			opts, err := h.GetSSHOptions(settings)
+			opts, err := h.GetSSHOptions()
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
-		"PrioritizesHostSpecificPortOverDistroPort": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"PrioritizesHostSpecificPortOverDistroPort": func(t *testing.T, h *Host) {
 			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=456")
 			h.SSHPort = 123
 			expected := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
-			opts, err := h.GetSSHOptions(settings)
+			opts, err := h.GetSSHOptions()
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
-		"IncludesAdditionalArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+		"IncludesAdditionalArguments": func(t *testing.T, h *Host) {
 			h.Distro.SSHOptions = []string{"UserKnownHostsFile=/path/to/file"}
 
 			expected := []string{"-o", h.Distro.SSHOptions[0]}
-			opts, err := h.GetSSHOptions(settings)
+			opts, err := h.GetSSHOptions()
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
@@ -148,7 +148,7 @@ func TestGetSSHOptions(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			testCase(t, &Host{
 				Id: "id",
-			}, &evergreen.Settings{})
+			})
 		})
 	}
 }
