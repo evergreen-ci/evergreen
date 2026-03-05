@@ -1183,6 +1183,8 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		DisplayTaskId:              utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:       creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 		CachedProjectStorageMethod: creationInfo.Version.ProjectStorageMethod,
+		Patchable:                  buildVarTask.Patchable,
+		PatchOnly:                  buildVarTask.PatchOnly,
 	}
 
 	t.DisplayStatusCache = t.DetermineDisplayStatus()

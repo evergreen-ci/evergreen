@@ -329,6 +329,11 @@ type Task struct {
 	// TestSelectionEnabled indicates whether test selection is enabled for this
 	// task.
 	TestSelectionEnabled bool `bson:"test_selection_enabled" json:"test_selection_enabled"`
+
+	// Patchable indicates whether this task can run in patches.
+	Patchable *bool `bson:"patchable,omitempty" json:"patchable,omitempty"`
+	// PatchOnly indicates whether this task can only run in patches, not mainline.
+	PatchOnly *bool `bson:"patch_only,omitempty" json:"patch_only,omitempty"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.

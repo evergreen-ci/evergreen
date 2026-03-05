@@ -129,6 +129,8 @@ var (
 	HasAnnotationsKey             = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
 	NumNextTaskDispatchesKey      = bsonutil.MustHaveTag(Task{}, "NumNextTaskDispatches")
 	CachedProjectStorageMethodKey = bsonutil.MustHaveTag(Task{}, "CachedProjectStorageMethod")
+	PatchableKey                  = bsonutil.MustHaveTag(Task{}, "Patchable")
+	PatchOnlyKey                  = bsonutil.MustHaveTag(Task{}, "PatchOnly")
 )
 
 var (
