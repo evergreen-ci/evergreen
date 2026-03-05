@@ -329,6 +329,10 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 				},
 				Name: utility.ToStringPtr("evergreen"),
 			},
+			SHA: utility.ToStringPtr("61d770097ca0515e46d29add8f9b69e9d9272b94"),
+		},
+		Head: &github.PullRequestBranch{
+			SHA: utility.ToStringPtr("8e153d2b8781fa46ffd5e9dffb0a646bfbd12b1c"),
 		},
 		Number: utility.ToIntPtr(666),
 	}
@@ -403,17 +407,35 @@ func (s *githubSuite) TestGitHubUserPermissionLevel() {
 }
 
 func (s *githubSuite) TestGetGithubPullRequestDiff() {
-	p := GithubPatch{
-		PRNumber:   448,
-		BaseOwner:  "evergreen-ci",
-		BaseRepo:   "evergreen",
-		BaseBranch: "main",
-	}
+	s.Run("StandardPullRequest", func() {
+		p := GithubPatch{
+			PRNumber:   448,
+			BaseOwner:  "evergreen-ci",
+			BaseRepo:   "evergreen",
+			BaseBranch: "main",
+		}
 
-	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
-	s.NoError(err)
-	s.Len(summaries, 2)
-	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
+		diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
+		s.NoError(err)
+		s.Len(summaries, 2)
+		s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
+	})
+
+	s.Run("PullRequestWithBinaryFile", func() {
+		p := GithubPatch{
+			PRNumber:   9880,
+			BaseOwner:  "evergreen-ci",
+			BaseRepo:   "evergreen",
+			BaseBranch: "main",
+		}
+
+		diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
+		s.NoError(err)
+		s.Len(summaries, 7)
+		// These are the headers that indicate a binary file is included in the patch.
+		s.Contains(diff, "GIT binary patch")
+		s.Contains(diff, "literal 1006867")
+	})
 }
 
 func (s *githubSuite) TestGetBranchProtectionRules() {

@@ -1,0 +1,14 @@
+mutation {
+  saveAdminSettings(
+    adminSettings: {
+      oktaServiceConfig: {
+        clientId: "service-id"
+        clientSecret: "service-secret"
+      }
+    }
+  ) {
+    oktaServiceConfig {
+      clientId
+    }
+  }
+}

@@ -19,6 +19,7 @@ func NewConfigModel() *APIAdminSettings {
 		AmboyDB:             &APIAmboyDBConfig{},
 		Api:                 &APIapiConfig{},
 		AuthConfig:          &APIAuthConfig{},
+		OktaServiceConfig:   &APIOktaServiceConfig{},
 		Buckets:             &APIBucketsConfig{},
 		Cedar:               &APICedarConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
@@ -65,6 +66,7 @@ type APIAdminSettings struct {
 	Api                     *APIapiConfig                 `json:"api,omitempty"`
 	AWSInstanceRole         *string                       `json:"aws_instance_role,omitempty"`
 	AuthConfig              *APIAuthConfig                `json:"auth,omitempty"`
+	OktaServiceConfig       *APIOktaServiceConfig         `json:"okta_service,omitempty"`
 	Banner                  *string                       `json:"banner,omitempty"`
 	BannerTheme             *string                       `json:"banner_theme,omitempty"`
 	Buckets                 *APIBucketsConfig             `json:"buckets,omitempty"`
@@ -687,6 +689,29 @@ func (a *APIAuthConfig) ToService() (any, error) {
 		PreferredType:           utility.FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 		AllowServiceUsers:       a.AllowServiceUsers,
+	}, nil
+}
+
+type APIOktaServiceConfig struct {
+	ClientID     *string `json:"client_id"`
+	ClientSecret *string `json:"client_secret"`
+}
+
+func (a *APIOktaServiceConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.OktaServiceConfig:
+		a.ClientID = utility.ToStringPtr(v.ClientID)
+		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
+	default:
+		return errors.Errorf("programmatic error: expected Okta service config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIOktaServiceConfig) ToService() (any, error) {
+	return evergreen.OktaServiceConfig{
+		ClientID:     utility.FromStringPtr(a.ClientID),
+		ClientSecret: utility.FromStringPtr(a.ClientSecret),
 	}, nil
 }
 

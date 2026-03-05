@@ -43,6 +43,8 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
 	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
 	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
+	router.HandleFunc("/step/jump/{index}", d.handleJumpTo).Methods("POST")
+	router.HandleFunc("/variable/set", d.handleSetVariable).Methods("POST")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -64,7 +66,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, errors.Wrap(err, "loading config").Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -120,7 +122,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, errors.Wrap(err, "selecting task").Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -166,6 +168,35 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 	}
 
 	return nil
+}
+
+// handleJumpTo jumps to a specific step
+func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	index, err := strconv.Atoi(vars["index"])
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid step index %d", index), http.StatusBadRequest)
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	if err := d.executor.JumpTo(index); err != nil {
+		http.Error(w, errors.Wrap(err, "jumping to index").Error(), http.StatusBadRequest)
+		return
+	}
+
+	state := d.executor.GetDebugState()
+	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"current_step": state.CurrentStepIndex,
+	}))
 }
 
 // handleListSteps lists all steps in the current task
@@ -216,7 +247,7 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	index, err := strconv.Atoi(vars["index"])
 	if err != nil {
-		http.Error(w, "invalid step index", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid step index %d", index), http.StatusBadRequest)
 		return
 	}
 
@@ -267,6 +298,30 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	grip.Error(json.NewEncoder(w).Encode(response))
+}
+
+// handleSetVariable sets a custom variable.
+func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	d.executor.SetVariable(req.Key, req.Value)
+	grip.Error(json.NewEncoder(w).Encode(map[string]bool{"success": true}))
 }
 
 // handleStepNext executes the next step

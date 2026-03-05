@@ -240,10 +240,15 @@ func TestWriteDaemonInfo(t *testing.T) {
 }
 
 func TestRouterSetup(t *testing.T) {
-	daemon := newLocalDaemonREST(9090, &ClientSettings{})
+	d := newLocalDaemonREST(9090, &ClientSettings{})
 	router := mux.NewRouter()
-	router.HandleFunc("/health", daemon.handleHealth).Methods("GET")
-	router.HandleFunc("/config/load", daemon.handleLoadConfig).Methods("POST")
+	router.HandleFunc("/health", d.handleHealth).Methods("GET")
+	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
+	router.HandleFunc("/task/select", d.handleSelectTask).Methods("POST")
+	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
+	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
+	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
+	router.HandleFunc("/step/jump/{index}", d.handleJumpTo).Methods("POST")
 
 	req, err := http.NewRequest("GET", "/health", nil)
 	require.NoError(t, err)
@@ -252,6 +257,71 @@ func TestRouterSetup(t *testing.T) {
 	router.ServeHTTP(recorder, req)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func TestJumpToCmd(t *testing.T) {
+	t.Run("no step index provided", func(t *testing.T) {
+		app := cli.NewApp()
+		set := flag.NewFlagSet("test", 0)
+		c := cli.NewContext(app, set, nil)
+		err := jumpToCmd(c)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "step index required")
+	})
+
+	t.Run("invalid step index", func(t *testing.T) {
+		app := cli.NewApp()
+		set := flag.NewFlagSet("test", 0)
+		require.NoError(t, set.Parse([]string{"notanumber"}))
+		c := cli.NewContext(app, set, nil)
+		err := jumpToCmd(c)
+		assert.Error(t, err)
+	})
+
+	t.Run("successful jump", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/health":
+				w.WriteHeader(http.StatusOK)
+			case "/step/jump/3":
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]interface{}{
+					"success":      true,
+					"current_step": 3,
+				}))
+			}
+		}))
+		defer server.Close()
+
+		tempDir, err := os.MkdirTemp("", "jump_to_test")
+		require.NoError(t, err)
+		defer os.RemoveAll(tempDir)
+
+		homeEnvVar := getHomeEnvVar()
+		origHome := os.Getenv(homeEnvVar)
+		err = os.Setenv(homeEnvVar, tempDir)
+		require.NoError(t, err)
+		defer os.Setenv(homeEnvVar, origHome)
+
+		daemonDir := filepath.Join(tempDir, ".evergreen-local")
+		err = os.MkdirAll(daemonDir, 0755)
+		require.NoError(t, err)
+
+		var port int
+		_, err = fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+
+		portFile := filepath.Join(daemonDir, "daemon.port")
+		err = os.WriteFile(portFile, []byte(fmt.Sprintf("%d", port)), 0644)
+		require.NoError(t, err)
+
+		app := cli.NewApp()
+		set := flag.NewFlagSet("test", 0)
+		require.NoError(t, set.Parse([]string{"3"}))
+		c := cli.NewContext(app, set, nil)
+
+		err = jumpToCmd(c)
+		assert.NoError(t, err)
+	})
 }
 
 func TestSelectTaskCmd(t *testing.T) {

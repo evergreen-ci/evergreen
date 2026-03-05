@@ -57,6 +57,11 @@
       "background_reauth_minutes": 0
     },
     {
+      "_id": "okta_service",
+      "client_id": "service-id",
+      "client_secret": "service-secret"
+    },
+    {
       "_id": "global",
       "uiv2_url": "http://localhost:3000",
       "configdir": "../config",
