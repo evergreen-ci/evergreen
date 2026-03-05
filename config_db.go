@@ -112,6 +112,9 @@ var (
 	unexpirableVolumesPerUserKey = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableVolumesPerUser")
 	spawnhostsPerUserKey         = bsonutil.MustHaveTag(SpawnHostConfig{}, "SpawnHostsPerUser")
 
+	oktaServiceClientIDKey     = bsonutil.MustHaveTag(OktaServiceConfig{}, "ClientID")
+	oktaServiceClientSecretKey = bsonutil.MustHaveTag(OktaServiceConfig{}, "ClientSecret")
+
 	tracerEnabledKey                   = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
 	tracerCollectorEndpointKey         = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")
 	tracerCollectorInternalEndpointKey = bsonutil.MustHaveTag(TracerConfig{}, "CollectorInternalEndpoint")

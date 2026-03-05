@@ -1,0 +1,9 @@
+type OktaServiceConfig {
+  clientId: String @requireAdmin
+  clientSecret: String @requireAdmin
+}
+
+input OktaServiceConfigInput {
+  clientId: String @redactSecrets
+  clientSecret: String @redactSecrets
+}
