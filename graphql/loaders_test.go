@@ -86,10 +86,8 @@ func TestGetUser(t *testing.T) {
 			}(id)
 		}
 
-		go func() {
-			wg.Wait()
-			close(resultsChan)
-		}()
+		wg.Wait()
+		close(resultsChan)
 
 		results := make(map[string]bool)
 		for result := range resultsChan {
@@ -124,10 +122,8 @@ func TestGetUser(t *testing.T) {
 			}(id)
 		}
 
-		go func() {
-			wg.Wait()
-			close(resultsChan)
-		}()
+		wg.Wait()
+		close(resultsChan)
 
 		results := make(map[string]bool)
 		for result := range resultsChan {
@@ -219,14 +215,12 @@ func TestGetVersion(t *testing.T) {
 				defer wg.Done()
 				result, err := GetVersion(ctx, versionID)
 				resultsChan <- getVersionResult{versionID: versionID, found: result != nil, err: err}
-				}
+
 			}(id)
 		}
 
-		go func() {
-			wg.Wait()
-			close(resultsChan)
-		}()
+		wg.Wait()
+		close(resultsChan)
 
 		results := make(map[string]bool)
 		for result := range resultsChan {
@@ -256,14 +250,18 @@ func TestGetVersion(t *testing.T) {
 			go func(versionID string) {
 				defer wg.Done()
 				result, err := GetVersion(ctx, versionID)
-				resultsChan <- getVersionResult{versionID: versionID, found: result != nil, err: err}
+				if err != nil {
+					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
+				} else if result == nil {
+					resultsChan <- getVersionResult{versionID: versionID, found: false, err: nil}
+				} else {
+					resultsChan <- getVersionResult{versionID: versionID, found: true, err: nil}
+				}
 			}(id)
 		}
 
-		go func() {
-			wg.Wait()
-			close(resultsChan)
-		}()
+		wg.Wait()
+		close(resultsChan)
 
 		results := make(map[string]bool)
 		for result := range resultsChan {
