@@ -1,0 +1,8 @@
+query Auth {
+  adminSettings {
+    oktaServiceConfig {
+      clientId
+      clientSecret
+    }
+  }
+}

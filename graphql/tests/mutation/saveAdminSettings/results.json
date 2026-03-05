@@ -275,6 +275,19 @@
       }
     },
     {
+      "query_file": "okta_service.graphql",
+      "result": {
+        "data": {
+          "saveAdminSettings": {
+            "oktaServiceConfig": {
+              "clientId": "service-id",
+              "clientSecret": "service-secret"
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "background_processing.graphql",
       "result": {
         "data": {
