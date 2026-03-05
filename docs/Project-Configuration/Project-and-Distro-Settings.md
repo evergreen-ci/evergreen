@@ -269,7 +269,7 @@ Although a version gets created for every commit on a project with the repotrack
 
 "Run Every Mainline Commit" does not override batchtime and cron. Batchtime will still result in only the latest task or build variant being activated after the specified batchtime. Cron will still result in only the latest task or build variant being activated at the specified cron time.
 
-![run_every_mainline_commit.png](../images/run_every_mainline_commit.png)
+![run-every-mainline-commit-project-setting.png](../images/run-every-mainline-commit-project-setting.png)
 
 ### Triggering Versions With Git Tags
 
