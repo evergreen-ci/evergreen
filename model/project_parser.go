@@ -1437,6 +1437,10 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)
+
+	// Build the task cache for O(1) lookups
+	proj.buildTaskCache()
+
 	return proj, errors.Wrap(catcher.Resolve(), TranslateProjectError)
 }
 
