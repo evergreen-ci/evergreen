@@ -103,7 +103,6 @@ type ParserProject struct {
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
 	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
 	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Containers         []Container                `yaml:"containers,omitempty" bson:"containers,omitempty"`
 	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
 	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
@@ -111,6 +110,9 @@ type ParserProject struct {
 	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	TimeoutSecs        *int                       `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+
+	// DisableMergeQueuePathFiltering, if true, skips path filtering for merge queue versions.
+	DisableMergeQueuePathFiltering *bool `yaml:"disable_merge_queue_path_filtering,omitempty" bson:"disable_merge_queue_path_filtering,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
@@ -761,24 +763,38 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 	workers := util.Min(maxWorkers, len(intermediateProject.Include))
 
 	dirs, err := setupParallelGitIncludeDirs(ctx, intermediateProject.Modules, intermediateProject.Include, workers, opts)
-	grip.Warning(message.WrapError(err, message.Fields{
-		"message":    "could not set up git include directories for includes, will fall back to using GitHub API to retrieve include files",
-		"project_id": projectID,
-		"revision":   opts.Revision,
-		"ticket":     "DEVPROD-26851",
-	}))
+	if err != nil {
+		msg := message.Fields{
+			"message":    "could not set up git include directories for includes, will fall back to using GitHub API to retrieve include files",
+			"project_id": projectID,
+			"revision":   opts.Revision,
+		}
+		if opts.Ref != nil {
+			msg["project_identifier"] = opts.Ref.Identifier
+			msg["owner"] = opts.Ref.Owner
+			msg["repo"] = opts.Ref.Repo
+		}
+		grip.Warning(message.WrapError(err, msg))
+	}
 	defer func() {
 		// This is a best-effort attempt to clean up the temporary git
 		// directories after includes are processed. However, if it errors, it's
 		// not really an issue because the git directories don't use much disk
 		// space and app servers are not long-lived enough for a few leftover
 		// files to cause issues.
-		grip.Warning(message.WrapError(dirs.cleanup(), message.Fields{
-			"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
-			"project_id": projectID,
-			"revision":   opts.Revision,
-			"ticket":     "DEVPROD-26851",
-		}))
+		if err := dirs.cleanup(); err != nil {
+			msg := message.Fields{
+				"message":    "could not clean up git directories after including files, may leave behind temporary git files in the file system",
+				"project_id": projectID,
+				"revision":   opts.Revision,
+			}
+			if opts.Ref != nil {
+				msg["project_identifier"] = opts.Ref.Identifier
+				msg["owner"] = opts.Ref.Owner
+				msg["repo"] = opts.Ref.Repo
+			}
+			grip.Warning(message.WrapError(err, msg))
+		}
 	}()
 
 	wg := sync.WaitGroup{}
@@ -886,7 +902,7 @@ func (d *gitIncludeDirs) cleanup() error {
 	}
 	catcher := grip.NewBasicCatcher()
 	for ownerRepo, dir := range d.clonesForOwnerRepo {
-		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory for '%s/%s'", ownerRepo.owner, ownerRepo.repo)
+		catcher.Wrapf(os.RemoveAll(dir), "cleaning up git clone directory '%s' for '%s/%s'", dir, ownerRepo.owner, ownerRepo.repo)
 	}
 	return catcher.Resolve()
 }
@@ -899,13 +915,6 @@ func (d *gitIncludeDirs) cleanup() error {
 // included file is expensive and slow.
 func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includes []parserInclude, numWorkers int, opts *GetProjectOpts) (dirs *gitIncludeDirs, err error) {
 	if !readFromRemoteSource(opts.ReadFileFrom) {
-		return nil, nil
-	}
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting service flags")
-	}
-	if flags.UseGitForGitHubFilesDisabled {
 		return nil, nil
 	}
 	if opts.Ref == nil {
@@ -936,7 +945,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			"message":            "could not clean up git clone directory after failing to set up git directories",
 			"project_id":         opts.Ref.Id,
 			"project_identifier": opts.Ref.Identifier,
-			"ticket":             "DEVPROD-26143",
 		}))
 		// Once dirs has been cleaned up, it's no longer valid to use it, so do
 		// not return it in the result.
@@ -995,9 +1003,7 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 		if _, ok := dirs.clonesForOwnerRepo[ownerRepo]; ok {
 			// When including files, there should not be any duplicate repos
 			// defined in the modules, and the modules should not use the exact
-			// same repo/branch as the project itself. If this is hit, it would
-			// be a sign that some project is relying on DEVPROD-27062 and this
-			// logic would potentially have to account for that edge case.
+			// same repo/branch as the project itself.
 			grip.Warning(message.Fields{
 				"message":            "trying to make multiple git clones of the same repo, skipping duplicate repo",
 				"project_id":         opts.Ref.Id,
@@ -1006,7 +1012,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 				"repo":               repoName,
 				"revision":           revision,
 				"module":             modName,
-				"ticket":             "DEVPROD-26851",
 			})
 			continue
 		}
@@ -1053,31 +1058,6 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 			catcher.Wrapf(out.err, "setting up git clone and worktrees for repo '%s/%s'", out.ownerRepo.owner, out.ownerRepo.repo)
 		}
 	}
-
-	dirsAsStringMaps := struct {
-		ClonesForOwnerRepo    map[string]string   `json:"clones_for_owner_repo"`
-		WorktreesForOwnerRepo map[string][]string `json:"worktrees_for_owner_repo"`
-	}{
-		ClonesForOwnerRepo:    make(map[string]string),
-		WorktreesForOwnerRepo: make(map[string][]string),
-	}
-	for ownerRepo, cloneDir := range dirs.clonesForOwnerRepo {
-		dirsAsStringMaps.ClonesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = cloneDir
-	}
-	for ownerRepo, worktreeDirs := range dirs.worktreesForOwnerRepo {
-		dirsAsStringMaps.WorktreesForOwnerRepo[fmt.Sprintf("%s-%s", ownerRepo.owner, ownerRepo.repo)] = worktreeDirs
-	}
-
-	grip.Info(message.Fields{
-		"message":            "set up git worktrees for parallel includes",
-		"owner":              opts.Ref.Owner,
-		"repo":               opts.Ref.Repo,
-		"project_id":         opts.Ref.Id,
-		"project_identifier": opts.Ref.Identifier,
-		"revision":           opts.Revision,
-		"errors":             catcher.Resolve(),
-		"git_include_dirs":   dirsAsStringMaps,
-	})
 
 	return dirs, catcher.Resolve()
 }
@@ -1193,7 +1173,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 			"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 			"project_id": opts.Ref.Id,
 		}))
-		useGit := IsGitUsageForGitHubFileEnabled(ctx)
+		useGit := true
 		if opts.IsIncludedFile && opts.Worktree == "" {
 			// Include files that have a git worktree available should try to
 			// use that because it's an optimization to reduce GitHub API calls
@@ -1308,7 +1288,7 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": opts.Ref.Id,
 	}))
-	useGit := IsGitUsageForGitHubFileEnabled(ctx)
+	useGit := true
 	if opts.IsIncludedFile && opts.Worktree == "" {
 		// Include files that have a git worktree available should try to
 		// use that because it's an optimization to reduce GitHub API calls
@@ -1331,20 +1311,6 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		}
 	}
 	return projectFileBytes, nil
-}
-
-// IsGitUsageForGitHubFileEnabled returns whether the experimental feature to
-// use git to retrieve files from GitHub is enabled. If the feature flag can't
-// be retrieved, it defaults to false (i.e. git usage is disabled).
-func IsGitUsageForGitHubFileEnabled(ctx context.Context) bool {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "could not get service flags, falling back to assuming that using git is disabled",
-		}))
-		return false
-	}
-	return !flags.UseGitForGitHubFilesDisabled
 }
 
 // fetchProjectFilesTimeout is the maximum timeout to fetch project
@@ -1435,28 +1401,29 @@ func capParserPriorities(p *ParserProject) {
 func TranslateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
-		Stepback:           utility.FromBoolPtr(pp.Stepback),
-		PreTimeoutSecs:     utility.FromIntPtr(pp.PreTimeoutSecs),
-		PostTimeoutSecs:    utility.FromIntPtr(pp.PostTimeoutSecs),
-		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
-		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
-		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
-		PS:                 utility.FromStringPtr(pp.Ps),
-		Identifier:         utility.FromStringPtr(pp.Identifier),
-		DisplayName:        utility.FromStringPtr(pp.DisplayName),
-		CommandType:        utility.FromStringPtr(pp.CommandType),
-		Ignore:             pp.Ignore,
-		Parameters:         pp.Parameters,
-		Containers:         pp.Containers,
-		Pre:                pp.Pre,
-		Post:               pp.Post,
-		Timeout:            pp.Timeout,
-		CallbackTimeout:    utility.FromIntPtr(pp.CallbackTimeout),
-		Modules:            pp.Modules,
-		Functions:          pp.Functions,
-		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
-		TimeoutSecs:        utility.FromIntPtr(pp.TimeoutSecs),
-		NumIncludes:        len(pp.Include),
+
+		Stepback:                       utility.FromBoolPtr(pp.Stepback),
+		PreTimeoutSecs:                 utility.FromIntPtr(pp.PreTimeoutSecs),
+		PostTimeoutSecs:                utility.FromIntPtr(pp.PostTimeoutSecs),
+		PreErrorFailsTask:              utility.FromBoolPtr(pp.PreErrorFailsTask),
+		PostErrorFailsTask:             utility.FromBoolPtr(pp.PostErrorFailsTask),
+		OomTracker:                     utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
+		PS:                             utility.FromStringPtr(pp.Ps),
+		Identifier:                     utility.FromStringPtr(pp.Identifier),
+		DisplayName:                    utility.FromStringPtr(pp.DisplayName),
+		CommandType:                    utility.FromStringPtr(pp.CommandType),
+		DisableMergeQueuePathFiltering: utility.FromBoolPtr(pp.DisableMergeQueuePathFiltering),
+		Ignore:                         pp.Ignore,
+		Parameters:                     pp.Parameters,
+		Pre:                            pp.Pre,
+		Post:                           pp.Post,
+		Timeout:                        pp.Timeout,
+		CallbackTimeout:                utility.FromIntPtr(pp.CallbackTimeout),
+		Modules:                        pp.Modules,
+		Functions:                      pp.Functions,
+		ExecTimeoutSecs:                utility.FromIntPtr(pp.ExecTimeoutSecs),
+		TimeoutSecs:                    utility.FromIntPtr(pp.TimeoutSecs),
+		NumIncludes:                    len(pp.Include),
 	}
 	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
@@ -1470,6 +1437,10 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)
+
+	// Build the task cache for O(1) lookups
+	proj.buildTaskCache()
+
 	return proj, errors.Wrap(catcher.Resolve(), TranslateProjectError)
 }
 

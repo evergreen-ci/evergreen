@@ -79,12 +79,12 @@ type LocalExecutor struct {
 
 // LocalExecutorOptions contains configuration for the local executor
 type LocalExecutorOptions struct {
-	WorkingDir string
-	Expansions map[string]string
-	ServerURL  string
-	TaskID     string
-	APIUser    string
-	APIKey     string
+	WorkingDir  string
+	Expansions  map[string]string
+	ServerURL   string
+	TaskID      string
+	OAuthToken  string
+	SpawnHostID string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -99,7 +99,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		expansions.Put(k, v)
 	}
 
-	comm := client.NewDebugCommunicator(opts.ServerURL, opts.APIUser, opts.APIKey)
+	comm := client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken, opts.SpawnHostID)
 	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{
@@ -107,8 +107,9 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 	}
 
 	taskConfig := &internal.TaskConfig{
-		Expansions: expansions,
-		WorkDir:    opts.WorkingDir,
+		Expansions:            expansions,
+		WorkDir:               opts.WorkingDir,
+		AssumeRoleInformation: map[string]internal.AssumeRoleInformation{},
 	}
 
 	jasperManager, err := jasper.NewSynchronizedManager(false)
@@ -189,6 +190,50 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	e.logger.Infof("Working directory set to: %s", path)
 
 	return nil
+}
+
+// RunUntil executes steps up until the given input index.
+func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
+	if len(e.commandBlocks) == 0 {
+		return errors.New("no commands available, please ensure a task has been selected")
+	}
+	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
+	if untilIndex >= maxIndex {
+		e.logger.Warningf("Running until index %d out of range, falling back to %d", untilIndex, maxIndex)
+		untilIndex = maxIndex
+	}
+
+	for e.debugState.CurrentStepIndex <= untilIndex {
+		if err := e.StepNext(ctx); err != nil {
+			e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+			return err
+		}
+		if e.debugState.CurrentStepIndex > untilIndex {
+			break
+		}
+	}
+	return nil
+}
+
+// JumpTo moves to the specified step without executing
+func (e *LocalExecutor) JumpTo(index int) error {
+	if len(e.commandBlocks) == 0 {
+		return errors.New("no commands available, please ensure a task has been selected")
+	}
+	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
+	if index >= maxIndex || index < 0 {
+		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
+	}
+	e.debugState.CurrentStepIndex = index
+	e.logger.Infof("Jumped to step %d", index)
+	return nil
+}
+
+// SetVariable sets a custom variable.
+func (e *LocalExecutor) SetVariable(key, value string) {
+	e.debugState.CustomVars[key] = value
+	e.expansions.Put(key, value)
+	e.logger.Infof("Set variable %s=%s", key, value)
 }
 
 // StepNext executes the current step and advances to the next
@@ -273,13 +318,19 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 		return nil
 	}
+	record := executionRecord{
+		StepIndex: e.debugState.CurrentStepIndex,
+		Success:   true,
+	}
 	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
+		record.Success = false
+		e.debugState.addExecutionRecord(record)
 		return err
 	}
 	if !executed {
 		return errors.Errorf("failed to execute step %d", e.debugState.CurrentStepIndex)
 	}
-
+	e.debugState.addExecutionRecord(record)
 	return nil
 }
 

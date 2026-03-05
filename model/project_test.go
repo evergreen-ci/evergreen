@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -621,6 +622,9 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	require.NoError(childVersion.Insert(t.Context()))
 	childPatch := &patch.Patch{
 		Version: childVersion.Id,
+		Triggers: patch.TriggerInfo{
+			ParentAsModule: "parentModule",
+		},
 	}
 	require.NoError(childPatch.Insert(t.Context()))
 
@@ -639,9 +643,7 @@ func TestPopulateExpansionsChildPatch(t *testing.T) {
 	require.NoError(err)
 
 	assert.Equal(childVersion.ParentPatchID, expansions.Get("parent_patch_id"))
-	assert.Equal(parentRef.Owner, expansions.Get("parent_github_org"))
-	assert.Equal(parentRef.Repo, expansions.Get("parent_github_repo"))
-	assert.Equal(parentRef.Branch, expansions.Get("parent_github_branch"))
+	assert.Equal(childPatch.Triggers.ParentAsModule, expansions.Get("parent_project_module"))
 }
 
 type projectSuite struct {
@@ -3057,5 +3059,64 @@ func (s *projectSuite) TestBuildVariantPathsMatchAny() {
 			files = []string{"server/conf/conf-test-e2e.properties"}
 			So(bv.ChangedFilesMatchPaths(files), ShouldBeTrue)
 		})
+	})
+}
+
+func TestFindProjectTaskWithCache(t *testing.T) {
+	project := &Project{
+		Tasks: []ProjectTask{
+			{Name: "task1"},
+			{Name: "task2"},
+			{Name: "task3"},
+		},
+	}
+
+	// Without cache (fallback)
+	task := project.FindProjectTask("task2")
+	assert.NotNil(t, task)
+	assert.Equal(t, "task2", task.Name)
+
+	// With cache
+	project.buildTaskCache()
+	task = project.FindProjectTask("task2")
+	assert.NotNil(t, task)
+	assert.Equal(t, "task2", task.Name)
+
+	// Not found
+	task = project.FindProjectTask("nonexistent")
+	assert.Nil(t, task)
+
+	// Test first task
+	task = project.FindProjectTask("task1")
+	assert.NotNil(t, task)
+	assert.Equal(t, "task1", task.Name)
+
+	// Test last task
+	task = project.FindProjectTask("task3")
+	assert.NotNil(t, task)
+	assert.Equal(t, "task3", task.Name)
+}
+
+func BenchmarkFindProjectTask(b *testing.B) {
+	// Create project with many tasks
+	project := &Project{}
+	for i := 0; i < 5000; i++ {
+		project.Tasks = append(project.Tasks, ProjectTask{
+			Name: fmt.Sprintf("task%d", i),
+		})
+	}
+
+	b.Run("WithoutCache", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = project.FindProjectTask("task4999")
+		}
+	})
+
+	b.Run("WithCache", func(b *testing.B) {
+		project.buildTaskCache()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = project.FindProjectTask("task4999")
+		}
 	})
 }

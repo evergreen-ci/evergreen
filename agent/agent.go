@@ -75,11 +75,8 @@ type Options struct {
 	// Mode determines which mode the agent will run in.
 	Mode globals.Mode
 	// HostID and HostSecret only apply in host mode.
-	HostID     string
-	HostSecret string
-	// PodID and PodSecret only apply in pod mode.
-	PodID                  string
-	PodSecret              string
+	HostID                 string
+	HostSecret             string
 	StatusPort             int
 	LogPrefix              string
 	LogOutput              globals.LogOutputType
@@ -102,9 +99,6 @@ type Options struct {
 func (o *Options) AddLoggableInfo(msg message.Fields) message.Fields {
 	if o.HostID != "" {
 		msg["host_id"] = o.HostID
-	}
-	if o.PodID != "" {
-		msg["pod_id"] = o.PodID
 	}
 	return msg
 }
@@ -138,8 +132,6 @@ func New(ctx context.Context, opts Options, serverURL string) (*Agent, error) {
 	switch opts.Mode {
 	case globals.HostMode:
 		comm = client.NewHostCommunicator(serverURL, opts.HostID, opts.HostSecret)
-	case globals.PodMode:
-		comm = client.NewPodCommunicator(serverURL, opts.PodID, opts.PodSecret)
 	default:
 		return nil, errors.Errorf("unrecognized agent mode '%s'", opts.Mode)
 	}
@@ -701,7 +693,20 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		return tc, shouldExit, errors.Wrap(err, "setting up task")
 	}
 
-	defer a.killProcs(ctx, tc, false, "task is finished")
+	defer func() {
+		if err := a.killProcs(ctx, tc, false, "task is finished"); err != nil {
+			// If the task is finished but the agent can't clean up all the
+			// processes/Docker artifacts for the next task, disable the host.
+			// Otherwise, the next task will start with lingering state from the
+			// prior task.
+			tc.logger.Execution().Criticalf("Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
+			if disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
+				Reason: "could not clean up processes/Docker artifacts after task is finished",
+			}); disableErr != nil {
+				tc.logger.Execution().Criticalf("Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
+			}
+		}
+	}()
 
 	grip.Info(message.Fields{
 		"message": "running task",
@@ -821,7 +826,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		return evergreen.TaskSystemFailed
 	}
 
-	a.killProcs(execTimeoutCtx, tc, false, "task is starting")
+	_ = a.killProcs(execTimeoutCtx, tc, false, "task is starting")
 
 	if err := a.runPreTaskCommands(execTimeoutCtx, tc); err != nil {
 		return evergreen.TaskFailed
@@ -1020,8 +1025,10 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
-	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
-	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
+	_ = a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
+	defer func() {
+		_ = a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
+	}()
 
 	post, err := tc.getPost()
 	if err != nil {
@@ -1046,7 +1053,9 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runTeardownGroupCommands.
-	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
+	defer func() {
+		_ = a.killProcs(ctx, tc, true, "teardown group commands are finished")
+	}()
 
 	defer func() {
 		if tc.logger != nil {
@@ -1069,7 +1078,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 
 	if teardownGroup.commands != nil {
-		a.killProcs(ctx, tc, true, "teardown group commands are starting")
+		_ = a.killProcs(ctx, tc, true, "teardown group commands are starting")
 		ctx = utility.ContextWithAttributes(ctx, tc.taskConfig.TaskAttributes())
 		ctx, span := a.tracer.Start(ctx, "teardown_group")
 		defer span.End()
@@ -1192,7 +1201,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		span.End()
 	}
 
-	a.killProcs(ctx, tc, false, "task is ending")
+	_ = a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
@@ -1465,21 +1474,23 @@ func updateEndTaskFailureDetailsForTestResults(tc *taskContext, detail *apimodel
 	}
 }
 
-func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) {
+func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) error {
 	logger := grip.NewJournaler("killProcs")
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
 	if !a.shouldKill(tc, ignoreTaskGroupCheck) {
-		return
+		return nil
 	}
 
 	logger.Infof("Cleaning up task because %s", reason)
 
+	catcher := grip.NewBasicCatcher()
 	if tc.task.ID != "" && tc.taskConfig != nil && tc.taskConfig.Distro != nil {
 		logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
 		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
+			catcher.Wrap(err, "cleaning up spawned processes")
 			// If the host is in a state where ps is timing out we need human intervention.
 			if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
 				disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
@@ -1490,18 +1501,16 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
 	}
 
-	// Agents running in containers don't have Docker available, so skip
-	// Docker cleanup for them.
-	if a.opts.Mode != globals.PodMode {
-		logger.Info("Cleaning up Docker artifacts.")
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, globals.DockerTimeout)
-		defer cancel()
-		if err := docker.Cleanup(ctx, logger); err != nil {
-			logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
-		}
-		logger.Info("Cleaned up Docker artifacts.")
+	logger.Info("Cleaning up Docker artifacts.")
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, globals.DockerTimeout)
+	defer cancel()
+	if err := docker.Cleanup(ctx, logger); err != nil {
+		catcher.Wrap(err, "cleaning up Docker artifacts")
+		logger.Critical(errors.Wrap(err, "cleaning up Docker artifacts"))
 	}
+	logger.Info("Cleaned up Docker artifacts.")
+	return catcher.Resolve()
 }
 
 // clearGlobalFiles cleans up certain files that were created in the home directory, including

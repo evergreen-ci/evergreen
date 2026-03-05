@@ -1,7 +1,18 @@
+# ServiceFlag represents a single service flag as a name/enabled pair for dynamic discovery.
+type ServiceFlag {
+  name: String!
+  enabled: Boolean!
+}
+
+# ServiceFlagInput is the input type for toggling a single service flag by name.
+input ServiceFlagInput {
+  name: String!
+  enabled: Boolean!
+}
+
 input ServiceFlagsInput {
   taskDispatchDisabled: Boolean
   hostInitDisabled: Boolean
-  podInitDisabled: Boolean
   largeParserProjectsDisabled: Boolean
   monitorDisabled: Boolean
   alertsDisabled: Boolean
@@ -17,8 +28,6 @@ input ServiceFlagsInput {
   cacheStatsEndpointDisabled: Boolean
   taskReliabilityDisabled: Boolean
   hostAllocatorDisabled: Boolean
-  podAllocatorDisabled: Boolean
-  unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
   debugSpawnHostDisabled: Boolean
@@ -28,7 +37,6 @@ input ServiceFlagsInput {
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
-  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean
@@ -44,7 +52,6 @@ input ServiceFlagsInput {
 type ServiceFlags {
   taskDispatchDisabled: Boolean
   hostInitDisabled: Boolean
-  podInitDisabled: Boolean
   largeParserProjectsDisabled: Boolean
   monitorDisabled: Boolean
   alertsDisabled: Boolean
@@ -60,8 +67,6 @@ type ServiceFlags {
   cacheStatsEndpointDisabled: Boolean
   taskReliabilityDisabled: Boolean
   hostAllocatorDisabled: Boolean
-  podAllocatorDisabled: Boolean
-  unrecognizedPodCleanupDisabled: Boolean
   backgroundReauthDisabled: Boolean
   cloudCleanupDisabled: Boolean
   debugSpawnHostDisabled: Boolean
@@ -71,7 +76,6 @@ type ServiceFlags {
   systemFailedTaskRestartDisabled: Boolean
   degradedModeDisabled: Boolean
   elasticIPsDisabled: Boolean
-  useGitForGitHubFilesDisabled: Boolean
   releaseModeDisabled: Boolean
   eventProcessingDisabled: Boolean
   jiraNotificationsDisabled: Boolean

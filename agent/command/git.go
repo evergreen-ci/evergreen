@@ -830,9 +830,3 @@ func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModuleP
 func isGitHub(conf *internal.TaskConfig) bool {
 	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
 }
-
-type noopWriteCloser struct {
-	*bytes.Buffer
-}
-
-func (noopWriteCloser) Close() error { return nil }

@@ -80,7 +80,6 @@ mutation SaveAdminSettingsOther {
         totalProjectLimit: 100
         repoProjectLimit: 50
         repoExceptions: [{ owner: "test-owner", repo: "test-repo" }]
-        jiraProject: "TEST"
       }
       githubCheckRun: { checkRunLimit: 10 }
       releaseMode: {
@@ -179,7 +178,6 @@ mutation SaveAdminSettingsOther {
         owner
         repo
       }
-      jiraProject
     }
     githubCheckRun {
       checkRunLimit

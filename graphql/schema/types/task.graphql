@@ -74,7 +74,6 @@ type Task {
   canSchedule: Boolean!
   canSetPriority: Boolean!
   canUnschedule: Boolean!
-  containerAllocatedTime: Time
   createTime: Time
   dependsOn: [Dependency!]
   details: TaskEndDetail
@@ -87,6 +86,7 @@ type Task {
   displayStatus: String!
   displayTask: Task
   distroId: String!
+  errors: [String!]
   estimatedStart: Duration
   execution: Int!
   executionTasks: [String!]
@@ -98,6 +98,7 @@ type Task {
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
+  generator: Task
   hasTestResults: Boolean!
   hostId: String
   imageId: String!
@@ -109,7 +110,6 @@ type Task {
   order: Int!
   patch: Patch
   patchNumber: Int
-  pod: Pod
   priority: Int
   project: Project
   projectId: String!

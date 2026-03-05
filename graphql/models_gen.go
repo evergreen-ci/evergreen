@@ -390,13 +390,6 @@ type Permissions struct {
 	UserID               string              `json:"userId"`
 }
 
-// PodEvents is the return value for the events query.
-// It contains the event log entries for a pod.
-type PodEvents struct {
-	Count           int                          `json:"count"`
-	EventLogEntries []*model.PodAPIEventLogEntry `json:"eventLogEntries"`
-}
-
 type ProjectBuildVariant struct {
 	DisplayName string   `json:"displayName"`
 	Name        string   `json:"name"`
@@ -476,6 +469,16 @@ type SaveDistroInput struct {
 type SaveDistroPayload struct {
 	Distro    *model.APIDistro `json:"distro"`
 	HostCount int              `json:"hostCount"`
+}
+
+type ServiceFlag struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+}
+
+type ServiceFlagInput struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
 }
 
 // SetCursorAPIKeyPayload is the response from setting a Cursor API key.
@@ -1214,7 +1217,6 @@ const (
 	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
 	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
 	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
 	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
 	ProjectSettingsSectionTestSelection        ProjectSettingsSection = "TEST_SELECTION"
 	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
@@ -1232,7 +1234,6 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionTriggers,
 	ProjectSettingsSectionPeriodicBuilds,
 	ProjectSettingsSectionPlugins,
-	ProjectSettingsSectionContainers,
 	ProjectSettingsSectionViewsAndFilters,
 	ProjectSettingsSectionTestSelection,
 	ProjectSettingsSectionGithubAndCommitQueue,
@@ -1242,7 +1243,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
 		return true
 	}
 	return false

@@ -10,20 +10,16 @@ import (
 
 type debugCommunicator struct {
 	baseCommunicator
-	apiUser string
-	apiKey  string
 }
 
 // NewDebugCommunicator initializes a communicator that will be used for basic agent routes required
-// for executing tasks in debug mode.
-func NewDebugCommunicator(serverURL, apiUser, apiKey string) Communicator {
+// for executing tasks in debug mode. It uses an OAuth token for authentication.
+func NewDebugCommunicator(serverURL, oauthToken, spawnHostID string) Communicator {
 	c := &debugCommunicator{
 		baseCommunicator: newBaseCommunicator(serverURL, map[string]string{
-			evergreen.APIUserHeader: apiUser,
-			evergreen.APIKeyHeader:  apiKey,
+			evergreen.AuthorizationHeader: "Bearer " + oauthToken,
+			evergreen.HostHeader:          spawnHostID,
 		}),
-		apiUser: apiUser,
-		apiKey:  apiKey,
 	}
 
 	c.resetClient()

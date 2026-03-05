@@ -57,7 +57,6 @@ type Project struct {
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	Containers         []Container                `yaml:"containers,omitempty" bson:"containers"`
 	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
@@ -65,8 +64,23 @@ type Project struct {
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
+	// DisableMergeQueuePathFiltering, if true, skips path filtering for merge queue versions.
+	DisableMergeQueuePathFiltering bool `yaml:"disable_merge_queue_path_filtering,omitempty" bson:"disable_merge_queue_path_filtering,omitempty"`
+
 	// Number of includes in the project cached for validation
 	NumIncludes int `yaml:"-" bson:"-"`
+
+	// tasksByName is an in-memory cache for O(1) task lookups.
+	tasksByName map[string]*ProjectTask `yaml:"-" bson:"-"`
+}
+
+// buildTaskCache creates the tasksByName map for O(1) task lookups.
+// This should be called once after the Project is fully constructed.
+func (p *Project) buildTaskCache() {
+	p.tasksByName = make(map[string]*ProjectTask, len(p.Tasks))
+	for i := range p.Tasks {
+		p.tasksByName[p.Tasks[i].Name] = &p.Tasks[i]
+	}
 }
 
 type ProjectInfo struct {
@@ -434,25 +448,6 @@ type CheckRun struct {
 type ParameterInfo struct {
 	patch.Parameter `yaml:",inline" bson:",inline"`
 	Description     string `yaml:"description" bson:"description"`
-}
-
-// Container holds all properties that are configurable when defining a container
-// for tasks and build variants to run on in a project YAML file.
-type Container struct {
-	Name       string              `yaml:"name" bson:"name"`
-	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string              `yaml:"image" bson:"image" plugin:"expand"`
-	Size       string              `yaml:"size,omitempty" bson:"size"`
-	Credential string              `yaml:"credential,omitempty" bson:"credential"`
-	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
-	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
-}
-
-// ContainerSystem specifies the architecture and OS for the running container to use.
-type ContainerSystem struct {
-	CPUArchitecture evergreen.ContainerArch  `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
-	OperatingSystem evergreen.ContainerOS    `yaml:"operating_system,omitempty" bson:"operating_system"`
-	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
 // Module specifies the git details of another git project to be included within a
@@ -1151,23 +1146,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 		}
 		if v.IsChild() {
 			expansions.Put("parent_patch_id", v.ParentPatchID)
-			parentPatch, err := patch.FindOneId(ctx, v.ParentPatchID)
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding parent version '%s'", v.ParentPatchID)
-			}
-			var parentRef *ProjectRef
-			if parentPatch != nil {
-				parentRef, err = FindBranchProjectRef(ctx, parentPatch.Project)
-				if err != nil {
-					return nil, errors.Wrap(err, "finding project ref")
-				}
-			}
-
-			if parentRef != nil {
-				expansions.Put("parent_github_org", parentRef.Owner)
-				expansions.Put("parent_github_repo", parentRef.Repo)
-				expansions.Put("parent_github_branch", parentRef.Branch)
-			}
+			expansions.Put("parent_project_module", p.Triggers.ParentAsModule)
 		}
 	} else {
 		expansions.Put("is_patch", "")
@@ -1462,6 +1441,11 @@ func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string
 }
 
 func (p *Project) FindProjectTask(name string) *ProjectTask {
+	if p.tasksByName != nil {
+		return p.tasksByName[name]
+	}
+
+	// Fallback to linear search for backwards compatibility or edge cases
 	for _, t := range p.Tasks {
 		if t.Name == name {
 			return &t

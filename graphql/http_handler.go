@@ -81,5 +81,7 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 		}
 		return graphql.DefaultErrorPresenter(ctx, err)
 	})
-	return srv.ServeHTTP
+
+	// Wrap with dataloader middleware to batch database queries
+	return DataloaderMiddleware(srv).ServeHTTP
 }

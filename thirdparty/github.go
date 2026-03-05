@@ -230,6 +230,62 @@ type GithubMergeGroup struct {
 	RemovalReason string `bson:"removal_reason,omitempty"`
 }
 
+const (
+	// GitHub merge queue removal reasons
+	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
+	MergeQueueReasonMerged      = "merged"      // Successfully merged
+	MergeQueueReasonDequeued    = "dequeued"    // Manually removed
+
+	// Merge queue status values for metrics
+	MergeQueueStatusSuccess = "success" // Successfully completed/merged
+	MergeQueueStatusFailed  = "failed"  // Failed status checks
+	MergeQueueStatusRemoved = "removed" // Other removal reasons
+)
+
+// GetMergeQueueStatusFromReason maps a GitHub merge queue removal reason to a status value for metrics.
+func GetMergeQueueStatusFromReason(reason string) string {
+	switch reason {
+	case MergeQueueReasonInvalidated:
+		return MergeQueueStatusFailed
+	case MergeQueueReasonMerged:
+		return MergeQueueStatusSuccess
+	default:
+		return MergeQueueStatusRemoved
+	}
+}
+
+// extractPRNumberFromHeadRef extracts the PR number from a merge queue head ref.
+func extractPRNumberFromHeadRef(headRef string) string {
+	split := strings.Split(headRef, "/")
+	if len(split) == 0 {
+		return ""
+	}
+	lastElement := split[len(split)-1]
+
+	if !strings.HasPrefix(lastElement, "pr-") {
+		return ""
+	}
+
+	prPart := strings.TrimPrefix(lastElement, "pr-")
+	parts := strings.Split(prPart, "-")
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return parts[0]
+}
+
+// BuildGithubHeadPRURL constructs the GitHub PR URL for the HEAD PR from a merge queue head ref.
+// For merge queue entries, this returns the HEAD PR URL, not all PRs in the merge group.
+// Returns empty string if the PR number cannot be extracted from headRef.
+func BuildGithubHeadPRURL(org, repo, headRef string) string {
+	prNumber := extractPRNumberFromHeadRef(headRef)
+	if prNumber == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://github.com/%s/%s/pull/%s", org, repo, prNumber)
+}
+
 // SendGithubStatusInput is the input to the SendPendingStatusToGithub function and contains
 // all the information associated with a version necessary to send a status to GitHub.
 type SendGithubStatusInput struct {
@@ -522,7 +578,6 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":           "could not retrieve GitHub file using git, falling back to using GitHub API to retrieve it",
-			"ticket":            "DEVPROD-26143",
 			"owner":             owner,
 			"repo":              repo,
 			"ref":               ref,
@@ -738,7 +793,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, owner, repo, baseRevision, 
 	defer span.End()
 	compare, err := getCommitComparison(ctx, owner, repo, baseRevision, currentCommitHash, caller)
 	if err != nil {
-		return "", errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", baseRevision, currentCommitHash)
+		return "", errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", baseRevision, currentCommitHash)
 	}
 	return *compare.MergeBaseCommit.SHA, nil
 }
@@ -755,7 +810,7 @@ func IsMergeBaseAllowed(ctx context.Context, owner, repo, oldestAllowedMergeBase
 	defer span.End()
 	compare, err := getCommitComparison(ctx, owner, repo, mergeBase, oldestAllowedMergeBase, caller)
 	if err != nil {
-		return false, errors.Wrapf(err, "retreiving comparison between commit hashses '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
+		return false, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", oldestAllowedMergeBase, mergeBase)
 	}
 	status := compare.GetStatus()
 
@@ -1457,107 +1512,8 @@ func GetPullRequestMergeBase(ctx context.Context, pr *github.PullRequest) (strin
 	repo := pr.GetBase().GetRepo().GetName()
 	baseSHA := pr.GetBase().GetSHA()
 	headSHA := pr.GetHead().GetSHA()
-	prNum := pr.GetNumber()
 
-	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
-	if err == nil {
-		return mergeBase, nil
-	}
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
-		"owner":      owner,
-		"repo":       repo,
-		"head":       headSHA,
-		"head_label": pr.GetHead().GetLabel(),
-		"pr_num":     prNum,
-		"base":       baseSHA,
-		"base_label": pr.GetBase().GetLabel(),
-	}))
-
-	return getPullRequestFallback(ctx, owner, repo, prNum)
-}
-
-// getPullRequestFallback is a secondary way of determining the merge base of a PR via API. A known case where
-// we expect GetGithubMergeBaseRevision to fail is when trying to find the merge base of a PR based on a private fork
-// that our GitHub app is not installed on.
-func getPullRequestFallback(ctx context.Context, owner, repo string, prNum int) (string, error) {
-	caller := "getPullRequestFallback"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
-	defer githubClient.Close()
-
-	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNum, nil)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return "", err
-	}
-
-	if len(commits) == 0 {
-		return "", errors.New("No commits received from github")
-	}
-	if commits[0].GetSHA() == "" {
-		return "", errors.New("hash is missing from pull request commit list")
-	}
-
-	commit, err := getCommit(ctx, owner, repo, *commits[0].SHA)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting commit on %s/%s with SHA '%s'", owner, repo, *commits[0].SHA)
-	}
-	if len(commit.Parents) == 0 {
-		return "", errors.New("can't find pull request branch point")
-	}
-	if commit.Parents[0].GetSHA() == "" {
-		return "", errors.New("parent hash is missing")
-	}
-
-	return commit.Parents[0].GetSHA(), nil
-}
-
-func getCommit(ctx context.Context, owner, repo, sha string) (*github.RepositoryCommit, error) {
-	caller := "getCommit"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, sha),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
-	defer githubClient.Close()
-
-	commit, resp, err := githubClient.Repositories.GetCommit(ctx, owner, repo, sha, nil)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return nil, err
-	}
-	if commit == nil {
-		return nil, errors.New("couldn't find commit")
-	}
-
-	return commit, nil
+	return GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
 }
 
 func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
@@ -1694,6 +1650,23 @@ func getPullRequestFileSummaries(ctx context.Context, ghClient *githubapp.GitHub
 	}
 
 	return getPatchSummariesFromCommitFiles(files), nil
+}
+
+// GetChangedFilesBetweenCommits gets the summary list of the changed files between the given commits
+func GetChangedFilesBetweenCommits(ctx context.Context, owner, repo, base, head string) ([]Summary, error) {
+	caller := "GetChangedFilesBetweenCommits"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+	commits, err := getCommitComparison(ctx, owner, repo, base, head, caller)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving comparison between commit hashes '%s' and '%s'", base, head)
+	}
+
+	return getPatchSummariesFromCommitFiles(commits.Files), nil
 }
 
 func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
@@ -1956,8 +1929,11 @@ func makeCheckRunName(task *task.Task) string {
 	return fmt.Sprintf("%s/%s", task.BuildVariantDisplayName, task.DisplayName)
 }
 
-// CreateCheckRun creates a checkRun and returns a Github CheckRun object
-func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
+// CreateCheckRun creates a checkRun and returns a Github CheckRun object.
+// If ghAppAuth is provided, it will first attempt to use the project's GitHub app
+// credentials. If that fails or no app is available, it falls back to using the
+// internal app for installation tokens.
+func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, task *task.Task, output *github.CheckRunOutput, ghAppAuth *githubapp.GithubAppAuth) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -1965,14 +1941,6 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
 
 	opts := github.CreateCheckRunOptions{
 		Name:        makeCheckRunName(task),
@@ -1986,21 +1954,33 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		DetailsURL:  utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
 	}
 
-	checkRun, resp, err := githubClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
+	var checkRun *github.CheckRun
+	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
+		var resp *github.Response
+		var opErr error
+		checkRun, resp, opErr = ghClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if opErr != nil {
+			return errors.Wrap(opErr, "creating checkRun")
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "creating checkRun")
+		return nil, err
 	}
 
 	return checkRun, nil
 }
 
-// UpdateCheckRun updates a checkRun and returns a Github CheckRun object
-// UpdateCheckRunOptions must specify a name for the check run
-func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID int64, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
+// UpdateCheckRun updates a checkRun and returns a Github CheckRun object.
+// UpdateCheckRunOptions must specify a name for the check run.
+// If ghAppAuth is provided, it will first attempt to use the project's GitHub app
+// credentials. If that fails or no app is available, it falls back to using the
+// internal app for installation tokens.
+func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID int64, task *task.Task, output *github.CheckRunOutput, ghAppAuth *githubapp.GithubAppAuth) (*github.CheckRun, error) {
 	caller := "updateCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -2024,19 +2004,20 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 		Output:     output,
 	}
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
-
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
+	var checkRun *github.CheckRun
+	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
+		var resp *github.Response
+		var opErr error
+		checkRun, resp, opErr = ghClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if opErr != nil {
+			return opErr
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "updating checkRun")
 	}

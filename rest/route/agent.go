@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
@@ -319,9 +318,8 @@ func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request
 		return errors.New("missing task ID")
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
-	podID := r.Header.Get(evergreen.PodHeader)
-	userKey := r.Header.Get(evergreen.APIKeyHeader)
-	if h.hostID == "" && podID == "" && userKey == "" {
+	userKey := r.Header.Get(evergreen.AuthorizationHeader)
+	if h.hostID == "" && userKey == "" {
 		return errors.New("missing both host and pod ID")
 	}
 	return nil
@@ -480,13 +478,13 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 	// If from debug session request, return minimal response
 	if isUserRequest {
 		redactedProjectRef := map[string]interface{}{
-			"repo":          p.Repo,
-			"branch":        p.Branch,
-			"owner":         p.Owner,
-			"id":            p.Id,
-			"repo_ref_id":   p.RepoRefId,
-			"identifier":    p.Identifier,
-			"testselection": p.TestSelection,
+			"repo_name":      p.Repo,
+			"branch_name":    p.Branch,
+			"owner_name":     p.Owner,
+			"id":             p.Id,
+			"repo_ref_id":    p.RepoRefId,
+			"identifier":     p.Identifier,
+			"test_selection": p.TestSelection,
 		}
 		return gimlet.NewJSONResponse(redactedProjectRef)
 	}
@@ -1013,7 +1011,6 @@ type startTaskHandler struct {
 	env           evergreen.Environment
 	taskID        string
 	hostID        string
-	podID         string
 	taskStartInfo apimodels.TaskStartRequest
 }
 
@@ -1037,9 +1034,8 @@ func (h *startTaskHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrapf(err, "reading task start request for %s", h.taskID)
 	}
 	h.hostID = r.Header.Get(evergreen.HostHeader)
-	h.podID = r.Header.Get(evergreen.PodHeader)
-	if h.hostID == "" && h.podID == "" {
-		return errors.New("missing both host and pod ID")
+	if h.hostID == "" {
+		return errors.New("missing host ID")
 	}
 	return nil
 }
@@ -1087,7 +1083,6 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var msg string
 	var foundHost *host.Host
-	var foundPod *pod.Pod
 	if h.hostID != "" {
 		foundHost, err = host.FindOneByTaskIdAndExecution(ctx, t.Id, t.Execution)
 		if err != nil {
@@ -1118,29 +1113,12 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 			grip.Info(foundHost.TaskStartMessage())
 		}
-	} else {
-		foundPod, err = pod.FindOneByID(ctx, h.podID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod running task %s", t.Id))
-		}
-		if foundPod == nil {
-			message := fmt.Sprintf("no pod found running task %s", t.Id)
-			if t.PodID != "" {
-				message = fmt.Sprintf("no pod found running task %s but task is said to be running on %s",
-					t.Id, t.PodID)
-			}
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    message,
-			})
-		}
-		msg = fmt.Sprintf("task '%s' started on pod '%s'", t.Id, h.podID)
 	}
-	logTaskStartMessage(foundHost, foundPod, t)
+	logTaskStartMessage(foundHost, t)
 	return gimlet.NewJSONResponse(msg)
 }
 
-func logTaskStartMessage(h *host.Host, p *pod.Pod, t *task.Task) {
+func logTaskStartMessage(h *host.Host, t *task.Task) {
 	msg := message.Fields{
 		"stat":                   "task-start-stats",
 		"task_id":                t.Id,
@@ -1185,9 +1163,6 @@ func logTaskStartMessage(h *host.Host, p *pod.Pod, t *task.Task) {
 				msg["host_provision_time"] = h.TotalIdleTime.Seconds()
 			}
 		}
-	} else if p != nil {
-		msg["pod_id"] = p.ID
-		msg["pod_provision_time"] = time.Since(p.TimeInfo.Starting).Seconds()
 	}
 	grip.Info(msg)
 }
@@ -1654,9 +1629,14 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	// Get the project's GitHub app auth for check run operations.
+	// If this fails or the project doesn't have a GitHub app configured,
+	// the check run functions will fall back to using the internal app.
+	ghAppAuth := model.GetGitHubAppAuthForProject(ctx, t.Project)
+
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {
-		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput)
+		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput, ghAppAuth)
 		if err != nil {
 			errorMessage := fmt.Sprintf("updating checkRun for task: '%s'", t.Id)
 			grip.Error(message.Fields{
@@ -1670,7 +1650,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(fmt.Sprintf("Successfully updated check run for  '%v'", t.Id))
 	}
 
-	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().Api.URL, t, h.checkRunOutput)
+	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().Api.URL, t, h.checkRunOutput, ghAppAuth)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("creating checkRun for task: '%s'", t.Id)
@@ -1788,7 +1768,15 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
-	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(t.Requester)
+	requester := t.Requester
+	user := gimlet.GetUser(ctx)
+	isUserRequest := user != nil
+	// If the request is coming from a user request, then this route must be being
+	// used in debug mode.
+	if isUserRequest {
+		requester = evergreen.DebugRequester
+	}
+	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(requester)
 	// If the requester has no permissions, they should not be able to create a token.
 	// GitHub interprets an empty token as having all permissions.
 	if requesterPermissionGroup.HasNoPermissions() {

@@ -2,6 +2,8 @@ package evergreen
 
 import (
 	"context"
+	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,7 +13,6 @@ import (
 type ServiceFlags struct {
 	TaskDispatchDisabled               bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostInitDisabled                   bool `bson:"host_init_disabled" json:"host_init_disabled"`
-	PodInitDisabled                    bool `bson:"pod_init_disabled" json:"pod_init_disabled"`
 	LargeParserProjectsDisabled        bool `bson:"large_parser_projects_disabled" json:"large_parser_projects_disabled"`
 	MonitorDisabled                    bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	AlertsDisabled                     bool `bson:"alerts_disabled" json:"alerts_disabled"`
@@ -27,8 +28,6 @@ type ServiceFlags struct {
 	CacheStatsEndpointDisabled         bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled            bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
 	HostAllocatorDisabled              bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
-	PodAllocatorDisabled               bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
-	UnrecognizedPodCleanupDisabled     bool `bson:"unrecognized_pod_cleanup_disabled" json:"unrecognized_pod_cleanup_disabled"`
 	BackgroundReauthDisabled           bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	CloudCleanupDisabled               bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled              bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
@@ -41,7 +40,6 @@ type ServiceFlags struct {
 	LegacyUIAdminPageDisabled          bool `bson:"legacy_ui_admin_page_disabled" json:"legacy_ui_admin_page_disabled"`
 	DebugSpawnHostDisabled             bool `bson:"debug_spawn_host_disabled" json:"debug_spawn_host_disabled"`
 	S3LifecycleSyncDisabled            bool `bson:"s3_lifecycle_sync_disabled" json:"s3_lifecycle_sync_disabled"`
-	UseGitForGitHubFilesDisabled       bool `bson:"use_git_for_github_files_disabled" json:"use_git_for_github_files_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `bson:"use_merge_queue_path_filtering_disabled" json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
 
@@ -65,7 +63,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 		"$set": bson.M{
 			taskDispatchKey:                       c.TaskDispatchDisabled,
 			hostInitKey:                           c.HostInitDisabled,
-			podInitDisabledKey:                    c.PodInitDisabled,
 			largeParserProjectsDisabledKey:        c.LargeParserProjectsDisabled,
 			monitorKey:                            c.MonitorDisabled,
 			alertsKey:                             c.AlertsDisabled,
@@ -87,10 +84,8 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			cacheStatsEndpointDisabledKey:         c.CacheStatsEndpointDisabled,
 			taskReliabilityDisabledKey:            c.TaskReliabilityDisabled,
 			hostAllocatorDisabledKey:              c.HostAllocatorDisabled,
-			podAllocatorDisabledKey:               c.PodAllocatorDisabled,
 			backgroundReauthDisabledKey:           c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:               c.CloudCleanupDisabled,
-			unrecognizedPodCleanupDisabledKey:     c.UnrecognizedPodCleanupDisabled,
 			sleepScheduleDisabledKey:              c.SleepScheduleDisabled,
 			staticAPIKeysDisabledKey:              c.StaticAPIKeysDisabled,
 			JWTTokenForCLIDisabledKey:             c.JWTTokenForCLIDisabled,
@@ -101,7 +96,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			legacyUIAdminPageDisabledKey:          c.LegacyUIAdminPageDisabled,
 			debugSpawnHostDisabledKey:             c.DebugSpawnHostDisabled,
 			s3LifecycleSyncDisabledKey:            c.S3LifecycleSyncDisabled,
-			useGitForGitHubFilesDisabledKey:       c.UseGitForGitHubFilesDisabled,
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
@@ -109,3 +103,44 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 }
 
 func (c *ServiceFlags) ValidateAndDefault() error { return nil }
+
+// ServiceFlagEntry holds the name and enabled state of a single service flag.
+type ServiceFlagEntry struct {
+	Name    string
+	Enabled bool
+}
+
+// ToSlice returns all service flags as an ordered slice in struct declaration order.
+// This allows new flags to be discovered dynamically without modifying any additional code.
+func (c *ServiceFlags) ToSlice() []ServiceFlagEntry {
+	v := reflect.ValueOf(*c)
+	t := v.Type()
+	result := make([]ServiceFlagEntry, 0, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.Type.Kind() != reflect.Bool {
+			continue
+		}
+		jsonTag := strings.Split(field.Tag.Get("json"), ",")[0]
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+		result = append(result, ServiceFlagEntry{Name: jsonTag, Enabled: v.Field(i).Bool()})
+	}
+	return result
+}
+
+// SetByName sets the service flag with the given JSON tag name to the given value.
+// Returns an error if no field with that name exists.
+func (c *ServiceFlags) SetByName(name string, value bool) error {
+	v := reflect.ValueOf(c).Elem()
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		jsonTag := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		if jsonTag == name {
+			v.Field(i).SetBool(value)
+			return nil
+		}
+	}
+	return errors.Errorf("unknown service flag '%s'", name)
+}

@@ -41,7 +41,6 @@ func NewConfigSections() ConfigSections {
 		&NotifyConfig{},
 		&OverridesConfig{},
 		&ParameterStoreConfig{},
-		&PodLifecycleConfig{},
 		&ProjectCreationConfig{},
 		&RepoTrackerConfig{},
 		&ReleaseModeConfig{},

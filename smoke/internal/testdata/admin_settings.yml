@@ -66,9 +66,6 @@ providers:
   aws:
     aws_id: "foo"
     aws_secret: "bar"
-    pod:
-      ecs:
-        allowed_images: ["fake_smoke_test_image"]
 
 keys:
   test: "/dev/null"

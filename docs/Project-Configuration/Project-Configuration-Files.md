@@ -712,6 +712,8 @@ You can control when tasks and build variants run based on which files have chan
 For mainline version, we will not automatically run tasks if they are filtered out, and we will not create PR patches/tasks if filtered out, but instead send a successful status for all required
 checks as well as the base `evergreen` check.
 
+For merge queue filtering, take a look at build variant path filtering.
+
 #### Project-Level File Ignoring
 
 Some commits to your repository don't need to be tested. The obvious
@@ -733,29 +735,36 @@ ignore:
   - "!testdata/sample.txt" ## EXCEPT for changes to this txt file that's part of a test suite
 ```
 
-In the above example, a commit that only changes `README.md` would not
+In the above example, a commit that only changes `README.md` would ~~not~~
 be automatically scheduled, since `*.md` is ignored. A commit that
 changes both `README.md` and `important_file.cpp` _would_ schedule
 tasks, since only some of the commit's changed files are ignored.
 
+**Ignore is currently not considered for merge queue patches.**
+
 ##### Build Variant Path Filtering
 
 Build variants can specify `paths` gitignore-style patterns to define which files should trigger the variant when
-changed. This is the opposite of ignoring - it defines what files the variant cares about and prevents tasks
+changed. This is the opposite of ignoring -- it defines what files the variant cares about and prevents tasks
 from running if a specified file has not changed. However, this does _not_ mean that the variant will automatically
 be scheduled if a file in a specified path is changed. The tasks must still be manually selected to run through
 manual selection, alias, etc.
 
-**Note that ignored files take precedence over paths:** if a file is ignored, it will not run the variant even if
-the path filter would have matched it.
+_Merge queue behavior_: Build variant path filtering applies to the merge queue unless
+[explicitly disabled](#disabling-merge-queue-path-filtering). If testing multiple PRs in one merge queue patch,
+we will consider the full set of changed files to determine what tasks to run, but will
+not consider the changed files from other PRs in the merge group (i.e. paths changed in PRs that are ahead in the queue are not included).
+For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
-Cron, batchtime, and activate true/false will still take precedent over path filtering,
+_Mainline behavior_: Cron, batchtime, and activate true/false will still take precedent over path filtering,
 as those settings are meant to ensure consistent testing, rather than relevant changes.
+
+_Interaction with ignore_: Because ignored files take precedent over build variant path filtering, if a file is ignored,
+it will not run the variant even if the path filter would have matched it (except in the merge queue, where include is not currently supported).
 
 Full gitignore syntax is explained
 [here](https://git-scm.com/docs/gitignore). Ignored variants may still
-be scheduled manually, and their tasks will still be scheduled on
-failure stepback. For PR patches, we will still send a successful check for ignored variants, to avoid blocking requirements.
+be scheduled manually, and their tasks will still be scheduled on failure stepback.
 
 ```yaml
 buildvariants:
@@ -781,6 +790,21 @@ When a build variant has `paths` defined:
 **Note: build variant path filtering is ignored on extremely large GitHub PRs with 3000+ files changed.** If a PR
 contains 3000+ changed files, `paths` will have no effect on the GitHub PR patch. The build variant will run its tasks
 even if `paths` doesn't match any of the changed files.
+
+###### Disabling Merge Queue Path Filtering
+
+If you want to disable path filtering specifically for merge queue versions while keeping it enabled for PR patches,
+you can set the `disable_merge_queue_path_filtering` top-level setting to `true`. When enabled, all build variants
+will run for merge queue versions regardless of their `paths` configuration, but path filtering will still apply
+to PR patches.
+
+This can be useful when you want more selective testing for PR patches but want to ensure comprehensive testing
+before merging to your main branch.
+
+```yaml
+disable_merge_queue_path_filtering: true
+buildvariants: ...
+```
 
 ### Expansions
 
@@ -971,9 +995,7 @@ inter-project dependency:
 The following expansions are available if a task was created with a [patch trigger alias](Project-and-Distro-Settings#patch-trigger-aliases):
 
 - `${parent_patch_id}` is the ID of the parent patch for this task
-- `${parent_github_org}` is the Github org for the parent patch
-- `${parent_github_repo}` is the Github repo for the parent patch
-- `${parent_github_branch}` is the branch tracked by the parent patch
+- `{parent_project_module}` is the name of the parent module in the downstream project (i.e. defined on the upstream project's Child Patch Trigger Alias as "module")
 
 The following expansions are available if a task has modules, where `<module_name>` represents the name defined in the project yaml for a
 given module:
@@ -1166,20 +1188,19 @@ oom_tracker: false
 
 ### Process Diagnostics: ps
 
-By default, Evergreen logs process information every 60 seconds during task execution using the ps expansion if defined (in distro settings, project variables, or in the project yaml) or `ps` as the default. This default behavior will be deprecated soon, and process logging will become opt-in (disabled by default unless explicitly configured and will no longer default to the ps expansion or `ps`).
+You can enable process logging by setting the `ps` field at multiple configuration levels. The specified command will run every 60 seconds during task execution to log process information.
 
-You can customize the process logging command by setting the `ps` field at multiple configuration levels. There is currently no option to opt out, but once default ps logging is deprecated, you will be able to disable process logging, by either not setting it anywhere (the default) or by setting `ps` to an empty string. When enabled, the specified command runs every 60 seconds.
+To disable process logging, either omit the `ps` field or set it to an empty string.
 
 The `ps` field follows a priority order (from highest to lowest):
 
 1. **Build variant task level** - Overrides all other settings
-2. **Project task level** - Overrides project-level and lower settings
-3. **Project level** - Overrides build variant expansions and default
-4. **Default** - Currently defaults to the ps expansion or `"ps"` (will be deprecated to no logging)
+2. **Project task level** - Overrides project-level settings
+3. **Project level** - Base configuration for all tasks
 
-**Note about distro and build variant expansions:** When the default ps logging behavior is deprecated (in the future), distro, project variable and build variant `ps` expansions will be ignored unless you have an explicit `ps` setting at the project, task, or build variant task level. To use an expansion, it would need to be explicitely referenced with `ps: "${my_custom_ps}"` at the desired level (as outlined above).
+To use an expansion, reference it with `ps: "${my_custom_ps}"` at the desired level.
 
-**Project level** (overrides build variant expansions and default):
+**Project level**:
 
 ```yaml
 ps: "ps -o pid" # Enable for all tasks
@@ -1192,7 +1213,7 @@ tasks:
           script: echo "Running with ps logging"
 ```
 
-**Task level** (overrides project level, build variant expansions, and default):
+**Task level** (overrides project level):
 
 ```yaml
 tasks:
@@ -1211,7 +1232,7 @@ tasks:
           script: echo "No ps logging"
 ```
 
-**Build variant task level** (highest priority, overrides task level, project level, build variant expansions, and default):
+**Build variant task level** (highest priority, overrides task level and project level):
 
 ```yaml
 ps: "ps -o pid" # Project-level
@@ -1740,6 +1761,7 @@ For that same reason, teardown groups also cannot run the [manually set task sta
 #### The following constraints apply to single host task groups
 
 - If tasks in a single host task groups have dependencies on another task outside the group, only the first task in the task group should list those dependencies. If a task in the group other than the first one have dependencies outside of the group, the task can be blocked waiting for external dependencies to complete and result in the host being terminated for idleness.
+- Tasks in a task group will depend on all previous tasks in the group, but not later tasks in the group.
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the

@@ -27,43 +27,29 @@ func TestTaskBuildFromService(t *testing.T) {
 		dTime := timeNow.Add(11 * time.Minute)
 		sTime := timeNow.Add(13 * time.Minute)
 		scTime := timeNow.Add(14 * time.Minute)
-		caTime := timeNow.Add(14*time.Minute + 30*time.Second)
 		fTime := timeNow.Add(15 * time.Minute)
 		modelPairs := []taskCompare{
 			{
 				at: APITask{
-					Id:                          utility.ToStringPtr("testId"),
-					CreateTime:                  &cTime,
-					DispatchTime:                &dTime,
-					ScheduledTime:               &scTime,
-					ContainerAllocatedTime:      &caTime,
-					StartTime:                   &sTime,
-					FinishTime:                  &fTime,
-					IngestTime:                  &timeNow,
-					Version:                     utility.ToStringPtr("testVersion"),
-					Revision:                    utility.ToStringPtr("testRevision"),
-					ProjectId:                   utility.ToStringPtr("testProject"),
-					Priority:                    100,
-					TaskCost:                    &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
-					Execution:                   2,
-					Activated:                   true,
-					ActivatedBy:                 utility.ToStringPtr("testActivator"),
-					ContainerAllocated:          true,
-					ContainerAllocationAttempts: 1,
-					BuildId:                     utility.ToStringPtr("testBuildId"),
-					DistroId:                    utility.ToStringPtr("testDistroId"),
-					HostId:                      utility.ToStringPtr("host"),
-					PodID:                       utility.ToStringPtr("pod"),
-					Container:                   utility.ToStringPtr("container"),
-					ContainerOpts: APIContainerOptions{
-						CPU:        2048,
-						MemoryMB:   4096,
-						WorkingDir: utility.ToStringPtr("/working/dir"),
-						Image:      utility.ToStringPtr("image"),
-						OS:         utility.ToStringPtr(string(evergreen.LinuxOS)),
-						Arch:       utility.ToStringPtr(string(evergreen.ArchAMD64)),
-					},
-					BuildVariant: utility.ToStringPtr("testBuildVariant"),
+					Id:            utility.ToStringPtr("testId"),
+					CreateTime:    &cTime,
+					DispatchTime:  &dTime,
+					ScheduledTime: &scTime,
+					StartTime:     &sTime,
+					FinishTime:    &fTime,
+					IngestTime:    &timeNow,
+					Version:       utility.ToStringPtr("testVersion"),
+					Revision:      utility.ToStringPtr("testRevision"),
+					ProjectId:     utility.ToStringPtr("testProject"),
+					Priority:      100,
+					TaskCost:      &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
+					Execution:     2,
+					Activated:     true,
+					ActivatedBy:   utility.ToStringPtr("testActivator"),
+					BuildId:       utility.ToStringPtr("testBuildId"),
+					DistroId:      utility.ToStringPtr("testDistroId"),
+					HostId:        utility.ToStringPtr("host"),
+					BuildVariant:  utility.ToStringPtr("testBuildVariant"),
 					DependsOn: []APIDependency{
 						{TaskId: "testDepends1", Status: "*"},
 						{TaskId: "testDepends2", Status: "*"},
@@ -89,38 +75,25 @@ func TestTaskBuildFromService(t *testing.T) {
 					HasAnnotations: true,
 				},
 				st: task.Task{
-					Id:                          "testId",
-					Project:                     "testProject",
-					CreateTime:                  cTime,
-					DispatchTime:                dTime,
-					ScheduledTime:               scTime,
-					ContainerAllocatedTime:      caTime,
-					StartTime:                   sTime,
-					FinishTime:                  fTime,
-					IngestTime:                  timeNow,
-					Version:                     "testVersion",
-					Revision:                    "testRevision",
-					Execution:                   2,
-					Priority:                    100,
-					TaskCost:                    cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
-					Activated:                   true,
-					ActivatedBy:                 "testActivator",
-					ContainerAllocated:          true,
-					ContainerAllocationAttempts: 1,
-					BuildId:                     "testBuildId",
-					DistroId:                    "testDistroId",
-					Container:                   "container",
-					ContainerOpts: task.ContainerOptions{
-						CPU:        2048,
-						MemoryMB:   4096,
-						WorkingDir: "/working/dir",
-						Image:      "image",
-						OS:         evergreen.LinuxOS,
-						Arch:       evergreen.ArchAMD64,
-					},
-					HostId:       "host",
-					PodID:        "pod",
-					BuildVariant: "testBuildVariant",
+					Id:            "testId",
+					Project:       "testProject",
+					CreateTime:    cTime,
+					DispatchTime:  dTime,
+					ScheduledTime: scTime,
+					StartTime:     sTime,
+					FinishTime:    fTime,
+					IngestTime:    timeNow,
+					Version:       "testVersion",
+					Revision:      "testRevision",
+					Execution:     2,
+					Priority:      100,
+					TaskCost:      cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
+					Activated:     true,
+					ActivatedBy:   "testActivator",
+					BuildId:       "testBuildId",
+					DistroId:      "testDistroId",
+					HostId:        "host",
+					BuildVariant:  "testBuildVariant",
 					DependsOn: []task.Dependency{
 						{
 							TaskId: "testDepends1",
@@ -153,13 +126,12 @@ func TestTaskBuildFromService(t *testing.T) {
 						SystemLogLink: utility.ToStringPtr("parsley/evergreen//0/system"),
 						AgentLogLink:  utility.ToStringPtr("parsley/evergreen//0/agent"),
 					},
-					CreateTime:             &time.Time{},
-					DispatchTime:           &time.Time{},
-					ScheduledTime:          &time.Time{},
-					ContainerAllocatedTime: &time.Time{},
-					StartTime:              &time.Time{},
-					FinishTime:             &time.Time{},
-					IngestTime:             &time.Time{},
+					CreateTime:    &time.Time{},
+					DispatchTime:  &time.Time{},
+					ScheduledTime: &time.Time{},
+					StartTime:     &time.Time{},
+					FinishTime:    &time.Time{},
+					IngestTime:    &time.Time{},
 				},
 				st: task.Task{
 					Requester: evergreen.RepotrackerVersionRequester,
@@ -180,13 +152,12 @@ func TestTaskBuildFromService(t *testing.T) {
 						SystemLogLink: utility.ToStringPtr("parsley/evergreen/old_task_id/0/system"),
 						AgentLogLink:  utility.ToStringPtr("parsley/evergreen/old_task_id/0/agent"),
 					},
-					CreateTime:             &time.Time{},
-					DispatchTime:           &time.Time{},
-					ScheduledTime:          &time.Time{},
-					ContainerAllocatedTime: &time.Time{},
-					StartTime:              &time.Time{},
-					FinishTime:             &time.Time{},
-					IngestTime:             &time.Time{},
+					CreateTime:    &time.Time{},
+					DispatchTime:  &time.Time{},
+					ScheduledTime: &time.Time{},
+					StartTime:     &time.Time{},
+					FinishTime:    &time.Time{},
+					IngestTime:    &time.Time{},
 				},
 				st: task.Task{
 					Id:        "task_id",
@@ -254,17 +225,6 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(utility.FromStringPtr(apiTask.ParsleyLogs.AllLogLink), ShouldEqual, utility.FromStringPtr(tc.at.ParsleyLogs.AllLogLink))
 
 				So(utility.FromStringPtr(apiTask.HostId), ShouldEqual, utility.FromStringPtr(tc.at.HostId))
-				So(utility.FromStringPtr(apiTask.PodID), ShouldEqual, utility.FromStringPtr(tc.at.PodID))
-
-				So(utility.FromStringPtr(apiTask.Container), ShouldEqual, utility.FromStringPtr(tc.at.Container))
-				So(apiTask.ContainerOpts.CPU, ShouldEqual, tc.at.ContainerOpts.CPU)
-				So(apiTask.ContainerOpts.MemoryMB, ShouldEqual, tc.at.ContainerOpts.MemoryMB)
-				So(utility.FromStringPtr(apiTask.ContainerOpts.WorkingDir), ShouldEqual, utility.FromStringPtr(tc.at.ContainerOpts.WorkingDir))
-				So(utility.FromStringPtr(apiTask.ContainerOpts.Image), ShouldEqual, utility.FromStringPtr(tc.at.ContainerOpts.Image))
-				So(utility.FromStringPtr(apiTask.ContainerOpts.OS), ShouldEqual, utility.FromStringPtr(tc.at.ContainerOpts.OS))
-				So(utility.FromStringPtr(apiTask.ContainerOpts.Arch), ShouldEqual, utility.FromStringPtr(tc.at.ContainerOpts.Arch))
-				So(apiTask.ContainerAllocated, ShouldEqual, tc.at.ContainerAllocated)
-				So(apiTask.ContainerAllocationAttempts, ShouldEqual, tc.at.ContainerAllocationAttempts)
 
 				if tc.at.StepbackInfo == nil {
 					So(apiTask.StepbackInfo, ShouldBeNil)

@@ -8,11 +8,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -54,50 +51,6 @@ func FindProjectById(ctx context.Context, id string, includeRepo bool, includePr
 	return p, nil
 }
 
-// RequestS3Creds creates a JIRA ticket that requests S3 credentials to be added for the specified project.
-// TODO DEVPROD-5553: Remove the function after project completion.
-func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) error {
-	if projectIdentifier == "" {
-		return errors.New("project identifier cannot be empty")
-	}
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting evergreen settings")
-	}
-	if settings.ProjectCreation.JiraProject == "" {
-		return nil
-	}
-	summary := fmt.Sprintf("Create AWS bucket for s3 uploads for '%s' project", projectIdentifier)
-	description := fmt.Sprintf("Could you create an s3 bucket and role arn for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
-	jiraIssue := message.JiraIssue{
-		Project:     settings.ProjectCreation.JiraProject,
-		Summary:     summary,
-		Description: description,
-		Reporter:    userEmail,
-		Fields: map[string]any{
-			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
-		},
-	}
-
-	sub := event.Subscriber{
-		Type: event.JIRAIssueSubscriberType,
-		Target: event.JIRAIssueSubscriber{
-			Project:   settings.ProjectCreation.JiraProject,
-			IssueType: "Task",
-		},
-	}
-	n, err := notification.New("", utility.RandomString(), &sub, jiraIssue)
-	if err != nil {
-		return err
-	}
-
-	err = notification.InsertMany(ctx, *n)
-	if err != nil {
-		return errors.Wrap(err, "batch inserting notifications")
-	}
-	return nil
-}
-
 // CreateProject creates a new project ref from the given one and performs other
 // initial setup for new projects such as populating initial project variables
 // and creating new webhooks. If the given project ref already has container
@@ -130,9 +83,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		warningCatcher.Add(err)
 	}
 
-	existingContainerSecrets := projectRef.ContainerSecrets
-	projectRef.ContainerSecrets = nil
-
 	_, err = model.SetTracksPushEvents(ctx, projectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -151,13 +101,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	if err = tryCopyingContainerSecrets(ctx, env.Settings(), existingContainerSecrets, projectRef); err != nil {
-		return false, gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrapf(err, "copying container secrets for project '%s'", projectRef.Identifier).Error(),
-		}
-	}
-
 	err = model.LogProjectAdded(ctx, projectRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":            "problem logging project added",
@@ -166,38 +109,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		"user":               u.DisplayName(),
 	}))
 	return true, warningCatcher.Resolve()
-}
-
-func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Settings, existingSecrets []model.ContainerSecret, pRef *model.ProjectRef) error {
-	smClient, err := cloud.MakeSecretsManagerClient(ctx, settings)
-	if err != nil {
-		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
-	}
-
-	vault, err := cloud.MakeSecretsManagerVault(smClient)
-	if err != nil {
-		return errors.Wrap(err, "setting up Secrets Manager vault to store newly-created project's container secrets")
-	}
-
-	secrets, err := getCopiedContainerSecrets(ctx, settings, vault, pRef.Id, existingSecrets)
-	if err != nil {
-		return errors.Wrapf(err, "copying existing container secrets")
-	}
-	if err := pRef.SetContainerSecrets(ctx, secrets); err != nil {
-		return errors.Wrap(err, "setting container secrets")
-	}
-
-	// Under the hood, this is updating the container secrets in the DB project
-	// ref, but this function's copy of the in-memory project ref won't reflect
-	// those changes. We log an error here instead of returning, so that this
-	// doesn't prevent the rest of the operations.
-	grip.Error(message.WrapError(UpsertContainerSecrets(ctx, vault, secrets), message.Fields{
-		"message":            "problem upserting container secrets",
-		"project_id":         pRef.Id,
-		"project_identifier": pRef.Identifier,
-	}))
-
-	return nil
 }
 
 // projectIDRegexp includes all the allowed characters in a project

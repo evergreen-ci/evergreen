@@ -310,7 +310,7 @@ one of the above fields.
 
 If you'd like for Git Tag triggered versions to be associated with the pusher,
 ensure that they've set their GitHub username in
-[their Evergreen preferences](https://spruce.mongodb.com/preferences/profile).
+[their Evergreen preferences](https://spruce.corp.mongodb.com/preferences/profile).
 
 ##### Add aliases to determine what tasks will run
 

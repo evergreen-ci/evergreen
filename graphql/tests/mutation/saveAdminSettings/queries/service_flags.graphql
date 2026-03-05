@@ -23,8 +23,6 @@ mutation {
         jwtTokenForCLIDisabled: true
         largeParserProjectsDisabled: true
         monitorDisabled: true
-        podAllocatorDisabled: true
-        podInitDisabled: true
         releaseModeDisabled: true
         repotrackerDisabled: true
         schedulerDisabled: true
@@ -35,8 +33,6 @@ mutation {
         taskDispatchDisabled: true
         taskLoggingDisabled: true
         taskReliabilityDisabled: true
-        unrecognizedPodCleanupDisabled: true
-        useGitForGitHubFilesDisabled: true
         useMergeQueuePathFilteringDisabled: true
         webhookNotificationsDisabled: true
       }
@@ -64,8 +60,6 @@ mutation {
       jwtTokenForCLIDisabled
       largeParserProjectsDisabled
       monitorDisabled
-      podAllocatorDisabled
-      podInitDisabled
       releaseModeDisabled
       repotrackerDisabled
       schedulerDisabled
@@ -76,8 +70,6 @@ mutation {
       taskDispatchDisabled
       taskLoggingDisabled
       taskReliabilityDisabled
-      unrecognizedPodCleanupDisabled
-      useGitForGitHubFilesDisabled
       useMergeQueuePathFilteringDisabled
       webhookNotificationsDisabled
     }

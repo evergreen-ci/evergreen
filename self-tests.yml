@@ -434,13 +434,6 @@ functions:
           rm evergreen/bin/output.*
           rm evergreen/bin/jstests/*.xml
 
-  write-downstream-expansions-for-pine:
-    - command: shell.exec
-      params:
-        script: |
-          touch downstream_expansions_pine.yaml
-          echo "pine_repo_name: evergreen" | tee downstream_expansions_pine.yaml
-
 #######################################
 #                Tasks                #
 #######################################
@@ -448,9 +441,6 @@ functions:
 tasks:
   - <<: *run-smoke-test
     name: test-smoke-internal-host
-    tags: ["smoke"]
-  - <<: *run-smoke-test
-    name: test-smoke-internal-container
     tags: ["smoke"]
   - <<: *run-smoke-test
     name: test-smoke-internal-endpoint
@@ -581,15 +571,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-patch
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-definition
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-pod-dispatcher
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-taskstats
@@ -784,12 +765,6 @@ tasks:
           permissions: public-read
           display_name: swagger.sum (latest)
           patchable: false
-  - name: write-downstream-expansions-for-pine
-    commands:
-      - func: write-downstream-expansions-for-pine
-      - command: downstream_expansions.set
-        params:
-          file: downstream_expansions_pine.yaml
   - name: generate-graphql-merged-schema
     commands:
       - func: get-project-and-modules
@@ -861,6 +836,8 @@ buildvariants:
       - "*.sh"
       - "*.diff"
       - "*.patch"
+      - "go.mod"
+      - "go.sum"
     run_on:
       - ubuntu2204-small
       - ubuntu2204-large
@@ -879,7 +856,6 @@ buildvariants:
       - name: ".linter"
       - name: test-cloud
       - name: generate-api-docs
-      - name: write-downstream-expansions-for-pine
       - name: generate-graphql-merged-schema
 
   - name: race-detector
@@ -1016,14 +992,3 @@ buildvariants:
       - name: build-and-push-darwin-unsigned
         execution_tasks:
           - ".build-unsigned"
-
-containers:
-  - name: evg-container
-    working_dir: /
-    image: ${container_image}
-    resources:
-      cpu: 4096
-      memory_mb: 8192
-    system:
-      cpu_architecture: x86_64
-      operating_system: linux

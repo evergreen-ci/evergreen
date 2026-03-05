@@ -379,12 +379,18 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 		latestExecutionForTask = taskToRestart
 	}
 
+	// Get the project's GitHub app auth for check run operations.
+	// If this fails or the project doesn't have a GitHub app configured,
+	// the check run functions will fall back to using the internal app.
+	ghAppAuth := model.GetGitHubAppAuthForProject(ctx, taskToRestart.Project)
+
 	// Check run status should stay the same while task is being re-run.
 	latestExecutionForTask.Status = taskToRestart.Status
-	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.Api.URL, checkRun.GetID(), latestExecutionForTask, output)
+	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.Api.URL, checkRun.GetID(), latestExecutionForTask, output, ghAppAuth)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
+			"operation": "check run",
 			"msg_id":    gh.msgID,
 			"event":     gh.eventType,
 			"owner":     owner,
@@ -508,7 +514,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
 func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github.MergeGroupEvent) error {
-	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
+	intent, err := patch.NewGithubMergeIntent(ctx, gh.msgID, patch.AutomatedCaller, mg)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")
 	}
@@ -1375,7 +1381,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				return nil, errors.Wrap(err, "getting email sender")
 			}
 
-			subject, body := unauthorizedGitTagEmail(tag.Tag, tag.Pusher, fmt.Sprintf("https://spruce.mongodb.com/project/%s/settings/github-commitqueue", pRef.Identifier))
+			subject, body := unauthorizedGitTagEmail(tag.Tag, tag.Pusher, fmt.Sprintf("https://spruce.corp.mongodb.com/project/%s/settings/github-commitqueue", pRef.Identifier))
 			email := message.Email{
 				Recipients:        []string{userDoc.EmailAddress},
 				PlainTextContents: false,
