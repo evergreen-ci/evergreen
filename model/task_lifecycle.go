@@ -1809,6 +1809,13 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		queueEntrySource = "create_time"
 	}
 
+	// Calculate the collective finish time across the patch family (parent + children).
+	// This matches the API's finish_time to represent when the entire patch family completed.
+	_, collectiveFinishTime, err := p.GetCollectiveTimes(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting collective finish time for merge queue metrics")
+	}
+
 	baseAttrs := patch.BuildMergeQueueSpanAttributes(
 		p.GithubMergeData.Org,
 		p.GithubMergeData.Repo,
@@ -1826,8 +1833,8 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrQueueEntrySource, queueEntrySource))
 
-	if !p.FinishTime.IsZero() && !queueEntryTime.IsZero() {
-		timeInQueue := p.FinishTime.Sub(queueEntryTime).Milliseconds()
+	if !collectiveFinishTime.IsZero() && !queueEntryTime.IsZero() {
+		timeInQueue := collectiveFinishTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
 	}
 
