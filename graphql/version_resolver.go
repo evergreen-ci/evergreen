@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -533,12 +532,12 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 		return apiUser, nil
 	}
 
-	author, err := user.FindOneById(ctx, authorId)
+	apiUser, err := GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
 	// This is most likely a reaped user, so just return their info from version
-	if author == nil {
+	if apiUser == nil {
 		return &restModel.APIDBUser{
 			UserID:       obj.AuthorID,
 			DisplayName:  obj.Author,
@@ -546,8 +545,6 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 		}, nil
 	}
 
-	apiUser := &restModel.APIDBUser{}
-	apiUser.BuildFromService(*author)
 	return apiUser, nil
 }
 
