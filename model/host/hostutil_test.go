@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -104,10 +103,6 @@ func TestCurlCommandWithRetry(t *testing.T) {
 }
 
 func TestGetSSHOptions(t *testing.T) {
-	keyFile, err := os.CreateTemp(t.TempDir(), "")
-	require.NoError(t, err)
-	defaultKeyPath := keyFile.Name()
-
 	checkContainsOptionsAndValues := func(t *testing.T, expected []string, actual []string) {
 		exists := map[string]bool{}
 		require.Equal(t, len(expected)%2, 0, `expected options must be in pairs (e.g. ("-o", "LogLevel=DEBUG"))`)
@@ -121,14 +116,14 @@ func TestGetSSHOptions(t *testing.T) {
 	}
 	for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
 		"ReturnsExpectedArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
+			expected := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
 		"SetsDistroPortIfHostSpecificPortIsUnspecified": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=123")
-			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
+			expected := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
@@ -136,21 +131,15 @@ func TestGetSSHOptions(t *testing.T) {
 		"PrioritizesHostSpecificPortOverDistroPort": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=456")
 			h.SSHPort = 123
-			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
+			expected := []string{"-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
-		"FailsWithoutIdentityFile": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			settings.KanopySSHKeyPath = "does_not_exist"
-
-			_, err := h.GetSSHOptions(settings)
-			assert.Error(t, err)
-		},
 		"IncludesAdditionalArguments": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.SSHOptions = []string{"UserKnownHostsFile=/path/to/file"}
 
-			expected := []string{"-i", defaultKeyPath, "-o", h.Distro.SSHOptions[0]}
+			expected := []string{"-o", h.Distro.SSHOptions[0]}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
@@ -159,9 +148,7 @@ func TestGetSSHOptions(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			testCase(t, &Host{
 				Id: "id",
-			}, &evergreen.Settings{
-				KanopySSHKeyPath: defaultKeyPath,
-			})
+			}, &evergreen.Settings{})
 		})
 	}
 }
@@ -710,10 +697,6 @@ func TestJasperClient(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx))
 			env.Settings().HostJasper.BinaryName = "binary"
-
-			keyFile, err := os.CreateTemp(t.TempDir(), "")
-			require.NoError(t, err)
-			env.Settings().KanopySSHKeyPath = keyFile.Name()
 
 			doTest := func() {
 				client, err := testCase.h.JasperClient(tctx, env)

@@ -85,7 +85,6 @@ type APIAdminSettings struct {
 	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
 	Jira                    *APIJiraConfig                `json:"jira,omitempty"`
 	JIRANotifications       *APIJIRANotificationsConfig   `json:"jira_notifications,omitempty"`
-	KanopySSHKeyPath        *string                       `json:"kanopy_ssh_key_path,omitempty"`
 	LoggerConfig            *APILoggerConfig              `json:"logger_config,omitempty"`
 	LogPath                 *string                       `json:"log_path,omitempty"`
 	Notify                  *APINotifyConfig              `json:"notify,omitempty"`
@@ -168,7 +167,6 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.Plugins = v.Plugins
 		as.PprofPort = &v.PprofPort
 		as.Expansions = v.Expansions
-		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
@@ -322,7 +320,6 @@ func (as *APIAdminSettings) ToService() (any, error) {
 	for k, v := range as.Expansions {
 		settings.Expansions[k] = v
 	}
-	settings.KanopySSHKeyPath = utility.FromStringPtr(as.KanopySSHKeyPath)
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]any{}
 		for k2, v2 := range v {
