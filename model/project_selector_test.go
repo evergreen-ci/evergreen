@@ -351,3 +351,32 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 	})
 
 }
+
+func BenchmarkEvalCriterionNegated(b *testing.B) {
+	// Create large task list
+	var tasks []parserTask
+	for i := 0; i < 5000; i++ {
+		tasks = append(tasks, parserTask{
+			Name: fmt.Sprintf("task%d", i),
+			Tags: parserStringSlice{"tag1", "tag2"},
+		})
+	}
+
+	tse := NewParserTaskSelectorEvaluator(tasks)
+
+	b.Run("NegatedName", func(b *testing.B) {
+		sc := selectCriterion{name: "task1", negated: true}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = tse.tagEval.evalCriterion(sc)
+		}
+	})
+
+	b.Run("NegatedTag", func(b *testing.B) {
+		sc := selectCriterion{name: "tag1", tagged: true, negated: true}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = tse.tagEval.evalCriterion(sc)
+		}
+	})
+}
