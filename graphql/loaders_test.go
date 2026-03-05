@@ -82,13 +82,7 @@ func TestGetUser(t *testing.T) {
 			go func(userID string) {
 				defer wg.Done()
 				result, err := GetUser(ctx, userID)
-				if err != nil {
-					resultsChan <- getUserResult{userID: userID, found: false, err: err}
-				} else if result == nil {
-					resultsChan <- getUserResult{userID: userID, found: false, err: nil}
-				} else {
-					resultsChan <- getUserResult{userID: userID, found: true, err: nil}
-				}
+				resultsChan <- getUserResult{userID: userID, found: result != nil, err: err}
 			}(id)
 		}
 
@@ -126,13 +120,7 @@ func TestGetUser(t *testing.T) {
 			go func(userID string) {
 				defer wg.Done()
 				result, err := GetUser(ctx, userID)
-				if err != nil {
-					resultsChan <- getUserResult{userID: userID, found: false, err: err}
-				} else if result == nil {
-					resultsChan <- getUserResult{userID: userID, found: false, err: nil}
-				} else {
-					resultsChan <- getUserResult{userID: userID, found: true, err: nil}
-				}
+				resultsChan <- getUserResult{userID: userID, found: result != nil, err: err}
 			}(id)
 		}
 
@@ -230,12 +218,7 @@ func TestGetVersion(t *testing.T) {
 			go func(versionID string) {
 				defer wg.Done()
 				result, err := GetVersion(ctx, versionID)
-				if err != nil {
-					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
-				} else if result == nil {
-					resultsChan <- getVersionResult{versionID: versionID, found: false, err: nil}
-				} else {
-					resultsChan <- getVersionResult{versionID: versionID, found: true, err: nil}
+				resultsChan <- getVersionResult{versionID: versionID, found: result != nil, err: err}
 				}
 			}(id)
 		}
@@ -273,13 +256,7 @@ func TestGetVersion(t *testing.T) {
 			go func(versionID string) {
 				defer wg.Done()
 				result, err := GetVersion(ctx, versionID)
-				if err != nil {
-					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
-				} else if result == nil {
-					resultsChan <- getVersionResult{versionID: versionID, found: false, err: nil}
-				} else {
-					resultsChan <- getVersionResult{versionID: versionID, found: true, err: nil}
-				}
+				resultsChan <- getVersionResult{versionID: versionID, found: result != nil, err: err}
 			}(id)
 		}
 
