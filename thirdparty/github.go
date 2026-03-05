@@ -470,8 +470,8 @@ func RevokeInstallationToken(ctx context.Context, token string) error {
 	))
 	defer span.End()
 
-	// Ignore unauthorized responses since the token may have already been revoked.
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized}})
+	// Ignore unauthorized and not found responses since the token may have already been revoked or expired.
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized, http.StatusNotFound}})
 	defer githubClient.Close()
 	resp, err := githubClient.Apps.RevokeInstallationToken(ctx)
 	if resp != nil {
