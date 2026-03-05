@@ -280,8 +280,7 @@
         "data": {
           "saveAdminSettings": {
             "oktaServiceConfig": {
-              "clientId": "service-id",
-              "clientSecret": "service-secret"
+              "clientId": "service-id"
             }
           }
         }

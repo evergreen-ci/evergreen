@@ -9,7 +9,6 @@ mutation {
   ) {
     oktaServiceConfig {
       clientId
-      clientSecret
     }
   }
 }
