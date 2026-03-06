@@ -186,6 +186,10 @@ func MockConfig() *evergreen.Settings {
 			},
 			BackgroundReauthMinutes: 60,
 		},
+		OktaServiceConfig: evergreen.OktaServiceConfig{
+			ClientID:     "service_id",
+			ClientSecret: "service_secret",
+		},
 		AWSInstanceRole: "role",
 		Banner:          "banner",
 		BannerTheme:     "IMPORTANT",

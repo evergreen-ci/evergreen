@@ -26,6 +26,7 @@ func NewConfigSections() ConfigSections {
 		&AmboyDBConfig{},
 		&APIConfig{},
 		&AuthConfig{},
+		&OktaServiceConfig{},
 		&BucketsConfig{},
 		&CedarConfig{},
 		&CloudProviders{},

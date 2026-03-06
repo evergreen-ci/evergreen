@@ -172,9 +172,6 @@ const (
 
 	HostTypeStatic = "static"
 
-	MergeTestSucceeded = "succeeded"
-	MergeTestFailed    = "failed"
-
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
 

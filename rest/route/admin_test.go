@@ -160,6 +160,8 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.AuthConfig.PreferredType, settings.AuthConfig.PreferredType)
 	s.EqualValues(testSettings.AuthConfig.Multi.ReadWrite[0], settings.AuthConfig.Multi.ReadWrite[0])
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settings.AuthConfig.Github.Users))
+	s.Equal(testSettings.OktaServiceConfig.ClientID, settings.OktaServiceConfig.ClientID)
+	s.Equal(testSettings.OktaServiceConfig.ClientSecret, settings.OktaServiceConfig.ClientSecret)
 	s.EqualValues(testSettings.Buckets.Credentials.Key, settings.Buckets.Credentials.Key)
 	s.EqualValues(testSettings.Buckets.Credentials.Secret, settings.Buckets.Credentials.Secret)
 	s.EqualValues(testSettings.ContainerPools.Pools[0].Distro, settings.ContainerPools.Pools[0].Distro)

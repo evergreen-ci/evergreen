@@ -294,6 +294,23 @@ func (s *AdminSuite) TestAuthConfig() {
 	s.Equal(config, settings.AuthConfig)
 }
 
+func (s *AdminSuite) TestOktaServiceConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := OktaServiceConfig{
+		ClientID:     "service_id",
+		ClientSecret: "service_secret",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.OktaServiceConfig)
+}
+
 func (s *AdminSuite) TestHostinitConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
