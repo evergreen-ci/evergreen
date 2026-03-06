@@ -852,7 +852,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
 		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
 		// Otherwise, retrieve the module's commit from the time of the patch creation.
-		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester {
+		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester && requester != evergreen.TriggerRequester {
 			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, revision)
 			if err != nil {
 				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", revision, projectRef.Owner, projectRef.Repo)
