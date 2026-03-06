@@ -218,7 +218,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 		if tse.byName[sc.name] == nil {
 			return nil, nil
 		}
-		names := []string{}
+		names := make([]string, 0, len(tse.items)-1)
 		for _, item := range tse.items {
 			if item.name() != sc.name {
 				names = append(names, item.name())
@@ -231,11 +231,12 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 		if len(items) == 0 {
 			return nil, nil
 		}
-		illegalItems := map[string]bool{}
+		illegalItems := make(map[string]bool, len(items))
 		for _, item := range items {
 			illegalItems[item.name()] = true
 		}
-		names := []string{}
+		// Pre-allocate capacity for all items minus the tagged ones.
+		names := make([]string, 0, len(tse.items)-len(items))
 		// build slice of all items that aren't in the tag
 		for _, item := range tse.items {
 			if !illegalItems[item.name()] {

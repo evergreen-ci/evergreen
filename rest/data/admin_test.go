@@ -130,6 +130,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
+	s.Equal(testSettings.OktaServiceConfig.ClientID, settingsFromConnector.OktaServiceConfig.ClientID)
+	s.Equal(testSettings.OktaServiceConfig.ClientSecret, settingsFromConnector.OktaServiceConfig.ClientSecret)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, settingsFromConnector.Buckets.Credentials.Secret)
 	s.Equal(testSettings.FWS.URL, settingsFromConnector.FWS.URL)
