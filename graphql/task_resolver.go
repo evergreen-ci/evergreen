@@ -461,18 +461,14 @@ func (r *taskResolver) Generator(ctx context.Context, obj *restModel.APITask) (*
 	if obj.GeneratedBy == "" {
 		return nil, nil
 	}
-	generator, err := task.FindOneId(ctx, obj.GeneratedBy)
+	generator, err := GetTask(ctx, obj.GeneratedBy)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if generator == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("generator task '%s' not found", obj.GeneratedBy))
 	}
-	apiTask := &restModel.APITask{}
-	if err = apiTask.BuildFromService(ctx, generator, nil); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting generator task '%s' to APITask: %s", generator.Id, err.Error()))
-	}
-	return apiTask, nil
+	return generator, nil
 }
 
 // ImageID is the resolver for the imageId field.
