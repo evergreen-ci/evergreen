@@ -1,0 +1,9 @@
+{
+  task(taskId: "current_task") {
+    id
+    prevTaskBreaking {
+      id
+      status
+    }
+  }
+}

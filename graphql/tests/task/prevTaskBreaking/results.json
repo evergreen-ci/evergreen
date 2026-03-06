@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "query_file": "prev_task_breaking.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "prevTaskBreaking": {
+              "id": "prev_failed",
+              "status": "failed"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

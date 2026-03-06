@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "query_file": "prev_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "prevTask": {
+              "id": "prev_started",
+              "status": "started"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
