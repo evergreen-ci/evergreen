@@ -607,23 +607,8 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	if expansionsAndVars == nil {
 		return nil
 	}
-	// GetExpansionsAndVars does not include build variant expansions or project
-	// parameters, so load them from the project.
-	for _, bv := range project.BuildVariants {
-		if bv.Name == e.taskConfig.Task.BuildVariant {
-			expansionsAndVars.Expansions.Update(bv.Expansions)
-			break
-		}
-	}
-	expansionsAndVars.Expansions.Update(expansionsAndVars.Vars)
-	for _, param := range project.Parameters {
-		// If the key doesn't exist, the value will default to "" anyway; this
-		// prevents an un-specified project parameter from overwriting
-		// lower-priority expansions.
-		if param.Value != "" {
-			expansionsAndVars.Expansions.Put(param.Key, param.Value)
-		}
-	}
+
+	agentutil.AddVariantAndParameterExpansions(expansionsAndVars, e.project, e.taskConfig.Task.BuildVariant)
 	for k, v := range expansionsAndVars.Expansions {
 		e.taskConfig.Expansions.Put(k, v)
 	}
