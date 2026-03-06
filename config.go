@@ -372,7 +372,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 				// If the field is a string, store in parameter manager and update struct with path.
 				if fieldValue.Kind() == reflect.String {
 					// Check if the field path is already in the cache.
-					if cachedValue, ok := paramCache[fieldPath]; ok {
+					if cachedValue, ok := paramCache[paramMgr.GetPrefixedName(fieldPath)]; ok {
 						fieldValue.SetString(cachedValue)
 					} else {
 						// We don't defer the cancel() and instead cancel it immediately
@@ -396,7 +396,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					for _, key := range fieldValue.MapKeys() {
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						// Check if the field path is already in the cache.
-						if cachedValue, ok := paramCache[mapFieldPath]; ok {
+						if cachedValue, ok := paramCache[paramMgr.GetPrefixedName(mapFieldPath)]; ok {
 							newMap.SetMapIndex(key, reflect.ValueOf(cachedValue))
 						} else {
 							// We don't defer the cancel() and instead cancel it immediately
@@ -445,8 +445,6 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 	}
 }
 
-// collectSecretPaths recursively traverses a struct and collects the paths of all fields
-// tagged with "secret":"true". It returns a slice of strings containing these paths.
 func collectSecretPaths(value reflect.Value, typ reflect.Type, path string) []string {
 	var secretPaths []string
 
