@@ -85,12 +85,40 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 	}
 
 	if active {
+		versionIdsToActivate := []string{}
+		for versionId := range versionIdsSet {
+			versionIdsToActivate = append(versionIdsToActivate, versionId)
+
+			versionTasks, err := task.FindAll(ctx, db.Query(task.ByVersion(versionId)))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "error fetching tasks for version when recomputing NumDependents",
+				"version_id": versionId,
+			}))
+			if err != nil {
+				continue
+			}
+
+			taskPtrs := make([]*task.Task, len(versionTasks))
+			for i := range versionTasks {
+				taskPtrs[i] = &versionTasks[i]
+			}
+
+			// Recompute NumDependents for affected versions to ensure tasks have correct dependency counts.
+			// This is necessary because activating tasks recursively activates their upstream dependencies,
+			// which may not have been counted when those dependency tasks were originally created.
+			SetNumDependents(taskPtrs)
+
+			for _, t := range taskPtrs {
+				grip.Error(message.WrapError(t.SetNumDependents(ctx), message.Fields{
+					"message":    "error persisting NumDependents",
+					"task_id":    t.Id,
+					"version_id": versionId,
+				}))
+			}
+		}
+
 		if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
-		}
-		versionIdsToActivate := []string{}
-		for v := range versionIdsSet {
-			versionIdsToActivate = append(versionIdsToActivate, v)
 		}
 		if err := ActivateVersions(ctx, versionIdsToActivate); err != nil {
 			return errors.Wrap(err, "marking version as activated")
