@@ -994,9 +994,6 @@ func (s *AdminSuite) TestReadAdminSecretsUsesParamCache() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Create a ParameterManager with a non-empty prefix and a fake SSM
-	// client that errors on every call. If readAdminSecrets bypasses the
-	// cache, the error surfaces in the catcher immediately (no hanging).
 	paramMgr, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
 		PathPrefix: "/test-prefix",
 		SSMClient:  &errorSSMClient{},

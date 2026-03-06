@@ -445,6 +445,8 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 	}
 }
 
+// collectSecretPaths recursively traverses a struct and collects the paths of all fields
+// tagged with "secret":"true". It returns a slice of strings containing these paths.
 func collectSecretPaths(value reflect.Value, typ reflect.Type, path string) []string {
 	var secretPaths []string
 
