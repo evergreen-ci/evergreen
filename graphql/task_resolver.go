@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // AbortInfo is the resolver for the abortInfo field.
@@ -713,15 +712,13 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)
-	v, err := model.VersionFindOne(ctx, model.VersionById(versionID).Project(bson.M{model.VersionBuildVariantsKey: 0}))
+	apiVersion, err := GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
 	}
-	if v == nil {
+	if apiVersion == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
-	apiVersion := &restModel.APIVersion{}
-	apiVersion.BuildFromService(ctx, *v)
 	return apiVersion, nil
 }
 
