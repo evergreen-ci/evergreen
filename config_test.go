@@ -2,13 +2,19 @@ package evergreen
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -959,4 +965,74 @@ func (s *AdminSuite) TestSageConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Sage)
+}
+
+// errorSSMClient is a minimal SSMClient implementation for testing that returns
+// errors on every operation. If readAdminSecrets bypasses the cache and calls
+// paramMgr.Get, the error propagates into the catcher, making cache misses
+// observable in test assertions.
+// It only exists to get around a circular dependency in fakeparameter.
+type errorSSMClient struct{}
+
+func (c *errorSSMClient) PutParameter(context.Context, *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
+	return nil, errors.New("errorSSMClient: not implemented")
+}
+func (c *errorSSMClient) DeleteParametersSimple(context.Context, *ssm.DeleteParametersInput) ([]string, error) {
+	return nil, errors.New("errorSSMClient: not implemented")
+}
+func (c *errorSSMClient) DeleteParameters(context.Context, *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error) {
+	return nil, errors.New("errorSSMClient: not implemented")
+}
+func (c *errorSSMClient) GetParametersSimple(context.Context, *ssm.GetParametersInput) ([]ssmTypes.Parameter, error) {
+	return nil, errors.New("errorSSMClient: cache miss detected — paramMgr.Get was called")
+}
+func (c *errorSSMClient) GetParameters(context.Context, *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
+	return nil, errors.New("errorSSMClient: cache miss detected — paramMgr.Get was called")
+}
+
+func (s *AdminSuite) TestReadAdminSecretsUsesParamCache() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create a ParameterManager with a non-empty prefix and a fake SSM
+	// client that errors on every call. If readAdminSecrets bypasses the
+	// cache, the error surfaces in the catcher immediately (no hanging).
+	paramMgr, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix: "/test-prefix",
+		SSMClient:  &errorSSMClient{},
+		DB:         GetEnvironment().DB(),
+	})
+	s.Require().NoError(err)
+
+	settings := testConfig()
+	settingsValue := reflect.ValueOf(settings).Elem()
+	settingsType := reflect.TypeOf(*settings)
+
+	secretPaths := collectSecretPaths(settingsValue, settingsType, "")
+	s.NotEmpty(secretPaths)
+
+	// construct the paramCache in the same way GetConfig does
+	paramCache := map[string]string{}
+	for i, sp := range secretPaths {
+		paramCache[paramMgr.GetPrefixedName(sp)] = fmt.Sprintf("cached-value-%d", i)
+	}
+
+	// ensure settings are emptied before reading from cache
+	settings.Jira.PersonalAccessToken = ""
+	settings.Slack.Token = ""
+	settings.GithubWebhookSecret = ""
+
+	settingsValue = reflect.ValueOf(settings).Elem()
+	settingsType = reflect.TypeOf(*settings)
+
+	catcher := grip.NewBasicCatcher()
+	readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", paramCache, catcher)
+
+	s.NoError(catcher.Resolve())
+	s.Contains(settings.Jira.PersonalAccessToken, "cached-value-")
+	s.Contains(settings.Slack.Token, "cached-value-")
+	s.Contains(settings.GithubWebhookSecret, "cached-value-")
+	s.NotEqual(settings.Jira.PersonalAccessToken, settings.Slack.Token)
+	s.NotEqual(settings.Jira.PersonalAccessToken, settings.GithubWebhookSecret)
+	s.NotEqual(settings.Slack.Token, settings.GithubWebhookSecret)
 }
