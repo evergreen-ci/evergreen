@@ -110,6 +110,11 @@ type Task {
   order: Int!
   patch: Patch
   patchNumber: Int
+  prevTaskBreaking: Task
+  prevTaskPassing: Task
+  """prevTask may be in-progress"""
+  prevTask: Task
+  prevTaskCompleted: Task
   priority: Int
   project: Project
   projectId: String!
