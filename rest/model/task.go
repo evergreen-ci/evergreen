@@ -125,10 +125,7 @@ type APITask struct {
 	ResetWhenFinished    bool            `json:"reset_when_finished"`
 	HasAnnotations       bool            `json:"has_annotations"`
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
-	// Whether this task can run in patches (from YAML configuration). Nil if not explicitly set.
-	Patchable *bool `json:"patchable"`
-	// Whether this task can only run in patches, not mainline (from YAML configuration). Nil if not explicitly set.
-	PatchOnly *bool `json:"patch_only"`
+	TaskConfig           APITaskConfig   `json:"task_config"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool `json:"-"`
@@ -186,6 +183,12 @@ type ApiTaskEndDetail struct {
 	OOMTracker  APIOomTrackerInfo `json:"oom_tracker_info"`
 	TraceID     *string           `json:"trace_id"`
 	DiskDevices []string          `json:"disk_devices"`
+}
+
+// APITaskConfig contains task configuration settings from the project YAML.
+type APITaskConfig struct {
+	Patchable *bool `json:"patchable,omitempty"`
+	PatchOnly *bool `json:"patch_only,omitempty"`
 }
 
 func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
@@ -358,8 +361,10 @@ func (at *APITask) buildTask(t *task.Task) error {
 		},
 		HasAnnotations:       t.HasAnnotations,
 		TestSelectionEnabled: t.TestSelectionEnabled,
-		Patchable:            t.Patchable,
-		PatchOnly:            t.PatchOnly,
+		TaskConfig: APITaskConfig{
+			Patchable: t.Patchable,
+			PatchOnly: t.PatchOnly,
+		},
 	}
 
 	if t.BaseTask.Id != "" {

@@ -739,8 +739,8 @@ func TestTaskGetHandlerPatchInfo(t *testing.T) {
 
 	apiTask, ok := resp.Data().(*model.APITask)
 	require.True(t, ok)
-	require.NotNil(t, apiTask.Patchable)
-	assert.False(t, *apiTask.Patchable)
+	require.NotNil(t, apiTask.TaskConfig.Patchable)
+	assert.False(t, *apiTask.TaskConfig.Patchable)
 }
 
 func TestTaskGetHandlerPatchInfoVariantLevel(t *testing.T) {
@@ -765,6 +765,6 @@ func TestTaskGetHandlerPatchInfoVariantLevel(t *testing.T) {
 
 	apiTask, ok := resp.Data().(*model.APITask)
 	require.True(t, ok)
-	require.NotNil(t, apiTask.PatchOnly)
-	assert.True(t, *apiTask.PatchOnly)
+	require.NotNil(t, apiTask.TaskConfig.PatchOnly)
+	assert.True(t, *apiTask.TaskConfig.PatchOnly)
 }
