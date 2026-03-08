@@ -303,11 +303,12 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `merge_queue.patch_processing` - When patch processing begins
 - `merge_queue.patch_completed` - When a merge queue version completes. Status is determined from removal reason if the patch was removed from the queue by GitHub, otherwise from the final version status.
 
-**Latency Metrics:**
+**Latency Metrics (Patch-Level):**
 
-- `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to completion
-- `evergreen.merge_queue.time_to_first_task_ms` - The time from merge queue entry to first task start
-- `evergreen.merge_queue.slowest_task_duration_ms` - The duration of the slowest task in the patch
+- `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to patch completion (when all tasks finish). Queue entry time is the head commit timestamp (when GitHub creates the merge group commit), which closely approximates when the PR entered the queue. If the head commit timestamp is unavailable, it falls back to patch creation time.
+- `evergreen.merge_queue.time_to_first_task_ms` - The time from merge queue entry to when the first task in the patch starts. Queue entry time is determined the same way as `time_in_queue_ms`.
+- `evergreen.merge_queue.slowest_task_duration_ms` - The duration of the slowest task in the patch.
+- `evergreen.merge_queue.queue_entry_source` - Indicates which timestamp was used for queue entry time calculations. Values are `"head_commit_date"` (preferred, when the GitHub commit timestamp is available) or `"create_time"` (fallback, when the head commit timestamp is unavailable). Use this attribute to filter metrics for consistent measurement methodology.
 
 **Health & Failure Metrics:**
 
