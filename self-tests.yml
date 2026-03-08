@@ -784,6 +784,67 @@ tasks:
           content_type: text/plain
           permissions: public-read
           display_name: merged-schema.graphql (latest)
+
+  # Test tasks to replicate ds-services.yml scheduler bug scenario
+  - name: build-test-debug
+    tags: ["test-build"]
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          working_dir: evergreen
+          shell: bash
+          script: |
+            echo "Running task..."
+            sleep 5
+  - name: build-test-release
+    tags: ["test-build"]
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          working_dir: evergreen
+          shell: bash
+          script: |
+            echo "Running task..."
+            sleep 5
+  - name: test-depends-on-build-1
+    depends_on:
+      - name: .test-build
+    tags: ["test"]
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          working_dir: evergreen
+          shell: bash
+          script: |
+            echo "Running task that depends on build 1..."
+  - name: test-depends-on-build-2
+    depends_on:
+      - name: .test-build
+    tags: ["test"]
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          working_dir: evergreen
+          shell: bash
+          script: |
+            echo "Running task that depends on build 2..."
+  - name: test-depends-on-build-3
+    depends_on:
+      - name: .test-build
+    tags: ["test"]
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          working_dir: evergreen
+          shell: bash
+          script: |
+            echo "Running task that depends on build 3..."
+
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build"]
@@ -857,6 +918,11 @@ buildvariants:
       - name: test-cloud
       - name: generate-api-docs
       - name: generate-graphql-merged-schema
+      # Test build tasks to replicate ds-services.yml scheduler bug
+      - name: ".test-build"
+      - name: test-depends-on-build-1
+      - name: test-depends-on-build-2
+      - name: test-depends-on-build-3
 
   - name: race-detector
     display_name: Race Detector
