@@ -849,7 +849,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 
 		revisionTime := time.Unix(0, 0)
 
-		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+		// If this is a mainline commit or a trigger version, retrieve the module's commit from the time of the mainline commit.
 		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
 		// Otherwise, retrieve the module's commit from the time of the patch creation.
 		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester && requester != evergreen.TriggerRequester {
