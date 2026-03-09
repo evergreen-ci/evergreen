@@ -249,13 +249,15 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		attribute.String(evergreen.ProjectIDOtelAttribute, spec.Project),
 		attribute.String(evergreen.VersionIDOtelAttribute, spec.Version),
 		attribute.String(evergreen.BuildNameOtelAttribute, spec.BuildVariant),
-		attribute.String(evergreen.TaskGroupOtelAttribute, spec.Group),
-		attribute.Int(evergreen.TaskGroupMaxHostsOtelAttribute, spec.GroupMaxHosts),
 	))
 	defer span.End()
 
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
+		span.SetAttributes(
+			attribute.String(evergreen.TaskGroupOtelAttribute, spec.Group),
+			attribute.Int(evergreen.TaskGroupMaxHostsOtelAttribute, spec.GroupMaxHosts),
+		)
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 		taskGroupUnit, ok, _ := d.getTaskGroup(taskGroupID)
 		if ok {
