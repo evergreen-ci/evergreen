@@ -977,11 +977,18 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 
 			processDetails = append(processDetails, detail)
 
-			if currentCmd := tc.getCurrentCommand(); currentCmd != nil && info.IsRunning {
-				currentCmdPID = info.PID
+			if currentCmdName != "" && info.IsRunning {
+				for _, tag := range proc.GetTags() {
+					if tag == currentCmdName {
+						currentCmdPID = info.PID
+						break
+					}
+				}
 			}
 		}
 	}
+	childPIDs := agentutil.GetDescendantPIDs(ctx, runningPIDs)
+
 	if len(runningPIDs) > 0 {
 		tc.logger.Execution().Infof("Process PIDs at timeout: %v", runningPIDs)
 		tc.logger.Execution().Info("Detailed process information:")
@@ -993,6 +1000,10 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			tc.logger.Execution().Infof("Suspected current command PID: %d", currentCmdPID)
 		}
 
+		if len(childPIDs) > 0 {
+			tc.logger.Execution().Infof("Descendant child PIDs: %v", childPIDs)
+		}
+
 		tc.logger.Task().Infof("Default timeout handler collected %d process PIDs for debugging.", len(runningPIDs))
 	} else {
 		tc.logger.Execution().Info("No running processes found during timeout")
@@ -1002,6 +1013,7 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			CurrentCommand:    currentCmdName,
 			CurrentCommandPID: currentCmdPID,
 			RunningPIDs:       runningPIDs,
+			ChildPIDs:         childPIDs,
 			Timestamp:         time.Now(),
 		}
 		pidStrings := make([]string, len(runningPIDs))
@@ -1009,8 +1021,13 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			pidStrings[i] = strconv.Itoa(n)
 		}
 		delimitedPids := strings.Join(pidStrings, ",")
+		childPIDStrings := make([]string, len(childPIDs))
+		for i, n := range childPIDs {
+			childPIDStrings[i] = strconv.Itoa(n)
+		}
 		tc.taskConfig.NewExpansions.Put("timed_out_command_pid", strconv.Itoa(currentCmdPID))
 		tc.taskConfig.NewExpansions.Put("timed_out_pids", delimitedPids)
+		tc.taskConfig.NewExpansions.Put("timed_out_child_pids", strings.Join(childPIDStrings, ","))
 	}
 }
 
