@@ -1802,6 +1802,20 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		return errors.Wrap(err, "finding project ref for merge queue metrics")
 	}
 
+	queueEntryTime := p.GithubMergeData.HeadCommitDate
+	queueEntrySource := "head_commit_date"
+	if queueEntryTime.IsZero() {
+		queueEntryTime = p.CreateTime
+		queueEntrySource = "create_time"
+	}
+
+	// Calculate the collective finish time across the patch family (parent + children).
+	// This matches the API's finish_time to represent when the entire patch family completed.
+	_, collectiveFinishTime, err := p.GetCollectiveTimes(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting collective finish time for merge queue metrics")
+	}
+
 	baseAttrs := patch.BuildMergeQueueSpanAttributes(
 		p.GithubMergeData.Org,
 		p.GithubMergeData.Repo,
@@ -1817,8 +1831,10 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 
-	if !p.FinishTime.IsZero() && !p.CreateTime.IsZero() {
-		timeInQueue := p.FinishTime.Sub(p.CreateTime).Milliseconds()
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrQueueEntrySource, queueEntrySource))
+
+	if !collectiveFinishTime.IsZero() && !queueEntryTime.IsZero() {
+		timeInQueue := collectiveFinishTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
 	}
 
@@ -1845,8 +1861,8 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 			firstTaskStartTime = startTime
 		}
 	}
-	if !firstTaskStartTime.IsZero() && !p.CreateTime.IsZero() {
-		timeToFirstTask := firstTaskStartTime.Sub(p.CreateTime).Milliseconds()
+	if !firstTaskStartTime.IsZero() && !queueEntryTime.IsZero() {
+		timeToFirstTask := firstTaskStartTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeToFirstTaskMs, timeToFirstTask))
 	}
 

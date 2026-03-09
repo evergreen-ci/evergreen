@@ -67,6 +67,7 @@ type Settings struct {
 	AmboyDB             AmboyDBConfig           `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
 	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
 	AuthConfig          AuthConfig              `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	OktaServiceConfig   OktaServiceConfig       `yaml:"okta_service" bson:"okta_service" json:"okta_service" id:"okta_service"`
 	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`

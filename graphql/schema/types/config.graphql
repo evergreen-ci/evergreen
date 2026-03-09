@@ -59,6 +59,7 @@ input AdminSettingsInput {
   amboyDB: AmboyDBConfigInput @redactSecrets
   api: APIConfigInput
   authConfig: AuthConfigInput
+  oktaServiceConfig: OktaServiceConfigInput
   banner: String
   bannerTheme: BannerTheme
   buckets: BucketsConfigInput
@@ -116,6 +117,7 @@ type AdminSettings {
   amboyDB: AmboyDBConfig
   api: APIConfig
   authConfig: AuthConfig
+  oktaServiceConfig: OktaServiceConfig
   banner: String
   bannerTheme: BannerTheme
   buckets: BucketsConfig
