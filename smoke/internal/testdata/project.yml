@@ -237,6 +237,7 @@ buildvariants:
     display_name: Host smoke test
     run_on:
       - localhost
+    activate: false
     tasks:
       - name: host_smoke_test_task_group
       - name: host_smoke_test_generate_task
