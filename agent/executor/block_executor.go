@@ -99,7 +99,7 @@ func RunCommandsInBlock(ctx context.Context, deps BlockExecutorDeps, cmdBlock Co
 		err = errors.Wrap(pErr, op)
 	}()
 
-	legacyBlockName := blockToLegacyName(cmdBlock.Block)
+	legacyBlockName := BlockToLegacyName(cmdBlock.Block)
 	deps.TaskLogger.Infof("Running %s commands.", legacyBlockName)
 	start := time.Now()
 	defer func() {
@@ -146,8 +146,8 @@ type CommandBlock struct {
 	CanFailTask         bool
 }
 
-// blockToLegacyName converts the name of a command block to the name it has in the logging format.
-func blockToLegacyName(block command.BlockType) string {
+// BlockToLegacyName converts the name of a command block to the name it has in the logging format.
+func BlockToLegacyName(block command.BlockType) string {
 	switch block {
 	case command.PreBlock:
 		return "pre-task"
