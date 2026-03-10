@@ -49,7 +49,7 @@ var (
 	ProjectStorageMethodKey = bsonutil.MustHaveTag(Patch{}, "ProjectStorageMethod")
 	PatchedProjectConfigKey = bsonutil.MustHaveTag(Patch{}, "PatchedProjectConfig")
 	AliasKey                = bsonutil.MustHaveTag(Patch{}, "Alias")
-	githubMergeDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubMergeData")
+	GithubMergeDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubMergeData")
 	githubPatchDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey           = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 	TriggersKey             = bsonutil.MustHaveTag(Patch{}, "Triggers")
@@ -80,6 +80,7 @@ var (
 	githubMergeGroupHeadSHAKey               = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
 	githubMergeGroupRemovedFromQueueAtKey    = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovedFromQueueAt")
 	githubMergeGroupRemovalReasonKey         = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "RemovalReason")
+	GithubMergeGroupGitRefNotFoundKey        = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "GitRefNotFound")
 	githubMergeGroupInvalidatedByUpstreamKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "InvalidatedByUpstream")
 )
 
@@ -184,8 +185,8 @@ var requesterExpression = bson.M{
 				"case": bson.M{
 					"$or": []bson.M{
 						{"$and": []bson.M{
-							{"$ifNull": []any{"$" + githubMergeDataKey, false}},
-							{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
+							{"$ifNull": []any{"$" + GithubMergeDataKey, false}},
+							{"$ne": []string{"$" + bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
 						}},
 						{"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias}},
 					},
@@ -235,7 +236,7 @@ func buildPatchFilterPipeline(opts ProjectOrUserPatchesOptions, includeSort bool
 	if onlyMergeQueue {
 		match["$or"] = []bson.M{
 			{
-				bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): bson.M{
+				bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupHeadSHAKey): bson.M{
 					"$exists": true,
 					"$ne":     "",
 				},
@@ -557,7 +558,7 @@ func FindMergeQueuePatchesByProject(ctx context.Context, projectID string) ([]Pa
 		CreateTimeKey: bson.M{
 			"$gte": timeThreshold,
 		},
-		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
+		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
 			"$exists": false,
 		},
 	}
@@ -624,17 +625,17 @@ func groupPatchesAndBuildUpdates(ctx context.Context, patches []Patch, reason st
 
 	updateForUpstream = bson.M{
 		"$set": bson.M{
-			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey):    removalTime,
-			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovalReasonKey):         reason,
-			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupInvalidatedByUpstreamKey): true,
+			bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey):    removalTime,
+			bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRemovalReasonKey):         reason,
+			bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupInvalidatedByUpstreamKey): true,
 		},
 	}
 
 	updateForOwnFailure = bson.M{
 		"$set": bson.M{
-			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey):    removalTime,
-			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovalReasonKey):         reason,
-			bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupInvalidatedByUpstreamKey): false,
+			bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey):    removalTime,
+			bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRemovalReasonKey):         reason,
+			bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupInvalidatedByUpstreamKey): false,
 		},
 	}
 
@@ -652,10 +653,10 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 	}
 
 	query := bson.M{
-		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupOrgKey):     org,
-		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRepoKey):    repo,
-		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey): headSHA,
-		bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
+		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupOrgKey):     org,
+		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRepoKey):    repo,
+		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupHeadSHAKey): headSHA,
+		bsonutil.GetDottedKeyName(GithubMergeDataKey, githubMergeGroupRemovedFromQueueAtKey): bson.M{
 			"$exists": false,
 		},
 	}

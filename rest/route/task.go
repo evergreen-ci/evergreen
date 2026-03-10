@@ -587,7 +587,7 @@ func (h *markMergeQueueGitRefNotFoundHandler) Run(ctx context.Context) gimlet.Re
 		})
 	}
 
-	if t.Requester != evergreen.GithubMergeRequester {
+	if !evergreen.IsGithubMergeQueueRequester(t.Requester) {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "task is not a github merge queue task",

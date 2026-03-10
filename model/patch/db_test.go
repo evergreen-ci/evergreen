@@ -729,6 +729,7 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 	// GitRefNotFound + invalidated
 	p, err := FindOneId(t.Context(), patches[0].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.False(t, p.GithubMergeData.RemovedFromQueueAt.IsZero())
 	assert.Equal(t, thirdparty.MergeQueueReasonInvalidated, p.GithubMergeData.RemovalReason)
 	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
@@ -736,37 +737,44 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 	// Version succeeded + invalidated
 	p, err = FindOneId(t.Context(), patches[1].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
 
 	// Version failed + invalidated
 	p, err = FindOneId(t.Context(), patches[2].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.False(t, p.GithubMergeData.InvalidatedByUpstream)
 
 	// Version failed but removed before finish (invalidated while running)
 	p, err = FindOneId(t.Context(), patches[3].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
 
 	// No version yet + invalidated
 	p, err = FindOneId(t.Context(), patches[4].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
 
 	// Running version + invalidated
 	p, err = FindOneId(t.Context(), patches[5].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
 
 	// Already removed patch should not be updated
 	p, err = FindOneId(t.Context(), patches[6].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.Equal(t, originalTime, p.GithubMergeData.RemovedFromQueueAt.UTC())
 	assert.Equal(t, "original reason", p.GithubMergeData.RemovalReason)
 
 	// Different org patch should not be updated
 	p, err = FindOneId(t.Context(), patches[7].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.True(t, p.GithubMergeData.RemovedFromQueueAt.IsZero())
 
 	count, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "different-sha", "reason")

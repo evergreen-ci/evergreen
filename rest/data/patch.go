@@ -11,6 +11,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -172,7 +173,7 @@ func SetMergeQueueGitRefNotFound(ctx context.Context, versionId string) error {
 
 	update := mgobson.M{
 		"$set": mgobson.M{
-			"github_merge_data.git_ref_not_found": true,
+			bsonutil.GetDottedKeyName(patch.GithubMergeDataKey, patch.GithubMergeGroupGitRefNotFoundKey): true,
 		},
 	}
 
