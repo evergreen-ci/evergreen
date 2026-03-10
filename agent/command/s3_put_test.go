@@ -307,6 +307,22 @@ func TestS3PutValidateParams(t *testing.T) {
 	})
 }
 
+func TestS3PutOptionsStorageClass(t *testing.T) {
+	cmd := &s3put{
+		Region:      "us-east-1",
+		Bucket:      "test-bucket",
+		Permissions: string(s3Types.BucketCannedACLPrivate),
+		ContentType: "application/x-tar",
+	}
+
+	opts := cmd.s3PutOptions()
+	assert.Equal(t, s3Types.StorageClassIntelligentTiering, opts.StorageClass)
+	assert.Equal(t, "us-east-1", opts.Region)
+	assert.Equal(t, "test-bucket", opts.Name)
+	assert.Equal(t, pail.S3Permissions("private"), opts.Permissions)
+	assert.Equal(t, "application/x-tar", opts.ContentType)
+}
+
 func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {

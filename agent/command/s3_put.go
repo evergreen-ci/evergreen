@@ -635,19 +635,25 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 	return nil
 }
 
+// s3PutOptions returns the pail S3 options for the s3.put command.
+func (s3pc *s3put) s3PutOptions() pail.S3Options {
+	return pail.S3Options{
+		Region:               s3pc.Region,
+		Name:                 s3pc.Bucket,
+		Permissions:          pail.S3Permissions(s3pc.Permissions),
+		ContentType:          s3pc.ContentType,
+		StorageClass:         s3Types.StorageClassIntelligentTiering,
+		IfNotExists:          s3pc.skipExistingBool,
+		UploadChecksumSHA256: s3pc.checksumSHA256Bool,
+	}
+}
+
 func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
 	if s3pc.bucket != nil {
 		return nil
 	}
 
-	opts := pail.S3Options{
-		Region:               s3pc.Region,
-		Name:                 s3pc.Bucket,
-		Permissions:          pail.S3Permissions(s3pc.Permissions),
-		ContentType:          s3pc.ContentType,
-		IfNotExists:          s3pc.skipExistingBool,
-		UploadChecksumSHA256: s3pc.checksumSHA256Bool,
-	}
+	opts := s3pc.s3PutOptions()
 
 	if s3pc.getRoleARN() != "" {
 		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.existingCredentials, s3pc.getRoleARN(), func(s string) {
