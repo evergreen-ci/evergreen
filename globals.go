@@ -499,6 +499,11 @@ const (
 	TaskGroupOtelAttribute          = "evergreen.task.task_group"
 	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
 
+	// S3 usage otel attributes
+	TaskS3UserFilePutRequestsOtelAttribute = "evergreen.task.s3_user_file_put_requests"
+	TaskS3UserFileUploadBytesOtelAttribute = "evergreen.task.s3_user_file_upload_bytes"
+	TaskS3UserFileCountOtelAttribute       = "evergreen.task.s3_user_file_count"
+
 	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
