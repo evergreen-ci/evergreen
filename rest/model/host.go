@@ -81,6 +81,9 @@ type HostRequestOptions struct {
 	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
 	UseOAuth             bool       `json:"use_oauth" yaml:"use_oauth"`
 	IsDebug              bool       `json:"is_debug" yaml:"is_debug"`
+
+	// UserAccessToken is the access token that should be exchanged to get a spawn host access token.
+	UserAccessToken string `json:"-" yaml:"-"`
 }
 
 type DistroInfo struct {

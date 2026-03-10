@@ -859,6 +859,9 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		}
 	}
 
+	rc := graphql.GetOperationContext(ctx)
+	options.UserAccessToken = rc.Headers.Get(settings.AuthConfig.Kanopy.HeaderName)
+
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning host: %s", err.Error()))

@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/oauth2"
 )
 
 type DBUser struct {
@@ -40,6 +41,10 @@ type DBUser struct {
 	NumScheduledPatchTasks int                    `bson:"num_scheduled_patch_tasks"`
 	LastScheduledTasksAt   time.Time              `bson:"last_scheduled_tasks_at"`
 	BetaFeatures           evergreen.BetaFeatures `bson:"beta_features"`
+
+	// SpawnHostIDToAccessTokens stores the access tokens for spawn hosts that are associated with the user.
+	// This is used initially to perform setup operations on the spawn host.
+	SpawnHostIDToAccessTokens map[string]*oauth2.Token `bson:"spawn_host_access_token,omitempty"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -143,6 +148,18 @@ func (u *DBUser) UpdateAPIKey(ctx context.Context, newKey string) error {
 		return errors.Wrapf(err, "setting API key for user '%s'", u.Id)
 	}
 	u.APIKey = newKey
+	return nil
+}
+
+func (u *DBUser) UpdateSpawnHostAccessToken(ctx context.Context, spawnHostID string, newToken *oauth2.Token) error {
+	update := bson.M{"$set": bson.M{bsonutil.GetDottedKeyName(SpawnHostIDToAccessTokensKey, spawnHostID): newToken}}
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "setting spawn host access token for user '%s'", u.Id)
+	}
+	if u.SpawnHostIDToAccessTokens == nil {
+		u.SpawnHostIDToAccessTokens = make(map[string]*oauth2.Token)
+	}
+	u.SpawnHostIDToAccessTokens[spawnHostID] = newToken
 	return nil
 }
 

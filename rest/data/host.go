@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -68,6 +69,42 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 
 	if err := units.EnqueueHostCreateJobs(ctx, env, []host.Host{*intentHost}); err != nil {
 		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intentHost.Id)
+	}
+
+	spawnHostAccessToken, err := thirdparty.ExchangeOktaToken(ctx, thirdparty.OktaTokenExchangeOptions{
+		Issuer:           env.Settings().AuthConfig.OAuth.Issuer,
+		Audience:         "api://kanopy",
+		ClientID:         env.Settings().OktaServiceConfig.ClientID,
+		ClientSecret:     env.Settings().OktaServiceConfig.ClientSecret,
+		SubjectToken:     options.UserAccessToken,
+		SubjectTokenType: thirdparty.TokenTypeAccessToken,
+	})
+	if err != nil {
+		grip.Info(message.WrapError(err, message.Fields{
+			"message":            "error exchanging Okta token",
+			"zackary-message":    "exists",
+			"host_id":            intentHost.Id,
+			"user":               user.Username(),
+			"issuer":             env.Settings().AuthConfig.OAuth.Issuer,
+			"client_id":          env.Settings().OktaServiceConfig.ClientID,
+			"subject_token_type": thirdparty.TokenTypeAccessToken,
+		}))
+		// return nil, errors.Wrap(err, "exchanging Okta token")
+	} else {
+		if err := user.UpdateSpawnHostAccessToken(ctx, intentHost.Id, spawnHostAccessToken); err != nil {
+			grip.Info(message.WrapError(err, message.Fields{
+				"message":            "error updating user spawn host access token",
+				"zackary-message":    "exists",
+				"host_id":            intentHost.Id,
+				"user":               user.Username(),
+				"spawn_host_id":      intentHost.Id,
+				"user_id":            user.Id,
+				"issuer":             env.Settings().AuthConfig.OAuth.Issuer,
+				"client_id":          env.Settings().OktaServiceConfig.ClientID,
+				"subject_token_type": thirdparty.TokenTypeAccessToken,
+			}))
+			// return nil, errors.Wrap(err, "updating user spawn host access token")
+		}
 	}
 
 	return intentHost, nil
