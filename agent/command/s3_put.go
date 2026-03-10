@@ -18,7 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -412,7 +412,7 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 
 	var (
 		err               error
-		uploadedFiles     []task.FileMetrics
+		uploadedFiles     []s3usage.FileMetrics
 		filesList         []string
 		skippedFilesCount int
 	)
@@ -461,7 +461,7 @@ retryLoop:
 			}
 
 			// reset to avoid duplicated uploaded references
-			uploadedFiles = []task.FileMetrics{}
+			uploadedFiles = []s3usage.FileMetrics{}
 			skippedFilesCount = 0
 
 		uploadLoop:
@@ -530,7 +530,7 @@ retryLoop:
 					uploadPath = remoteName
 				}
 
-				uploadedFiles = append(uploadedFiles, task.FileMetrics{
+				uploadedFiles = append(uploadedFiles, s3usage.FileMetrics{
 					LocalPath:  uploadPath,
 					RemotePath: remoteName,
 				})
@@ -546,11 +546,11 @@ retryLoop:
 		return nil
 	}
 
-	uploadedFiles, totalFileSize, totalPutRequests := task.CalculateUploadMetrics(
+	uploadedFiles, totalFileSize, totalPutRequests := s3usage.CalculateUploadMetrics(
 		logger.Task(),
 		uploadedFiles,
-		task.S3BucketTypeLarge,
-		task.S3UploadMethodPut,
+		s3usage.S3BucketTypeLarge,
+		s3usage.S3UploadMethodPut,
 	)
 
 	if s3pc.isMulti() {
@@ -561,7 +561,7 @@ retryLoop:
 			totalFileSize, totalPutRequests)
 	}
 
-	conf.Task.S3Usage.IncrementPutRequests(totalPutRequests)
+	conf.S3Usage.IncrementUserFiles(totalPutRequests, totalFileSize, len(uploadedFiles))
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.Int64("s3_put.total_bytes", totalFileSize),
@@ -588,7 +588,7 @@ retryLoop:
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []task.FileMetrics, remoteFile string, conf *internal.TaskConfig) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []s3usage.FileMetrics, remoteFile string, conf *internal.TaskConfig) error {
 	files := []*artifact.File{}
 
 	for _, uploadInfo := range uploadedFiles {
@@ -622,7 +622,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 			Bucket:      bucket,
 			FileKey:     fileKey,
 			ContentType: s3pc.ContentType,
-			FileSize:    uploadInfo.FileSize,
+			FileSize:    uploadInfo.FileSizeBytes,
 			PutRequests: uploadInfo.PutRequests,
 		})
 	}
