@@ -1152,7 +1152,7 @@ Parameters:
 
 This command traces artifact releases with the Papertrail service. It is owned
 by the Release Infrastructure team, and you may receive assistance with it in
-`#ask-devprod-release-tools`.
+[#ask-devprod](https://mongodb.enterprise.slack.com/archives/C69UXN1CP).
 
 ```yaml
 - command: papertrail.trace
