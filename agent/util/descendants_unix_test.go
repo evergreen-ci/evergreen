@@ -38,7 +38,7 @@ func TestGetDescendantPIDs(t *testing.T) {
 
 		// Give a moment for the child processes to spawn.
 		// This is inherently racy but sufficient for a unit test.
-		exec.Command("sleep", "0.2").Run()
+		assert.NoError(t, exec.Command("sleep", "0.2").Run())
 
 		parentPID := cmd.Process.Pid
 		descendants := GetDescendantPIDs(ctx, []int{parentPID})
@@ -85,7 +85,7 @@ func TestPgrepChildren(t *testing.T) {
 			_ = cmd.Wait()
 		}()
 
-		exec.Command("sleep", "0.2").Run()
+		assert.NoError(t, exec.Command("sleep", "0.2").Run())
 
 		children := pgrepChildren(ctx, cmd.Process.Pid)
 		assert.NotEmpty(t, children)
