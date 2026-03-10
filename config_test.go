@@ -968,9 +968,7 @@ func (s *AdminSuite) TestSageConfig() {
 }
 
 // errorSSMClient is a minimal SSMClient implementation for testing that returns
-// errors on every operation. If readAdminSecrets bypasses the cache and calls
-// paramMgr.Get, the error propagates into the catcher, making cache misses
-// observable in test assertions.
+// errors on every operation.
 // It only exists to get around a circular dependency in fakeparameter.
 type errorSSMClient struct{}
 
@@ -990,23 +988,22 @@ func (c *errorSSMClient) GetParameters(context.Context, *ssm.GetParametersInput)
 	return nil, errors.New("errorSSMClient: cache miss detected — paramMgr.Get was called")
 }
 
-func (s *AdminSuite) TestReadAdminSecretsUsesParamCache() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	paramMgr, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+func TestReadAdminSecretsUsesParamCache(t *testing.T) {
+	paramMgr, err := parameterstore.NewParameterManager(t.Context(), parameterstore.ParameterManagerOptions{
 		PathPrefix: "/test-prefix",
-		SSMClient:  &errorSSMClient{},
-		DB:         GetEnvironment().DB(),
+		// If readAdminSecrets bypasses the cache and calls paramMgr.Get, the error
+		// propagates into the catcher, making cache misses observable in test assertions.
+		SSMClient: &errorSSMClient{},
+		DB:        GetEnvironment().DB(),
 	})
-	s.Require().NoError(err)
+	require.NoError(t, err)
 
 	settings := testConfig()
 	settingsValue := reflect.ValueOf(settings).Elem()
 	settingsType := reflect.TypeOf(*settings)
 
 	secretPaths := collectSecretPaths(settingsValue, settingsType, "")
-	s.NotEmpty(secretPaths)
+	assert.NotEmpty(t, secretPaths)
 
 	// construct the paramCache in the same way GetConfig does
 	paramCache := map[string]string{}
@@ -1023,13 +1020,13 @@ func (s *AdminSuite) TestReadAdminSecretsUsesParamCache() {
 	settingsType = reflect.TypeOf(*settings)
 
 	catcher := grip.NewBasicCatcher()
-	readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", paramCache, catcher)
+	readAdminSecrets(t.Context(), paramMgr, settingsValue, settingsType, "", paramCache, catcher)
 
-	s.NoError(catcher.Resolve())
-	s.Contains(settings.Jira.PersonalAccessToken, "cached-value-")
-	s.Contains(settings.Slack.Token, "cached-value-")
-	s.Contains(settings.GithubWebhookSecret, "cached-value-")
-	s.NotEqual(settings.Jira.PersonalAccessToken, settings.Slack.Token)
-	s.NotEqual(settings.Jira.PersonalAccessToken, settings.GithubWebhookSecret)
-	s.NotEqual(settings.Slack.Token, settings.GithubWebhookSecret)
+	assert.NoError(t, catcher.Resolve())
+	assert.Contains(t, settings.Jira.PersonalAccessToken, "cached-value-")
+	assert.Contains(t, settings.Slack.Token, "cached-value-")
+	assert.Contains(t, settings.GithubWebhookSecret, "cached-value-")
+	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.Slack.Token)
+	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.GithubWebhookSecret)
+	assert.NotEqual(t, settings.Slack.Token, settings.GithubWebhookSecret)
 }
