@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
@@ -409,8 +408,7 @@ func TestReadAndRenderStream(t *testing.T) {
 		}
 
 		var output bytes.Buffer
-		renderer := newTerminalRendererWithColor(&output, false)
-		result, err := readAndRenderStream(&input, renderer)
+		result, err := readAndRenderStream(&input, &output)
 		require.NoError(t, err)
 
 		assert.NotNil(t, result)
@@ -440,36 +438,11 @@ func TestReadAndRenderStream(t *testing.T) {
 		}
 
 		var output bytes.Buffer
-		renderer := newTerminalRendererWithColor(&output, false)
-		result, err := readAndRenderStream(&input, renderer)
+		result, err := readAndRenderStream(&input, &output)
 		require.NoError(t, err)
 
 		assert.NotNil(t, result)
 		assert.False(t, result.Success)
 		assert.Equal(t, "exit code 1", result.Error)
-	})
-
-	t.Run("HandlesInvalidJSON", func(t *testing.T) {
-		input := strings.NewReader("not json\n{\"ch\":\"task\",\"step\":0,\"msg\":\"valid\"}\n")
-
-		var output bytes.Buffer
-		renderer := newTerminalRendererWithColor(&output, false)
-		result, err := readAndRenderStream(input, renderer)
-		require.NoError(t, err)
-
-		rendered := output.String()
-		assert.Contains(t, rendered, "not json")
-		assert.Contains(t, rendered, "valid")
-		assert.Nil(t, result)
-	})
-
-	t.Run("HandlesEmptyStream", func(t *testing.T) {
-		input := strings.NewReader("")
-
-		var output bytes.Buffer
-		renderer := newTerminalRendererWithColor(&output, false)
-		result, err := readAndRenderStream(input, renderer)
-		require.NoError(t, err)
-		assert.Nil(t, result)
 	})
 }

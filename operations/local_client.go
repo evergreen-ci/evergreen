@@ -596,8 +596,7 @@ func postAndStreamResponse(url string, body interface{}) error {
 		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
 	}
 
-	renderer := newTerminalRenderer(os.Stdout)
-	result, err := readAndRenderStream(resp.Body, renderer)
+	result, err := readAndRenderStream(resp.Body, os.Stdout)
 	if err != nil {
 		return errors.Wrap(err, "reading streaming response")
 	}

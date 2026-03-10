@@ -412,7 +412,6 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	return nil
 }
 
-// getNoOpMessage returns the skip message for a no-op command.
 func (e *LocalExecutor) getNoOpMessage(cmdName string) string {
 	return cmdName + ": Not supported in local execution"
 }
@@ -431,11 +430,6 @@ func (e *LocalExecutor) RunAll(ctx context.Context) error {
 // GetDebugState returns the current debug state
 func (e *LocalExecutor) GetDebugState() *DebugState {
 	return e.debugState
-}
-
-// TotalSteps returns the total number of steps in the command list.
-func (e *LocalExecutor) TotalSteps() int {
-	return len(e.debugState.CommandList)
 }
 
 // SetStreamWriter sets the stream writer for streaming output during execution.
