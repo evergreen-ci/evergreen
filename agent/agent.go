@@ -20,6 +20,7 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
@@ -481,6 +482,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 	tc.taskConfig = taskConfig
+	// Wire up S3Usage pointer so commands can increment runtime S3 usage
+	tc.taskConfig.S3Usage = &tc.s3Usage
 
 	if err := a.startLogging(agentCtx, tc); err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
@@ -612,7 +615,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	}
 
 	// Reset S3Usage for this execution to avoid accumulating from previous restarts
-	opts.task.S3Usage = task.S3Usage{}
+	opts.task.S3Usage = s3usage.S3Usage{}
 
 	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
@@ -624,27 +627,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 		return nil, errors.Wrap(err, "getting task's display task info")
 	}
 
-	// GetExpansionsAndVars does not include build variant expansions or project
-	// parameters, so load them from the project.
-	for _, bv := range opts.project.BuildVariants {
-		if bv.Name == opts.task.BuildVariant {
-			opts.expansionsAndVars.Expansions.Update(bv.Expansions)
-			break
-		}
-	}
-	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Vars)
-	for _, param := range opts.project.Parameters {
-		// If the key doesn't exist, the value will default to "" anyway; this
-		// prevents an un-specified project parameter from overwriting
-		// lower-priority expansions.
-		if param.Value != "" {
-			opts.expansionsAndVars.Expansions.Put(param.Key, param.Value)
-		}
-	}
-	// Overwrite any empty values here since these parameters were explicitly
-	// user-specified.
-	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Parameters)
-
+	agentutil.AddVariantAndParameterExpansions(opts.expansionsAndVars, opts.project, opts.task.BuildVariant)
 	return opts, nil
 }
 
@@ -1204,14 +1187,14 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	_ = a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
+		if !tc.s3Usage.IsZero() {
+			tc.logger.Task().Infof("S3 artifact upload summary: files=%d, PUT_requests=%d, bytes=%d",
+				tc.s3Usage.UserFiles.FileCount, tc.s3Usage.UserFiles.PutRequests, tc.s3Usage.UserFiles.UploadBytes)
+		}
 		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
 		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
-	}
-
-	if tc.logger != nil && tc.taskConfig != nil {
-		tc.logger.Task().Infof("Task tracked %d S3 PUT requests during execution.", tc.taskConfig.Task.S3Usage.NumPutRequests)
 	}
 
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
@@ -1409,6 +1392,9 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
+	}
+	if !tc.s3Usage.IsZero() {
+		detail.S3Usage = &tc.s3Usage
 	}
 	return detail
 }

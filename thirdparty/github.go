@@ -218,6 +218,10 @@ type GithubMergeGroup struct {
 	// together, so there are as many commits as there are PRs in the merge
 	// group. This is only the title of the first commit in the merge group.
 	HeadCommit string `bson:"head_commit"`
+	// HeadCommitDate is the timestamp of the head commit. GitHub creates the
+	// merge group commit when adding a PR to the queue, so this approximates
+	// when the PR entered the merge queue.
+	HeadCommitDate time.Time `bson:"head_commit_date,omitempty"`
 
 	// RemovedFromQueueAt is set when GitHub sends a "destroyed" MergeGroupEvent,
 	// indicating the patch is no longer in the merge queue. This is independent
@@ -1565,7 +1569,7 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
 	defer githubClient.Close()
 
-	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Patch})
+	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
