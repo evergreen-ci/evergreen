@@ -201,7 +201,7 @@ type mockS3LifecycleClient struct {
 	err   error
 }
 
-func (m *mockS3LifecycleClient) GetBucketLifecycleConfiguration(ctx context.Context, bucket, region string, roleARN *string) ([]pail.LifecycleRule, error) {
+func (m *mockS3LifecycleClient) GetBucketLifecycleConfiguration(ctx context.Context, bucket, region string, roleARN *string, externalID *string) ([]pail.LifecycleRule, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
