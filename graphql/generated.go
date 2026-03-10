@@ -2293,13 +2293,6 @@ type ComplexityRoot struct {
 		Version      func(childComplexity int) int
 	}
 
-	WaterfallBuildVariant struct {
-		Builds      func(childComplexity int) int
-		DisplayName func(childComplexity int) int
-		Id          func(childComplexity int) int
-		Version     func(childComplexity int) int
-	}
-
 	WaterfallPagination struct {
 		ActiveVersionIds       func(childComplexity int) int
 		HasNextPage            func(childComplexity int) int
@@ -2314,11 +2307,6 @@ type ComplexityRoot struct {
 		DisplayStatusCache func(childComplexity int) int
 		Execution          func(childComplexity int) int
 		Id                 func(childComplexity int) int
-	}
-
-	WaterfallVersion struct {
-		InactiveVersions func(childComplexity int) int
-		Version          func(childComplexity int) int
 	}
 
 	Webhook struct {
@@ -12275,31 +12263,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.WaterfallBuild.Version(childComplexity), true
 
-	case "WaterfallBuildVariant.builds":
-		if e.complexity.WaterfallBuildVariant.Builds == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.Builds(childComplexity), true
-	case "WaterfallBuildVariant.displayName":
-		if e.complexity.WaterfallBuildVariant.DisplayName == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.DisplayName(childComplexity), true
-	case "WaterfallBuildVariant.id":
-		if e.complexity.WaterfallBuildVariant.Id == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.Id(childComplexity), true
-	case "WaterfallBuildVariant.version":
-		if e.complexity.WaterfallBuildVariant.Version == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.Version(childComplexity), true
-
 	case "WaterfallPagination.activeVersionIds":
 		if e.complexity.WaterfallPagination.ActiveVersionIds == nil {
 			break
@@ -12361,19 +12324,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.WaterfallTask.Id(childComplexity), true
-
-	case "WaterfallVersion.inactiveVersions":
-		if e.complexity.WaterfallVersion.InactiveVersions == nil {
-			break
-		}
-
-		return e.complexity.WaterfallVersion.InactiveVersions(childComplexity), true
-	case "WaterfallVersion.version":
-		if e.complexity.WaterfallVersion.Version == nil {
-			break
-		}
-
-		return e.complexity.WaterfallVersion.Version(childComplexity), true
 
 	case "Webhook.endpoint":
 		if e.complexity.Webhook.Endpoint == nil {
@@ -71406,136 +71356,6 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _WaterfallBuildVariant_id(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_id,
-		func(ctx context.Context) (any, error) {
-			return obj.Id, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallBuildVariant_builds(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_builds,
-		func(ctx context.Context) (any, error) {
-			return obj.Builds, nil
-		},
-		nil,
-		ec.marshalNWaterfallBuild2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuildᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_builds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_WaterfallBuild_id(ctx, field)
-			case "activated":
-				return ec.fieldContext_WaterfallBuild_activated(ctx, field)
-			case "buildVariant":
-				return ec.fieldContext_WaterfallBuild_buildVariant(ctx, field)
-			case "displayName":
-				return ec.fieldContext_WaterfallBuild_displayName(ctx, field)
-			case "version":
-				return ec.fieldContext_WaterfallBuild_version(ctx, field)
-			case "tasks":
-				return ec.fieldContext_WaterfallBuild_tasks(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type WaterfallBuild", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallBuildVariant_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_displayName,
-		func(ctx context.Context) (any, error) {
-			return obj.DisplayName, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallBuildVariant_version(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_version,
-		func(ctx context.Context) (any, error) {
-			return obj.Version, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _WaterfallPagination_activeVersionIds(ctx context.Context, field graphql.CollectedField, obj *WaterfallPagination) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -71821,236 +71641,6 @@ func (ec *executionContext) fieldContext_WaterfallTask_execution(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallVersion_inactiveVersions(ctx context.Context, field graphql.CollectedField, obj *WaterfallVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallVersion_inactiveVersions,
-		func(ctx context.Context) (any, error) {
-			return obj.InactiveVersions, nil
-		},
-		nil,
-		ec.marshalOVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallVersion_inactiveVersions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallVersion",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Version_id(ctx, field)
-			case "activated":
-				return ec.fieldContext_Version_activated(ctx, field)
-			case "author":
-				return ec.fieldContext_Version_author(ctx, field)
-			case "authorEmail":
-				return ec.fieldContext_Version_authorEmail(ctx, field)
-			case "baseTaskStatuses":
-				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
-			case "baseVersion":
-				return ec.fieldContext_Version_baseVersion(ctx, field)
-			case "branch":
-				return ec.fieldContext_Version_branch(ctx, field)
-			case "buildVariants":
-				return ec.fieldContext_Version_buildVariants(ctx, field)
-			case "buildVariantStats":
-				return ec.fieldContext_Version_buildVariantStats(ctx, field)
-			case "childVersions":
-				return ec.fieldContext_Version_childVersions(ctx, field)
-			case "createTime":
-				return ec.fieldContext_Version_createTime(ctx, field)
-			case "errors":
-				return ec.fieldContext_Version_errors(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Version_finishTime(ctx, field)
-			case "generatedTaskCounts":
-				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
-			case "gitTags":
-				return ec.fieldContext_Version_gitTags(ctx, field)
-			case "ignored":
-				return ec.fieldContext_Version_ignored(ctx, field)
-			case "isPatch":
-				return ec.fieldContext_Version_isPatch(ctx, field)
-			case "manifest":
-				return ec.fieldContext_Version_manifest(ctx, field)
-			case "message":
-				return ec.fieldContext_Version_message(ctx, field)
-			case "order":
-				return ec.fieldContext_Version_order(ctx, field)
-			case "parameters":
-				return ec.fieldContext_Version_parameters(ctx, field)
-			case "patch":
-				return ec.fieldContext_Version_patch(ctx, field)
-			case "previousVersion":
-				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
-			case "projectMetadata":
-				return ec.fieldContext_Version_projectMetadata(ctx, field)
-			case "repo":
-				return ec.fieldContext_Version_repo(ctx, field)
-			case "requester":
-				return ec.fieldContext_Version_requester(ctx, field)
-			case "revision":
-				return ec.fieldContext_Version_revision(ctx, field)
-			case "startTime":
-				return ec.fieldContext_Version_startTime(ctx, field)
-			case "status":
-				return ec.fieldContext_Version_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Version_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Version_tasks(ctx, field)
-			case "taskStatuses":
-				return ec.fieldContext_Version_taskStatuses(ctx, field)
-			case "taskStatusStats":
-				return ec.fieldContext_Version_taskStatusStats(ctx, field)
-			case "upstreamProject":
-				return ec.fieldContext_Version_upstreamProject(ctx, field)
-			case "user":
-				return ec.fieldContext_Version_user(ctx, field)
-			case "versionTiming":
-				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "warnings":
-				return ec.fieldContext_Version_warnings(ctx, field)
-			case "waterfallBuilds":
-				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Version_predictedCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallVersion_version(ctx context.Context, field graphql.CollectedField, obj *WaterfallVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallVersion_version,
-		func(ctx context.Context) (any, error) {
-			return obj.Version, nil
-		},
-		nil,
-		ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallVersion_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallVersion",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Version_id(ctx, field)
-			case "activated":
-				return ec.fieldContext_Version_activated(ctx, field)
-			case "author":
-				return ec.fieldContext_Version_author(ctx, field)
-			case "authorEmail":
-				return ec.fieldContext_Version_authorEmail(ctx, field)
-			case "baseTaskStatuses":
-				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
-			case "baseVersion":
-				return ec.fieldContext_Version_baseVersion(ctx, field)
-			case "branch":
-				return ec.fieldContext_Version_branch(ctx, field)
-			case "buildVariants":
-				return ec.fieldContext_Version_buildVariants(ctx, field)
-			case "buildVariantStats":
-				return ec.fieldContext_Version_buildVariantStats(ctx, field)
-			case "childVersions":
-				return ec.fieldContext_Version_childVersions(ctx, field)
-			case "createTime":
-				return ec.fieldContext_Version_createTime(ctx, field)
-			case "errors":
-				return ec.fieldContext_Version_errors(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Version_finishTime(ctx, field)
-			case "generatedTaskCounts":
-				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
-			case "gitTags":
-				return ec.fieldContext_Version_gitTags(ctx, field)
-			case "ignored":
-				return ec.fieldContext_Version_ignored(ctx, field)
-			case "isPatch":
-				return ec.fieldContext_Version_isPatch(ctx, field)
-			case "manifest":
-				return ec.fieldContext_Version_manifest(ctx, field)
-			case "message":
-				return ec.fieldContext_Version_message(ctx, field)
-			case "order":
-				return ec.fieldContext_Version_order(ctx, field)
-			case "parameters":
-				return ec.fieldContext_Version_parameters(ctx, field)
-			case "patch":
-				return ec.fieldContext_Version_patch(ctx, field)
-			case "previousVersion":
-				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
-			case "projectMetadata":
-				return ec.fieldContext_Version_projectMetadata(ctx, field)
-			case "repo":
-				return ec.fieldContext_Version_repo(ctx, field)
-			case "requester":
-				return ec.fieldContext_Version_requester(ctx, field)
-			case "revision":
-				return ec.fieldContext_Version_revision(ctx, field)
-			case "startTime":
-				return ec.fieldContext_Version_startTime(ctx, field)
-			case "status":
-				return ec.fieldContext_Version_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Version_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Version_tasks(ctx, field)
-			case "taskStatuses":
-				return ec.fieldContext_Version_taskStatuses(ctx, field)
-			case "taskStatusStats":
-				return ec.fieldContext_Version_taskStatusStats(ctx, field)
-			case "upstreamProject":
-				return ec.fieldContext_Version_upstreamProject(ctx, field)
-			case "user":
-				return ec.fieldContext_Version_user(ctx, field)
-			case "versionTiming":
-				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "warnings":
-				return ec.fieldContext_Version_warnings(ctx, field)
-			case "waterfallBuilds":
-				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Version_predictedCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
 	}
 	return fc, nil
@@ -103867,60 +103457,6 @@ func (ec *executionContext) _WaterfallBuild(ctx context.Context, sel ast.Selecti
 	return out
 }
 
-var waterfallBuildVariantImplementors = []string{"WaterfallBuildVariant"}
-
-func (ec *executionContext) _WaterfallBuildVariant(ctx context.Context, sel ast.SelectionSet, obj *model1.WaterfallBuildVariant) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, waterfallBuildVariantImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("WaterfallBuildVariant")
-		case "id":
-			out.Values[i] = ec._WaterfallBuildVariant_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "builds":
-			out.Values[i] = ec._WaterfallBuildVariant_builds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "displayName":
-			out.Values[i] = ec._WaterfallBuildVariant_displayName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "version":
-			out.Values[i] = ec._WaterfallBuildVariant_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var waterfallPaginationImplementors = []string{"WaterfallPagination"}
 
 func (ec *executionContext) _WaterfallPagination(ctx context.Context, sel ast.SelectionSet, obj *WaterfallPagination) graphql.Marshaler {
@@ -104016,44 +103552,6 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var waterfallVersionImplementors = []string{"WaterfallVersion"}
-
-func (ec *executionContext) _WaterfallVersion(ctx context.Context, sel ast.SelectionSet, obj *WaterfallVersion) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, waterfallVersionImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("WaterfallVersion")
-		case "inactiveVersions":
-			out.Values[i] = ec._WaterfallVersion_inactiveVersions(ctx, field, obj)
-		case "version":
-			out.Values[i] = ec._WaterfallVersion_version(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -110490,54 +109988,6 @@ func (ec *executionContext) marshalNWaterfall2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._Waterfall(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNWaterfallBuild2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx context.Context, sel ast.SelectionSet, v model1.WaterfallBuild) graphql.Marshaler {
-	return ec._WaterfallBuild(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNWaterfallBuild2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuildᚄ(ctx context.Context, sel ast.SelectionSet, v []model1.WaterfallBuild) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNWaterfallBuild2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalNWaterfallBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx context.Context, sel ast.SelectionSet, v *model1.WaterfallBuild) graphql.Marshaler {
