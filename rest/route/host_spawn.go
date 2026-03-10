@@ -36,7 +36,8 @@ func makeSpawnHostCreateRoute(env evergreen.Environment) gimlet.RouteHandler {
 }
 
 type hostPostHandler struct {
-	env evergreen.Environment
+	env             evergreen.Environment
+	userTokenHeader string
 
 	options *model.HostRequestOptions
 }
@@ -58,6 +59,7 @@ func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
 
 func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	hph.options = &model.HostRequestOptions{}
+	hph.options.UserAccessToken = r.Header.Get(hph.env.Settings().AuthConfig.Kanopy.HeaderName)
 	return errors.Wrap(utility.ReadJSON(r.Body, hph.options), "reading host options from JSON request body")
 }
 

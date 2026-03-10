@@ -30,6 +30,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1152,10 +1153,11 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		TaskID        string `yaml:"task_id,omitempty"`
 		ProjectID     string `yaml:"project_id,omitempty"`
 		OAuth         struct {
-			Issuer          string `yaml:"issuer"`
-			ClientID        string `yaml:"client_id"`
-			ConnectorID     string `yaml:"connector_id"`
-			DoNotUseBrowser bool   `yaml:"do_not_use_browser"`
+			Issuer               string        `yaml:"issuer"`
+			ClientID             string        `yaml:"client_id"`
+			ConnectorID          string        `yaml:"connector_id"`
+			DoNotUseBrowser      bool          `yaml:"do_not_use_browser"`
+			SpawnHostAccessToken *oauth2.Token `yaml:"spawn_host_access_token,omitempty"`
 		} `yaml:"oauth,omitempty"`
 	}{
 		User: owner.Id,
@@ -1190,6 +1192,9 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 			conf.OAuth.ConnectorID = settings.AuthConfig.OAuth.ConnectorID
 			conf.OAuth.DoNotUseBrowser = true
 		}
+	}
+	if accessToken, ok := owner.SpawnHostIDToAccessTokens[h.Id]; ok {
+		conf.OAuth.SpawnHostAccessToken = accessToken
 	}
 
 	if h.ProvisionOptions != nil && !h.ProvisionOptions.UseOAuth {
