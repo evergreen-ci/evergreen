@@ -195,7 +195,7 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 // RunUntil executes steps up until the given input index.
 func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	if len(e.commandBlocks) == 0 {
-		return nil
+		return errors.New("no commands available, please ensure a task has been selected")
 	}
 	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
 	if untilIndex >= maxIndex {
@@ -212,6 +212,20 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 			break
 		}
 	}
+	return nil
+}
+
+// JumpTo moves to the specified step without executing
+func (e *LocalExecutor) JumpTo(index int) error {
+	if len(e.commandBlocks) == 0 {
+		return errors.New("no commands available, please ensure a task has been selected")
+	}
+	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
+	if index >= maxIndex || index < 0 {
+		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
+	}
+	e.debugState.CurrentStepIndex = index
+	e.logger.Infof("Jumped to step %d", index)
 	return nil
 }
 
@@ -295,7 +309,11 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
 				e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
-				return err
+				if canFailTask {
+					return err
+				}
+				blockName := executor.BlockToLegacyName(blockType)
+				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
 			}
 
 			e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
@@ -589,6 +607,8 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	if expansionsAndVars == nil {
 		return nil
 	}
+
+	agentutil.AddVariantAndParameterExpansions(expansionsAndVars, e.project, e.taskConfig.Task.BuildVariant)
 	for k, v := range expansionsAndVars.Expansions {
 		e.taskConfig.Expansions.Put(k, v)
 	}

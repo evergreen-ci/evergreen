@@ -172,9 +172,6 @@ const (
 
 	HostTypeStatic = "static"
 
-	MergeTestSucceeded = "succeeded"
-	MergeTestFailed    = "failed"
-
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
 
@@ -496,10 +493,13 @@ const (
 	TaskDescriptionOtelAttribute    = "evergreen.task.description"
 	TaskTagsOtelAttribute           = "evergreen.task.tags"
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
+	TaskIngestTimeOtelAttribute     = "evergreen.task.ingest_time"
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
+	TaskGroupOtelAttribute          = "evergreen.task.task_group"
+	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
 
-	// task otel attributes
+	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
 

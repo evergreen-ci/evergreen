@@ -168,20 +168,57 @@ func TestComputeCostPredictionsInParallel(t *testing.T) {
 func TestComputePredictedCostsForTasks(t *testing.T) {
 	ctx := context.Background()
 
-	predictions, err := ComputePredictedCostsForTasks(ctx, Tasks{})
-	require.NoError(t, err)
-	assert.Empty(t, predictions)
+	t.Run("NilSlice", func(t *testing.T) {
+		predictions, err := ComputePredictedCostsForTasks(ctx, nil)
+		require.NoError(t, err)
+		require.NotNil(t, predictions)
+		assert.Len(t, predictions, 0)
+	})
 
-	task := &Task{Id: "task1", Activated: false}
-	predictions, err = ComputePredictedCostsForTasks(ctx, Tasks{task})
-	require.NoError(t, err)
-	assert.Empty(t, predictions)
+	t.Run("EmptySlice", func(t *testing.T) {
+		predictions, err := ComputePredictedCostsForTasks(ctx, Tasks{})
+		require.NoError(t, err)
+		require.NotNil(t, predictions)
+		assert.Len(t, predictions, 0)
+	})
 
-	task = &Task{Id: "task1", DisplayName: "test", BuildVariant: "bv", Project: "proj", Activated: true}
-	predictions, err = ComputePredictedCostsForTasks(ctx, Tasks{task})
-	require.NoError(t, err)
-	assert.Contains(t, predictions, "task1")
-	assert.True(t, predictions["task1"].IsZero()) // No historical data
+	t.Run("NotActivated", func(t *testing.T) {
+		task := &Task{Id: "task1", Activated: false}
+		predictions, err := ComputePredictedCostsForTasks(ctx, Tasks{task})
+		require.NoError(t, err)
+		require.NotNil(t, predictions)
+		assert.Len(t, predictions, 0)
+	})
+
+	t.Run("DisplayOnlyTask", func(t *testing.T) {
+		task := &Task{Id: "task1", DisplayName: "test", BuildVariant: "bv", Project: "proj", Activated: true, DisplayOnly: true}
+		predictions, err := ComputePredictedCostsForTasks(ctx, Tasks{task})
+		require.NoError(t, err)
+		require.NotNil(t, predictions)
+		assert.Len(t, predictions, 0)
+	})
+
+	t.Run("ActivatedExecutionTask", func(t *testing.T) {
+		task := &Task{Id: "task1", DisplayName: "test", BuildVariant: "bv", Project: "proj", Activated: true}
+		predictions, err := ComputePredictedCostsForTasks(ctx, Tasks{task})
+		require.NoError(t, err)
+		require.NotNil(t, predictions)
+		require.Len(t, predictions, 1)
+		require.Contains(t, predictions, "task1")
+		assert.True(t, predictions["task1"].IsZero())
+	})
+
+	t.Run("MixedDisplayAndExecutionTasks", func(t *testing.T) {
+		displayTask := &Task{Id: "display1", DisplayName: "display", BuildVariant: "bv", Project: "proj", Activated: true, DisplayOnly: true}
+		execTask := &Task{Id: "exec1", DisplayName: "exec", BuildVariant: "bv", Project: "proj", Activated: true}
+		predictions, err := ComputePredictedCostsForTasks(ctx, Tasks{displayTask, execTask})
+		require.NoError(t, err)
+		require.NotNil(t, predictions)
+		require.Len(t, predictions, 1)
+		require.Contains(t, predictions, "exec1")
+		assert.NotContains(t, predictions, "display1")
+		assert.True(t, predictions["exec1"].IsZero())
+	})
 }
 
 func TestPredictedTaskCostSetCorrectly(t *testing.T) {

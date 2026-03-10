@@ -218,6 +218,10 @@ type GithubMergeGroup struct {
 	// together, so there are as many commits as there are PRs in the merge
 	// group. This is only the title of the first commit in the merge group.
 	HeadCommit string `bson:"head_commit"`
+	// HeadCommitDate is the timestamp of the head commit. GitHub creates the
+	// merge group commit when adding a PR to the queue, so this approximates
+	// when the PR entered the merge queue.
+	HeadCommitDate time.Time `bson:"head_commit_date,omitempty"`
 
 	// RemovedFromQueueAt is set when GitHub sends a "destroyed" MergeGroupEvent,
 	// indicating the patch is no longer in the merge queue. This is independent
@@ -470,8 +474,8 @@ func RevokeInstallationToken(ctx context.Context, token string) error {
 	))
 	defer span.End()
 
-	// Ignore unauthorized responses since the token may have already been revoked.
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized}})
+	// Ignore unauthorized and not found responses since the token may have already been revoked or expired.
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized, http.StatusNotFound}})
 	defer githubClient.Close()
 	resp, err := githubClient.Apps.RevokeInstallationToken(ctx)
 	if resp != nil {

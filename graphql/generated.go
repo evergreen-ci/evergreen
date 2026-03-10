@@ -184,6 +184,7 @@ type ComplexityRoot struct {
 		LogPath                 func(childComplexity int) int
 		LoggerConfig            func(childComplexity int) int
 		Notify                  func(childComplexity int) int
+		OktaServiceConfig       func(childComplexity int) int
 		OldestAllowedCLIVersion func(childComplexity int) int
 		ParameterStore          func(childComplexity int) int
 		PerfMonitoringKanopyURL func(childComplexity int) int
@@ -1118,6 +1119,11 @@ type ComplexityRoot struct {
 		Issuer             func(childComplexity int) int
 		Scopes             func(childComplexity int) int
 		UserGroup          func(childComplexity int) int
+	}
+
+	OktaServiceConfig struct {
+		ClientID     func(childComplexity int) int
+		ClientSecret func(childComplexity int) int
 	}
 
 	OomTrackerInfo struct {
@@ -3124,6 +3130,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Notify(childComplexity), true
+	case "AdminSettings.oktaServiceConfig":
+		if e.complexity.AdminSettings.OktaServiceConfig == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.OktaServiceConfig(childComplexity), true
 	case "AdminSettings.oldestAllowedCLIVersion":
 		if e.complexity.AdminSettings.OldestAllowedCLIVersion == nil {
 			break
@@ -7089,6 +7101,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OktaConfig.UserGroup(childComplexity), true
+
+	case "OktaServiceConfig.clientId":
+		if e.complexity.OktaServiceConfig.ClientID == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.ClientID(childComplexity), true
+	case "OktaServiceConfig.clientSecret":
+		if e.complexity.OktaServiceConfig.ClientSecret == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.ClientSecret(childComplexity), true
 
 	case "OomTrackerInfo.detected":
 		if e.complexity.OomTrackerInfo.Detected == nil {
@@ -12528,6 +12553,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputNotifyConfigInput,
 		ec.unmarshalInputOAuthConfigInput,
 		ec.unmarshalInputOktaConfigInput,
+		ec.unmarshalInputOktaServiceConfigInput,
 		ec.unmarshalInputOperatingSystemOpts,
 		ec.unmarshalInputOwnerRepoInput,
 		ec.unmarshalInputPackageOpts,
@@ -12720,7 +12746,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/okta_service.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -12739,6 +12765,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/adminSettings/auth.graphql", Input: sourceData("schema/types/adminSettings/auth.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/background_processing.graphql", Input: sourceData("schema/types/adminSettings/background_processing.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/external_communications.graphql", Input: sourceData("schema/types/adminSettings/external_communications.graphql"), BuiltIn: false},
+	{Name: "schema/types/adminSettings/okta_service.graphql", Input: sourceData("schema/types/adminSettings/okta_service.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/other.graphql", Input: sourceData("schema/types/adminSettings/other.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/providers.graphql", Input: sourceData("schema/types/adminSettings/providers.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/runners.graphql", Input: sourceData("schema/types/adminSettings/runners.graphql"), BuiltIn: false},
@@ -17692,6 +17719,41 @@ func (ec *executionContext) fieldContext_AdminSettings_authConfig(_ context.Cont
 				return ec.fieldContext_AuthConfig_allowServiceUsers(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AuthConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_oktaServiceConfig(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_oktaServiceConfig,
+		func(ctx context.Context) (any, error) {
+			return obj.OktaServiceConfig, nil
+		},
+		nil,
+		ec.marshalOOktaServiceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_oktaServiceConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "clientId":
+				return ec.fieldContext_OktaServiceConfig_clientId(ctx, field)
+			case "clientSecret":
+				return ec.fieldContext_OktaServiceConfig_clientSecret(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OktaServiceConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -35558,6 +35620,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_api(ctx, field)
 			case "authConfig":
 				return ec.fieldContext_AdminSettings_authConfig(ctx, field)
+			case "oktaServiceConfig":
+				return ec.fieldContext_AdminSettings_oktaServiceConfig(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -41604,6 +41668,90 @@ func (ec *executionContext) fieldContext_OktaConfig_expireAfterMinutes(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaServiceConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_clientId,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientID, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_clientId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaServiceConfig_clientSecret(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_clientSecret,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientSecret, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_clientSecret(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -48716,6 +48864,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_api(ctx, field)
 			case "authConfig":
 				return ec.fieldContext_AdminSettings_authConfig(ctx, field)
+			case "oktaServiceConfig":
+				return ec.fieldContext_AdminSettings_oktaServiceConfig(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -74180,7 +74330,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74234,6 +74384,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.AuthConfig = data
+		case "oktaServiceConfig":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oktaServiceConfig"))
+			data, err := ec.unmarshalOOktaServiceConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OktaServiceConfig = data
 		case "banner":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -78870,6 +79027,74 @@ func (ec *executionContext) unmarshalInputOktaConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.ExpireAfterMinutes = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Context, obj any) (model.APIOktaServiceConfig, error) {
+	var it model.APIOktaServiceConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"clientId", "clientSecret"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "clientId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.ClientID = data
+			} else if tmp == nil {
+				it.ClientID = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "clientSecret":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientSecret"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.ClientSecret = data
+			} else if tmp == nil {
+				it.ClientSecret = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -85173,6 +85398,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_api(ctx, field, obj)
 		case "authConfig":
 			out.Values[i] = ec._AdminSettings_authConfig(ctx, field, obj)
+		case "oktaServiceConfig":
+			out.Values[i] = ec._AdminSettings_oktaServiceConfig(ctx, field, obj)
 		case "banner":
 			out.Values[i] = ec._AdminSettings_banner(ctx, field, obj)
 		case "bannerTheme":
@@ -92313,6 +92540,44 @@ func (ec *executionContext) _OktaConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._OktaConfig_userGroup(ctx, field, obj)
 		case "expireAfterMinutes":
 			out.Values[i] = ec._OktaConfig_expireAfterMinutes(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var oktaServiceConfigImplementors = []string{"OktaServiceConfig"}
+
+func (ec *executionContext) _OktaServiceConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIOktaServiceConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, oktaServiceConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OktaServiceConfig")
+		case "clientId":
+			out.Values[i] = ec._OktaServiceConfig_clientId(ctx, field, obj)
+		case "clientSecret":
+			out.Values[i] = ec._OktaServiceConfig_clientSecret(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -112538,6 +112803,21 @@ func (ec *executionContext) unmarshalOOktaConfigInput2ᚖgithubᚗcomᚋevergree
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputOktaConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOOktaServiceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIOktaServiceConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OktaServiceConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOktaServiceConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig(ctx context.Context, v any) (*model.APIOktaServiceConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputOktaServiceConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

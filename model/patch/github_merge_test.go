@@ -2,6 +2,7 @@ package patch
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -95,6 +96,34 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.Equal(t, evergreen.GithubMergeRequester, intent.RequesterIdentity())
 			assert.Equal(t, "auto", intent.GetCalledBy())
 			assert.Equal(t, evergreen.CommitQueueAlias, intent.GetAlias())
+		},
+		"HeadCommitDatePresent": func(t *testing.T, mge *github.MergeGroupEvent) {
+			commitDate := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+			authorName := "test-author"
+			authorEmail := "test@example.com"
+			mge.MergeGroup.HeadCommit.Author = &github.CommitAuthor{
+				Name:  &authorName,
+				Email: &authorEmail,
+				Date:  &github.Timestamp{Time: commitDate},
+			}
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
+			assert.NotNil(t, intent)
+			assert.NoError(t, err)
+			githubMergeIntent, ok := intent.(*githubMergeIntent)
+			require.True(t, ok)
+			assert.Equal(t, commitDate, githubMergeIntent.HeadCommitDate)
+		},
+		"HeadCommitDateZeroQueriesGitHub": func(t *testing.T, mge *github.MergeGroupEvent) {
+			authorName := "test-author"
+			authorEmail := "test@example.com"
+			mge.MergeGroup.HeadCommit.Author = &github.CommitAuthor{
+				Name:  &authorName,
+				Email: &authorEmail,
+				Date:  &github.Timestamp{Time: time.Time{}},
+			}
+			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)
+			assert.NotNil(t, intent)
+			assert.NoError(t, err)
 		},
 		"NewPatch": func(t *testing.T, mge *github.MergeGroupEvent) {
 			intent, err := NewGithubMergeIntent(t.Context(), "abc123", "auto", mge)

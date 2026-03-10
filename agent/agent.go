@@ -624,27 +624,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 		return nil, errors.Wrap(err, "getting task's display task info")
 	}
 
-	// GetExpansionsAndVars does not include build variant expansions or project
-	// parameters, so load them from the project.
-	for _, bv := range opts.project.BuildVariants {
-		if bv.Name == opts.task.BuildVariant {
-			opts.expansionsAndVars.Expansions.Update(bv.Expansions)
-			break
-		}
-	}
-	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Vars)
-	for _, param := range opts.project.Parameters {
-		// If the key doesn't exist, the value will default to "" anyway; this
-		// prevents an un-specified project parameter from overwriting
-		// lower-priority expansions.
-		if param.Value != "" {
-			opts.expansionsAndVars.Expansions.Put(param.Key, param.Value)
-		}
-	}
-	// Overwrite any empty values here since these parameters were explicitly
-	// user-specified.
-	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Parameters)
-
+	agentutil.AddVariantAndParameterExpansions(opts.expansionsAndVars, opts.project, opts.task.BuildVariant)
 	return opts, nil
 }
 
