@@ -987,7 +987,10 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			}
 		}
 	}
-	childPIDs := agentutil.GetDescendantPIDs(ctx, runningPIDs)
+	var childPIDs []int
+	if runtime.GOOS != "windows" {
+		childPIDs = agentutil.GetDescendantPIDs(ctx, runningPIDs)
+	}
 
 	if len(runningPIDs) > 0 {
 		tc.logger.Execution().Infof("Process PIDs at timeout: %v", runningPIDs)

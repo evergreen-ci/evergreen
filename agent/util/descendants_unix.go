@@ -1,5 +1,3 @@
-//go:build darwin || linux
-
 package util
 
 import (
@@ -12,7 +10,7 @@ import (
 const maxDescendantDepth = 10
 
 // GetDescendantPIDs returns all descendant PIDs of the given parent PIDs
-// by recursively calling pgrep -P. Returns nil if pgrep is unavailable.
+// by recursively calling pgrep -P.
 func GetDescendantPIDs(ctx context.Context, parentPIDs []int) []int {
 	if len(parentPIDs) == 0 {
 		return nil
