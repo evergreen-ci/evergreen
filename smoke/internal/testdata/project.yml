@@ -242,7 +242,6 @@ buildvariants:
     display_name: Host smoke test
     run_on:
       - localhost
-    activate: false
     tasks:
       # These tasks will run in the smoke test patch to verify core Evergreen functionality.
       - name: host_smoke_test_task_group
