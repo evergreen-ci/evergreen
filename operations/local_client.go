@@ -88,7 +88,8 @@ func Debug() cli.Command {
 								Value: 9090,
 							},
 						},
-						Before: checkDebugSpawnHostEnabled,
+						// TODO(DEVPROD-25033): re-enable auth check.
+						// Before: checkDebugSpawnHostEnabled,
 						Action: startDebugDaemonCmd,
 					},
 					{
@@ -239,9 +240,10 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
 	}
 
-	if err := conf.SetOAuthToken(context.Background()); err != nil {
-		return errors.Wrap(err, "obtaining OAuth token")
-	}
+	// TODO(DEVPROD-25033): re-enable OAuth token.
+	// if err := conf.SetOAuthToken(context.Background()); err != nil {
+	// 	return errors.Wrap(err, "obtaining OAuth token")
+	// }
 
 	grip.Infof("Starting daemon on port %d...", port)
 

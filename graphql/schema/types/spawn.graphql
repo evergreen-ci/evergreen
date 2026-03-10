@@ -54,6 +54,12 @@ input SpawnHostInput {
   volumeId: String
   useOAuth: Boolean
   isDebug: Boolean
+  """
+  setupStepNumber is the step number that the debug host should run until
+  after initializing the daemon. Only valid when isDebug is true. Accepts
+  display step format (e.g., "5" or "5.1" for function sub-commands).
+  """
+  setupStepNumber: String
 }
 
 """

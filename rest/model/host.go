@@ -81,6 +81,7 @@ type HostRequestOptions struct {
 	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
 	UseOAuth             bool       `json:"use_oauth" yaml:"use_oauth"`
 	IsDebug              bool       `json:"is_debug" yaml:"is_debug"`
+	SetupStepNumber      string     `json:"setup_step_number,omitempty" yaml:"setup_step_number,omitempty"`
 }
 
 type DistroInfo struct {

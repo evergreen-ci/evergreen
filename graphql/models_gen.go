@@ -525,6 +525,10 @@ type SpawnHostInput struct {
 	VolumeID                *string                 `json:"volumeId,omitempty"`
 	UseOAuth                *bool                   `json:"useOAuth,omitempty"`
 	IsDebug                 *bool                   `json:"isDebug,omitempty"`
+	// setupStepNumber is the step number that the debug host should run until
+	// after initializing the daemon. Only valid when isDebug is true. Accepts
+	// display step format (e.g., "5" or "5.1" for function sub-commands).
+	SetupStepNumber *string `json:"setupStepNumber,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.

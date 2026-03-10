@@ -131,7 +131,11 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 	}
 
 	if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
-		return nil, errors.Wrap(err, "fetching task config")
+		// TODO(DEVPROD-25033): re-enable fatal error for fetching task config.
+		// For now, log the error and continue with a synthetic task so that
+		// local execution can proceed without API authentication.
+		localExecutor.logger.Errorf("Failed to fetch task config (continuing with synthetic task): %v", err)
+		localExecutor.createSyntheticTask("local_task")
 	}
 
 	return localExecutor, nil
