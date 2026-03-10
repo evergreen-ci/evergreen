@@ -163,8 +163,6 @@ func (lm *logManager) LogForChannel(ch StreamChannel) *logFile {
 		return lm.taskLog
 	case ExecChannel:
 		return lm.execLog
-	case SystemChannel:
-		return lm.systemLog
 	default:
 		return lm.taskLog
 	}

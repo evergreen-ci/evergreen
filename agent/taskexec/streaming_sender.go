@@ -22,8 +22,6 @@ const (
 	TaskChannel StreamChannel = "task"
 	// ExecChannel is for agent framework messages (step started/completed).
 	ExecChannel StreamChannel = "exec"
-	// SystemChannel is for system diagnostics.
-	SystemChannel StreamChannel = "system"
 	// DoneChannel signals step completion with status.
 	DoneChannel StreamChannel = "done"
 )
@@ -47,6 +45,7 @@ type streamWriter struct {
 	flusher http.Flusher
 	logFile *logFile
 	step    int
+	closed  bool
 }
 
 // newStreamWriter creates a writer backed by an HTTP response writer.
@@ -70,6 +69,14 @@ func NewStreamWriterExported(w io.Writer, flusher http.Flusher, lf *LogFileHandl
 	return newStreamWriter(w, flusher, inner, step)
 }
 
+// Close marks the stream writer as closed so that subsequent writes to the
+// HTTP response are silently dropped.
+func (sw *streamWriter) Close() {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	sw.closed = true
+}
+
 // SetStep updates the current step index for subsequent writes.
 func (sw *streamWriter) SetStep(step int) {
 	sw.mu.Lock()
@@ -82,21 +89,32 @@ func (sw *streamWriter) WriteLine(line StreamLine) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
+	if sw.logFile != nil {
+		sw.logFile.WriteLogLine(line.Step, line.Message)
+	}
+
+	if sw.closed {
+		return nil
+	}
+
 	data, err := json.Marshal(line)
 	if err != nil {
 		return err
 	}
 	data = append(data, '\n')
 
+	defer func() {
+		if r := recover(); r != nil {
+			sw.closed = true
+		}
+	}()
+
 	if _, err := sw.w.Write(data); err != nil {
-		return err
+		sw.closed = true
+		return nil
 	}
 	if sw.flusher != nil {
 		sw.flusher.Flush()
-	}
-
-	if sw.logFile != nil {
-		sw.logFile.WriteLogLine(line.Step, line.Message)
 	}
 
 	return nil
@@ -153,43 +171,6 @@ func (s *streamingSender) Send(m message.Composer) {
 
 func (s *streamingSender) Flush(_ context.Context) error { return nil }
 
-// fileOnlySender implements send.Sender and writes messages only to a local log file
-// (no HTTP streaming). Used during setup phase.
-type fileOnlySender struct {
-	*send.Base
-	logFile *logFile
-	step    int
-	mu      sync.Mutex
-}
-
-func newFileOnlySender(name string, lf *logFile) *fileOnlySender {
-	s := &fileOnlySender{
-		Base:    send.NewBase(name),
-		logFile: lf,
-	}
-	_ = s.SetLevel(send.LevelInfo{Default: level.Trace, Threshold: level.Trace})
-	return s
-}
-
-func (s *fileOnlySender) SetStep(step int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.step = step
-}
-
-func (s *fileOnlySender) Send(m message.Composer) {
-	if !m.Loggable() {
-		return
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.logFile != nil {
-		s.logFile.WriteLogLine(s.step, m.String())
-	}
-}
-
-func (s *fileOnlySender) Flush(_ context.Context) error { return nil }
-
 // streamingLoggerProducer implements LoggerProducer with separate channels
 // backed by streaming senders.
 type streamingLoggerProducer struct {
@@ -204,10 +185,9 @@ type streamingLoggerProducer struct {
 // newStreamingLoggerProducer creates a logger producer that routes logs to the HTTP stream.
 func newStreamingLoggerProducer(sw *streamWriter) *streamingLoggerProducer {
 	return &streamingLoggerProducer{
-		taskLogger:   newStreamingSender("task", TaskChannel, sw),
-		execLogger:   newStreamingSender("exec", ExecChannel, sw),
-		systemLogger: newStreamingSender("system", SystemChannel, sw),
-		sw:           sw,
+		taskLogger: newStreamingSender("task", TaskChannel, sw),
+		execLogger: newStreamingSender("exec", ExecChannel, sw),
+		sw:         sw,
 	}
 }
 

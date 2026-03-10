@@ -449,6 +449,9 @@ func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
 
 // ClearStreamWriter removes the stream writer after execution completes.
 func (e *LocalExecutor) ClearStreamWriter() {
+	if e.streamWriter != nil {
+		e.streamWriter.Close()
+	}
 	e.streamWriter = nil
 	e.streamingProducer = nil
 	e.loggerProducer = &localLoggerProducer{logger: e.logger}
