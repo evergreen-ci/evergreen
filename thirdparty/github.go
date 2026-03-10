@@ -241,10 +241,10 @@ type GithubMergeGroup struct {
 	// InvalidatedByUpstream indicates this patch was removed from the queue because
 	// an item ahead of it in the merge queue failed, not because its own tests failed.
 	// This is set when GitHub's removal reason is "invalidated" AND one of the following
-	// is true: no version was created yet, the version is still running, it was removed 
-	// before the finish time, the version succeeded or GitRefNotFound is set (to account 
-	// for races where the webhook arrives after we've tried to clone and failed because 
-	// the ref was already invalidated and deleted because the failure in this case is 
+	// is true: no version was created yet, the version is still running, it was removed
+	// before the finish time, the version succeeded or GitRefNotFound is set (to account
+	// for races where the webhook arrives after we've tried to clone and failed because
+	// the ref was already invalidated and deleted because the failure in this case is
 	// not the task's fault).
 	InvalidatedByUpstream bool `bson:"invalidated_by_upstream,omitempty"`
 }
