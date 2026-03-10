@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -63,18 +64,21 @@ type executorBlock struct {
 
 // LocalExecutor implements task execution for local YAML files
 type LocalExecutor struct {
-	project        *model.Project
-	parserProject  *model.ParserProject
-	workDir        string
-	expansions     *util.Expansions
-	logger         grip.Journaler
-	debugState     *DebugState
-	commandBlocks  []executorBlock
-	communicator   client.Communicator
-	loggerProducer client.LoggerProducer
-	taskConfig     *internal.TaskConfig
-	jasperManager  jasper.Manager
-	opts           LocalExecutorOptions
+	project           *model.Project
+	parserProject     *model.ParserProject
+	workDir           string
+	expansions        *util.Expansions
+	logger            grip.Journaler
+	debugState        *DebugState
+	commandBlocks     []executorBlock
+	communicator      client.Communicator
+	loggerProducer    client.LoggerProducer
+	taskConfig        *internal.TaskConfig
+	jasperManager     jasper.Manager
+	opts              LocalExecutorOptions
+	streamWriter      *streamWriter
+	logManager        *logManager
+	streamingProducer *streamingLoggerProducer
 }
 
 // LocalExecutorOptions contains configuration for the local executor
@@ -253,11 +257,62 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return errors.New("no more steps to execute")
 	}
 
-	targetCmd := e.debugState.CommandList[e.debugState.CurrentStepIndex]
+	stepIndex := e.debugState.CurrentStepIndex
+	targetCmd := e.debugState.CommandList[stepIndex]
 	targetBlockIdx := targetCmd.BlockIndex
 
 	if targetBlockIdx >= len(e.commandBlocks) {
 		return errors.Errorf("invalid block index %d", targetBlockIdx)
+	}
+
+	if e.streamWriter != nil {
+		e.streamWriter.SetStep(stepIndex)
+	}
+
+	timer := newStepTimer()
+
+	isNoOp := noOpCommands[targetCmd.Command.Command]
+	if isNoOp {
+		noOpMsg := e.getNoOpMessage(targetCmd.Command.Command)
+		if e.streamWriter != nil {
+			_ = e.streamWriter.WriteChannelMessage(ExecChannel, noOpMsg)
+		}
+		e.logger.Infof(noOpMsg)
+		e.debugState.CurrentStepIndex++
+		record := executionRecord{
+			StepIndex:  stepIndex,
+			Success:    true,
+			DurationMs: timer.DurationMs(),
+		}
+		e.debugState.addExecutionRecord(record)
+
+		if e.streamWriter != nil {
+			nextStep := e.debugState.CurrentStepIndex
+			_ = e.streamWriter.WriteDone(true, timer.DurationMs(), nextStep, "")
+		}
+
+		if e.logManager != nil {
+			lf := e.logManager.LogForChannel(ExecChannel)
+			lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
+			lf.WriteLogLine(stepIndex, noOpMsg)
+			lf.WriteStepEnd(stepIndex, true, timer.DurationString())
+		}
+		return nil
+	}
+
+	if e.logManager != nil {
+		lf := e.logManager.LogForChannel(TaskChannel)
+		lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
+	}
+
+	if e.streamWriter != nil {
+		blockLabel := string(targetCmd.BlockType)
+		if blockLabel == "" {
+			blockLabel = "main"
+		}
+		msg := fmt.Sprintf("Running '%s' (step %d of %d, block: %s)",
+			targetCmd.DisplayName, stepIndex, len(e.debugState.CommandList), blockLabel)
+		_ = e.streamWriter.WriteChannelMessage(ExecChannel, msg)
 	}
 
 	// Only process the specific block (i.e. pre, main, post) containing our target command
@@ -323,19 +378,43 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return nil
 	}
 	record := executionRecord{
-		StepIndex: e.debugState.CurrentStepIndex,
+		StepIndex: stepIndex,
 		Success:   true,
 	}
 	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
 		record.Success = false
+		record.DurationMs = timer.DurationMs()
+		record.Error = err.Error()
 		e.debugState.addExecutionRecord(record)
+
+		if e.streamWriter != nil {
+			_ = e.streamWriter.WriteDone(false, timer.DurationMs(), e.debugState.CurrentStepIndex, err.Error())
+		}
+		if e.logManager != nil {
+			lf := e.logManager.LogForChannel(TaskChannel)
+			lf.WriteStepEnd(stepIndex, false, timer.DurationString())
+		}
 		return err
 	}
 	if !executed {
-		return errors.Errorf("failed to execute step %d", e.debugState.CurrentStepIndex)
+		return errors.Errorf("failed to execute step %d", stepIndex)
 	}
+	record.DurationMs = timer.DurationMs()
 	e.debugState.addExecutionRecord(record)
+
+	if e.streamWriter != nil {
+		_ = e.streamWriter.WriteDone(true, timer.DurationMs(), e.debugState.CurrentStepIndex, "")
+	}
+	if e.logManager != nil {
+		lf := e.logManager.LogForChannel(TaskChannel)
+		lf.WriteStepEnd(stepIndex, true, timer.DurationString())
+	}
 	return nil
+}
+
+// getNoOpMessage returns the skip message for a no-op command.
+func (e *LocalExecutor) getNoOpMessage(cmdName string) string {
+	return cmdName + ": Not supported in local execution"
 }
 
 // RunAll executes all steps in a task
@@ -353,6 +432,74 @@ func (e *LocalExecutor) RunAll(ctx context.Context) error {
 func (e *LocalExecutor) GetDebugState() *DebugState {
 	return e.debugState
 }
+
+// TotalSteps returns the total number of steps in the command list.
+func (e *LocalExecutor) TotalSteps() int {
+	return len(e.debugState.CommandList)
+}
+
+// SetStreamWriter sets the stream writer for streaming output during execution.
+// When set, command output is sent as NDJSON to the stream writer.
+func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
+	e.streamWriter = sw
+	producer := newStreamingLoggerProducer(sw)
+	e.streamingProducer = producer
+	e.loggerProducer = newStreamingLoggerProducerAdapter(producer)
+}
+
+// ClearStreamWriter removes the stream writer after execution completes.
+func (e *LocalExecutor) ClearStreamWriter() {
+	e.streamWriter = nil
+	e.streamingProducer = nil
+	e.loggerProducer = &localLoggerProducer{logger: e.logger}
+}
+
+// SetupLogManager initializes local log file management.
+func (e *LocalExecutor) SetupLogManager(isSetupPhase bool) error {
+	lm, err := newLogManager(isSetupPhase)
+	if err != nil {
+		return err
+	}
+	e.logManager = lm
+	return nil
+}
+
+// CloseLogManager closes the log manager.
+func (e *LocalExecutor) CloseLogManager() {
+	if e.logManager != nil {
+		e.logManager.Close()
+		e.logManager = nil
+	}
+}
+
+// GetLogManager returns the log manager.
+func (e *LocalExecutor) GetLogManager() *logManager {
+	return e.logManager
+}
+
+// streamingLoggerProducerAdapter wraps streamingLoggerProducer to satisfy client.LoggerProducer.
+type streamingLoggerProducerAdapter struct {
+	producer   *streamingLoggerProducer
+	taskLogger grip.Journaler
+	execLogger grip.Journaler
+	sysLogger  grip.Journaler
+}
+
+func newStreamingLoggerProducerAdapter(producer *streamingLoggerProducer) *streamingLoggerProducerAdapter {
+	return &streamingLoggerProducerAdapter{
+		producer:   producer,
+		taskLogger: logging.MakeGrip(producer.Task()),
+		execLogger: logging.MakeGrip(producer.Execution()),
+		sysLogger:  logging.MakeGrip(producer.System()),
+	}
+}
+
+func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler       { return a.execLogger }
+func (a *streamingLoggerProducerAdapter) Task() grip.Journaler            { return a.taskLogger }
+func (a *streamingLoggerProducerAdapter) System() grip.Journaler          { return a.sysLogger }
+func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error { return nil }
+func (a *streamingLoggerProducerAdapter) Close() error                    { return a.producer.Close() }
+func (a *streamingLoggerProducerAdapter) Closed() bool                    { return a.producer.Closed() }
 
 // createBlockDeps creates BlockExecutorDeps for use with RunCommandsInBlock
 func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {

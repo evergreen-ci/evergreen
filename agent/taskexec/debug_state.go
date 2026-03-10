@@ -5,6 +5,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 )
 
+// SetupPhaseStatus tracks the outcome of the setup phase.
+type SetupPhaseStatus struct {
+	Completed     bool
+	TotalSteps    int
+	FailedAtStep  int
+	FailureCount  int
+	FailureReason string
+}
+
 // DebugState maintains the state of a debug session.
 type DebugState struct {
 	CurrentStepIndex int
@@ -17,12 +26,15 @@ type DebugState struct {
 	LastError        error
 	ExecutionHistory []executionRecord
 	ConfigPath       string
+	SetupStatus      SetupPhaseStatus
 }
 
 // executionRecord tracks the execution of a single command
 type executionRecord struct {
-	StepIndex int
-	Success   bool
+	StepIndex  int
+	Success    bool
+	DurationMs int64
+	Error      string
 }
 
 // CommandInfo represents a single command in the linear execution order.
