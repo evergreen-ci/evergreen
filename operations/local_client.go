@@ -158,10 +158,6 @@ func Debug() cli.Command {
 						Usage: "Show logs from a specific step only",
 						Value: -1,
 					},
-					cli.StringFlag{
-						Name:  "channel",
-						Usage: "Show only a specific channel (task, exec, system)",
-					},
 					cli.BoolFlag{
 						Name:  "setup",
 						Usage: "Show setup phase logs instead of session logs",
@@ -616,7 +612,6 @@ func postAndStreamResponse(url string, body interface{}) error {
 // viewLogsCmd displays debug session logs from local log files.
 func viewLogsCmd(c *cli.Context) error {
 	isSetup := c.Bool("setup")
-	channel := c.String("channel")
 	stepFlag := c.Int("step")
 	tail := c.Int("tail")
 
@@ -628,7 +623,7 @@ func viewLogsCmd(c *cli.Context) error {
 		opts.HasStep = true
 	}
 
-	lines, err := taskexec.ReadFilteredLogs(isSetup, channel, opts)
+	lines, err := taskexec.ReadFilteredLogs(isSetup, opts)
 	if err != nil {
 		return errors.Wrap(err, "reading logs")
 	}

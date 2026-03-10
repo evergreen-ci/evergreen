@@ -171,29 +171,27 @@ func (s *streamingSender) Send(m message.Composer) {
 
 func (s *streamingSender) Flush(_ context.Context) error { return nil }
 
-// streamingLoggerProducer implements LoggerProducer with separate channels
-// backed by streaming senders.
+// streamingLoggerProducer implements LoggerProducer backed by a single
+// streaming sender. All logger channels (Task, Execution, System) write
+// to the same stream.
 type streamingLoggerProducer struct {
-	taskLogger   send.Sender
-	execLogger   send.Sender
-	systemLogger send.Sender
-	sw           *streamWriter
-	closed       bool
-	mu           sync.Mutex
+	sender send.Sender
+	sw     *streamWriter
+	closed bool
+	mu     sync.Mutex
 }
 
-// newStreamingLoggerProducer creates a logger producer that routes logs to the HTTP stream.
+// newStreamingLoggerProducer creates a logger producer that routes all logs to the HTTP stream.
 func newStreamingLoggerProducer(sw *streamWriter) *streamingLoggerProducer {
 	return &streamingLoggerProducer{
-		taskLogger: newStreamingSender("task", TaskChannel, sw),
-		execLogger: newStreamingSender("exec", ExecChannel, sw),
-		sw:         sw,
+		sender: newStreamingSender("output", TaskChannel, sw),
+		sw:     sw,
 	}
 }
 
-func (p *streamingLoggerProducer) Execution() send.Sender { return p.execLogger }
-func (p *streamingLoggerProducer) Task() send.Sender      { return p.taskLogger }
-func (p *streamingLoggerProducer) System() send.Sender    { return p.systemLogger }
+func (p *streamingLoggerProducer) Execution() send.Sender { return p.sender }
+func (p *streamingLoggerProducer) Task() send.Sender      { return p.sender }
+func (p *streamingLoggerProducer) System() send.Sender    { return p.sender }
 func (p *streamingLoggerProducer) StreamWriter() *streamWriter {
 	return p.sw
 }

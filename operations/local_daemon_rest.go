@@ -274,7 +274,7 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 	}
 
 	state := d.executor.GetDebugState()
-	taskLogFile := d.getTaskLogFile()
+	taskLogFile := d.getLogFile()
 	sw := taskexec.NewStreamWriterExported(w, flusher, taskLogFile, state.CurrentStepIndex)
 	d.executor.SetStreamWriter(sw)
 
@@ -309,7 +309,7 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state := d.executor.GetDebugState()
-	taskLogFile := d.getTaskLogFile()
+	taskLogFile := d.getLogFile()
 	sw := taskexec.NewStreamWriterExported(w, flusher, taskLogFile, state.CurrentStepIndex)
 	d.executor.SetStreamWriter(sw)
 
@@ -322,8 +322,8 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	d.executor.CloseLogManager()
 }
 
-// getTaskLogFile returns the task log file from the executor's log manager, or nil.
-func (d *localDaemonREST) getTaskLogFile() *taskexec.LogFileHandle {
+// getLogFile returns the output log file from the executor's log manager, or nil.
+func (d *localDaemonREST) getLogFile() *taskexec.LogFileHandle {
 	if d.executor == nil {
 		return nil
 	}
@@ -331,7 +331,7 @@ func (d *localDaemonREST) getTaskLogFile() *taskexec.LogFileHandle {
 	if lm == nil {
 		return nil
 	}
-	return lm.TaskLogHandle()
+	return lm.LogHandle()
 }
 
 // handleSetVariable sets a custom variable.
@@ -381,7 +381,7 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 		grip.Warning(errors.Wrap(err, "setting up log manager"))
 	}
 
-	taskLogFile := d.getTaskLogFile()
+	taskLogFile := d.getLogFile()
 	sw := taskexec.NewStreamWriterExported(w, flusher, taskLogFile, state.CurrentStepIndex)
 	d.executor.SetStreamWriter(sw)
 

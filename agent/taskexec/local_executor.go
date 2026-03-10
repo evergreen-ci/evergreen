@@ -292,7 +292,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 
 		if e.logManager != nil {
-			lf := e.logManager.LogForChannel(ExecChannel)
+			lf := e.logManager.LogFile()
 			lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
 			lf.WriteLogLine(stepIndex, noOpMsg)
 			lf.WriteStepEnd(stepIndex, true, timer.DurationString())
@@ -301,7 +301,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	}
 
 	if e.logManager != nil {
-		lf := e.logManager.LogForChannel(TaskChannel)
+		lf := e.logManager.LogFile()
 		lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
 	}
 
@@ -391,7 +391,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			_ = e.streamWriter.WriteDone(false, timer.DurationMs(), e.debugState.CurrentStepIndex, err.Error())
 		}
 		if e.logManager != nil {
-			lf := e.logManager.LogForChannel(TaskChannel)
+			lf := e.logManager.LogFile()
 			lf.WriteStepEnd(stepIndex, false, timer.DurationString())
 		}
 		return err
@@ -406,7 +406,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		_ = e.streamWriter.WriteDone(true, timer.DurationMs(), e.debugState.CurrentStepIndex, "")
 	}
 	if e.logManager != nil {
-		lf := e.logManager.LogForChannel(TaskChannel)
+		lf := e.logManager.LogFile()
 		lf.WriteStepEnd(stepIndex, true, timer.DurationString())
 	}
 	return nil
@@ -482,24 +482,20 @@ func (e *LocalExecutor) GetLogManager() *logManager {
 
 // streamingLoggerProducerAdapter wraps streamingLoggerProducer to satisfy client.LoggerProducer.
 type streamingLoggerProducerAdapter struct {
-	producer   *streamingLoggerProducer
-	taskLogger grip.Journaler
-	execLogger grip.Journaler
-	sysLogger  grip.Journaler
+	producer *streamingLoggerProducer
+	logger   grip.Journaler
 }
 
 func newStreamingLoggerProducerAdapter(producer *streamingLoggerProducer) *streamingLoggerProducerAdapter {
 	return &streamingLoggerProducerAdapter{
-		producer:   producer,
-		taskLogger: logging.MakeGrip(producer.Task()),
-		execLogger: logging.MakeGrip(producer.Execution()),
-		sysLogger:  logging.MakeGrip(producer.System()),
+		producer: producer,
+		logger:   logging.MakeGrip(producer.Task()),
 	}
 }
 
-func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler       { return a.execLogger }
-func (a *streamingLoggerProducerAdapter) Task() grip.Journaler            { return a.taskLogger }
-func (a *streamingLoggerProducerAdapter) System() grip.Journaler          { return a.sysLogger }
+func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler       { return a.logger }
+func (a *streamingLoggerProducerAdapter) Task() grip.Journaler            { return a.logger }
+func (a *streamingLoggerProducerAdapter) System() grip.Journaler          { return a.logger }
 func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error { return nil }
 func (a *streamingLoggerProducerAdapter) Close() error                    { return a.producer.Close() }
 func (a *streamingLoggerProducerAdapter) Closed() bool                    { return a.producer.Closed() }

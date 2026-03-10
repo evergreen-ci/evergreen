@@ -13,13 +13,11 @@ import (
 )
 
 const (
-	logBaseDir       = ".evergreen-local"
-	logSubDir        = "logs"
-	sessionSubDir    = "session"
-	setupSubDir      = "setup"
-	taskLogFile      = "task.log"
-	executionLogFile = "execution.log"
-	systemLogFile    = "system.log"
+	logBaseDir    = ".evergreen-local"
+	logSubDir     = "logs"
+	sessionSubDir = "session"
+	setupSubDir   = "setup"
+	outputLogFile = "output.log"
 )
 
 // logFile manages writing log lines to a local file.
@@ -94,11 +92,9 @@ func (lf *logFile) Close() error {
 	return lf.file.Close()
 }
 
-// logManager manages the set of log files for a debug session.
+// logManager manages the log file for a debug session.
 type logManager struct {
-	taskLog      *logFile
-	execLog      *logFile
-	systemLog    *logFile
+	outputLog    *logFile
 	logDir       string
 	isSetupPhase bool
 }
@@ -116,28 +112,13 @@ func newLogManager(isSetupPhase bool) (*logManager, error) {
 	}
 	logDir := filepath.Join(homeDir, logBaseDir, logSubDir, subDir)
 
-	taskLog, err := newLogFile(filepath.Join(logDir, taskLogFile))
+	outputLog, err := newLogFile(filepath.Join(logDir, outputLogFile))
 	if err != nil {
-		return nil, errors.Wrap(err, "creating task log file")
-	}
-
-	execLog, err := newLogFile(filepath.Join(logDir, executionLogFile))
-	if err != nil {
-		taskLog.Close()
-		return nil, errors.Wrap(err, "creating execution log file")
-	}
-
-	systemLog, err := newLogFile(filepath.Join(logDir, systemLogFile))
-	if err != nil {
-		taskLog.Close()
-		execLog.Close()
-		return nil, errors.Wrap(err, "creating system log file")
+		return nil, errors.Wrap(err, "creating output log file")
 	}
 
 	return &logManager{
-		taskLog:      taskLog,
-		execLog:      execLog,
-		systemLog:    systemLog,
+		outputLog:    outputLog,
 		logDir:       logDir,
 		isSetupPhase: isSetupPhase,
 	}, nil
@@ -148,42 +129,22 @@ type LogFileHandle struct {
 	inner *logFile
 }
 
-// TaskLogHandle returns an exported handle to the task log file.
-func (lm *logManager) TaskLogHandle() *LogFileHandle {
-	if lm.taskLog == nil {
+// LogHandle returns an exported handle to the output log file.
+func (lm *logManager) LogHandle() *LogFileHandle {
+	if lm.outputLog == nil {
 		return nil
 	}
-	return &LogFileHandle{inner: lm.taskLog}
+	return &LogFileHandle{inner: lm.outputLog}
 }
 
-// LogForChannel returns the log file for the given channel.
-func (lm *logManager) LogForChannel(ch StreamChannel) *logFile {
-	switch ch {
-	case TaskChannel:
-		return lm.taskLog
-	case ExecChannel:
-		return lm.execLog
-	default:
-		return lm.taskLog
-	}
+// LogFile returns the output log file.
+func (lm *logManager) LogFile() *logFile {
+	return lm.outputLog
 }
 
-// Close closes all log files.
+// Close closes the log file.
 func (lm *logManager) Close() error {
-	errs := []error{}
-	if err := lm.taskLog.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := lm.execLog.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := lm.systemLog.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	return nil
+	return lm.outputLog.Close()
 }
 
 // ClearSessionLogs removes session log files (called when selecting a new task).
@@ -205,8 +166,8 @@ type LogFilterOptions struct {
 	Tail    int
 }
 
-// ReadFilteredLogs reads log files from the given directory with optional filtering.
-func ReadFilteredLogs(isSetup bool, channel string, opts LogFilterOptions) ([]string, error) {
+// ReadFilteredLogs reads the output log file with optional filtering.
+func ReadFilteredLogs(isSetup bool, opts LogFilterOptions) ([]string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting user home directory")
@@ -218,36 +179,20 @@ func ReadFilteredLogs(isSetup bool, channel string, opts LogFilterOptions) ([]st
 	}
 	logDir := filepath.Join(homeDir, logBaseDir, logSubDir, subDir)
 
-	var filenames []string
-	switch channel {
-	case "task":
-		filenames = []string{taskLogFile}
-	case "exec", "execution":
-		filenames = []string{executionLogFile}
-	case "system":
-		filenames = []string{systemLogFile}
-	default:
-		filenames = []string{taskLogFile, executionLogFile, systemLogFile}
-	}
-
-	var allLines []string
-	for _, filename := range filenames {
-		path := filepath.Join(logDir, filename)
-		lines, err := readLogFileLines(path, opts)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, errors.Wrapf(err, "reading log file '%s'", path)
+	path := filepath.Join(logDir, outputLogFile)
+	lines, err := readLogFileLines(path, opts)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
 		}
-		allLines = append(allLines, lines...)
+		return nil, errors.Wrapf(err, "reading log file '%s'", path)
 	}
 
-	if opts.Tail > 0 && len(allLines) > opts.Tail {
-		allLines = allLines[len(allLines)-opts.Tail:]
+	if opts.Tail > 0 && len(lines) > opts.Tail {
+		lines = lines[len(lines)-opts.Tail:]
 	}
 
-	return allLines, nil
+	return lines, nil
 }
 
 func readLogFileLines(path string, opts LogFilterOptions) ([]string, error) {
