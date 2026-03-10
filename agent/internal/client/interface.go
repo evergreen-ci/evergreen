@@ -132,6 +132,9 @@ type SharedCommunicator interface {
 	// UpsertCheckRun upserts a checkrun for a task.
 	UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error
 
+	// MarkMergeQueueGitRefNotFound marks a merge queue patch's GitRefNotFound field.
+	MarkMergeQueueGitRefNotFound(ctx context.Context, td TaskData) error
+
 	// AssumeRole assumes an AWS role and returns the credentials.
 	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error)
 

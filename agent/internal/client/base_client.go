@@ -938,6 +938,21 @@ func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, chec
 	return nil
 }
 
+// MarkMergeQueueGitRefNotFound marks a merge queue patch's GitRefNotFound field.
+func (c *baseCommunicator) MarkMergeQueueGitRefNotFound(ctx context.Context, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodPatch,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("mark_git_ref_not_found")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "marking git ref not found").Error())
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
