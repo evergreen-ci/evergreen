@@ -83,11 +83,10 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		SpawnHostID: d.conf.SpawnHostID,
 	}
 
-	// TODO(DEVPROD-25033): re-enable OAuth token check.
-	// if opts.OAuthToken == "" {
-	// 	http.Error(w, "OAuth token is required", http.StatusUnauthorized)
-	// 	return
-	// }
+	if opts.OAuthToken == "" {
+		http.Error(w, "OAuth token is required", http.StatusUnauthorized)
+		return
+	}
 
 	executor, err := taskexec.NewLocalExecutor(r.Context(), opts)
 	if err != nil {
