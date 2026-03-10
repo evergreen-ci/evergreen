@@ -1,9 +1,7 @@
 {
   "buildvariants": [
     {
-      "name": "localhost_generated",
-      "display_name": "Host smoke test (generated)",
-      "run_on": ["localhost"],
+      "name": "localhost",
       "tasks": [
         {
           "name": "task_to_add_via_generator"
