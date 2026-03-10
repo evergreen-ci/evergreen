@@ -70,6 +70,21 @@ func TestArchiveAutoPackParseParams(t *testing.T) {
 				"exclude_files": []string{"excluded_file"},
 			}))
 		},
+		"VerboseDefaultsToFalse": func(t *testing.T, cmd Command) {
+			require.NoError(t, cmd.ParseParams(map[string]any{
+				"target":     "some_target",
+				"source_dir": "some_source_dir",
+			}))
+			assert.False(t, cmd.(*autoArchiveCreate).Verbose)
+		},
+		"VerboseParsesTrue": func(t *testing.T, cmd Command) {
+			require.NoError(t, cmd.ParseParams(map[string]any{
+				"target":     "some_target",
+				"source_dir": "some_source_dir",
+				"verbose":    true,
+			}))
+			assert.True(t, cmd.(*autoArchiveCreate).Verbose)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tCase(t, autoArchiveCreateFactory())
