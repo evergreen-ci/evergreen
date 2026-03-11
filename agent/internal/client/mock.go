@@ -16,9 +16,9 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/log"
-	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchModel "github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -77,14 +77,14 @@ type Mock struct {
 	ReportS3UsageShouldFail bool
 	ReportedS3Usage         s3usage.S3Usage
 	AttachedFiles           map[string][]*artifact.File
-	LogID            string
-	LocalTestResults []testresult.TestResult
-	HasTestResults   bool
-	ResultsFailed    bool
-	TestResultStats  testresult.TaskTestResultsStats
-	FailedTestSample []string
-	TestLogs         []*testlog.TestLog
-	TestLogCount     int
+	LogID                   string
+	LocalTestResults        []testresult.TestResult
+	HasTestResults          bool
+	ResultsFailed           bool
+	TestResultStats         testresult.TaskTestResultsStats
+	FailedTestSample        []string
+	TestLogs                []*testlog.TestLog
+	TestLogCount            int
 
 	taskLogs   map[string][]log.LogLine
 	PatchFiles map[string]string

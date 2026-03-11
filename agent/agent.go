@@ -323,6 +323,8 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 			attribute.Bool(shouldExitAttribute, nt.ShouldExit),
 		))
 		grip.Notice(msg)
+		// Report S3 usage before exiting since teardown won't run.
+		grip.Error(errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
 		return processNextResponse{shouldExit: true}, nil
 	}
 	if nt.ShouldTeardownGroup {
@@ -1049,6 +1051,9 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			cancel()
 			grip.Error(tc.logger.Close())
 		}
+		// Report S3 usage after the final flush so all log chunks and artifacts
+		// (including those from teardown group commands) are captured.
+		grip.Error(errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
 	}()
 	defer a.clearGlobalFiles(tc)
 
@@ -1226,9 +1231,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		defer cancel()
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
-
-	// Report S3 usage for logs and artifacts after all flushes are complete.
-	grip.Error(errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))

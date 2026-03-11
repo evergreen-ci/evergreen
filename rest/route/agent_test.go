@@ -1041,8 +1041,7 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 }
 
 func TestReportS3Usage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("TaskNotFound", func(t *testing.T) {
 		require.NoError(t, db.Clear(task.Collection))

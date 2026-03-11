@@ -5000,8 +5000,7 @@ func TestUpdateTaskCost(t *testing.T) {
 }
 
 func TestSaveS3Usage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("PersistsS3Usage", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
