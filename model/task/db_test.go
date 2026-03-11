@@ -476,6 +476,24 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	assert.Equal(1, task01.Execution)
 }
 
+func TestFindOneIdWithoutGeneratedJSON(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	taskWithGeneratedJSON := Task{
+		Id:                    "task_with_json",
+		Status:                evergreen.TaskSucceeded,
+		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
+	}
+	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
+
+	dbTask, err := FindOneIdWithoutGeneratedJSON(t.Context(), taskWithGeneratedJSON.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.Equal(t, taskWithGeneratedJSON.Id, dbTask.Id)
+	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
+	assert.Nil(t, dbTask.GeneratedJSONAsString)
+}
+
 func TestAddHostCreateDetails(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
