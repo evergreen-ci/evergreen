@@ -783,11 +783,6 @@ type WaterfallPagination struct {
 	PrevPageOrder          int      `json:"prevPageOrder"`
 }
 
-type WaterfallVersion struct {
-	InactiveVersions []*model.APIVersion `json:"inactiveVersions,omitempty"`
-	Version          *model.APIVersion   `json:"version,omitempty"`
-}
-
 type AccessLevel string
 
 const (
