@@ -84,16 +84,10 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Info(message.Fields{
-		"message":     "starting S3 lifecycle sync for project buckets",
-		"num_buckets": len(bucketNames),
-		"job_id":      j.ID(),
-	})
-
 	client := cloud.NewS3LifecycleClient()
 
-	successCount := 0
 	failureCount := 0
+	var failedBuckets []string
 
 	for _, bucketName := range bucketNames {
 		if err := j.syncBucket(ctx, client, bucketName); err != nil {
@@ -104,18 +98,22 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 			}))
 			j.AddError(err)
 			failureCount++
+			failedBuckets = append(failedBuckets, bucketName)
 			continue
 		}
-		successCount++
 	}
 
-	grip.Info(message.Fields{
+	msg := message.Fields{
 		"message":       "completed S3 lifecycle sync for project buckets",
-		"success_count": successCount,
+		"success_count": len(bucketNames) - failureCount,
 		"failure_count": failureCount,
 		"total_buckets": len(bucketNames),
 		"job_id":        j.ID(),
-	})
+	}
+	if len(failedBuckets) > 0 {
+		msg["failed_buckets"] = failedBuckets
+	}
+	grip.Info(msg)
 }
 
 func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, client cloud.S3LifecycleClient, bucketName string) error {
@@ -126,7 +124,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 	}
 
 	if len(existingRules) == 0 {
-		grip.Warning(message.Fields{
+		grip.Info(message.Fields{
 			"message": "no existing rules found for bucket, skipping sync",
 			"bucket":  bucketName,
 			"job_id":  j.ID(),
@@ -139,27 +137,26 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 		return errors.Errorf("region not set for bucket '%s'", bucketName)
 	}
 
-	grip.Info(message.Fields{
-		"message":        "syncing lifecycle rules for project bucket",
-		"bucket":         bucketName,
-		"region":         region,
-		"existing_rules": len(existingRules),
-		"job_id":         j.ID(),
-	})
 
 	// Fetch lifecycle configuration from AWS (returns array of rules).
 	awsRules, err := client.GetBucketLifecycleConfiguration(ctx, bucketName, region, nil, nil)
 	if err != nil {
 		// Update all existing rules with sync error.
+		var failedPrefixes []string
+		var lastUpdateErr error
 		for _, rule := range existingRules {
 			if updateErr := s3lifecycle.UpdateSyncError(ctx, bucketName, rule.FilterPrefix, err.Error()); updateErr != nil {
-				grip.Warning(message.WrapError(updateErr, message.Fields{
-					"message": "failed to update sync error for rule",
-					"bucket":  bucketName,
-					"prefix":  rule.FilterPrefix,
-					"job_id":  j.ID(),
-				}))
+				failedPrefixes = append(failedPrefixes, rule.FilterPrefix)
+				lastUpdateErr = updateErr
 			}
+		}
+		if len(failedPrefixes) > 0 {
+			grip.Warning(message.WrapError(lastUpdateErr, message.Fields{
+				"message":         "failed to update sync error for rules",
+				"bucket":          bucketName,
+				"failed_prefixes": failedPrefixes,
+				"job_id":          j.ID(),
+			}))
 		}
 		return errors.Wrapf(err, "fetching lifecycle configuration for bucket '%s'", bucketName)
 	}
