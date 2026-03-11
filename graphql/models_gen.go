@@ -525,6 +525,7 @@ type SpawnHostInput struct {
 	VolumeID                *string                 `json:"volumeId,omitempty"`
 	UseOAuth                *bool                   `json:"useOAuth,omitempty"`
 	IsDebug                 *bool                   `json:"isDebug,omitempty"`
+	SetupStepNumber         *string                 `json:"setupStepNumber,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.

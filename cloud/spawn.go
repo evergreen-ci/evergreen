@@ -13,6 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -159,12 +161,12 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 			}))
 		}
 	}
-	if so.IsDebug && settings.DebugSpawnHosts.SetupScript != "" {
-		if so.ProvisionOptions.SetupScript != "" {
-			so.ProvisionOptions.SetupScript = fmt.Sprintf("%s\n%s", so.ProvisionOptions.SetupScript, settings.DebugSpawnHosts.SetupScript)
-		} else {
-			so.ProvisionOptions.SetupScript = settings.DebugSpawnHosts.SetupScript
+	if so.IsDebug {
+		debugScript, err := getDebugSetupScript(ctx, so, settings, d.WorkDir)
+		if err != nil {
+			return nil, errors.Wrap(err, "generating debug setup script")
 		}
+		so.ProvisionOptions.SetupScript = appendSetupScript(so.ProvisionOptions.SetupScript, debugScript)
 	}
 
 	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(ctx, *d, settings, so.Region, so.HomeVolumeID)
@@ -229,7 +231,124 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
-// assumes distro already modified to have one region
+// getDebugSetupScript returns the debug setup script to use. The
+// admin-configured debug script always runs. If a step number is also
+// specified, the generated daemon script is appended after it.
+func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, workDir string) (string, error) {
+	script := settings.DebugSpawnHosts.SetupScript
+	if so.ProvisionOptions.SetupStepNumber != "" {
+		stepScript, err := generateDebugSetupScript(ctx, so, workDir)
+		if err != nil {
+			return "", err
+		}
+		script = appendSetupScript(script, stepScript)
+	}
+	return script, nil
+}
+
+// appendSetupScript appends additional to the existing setup script. If either
+// is empty, it returns the other.
+func appendSetupScript(existing, additional string) string {
+	if additional == "" {
+		return existing
+	}
+	if existing == "" {
+		return additional
+	}
+	return fmt.Sprintf("%s\n%s", existing, additional)
+}
+
+// generateDebugSetupScript builds a shell script that starts the debug daemon
+// in the background, loads the project config, selects the task, and runs
+// commands up to the specified step number.
+func generateDebugSetupScript(ctx context.Context, so SpawnOptions, workDir string) (string, error) {
+	t, err := task.FindOneId(ctx, so.ProvisionOptions.TaskId)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding task '%s'", so.ProvisionOptions.TaskId)
+	}
+	if t == nil {
+		return "", errors.Errorf("task '%s' not found", so.ProvisionOptions.TaskId)
+	}
+
+	pRef, err := model.GetProjectRefForTask(ctx, so.ProvisionOptions.TaskId)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding project ref for task '%s'", so.ProvisionOptions.TaskId)
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project ref not found for task '%s'", so.ProvisionOptions.TaskId)
+	}
+
+	sourceDir, err := fetchSourceDir(ctx, t, workDir)
+	if err != nil {
+		return "", errors.Wrap(err, "computing source directory")
+	}
+
+	// Extract only the command number, ignoring any sub-command portion
+	// (e.g., "5.1" -> "5"). Sub-command support can be added to run-until
+	// in the future.
+	parts := strings.SplitN(so.ProvisionOptions.SetupStepNumber, ".", 2)
+	if len(parts) == 0 || parts[0] == "" {
+		return "", errors.Errorf("invalid setup step number '%s'", so.ProvisionOptions.SetupStepNumber)
+	}
+	stepNum := parts[0]
+
+	configPath := fmt.Sprintf("%s/%s", sourceDir, pRef.RemotePath)
+
+	return fmt.Sprintf(`# Redirect all setup script output to a log file.
+DEBUG_SETUP_LOG="/tmp/debug-setup.log"
+exec > "$DEBUG_SETUP_LOG" 2>&1
+
+# Start debug daemon in the background.
+nohup evergreen debug daemon start > /tmp/debug-daemon.log 2>&1 &
+
+# Wait for daemon to be ready (up to 30 seconds).
+for i in $(seq 1 30); do
+  if evergreen debug daemon status > /dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+if ! evergreen debug daemon status > /dev/null 2>&1; then
+  echo "ERROR: Debug daemon failed to start after 30 seconds. Check /tmp/debug-daemon.log for details."
+  exit 1
+fi
+
+echo "Debug daemon started successfully."
+
+evergreen debug load "%s"
+evergreen debug select "%s"
+evergreen debug run-until %s
+
+if [ $? -eq 0 ]; then
+  echo "Debug setup script completed successfully (ran until step %s)."
+else
+  echo "ERROR: Debug setup script failed during execution."
+fi
+`, configPath, t.DisplayName, stepNum, stepNum), nil
+}
+
+// fetchSourceDir computes the source directory path that "evergreen fetch"
+// creates, matching the naming convention in operations/fetch.go.
+func fetchSourceDir(ctx context.Context, t *task.Task, workDir string) (string, error) {
+	var cloneDir string
+	if evergreen.IsPatchRequester(t.Requester) {
+		p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
+		if err != nil {
+			return "", errors.Wrapf(err, "finding patch for version '%s'", t.Version)
+		}
+		if p == nil {
+			return "", errors.Errorf("patch not found for version '%s'", t.Version)
+		}
+		cloneDir = util.CleanForPath(fmt.Sprintf("source-patch-%d_%s", p.PatchNumber, t.Project))
+	} else if len(t.Revision) >= 6 {
+		cloneDir = util.CleanForPath(fmt.Sprintf("source-%s-%s", t.Project, t.Revision[0:6]))
+	} else {
+		cloneDir = util.CleanForPath(fmt.Sprintf("source-%s", t.Project))
+	}
+	return fmt.Sprintf("%s/%s", workDir, cloneDir), nil
+}
+
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
 	if !utility.StringSliceContains(allowedTypes, requestedType) {
 		// if it's not in the settings list, check the distro

@@ -305,10 +305,11 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		UseProjectSetupScript: options.UseProjectSetupScript,
 		IsDebug:               options.IsDebug,
 		ProvisionOptions: &host.ProvisionOptions{
-			TaskId:      options.TaskID,
-			SetupScript: options.SetupScript,
-			OwnerId:     user.Id,
-			UseOAuth:    options.UseOAuth,
+			TaskId:          options.TaskID,
+			SetupScript:     options.SetupScript,
+			OwnerId:         user.Id,
+			UseOAuth:        options.UseOAuth,
+			SetupStepNumber: options.SetupStepNumber,
 		},
 	}
 	return &spawnOptions, nil
