@@ -17,12 +17,12 @@ func TestGetDescendantPIDs(t *testing.T) {
 	}
 
 	t.Run("NilForEmptyInput", func(t *testing.T) {
-		assert.Nil(t, getDescendantPIDs(t.Context(), nil, nil))
-		assert.Nil(t, getDescendantPIDs(t.Context(), []int{}, nil))
+		assert.Nil(t, getDescendantPIDs(t.Context(), nil, nil, nil))
+		assert.Nil(t, getDescendantPIDs(t.Context(), []int{}, nil, nil))
 	})
 
 	t.Run("NilForNonExistentPID", func(t *testing.T) {
-		result := getDescendantPIDs(t.Context(), []int{0}, nil)
+		result := getDescendantPIDs(t.Context(), []int{0}, nil, nil)
 		assert.Empty(t, result)
 	})
 
@@ -34,7 +34,7 @@ func TestGetDescendantPIDs(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 
 		parentPID := cmd.Process.Pid
-		descendants := getDescendantPIDs(t.Context(), []int{parentPID}, nil)
+		descendants := getDescendantPIDs(t.Context(), []int{parentPID}, nil, nil)
 		assert.NotEmpty(t, descendants, "expected to find child PIDs of sh process (PID %d)", parentPID)
 
 		for _, pid := range descendants {
@@ -46,7 +46,7 @@ func TestGetDescendantPIDs(t *testing.T) {
 		cmd := exec.CommandContext(t.Context(), "sh", "-c", "sleep 300")
 		require.NoError(t, cmd.Start())
 
-		descendants := getDescendantPIDs(t.Context(), []int{cmd.Process.Pid}, nil)
+		descendants := getDescendantPIDs(t.Context(), []int{cmd.Process.Pid}, nil, nil)
 		seen := make(map[int]bool)
 		for _, pid := range descendants {
 			assert.False(t, seen[pid], "duplicate PID %d", pid)

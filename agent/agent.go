@@ -971,7 +971,7 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			}
 		}
 	}
-	childPIDs := getDescendantPIDs(ctx, runningPIDs, tc.logger)
+	childPIDs := getDescendantPIDs(ctx, runningPIDs, tc.logger, a.tracer)
 
 	if len(runningPIDs) > 0 {
 		tc.logger.Execution().Infof("Process PIDs at timeout: %v", runningPIDs)
@@ -1586,12 +1586,12 @@ const maxDescendantDepth = 10
 
 // getDescendantPIDs returns all descendant PIDs of the given parent PIDs
 // by recursively calling pgrep -P. This operation will no-op on windows architectures.
-func getDescendantPIDs(ctx context.Context, parentPIDs []int, logger client.LoggerProducer) []int {
+func getDescendantPIDs(ctx context.Context, parentPIDs []int, logger client.LoggerProducer, tracer trace.Tracer) []int {
 	if runtime.GOOS == "windows" || len(parentPIDs) == 0 {
 		return nil
 	}
 
-	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("").Start(ctx, "get-descendant-pids")
+	ctx, span := tracer.Start(ctx, "get-descendant-pids")
 	defer span.End()
 
 	seen := make(map[int]bool)
