@@ -177,6 +177,8 @@ github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581 h1:JOYnqPypLzZd
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581/go.mod h1:visOo9VGGrTN+jNPSg56zhbCH81sSlMRnXpJCYb+kt4=
 github.com/evergreen-ci/poplar v0.0.0-20251209144431-fdec8d7b2505 h1:bX9uq1ohxbgFgcZwpuIDk7MwOGGDfN5q8iYdWvfJE/I=
 github.com/evergreen-ci/poplar v0.0.0-20251209144431-fdec8d7b2505/go.mod h1:sJDX+7CgrN+sgkopMzJfoNCWVsS97wKduDMb8Nt7QdI=
+github.com/evergreen-ci/poplar v0.0.0-20260311151515-d99a1837f349 h1:CIzOneQOaTFIo7iVzl0vft6/unhTeQCFiDYdQNPojts=
+github.com/evergreen-ci/poplar v0.0.0-20260311151515-d99a1837f349/go.mod h1:sJDX+7CgrN+sgkopMzJfoNCWVsS97wKduDMb8Nt7QdI=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154 h1:YO1VY9Qj68KjjRfd6TF8sHEss2kIfnpkUqZyxWAoEI8=
 github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154/go.mod h1:nDQB46oIkI/BmvuNKkHdJekvXuGm8lvfUBcbbjekMZM=
 github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c h1:khrBBgermfg8Hp9bAwU9B0nPHBfciLAq5+P1QAKfDWU=
