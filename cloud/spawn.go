@@ -162,23 +162,11 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 	if so.IsDebug {
-		if so.ProvisionOptions.SetupStepNumber != "" {
-			debugScript, err := generateDebugSetupScript(ctx, so, d.WorkDir)
-			if err != nil {
-				return nil, errors.Wrap(err, "generating debug setup script")
-			}
-			if so.ProvisionOptions.SetupScript != "" {
-				so.ProvisionOptions.SetupScript = fmt.Sprintf("%s\n%s", so.ProvisionOptions.SetupScript, debugScript)
-			} else {
-				so.ProvisionOptions.SetupScript = debugScript
-			}
-		} else if settings.DebugSpawnHosts.SetupScript != "" {
-			if so.ProvisionOptions.SetupScript != "" {
-				so.ProvisionOptions.SetupScript = fmt.Sprintf("%s\n%s", so.ProvisionOptions.SetupScript, settings.DebugSpawnHosts.SetupScript)
-			} else {
-				so.ProvisionOptions.SetupScript = settings.DebugSpawnHosts.SetupScript
-			}
+		debugScript, err := getDebugSetupScript(ctx, so, settings, d.WorkDir)
+		if err != nil {
+			return nil, errors.Wrap(err, "generating debug setup script")
 		}
+		so.ProvisionOptions.SetupScript = appendSetupScript(so.ProvisionOptions.SetupScript, debugScript)
 	}
 
 	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(ctx, *d, settings, so.Region, so.HomeVolumeID)
@@ -243,7 +231,33 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
-// assumes distro already modified to have one region
+// getDebugSetupScript returns the debug setup script to use. The
+// admin-configured debug script always runs. If a step number is also
+// specified, the generated daemon script is appended after it.
+func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, workDir string) (string, error) {
+	script := settings.DebugSpawnHosts.SetupScript
+	if so.ProvisionOptions.SetupStepNumber != "" {
+		stepScript, err := generateDebugSetupScript(ctx, so, workDir)
+		if err != nil {
+			return "", err
+		}
+		script = appendSetupScript(script, stepScript)
+	}
+	return script, nil
+}
+
+// appendSetupScript appends additional to the existing setup script. If either
+// is empty, it returns the other.
+func appendSetupScript(existing, additional string) string {
+	if additional == "" {
+		return existing
+	}
+	if existing == "" {
+		return additional
+	}
+	return fmt.Sprintf("%s\n%s", existing, additional)
+}
+
 // generateDebugSetupScript builds a shell script that starts the debug daemon
 // in the background, loads the project config, selects the task, and runs
 // commands up to the specified step number.
@@ -272,7 +286,11 @@ func generateDebugSetupScript(ctx context.Context, so SpawnOptions, workDir stri
 	// Extract only the command number, ignoring any sub-command portion
 	// (e.g., "5.1" -> "5"). Sub-command support can be added to run-until
 	// in the future.
-	stepNum := strings.SplitN(so.ProvisionOptions.SetupStepNumber, ".", 2)[0]
+	parts := strings.SplitN(so.ProvisionOptions.SetupStepNumber, ".", 2)
+	if len(parts) == 0 || parts[0] == "" {
+		return "", errors.Errorf("invalid setup step number '%s'", so.ProvisionOptions.SetupStepNumber)
+	}
+	stepNum := parts[0]
 
 	configPath := fmt.Sprintf("%s/%s", sourceDir, pRef.RemotePath)
 
