@@ -137,7 +137,6 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 		return errors.Errorf("region not set for bucket '%s'", bucketName)
 	}
 
-
 	// Fetch lifecycle configuration from AWS (returns array of rules).
 	awsRules, err := client.GetBucketLifecycleConfiguration(ctx, bucketName, region, nil, nil)
 	if err != nil {
