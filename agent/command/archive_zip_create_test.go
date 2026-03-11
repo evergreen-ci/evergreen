@@ -113,6 +113,25 @@ func (s *ZipCreateSuite) TestCreateZipOfPackage() {
 	s.True(foundThisFile)
 }
 
+func (s *ZipCreateSuite) TestVerboseDefaultsToFalse() {
+	s.NoError(s.cmd.ParseParams(map[string]any{
+		"target":     "some_target",
+		"source_dir": "some_source_dir",
+		"include":    []string{"*.go"},
+	}))
+	s.False(s.cmd.Verbose)
+}
+
+func (s *ZipCreateSuite) TestVerboseParsesTrue() {
+	s.NoError(s.cmd.ParseParams(map[string]any{
+		"target":     "some_target",
+		"source_dir": "some_source_dir",
+		"include":    []string{"*.go"},
+		"verbose":    true,
+	}))
+	s.True(s.cmd.Verbose)
+}
+
 func (s *ZipCreateSuite) TestNoFilesMatchingIncludePattern() {
 	s.cmd.Target = filepath.Join(s.targetLocation, "empty.zip")
 	s.cmd.SourceDir = s.targetLocation

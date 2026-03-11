@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -79,6 +80,7 @@ type TaskEndDetail struct {
 	Modules              ModuleCloneInfo     `bson:"modules,omitempty" json:"modules"`
 	TraceID              string              `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string            `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
+	S3Usage              *s3usage.S3Usage    `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.
