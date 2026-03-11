@@ -480,7 +480,7 @@ func TestFindOneIdWithoutGeneratedJSON(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
 	taskWithGeneratedJSON := Task{
-		Id:                    "task_with_json",
+		Id:                    "task_with_generated_json",
 		Status:                evergreen.TaskSucceeded,
 		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
 	}
@@ -490,7 +490,7 @@ func TestFindOneIdWithoutGeneratedJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.Equal(t, taskWithGeneratedJSON.Id, dbTask.Id)
-	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
+	assert.Equal(t, taskWithGeneratedJSON.Status, dbTask.Status)
 	assert.Nil(t, dbTask.GeneratedJSONAsString)
 }
 
