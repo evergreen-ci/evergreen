@@ -269,7 +269,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		e.streamWriter.SetStep(stepIndex)
 	}
 
-	timer := newStepTimer()
+	startTime := time.Now()
 
 	isNoOp := noOpCommands[targetCmd.Command.Command]
 	if isNoOp {
@@ -279,23 +279,24 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 		e.logger.Infof(noOpMsg)
 		e.debugState.CurrentStepIndex++
+		durationMs := time.Since(startTime).Milliseconds()
 		record := executionRecord{
 			StepIndex:  stepIndex,
 			Success:    true,
-			DurationMs: timer.DurationMs(),
+			DurationMs: durationMs,
 		}
 		e.debugState.addExecutionRecord(record)
 
 		if e.streamWriter != nil {
 			nextStep := e.debugState.CurrentStepIndex
-			_ = e.streamWriter.WriteDone(true, timer.DurationMs(), nextStep, "")
+			_ = e.streamWriter.WriteDone(true, durationMs, nextStep, "")
 		}
 
 		if e.logManager != nil {
 			lf := e.logManager.LogFile()
 			lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
 			lf.WriteLogLine(stepIndex, noOpMsg)
-			lf.WriteStepEnd(stepIndex, true, timer.DurationString())
+			lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
 		}
 		return nil
 	}
@@ -383,31 +384,33 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	}
 	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
 		record.Success = false
-		record.DurationMs = timer.DurationMs()
+		durationMs := time.Since(startTime).Milliseconds()
+		record.DurationMs = durationMs
 		record.Error = err.Error()
 		e.debugState.addExecutionRecord(record)
 
 		if e.streamWriter != nil {
-			_ = e.streamWriter.WriteDone(false, timer.DurationMs(), e.debugState.CurrentStepIndex, err.Error())
+			_ = e.streamWriter.WriteDone(false, durationMs, e.debugState.CurrentStepIndex, err.Error())
 		}
 		if e.logManager != nil {
 			lf := e.logManager.LogFile()
-			lf.WriteStepEnd(stepIndex, false, timer.DurationString())
+			lf.WriteStepEnd(stepIndex, false, getDurationStr(startTime))
 		}
 		return err
 	}
 	if !executed {
 		return errors.Errorf("failed to execute step %d", stepIndex)
 	}
-	record.DurationMs = timer.DurationMs()
+	durationMs := time.Since(startTime).Milliseconds()
+	record.DurationMs = durationMs
 	e.debugState.addExecutionRecord(record)
 
 	if e.streamWriter != nil {
-		_ = e.streamWriter.WriteDone(true, timer.DurationMs(), e.debugState.CurrentStepIndex, "")
+		_ = e.streamWriter.WriteDone(true, durationMs, e.debugState.CurrentStepIndex, "")
 	}
 	if e.logManager != nil {
 		lf := e.logManager.LogFile()
-		lf.WriteStepEnd(stepIndex, true, timer.DurationString())
+		lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
 	}
 	return nil
 }
@@ -766,4 +769,13 @@ func (e *LocalExecutor) createSyntheticTask(taskName string) {
 		Project:     e.taskConfig.ProjectRef.Identifier,
 		DisplayName: taskName,
 	}
+}
+
+func getDurationStr(startTime time.Time) string {
+	duration := time.Since(startTime)
+	durationStr := fmt.Sprintf("%.1fs", duration.Seconds())
+	if duration < time.Second {
+		durationStr = fmt.Sprintf("%dms", duration.Milliseconds())
+	}
+	return durationStr
 }

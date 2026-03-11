@@ -611,20 +611,15 @@ func postAndStreamResponse(url string, body interface{}) error {
 // viewLogsCmd displays debug session logs from local log files.
 func viewLogsCmd(c *cli.Context) error {
 	isSetup := c.Bool("setup")
-	stepFlag := c.Int("step")
 	tail := c.Int("tail")
 
-	opts := taskexec.LogFilterOptions{
-		Tail: tail,
-	}
-	if stepFlag >= 0 {
-		opts.Step = stepFlag
-		opts.HasStep = true
-	}
-
-	lines, err := taskexec.ReadFilteredLogs(isSetup, opts)
+	lines, err := taskexec.ReadAllLogs(isSetup)
 	if err != nil {
 		return errors.Wrap(err, "reading logs")
+	}
+
+	if tail > 0 && len(lines) > tail {
+		lines = lines[len(lines)-tail:]
 	}
 
 	if len(lines) == 0 {

@@ -3,11 +3,9 @@ package taskexec
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -209,25 +207,4 @@ func (p *streamingLoggerProducer) Closed() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.closed
-}
-
-// stepTimer tracks the duration of a step execution.
-type stepTimer struct {
-	start time.Time
-}
-
-func newStepTimer() *stepTimer {
-	return &stepTimer{start: time.Now()}
-}
-
-func (t *stepTimer) DurationMs() int64 {
-	return time.Since(t.start).Milliseconds()
-}
-
-func (t *stepTimer) DurationString() string {
-	d := time.Since(t.start)
-	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
-	}
-	return fmt.Sprintf("%.1fs", d.Seconds())
 }

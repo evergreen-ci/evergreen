@@ -156,36 +156,3 @@ func TestLogFile(t *testing.T) {
 		assert.Contains(t, content, "=== STEP 5 END success=true duration=1.2s ===")
 	})
 }
-
-func TestLogFilterOptions(t *testing.T) {
-	t.Run("FilterByStep", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		logDir := filepath.Join(tmpDir, "session")
-		require.NoError(t, os.MkdirAll(logDir, 0755))
-
-		content := `=== STEP 0 START shell.exec (pre) ===
-[2024-01-15T10:30:45.123Z] [step:0] pre command
-=== STEP 0 END success=true duration=0.1s ===
-=== STEP 1 START shell.exec (main) ===
-[2024-01-15T10:30:46.123Z] [step:1] main command
-[2024-01-15T10:30:46.456Z] [step:1] main output
-=== STEP 1 END success=true duration=1.0s ===
-=== STEP 2 START shell.exec (post) ===
-[2024-01-15T10:30:47.123Z] [step:2] post command
-=== STEP 2 END success=true duration=0.5s ===
-`
-		require.NoError(t, os.WriteFile(filepath.Join(logDir, "output.log"), []byte(content), 0644))
-
-		lines, err := readLogFileLines(filepath.Join(logDir, "output.log"), LogFilterOptions{
-			Step:    1,
-			HasStep: true,
-		})
-		require.NoError(t, err)
-
-		assert.Len(t, lines, 4)
-		for _, line := range lines {
-			assert.True(t, strings.Contains(line, "STEP 1") || strings.Contains(line, "step:1"),
-				"unexpected line: %s", line)
-		}
-	})
-}

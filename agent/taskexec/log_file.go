@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -160,14 +159,8 @@ func ClearSessionLogs() error {
 	return nil
 }
 
-type LogFilterOptions struct {
-	Step    int
-	HasStep bool
-	Tail    int
-}
-
-// ReadFilteredLogs reads the output log file with optional filtering.
-func ReadFilteredLogs(isSetup bool, opts LogFilterOptions) ([]string, error) {
+// ReadAllLogs reads all lines from the output log file.
+func ReadAllLogs(isSetup bool) ([]string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting user home directory")
@@ -180,7 +173,7 @@ func ReadFilteredLogs(isSetup bool, opts LogFilterOptions) ([]string, error) {
 	logDir := filepath.Join(homeDir, logBaseDir, logSubDir, subDir)
 
 	path := filepath.Join(logDir, outputLogFile)
-	lines, err := readLogFileLines(path, opts)
+	lines, err := readLogFileLines(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -188,14 +181,10 @@ func ReadFilteredLogs(isSetup bool, opts LogFilterOptions) ([]string, error) {
 		return nil, errors.Wrapf(err, "reading log file '%s'", path)
 	}
 
-	if opts.Tail > 0 && len(lines) > opts.Tail {
-		lines = lines[len(lines)-opts.Tail:]
-	}
-
 	return lines, nil
 }
 
-func readLogFileLines(path string, opts LogFilterOptions) ([]string, error) {
+func readLogFileLines(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -204,26 +193,9 @@ func readLogFileLines(path string, opts LogFilterOptions) ([]string, error) {
 
 	var lines []string
 	scanner := bufio.NewScanner(f)
-	inTargetStep := !opts.HasStep
 
 	for scanner.Scan() {
-		line := scanner.Text()
-
-		if opts.HasStep {
-			if strings.HasPrefix(line, fmt.Sprintf("=== STEP %d START", opts.Step)) {
-				inTargetStep = true
-			} else if strings.HasPrefix(line, "=== STEP") && strings.Contains(line, "START") && !strings.HasPrefix(line, fmt.Sprintf("=== STEP %d ", opts.Step)) {
-				inTargetStep = false
-			} else if strings.HasPrefix(line, fmt.Sprintf("=== STEP %d END", opts.Step)) {
-				lines = append(lines, line)
-				inTargetStep = false
-				continue
-			}
-		}
-
-		if inTargetStep {
-			lines = append(lines, line)
-		}
+		lines = append(lines, scanner.Text())
 	}
 
 	return lines, scanner.Err()

@@ -20,12 +20,11 @@ const ndjsonContentType = "application/x-ndjson"
 
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
-	executor    *taskexec.LocalExecutor
-	mu          sync.RWMutex
-	conf        *ClientSettings
-	configPath  string
-	port        int
-	setupStatus *taskexec.SetupPhaseStatus
+	executor   *taskexec.LocalExecutor
+	mu         sync.RWMutex
+	conf       *ClientSettings
+	configPath string
+	port       int
 }
 
 // newLocalDaemonREST creates a new REST daemon
@@ -403,16 +402,6 @@ func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	response := map[string]interface{}{
 		"healthy": true,
-	}
-
-	if d.setupStatus != nil {
-		response["setup_completed"] = d.setupStatus.Completed
-		response["setup_total_steps"] = d.setupStatus.TotalSteps
-		response["setup_failures"] = d.setupStatus.FailureCount
-		if d.setupStatus.FailureReason != "" {
-			response["setup_failed_at_step"] = d.setupStatus.FailedAtStep
-			response["setup_failure_reason"] = d.setupStatus.FailureReason
-		}
 	}
 
 	if d.executor != nil {
