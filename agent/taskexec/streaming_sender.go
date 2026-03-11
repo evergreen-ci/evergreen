@@ -88,7 +88,7 @@ func (sw *streamWriter) WriteLine(line StreamLine) error {
 	defer sw.mu.Unlock()
 
 	if sw.logFile != nil {
-		sw.logFile.WriteLogLine(line.Step, line.Message)
+		sw.logFile.writeLogLine(line.Step, line.Message)
 	}
 
 	if sw.closed {
@@ -100,12 +100,6 @@ func (sw *streamWriter) WriteLine(line StreamLine) error {
 		return err
 	}
 	data = append(data, '\n')
-
-	defer func() {
-		if r := recover(); r != nil {
-			sw.closed = true
-		}
-	}()
 
 	if _, err := sw.w.Write(data); err != nil {
 		sw.closed = true

@@ -262,6 +262,27 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	d.withStreaming(w, func(ctx context.Context) {
+		_ = d.executor.RunUntil(ctx, index)
+	})
+}
+
+// handleRunAll runs all remaining steps with streaming output.
+func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.executor == nil {
+		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	d.withStreaming(w, func(ctx context.Context) {
+		_ = d.executor.RunAll(ctx)
+	})
+}
+
+func (d *localDaemonREST) withStreaming(w http.ResponseWriter, fn func(ctx context.Context)) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
@@ -281,41 +302,7 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
 	ctx := context.Background()
-	_ = d.executor.RunUntil(ctx, index)
-
-	d.executor.ClearStreamWriter()
-	d.executor.CloseLogManager()
-}
-
-// handleRunAll runs all remaining steps with streaming output.
-func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if d.executor == nil {
-		http.Error(w, "no configuration loaded", http.StatusBadRequest)
-		return
-	}
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
-		return
-	}
-
-	if err := d.executor.SetupLogManager(false); err != nil {
-		grip.Warning(errors.Wrap(err, "setting up log manager"))
-	}
-
-	state := d.executor.GetDebugState()
-	taskLogFile := d.getLogFile()
-	sw := taskexec.NewStreamWriterExported(w, flusher, taskLogFile, state.CurrentStepIndex)
-	d.executor.SetStreamWriter(sw)
-
-	w.Header().Set("Content-Type", ndjsonContentType)
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-
-	_ = d.executor.RunAll(r.Context())
+	fn(ctx)
 
 	d.executor.ClearStreamWriter()
 	d.executor.CloseLogManager()
@@ -367,35 +354,12 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
-		return
-	}
-
-	state := d.executor.GetDebugState()
-
-	// Set up log manager for local file persistence
-	if err := d.executor.SetupLogManager(false); err != nil {
-		grip.Warning(errors.Wrap(err, "setting up log manager"))
-	}
-
-	taskLogFile := d.getLogFile()
-	sw := taskexec.NewStreamWriterExported(w, flusher, taskLogFile, state.CurrentStepIndex)
-	d.executor.SetStreamWriter(sw)
-
-	w.Header().Set("Content-Type", ndjsonContentType)
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-
-	ctx := context.Background()
-	err := d.executor.StepNext(ctx)
-
-	d.executor.ClearStreamWriter()
-	d.executor.CloseLogManager()
-	_ = err // done message already sent by executor
+	d.withStreaming(w, func(ctx context.Context) {
+		_ = d.executor.StepNext(ctx)
+	})
 }
 
-// handleStatus returns the daemon status including setup phase info.
+// handleStatus returns the daemon status.
 func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -407,6 +371,7 @@ func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if d.executor != nil {
 		state := d.executor.GetDebugState()
 		response["task_selected"] = state.SelectedTask != ""
+		response["selected_task"] = state.SelectedTask
 		response["current_step"] = state.CurrentStepIndex
 		response["total_steps"] = len(state.CommandList)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,7 +45,10 @@ func newLogFile(path string) (*logFile, error) {
 func (lf *logFile) WriteLogLine(step int, msg string) {
 	lf.mu.Lock()
 	defer lf.mu.Unlock()
+	lf.writeLogLine(step, msg)
+}
 
+func (lf *logFile) writeLogLine(step int, msg string) {
 	if lf.file == nil {
 		return
 	}
@@ -193,10 +197,26 @@ func readLogFileLines(path string) ([]string, error) {
 
 	var lines []string
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
 
 	return lines, scanner.Err()
+}
+
+// FilterLogLinesByStep returns only log lines that belong to the given step.
+// It matches lines containing "[step:N]" or "=== STEP N " markers.
+func FilterLogLinesByStep(lines []string, step int) []string {
+	stepTag := fmt.Sprintf("[step:%d]", step)
+	stepDelimiter := fmt.Sprintf("=== STEP %d ", step)
+
+	var filtered []string
+	for _, line := range lines {
+		if strings.Contains(line, stepTag) || strings.Contains(line, stepDelimiter) {
+			filtered = append(filtered, line)
+		}
+	}
+	return filtered
 }

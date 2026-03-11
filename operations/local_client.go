@@ -317,7 +317,16 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 	return nil
 }
 
-// daemonStatusCmd checks the debug daemon status, including setup phase info.
+// daemonStatusResponse is the typed response from the /status endpoint.
+type daemonStatusResponse struct {
+	Healthy      bool   `json:"healthy"`
+	TaskSelected bool   `json:"task_selected"`
+	CurrentStep  int    `json:"current_step"`
+	TotalSteps   int    `json:"total_steps"`
+	SelectedTask string `json:"selected_task"`
+}
+
+// daemonStatusCmd checks the debug daemon status.
 func daemonStatusCmd(c *cli.Context) error {
 	url, err := getDaemonURL()
 	if err != nil {
@@ -332,7 +341,7 @@ func daemonStatusCmd(c *cli.Context) error {
 	}
 	defer resp.Body.Close()
 
-	var status map[string]interface{}
+	var status daemonStatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
 		fmt.Println("Daemon is running")
 		return nil
@@ -340,19 +349,8 @@ func daemonStatusCmd(c *cli.Context) error {
 
 	fmt.Println("Daemon is running")
 
-	if completed, ok := status["setup_completed"]; ok {
-		totalSteps := status["setup_total_steps"]
-		failures := status["setup_failures"]
-		if completed.(bool) {
-			fmt.Printf("Setup phase completed: %.0f steps executed, %.0f failures\n", totalSteps, failures)
-			if failures.(float64) > 0 {
-				fmt.Println("  Use 'evergreen debug logs --setup' to review setup output")
-			}
-		} else if reason, ok := status["setup_failure_reason"]; ok {
-			failedStep := status["setup_failed_at_step"]
-			fmt.Printf("Setup phase FAILED at step %.0f/%.0f: %s\n", failedStep, totalSteps, reason)
-			fmt.Printf("  Use 'evergreen debug logs --setup --step %.0f' to see the failing step\n", failedStep)
-		}
+	if status.TaskSelected {
+		fmt.Printf("Task: %s (step %d/%d)\n", status.SelectedTask, status.CurrentStep, status.TotalSteps)
 	}
 
 	return nil
@@ -611,11 +609,16 @@ func postAndStreamResponse(url string, body interface{}) error {
 // viewLogsCmd displays debug session logs from local log files.
 func viewLogsCmd(c *cli.Context) error {
 	isSetup := c.Bool("setup")
+	stepFilter := c.Int("step")
 	tail := c.Int("tail")
 
 	lines, err := taskexec.ReadAllLogs(isSetup)
 	if err != nil {
 		return errors.Wrap(err, "reading logs")
+	}
+
+	if stepFilter >= 0 {
+		lines = taskexec.FilterLogLinesByStep(lines, stepFilter)
 	}
 
 	if tail > 0 && len(lines) > tail {

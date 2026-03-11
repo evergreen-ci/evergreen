@@ -772,10 +772,9 @@ func (e *LocalExecutor) createSyntheticTask(taskName string) {
 }
 
 func getDurationStr(startTime time.Time) string {
-	duration := time.Since(startTime)
-	durationStr := fmt.Sprintf("%.1fs", duration.Seconds())
-	if duration < time.Second {
-		durationStr = fmt.Sprintf("%dms", duration.Milliseconds())
+	d := time.Since(startTime)
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
-	return durationStr
+	return fmt.Sprintf("%.1fs", d.Seconds())
 }
