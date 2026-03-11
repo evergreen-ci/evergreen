@@ -950,6 +950,9 @@ Every task has some expansions available by default:
   if the task has timed out. It is only available in the `timeout` task block.
 - `${timed_out_pids}` is a comma separated list of all PIDs that were running when the task's
   timeout limit exceeded. It is only available in the `timeout` task block.
+- `${timed_out_child_pids}` is a comma separated list of descendant PIDs (child processes) of
+  the processes that were running when the task's timeout limit exceeded.
+  It is only available in the `timeout` task block.
 - `${triggered_by_git_tag}` is the name of the tag that triggered this
   version, if applicable
 - `${version_id}` is the id of the task's version

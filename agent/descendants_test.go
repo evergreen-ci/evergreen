@@ -1,41 +1,40 @@
-package util
+package agent
 
 import (
-	"context"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetDescendantPIDs(t *testing.T) {
-	ctx := context.Background()
+	if runtime.GOOS == "windows" {
+		t.Skip("pgrep is not available on Windows")
+	}
 
 	t.Run("NilForEmptyInput", func(t *testing.T) {
-		assert.Nil(t, GetDescendantPIDs(ctx, nil))
-		assert.Nil(t, GetDescendantPIDs(ctx, []int{}))
+		assert.Nil(t, getDescendantPIDs(t.Context(), nil, nil))
+		assert.Nil(t, getDescendantPIDs(t.Context(), []int{}, nil))
 	})
 
 	t.Run("NilForNonExistentPID", func(t *testing.T) {
-		result := GetDescendantPIDs(ctx, []int{0})
+		result := getDescendantPIDs(t.Context(), []int{0}, nil)
 		assert.Empty(t, result)
 	})
 
 	t.Run("FindsChildProcesses", func(t *testing.T) {
-		cmd := exec.CommandContext(ctx, "sh", "-c", "sh -c 'sleep 300' & wait")
+		cmd := exec.CommandContext(t.Context(), "sh", "-c", "sh -c 'sleep 300' & wait")
 		require.NoError(t, cmd.Start())
-		defer func() {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-		}()
 
 		// Give a moment for the child processes to spawn.
-		assert.NoError(t, exec.Command("sleep", "0.2").Run())
+		time.Sleep(200 * time.Millisecond)
 
 		parentPID := cmd.Process.Pid
-		descendants := GetDescendantPIDs(ctx, []int{parentPID})
+		descendants := getDescendantPIDs(t.Context(), []int{parentPID}, nil)
 		assert.NotEmpty(t, descendants, "expected to find child PIDs of sh process (PID %d)", parentPID)
 
 		for _, pid := range descendants {
@@ -44,14 +43,10 @@ func TestGetDescendantPIDs(t *testing.T) {
 	})
 
 	t.Run("NoDuplicates", func(t *testing.T) {
-		cmd := exec.CommandContext(ctx, "sh", "-c", "sleep 300")
+		cmd := exec.CommandContext(t.Context(), "sh", "-c", "sleep 300")
 		require.NoError(t, cmd.Start())
-		defer func() {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-		}()
 
-		descendants := GetDescendantPIDs(ctx, []int{cmd.Process.Pid})
+		descendants := getDescendantPIDs(t.Context(), []int{cmd.Process.Pid}, nil)
 		seen := make(map[int]bool)
 		for _, pid := range descendants {
 			assert.False(t, seen[pid], "duplicate PID %d", pid)
@@ -61,24 +56,22 @@ func TestGetDescendantPIDs(t *testing.T) {
 }
 
 func TestPgrepChildren(t *testing.T) {
-	ctx := context.Background()
+	if runtime.GOOS == "windows" {
+		t.Skip("pgrep is not available on Windows")
+	}
 
 	t.Run("ReturnsNilForNoChildren", func(t *testing.T) {
-		result := pgrepChildren(ctx, 1<<20)
+		result := pgrepChildren(t.Context(), 1048576, nil)
 		assert.Nil(t, result)
 	})
 
 	t.Run("ParsesOutput", func(t *testing.T) {
-		cmd := exec.CommandContext(ctx, "sh", "-c", "sleep 300 & wait")
+		cmd := exec.CommandContext(t.Context(), "sh", "-c", "sleep 300 & wait")
 		require.NoError(t, cmd.Start())
-		defer func() {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-		}()
 
-		assert.NoError(t, exec.Command("sleep", "0.2").Run())
+		time.Sleep(200 * time.Millisecond)
 
-		children := pgrepChildren(ctx, cmd.Process.Pid)
+		children := pgrepChildren(t.Context(), cmd.Process.Pid, nil)
 		assert.NotEmpty(t, children)
 		for _, pid := range children {
 			_, err := strconv.Atoi(strconv.Itoa(pid))

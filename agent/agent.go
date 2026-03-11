@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -987,10 +988,7 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			}
 		}
 	}
-	var childPIDs []int
-	if runtime.GOOS != "windows" {
-		childPIDs = agentutil.GetDescendantPIDs(ctx, runningPIDs)
-	}
+	childPIDs := getDescendantPIDs(ctx, runningPIDs, tc.logger)
 
 	if len(runningPIDs) > 0 {
 		tc.logger.Execution().Infof("Process PIDs at timeout: %v", runningPIDs)
@@ -1020,13 +1018,13 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 			Timestamp:         time.Now(),
 		}
 		pidStrings := make([]string, len(runningPIDs))
-		for i, n := range runningPIDs {
-			pidStrings[i] = strconv.Itoa(n)
+		for i, pid := range runningPIDs {
+			pidStrings[i] = strconv.Itoa(pid)
 		}
 		delimitedPids := strings.Join(pidStrings, ",")
 		childPIDStrings := make([]string, len(childPIDs))
-		for i, n := range childPIDs {
-			childPIDStrings[i] = strconv.Itoa(n)
+		for i, pid := range childPIDs {
+			childPIDStrings[i] = strconv.Itoa(pid)
 		}
 		tc.taskConfig.NewExpansions.Put("timed_out_command_pid", strconv.Itoa(currentCmdPID))
 		tc.taskConfig.NewExpansions.Put("timed_out_pids", delimitedPids)
@@ -1596,4 +1594,73 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 	grip.Alert(message.WrapError(errors.WithStack(pErr), logMsg))
 
 	return catcher.Resolve()
+}
+
+const maxDescendantDepth = 10
+
+// getDescendantPIDs returns all descendant PIDs of the given parent PIDs
+// by recursively calling pgrep -P. This operation will no-op on windows architectures.
+func getDescendantPIDs(ctx context.Context, parentPIDs []int, logger client.LoggerProducer) []int {
+	if runtime.GOOS == "windows" || len(parentPIDs) == 0 {
+		return nil
+	}
+
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer("").Start(ctx, "get-descendant-pids")
+	defer span.End()
+
+	seen := make(map[int]bool)
+	var result []int
+	parentPIDsToSearch := make([]int, len(parentPIDs))
+	copy(parentPIDsToSearch, parentPIDs)
+	for _, pid := range parentPIDs {
+		seen[pid] = true
+	}
+
+	for depth := 0; depth < maxDescendantDepth && len(parentPIDsToSearch) > 0; depth++ {
+		var nextParentPIDsToSearch []int
+		for _, pid := range parentPIDsToSearch {
+			children := pgrepChildren(ctx, pid, logger)
+			for _, child := range children {
+				if !seen[child] {
+					seen[child] = true
+					result = append(result, child)
+					nextParentPIDsToSearch = append(nextParentPIDsToSearch, child)
+				}
+			}
+		}
+		parentPIDsToSearch = nextParentPIDsToSearch
+	}
+
+	span.SetAttributes(
+		attribute.Int("num_parent_pids", len(parentPIDs)),
+		attribute.Int("num_descendants_found", len(result)),
+	)
+
+	return result
+}
+
+// pgrepChildren returns the direct child PIDs of the given parent PID.
+func pgrepChildren(ctx context.Context, parentPID int, logger client.LoggerProducer) []int {
+	cmd := exec.CommandContext(ctx, "pgrep", "-P", strconv.Itoa(parentPID))
+	out, err := cmd.Output()
+	if err != nil {
+		logger.Execution().Warningf("pgrep -P %d failed: %s", parentPID, err.Error())
+		return nil
+	}
+
+	var pids []int
+	// pgrep outputs one PID per line, each line containing just a numeric PID.
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		pid, err := strconv.Atoi(line)
+		if err != nil {
+			logger.Execution().Warningf("unexpected pgrep output line for parent PID %d: %s", parentPID, line)
+			continue
+		}
+		pids = append(pids, pid)
+	}
+	return pids
 }
