@@ -2,13 +2,19 @@ package evergreen
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -292,6 +298,23 @@ func (s *AdminSuite) TestAuthConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.AuthConfig)
+}
+
+func (s *AdminSuite) TestOktaServiceConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := OktaServiceConfig{
+		ClientID:     "service_id",
+		ClientSecret: "service_secret",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.OktaServiceConfig)
 }
 
 func (s *AdminSuite) TestHostinitConfig() {
@@ -942,4 +965,68 @@ func (s *AdminSuite) TestSageConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Sage)
+}
+
+// errorSSMClient is a minimal SSMClient implementation for testing that returns
+// errors on every operation.
+// It only exists to get around a circular dependency in fakeparameter.
+type errorSSMClient struct{}
+
+func (c *errorSSMClient) PutParameter(context.Context, *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
+	return nil, errors.New("errorSSMClient: not implemented")
+}
+func (c *errorSSMClient) DeleteParametersSimple(context.Context, *ssm.DeleteParametersInput) ([]string, error) {
+	return nil, errors.New("errorSSMClient: not implemented")
+}
+func (c *errorSSMClient) DeleteParameters(context.Context, *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error) {
+	return nil, errors.New("errorSSMClient: not implemented")
+}
+func (c *errorSSMClient) GetParametersSimple(context.Context, *ssm.GetParametersInput) ([]ssmTypes.Parameter, error) {
+	return nil, errors.New("errorSSMClient: cache miss detected — paramMgr.Get was called")
+}
+func (c *errorSSMClient) GetParameters(context.Context, *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
+	return nil, errors.New("errorSSMClient: cache miss detected — paramMgr.Get was called")
+}
+
+func TestReadAdminSecretsUsesParamCache(t *testing.T) {
+	paramMgr, err := parameterstore.NewParameterManager(t.Context(), parameterstore.ParameterManagerOptions{
+		PathPrefix: "/test-prefix",
+		// If readAdminSecrets bypasses the cache and calls paramMgr.Get, the error
+		// propagates into the catcher, making cache misses observable in test assertions.
+		SSMClient: &errorSSMClient{},
+		DB:        GetEnvironment().DB(),
+	})
+	require.NoError(t, err)
+
+	settings := testConfig()
+	settingsValue := reflect.ValueOf(settings).Elem()
+	settingsType := reflect.TypeOf(*settings)
+
+	secretPaths := collectSecretPaths(settingsValue, settingsType, "")
+	assert.NotEmpty(t, secretPaths)
+
+	// construct the paramCache in the same way GetConfig does
+	paramCache := map[string]string{}
+	for i, sp := range secretPaths {
+		paramCache[paramMgr.GetPrefixedName(sp)] = fmt.Sprintf("cached-value-%d", i)
+	}
+
+	// ensure settings are emptied before reading from cache
+	settings.Jira.PersonalAccessToken = ""
+	settings.Slack.Token = ""
+	settings.GithubWebhookSecret = ""
+
+	settingsValue = reflect.ValueOf(settings).Elem()
+	settingsType = reflect.TypeOf(*settings)
+
+	catcher := grip.NewBasicCatcher()
+	readAdminSecrets(t.Context(), paramMgr, settingsValue, settingsType, "", paramCache, catcher)
+
+	assert.NoError(t, catcher.Resolve())
+	assert.Contains(t, settings.Jira.PersonalAccessToken, "cached-value-")
+	assert.Contains(t, settings.Slack.Token, "cached-value-")
+	assert.Contains(t, settings.GithubWebhookSecret, "cached-value-")
+	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.Slack.Token)
+	assert.NotEqual(t, settings.Jira.PersonalAccessToken, settings.GithubWebhookSecret)
+	assert.NotEqual(t, settings.Slack.Token, settings.GithubWebhookSecret)
 }

@@ -98,28 +98,6 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			require.Len(t, versions, 1)
 			assert.EqualValues(t, "v_4", versions[0].Id)
 		},
-		"Finds active versions with given build variant (fetch display names)": func(t *testing.T, ctx context.Context) {
-			// Inserting this version causes the pipeline to run a $unionWith stage that fetches build display names from the builds collection
-			v := Version{
-				Id:                  "v_6",
-				Identifier:          "a_project",
-				Requester:           evergreen.RepotrackerVersionRequester,
-				RevisionOrderNumber: 1,
-				CreateTime:          time.Date(2024, time.February, 7, 0, 0, 0, 0, time.UTC),
-				Activated:           utility.TruePtr(),
-			}
-			assert.NoError(t, v.Insert(t.Context()))
-
-			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
-				Limit:      4,
-				Requesters: evergreen.SystemVersionRequesterTypes,
-				Variants:   []string{"Build Variant 1"},
-			})
-			assert.Nil(t, err)
-			require.Len(t, versions, 2)
-			assert.EqualValues(t, "v_1", versions[0].Id)
-			assert.EqualValues(t, "v_4", versions[1].Id)
-		},
 		"Returns version even if matching build variant is inactive": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
 				Limit:      4,

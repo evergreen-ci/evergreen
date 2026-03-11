@@ -96,7 +96,10 @@ type OAuthConfig struct {
 
 // AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
-	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
+	// Okta contains the settings for our Okta web app, which is used exclusively for
+	// user to service authentication.
+	Okta *OktaConfig `bson:"okta,omitempty" json:"okta" yaml:"okta"`
+	// Naive authentication is used for testing and development only.
 	Naive                   *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
 	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 	Multi                   *MultiAuthConfig  `bson:"multi" json:"multi" yaml:"multi"`

@@ -184,6 +184,7 @@ type ComplexityRoot struct {
 		LogPath                 func(childComplexity int) int
 		LoggerConfig            func(childComplexity int) int
 		Notify                  func(childComplexity int) int
+		OktaServiceConfig       func(childComplexity int) int
 		OldestAllowedCLIVersion func(childComplexity int) int
 		ParameterStore          func(childComplexity int) int
 		PerfMonitoringKanopyURL func(childComplexity int) int
@@ -396,8 +397,9 @@ type ComplexityRoot struct {
 	}
 
 	Cost struct {
-		AdjustedEC2Cost func(childComplexity int) int
-		OnDemandEC2Cost func(childComplexity int) int
+		AdjustedEC2Cost   func(childComplexity int) int
+		OnDemandEC2Cost   func(childComplexity int) int
+		S3ArtifactPutCost func(childComplexity int) int
 	}
 
 	CostConfig struct {
@@ -1118,6 +1120,11 @@ type ComplexityRoot struct {
 		Issuer             func(childComplexity int) int
 		Scopes             func(childComplexity int) int
 		UserGroup          func(childComplexity int) int
+	}
+
+	OktaServiceConfig struct {
+		ClientID     func(childComplexity int) int
+		ClientSecret func(childComplexity int) int
 	}
 
 	OomTrackerInfo struct {
@@ -2287,13 +2294,6 @@ type ComplexityRoot struct {
 		Version      func(childComplexity int) int
 	}
 
-	WaterfallBuildVariant struct {
-		Builds      func(childComplexity int) int
-		DisplayName func(childComplexity int) int
-		Id          func(childComplexity int) int
-		Version     func(childComplexity int) int
-	}
-
 	WaterfallPagination struct {
 		ActiveVersionIds       func(childComplexity int) int
 		HasNextPage            func(childComplexity int) int
@@ -2308,11 +2308,6 @@ type ComplexityRoot struct {
 		DisplayStatusCache func(childComplexity int) int
 		Execution          func(childComplexity int) int
 		Id                 func(childComplexity int) int
-	}
-
-	WaterfallVersion struct {
-		InactiveVersions func(childComplexity int) int
-		Version          func(childComplexity int) int
 	}
 
 	Webhook struct {
@@ -3124,6 +3119,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Notify(childComplexity), true
+	case "AdminSettings.oktaServiceConfig":
+		if e.complexity.AdminSettings.OktaServiceConfig == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.OktaServiceConfig(childComplexity), true
 	case "AdminSettings.oldestAllowedCLIVersion":
 		if e.complexity.AdminSettings.OldestAllowedCLIVersion == nil {
 			break
@@ -3983,6 +3984,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.OnDemandEC2Cost(childComplexity), true
+	case "Cost.s3ArtifactPutCost":
+		if e.complexity.Cost.S3ArtifactPutCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.S3ArtifactPutCost(childComplexity), true
 
 	case "CostConfig.financeFormula":
 		if e.complexity.CostConfig.FinanceFormula == nil {
@@ -7089,6 +7096,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OktaConfig.UserGroup(childComplexity), true
+
+	case "OktaServiceConfig.clientId":
+		if e.complexity.OktaServiceConfig.ClientID == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.ClientID(childComplexity), true
+	case "OktaServiceConfig.clientSecret":
+		if e.complexity.OktaServiceConfig.ClientSecret == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.ClientSecret(childComplexity), true
 
 	case "OomTrackerInfo.detected":
 		if e.complexity.OomTrackerInfo.Detected == nil {
@@ -12250,31 +12270,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.WaterfallBuild.Version(childComplexity), true
 
-	case "WaterfallBuildVariant.builds":
-		if e.complexity.WaterfallBuildVariant.Builds == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.Builds(childComplexity), true
-	case "WaterfallBuildVariant.displayName":
-		if e.complexity.WaterfallBuildVariant.DisplayName == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.DisplayName(childComplexity), true
-	case "WaterfallBuildVariant.id":
-		if e.complexity.WaterfallBuildVariant.Id == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.Id(childComplexity), true
-	case "WaterfallBuildVariant.version":
-		if e.complexity.WaterfallBuildVariant.Version == nil {
-			break
-		}
-
-		return e.complexity.WaterfallBuildVariant.Version(childComplexity), true
-
 	case "WaterfallPagination.activeVersionIds":
 		if e.complexity.WaterfallPagination.ActiveVersionIds == nil {
 			break
@@ -12336,19 +12331,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.WaterfallTask.Id(childComplexity), true
-
-	case "WaterfallVersion.inactiveVersions":
-		if e.complexity.WaterfallVersion.InactiveVersions == nil {
-			break
-		}
-
-		return e.complexity.WaterfallVersion.InactiveVersions(childComplexity), true
-	case "WaterfallVersion.version":
-		if e.complexity.WaterfallVersion.Version == nil {
-			break
-		}
-
-		return e.complexity.WaterfallVersion.Version(childComplexity), true
 
 	case "Webhook.endpoint":
 		if e.complexity.Webhook.Endpoint == nil {
@@ -12528,6 +12510,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputNotifyConfigInput,
 		ec.unmarshalInputOAuthConfigInput,
 		ec.unmarshalInputOktaConfigInput,
+		ec.unmarshalInputOktaServiceConfigInput,
 		ec.unmarshalInputOperatingSystemOpts,
 		ec.unmarshalInputOwnerRepoInput,
 		ec.unmarshalInputPackageOpts,
@@ -12720,7 +12703,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
+//go:embed "schema/directives.graphql" "schema/mutation.graphql" "schema/query.graphql" "schema/scalars.graphql" "schema/types/adminSettings/auth.graphql" "schema/types/adminSettings/background_processing.graphql" "schema/types/adminSettings/external_communications.graphql" "schema/types/adminSettings/okta_service.graphql" "schema/types/adminSettings/other.graphql" "schema/types/adminSettings/providers.graphql" "schema/types/adminSettings/runners.graphql" "schema/types/adminSettings/service_flags.graphql" "schema/types/adminSettings/web.graphql" "schema/types/annotation.graphql" "schema/types/config.graphql" "schema/types/distro.graphql" "schema/types/host.graphql" "schema/types/image.graphql" "schema/types/issue_link.graphql" "schema/types/logkeeper.graphql" "schema/types/mainline_commits.graphql" "schema/types/patch.graphql" "schema/types/permissions.graphql" "schema/types/project.graphql" "schema/types/project_settings.graphql" "schema/types/project_vars.graphql" "schema/types/repo_ref.graphql" "schema/types/repo_settings.graphql" "schema/types/spawn.graphql" "schema/types/subscriptions.graphql" "schema/types/task.graphql" "schema/types/task_history.graphql" "schema/types/task_logs.graphql" "schema/types/task_queue_item.graphql" "schema/types/ticket_fields.graphql" "schema/types/user.graphql" "schema/types/version.graphql" "schema/types/volume.graphql" "schema/types/waterfall.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -12739,6 +12722,7 @@ var sources = []*ast.Source{
 	{Name: "schema/types/adminSettings/auth.graphql", Input: sourceData("schema/types/adminSettings/auth.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/background_processing.graphql", Input: sourceData("schema/types/adminSettings/background_processing.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/external_communications.graphql", Input: sourceData("schema/types/adminSettings/external_communications.graphql"), BuiltIn: false},
+	{Name: "schema/types/adminSettings/okta_service.graphql", Input: sourceData("schema/types/adminSettings/okta_service.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/other.graphql", Input: sourceData("schema/types/adminSettings/other.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/providers.graphql", Input: sourceData("schema/types/adminSettings/providers.graphql"), BuiltIn: false},
 	{Name: "schema/types/adminSettings/runners.graphql", Input: sourceData("schema/types/adminSettings/runners.graphql"), BuiltIn: false},
@@ -17692,6 +17676,41 @@ func (ec *executionContext) fieldContext_AdminSettings_authConfig(_ context.Cont
 				return ec.fieldContext_AuthConfig_allowServiceUsers(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AuthConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_oktaServiceConfig(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_oktaServiceConfig,
+		func(ctx context.Context) (any, error) {
+			return obj.OktaServiceConfig, nil
+		},
+		nil,
+		ec.marshalOOktaServiceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_oktaServiceConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "clientId":
+				return ec.fieldContext_OktaServiceConfig_clientId(ctx, field)
+			case "clientSecret":
+				return ec.fieldContext_OktaServiceConfig_clientSecret(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OktaServiceConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -23427,6 +23446,35 @@ func (ec *executionContext) _Cost_adjustedEC2Cost(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_Cost_adjustedEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_s3ArtifactPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_s3ArtifactPutCost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3ArtifactPutCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_s3ArtifactPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -35558,6 +35606,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_api(ctx, field)
 			case "authConfig":
 				return ec.fieldContext_AdminSettings_authConfig(ctx, field)
+			case "oktaServiceConfig":
+				return ec.fieldContext_AdminSettings_oktaServiceConfig(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -41604,6 +41654,90 @@ func (ec *executionContext) fieldContext_OktaConfig_expireAfterMinutes(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaServiceConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_clientId,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientID, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_clientId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaServiceConfig_clientSecret(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_clientSecret,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientSecret, nil
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireAdmin == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireAdmin is not implemented")
+				}
+				return ec.directives.RequireAdmin(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_clientSecret(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -48716,6 +48850,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_api(ctx, field)
 			case "authConfig":
 				return ec.fieldContext_AdminSettings_authConfig(ctx, field)
+			case "oktaServiceConfig":
+				return ec.fieldContext_AdminSettings_oktaServiceConfig(ctx, field)
 			case "banner":
 				return ec.fieldContext_AdminSettings_banner(ctx, field)
 			case "bannerTheme":
@@ -61690,6 +61826,8 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			case "s3ArtifactPutCost":
+				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -61725,6 +61863,8 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			case "s3ArtifactPutCost":
+				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -70167,6 +70307,8 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			case "s3ArtifactPutCost":
+				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -71256,136 +71398,6 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _WaterfallBuildVariant_id(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_id,
-		func(ctx context.Context) (any, error) {
-			return obj.Id, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallBuildVariant_builds(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_builds,
-		func(ctx context.Context) (any, error) {
-			return obj.Builds, nil
-		},
-		nil,
-		ec.marshalNWaterfallBuild2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuildᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_builds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_WaterfallBuild_id(ctx, field)
-			case "activated":
-				return ec.fieldContext_WaterfallBuild_activated(ctx, field)
-			case "buildVariant":
-				return ec.fieldContext_WaterfallBuild_buildVariant(ctx, field)
-			case "displayName":
-				return ec.fieldContext_WaterfallBuild_displayName(ctx, field)
-			case "version":
-				return ec.fieldContext_WaterfallBuild_version(ctx, field)
-			case "tasks":
-				return ec.fieldContext_WaterfallBuild_tasks(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type WaterfallBuild", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallBuildVariant_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_displayName,
-		func(ctx context.Context) (any, error) {
-			return obj.DisplayName, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallBuildVariant_version(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallBuildVariant_version,
-		func(ctx context.Context) (any, error) {
-			return obj.Version, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _WaterfallPagination_activeVersionIds(ctx context.Context, field graphql.CollectedField, obj *WaterfallPagination) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -71671,236 +71683,6 @@ func (ec *executionContext) fieldContext_WaterfallTask_execution(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallVersion_inactiveVersions(ctx context.Context, field graphql.CollectedField, obj *WaterfallVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallVersion_inactiveVersions,
-		func(ctx context.Context) (any, error) {
-			return obj.InactiveVersions, nil
-		},
-		nil,
-		ec.marshalOVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallVersion_inactiveVersions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallVersion",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Version_id(ctx, field)
-			case "activated":
-				return ec.fieldContext_Version_activated(ctx, field)
-			case "author":
-				return ec.fieldContext_Version_author(ctx, field)
-			case "authorEmail":
-				return ec.fieldContext_Version_authorEmail(ctx, field)
-			case "baseTaskStatuses":
-				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
-			case "baseVersion":
-				return ec.fieldContext_Version_baseVersion(ctx, field)
-			case "branch":
-				return ec.fieldContext_Version_branch(ctx, field)
-			case "buildVariants":
-				return ec.fieldContext_Version_buildVariants(ctx, field)
-			case "buildVariantStats":
-				return ec.fieldContext_Version_buildVariantStats(ctx, field)
-			case "childVersions":
-				return ec.fieldContext_Version_childVersions(ctx, field)
-			case "createTime":
-				return ec.fieldContext_Version_createTime(ctx, field)
-			case "errors":
-				return ec.fieldContext_Version_errors(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Version_finishTime(ctx, field)
-			case "generatedTaskCounts":
-				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
-			case "gitTags":
-				return ec.fieldContext_Version_gitTags(ctx, field)
-			case "ignored":
-				return ec.fieldContext_Version_ignored(ctx, field)
-			case "isPatch":
-				return ec.fieldContext_Version_isPatch(ctx, field)
-			case "manifest":
-				return ec.fieldContext_Version_manifest(ctx, field)
-			case "message":
-				return ec.fieldContext_Version_message(ctx, field)
-			case "order":
-				return ec.fieldContext_Version_order(ctx, field)
-			case "parameters":
-				return ec.fieldContext_Version_parameters(ctx, field)
-			case "patch":
-				return ec.fieldContext_Version_patch(ctx, field)
-			case "previousVersion":
-				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
-			case "projectMetadata":
-				return ec.fieldContext_Version_projectMetadata(ctx, field)
-			case "repo":
-				return ec.fieldContext_Version_repo(ctx, field)
-			case "requester":
-				return ec.fieldContext_Version_requester(ctx, field)
-			case "revision":
-				return ec.fieldContext_Version_revision(ctx, field)
-			case "startTime":
-				return ec.fieldContext_Version_startTime(ctx, field)
-			case "status":
-				return ec.fieldContext_Version_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Version_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Version_tasks(ctx, field)
-			case "taskStatuses":
-				return ec.fieldContext_Version_taskStatuses(ctx, field)
-			case "taskStatusStats":
-				return ec.fieldContext_Version_taskStatusStats(ctx, field)
-			case "upstreamProject":
-				return ec.fieldContext_Version_upstreamProject(ctx, field)
-			case "user":
-				return ec.fieldContext_Version_user(ctx, field)
-			case "versionTiming":
-				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "warnings":
-				return ec.fieldContext_Version_warnings(ctx, field)
-			case "waterfallBuilds":
-				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Version_predictedCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallVersion_version(ctx context.Context, field graphql.CollectedField, obj *WaterfallVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_WaterfallVersion_version,
-		func(ctx context.Context) (any, error) {
-			return obj.Version, nil
-		},
-		nil,
-		ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_WaterfallVersion_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallVersion",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Version_id(ctx, field)
-			case "activated":
-				return ec.fieldContext_Version_activated(ctx, field)
-			case "author":
-				return ec.fieldContext_Version_author(ctx, field)
-			case "authorEmail":
-				return ec.fieldContext_Version_authorEmail(ctx, field)
-			case "baseTaskStatuses":
-				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
-			case "baseVersion":
-				return ec.fieldContext_Version_baseVersion(ctx, field)
-			case "branch":
-				return ec.fieldContext_Version_branch(ctx, field)
-			case "buildVariants":
-				return ec.fieldContext_Version_buildVariants(ctx, field)
-			case "buildVariantStats":
-				return ec.fieldContext_Version_buildVariantStats(ctx, field)
-			case "childVersions":
-				return ec.fieldContext_Version_childVersions(ctx, field)
-			case "createTime":
-				return ec.fieldContext_Version_createTime(ctx, field)
-			case "errors":
-				return ec.fieldContext_Version_errors(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Version_finishTime(ctx, field)
-			case "generatedTaskCounts":
-				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
-			case "gitTags":
-				return ec.fieldContext_Version_gitTags(ctx, field)
-			case "ignored":
-				return ec.fieldContext_Version_ignored(ctx, field)
-			case "isPatch":
-				return ec.fieldContext_Version_isPatch(ctx, field)
-			case "manifest":
-				return ec.fieldContext_Version_manifest(ctx, field)
-			case "message":
-				return ec.fieldContext_Version_message(ctx, field)
-			case "order":
-				return ec.fieldContext_Version_order(ctx, field)
-			case "parameters":
-				return ec.fieldContext_Version_parameters(ctx, field)
-			case "patch":
-				return ec.fieldContext_Version_patch(ctx, field)
-			case "previousVersion":
-				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
-			case "projectMetadata":
-				return ec.fieldContext_Version_projectMetadata(ctx, field)
-			case "repo":
-				return ec.fieldContext_Version_repo(ctx, field)
-			case "requester":
-				return ec.fieldContext_Version_requester(ctx, field)
-			case "revision":
-				return ec.fieldContext_Version_revision(ctx, field)
-			case "startTime":
-				return ec.fieldContext_Version_startTime(ctx, field)
-			case "status":
-				return ec.fieldContext_Version_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Version_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Version_tasks(ctx, field)
-			case "taskStatuses":
-				return ec.fieldContext_Version_taskStatuses(ctx, field)
-			case "taskStatusStats":
-				return ec.fieldContext_Version_taskStatusStats(ctx, field)
-			case "upstreamProject":
-				return ec.fieldContext_Version_upstreamProject(ctx, field)
-			case "user":
-				return ec.fieldContext_Version_user(ctx, field)
-			case "versionTiming":
-				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "warnings":
-				return ec.fieldContext_Version_warnings(ctx, field)
-			case "waterfallBuilds":
-				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
-			case "predictedCost":
-				return ec.fieldContext_Version_predictedCost(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
 	}
 	return fc, nil
@@ -74180,7 +73962,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74234,6 +74016,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.AuthConfig = data
+		case "oktaServiceConfig":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oktaServiceConfig"))
+			data, err := ec.unmarshalOOktaServiceConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OktaServiceConfig = data
 		case "banner":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -78870,6 +78659,74 @@ func (ec *executionContext) unmarshalInputOktaConfigInput(ctx context.Context, o
 				return it, err
 			}
 			it.ExpireAfterMinutes = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Context, obj any) (model.APIOktaServiceConfig, error) {
+	var it model.APIOktaServiceConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"clientId", "clientSecret"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "clientId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.ClientID = data
+			} else if tmp == nil {
+				it.ClientID = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "clientSecret":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientSecret"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.ClientSecret = data
+			} else if tmp == nil {
+				it.ClientSecret = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -85173,6 +85030,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_api(ctx, field, obj)
 		case "authConfig":
 			out.Values[i] = ec._AdminSettings_authConfig(ctx, field, obj)
+		case "oktaServiceConfig":
+			out.Values[i] = ec._AdminSettings_oktaServiceConfig(ctx, field, obj)
 		case "banner":
 			out.Values[i] = ec._AdminSettings_banner(ctx, field, obj)
 		case "bannerTheme":
@@ -86595,6 +86454,8 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
 		case "adjustedEC2Cost":
 			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
+		case "s3ArtifactPutCost":
+			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -92313,6 +92174,44 @@ func (ec *executionContext) _OktaConfig(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._OktaConfig_userGroup(ctx, field, obj)
 		case "expireAfterMinutes":
 			out.Values[i] = ec._OktaConfig_expireAfterMinutes(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var oktaServiceConfigImplementors = []string{"OktaServiceConfig"}
+
+func (ec *executionContext) _OktaServiceConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIOktaServiceConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, oktaServiceConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OktaServiceConfig")
+		case "clientId":
+			out.Values[i] = ec._OktaServiceConfig_clientId(ctx, field, obj)
+		case "clientSecret":
+			out.Values[i] = ec._OktaServiceConfig_clientSecret(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -103602,60 +103501,6 @@ func (ec *executionContext) _WaterfallBuild(ctx context.Context, sel ast.Selecti
 	return out
 }
 
-var waterfallBuildVariantImplementors = []string{"WaterfallBuildVariant"}
-
-func (ec *executionContext) _WaterfallBuildVariant(ctx context.Context, sel ast.SelectionSet, obj *model1.WaterfallBuildVariant) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, waterfallBuildVariantImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("WaterfallBuildVariant")
-		case "id":
-			out.Values[i] = ec._WaterfallBuildVariant_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "builds":
-			out.Values[i] = ec._WaterfallBuildVariant_builds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "displayName":
-			out.Values[i] = ec._WaterfallBuildVariant_displayName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "version":
-			out.Values[i] = ec._WaterfallBuildVariant_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var waterfallPaginationImplementors = []string{"WaterfallPagination"}
 
 func (ec *executionContext) _WaterfallPagination(ctx context.Context, sel ast.SelectionSet, obj *WaterfallPagination) graphql.Marshaler {
@@ -103751,44 +103596,6 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var waterfallVersionImplementors = []string{"WaterfallVersion"}
-
-func (ec *executionContext) _WaterfallVersion(ctx context.Context, sel ast.SelectionSet, obj *WaterfallVersion) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, waterfallVersionImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("WaterfallVersion")
-		case "inactiveVersions":
-			out.Values[i] = ec._WaterfallVersion_inactiveVersions(ctx, field, obj)
-		case "version":
-			out.Values[i] = ec._WaterfallVersion_version(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -110227,54 +110034,6 @@ func (ec *executionContext) marshalNWaterfall2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._Waterfall(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNWaterfallBuild2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx context.Context, sel ast.SelectionSet, v model1.WaterfallBuild) graphql.Marshaler {
-	return ec._WaterfallBuild(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNWaterfallBuild2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuildᚄ(ctx context.Context, sel ast.SelectionSet, v []model1.WaterfallBuild) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNWaterfallBuild2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNWaterfallBuild2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx context.Context, sel ast.SelectionSet, v *model1.WaterfallBuild) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -112538,6 +112297,21 @@ func (ec *executionContext) unmarshalOOktaConfigInput2ᚖgithubᚗcomᚋevergree
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputOktaConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOOktaServiceConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIOktaServiceConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OktaServiceConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOktaServiceConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOktaServiceConfig(ctx context.Context, v any) (*model.APIOktaServiceConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputOktaServiceConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

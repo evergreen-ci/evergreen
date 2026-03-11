@@ -231,13 +231,25 @@ tasks:
       - command: timeout.update
         params:
           timeout_secs: 2700
+  - name: repotracker_task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo hello world
 
 buildvariants:
   - name: localhost
     display_name: Host smoke test
     run_on:
       - localhost
-    patch_only: true
     tasks:
+      # These tasks will run in the smoke test patch to verify core Evergreen functionality.
       - name: host_smoke_test_task_group
+        patch_only: true
       - name: host_smoke_test_generate_task
+        patch_only: true
+      # This task only exists to ensure the repotracker has one runnable task.
+      - name: repotracker_task
+        patchable: false
+        # Do not activate the repotracker task because testing commits is not relevant to the smoke test.
+        activate: false

@@ -2716,7 +2716,7 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 
 	activatedTasks := make([]Task, 0, len(tasks))
 	for _, t := range tasks {
-		if t.Activated {
+		if t.Activated && !t.DisplayOnly {
 			activatedTasks = append(activatedTasks, *t)
 		}
 	}
