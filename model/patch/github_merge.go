@@ -57,6 +57,9 @@ type githubMergeIntent struct {
 	// HeadCommit is the commit message of the head of the merge group.
 	HeadCommit string `bson:"head_commit"`
 
+	// HeadCommitDate is the timestamp of the head commit.
+	HeadCommitDate time.Time `bson:"head_commit_date,omitempty"`
+
 	// BaseSHA is the SHA of the base of the merge group.
 	BaseSHA string `bson:"base_hash"`
 
@@ -143,7 +146,8 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 		"BaseSHA":    mg.GetMergeGroup().GetBaseSHA(),
 		"CalledBy":   caller,
 	})
-	return &githubMergeIntent{
+
+	intent := &githubMergeIntent{
 		DocumentID: msgDeliveryID,
 		MsgID:      msgDeliveryID,
 		IntentType: GithubMergeIntentType,
@@ -154,7 +158,25 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 		HeadCommit: mg.GetMergeGroup().GetHeadCommit().GetMessage(),
 		BaseSHA:    mg.GetMergeGroup().GetBaseSHA(),
 		CalledBy:   caller,
-	}, nil
+	}
+	if headCommit := mg.GetMergeGroup().GetHeadCommit(); headCommit != nil {
+		if author := headCommit.GetAuthor(); author != nil {
+			if date := author.GetDate(); !date.Time.IsZero() {
+				intent.HeadCommitDate = date.Time
+			} else {
+				commit, err := thirdparty.GetCommitEvent(ctx, mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadSHA())
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "failed to fetch commit from GitHub API",
+					"msg_id":  msgDeliveryID,
+					"sha":     mg.GetMergeGroup().GetHeadSHA(),
+				}))
+				if commit != nil && commit.Commit != nil && commit.Commit.Author != nil && commit.Commit.Author.Date != nil {
+					intent.HeadCommitDate = commit.Commit.Author.Date.Time
+				}
+			}
+		}
+	}
+	return intent, nil
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
@@ -241,12 +263,13 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 		Author:  evergreen.GithubMergeUser,
 		Githash: g.BaseSHA,
 		GithubMergeData: thirdparty.GithubMergeGroup{
-			Org:        g.Org,
-			Repo:       g.Repo,
-			BaseBranch: baseBranch,
-			HeadBranch: headBranch,
-			HeadSHA:    g.HeadSHA,
-			HeadCommit: g.HeadCommit,
+			Org:            g.Org,
+			Repo:           g.Repo,
+			BaseBranch:     baseBranch,
+			HeadBranch:     headBranch,
+			HeadSHA:        g.HeadSHA,
+			HeadCommit:     g.HeadCommit,
+			HeadCommitDate: g.HeadCommitDate,
 		},
 	}
 	return patchDoc

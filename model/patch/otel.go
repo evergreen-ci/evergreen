@@ -46,6 +46,9 @@ const (
 	MergeQueueAttrSlowestTaskName       = "evergreen.merge_queue.slowest_task_name"
 	MergeQueueAttrSlowestTaskDurationMs = "evergreen.merge_queue.slowest_task_duration_ms"
 	MergeQueueAttrSlowestTaskVariant    = "evergreen.merge_queue.slowest_task_variant"
+	MergeQueueAttrQueueEntrySource      = "evergreen.merge_queue.queue_entry_source"
+	MergeQueueAttrGitRefNotFound        = "evergreen.merge_queue.git_ref_not_found"
+	MergeQueueAttrInvalidatedByUpstream = "evergreen.merge_queue.invalidated_by_upstream"
 )
 
 // BuildMergeQueueSpanAttributes creates a slice of common trace attributes for merge queue operations.

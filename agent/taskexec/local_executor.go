@@ -309,7 +309,11 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
 				e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
-				return err
+				if canFailTask {
+					return err
+				}
+				blockName := executor.BlockToLegacyName(blockType)
+				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
 			}
 
 			e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
@@ -603,6 +607,8 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	if expansionsAndVars == nil {
 		return nil
 	}
+
+	agentutil.AddVariantAndParameterExpansions(expansionsAndVars, e.project, e.taskConfig.Task.BuildVariant)
 	for k, v := range expansionsAndVars.Expansions {
 		e.taskConfig.Expansions.Put(k, v)
 	}
