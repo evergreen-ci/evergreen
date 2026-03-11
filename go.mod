@@ -19,7 +19,7 @@ require (
 	github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2
 	github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d
 	github.com/evergreen-ci/pail v0.0.0-20260307024253-2994ff1e98bd
-	github.com/evergreen-ci/poplar v0.0.0-20251209144431-fdec8d7b2505
+	github.com/evergreen-ci/poplar v0.0.0-20260311151515-d99a1837f349
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
 	github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2
 	github.com/gonzojive/httpcache v0.0.0-20220509000156-e80a5e6a69fe
@@ -55,12 +55,12 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0
 	go.opentelemetry.io/proto/otlp v1.9.0
-	golang.org/x/crypto v0.47.0
+	golang.org/x/crypto v0.48.0
 	golang.org/x/oauth2 v0.34.0
-	golang.org/x/text v0.33.0
-	golang.org/x/tools v0.40.0 // indirect
+	golang.org/x/text v0.34.0
+	golang.org/x/tools v0.41.0 // indirect
 	gonum.org/v1/gonum v0.17.0
-	google.golang.org/grpc v1.78.0
+	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -154,10 +154,10 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib v1.36.0 // indirect
-	golang.org/x/mod v0.31.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/mod v0.32.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
@@ -231,7 +231,7 @@ require (
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
 	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
-	go.mongodb.org/mongo-driver v1.17.8
+	go.mongodb.org/mongo-driver v1.17.9
 	go.step.sm/crypto v0.31.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )

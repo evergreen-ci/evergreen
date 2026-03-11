@@ -88,3 +88,17 @@ Periodic builds will create a new version (viewable on the project's waterfall p
 Periodic builds cannot be used with performance tooling, like performance monitoring charts.
 
 Periodic builds are set up on the project settings page under the periodic builds section. For more information on how to set up periodic builds, please see [periodic builds](../Project-Configuration/Project-and-Distro-Settings#periodic-builds).
+
+## Caveat: Batch Promotion Workflows
+
+Note that pushing commits in batches will not work as expected with these settings.
+Evergreen looks at the **latest commit only** and decides whether it needs
+to be activated based on cron/batchtime/activation settings. Therefore, if multiple commits are promoted at once,
+only the latest commit in that batch is evaluated, and the intermediate commits are skipped.
+
+_Example: Commits A, B, and C are added to another branch throughout the week,
+and these are batch-promoted on Friday. When Evergreen's activation job runs, it only looks at commit C (the latest). Commits A
+and B are skipped entirely and will never have their cron/batchtime considered._
+
+If you need every commit to run certain tasks or cron/batchtime to behave as expected,
+push commits individually rather than in batches, or enable [Run Every Mainline Commit](Project-and-Distro-Settings#interaction-with-batchtime-and-cron).

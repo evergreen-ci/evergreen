@@ -82,7 +82,7 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-['Using Repo Level Settings'](Repo-Level-Settings).
+[Using Repo Level Settings](../Project-Configuration/Repo-Level-Settings).
 
 #### Spawn Host Script Path
 
@@ -711,7 +711,7 @@ patch_aliases:
 
 ### Merge Queue Aliases
 
-These apply to the [GitHub merge queue integration](../Merge-Queue).
+These apply to the [GitHub merge queue integration](../Project-Configuration/Merge-Queue).
 
 ```yaml
 commit_queue_aliases:
