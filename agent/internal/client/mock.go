@@ -16,6 +16,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchModel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -73,7 +74,9 @@ type Mock struct {
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
-	AttachedFiles    map[string][]*artifact.File
+	ReportS3UsageShouldFail bool
+	ReportedS3Usage         s3usage.S3Usage
+	AttachedFiles           map[string][]*artifact.File
 	LogID            string
 	LocalTestResults []testresult.TestResult
 	HasTestResults   bool
@@ -451,6 +454,14 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 
 	c.AttachedFiles[td.ID] = append(c.AttachedFiles[td.ID], taskFiles...)
 
+	return nil
+}
+
+func (c *Mock) ReportS3Usage(ctx context.Context, td TaskData, usage s3usage.S3Usage) error {
+	if c.ReportS3UsageShouldFail {
+		return errors.New("reporting S3 usage")
+	}
+	c.ReportedS3Usage = usage
 	return nil
 }
 

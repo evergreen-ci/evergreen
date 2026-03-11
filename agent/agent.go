@@ -1227,6 +1227,9 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
 
+	// Report S3 usage for logs and artifacts after all flushes are complete.
+	grip.Error(errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
+
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
 	if detail.Status != evergreen.TaskSucceeded {
@@ -1392,9 +1395,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
-	}
-	if !tc.s3Usage.IsZero() {
-		detail.S3Usage = &tc.s3Usage
 	}
 	return detail
 }
