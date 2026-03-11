@@ -323,8 +323,6 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 			attribute.Bool(shouldExitAttribute, nt.ShouldExit),
 		))
 		grip.Notice(msg)
-		// Report S3 usage before exiting since teardown won't run.
-		grip.Error(errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
 		return processNextResponse{shouldExit: true}, nil
 	}
 	if nt.ShouldTeardownGroup {
