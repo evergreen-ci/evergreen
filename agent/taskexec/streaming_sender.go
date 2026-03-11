@@ -83,7 +83,7 @@ func (sw *streamWriter) SetStep(step int) {
 }
 
 // WriteLine writes a StreamLine as NDJSON to the response and log file.
-func (sw *streamWriter) WriteLine(line StreamLine) error {
+func (sw *streamWriter) WriteLine(line StreamLine) {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
@@ -92,29 +92,28 @@ func (sw *streamWriter) WriteLine(line StreamLine) error {
 	}
 
 	if sw.closed {
-		return nil
+		return
 	}
 
 	data, err := json.Marshal(line)
 	if err != nil {
-		return err
+		return
 	}
 	data = append(data, '\n')
 
 	if _, err := sw.w.Write(data); err != nil {
 		sw.closed = true
-		return nil
+		return
 	}
 	if sw.flusher != nil {
 		sw.flusher.Flush()
 	}
 
-	return nil
 }
 
 // WriteChannelMessage is a convenience method for writing a message on a given channel.
-func (sw *streamWriter) WriteChannelMessage(ch StreamChannel, msg string) error {
-	return sw.WriteLine(StreamLine{
+func (sw *streamWriter) WriteChannelMessage(ch StreamChannel, msg string) {
+	sw.WriteLine(StreamLine{
 		Channel: ch,
 		Step:    sw.step,
 		Message: msg,
@@ -122,7 +121,7 @@ func (sw *streamWriter) WriteChannelMessage(ch StreamChannel, msg string) error 
 }
 
 // WriteDone writes a completion message for the current step.
-func (sw *streamWriter) WriteDone(success bool, durationMs int64, nextStep int, errMsg string) error {
+func (sw *streamWriter) WriteDone(success bool, durationMs int64, nextStep int, errMsg string) {
 	line := StreamLine{
 		Channel:    DoneChannel,
 		Step:       sw.step,
@@ -133,7 +132,7 @@ func (sw *streamWriter) WriteDone(success bool, durationMs int64, nextStep int, 
 	if errMsg != "" {
 		line.Error = errMsg
 	}
-	return sw.WriteLine(line)
+	sw.WriteLine(line)
 }
 
 // streamingSender implements send.Sender and writes messages as NDJSON to a streamWriter.
@@ -157,8 +156,7 @@ func (s *streamingSender) Send(m message.Composer) {
 	if !m.Loggable() {
 		return
 	}
-	// Best-effort write; errors writing to the stream are non-fatal for logging.
-	_ = s.sw.WriteChannelMessage(s.channel, m.String())
+	s.sw.WriteChannelMessage(s.channel, m.String())
 }
 
 func (s *streamingSender) Flush(_ context.Context) error { return nil }

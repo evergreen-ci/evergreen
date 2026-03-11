@@ -275,7 +275,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	if isNoOp {
 		noOpMsg := e.getNoOpMessage(targetCmd.Command.Command)
 		if e.streamWriter != nil {
-			_ = e.streamWriter.WriteChannelMessage(ExecChannel, noOpMsg)
+			e.streamWriter.WriteChannelMessage(ExecChannel, noOpMsg)
 		}
 		e.logger.Infof(noOpMsg)
 		e.debugState.CurrentStepIndex++
@@ -289,7 +289,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 		if e.streamWriter != nil {
 			nextStep := e.debugState.CurrentStepIndex
-			_ = e.streamWriter.WriteDone(true, durationMs, nextStep, "")
+			e.streamWriter.WriteDone(true, durationMs, nextStep, "")
 		}
 
 		if e.logManager != nil {
@@ -313,7 +313,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 		msg := fmt.Sprintf("Running '%s' (step %d of %d, block: %s)",
 			targetCmd.DisplayName, stepIndex, len(e.debugState.CommandList), blockLabel)
-		_ = e.streamWriter.WriteChannelMessage(ExecChannel, msg)
+		e.streamWriter.WriteChannelMessage(ExecChannel, msg)
 	}
 
 	// Only process the specific block (i.e. pre, main, post) containing our target command
@@ -390,7 +390,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		e.debugState.addExecutionRecord(record)
 
 		if e.streamWriter != nil {
-			_ = e.streamWriter.WriteDone(false, durationMs, e.debugState.CurrentStepIndex, err.Error())
+			e.streamWriter.WriteDone(false, durationMs, e.debugState.CurrentStepIndex, err.Error())
 		}
 		if e.logManager != nil {
 			lf := e.logManager.LogFile()
@@ -406,7 +406,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	e.debugState.addExecutionRecord(record)
 
 	if e.streamWriter != nil {
-		_ = e.streamWriter.WriteDone(true, durationMs, e.debugState.CurrentStepIndex, "")
+		e.streamWriter.WriteDone(true, durationMs, e.debugState.CurrentStepIndex, "")
 	}
 	if e.logManager != nil {
 		lf := e.logManager.LogFile()
