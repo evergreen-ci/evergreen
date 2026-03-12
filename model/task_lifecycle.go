@@ -88,6 +88,34 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 		if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
+
+		// Incrementally update NumDependents for dependencies being activated.
+		// Build a map of tasks being activated for fast lookup.
+		taskMap := make(map[string]*task.Task)
+		for i := range tasksToActivate {
+			taskMap[tasksToActivate[i].Id] = &tasksToActivate[i]
+		}
+
+		// For each task being activated, increment NumDependents of its dependencies.
+		tasksToUpdate := make(map[string]*task.Task)
+		for _, t := range tasksToActivate {
+			for _, dep := range t.DependsOn {
+				if depTask, exists := taskMap[dep.TaskId]; exists {
+					depTask.NumDependents++
+					tasksToUpdate[depTask.Id] = depTask
+				}
+			}
+		}
+
+		if len(tasksToUpdate) > 0 {
+			if err := task.BulkUpdateNumDependents(ctx, tasksToUpdate); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":   "error updating number of dependents",
+					"num_tasks": len(tasksToUpdate),
+				}))
+			}
+		}
+
 		versionIdsToActivate := []string{}
 		for v := range versionIdsSet {
 			versionIdsToActivate = append(versionIdsToActivate, v)
