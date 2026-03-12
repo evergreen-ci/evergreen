@@ -1839,24 +1839,24 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 // * Build variant's settings
 func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) BuildVariantTaskUnit {
 	res := BuildVariantTaskUnit{
-		Name:            name,
-		Variant:         bv.Name,
-		Patchable:       bvt.Patchable,
-		PatchOnly:       bvt.PatchOnly,
-		Disable:         bvt.Disable,
-		AllowForGitTag:  bvt.AllowForGitTag,
-		GitTagOnly:      bvt.GitTagOnly,
-		Priority:        bvt.Priority,
-		Stepback:        bvt.Stepback,
-		RunOn:           bvt.RunOn,
-		CronBatchTime:   bvt.CronBatchTime,
-		BatchTime:       bvt.BatchTime,
-		Activate:        bvt.Activate,
-		PS:              bvt.PS,
-		CreateCheckRun:  bvt.CreateCheckRun,
-		ExecTimeoutSecs: bvt.ExecTimeoutSecs,
+		Name:              name,
+		Variant:           bv.Name,
+		Patchable:         bvt.Patchable,
+		PatchOnly:         bvt.PatchOnly,
+		Disable:           bvt.Disable,
+		AllowForGitTag:    bvt.AllowForGitTag,
+		GitTagOnly:        bvt.GitTagOnly,
+		AllowedRequesters: bvt.AllowedRequesters,
+		ExecTimeoutSecs:   bvt.ExecTimeoutSecs,
+		Priority:          bvt.Priority,
+		Stepback:          bvt.Stepback,
+		RunOn:             bvt.RunOn,
+		CronBatchTime:     bvt.CronBatchTime,
+		BatchTime:         bvt.BatchTime,
+		Activate:          bvt.Activate,
+		PS:                bvt.PS,
+		CreateCheckRun:    bvt.CreateCheckRun,
 	}
-	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
 	}
@@ -1878,6 +1878,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = pt.AllowedRequesters
 	}
+	if res.ExecTimeoutSecs == 0 {
+		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
+	}
 	if res.Stepback == nil {
 		res.Stepback = pt.Stepback
 	}
@@ -1890,9 +1893,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if res.PS == nil {
 		res.PS = pt.Ps
-	}
-	if res.ExecTimeoutSecs == 0 {
-		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
 	}
 
 	// Build variant level settings are lower priority than project task level
@@ -1912,13 +1912,11 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = bv.AllowedRequesters
 	}
-
-	if res.Disable == nil {
-		res.Disable = bv.Disable
-	}
-
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = bv.ExecTimeoutSecs
+	}
+	if res.Disable == nil {
+		res.Disable = bv.Disable
 	}
 
 	return res

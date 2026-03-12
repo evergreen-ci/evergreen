@@ -229,6 +229,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = pt.AllowedRequesters
 	}
+	if bvt.ExecTimeoutSecs == 0 {
+		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
+	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
 	}
@@ -252,6 +255,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = bv.AllowedRequesters
+	}
+	if bvt.ExecTimeoutSecs == 0 {
+		bvt.ExecTimeoutSecs = bv.ExecTimeoutSecs
 	}
 	if bvt.Disable == nil {
 		bvt.Disable = bv.Disable
