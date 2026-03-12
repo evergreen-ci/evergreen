@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -1037,4 +1038,44 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 			assert.Equal(t, tc.expectedDisk, updatedTask.Details.DiskDevices)
 		})
 	}
+}
+
+func TestReportS3Usage(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("TaskNotFound", func(t *testing.T) {
+		require.NoError(t, db.Clear(task.Collection))
+		handler := makeReportS3Usage().(*reportS3UsageHandler)
+		handler.taskID = "nonexistent"
+		handler.s3Usage = s3usage.S3Usage{
+			UserFiles: s3usage.UserFilesMetrics{PutRequests: 10},
+		}
+		resp := handler.Run(ctx)
+		assert.Equal(t, http.StatusNotFound, resp.Status())
+	})
+
+	t.Run("SuccessfullySavesUsage", func(t *testing.T) {
+		require.NoError(t, db.Clear(task.Collection))
+		tk := task.Task{Id: "t1", Status: evergreen.TaskStarted}
+		require.NoError(t, tk.Insert(ctx))
+
+		handler := makeReportS3Usage().(*reportS3UsageHandler)
+		handler.taskID = "t1"
+		handler.s3Usage = s3usage.S3Usage{
+			UserFiles: s3usage.UserFilesMetrics{
+				PutRequests: 50,
+				UploadBytes: 2048,
+				FileCount:   5,
+			},
+		}
+		resp := handler.Run(ctx)
+		assert.Equal(t, http.StatusOK, resp.Status())
+
+		dbTask, err := task.FindOneId(ctx, "t1")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Equal(t, 50, dbTask.S3Usage.UserFiles.PutRequests)
+		assert.Equal(t, int64(2048), dbTask.S3Usage.UserFiles.UploadBytes)
+		assert.Equal(t, 5, dbTask.S3Usage.UserFiles.FileCount)
+	})
 }
