@@ -139,7 +139,7 @@ while preserving its commit history — the repotracker will treat any previousl
 commits as new and create versions for them. This can result in unexpected versions being
 created and activated for commits that were not originally part of the tracked branch. To avoid
 this, use squash merges or other strategies that do not rewrite the commit history
-onto the tracked branch.
+of the tracked branch.
 
 ### Access and Admin Settings
 
