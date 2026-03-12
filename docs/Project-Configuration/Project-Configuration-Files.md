@@ -1936,15 +1936,18 @@ tasks:
 ```
 
 ### Update Distros with Run On
+
 Test owners and Product teams should be confident and empowered to modify their distros as they see fit.
 DevProd cannot scale to adjust individual distros for individual teams; we do own the framework that gives you the ability to modify the distros.
 
 #### Adjust Distro Size
+
 Larger distros increase costs, and should only be increased when necessary.
 It is best to try to understand the underlying root cause of the issue to avoid altogether.
 Specifying larger distros should be a last resort.
 
 ##### Example in a variant
+
 Specify that all tasks in the build variant should use a different sized distro.
 
 ```yaml

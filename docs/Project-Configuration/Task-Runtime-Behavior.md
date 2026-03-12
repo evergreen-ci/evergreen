@@ -201,6 +201,7 @@ to run.
 ### Further Examples
 
 Specify that all tasks in the build variant get a particular timeout:
+
 ```yaml
 buildvariants:
   - name: your-build-variant-name
@@ -211,6 +212,7 @@ buildvariants:
 ```
 
 Specify that a task gets a particular timeout to apply to any build variant that runs it:
+
 ```yaml
 tasks:
   - name: your_task
@@ -219,6 +221,7 @@ tasks:
 ```
 
 Specify that a task gets a particular timeout on the specified build variants:
+
 ```yaml
 buildvariants:
    - name: your-build-variant-name
