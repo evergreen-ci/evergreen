@@ -7,22 +7,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestGetDescendantPIDs(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("pgrep is not available on Windows")
 	}
-
+	logger := client.NewSingleChannelLogHarness("test", send.MakeInternalLogger())
 	t.Run("NilForEmptyInput", func(t *testing.T) {
-		assert.Nil(t, getDescendantPIDs(t.Context(), nil, nil, nil))
-		assert.Nil(t, getDescendantPIDs(t.Context(), []int{}, nil, nil))
+		assert.Nil(t, getDescendantPIDs(t.Context(), nil, logger, noop.NewTracerProvider().Tracer("")))
+		assert.Nil(t, getDescendantPIDs(t.Context(), []int{}, logger, noop.NewTracerProvider().Tracer("")))
 	})
 
 	t.Run("NilForNonExistentPID", func(t *testing.T) {
-		result := getDescendantPIDs(t.Context(), []int{0}, nil, nil)
+		result := getDescendantPIDs(t.Context(), []int{0}, logger, noop.NewTracerProvider().Tracer(""))
 		assert.Empty(t, result)
 	})
 
@@ -34,7 +37,7 @@ func TestGetDescendantPIDs(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 
 		parentPID := cmd.Process.Pid
-		descendants := getDescendantPIDs(t.Context(), []int{parentPID}, nil, nil)
+		descendants := getDescendantPIDs(t.Context(), []int{parentPID}, logger, noop.NewTracerProvider().Tracer(""))
 		assert.NotEmpty(t, descendants, "expected to find child PIDs of sh process (PID %d)", parentPID)
 
 		for _, pid := range descendants {
@@ -46,7 +49,7 @@ func TestGetDescendantPIDs(t *testing.T) {
 		cmd := exec.CommandContext(t.Context(), "sh", "-c", "sleep 300")
 		require.NoError(t, cmd.Start())
 
-		descendants := getDescendantPIDs(t.Context(), []int{cmd.Process.Pid}, nil, nil)
+		descendants := getDescendantPIDs(t.Context(), []int{cmd.Process.Pid}, logger, noop.NewTracerProvider().Tracer(""))
 		seen := make(map[int]bool)
 		for _, pid := range descendants {
 			assert.False(t, seen[pid], "duplicate PID %d", pid)
@@ -59,9 +62,9 @@ func TestPgrepChildren(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("pgrep is not available on Windows")
 	}
-
+	logger := client.NewSingleChannelLogHarness("test", send.MakeInternalLogger())
 	t.Run("ReturnsNilForNoChildren", func(t *testing.T) {
-		result := pgrepChildren(t.Context(), 1048576, nil)
+		result := pgrepChildren(t.Context(), 1048576, logger)
 		assert.Nil(t, result)
 	})
 
@@ -71,7 +74,7 @@ func TestPgrepChildren(t *testing.T) {
 
 		time.Sleep(200 * time.Millisecond)
 
-		children := pgrepChildren(t.Context(), cmd.Process.Pid, nil)
+		children := pgrepChildren(t.Context(), cmd.Process.Pid, logger)
 		assert.NotEmpty(t, children)
 		for _, pid := range children {
 			_, err := strconv.Atoi(strconv.Itoa(pid))
