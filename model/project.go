@@ -137,6 +137,7 @@ type BuildVariantTaskUnit struct {
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Priority          int64                     `yaml:"priority,omitempty" bson:"priority"`
 	DependsOn         []TaskUnitDependency      `yaml:"depends_on,omitempty" bson:"depends_on"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
 	// the distros that the task can be run on
 	RunOn    []string `yaml:"run_on,omitempty" bson:"run_on"`
@@ -409,6 +410,9 @@ type BuildVariant struct {
 	// requester-related filters such as Patchable, PatchOnly, AllowForGitTag,
 	// and GitTagOnly. By default, all requesters are allowed to run the task.
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+
+	// ExecTimeoutSecs determines how long a task can run before timing out.
+	ExecTimeoutSecs int `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)

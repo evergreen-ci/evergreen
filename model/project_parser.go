@@ -337,10 +337,11 @@ type parserBV struct {
 	Stepback           *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	DeactivatePrevious *bool             `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
 
-	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
-	DependsOn    parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	RunOn           parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tasks           parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DisplayTasks    []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DependsOn       parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	ExecTimeoutSecs int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	// If Activate is set to false, then we don't initially activate the build variant.
 	Activate          *bool                     `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
@@ -419,6 +420,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.GitTagOnly == nil &&
 		len(pbv.AllowedRequesters) == 0 &&
 		len(pbv.Paths) == 0 &&
+		pbv.ExecTimeoutSecs == 0 &&
 		pbv.MatrixId == "" &&
 		pbv.MatrixVal == nil &&
 		pbv.Matrix == nil &&
@@ -1593,13 +1595,14 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			PatchOnly:          pbv.PatchOnly,
 			AllowForGitTag:     pbv.AllowForGitTag,
 			GitTagOnly:         pbv.GitTagOnly,
+			AllowedRequesters:  pbv.AllowedRequesters,
+			ExecTimeoutSecs:    pbv.ExecTimeoutSecs,
 			Stepback:           pbv.Stepback,
 			DeactivatePrevious: pbv.DeactivatePrevious,
 			RunOn:              pbv.RunOn,
 			Tags:               pbv.Tags,
 			Paths:              pbv.Paths,
 		}
-		bv.AllowedRequesters = pbv.AllowedRequesters
 		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 		if len(unmatchedSelectors) > 0 {
 			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched selector: '%s'", pbv.Name, strings.Join(unmatchedSelectors, "', '")))
@@ -1836,21 +1839,22 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 // * Build variant's settings
 func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) BuildVariantTaskUnit {
 	res := BuildVariantTaskUnit{
-		Name:           name,
-		Variant:        bv.Name,
-		Patchable:      bvt.Patchable,
-		PatchOnly:      bvt.PatchOnly,
-		Disable:        bvt.Disable,
-		AllowForGitTag: bvt.AllowForGitTag,
-		GitTagOnly:     bvt.GitTagOnly,
-		Priority:       bvt.Priority,
-		Stepback:       bvt.Stepback,
-		RunOn:          bvt.RunOn,
-		CronBatchTime:  bvt.CronBatchTime,
-		BatchTime:      bvt.BatchTime,
-		Activate:       bvt.Activate,
-		PS:             bvt.PS,
-		CreateCheckRun: bvt.CreateCheckRun,
+		Name:            name,
+		Variant:         bv.Name,
+		Patchable:       bvt.Patchable,
+		PatchOnly:       bvt.PatchOnly,
+		Disable:         bvt.Disable,
+		AllowForGitTag:  bvt.AllowForGitTag,
+		GitTagOnly:      bvt.GitTagOnly,
+		Priority:        bvt.Priority,
+		Stepback:        bvt.Stepback,
+		RunOn:           bvt.RunOn,
+		CronBatchTime:   bvt.CronBatchTime,
+		BatchTime:       bvt.BatchTime,
+		Activate:        bvt.Activate,
+		PS:              bvt.PS,
+		CreateCheckRun:  bvt.CreateCheckRun,
+		ExecTimeoutSecs: bvt.ExecTimeoutSecs,
 	}
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
@@ -1887,6 +1891,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if res.PS == nil {
 		res.PS = pt.Ps
 	}
+	if res.ExecTimeoutSecs == 0 {
+		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
+	}
 
 	// Build variant level settings are lower priority than project task level
 	// settings.
@@ -1908,6 +1915,10 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 
 	if res.Disable == nil {
 		res.Disable = bv.Disable
+	}
+
+	if res.ExecTimeoutSecs == 0 {
+		res.ExecTimeoutSecs = bv.ExecTimeoutSecs
 	}
 
 	return res
