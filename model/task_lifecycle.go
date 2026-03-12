@@ -1965,6 +1965,54 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	return nil
 }
 
+// EmitMergeQueueDestroyedSpans emits OpenTelemetry spans when GitHub sends a "destroyed"
+// MergeGroupEvent webhook. This captures removal reasons (merged, invalidated, dequeued).
+func EmitMergeQueueDestroyedSpans(ctx context.Context, updatedPatchIDs []string, org, repo, headSHA, headRef, reason string) {
+	if len(updatedPatchIDs) == 0 || reason == "" {
+		return
+	}
+
+	githubHeadPRURL := thirdparty.BuildGithubHeadPRURL(org, repo, headRef)
+
+	rootPatches := make(map[string]*patch.Patch)
+	for _, patchID := range updatedPatchIDs {
+		p, err := patch.FindOneId(ctx, patchID)
+		if err != nil || p == nil {
+			continue
+		}
+		for p.IsChild() {
+			parent, err := patch.FindOneId(ctx, p.Triggers.ParentPatch)
+			if err != nil || parent == nil {
+				break
+			}
+			p = parent
+		}
+		rootPatches[p.Id.Hex()] = p
+	}
+
+	mergeQueueStatus := thirdparty.GetMergeQueueStatusFromReason(reason)
+
+	for rootID, p := range rootPatches {
+		projectRef, err := FindBranchProjectRef(ctx, p.Project)
+		if err != nil {
+			continue
+		}
+		baseBranch := p.GithubMergeData.BaseBranch
+		if baseBranch == "" {
+			baseBranch = p.GithubMergeData.HeadBranch
+		}
+		baseAttrs := patch.BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubHeadPRURL)
+		attrs := append(baseAttrs,
+			attribute.String(patch.MergeQueueAttrPatchID, rootID),
+			attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier),
+			attribute.String(patch.MergeQueueAttrRemovalReason, reason),
+			attribute.String(patch.MergeQueueAttrStatus, mergeQueueStatus),
+		)
+		_, span := tracer.Start(ctx, patch.MergeQueueDestroyedSpan, trace.WithAttributes(attrs...))
+		span.End()
+	}
+}
+
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
 // patches and builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string) error {
