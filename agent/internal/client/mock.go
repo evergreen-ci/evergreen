@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchModel "github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -73,15 +74,17 @@ type Mock struct {
 	S3Response                           *apimodels.AWSCredentials
 	SendTaskDetailsShouldFail            bool
 
-	AttachedFiles    map[string][]*artifact.File
-	LogID            string
-	LocalTestResults []testresult.TestResult
-	HasTestResults   bool
-	ResultsFailed    bool
-	TestResultStats  testresult.TaskTestResultsStats
-	FailedTestSample []string
-	TestLogs         []*testlog.TestLog
-	TestLogCount     int
+	ReportS3UsageShouldFail bool
+	ReportedS3Usage         s3usage.S3Usage
+	AttachedFiles           map[string][]*artifact.File
+	LogID                   string
+	LocalTestResults        []testresult.TestResult
+	HasTestResults          bool
+	ResultsFailed           bool
+	TestResultStats         testresult.TaskTestResultsStats
+	FailedTestSample        []string
+	TestLogs                []*testlog.TestLog
+	TestLogCount            int
 
 	taskLogs   map[string][]log.LogLine
 	PatchFiles map[string]string
@@ -454,6 +457,14 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
+func (c *Mock) ReportS3Usage(ctx context.Context, td TaskData, usage s3usage.S3Usage) error {
+	if c.ReportS3UsageShouldFail {
+		return errors.New("reporting S3 usage")
+	}
+	c.ReportedS3Usage = usage
+	return nil
+}
+
 func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchModel.Parameter, taskData TaskData) error {
 	c.DownstreamParams = downstreamParams
 	return nil
@@ -568,6 +579,10 @@ func (c *Mock) RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, 
 
 func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
 	c.TaskShouldRetryOnFail = true
+	return nil
+}
+
+func (c *Mock) MarkMergeQueueGitRefNotFound(ctx context.Context, td TaskData) error {
 	return nil
 }
 

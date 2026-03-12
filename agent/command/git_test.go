@@ -197,7 +197,7 @@ func (s *GitGetProjectSuite) TestRetryFetchAttemptsFiveTimesOnError() {
 	opts := cloneOpts{}
 
 	attempt := 0
-	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneOpts) error {
+	err = c.retryFetch(s.ctx, logger, s.comm, conf, false, opts, func(o cloneOpts) error {
 		attempt++
 		return errors.New("failed to fetch")
 	})
@@ -219,7 +219,7 @@ func (s *GitGetProjectSuite) TestRetryFetchAttemptsOnceOnSuccess() {
 	opts := cloneOpts{}
 
 	attempt := 0
-	err = c.retryFetch(s.ctx, logger, false, opts, func(o cloneOpts) error {
+	err = c.retryFetch(s.ctx, logger, s.comm, conf, false, opts, func(o cloneOpts) error {
 		attempt++
 		return nil
 	})
@@ -240,7 +240,7 @@ func (s *GitGetProjectSuite) TestRetryFetchStopsOnInvalidGitHubMergeQueueRef() {
 	opts := cloneOpts{}
 
 	attempt := 0
-	err = c.retryFetch(s.ctx, logger, true, opts, func(o cloneOpts) error {
+	err = c.retryFetch(s.ctx, logger, s.comm, conf, true, opts, func(o cloneOpts) error {
 		attempt++
 		return errors.Errorf("fatel: %s", githubMergeQueueInvalidRefError)
 	})

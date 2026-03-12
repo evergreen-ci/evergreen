@@ -552,3 +552,51 @@ func (h *deleteGitHubDynamicAccessTokens) Run(ctx context.Context) gimlet.Respon
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/tasks/{task_id}/mark_git_ref_not_found
+
+// markMergeQueueGitRefNotFoundHandler marks a merge queue patch's GitRefNotFound field.
+type markMergeQueueGitRefNotFoundHandler struct {
+	taskID string
+}
+
+func makeMarkMergeQueueGitRefNotFound() gimlet.RouteHandler {
+	return &markMergeQueueGitRefNotFoundHandler{}
+}
+
+func (h *markMergeQueueGitRefNotFoundHandler) Factory() gimlet.RouteHandler {
+	return &markMergeQueueGitRefNotFoundHandler{}
+}
+
+func (h *markMergeQueueGitRefNotFoundHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.taskID = gimlet.GetVars(r)["task_id"]
+	return nil
+}
+
+func (h *markMergeQueueGitRefNotFoundHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding task"))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	if !evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "task is not a github merge queue task",
+		})
+	}
+
+	if err := data.SetMergeQueueGitRefNotFound(ctx, t.Version); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating patch"))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
+}

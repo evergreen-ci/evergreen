@@ -602,17 +602,102 @@ func TestConsolidatePatchesForUser(t *testing.T) {
 }
 
 func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
+	assert.NoError(t, db.ClearCollections(Collection, "versions"))
 
 	originalTime := time.Now().Add(-time.Hour).UTC().Round(time.Millisecond)
+
+	// Create test versions for version status checks
+	version1 := bson.NewObjectId().Hex() // succeeded version
+	version2 := bson.NewObjectId().Hex() // failed version
+	version3 := bson.NewObjectId().Hex() // running version
+
+	assert.NoError(t, db.Insert(t.Context(), "versions", bson.M{
+		"_id":         version1,
+		"status":      evergreen.VersionSucceeded,
+		"finish_time": time.Now(),
+	}))
+	assert.NoError(t, db.Insert(t.Context(), "versions", bson.M{
+		"_id":         version2,
+		"status":      evergreen.VersionFailed,
+		"finish_time": time.Now(),
+	}))
+	assert.NoError(t, db.Insert(t.Context(), "versions", bson.M{
+		"_id":         version3,
+		"status":      evergreen.VersionStarted,
+		"finish_time": time.Time{},
+	}))
+
+	finishedTime := time.Now()
+
 	patches := []Patch{
 		{
+			//GitRefNotFound + invalidated
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:            "mongodb",
+				Repo:           "mongo",
+				HeadSHA:        "abc123",
+				GitRefNotFound: true,
+			},
+			Version:    version2,
+			Status:     evergreen.VersionFailed,
+			FinishTime: finishedTime,
+		},
+		{
+			// Version succeeded + invalidated
 			Id: bson.NewObjectId(),
 			GithubMergeData: thirdparty.GithubMergeGroup{
 				Org:     "mongodb",
 				Repo:    "mongo",
 				HeadSHA: "abc123",
 			},
+			Version:    version1,
+			Status:     evergreen.VersionSucceeded,
+			FinishTime: finishedTime,
+		},
+		{
+			// Version failed + invalidated (no git error)
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:     "mongodb",
+				Repo:    "mongo",
+				HeadSHA: "abc123",
+			},
+			Version:    version2,
+			Status:     evergreen.VersionFailed,
+			FinishTime: finishedTime,
+		},
+		{
+			// Version failed but removed before finish (invalidated while running)
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:     "mongodb",
+				Repo:    "mongo",
+				HeadSHA: "abc123",
+			},
+			Version:    version2,
+			Status:     evergreen.VersionFailed,
+			FinishTime: time.Now().Add(time.Hour), // Finish time is in the future relative to removal time
+		},
+		{
+			// No version yet + invalidated
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:     "mongodb",
+				Repo:    "mongo",
+				HeadSHA: "abc123",
+			},
+		},
+		{
+			// Running version + invalidated
+			Id: bson.NewObjectId(),
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:     "mongodb",
+				Repo:    "mongo",
+				HeadSHA: "abc123",
+			},
+			Version: version3,
+			Status:  evergreen.VersionStarted,
 		},
 		{
 			Id: bson.NewObjectId(),
@@ -633,24 +718,63 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, db.InsertMany(t.Context(), Collection, patches[0], patches[1], patches[2]))
+	for _, p := range patches {
+		assert.NoError(t, db.Insert(t.Context(), Collection, p))
+	}
 
-	count, err := MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "abc123", "merge failed")
+	count, err := MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "abc123", thirdparty.MergeQueueReasonInvalidated)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, count)
+	assert.Equal(t, 6, count)
 
+	// GitRefNotFound + invalidated
 	p, err := FindOneId(t.Context(), patches[0].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.False(t, p.GithubMergeData.RemovedFromQueueAt.IsZero())
-	assert.Equal(t, "merge failed", p.GithubMergeData.RemovalReason)
+	assert.Equal(t, thirdparty.MergeQueueReasonInvalidated, p.GithubMergeData.RemovalReason)
+	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
 
+	// Version succeeded + invalidated
 	p, err = FindOneId(t.Context(), patches[1].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
+
+	// Version failed + invalidated
+	p, err = FindOneId(t.Context(), patches[2].Id.Hex())
+	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.False(t, p.GithubMergeData.InvalidatedByUpstream)
+
+	// Version failed but removed before finish (invalidated while running)
+	p, err = FindOneId(t.Context(), patches[3].Id.Hex())
+	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
+
+	// No version yet + invalidated
+	p, err = FindOneId(t.Context(), patches[4].Id.Hex())
+	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
+
+	// Running version + invalidated
+	p, err = FindOneId(t.Context(), patches[5].Id.Hex())
+	assert.NoError(t, err)
+	require.NotNil(t, p)
+	assert.True(t, p.GithubMergeData.InvalidatedByUpstream)
+
+	// Already removed patch should not be updated
+	p, err = FindOneId(t.Context(), patches[6].Id.Hex())
+	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.Equal(t, originalTime, p.GithubMergeData.RemovedFromQueueAt.UTC())
 	assert.Equal(t, "original reason", p.GithubMergeData.RemovalReason)
 
-	p, err = FindOneId(t.Context(), patches[2].Id.Hex())
+	// Different org patch should not be updated
+	p, err = FindOneId(t.Context(), patches[7].Id.Hex())
 	assert.NoError(t, err)
+	require.NotNil(t, p)
 	assert.True(t, p.GithubMergeData.RemovedFromQueueAt.IsZero())
 
 	count, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "different-sha", "reason")

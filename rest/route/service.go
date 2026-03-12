@@ -91,6 +91,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/heartbeat").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeHeartbeat())
 	app.AddRoute("/task/{task_id}/parser_project").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetParserProject(env))
 	app.AddRoute("/task/{task_id}/project_ref").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetProjectRef())
+	app.AddRoute("/task/{task_id}/s3_usage").Version(2).Post().Wrap(requireTask).RouteHandler(makeReportS3Usage())
 	app.AddRoute("/task/{task_id}/set_results_info").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskResultsInfoHandler())
 	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeStartTask(env))
 	app.AddRoute("/task/{task_id}/test_logs").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeAttachTestLog(settings))
@@ -107,6 +108,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeCheckRun(settings))
 	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireUserOrTask).RouteHandler(makeAWSAssumeRole(stsManager))
+	app.AddRoute("/task/{task_id}/mark_git_ref_not_found").Version(2).Patch().Wrap(requireTask).RouteHandler(makeMarkMergeQueueGitRefNotFound())
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())

@@ -2098,16 +2098,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 
-	// Calculate task cost now that we have the actual runtime
-	if err := t.UpdateTaskCost(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":   "failed to calculate task cost",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-		}))
-		// Don't fail the task finishing if cost calculation fails
-	}
-
 	grip.Debug(message.Fields{
 		"message":   "marking task finished",
 		"task_id":   t.Id,
@@ -2128,13 +2118,19 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		}
 	}
 
+	// Calculate EC2 runtime costs now that we have the actual runtime.
+	if err := t.UpdateTaskCost(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":   "failed to calculate task cost",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+		}))
+	}
+
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
-	if detail.S3Usage != nil {
-		t.S3Usage = *detail.S3Usage
-	}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		ctx,
@@ -2147,7 +2143,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				StatusKey:             detail.Status,
 				TimeTakenKey:          t.TimeTaken,
 				TaskCostKey:           t.TaskCost,
-				S3UsageKey:            t.S3Usage,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				DisplayStatusCacheKey: t.DisplayStatusCache,
@@ -4091,19 +4086,51 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		return nil
 	}
 
-	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
+	t.calculateRuntimeCost(ctx)
+	t.calculateS3ArtifactCost(ctx)
+
+	if t.TaskCost.IsZero() {
 		return nil
 	}
-
-	runtimeSeconds := t.TimeTaken.Seconds()
-	t.TaskCost = CalculateTaskCost(runtimeSeconds, costData, financeConfig)
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{
 		"$set": bson.M{
 			TaskCostKey: t.TaskCost,
 		},
 	})
+}
+
+// calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
+func (t *Task) calculateRuntimeCost(ctx context.Context) {
+	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
+	if err != nil {
+		return
+	}
+	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
+}
+
+// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
+func (t *Task) SaveS3Usage(ctx context.Context) error {
+	t.calculateS3ArtifactCost(ctx)
+
+	setFields := bson.M{
+		S3UsageKey: t.S3Usage,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"): t.TaskCost.S3ArtifactPutCost,
+	}
+
+	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
+}
+
+// calculateS3ArtifactCost sets the S3 artifact PUT cost on TaskCost based on the task's S3 usage.
+func (t *Task) calculateS3ArtifactCost(ctx context.Context) {
+	if t.S3Usage.UserFiles.PutRequests <= 0 {
+		return
+	}
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		costConfig = nil
+	}
+	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
 }
 
 type CostPredictionResult struct {

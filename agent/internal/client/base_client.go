@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -606,6 +607,25 @@ func (c *baseCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	return nil
 }
 
+func (c *baseCommunicator) ReportS3Usage(ctx context.Context, taskData TaskData, usage s3usage.S3Usage) error {
+	if usage.IsZero() {
+		return nil
+	}
+
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("s3_usage")
+	resp, err := c.retryRequest(ctx, info, usage)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "reporting S3 usage").Error())
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
 func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
 	info := requestInfo{
 		method:   http.MethodPost,
@@ -934,6 +954,21 @@ func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, chec
 		return util.RespError(resp, errors.Wrap(err, "upserting checkRun").Error())
 	}
 
+	defer resp.Body.Close()
+	return nil
+}
+
+// MarkMergeQueueGitRefNotFound marks a merge queue patch's GitRefNotFound field.
+func (c *baseCommunicator) MarkMergeQueueGitRefNotFound(ctx context.Context, td TaskData) error {
+	info := requestInfo{
+		method:   http.MethodPatch,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("mark_git_ref_not_found")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "marking git ref not found").Error())
+	}
 	defer resp.Body.Close()
 	return nil
 }

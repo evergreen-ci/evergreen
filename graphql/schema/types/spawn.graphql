@@ -54,6 +54,7 @@ input SpawnHostInput {
   volumeId: String
   useOAuth: Boolean
   isDebug: Boolean
+  setupStepNumber: String
 }
 
 """

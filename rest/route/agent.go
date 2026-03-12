@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -30,6 +31,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // GET /rest/v2/agent/perf_monitoring_url
@@ -673,6 +675,8 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 
 	discoverAndCacheBucketLifecycleRules(ctx, t, h.files)
 
+	calculateAndReportFilePutCosts(ctx, h.taskID, h.files)
+
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
 		TaskDisplayName: t.DisplayName,
@@ -688,6 +692,43 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))
 	}
 	return gimlet.NewJSONResponse(fmt.Sprintf("Artifact files for task %s successfully attached", t.Id))
+}
+
+// calculateAndReportFilePutCosts calculates per-file S3 PUT costs and emits an OTEL span with cost statistics.
+func calculateAndReportFilePutCosts(ctx context.Context, taskID string, files []artifact.File) {
+	if len(files) == 0 {
+		return
+	}
+
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		costConfig = nil
+	}
+
+	files[0].PutCost = s3usage.CalculateS3PutCostWithConfig(files[0].PutRequests, costConfig)
+	minCost := files[0].PutCost
+	maxCost := files[0].PutCost
+	totalCost := files[0].PutCost
+	for i := 1; i < len(files); i++ {
+		files[i].PutCost = s3usage.CalculateS3PutCostWithConfig(files[i].PutRequests, costConfig)
+		totalCost += files[i].PutCost
+		if files[i].PutCost < minCost {
+			minCost = files[i].PutCost
+		}
+		if files[i].PutCost > maxCost {
+			maxCost = files[i].PutCost
+		}
+	}
+	avgCost := totalCost / float64(len(files))
+
+	_, span := tracer.Start(ctx, "s3-put-command-cost")
+	span.SetAttributes(
+		attribute.String(evergreen.TaskIDOtelAttribute, taskID),
+		attribute.Float64(evergreen.S3PutCostAvgFilePutCostOtelAttribute, avgCost),
+		attribute.Float64(evergreen.S3PutCostMaxFilePutCostOtelAttribute, maxCost),
+		attribute.Float64(evergreen.S3PutCostMinFilePutCostOtelAttribute, minCost),
+	)
+	span.End()
 }
 
 // discoverAndCacheBucketLifecycleRules will look at all the buckets that the files are being uploaded
@@ -735,6 +776,53 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			"num_cached": len(cachedBuckets),
 		})
 	}
+}
+
+// POST /rest/v2/task/{task_id}/s3_usage
+type reportS3UsageHandler struct {
+	taskID  string
+	s3Usage s3usage.S3Usage
+}
+
+func makeReportS3Usage() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Factory() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.s3Usage); err != nil {
+		return errors.Wrapf(err, "reading S3 usage for task '%s'", h.taskID)
+	}
+	return nil
+}
+
+func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	t.S3Usage = h.s3Usage
+	if err := t.SaveS3Usage(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "saving S3 usage",
+			"task_id": h.taskID,
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // POST /rest/v2/task/{task_id}/set_results_info
