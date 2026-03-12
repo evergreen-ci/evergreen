@@ -81,10 +81,11 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		TaskID:      d.conf.TaskID,
 		OAuthToken:  d.conf.OAuth.AccessToken,
 		SpawnHostID: d.conf.SpawnHostID,
+		SetupSecret: d.conf.SetupSecret,
 	}
 
-	if opts.OAuthToken == "" {
-		http.Error(w, "OAuth token is required", http.StatusUnauthorized)
+	if opts.OAuthToken == "" && opts.SetupSecret == "" {
+		http.Error(w, "OAuth token or setup secret is required", http.StatusUnauthorized)
 		return
 	}
 

@@ -162,6 +162,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStopManager(env))
 	app.AddRoute("/hosts/{host_id}/start").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStartManager(env))
 	app.AddRoute("/hosts/{host_id}/change_password").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostChangePassword(env))
+	app.AddRoute("/hosts/{host_id}/debug/setup_complete").Version(2).Post().RouteHandler(makeDebugSetupComplete())
 	app.AddRoute("/hosts/{host_id}/extend_expiration").Version(2).Post().Wrap(requireUser).RouteHandler(makeExtendHostExpiration())
 	app.AddRoute("/hosts/{host_id}/terminate").Version(2).Post().Wrap(requireUser).RouteHandler(makeTerminateHostRoute())
 	app.AddRoute("/hosts/{host_id}/attach").Version(2).Post().Wrap(requireUser).RouteHandler(makeAttachVolume(env))

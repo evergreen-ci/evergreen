@@ -148,6 +148,11 @@ func Debug() cli.Command {
 				ArgsUsage: "<step_index>",
 				Action:    jumpToCmd,
 			},
+			{
+				Name:   "setup-complete",
+				Usage:  "Signal that debug host setup phase is complete",
+				Action: setupCompleteCmd,
+			},
 		},
 	}
 }
@@ -239,8 +244,10 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
 	}
 
-	if err := conf.SetOAuthToken(context.Background()); err != nil {
-		return errors.Wrap(err, "obtaining OAuth token")
+	if conf.SetupSecret == "" {
+		if err := conf.SetOAuthToken(context.Background()); err != nil {
+			return errors.Wrap(err, "obtaining OAuth token")
+		}
 	}
 
 	grip.Infof("Starting daemon on port %d...", port)
@@ -547,6 +554,57 @@ func listStepsCmd(c *cli.Context) error {
 		fmt.Printf("%s%d: %s%s\n", marker, index, step["display_name"], status)
 	}
 
+	return nil
+}
+
+// setupCompleteCmd signals that the debug host setup phase is complete.
+func setupCompleteCmd(c *cli.Context) error {
+	rootCtx := c
+	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+		rootCtx = parentCtx
+	}
+
+	confPath := rootCtx.String(ConfFlagName)
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
+	}
+
+	if conf.SetupSecret == "" {
+		return errors.New("no setup secret found in configuration; setup may have already completed")
+	}
+	if conf.SpawnHostID == "" {
+		return errors.New("no spawn host ID found in configuration")
+	}
+
+	serverURL := conf.getApiServerHost(true)
+	endpoint := fmt.Sprintf("%s/rest/v2/hosts/%s/debug/setup_complete", serverURL, conf.SpawnHostID)
+
+	req, err := http.NewRequest(http.MethodPost, endpoint, nil)
+	if err != nil {
+		return errors.Wrap(err, "creating setup-complete request")
+	}
+	req.Header.Set("Debug-Setup-Secret", conf.SetupSecret)
+	req.Header.Set("Host-Id", conf.SpawnHostID)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "sending setup-complete request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyData, _ := io.ReadAll(resp.Body)
+		return errors.Errorf("setup-complete request failed with status %d: %s", resp.StatusCode, string(bodyData))
+	}
+
+	// Remove setup_secret from local config so future daemon starts trigger OAuth.
+	conf.SetupSecret = ""
+	if err := conf.Write(confPath); err != nil {
+		grip.Warning(errors.Wrap(err, "removing setup secret from local config"))
+	}
+
+	grip.Info("Debug host setup phase completed successfully.")
 	return nil
 }
 

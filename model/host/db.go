@@ -104,6 +104,7 @@ var (
 	SleepScheduleKey                       = bsonutil.MustHaveTag(Host{}, "SleepSchedule")
 	IsDebugKey                             = bsonutil.MustHaveTag(Host{}, "IsDebug")
 	ProvisionOptionsTaskIdKey              = bsonutil.MustHaveTag(ProvisionOptions{}, "TaskId")
+	ProvisionOptionsSetupSecretKey         = bsonutil.MustHaveTag(ProvisionOptions{}, "SetupSecret")
 	SpawnOptionsTaskIDKey                  = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsTaskExecutionNumberKey     = bsonutil.MustHaveTag(SpawnOptions{}, "TaskExecutionNumber")
 	SpawnOptionsBuildIDKey                 = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
