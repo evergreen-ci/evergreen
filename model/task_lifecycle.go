@@ -792,19 +792,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		span.SetAttributes(costAttrs...)
 	}
 
-	if !t.S3Usage.IsZero() {
-		s3Attrs := []attribute.KeyValue{
-			attribute.Int(evergreen.S3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
-			attribute.Int64(evergreen.S3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
-			attribute.Int(evergreen.S3ArtifactFileCountOtelAttribute, t.S3Usage.Artifacts.FileCount),
-			attribute.Float64(evergreen.S3ArtifactPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
-			attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
-			attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
-		}
-		ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
-		span.SetAttributes(s3Attrs...)
-	}
-
 	// If the error is from marking the task as finished, we want to
 	// return early as every functionality depends on this succeeding.
 	if err != nil {

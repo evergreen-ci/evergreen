@@ -822,6 +822,19 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
+
+	_, span := tracer.Start(ctx, "s3-usage-cost-summary")
+	span.SetAttributes(
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
+		attribute.Int(evergreen.S3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
+		attribute.Int64(evergreen.S3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
+		attribute.Int(evergreen.S3ArtifactFileCountOtelAttribute, t.S3Usage.Artifacts.FileCount),
+		attribute.Float64(evergreen.S3ArtifactPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
+		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
+		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
+	)
+	span.End()
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
