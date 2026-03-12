@@ -365,6 +365,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 	senderOpts := task.EvergreenSenderOptions{
 		LevelInfo:     levelInfo,
 		FlushInterval: time.Minute,
+		S3Usage:       config.S3Usage,
 	}
 	sender, err = task.NewTaskLogSender(ctx, tsk, senderOpts, logType)
 	if err != nil {

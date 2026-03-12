@@ -59,7 +59,7 @@ func NewTestLogSender(ctx context.Context, task Task, senderOpts EvergreenSender
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
-	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
+	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) (int64, error) {
 		return svc.Append(ctx, getLogNames(task, []string{logPath}, output.TestLogs.ID())[0], sequence, lines)
 	}
 

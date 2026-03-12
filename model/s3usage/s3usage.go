@@ -11,9 +11,7 @@ import (
 // S3Usage tracks S3 API usage for cost calculation.
 type S3Usage struct {
 	UserFiles UserFilesMetrics `bson:"user_files,omitempty" json:"user_files,omitempty"`
-	// NumPutRequests tracks log upload requests (maintained for backward compatibility).
-	// Will be migrated to nested structure in as part of DEVPROD-25593.
-	NumPutRequests int `bson:"num_put_requests,omitempty" json:"num_put_requests,omitempty"`
+	LogChunks LogChunkMetrics  `bson:"log_chunks,omitempty" json:"log_chunks,omitempty"`
 }
 
 // UserFilesMetrics tracks artifact upload metrics.
@@ -21,6 +19,12 @@ type UserFilesMetrics struct {
 	PutRequests int   `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
 	UploadBytes int64 `bson:"upload_bytes,omitempty" json:"upload_bytes,omitempty"`
 	FileCount   int   `bson:"file_count,omitempty" json:"file_count,omitempty"`
+}
+
+// LogChunkMetrics tracks log chunk upload metrics.
+type LogChunkMetrics struct {
+	PutRequests int   `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
+	UploadBytes int64 `bson:"upload_bytes,omitempty" json:"upload_bytes,omitempty"`
 }
 
 // FileMetrics contains metrics for a single uploaded file.
@@ -160,10 +164,10 @@ func (s *S3Usage) IncrementUserFiles(putRequests int, uploadBytes int64, fileCou
 	s.UserFiles.FileCount += fileCount
 }
 
-// IncrementPutRequests increments the total PUT request count.
-// Used for log upload tracking. Maintained for backward compatibility.
-func (s *S3Usage) IncrementPutRequests(count int) {
-	s.NumPutRequests += count
+// IncrementLogChunks increments the log chunk upload metrics.
+func (s *S3Usage) IncrementLogChunks(putRequests int, uploadBytes int64) {
+	s.LogChunks.PutRequests += putRequests
+	s.LogChunks.UploadBytes += uploadBytes
 }
 
 // IsZero implements bsoncodec.Zeroer for BSON marshalling.
@@ -172,5 +176,5 @@ func (s *S3Usage) IsZero() bool {
 		return true
 	}
 	return s.UserFiles.PutRequests == 0 && s.UserFiles.UploadBytes == 0 && s.UserFiles.FileCount == 0 &&
-		s.NumPutRequests == 0
+		s.LogChunks.PutRequests == 0 && s.LogChunks.UploadBytes == 0
 }
