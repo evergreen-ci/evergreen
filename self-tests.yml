@@ -824,40 +824,6 @@ tasks:
 #            Buildvariants            #
 #######################################
 buildvariants:
-  - name: ubuntu2204
-    display_name: Ubuntu 22.04
-    paths:
-      - "*.go"
-      - "*.json"
-      - "*.yml"
-      - "*.yaml"
-      - "*.graphql"
-      - "*.txt"
-      - "*.sh"
-      - "*.diff"
-      - "*.patch"
-      - "go.mod"
-      - "go.sum"
-    run_on:
-      - ubuntu2204-small
-      - ubuntu2204-large
-    expansions:
-      goos: linux
-      goarch: amd64
-      nodebin: /opt/node/bin
-      GOROOT: /opt/golang/go1.24
-      RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
-      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
-    tasks:
-      - name: ".smoke"
-      - name: ".test"
-      - name: ".linter"
-      - name: test-cloud
-      - name: generate-api-docs
-      - name: generate-graphql-merged-schema
-
   - name: race-detector
     display_name: Race Detector
     run_on:
