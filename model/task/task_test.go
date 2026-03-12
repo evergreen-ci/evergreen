@@ -4999,6 +4999,66 @@ func TestUpdateTaskCost(t *testing.T) {
 	})
 }
 
+func TestSaveS3Usage(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("PersistsS3Usage", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		tk := Task{Id: "t1"}
+		require.NoError(t, tk.Insert(ctx))
+
+		tk.S3Usage = s3usage.S3Usage{
+			UserFiles: s3usage.UserFilesMetrics{
+				PutRequests: 50,
+				UploadBytes: 1024 * 1024,
+				FileCount:   3,
+			},
+		}
+		require.NoError(t, tk.SaveS3Usage(ctx))
+
+		dbTask, err := FindOneId(ctx, "t1")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Equal(t, 50, dbTask.S3Usage.UserFiles.PutRequests)
+		assert.Equal(t, int64(1024*1024), dbTask.S3Usage.UserFiles.UploadBytes)
+		assert.Equal(t, 3, dbTask.S3Usage.UserFiles.FileCount)
+	})
+
+	t.Run("CalculatesCostFromUsage", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		tk := Task{Id: "t2"}
+		require.NoError(t, tk.Insert(ctx))
+
+		tk.S3Usage = s3usage.S3Usage{
+			UserFiles: s3usage.UserFilesMetrics{
+				PutRequests: 1000,
+				UploadBytes: 5 * 1024 * 1024,
+				FileCount:   10,
+			},
+		}
+		require.NoError(t, tk.SaveS3Usage(ctx))
+
+		dbTask, err := FindOneId(ctx, "t2")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Equal(t, 1000, dbTask.S3Usage.UserFiles.PutRequests)
+		assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
+	})
+
+	t.Run("ZeroUsagePersistsWithoutCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		tk := Task{Id: "t3"}
+		require.NoError(t, tk.Insert(ctx))
+
+		require.NoError(t, tk.SaveS3Usage(ctx))
+
+		dbTask, err := FindOneId(ctx, "t3")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.IsZero())
+	})
+}
+
 func TestHasValidDistro(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))

@@ -1067,6 +1067,9 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			cancel()
 			grip.Error(tc.logger.Close())
 		}
+		// Report S3 usage after the final flush so all log chunks and artifacts
+		// (including those from teardown group commands) are captured.
+		grip.Error(errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
 	}()
 	defer a.clearGlobalFiles(tc)
 
@@ -1410,9 +1413,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
-	}
-	if !tc.s3Usage.IsZero() {
-		detail.S3Usage = &tc.s3Usage
 	}
 	return detail
 }

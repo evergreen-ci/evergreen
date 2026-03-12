@@ -461,7 +461,7 @@ func (r *taskResolver) Generator(ctx context.Context, obj *restModel.APITask) (*
 	if obj.GeneratedBy == "" {
 		return nil, nil
 	}
-	generator, err := task.FindOneId(ctx, obj.GeneratedBy)
+	generator, err := task.FindOneIdWithoutGeneratedJSON(ctx, obj.GeneratedBy)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
