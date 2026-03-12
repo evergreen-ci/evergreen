@@ -245,7 +245,7 @@ func (s *evergreenSender) flush(ctx context.Context) error {
 	}
 
 	if s.opts.S3Usage != nil && uploadBytes > 0 {
-		s.opts.S3Usage.IncrementLogChunks(1, uploadBytes)
+		s.opts.S3Usage.IncrementLogs(1, uploadBytes)
 	}
 
 	s.buffer = []log.LogLine{}

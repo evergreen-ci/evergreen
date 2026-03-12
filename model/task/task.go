@@ -4123,14 +4123,14 @@ func (t *Task) SaveS3Usage(ctx context.Context) error {
 
 // calculateS3ArtifactCost sets the S3 artifact PUT cost on TaskCost based on the task's S3 usage.
 func (t *Task) calculateS3ArtifactCost(ctx context.Context) {
-	if t.S3Usage.UserFiles.PutRequests <= 0 {
+	if t.S3Usage.Artifacts.PutRequests <= 0 {
 		return
 	}
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
 		costConfig = nil
 	}
-	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
+	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
 }
 
 type CostPredictionResult struct {

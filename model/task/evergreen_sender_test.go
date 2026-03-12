@@ -257,16 +257,16 @@ func TestFlush(t *testing.T) {
 		require.NotEmpty(t, mock.sender.buffer)
 
 		require.NoError(t, mock.sender.Flush(ctx))
-		assert.Equal(t, 1, usage.LogChunks.PutRequests)
-		assert.Equal(t, int64(len("some log data")), usage.LogChunks.UploadBytes)
+		assert.Equal(t, 1, usage.Logs.PutRequests)
+		assert.Equal(t, int64(len("some log data")), usage.Logs.UploadBytes)
 
 		m = message.ConvertToComposer(level.Info, "more data")
 		mock.sender.Send(m)
 		require.NotEmpty(t, mock.sender.buffer)
 
 		require.NoError(t, mock.sender.Flush(ctx))
-		assert.Equal(t, 2, usage.LogChunks.PutRequests)
-		assert.Equal(t, int64(len("some log data")+len("more data")), usage.LogChunks.UploadBytes)
+		assert.Equal(t, 2, usage.Logs.PutRequests)
+		assert.Equal(t, int64(len("some log data")+len("more data")), usage.Logs.UploadBytes)
 	})
 	t.Run("SkipsS3UsageWhenNil", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)

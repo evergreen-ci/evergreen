@@ -794,12 +794,12 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	if !t.S3Usage.IsZero() {
 		s3Attrs := []attribute.KeyValue{
-			attribute.Int(evergreen.S3PutCostTotalPutRequestsOtelAttribute, t.S3Usage.UserFiles.PutRequests),
-			attribute.Int64(evergreen.S3PutCostTotalUploadBytesOtelAttribute, t.S3Usage.UserFiles.UploadBytes),
-			attribute.Int(evergreen.S3PutCostTotalFileCountOtelAttribute, t.S3Usage.UserFiles.FileCount),
+			attribute.Int(evergreen.S3PutCostTotalPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
+			attribute.Int64(evergreen.S3PutCostTotalUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
+			attribute.Int(evergreen.S3PutCostTotalFileCountOtelAttribute, t.S3Usage.Artifacts.FileCount),
 			attribute.Float64(evergreen.S3PutCostTotalPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
-			attribute.Int(evergreen.TaskS3LogUploadPutRequestsOtelAttribute, t.S3Usage.LogChunks.PutRequests),
-			attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.LogChunks.UploadBytes),
+			attribute.Int(evergreen.TaskS3LogUploadPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
 		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
 		span.SetAttributes(s3Attrs...)

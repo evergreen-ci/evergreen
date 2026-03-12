@@ -128,7 +128,7 @@ func AppendTaskLogs(ctx context.Context, task *Task, logType TaskLogType, lines 
 	}
 
 	if uploadBytes > 0 {
-		task.S3Usage.IncrementLogChunks(1, uploadBytes)
+		task.S3Usage.IncrementLogs(1, uploadBytes)
 	}
 
 	return nil
