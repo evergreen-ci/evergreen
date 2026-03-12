@@ -216,17 +216,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 
 	steps := []map[string]interface{}{}
 	for i, cmd := range state.CommandList {
-		executed := false
-		success := false
-
-		// Check if this step has been executed
-		for _, record := range state.ExecutionHistory {
-			if record.StepIndex == i {
-				executed = true
-				success = record.Success
-				break
-			}
-		}
+		executed, success := state.GetStepExecution(i)
 
 		steps = append(steps, map[string]interface{}{
 			"index":         i,
@@ -262,8 +252,8 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	d.withStreaming(w, func(ctx context.Context) {
-		_ = d.executor.RunUntil(ctx, index)
+	d.withStreaming(r.Context(), w, func(ctx context.Context) error {
+		return d.executor.RunUntil(ctx, index)
 	})
 }
 
@@ -277,12 +267,12 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d.withStreaming(w, func(ctx context.Context) {
-		_ = d.executor.RunAll(ctx)
+	d.withStreaming(r.Context(), w, func(ctx context.Context) error {
+		return d.executor.RunAll(ctx)
 	})
 }
 
-func (d *localDaemonREST) withStreaming(w http.ResponseWriter, fn func(ctx context.Context)) {
+func (d *localDaemonREST) withStreaming(ctx context.Context, w http.ResponseWriter, fn func(ctx context.Context) error) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
@@ -301,8 +291,9 @@ func (d *localDaemonREST) withStreaming(w http.ResponseWriter, fn func(ctx conte
 	w.Header().Set("Content-Type", ndjsonContentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
-	ctx := context.Background()
-	fn(ctx)
+	if err := fn(ctx); err != nil {
+		grip.Error(errors.Wrap(err, "executing streamed operation"))
+	}
 
 	d.executor.ClearStreamWriter()
 	d.executor.CloseLogManager()
@@ -354,8 +345,8 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	d.withStreaming(w, func(ctx context.Context) {
-		_ = d.executor.StepNext(ctx)
+	d.withStreaming(r.Context(), w, func(ctx context.Context) error {
+		return d.executor.StepNext(ctx)
 	})
 }
 

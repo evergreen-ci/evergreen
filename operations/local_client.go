@@ -24,6 +24,10 @@ const (
 	daemonDir      = ".evergreen-local"
 	daemonPortFile = "daemon.port"
 	daemonPIDFile  = "daemon.pid"
+
+	stepFlagName  = "step"
+	setupFlagName = "setup"
+	tailFlagName  = "tail"
 )
 
 // getDaemonDir returns the full path to the daemon directory
@@ -154,16 +158,16 @@ func Debug() cli.Command {
 				Usage: "View debug session logs",
 				Flags: []cli.Flag{
 					cli.IntFlag{
-						Name:  "step",
+						Name:  stepFlagName,
 						Usage: "Show logs from a specific step only",
 						Value: -1,
 					},
 					cli.BoolFlag{
-						Name:  "setup",
+						Name:  setupFlagName,
 						Usage: "Show setup phase logs instead of session logs",
 					},
 					cli.IntFlag{
-						Name:  "tail",
+						Name:  tailFlagName,
 						Usage: "Show only the last N lines",
 					},
 				},
@@ -330,27 +334,26 @@ type daemonStatusResponse struct {
 func daemonStatusCmd(c *cli.Context) error {
 	url, err := getDaemonURL()
 	if err != nil {
-		fmt.Println("Daemon is not running")
+		grip.Info("Daemon is not running")
 		return nil
 	}
 
 	resp, err := http.Get(url + "/status")
 	if err != nil {
-		fmt.Println("Daemon is running but not responding to status check")
+		grip.Info("Daemon is running but not responding to status check")
 		return nil
 	}
 	defer resp.Body.Close()
 
 	var status daemonStatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		fmt.Println("Daemon is running")
-		return nil
+		return errors.Wrap(err, "decoding daemon status response")
 	}
 
-	fmt.Println("Daemon is running")
+	grip.Info("Daemon is running")
 
 	if status.TaskSelected {
-		fmt.Printf("Task: %s (step %d/%d)\n", status.SelectedTask, status.CurrentStep, status.TotalSteps)
+		grip.Infof("Task: %s (step %d/%d)", status.SelectedTask, status.CurrentStep, status.TotalSteps)
 	}
 
 	return nil
@@ -599,7 +602,7 @@ func postAndStreamResponse(url string, body interface{}) error {
 		return errors.Wrap(err, "reading streaming response")
 	}
 
-	if result != nil && !result.Success && result.Error != "" {
+	if !result.Success && result.Error != "" {
 		return errors.New(result.Error)
 	}
 
@@ -608,9 +611,9 @@ func postAndStreamResponse(url string, body interface{}) error {
 
 // viewLogsCmd displays debug session logs from local log files.
 func viewLogsCmd(c *cli.Context) error {
-	isSetup := c.Bool("setup")
-	stepFilter := c.Int("step")
-	tail := c.Int("tail")
+	isSetup := c.Bool(setupFlagName)
+	stepFilter := c.Int(stepFlagName)
+	tail := c.Int(tailFlagName)
 
 	lines, err := taskexec.ReadAllLogs(isSetup)
 	if err != nil {
@@ -626,7 +629,7 @@ func viewLogsCmd(c *cli.Context) error {
 	}
 
 	if len(lines) == 0 {
-		fmt.Println("No logs found.")
+		grip.Info("No logs found.")
 		return nil
 	}
 

@@ -21,10 +21,20 @@ type DebugState struct {
 
 // executionRecord tracks the execution of a single command
 type executionRecord struct {
-	StepIndex  int
-	Success    bool
-	DurationMs int64
-	Error      string
+	stepIndex  int
+	success    bool
+	durationMs int64
+	errMsg     string
+}
+
+// GetStepExecution returns whether a step has been executed and if it succeeded.
+func (ds *DebugState) GetStepExecution(index int) (executed, success bool) {
+	for _, record := range ds.ExecutionHistory {
+		if record.stepIndex == index {
+			return true, record.success
+		}
+	}
+	return false, false
 }
 
 // CommandInfo represents a single command in the linear execution order.

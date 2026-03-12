@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
+	"github.com/pkg/errors"
 )
 
 // streamResponseResult holds the final status from processing a stream.
@@ -18,7 +19,8 @@ type streamResponseResult struct {
 
 // readAndRenderStream reads an NDJSON response body and prints each line to out.
 // It returns the final result from the "done" message(s). For multi-step execution,
-// only the last done message determines overall success.
+// only the last done message determines overall success because execution stops
+// on the first failure, so the last "done" message reflects the final state.
 func readAndRenderStream(body io.Reader, out io.Writer) (*streamResponseResult, error) {
 	scanner := bufio.NewScanner(body)
 	// Allow large lines (e.g. long command output).
@@ -54,6 +56,10 @@ func readAndRenderStream(body io.Reader, out io.Writer) (*streamResponseResult, 
 
 	if err := scanner.Err(); err != nil {
 		return lastResult, err
+	}
+
+	if lastResult == nil {
+		return nil, errors.New("stream ended without a done message")
 	}
 
 	return lastResult, nil

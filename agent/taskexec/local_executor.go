@@ -22,19 +22,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var noOpCommands = map[string]bool{
-	evergreen.HostCreateCommandName:         true,
-	"host.list":                             true,
-	"generate.tasks":                        true,
-	"downstream_expansions.set":             true,
-	evergreen.AttachXUnitResultsCommandName: true,
-	evergreen.AttachResultsCommandName:      true,
-	evergreen.AttachArtifactsCommandName:    true,
-	"papertrail.trace":                      true,
-	"keyval.inc":                            true,
-	"perf.send":                             true,
-	"s3.put":                                true,
-	"s3Copy.copy":                           true,
+var noOpCommands = map[string]string{
+	evergreen.HostCreateCommandName:         "dynamic host creation is not supported in local execution",
+	"host.list":                             "host listing is not supported in local execution",
+	"generate.tasks":                        "dynamic task generation is not supported in local execution",
+	"downstream_expansions.set":             "downstream expansions are not available in local execution",
+	evergreen.AttachXUnitResultsCommandName: "test result attachment is not supported in local execution",
+	evergreen.AttachResultsCommandName:      "result attachment is not supported in local execution",
+	evergreen.AttachArtifactsCommandName:    "artifact attachment is not supported in local execution",
+	"papertrail.trace":                      "papertrail tracing is not available in local execution",
+	"keyval.inc":                            "key-value increment operations are not supported in local execution",
+	"perf.send":                             "performance metrics submission is not supported in local execution",
+	"s3.put":                                "S3 upload operations are not supported in local execution",
+	"s3Copy.copy":                           "S3 copy operations are not supported in local execution",
 }
 
 // mockSecret is required to make agent request formation validation pass but it's not used in
@@ -271,7 +271,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 	startTime := time.Now()
 
-	isNoOp := noOpCommands[targetCmd.Command.Command]
+	_, isNoOp := noOpCommands[targetCmd.Command.Command]
 	if isNoOp {
 		noOpMsg := e.getNoOpMessage(targetCmd.Command.Command)
 		if e.streamWriter != nil {
@@ -281,9 +281,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		e.debugState.CurrentStepIndex++
 		durationMs := time.Since(startTime).Milliseconds()
 		record := executionRecord{
-			StepIndex:  stepIndex,
-			Success:    true,
-			DurationMs: durationMs,
+			stepIndex:  stepIndex,
+			success:    true,
+			durationMs: durationMs,
 		}
 		e.debugState.addExecutionRecord(record)
 
@@ -379,14 +379,14 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return nil
 	}
 	record := executionRecord{
-		StepIndex: stepIndex,
-		Success:   true,
+		stepIndex: stepIndex,
+		success:   true,
 	}
 	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
-		record.Success = false
+		record.success = false
 		durationMs := time.Since(startTime).Milliseconds()
-		record.DurationMs = durationMs
-		record.Error = err.Error()
+		record.durationMs = durationMs
+		record.errMsg = err.Error()
 		e.debugState.addExecutionRecord(record)
 
 		if e.streamWriter != nil {
@@ -402,7 +402,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return errors.Errorf("failed to execute step %d", stepIndex)
 	}
 	durationMs := time.Since(startTime).Milliseconds()
-	record.DurationMs = durationMs
+	record.durationMs = durationMs
 	e.debugState.addExecutionRecord(record)
 
 	if e.streamWriter != nil {
@@ -416,7 +416,10 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 }
 
 func (e *LocalExecutor) getNoOpMessage(cmdName string) string {
-	return cmdName + ": Not supported in local execution"
+	if reason, ok := noOpCommands[cmdName]; ok {
+		return fmt.Sprintf("%s: Skipping - %s", cmdName, reason)
+	}
+	return cmdName + ": Skipping - command is not supported in local execution"
 }
 
 // RunAll executes all steps in a task
@@ -445,6 +448,9 @@ func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
 }
 
 // ClearStreamWriter removes the stream writer after execution completes.
+// It resets the logger producer back to the default local logger so that
+// commands executed outside a streaming session still have a valid
+// logger producer to write to.
 func (e *LocalExecutor) ClearStreamWriter() {
 	if e.streamWriter != nil {
 		e.streamWriter.Close()
@@ -553,30 +559,13 @@ func (e *LocalExecutor) runCommandWithTracking(
 
 // isLocalNoOpCommand checks if a command should be no-op in local execution
 func (e *LocalExecutor) isLocalNoOpCommand(cmd command.Command) bool {
-	return noOpCommands[cmd.Name()]
+	_, ok := noOpCommands[cmd.Name()]
+	return ok
 }
 
 // handleNoOpCommand logs a message for commands that are no-op in local execution
 func (e *LocalExecutor) handleNoOpCommand(cmd command.Command) {
-	messages := map[string]string{
-		evergreen.HostCreateCommandName:         "host.create: Skipping - dynamic host creation is not supported in local execution",
-		"host.list":                             "host.list: Skipping - host listing is not supported in local execution",
-		"generate.tasks":                        "generate.tasks: Skipping - dynamic task generation is not supported in local execution",
-		"downstream_expansions.set":             "downstream_expansions.set: Skipping - downstream expansions are not available in local execution",
-		evergreen.AttachXUnitResultsCommandName: "attach.xunit_results: Skipping - test result attachment is not supported in local execution",
-		evergreen.AttachResultsCommandName:      "attach.results: Skipping - result attachment is not supported in local execution",
-		evergreen.AttachArtifactsCommandName:    "attach.artifacts: Skipping - artifact attachment is not supported in local execution",
-		"papertrail.trace":                      "papertrail.trace: Skipping - papertrail tracing is not available in local execution",
-		"keyval.inc":                            "keyval.inc: Skipping - key-value increment operations are not supported in local execution",
-		"perf.send":                             "perf.send: Skipping - performance metrics submission is not supported in local execution",
-		"s3.put":                                "s3.put: Skipping - S3 upload operations are not supported in local execution",
-		"s3Copy.copy":                           "s3Copy.copy: Skipping - S3 copy operations are not supported in local execution",
-	}
-	message, ok := messages[cmd.Name()]
-	if !ok {
-		message = cmd.Name() + ": Skipping - command is not supported in local execution"
-	}
-	e.logger.Infof(message)
+	e.logger.Infof(e.getNoOpMessage(cmd.Name()))
 }
 
 // PrepareTask prepares a task for execution by creating command blocks
