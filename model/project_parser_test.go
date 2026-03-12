@@ -292,7 +292,8 @@ func TestTranslateTasks(t *testing.T) {
 	parserProject := &ParserProject{
 		BuildVariants: []parserBV{
 			{
-				Name: "bv0",
+				Name:            "bv0",
+				ExecTimeoutSecs: 50,
 				Tasks: parserBVTaskUnits{
 					{
 						Name:            "my_task",
@@ -415,7 +416,7 @@ func TestTranslateTasks(t *testing.T) {
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
 			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
-			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
+			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}, ExecTimeoutSecs: 10},
 			{Name: "a_task_with_no_special_configuration"},
 			{Name: "a_task_with_build_variant_task_configuration"},
 			{Name: "a_task_with_allowed_requesters", AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}},
@@ -441,10 +442,13 @@ func TestTranslateTasks(t *testing.T) {
 	require.Len(t, out.BuildVariants[0].Tasks, 3)
 	assert.Equal(t, "my_task", out.BuildVariants[0].Tasks[0].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[0].PatchOnly))
+	assert.Equal(t, 30, out.BuildVariants[0].Tasks[0].ExecTimeoutSecs)
 	assert.Equal(t, "your_task", out.BuildVariants[0].Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].GitTagOnly))
+	assert.Equal(t, 50, out.BuildVariants[0].Tasks[1].ExecTimeoutSecs)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].Stepback))
 	assert.Contains(t, out.BuildVariants[0].Tasks[1].RunOn, "a different distro")
+	assert.Equal(t, 20, out.BuildVariants[0].Tasks[2].ExecTimeoutSecs)
 
 	assert.Equal(t, "my_tg", out.BuildVariants[0].Tasks[2].Name)
 	bvt := out.FindTaskForVariant("my_tg", "bv0")
@@ -458,6 +462,7 @@ func TestTranslateTasks(t *testing.T) {
 
 	bvt = out.FindTaskForVariant("tg_task", "bv0")
 	assert.Equal(t, "my_tg", bvt.Name, "task within a task group retains its task group name in resulting build variant task unit")
+	assert.Equal(t, 20, bvt.ExecTimeoutSecs, "task group in build variant task list with exec_timeout_secs should take precedence over task definition's exec_timeout_secs")
 	assert.NotNil(t, bvt)
 	assert.True(t, utility.FromBoolPtr(bvt.PatchOnly))
 	assert.Contains(t, bvt.RunOn, "my_distro")
