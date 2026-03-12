@@ -217,6 +217,7 @@ func addTempDirs(env map[string]string, dir string) {
 func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *internal.TaskConfig, logger client.LoggerProducer) *jasper.Command {
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{execPath}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
+		AppendTags(c.FullDisplayName()).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger)
