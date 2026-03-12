@@ -724,9 +724,9 @@ func calculateAndReportFilePutCosts(ctx context.Context, taskID string, files []
 	_, span := tracer.Start(ctx, "s3-put-command-cost")
 	span.SetAttributes(
 		attribute.String(evergreen.TaskIDOtelAttribute, taskID),
-		attribute.Float64(evergreen.S3PutCostAvgFilePutCostOtelAttribute, avgCost),
-		attribute.Float64(evergreen.S3PutCostMaxFilePutCostOtelAttribute, maxCost),
-		attribute.Float64(evergreen.S3PutCostMinFilePutCostOtelAttribute, minCost),
+		attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, avgCost),
+		attribute.Float64(evergreen.S3ArtifactMaxFilePutCostOtelAttribute, maxCost),
+		attribute.Float64(evergreen.S3ArtifactMinFilePutCostOtelAttribute, minCost),
 	)
 	span.End()
 }
