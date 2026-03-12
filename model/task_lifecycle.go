@@ -110,7 +110,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 		if len(tasksToUpdate) > 0 {
 			if err := task.BulkUpdateNumDependents(ctx, tasksToUpdate); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message":   "error updating Number of Dependents",
+					"message":   "error updating number of dependents",
 					"num_tasks": len(tasksToUpdate),
 				}))
 			}
