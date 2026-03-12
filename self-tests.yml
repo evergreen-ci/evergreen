@@ -915,22 +915,6 @@ buildvariants:
     tasks:
       - name: generate-lint
 
-  - name: windows
-    display_name: Windows
-    run_on:
-      - windows-vsCurrent-small
-      - windows-vsCurrent-large
-    expansions:
-      GOROOT: C:/golang/go1.24
-      RUN_EC2_SPECIFIC_TESTS: true
-      mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.0.zip
-      mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-win32-x64.zip
-      extension: ".exe"
-      archiveExt: ".zip"
-    tasks:
-      - name: ".agent .test"
-      - name: ".cli .test"
-
   - name: ubuntu2204-arm64
     display_name: Ubuntu 22.04 ARM
     batchtime: 2880
