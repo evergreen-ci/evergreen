@@ -336,6 +336,11 @@ type ProvisionOptions struct {
 	// format (e.g., "5" or "5.1" for function sub-commands). Currently only
 	// the command number is used; the sub-command portion is ignored.
 	SetupStepNumber string `bson:"setup_step_number,omitempty" json:"setup_step_number,omitempty"`
+
+	// SetupSecret is a temporary secret generated for debug spawn hosts that
+	// have a setup phase. It allows the debug daemon to authenticate API
+	// requests without browser-based OAuth. It is cleared after setup completes.
+	SetupSecret string `bson:"setup_secret,omitempty" json:"setup_secret,omitempty"`
 }
 
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
@@ -1155,6 +1160,17 @@ func (h *Host) CreateSecret(ctx context.Context, clear bool) error {
 		return err
 	}
 	h.Secret = secret
+	return nil
+}
+
+// ClearSetupSecret clears the temporary setup secret for a debug spawn host.
+func (h *Host) ClearSetupSecret(ctx context.Context) error {
+	key := bsonutil.GetDottedKeyName(ProvisionOptionsKey, ProvisionOptionsSetupSecretKey)
+	err := UpdateOne(ctx, bson.M{IdKey: h.Id}, bson.M{"$set": bson.M{key: ""}})
+	if err != nil {
+		return err
+	}
+	h.ProvisionOptions.SetupSecret = ""
 	return nil
 }
 

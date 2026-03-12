@@ -1151,6 +1151,7 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		SpawnHostID   string `yaml:"spawn_host_id,omitempty"`
 		TaskID        string `yaml:"task_id,omitempty"`
 		ProjectID     string `yaml:"project_id,omitempty"`
+		SetupSecret   string `yaml:"setup_secret,omitempty"`
 		OAuth         struct {
 			Issuer          string `yaml:"issuer"`
 			ClientID        string `yaml:"client_id"`
@@ -1197,6 +1198,10 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		// We always set the 'user' field since it helps scripts identify
 		// which user is associated with the host.
 		conf.APIKey = owner.APIKey
+	}
+
+	if h.IsDebug && h.ProvisionOptions != nil && h.ProvisionOptions.SetupSecret != "" {
+		conf.SetupSecret = h.ProvisionOptions.SetupSecret
 	}
 
 	return yaml.Marshal(conf)

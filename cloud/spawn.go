@@ -167,6 +167,9 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 			return nil, errors.Wrap(err, "generating debug setup script")
 		}
 		so.ProvisionOptions.SetupScript = appendSetupScript(so.ProvisionOptions.SetupScript, debugScript)
+		if so.ProvisionOptions.SetupStepNumber != "" {
+			so.ProvisionOptions.SetupSecret = utility.RandomString()
+		}
 	}
 
 	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(ctx, *d, settings, so.Region, so.HomeVolumeID)
@@ -322,6 +325,7 @@ evergreen debug run-until %s
 
 if [ $? -eq 0 ]; then
   echo "Debug setup script completed successfully (ran until step %s)."
+  evergreen debug setup-complete
 else
   echo "ERROR: Debug setup script failed during execution."
 fi

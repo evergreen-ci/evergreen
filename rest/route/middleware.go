@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -729,5 +730,38 @@ func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 			return
 		}
 	}
+	if r.Header.Get(evergreen.DebugSetupSecretHeader) != "" {
+		if modifiedReq := validateDebugSetupSecret(r); modifiedReq != nil {
+			next(rw, modifiedReq)
+			return
+		}
+	}
 	NewTaskAuthMiddleware().ServeHTTP(rw, r, next)
+}
+
+func validateDebugSetupSecret(r *http.Request) *http.Request {
+	ctx := r.Context()
+	secret := r.Header.Get(evergreen.DebugSetupSecretHeader)
+	hostID := r.Header.Get(evergreen.HostHeader)
+	if secret == "" || hostID == "" {
+		return nil
+	}
+
+	h, err := host.FindOneId(ctx, hostID)
+	if err != nil || h == nil {
+		return nil
+	}
+	if !h.IsDebug || h.ProvisionOptions == nil || h.ProvisionOptions.SetupSecret == "" {
+		return nil
+	}
+	if subtle.ConstantTimeCompare([]byte(secret), []byte(h.ProvisionOptions.SetupSecret)) != 1 {
+		return nil
+	}
+
+	owner, err := user.FindOneById(ctx, h.StartedBy)
+	if err != nil || owner == nil {
+		return nil
+	}
+
+	return r.WithContext(gimlet.AttachUser(ctx, owner))
 }

@@ -85,6 +85,7 @@ type LocalExecutorOptions struct {
 	TaskID      string
 	OAuthToken  string
 	SpawnHostID string
+	SetupSecret string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -99,7 +100,12 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		expansions.Put(k, v)
 	}
 
-	comm := client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken, opts.SpawnHostID)
+	var comm client.Communicator
+	if opts.SetupSecret != "" {
+		comm = client.NewDebugSetupCommunicator(opts.ServerURL, opts.SetupSecret, opts.SpawnHostID)
+	} else {
+		comm = client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken, opts.SpawnHostID)
+	}
 	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{

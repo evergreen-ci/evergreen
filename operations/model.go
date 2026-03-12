@@ -148,7 +148,8 @@ type ClientSettings struct {
 	ProjectsForDirectory       map[string]string           `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
 	LastRevisionCriteriaGroups []lastRevisionCriteriaGroup `json:"last_revision_criteria_groups,omitempty" yaml:"last_revision_criteria_groups,omitempty"`
 
-	OAuth OAuth `json:"oauth,omitempty" yaml:"oauth,omitempty"`
+	OAuth       OAuth  `json:"oauth,omitempty" yaml:"oauth,omitempty"`
+	SetupSecret string `json:"setup_secret,omitempty" yaml:"setup_secret,omitempty"`
 
 	// StagingEnvironment configures which staging environment to point to.
 	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`

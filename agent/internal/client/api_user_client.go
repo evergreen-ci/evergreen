@@ -12,6 +12,21 @@ type debugCommunicator struct {
 	baseCommunicator
 }
 
+// NewDebugSetupCommunicator initializes a communicator that uses a temporary
+// setup secret for authentication during the debug host setup phase.
+func NewDebugSetupCommunicator(serverURL, setupSecret, spawnHostID string) Communicator {
+	c := &debugCommunicator{
+		baseCommunicator: newBaseCommunicator(serverURL, map[string]string{
+			evergreen.DebugSetupSecretHeader: setupSecret,
+			evergreen.HostHeader:             spawnHostID,
+		}),
+	}
+
+	c.resetClient()
+
+	return c
+}
+
 // NewDebugCommunicator initializes a communicator that will be used for basic agent routes required
 // for executing tasks in debug mode. It uses an OAuth token for authentication.
 func NewDebugCommunicator(serverURL, oauthToken, spawnHostID string) Communicator {
