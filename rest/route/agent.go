@@ -778,6 +778,53 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 	}
 }
 
+// POST /rest/v2/task/{task_id}/s3_usage
+type reportS3UsageHandler struct {
+	taskID  string
+	s3Usage s3usage.S3Usage
+}
+
+func makeReportS3Usage() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Factory() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.s3Usage); err != nil {
+		return errors.Wrapf(err, "reading S3 usage for task '%s'", h.taskID)
+	}
+	return nil
+}
+
+func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	t.S3Usage = h.s3Usage
+	if err := t.SaveS3Usage(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "saving S3 usage",
+			"task_id": h.taskID,
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
+	}
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
 // POST /rest/v2/task/{task_id}/set_results_info
 type setTaskResultsInfoHandler struct {
 	taskID string

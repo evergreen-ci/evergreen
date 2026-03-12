@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -599,10 +598,6 @@ func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.rm = makeHostChangePassword(s.env)
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-
-	keyFile, err := os.CreateTemp(s.T().TempDir(), "")
-	s.Require().NoError(err)
-	s.env.(*mock.Environment).EvergreenSettings.KanopySSHKeyPath = keyFile.Name()
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TearDownTest() {

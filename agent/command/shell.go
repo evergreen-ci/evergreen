@@ -164,6 +164,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	cmd := c.JasperManager().CreateCommand(ctx).
 		Background(c.Background).Directory(c.WorkingDir).Environment(c.Env).Append(c.Shell).
+		AppendTags(c.FullDisplayName()).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			if c.ExecuteAsString {

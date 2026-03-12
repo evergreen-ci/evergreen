@@ -16,24 +16,25 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
-var noOpCommands = map[string]bool{
-	evergreen.HostCreateCommandName:         true,
-	"host.list":                             true,
-	"generate.tasks":                        true,
-	"downstream_expansions.set":             true,
-	evergreen.AttachXUnitResultsCommandName: true,
-	evergreen.AttachResultsCommandName:      true,
-	evergreen.AttachArtifactsCommandName:    true,
-	"papertrail.trace":                      true,
-	"keyval.inc":                            true,
-	"perf.send":                             true,
-	"s3.put":                                true,
-	"s3Copy.copy":                           true,
+var noOpCommands = map[string]string{
+	evergreen.HostCreateCommandName:         "dynamic host creation is not supported in local execution",
+	"host.list":                             "host listing is not supported in local execution",
+	"generate.tasks":                        "dynamic task generation is not supported in local execution",
+	"downstream_expansions.set":             "downstream expansions are not available in local execution",
+	evergreen.AttachXUnitResultsCommandName: "test result attachment is not supported in local execution",
+	evergreen.AttachResultsCommandName:      "result attachment is not supported in local execution",
+	evergreen.AttachArtifactsCommandName:    "artifact attachment is not supported in local execution",
+	"papertrail.trace":                      "papertrail tracing is not available in local execution",
+	"keyval.inc":                            "key-value increment operations are not supported in local execution",
+	"perf.send":                             "performance metrics submission is not supported in local execution",
+	"s3.put":                                "S3 upload operations are not supported in local execution",
+	"s3Copy.copy":                           "S3 copy operations are not supported in local execution",
 }
 
 // mockSecret is required to make agent request formation validation pass but it's not used in
@@ -63,18 +64,21 @@ type executorBlock struct {
 
 // LocalExecutor implements task execution for local YAML files
 type LocalExecutor struct {
-	project        *model.Project
-	parserProject  *model.ParserProject
-	workDir        string
-	expansions     *util.Expansions
-	logger         grip.Journaler
-	debugState     *DebugState
-	commandBlocks  []executorBlock
-	communicator   client.Communicator
-	loggerProducer client.LoggerProducer
-	taskConfig     *internal.TaskConfig
-	jasperManager  jasper.Manager
-	opts           LocalExecutorOptions
+	project           *model.Project
+	parserProject     *model.ParserProject
+	workDir           string
+	expansions        *util.Expansions
+	logger            grip.Journaler
+	debugState        *DebugState
+	commandBlocks     []executorBlock
+	communicator      client.Communicator
+	loggerProducer    client.LoggerProducer
+	taskConfig        *internal.TaskConfig
+	jasperManager     jasper.Manager
+	opts              LocalExecutorOptions
+	streamWriter      *streamWriter
+	logManager        *logManager
+	streamingProducer *streamingLoggerProducer
 }
 
 // LocalExecutorOptions contains configuration for the local executor
@@ -253,11 +257,63 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return errors.New("no more steps to execute")
 	}
 
-	targetCmd := e.debugState.CommandList[e.debugState.CurrentStepIndex]
+	stepIndex := e.debugState.CurrentStepIndex
+	targetCmd := e.debugState.CommandList[stepIndex]
 	targetBlockIdx := targetCmd.BlockIndex
 
 	if targetBlockIdx >= len(e.commandBlocks) {
 		return errors.Errorf("invalid block index %d", targetBlockIdx)
+	}
+
+	if e.streamWriter != nil {
+		e.streamWriter.SetStep(stepIndex)
+	}
+
+	startTime := time.Now()
+
+	_, isNoOp := noOpCommands[targetCmd.Command.Command]
+	if isNoOp {
+		noOpMsg := e.getNoOpMessage(targetCmd.Command.Command)
+		if e.streamWriter != nil {
+			e.streamWriter.WriteChannelMessage(ExecChannel, noOpMsg)
+		}
+		e.logger.Infof(noOpMsg)
+		e.debugState.CurrentStepIndex++
+		durationMs := time.Since(startTime).Milliseconds()
+		record := executionRecord{
+			stepIndex:  stepIndex,
+			success:    true,
+			durationMs: durationMs,
+		}
+		e.debugState.addExecutionRecord(record)
+
+		if e.streamWriter != nil {
+			nextStep := e.debugState.CurrentStepIndex
+			e.streamWriter.WriteDone(true, durationMs, nextStep, "")
+		}
+
+		if e.logManager != nil {
+			lf := e.logManager.LogFile()
+			lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
+			lf.WriteLogLine(stepIndex, noOpMsg)
+			lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
+		}
+		return nil
+	}
+
+	if e.logManager != nil {
+		lf := e.logManager.LogFile()
+		lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
+	}
+
+	if e.streamWriter != nil {
+		blockLabel := string(targetCmd.BlockType)
+		if blockLabel == "" {
+			blockLabel = "main"
+		}
+		msg := fmt.Sprintf("Running '%s' (step %d of %d, block: %s)",
+			targetCmd.DisplayName, stepIndex, len(e.debugState.CommandList), blockLabel)
+		e.streamWriter.WriteChannelMessage(ExecChannel, msg)
 	}
 
 	// Only process the specific block (i.e. pre, main, post) containing our target command
@@ -323,19 +379,47 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return nil
 	}
 	record := executionRecord{
-		StepIndex: e.debugState.CurrentStepIndex,
-		Success:   true,
+		stepIndex: stepIndex,
+		success:   true,
 	}
 	if err := executor.RunCommandsInBlock(ctx, deps, cmdBlock); err != nil {
-		record.Success = false
+		record.success = false
+		durationMs := time.Since(startTime).Milliseconds()
+		record.durationMs = durationMs
+		record.errMsg = err.Error()
 		e.debugState.addExecutionRecord(record)
+
+		if e.streamWriter != nil {
+			e.streamWriter.WriteDone(false, durationMs, e.debugState.CurrentStepIndex, err.Error())
+		}
+		if e.logManager != nil {
+			lf := e.logManager.LogFile()
+			lf.WriteStepEnd(stepIndex, false, getDurationStr(startTime))
+		}
 		return err
 	}
 	if !executed {
-		return errors.Errorf("failed to execute step %d", e.debugState.CurrentStepIndex)
+		return errors.Errorf("failed to execute step %d", stepIndex)
 	}
+	durationMs := time.Since(startTime).Milliseconds()
+	record.durationMs = durationMs
 	e.debugState.addExecutionRecord(record)
+
+	if e.streamWriter != nil {
+		e.streamWriter.WriteDone(true, durationMs, e.debugState.CurrentStepIndex, "")
+	}
+	if e.logManager != nil {
+		lf := e.logManager.LogFile()
+		lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
+	}
 	return nil
+}
+
+func (e *LocalExecutor) getNoOpMessage(cmdName string) string {
+	if reason, ok := noOpCommands[cmdName]; ok {
+		return fmt.Sprintf("%s: Skipping - %s", cmdName, reason)
+	}
+	return cmdName + ": Skipping - command is not supported in local execution"
 }
 
 // RunAll executes all steps in a task
@@ -353,6 +437,71 @@ func (e *LocalExecutor) RunAll(ctx context.Context) error {
 func (e *LocalExecutor) GetDebugState() *DebugState {
 	return e.debugState
 }
+
+// SetStreamWriter sets the stream writer for streaming output during execution.
+// When set, command output is sent as NDJSON to the stream writer.
+func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
+	e.streamWriter = sw
+	producer := newStreamingLoggerProducer(sw)
+	e.streamingProducer = producer
+	e.loggerProducer = newStreamingLoggerProducerAdapter(producer)
+}
+
+// ClearStreamWriter removes the stream writer after execution completes.
+// It resets the logger producer back to the default local logger so that
+// commands executed outside a streaming session still have a valid
+// logger producer to write to.
+func (e *LocalExecutor) ClearStreamWriter() {
+	if e.streamWriter != nil {
+		e.streamWriter.Close()
+	}
+	e.streamWriter = nil
+	e.streamingProducer = nil
+	e.loggerProducer = &localLoggerProducer{logger: e.logger}
+}
+
+// SetupLogManager initializes local log file management.
+func (e *LocalExecutor) SetupLogManager(isSetupPhase bool) error {
+	lm, err := newLogManager(isSetupPhase)
+	if err != nil {
+		return err
+	}
+	e.logManager = lm
+	return nil
+}
+
+// CloseLogManager closes the log manager.
+func (e *LocalExecutor) CloseLogManager() {
+	if e.logManager != nil {
+		e.logManager.Close()
+		e.logManager = nil
+	}
+}
+
+// GetLogManager returns the log manager.
+func (e *LocalExecutor) GetLogManager() *logManager {
+	return e.logManager
+}
+
+// streamingLoggerProducerAdapter wraps streamingLoggerProducer to satisfy client.LoggerProducer.
+type streamingLoggerProducerAdapter struct {
+	producer *streamingLoggerProducer
+	logger   grip.Journaler
+}
+
+func newStreamingLoggerProducerAdapter(producer *streamingLoggerProducer) *streamingLoggerProducerAdapter {
+	return &streamingLoggerProducerAdapter{
+		producer: producer,
+		logger:   logging.MakeGrip(producer.Task()),
+	}
+}
+
+func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler       { return a.logger }
+func (a *streamingLoggerProducerAdapter) Task() grip.Journaler            { return a.logger }
+func (a *streamingLoggerProducerAdapter) System() grip.Journaler          { return a.logger }
+func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error { return nil }
+func (a *streamingLoggerProducerAdapter) Close() error                    { return a.producer.Close() }
+func (a *streamingLoggerProducerAdapter) Closed() bool                    { return a.producer.Closed() }
 
 // createBlockDeps creates BlockExecutorDeps for use with RunCommandsInBlock
 func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
@@ -410,30 +559,13 @@ func (e *LocalExecutor) runCommandWithTracking(
 
 // isLocalNoOpCommand checks if a command should be no-op in local execution
 func (e *LocalExecutor) isLocalNoOpCommand(cmd command.Command) bool {
-	return noOpCommands[cmd.Name()]
+	_, ok := noOpCommands[cmd.Name()]
+	return ok
 }
 
 // handleNoOpCommand logs a message for commands that are no-op in local execution
 func (e *LocalExecutor) handleNoOpCommand(cmd command.Command) {
-	messages := map[string]string{
-		evergreen.HostCreateCommandName:         "host.create: Skipping - dynamic host creation is not supported in local execution",
-		"host.list":                             "host.list: Skipping - host listing is not supported in local execution",
-		"generate.tasks":                        "generate.tasks: Skipping - dynamic task generation is not supported in local execution",
-		"downstream_expansions.set":             "downstream_expansions.set: Skipping - downstream expansions are not available in local execution",
-		evergreen.AttachXUnitResultsCommandName: "attach.xunit_results: Skipping - test result attachment is not supported in local execution",
-		evergreen.AttachResultsCommandName:      "attach.results: Skipping - result attachment is not supported in local execution",
-		evergreen.AttachArtifactsCommandName:    "attach.artifacts: Skipping - artifact attachment is not supported in local execution",
-		"papertrail.trace":                      "papertrail.trace: Skipping - papertrail tracing is not available in local execution",
-		"keyval.inc":                            "keyval.inc: Skipping - key-value increment operations are not supported in local execution",
-		"perf.send":                             "perf.send: Skipping - performance metrics submission is not supported in local execution",
-		"s3.put":                                "s3.put: Skipping - S3 upload operations are not supported in local execution",
-		"s3Copy.copy":                           "s3Copy.copy: Skipping - S3 copy operations are not supported in local execution",
-	}
-	message, ok := messages[cmd.Name()]
-	if !ok {
-		message = cmd.Name() + ": Skipping - command is not supported in local execution"
-	}
-	e.logger.Infof(message)
+	e.logger.Infof(e.getNoOpMessage(cmd.Name()))
 }
 
 // PrepareTask prepares a task for execution by creating command blocks
@@ -626,4 +758,12 @@ func (e *LocalExecutor) createSyntheticTask(taskName string) {
 		Project:     e.taskConfig.ProjectRef.Identifier,
 		DisplayName: taskName,
 	}
+}
+
+func getDurationStr(startTime time.Time) string {
+	d := time.Since(startTime)
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	return fmt.Sprintf("%.1fs", d.Seconds())
 }

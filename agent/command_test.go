@@ -302,3 +302,30 @@ functions:
 	s.Error(err)
 	s.True(s.mockCommunicator.TaskShouldRetryOnFail)
 }
+
+func (s *CommandSuite) TestRetryOnFailureDisabledForMergeQueue() {
+	projYml := `
+functions:
+  should_retry:
+    command: shell.exec
+    retry_on_failure: true
+    params:
+      script: exit 1
+`
+	s.setUpConfigAndProject(projYml)
+	s.tc.taskConfig.Task.Requester = evergreen.GithubMergeRequester
+
+	func1 := model.PluginCommandConf{
+		Function:    "should_retry",
+		DisplayName: "function",
+		Vars:        map[string]string{"key1": "newValue1", "key2": "newValue2", "key3": "newValue3"},
+	}
+
+	cmdBlock := commandBlock{
+		commands:    &model.YAMLCommandSet{SingleCommand: &func1},
+		canFailTask: true,
+	}
+	err := s.a.runCommandsInBlock(s.ctx, s.tc, cmdBlock)
+	s.Error(err)
+	s.False(s.mockCommunicator.TaskShouldRetryOnFail)
+}

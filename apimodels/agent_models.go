@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -80,7 +79,6 @@ type TaskEndDetail struct {
 	Modules              ModuleCloneInfo     `bson:"modules,omitempty" json:"modules"`
 	TraceID              string              `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
 	DiskDevices          []string            `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
-	S3Usage              *s3usage.S3Usage    `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 }
 
 // FailingCommand represents a command that failed in a task.
@@ -99,6 +97,7 @@ type TimeoutProcessInfo struct {
 	CurrentCommand    string    `bson:"current_command,omitempty" json:"current_command,omitempty"`
 	CurrentCommandPID int       `bson:"current_command_pid,omitempty" json:"current_command_pid,omitempty"`
 	RunningPIDs       []int     `bson:"running_pids,omitempty" json:"running_pids,omitempty"`
+	ChildPIDs         []int     `bson:"child_pids,omitempty" json:"child_pids,omitempty"`
 	Timestamp         time.Time `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
 }
 
