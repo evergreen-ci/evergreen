@@ -267,6 +267,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 	if e.streamWriter != nil {
 		e.streamWriter.SetStep(stepIndex)
+		e.streamWriter.SetStepNumber(targetCmd.FullStepNumber())
 	}
 
 	startTime := time.Now()
@@ -294,25 +295,21 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 		if e.logManager != nil {
 			lf := e.logManager.LogFile()
-			lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
-			lf.WriteLogLine(stepIndex, noOpMsg)
-			lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
+			stepNum := targetCmd.FullStepNumber()
+			lf.WriteStepStart(stepNum, targetCmd.DisplayName, string(targetCmd.BlockType))
+			lf.WriteLogLine(stepNum, noOpMsg)
+			lf.WriteStepEnd(stepNum, true, getDurationStr(startTime))
 		}
 		return nil
 	}
 
 	if e.logManager != nil {
 		lf := e.logManager.LogFile()
-		lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
+		lf.WriteStepStart(targetCmd.FullStepNumber(), targetCmd.DisplayName, string(targetCmd.BlockType))
 	}
 
 	if e.streamWriter != nil {
-		blockLabel := string(targetCmd.BlockType)
-		if blockLabel == "" {
-			blockLabel = "main"
-		}
-		msg := fmt.Sprintf("Running '%s' (step %d of %d, block: %s)",
-			targetCmd.DisplayName, stepIndex, len(e.debugState.CommandList), blockLabel)
+		msg := fmt.Sprintf("Running command %s.", targetCmd.DisplayName)
 		e.streamWriter.WriteChannelMessage(ExecChannel, msg)
 	}
 
@@ -394,7 +391,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 		if e.logManager != nil {
 			lf := e.logManager.LogFile()
-			lf.WriteStepEnd(stepIndex, false, getDurationStr(startTime))
+			lf.WriteStepEnd(targetCmd.FullStepNumber(), false, getDurationStr(startTime))
 		}
 		return err
 	}
@@ -410,7 +407,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	}
 	if e.logManager != nil {
 		lf := e.logManager.LogFile()
-		lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
+		lf.WriteStepEnd(targetCmd.FullStepNumber(), true, getDurationStr(startTime))
 	}
 	return nil
 }
@@ -654,35 +651,42 @@ func (e *LocalExecutor) rebuildCommandList() error {
 			if err != nil {
 				e.logger.Warningf("Failed to render command '%s': %v", cmd.Command, err)
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
-					Index:        globalIndex,
-					Command:      cmd,
-					DisplayName:  cmd.GetDisplayName(),
-					IsFunction:   cmd.Function != "",
-					FunctionName: cmd.Function,
-					BlockType:    block.blockType,
-					BlockIndex:   blockIdx,
-					BlockCmdNum:  cmdIdx + 1,
+					Index:          globalIndex,
+					Command:        cmd,
+					DisplayName:    cmd.GetDisplayName(),
+					IsFunction:     cmd.Function != "",
+					FunctionName:   cmd.Function,
+					BlockType:      block.blockType,
+					BlockIndex:     blockIdx,
+					BlockCmdNum:    cmdIdx + 1,
+					BlockTotalCmds: len(commands),
 				})
 				globalIndex++
 				continue
 			}
 
-			for _, rcmd := range renderedCmds {
+			for rcmdIdx, rcmd := range renderedCmds {
 				displayName := rcmd.FullDisplayName()
 				if displayName == "" {
 					displayName = cmd.GetDisplayName()
 				}
 
-				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
-					Index:        globalIndex,
-					Command:      cmd,
-					DisplayName:  displayName,
-					IsFunction:   cmd.Function != "",
-					FunctionName: cmd.Function,
-					BlockType:    block.blockType,
-					BlockIndex:   blockIdx,
-					BlockCmdNum:  cmdIdx + 1,
-				})
+				info := CommandInfo{
+					Index:          globalIndex,
+					Command:        cmd,
+					DisplayName:    displayName,
+					IsFunction:     cmd.Function != "",
+					FunctionName:   cmd.Function,
+					BlockType:      block.blockType,
+					BlockIndex:     blockIdx,
+					BlockCmdNum:    cmdIdx + 1,
+					BlockTotalCmds: len(commands),
+				}
+				if cmd.Function != "" {
+					info.FuncSubCmdNum = rcmdIdx + 1
+					info.FuncTotalSubCmds = len(renderedCmds)
+				}
+				e.debugState.CommandList = append(e.debugState.CommandList, info)
 				globalIndex++
 			}
 		}

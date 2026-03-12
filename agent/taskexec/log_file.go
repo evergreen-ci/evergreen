@@ -42,24 +42,24 @@ func newLogFile(path string) (*logFile, error) {
 }
 
 // WriteLogLine writes a timestamped, step-annotated line to the log file.
-func (lf *logFile) WriteLogLine(step int, msg string) {
+func (lf *logFile) WriteLogLine(step string, msg string) {
 	lf.mu.Lock()
 	defer lf.mu.Unlock()
 	lf.writeLogLine(step, msg)
 }
 
-func (lf *logFile) writeLogLine(step int, msg string) {
+func (lf *logFile) writeLogLine(step string, msg string) {
 	if lf.file == nil {
 		return
 	}
 
 	ts := time.Now().UTC().Format(time.RFC3339Nano)
-	line := fmt.Sprintf("[%s] [step:%d] %s\n", ts, step, msg)
+	line := fmt.Sprintf("[%s] [step:%s] %s\n", ts, step, msg)
 	_, _ = lf.file.WriteString(line)
 }
 
 // WriteStepStart writes a step start delimiter.
-func (lf *logFile) WriteStepStart(step int, displayName string, blockType string) {
+func (lf *logFile) WriteStepStart(step string, displayName string, blockType string) {
 	lf.mu.Lock()
 	defer lf.mu.Unlock()
 
@@ -67,12 +67,12 @@ func (lf *logFile) WriteStepStart(step int, displayName string, blockType string
 		return
 	}
 
-	line := fmt.Sprintf("=== STEP %d START %s (%s) ===\n", step, displayName, blockType)
+	line := fmt.Sprintf("=== STEP %s START %s (%s) ===\n", step, displayName, blockType)
 	_, _ = lf.file.WriteString(line)
 }
 
 // WriteStepEnd writes a step end delimiter.
-func (lf *logFile) WriteStepEnd(step int, success bool, duration string) {
+func (lf *logFile) WriteStepEnd(step string, success bool, duration string) {
 	lf.mu.Lock()
 	defer lf.mu.Unlock()
 
@@ -80,7 +80,7 @@ func (lf *logFile) WriteStepEnd(step int, success bool, duration string) {
 		return
 	}
 
-	line := fmt.Sprintf("=== STEP %d END success=%t duration=%s ===\n", step, success, duration)
+	line := fmt.Sprintf("=== STEP %s END success=%t duration=%s ===\n", step, success, duration)
 	_, _ = lf.file.WriteString(line)
 }
 
@@ -207,10 +207,10 @@ func readLogFileLines(path string) ([]string, error) {
 }
 
 // FilterLogLinesByStep returns only log lines that belong to the given step.
-// It matches lines containing "[step:N]" or "=== STEP N " markers.
-func FilterLogLinesByStep(lines []string, step int) []string {
-	stepTag := fmt.Sprintf("[step:%d]", step)
-	stepDelimiter := fmt.Sprintf("=== STEP %d ", step)
+// It matches lines containing "[step:S]" or "=== STEP S " markers.
+func FilterLogLinesByStep(lines []string, step string) []string {
+	stepTag := fmt.Sprintf("[step:%s]", step)
+	stepDelimiter := fmt.Sprintf("=== STEP %s ", step)
 
 	var filtered []string
 	for _, line := range lines {

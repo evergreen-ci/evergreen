@@ -332,9 +332,7 @@ type ProvisionOptions struct {
 	UseOAuth bool `bson:"use_oauth" json:"use_oauth"`
 
 	// SetupStepNumber, if set, indicates the step number that the debug host
-	// should run until after initializing the daemon. Accepts display step
-	// format (e.g., "5" or "5.1" for function sub-commands). Currently only
-	// the command number is used; the sub-command portion is ignored.
+	// should run until after initializing the daemon. Accepts step notation (e.g., "5" or "5.1")
 	SetupStepNumber string `bson:"setup_step_number,omitempty" json:"setup_step_number,omitempty"`
 }
 
