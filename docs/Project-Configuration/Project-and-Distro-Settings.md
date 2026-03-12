@@ -131,6 +131,16 @@ Additionally, admins can **Force Repotracker Run** to check for new commits if n
 
 The repotracker does not guarantee every commit runs their corresponding version, please see [run every mainline commit](#run-every-mainline-commit) for more details.
 
+**Important: Do not rewrite commit history on tracked branches.** The repotracker polls
+the GitHub API for commits on the tracked branch and processes all commits between the
+branch HEAD and the last commit it has seen. If the commit history on a tracked branch is
+modified — for example, by force-pushing rebased commits, or by merging another branch
+while preserving its commit history — the repotracker will treat any previously unseen
+commits as new and create versions for them. This can result in unexpected versions being
+created and activated for commits that were not originally part of the tracked branch. To avoid
+this, use squash merges or other strategies that do not introduce additional commit history
+onto the tracked branch.
+
 ### Access and Admin Settings
 
 To set a Project Administrator edit the
