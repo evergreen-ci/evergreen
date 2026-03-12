@@ -1627,6 +1627,11 @@ func getDescendantPIDs(ctx context.Context, parentPIDs []int, logger client.Logg
 
 // pgrepChildren returns the direct child PIDs of the given parent PID.
 func pgrepChildren(ctx context.Context, parentPID int, logger client.LoggerProducer) []int {
+	// PID 0 is the kernel scheduler, and negative PIDs are invalid.
+	if parentPID <= 0 {
+		return nil
+	}
+
 	cmd := exec.CommandContext(ctx, "pgrep", "-P", strconv.Itoa(parentPID))
 	out, err := cmd.Output()
 	if err != nil {
