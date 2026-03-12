@@ -372,7 +372,7 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 		return "", errors.Wrap(err, "writing local script")
 	}
 
-	sshOpts, err := h.GetSSHOptions(settings)
+	sshOpts, err := h.GetSSHOptions()
 	if err != nil {
 		return "", errors.Wrapf(err, "getting SSH options for host '%s'", h.Id)
 	}

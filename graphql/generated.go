@@ -180,7 +180,6 @@ type ComplexityRoot struct {
 		HostJasper              func(childComplexity int) int
 		JIRANotifications       func(childComplexity int) int
 		Jira                    func(childComplexity int) int
-		KanopySSHKeyPath        func(childComplexity int) int
 		LogPath                 func(childComplexity int) int
 		LoggerConfig            func(childComplexity int) int
 		Notify                  func(childComplexity int) int
@@ -3095,12 +3094,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Jira(childComplexity), true
-	case "AdminSettings.kanopySSHKeyPath":
-		if e.complexity.AdminSettings.KanopySSHKeyPath == nil {
-			break
-		}
-
-		return e.complexity.AdminSettings.KanopySSHKeyPath(childComplexity), true
 	case "AdminSettings.logPath":
 		if e.complexity.AdminSettings.LogPath == nil {
 			break
@@ -18421,48 +18414,6 @@ func (ec *executionContext) fieldContext_AdminSettings_jiraNotifications(_ conte
 				return ec.fieldContext_JiraNotificationsConfig_customFields(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type JiraNotificationsConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AdminSettings_kanopySSHKeyPath(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AdminSettings_kanopySSHKeyPath,
-		func(ctx context.Context) (any, error) {
-			return obj.KanopySSHKeyPath, nil
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RequireAdmin == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive requireAdmin is not implemented")
-				}
-				return ec.directives.RequireAdmin(ctx, obj, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AdminSettings_kanopySSHKeyPath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AdminSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35650,8 +35601,6 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_jira(ctx, field)
 			case "jiraNotifications":
 				return ec.fieldContext_AdminSettings_jiraNotifications(ctx, field)
-			case "kanopySSHKeyPath":
-				return ec.fieldContext_AdminSettings_kanopySSHKeyPath(ctx, field)
 			case "logPath":
 				return ec.fieldContext_AdminSettings_logPath(ctx, field)
 			case "loggerConfig":
@@ -48894,8 +48843,6 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_jira(ctx, field)
 			case "jiraNotifications":
 				return ec.fieldContext_AdminSettings_jiraNotifications(ctx, field)
-			case "kanopySSHKeyPath":
-				return ec.fieldContext_AdminSettings_kanopySSHKeyPath(ctx, field)
 			case "logPath":
 				return ec.fieldContext_AdminSettings_logPath(ctx, field)
 			case "loggerConfig":
@@ -73962,7 +73909,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "kanopySSHKeyPath", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74189,30 +74136,6 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.JIRANotifications = data
-		case "kanopySSHKeyPath":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kanopySSHKeyPath"))
-			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.directives.RedactSecrets == nil {
-					var zeroVal *string
-					return zeroVal, errors.New("directive redactSecrets is not implemented")
-				}
-				return ec.directives.RedactSecrets(ctx, obj, directive0)
-			}
-
-			tmp, err := directive1(ctx)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			if data, ok := tmp.(*string); ok {
-				it.KanopySSHKeyPath = data
-			} else if tmp == nil {
-				it.KanopySSHKeyPath = nil
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
 		case "logPath":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logPath"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -85115,8 +85038,6 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_jira(ctx, field, obj)
 		case "jiraNotifications":
 			out.Values[i] = ec._AdminSettings_jiraNotifications(ctx, field, obj)
-		case "kanopySSHKeyPath":
-			out.Values[i] = ec._AdminSettings_kanopySSHKeyPath(ctx, field, obj)
 		case "logPath":
 			out.Values[i] = ec._AdminSettings_logPath(ctx, field, obj)
 		case "loggerConfig":

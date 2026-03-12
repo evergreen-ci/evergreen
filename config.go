@@ -92,11 +92,9 @@ type Settings struct {
 	HostJasper          HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
 	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
-	// TODO (DEVPROD-15898): remove this key path.
-	KanopySSHKeyPath string       `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
-	LoggerConfig     LoggerConfig `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
-	LogPath          string       `yaml:"log_path" bson:"log_path" json:"log_path"`
-	Notify           NotifyConfig `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	LoggerConfig        LoggerConfig            `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
+	LogPath             string                  `yaml:"log_path" bson:"log_path" json:"log_path"`
+	Notify              NotifyConfig            `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	// OldestAllowedCLIVersion represents the oldest CLI version that a user can have installed locally. If this field is non-empty, and a user's
 	// binary is older than this version, their CLI will prompt them to update before they can continue.
 	OldestAllowedCLIVersion string                    `yaml:"oldest_allowed_cli_version" bson:"oldest_allowed_cli_version" json:"oldest_allowed_cli_version"`
@@ -151,7 +149,6 @@ func (c *Settings) Set(ctx context.Context) error {
 			githubOrgsKey:              c.GithubOrgs,
 			githubWebhookSecretKey:     c.GithubWebhookSecret,
 			disabledGQLQueriesKey:      c.DisabledGQLQueries,
-			kanopySSHKeyPathKey:        c.KanopySSHKeyPath,
 			logPathKey:                 c.LogPath,
 			oldestAllowedCLIVersionKey: c.OldestAllowedCLIVersion,
 			perfMonitoringURLKey:       c.PerfMonitoringURL,

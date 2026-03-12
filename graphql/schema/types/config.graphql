@@ -81,7 +81,6 @@ input AdminSettingsInput {
   hostJasper: HostJasperConfigInput
   jira: JiraConfigInput
   jiraNotifications: JiraNotificationsConfigInput
-  kanopySSHKeyPath: String @redactSecrets
   logPath: String
   loggerConfig: LoggerConfigInput
   notify: NotifyConfigInput
@@ -139,7 +138,6 @@ type AdminSettings {
   hostJasper: HostJasperConfig
   jira: JiraConfig
   jiraNotifications: JiraNotificationsConfig
-  kanopySSHKeyPath: String @requireAdmin
   logPath: String
   loggerConfig: LoggerConfig
   notify: NotifyConfig
