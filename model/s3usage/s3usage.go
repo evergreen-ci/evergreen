@@ -10,8 +10,8 @@ import (
 
 // S3Usage tracks S3 API usage for cost calculation.
 type S3Usage struct {
-	Artifacts ArtifactMetrics  `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
-	Logs S3UploadMetrics  `bson:"logs,omitempty" json:"logs,omitempty"`
+	Artifacts ArtifactMetrics `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
+	Logs      S3UploadMetrics `bson:"logs,omitempty" json:"logs,omitempty"`
 }
 
 // S3UploadMetrics tracks common S3 upload metrics shared across upload types.
