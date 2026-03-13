@@ -757,6 +757,14 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
 		util.RecursivelySetUndefinedFields(reflectedRef, reflectedConfig)
 	}
+	// Resolve the child project identifiers as IDs for the patch trigger aliases.
+	for i, def := range p.PatchTriggerAliases {
+		childProjectId, err := GetIdForProject(ctx, def.ChildProject)
+		if err != nil {
+			continue
+		}
+		p.PatchTriggerAliases[i].ChildProject = childProjectId
+	}
 	return err
 }
 
