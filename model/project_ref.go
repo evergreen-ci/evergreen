@@ -1626,6 +1626,11 @@ func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef)
 			}
 			pRefs[i] = *mergedProject
 		}
+		if pRefs[i].IsVersionControlEnabled() {
+			if err := pRefs[i].MergeWithProjectConfig(ctx, ""); err != nil {
+				return nil, errors.Wrapf(err, "merging project config with project ref '%s'", pRefs[i].Identifier)
+			}
+		}
 	}
 	return pRefs, nil
 }
