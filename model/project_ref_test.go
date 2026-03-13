@@ -3320,6 +3320,16 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			},
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "downstream-project",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{PatchAlias: "my-alias"},
+					},
+					Status: "success",
+				},
+			},
 			GithubPRTriggerAliases: []string{"one", "two"},
 			GithubMQTriggerAliases: []string{"three", "four"},
 		},
@@ -3344,9 +3354,56 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, []string{"one", "two"}, projectRef.GithubPRTriggerAliases)
 	assert.Equal(t, []string{"three", "four"}, projectRef.GithubMQTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", projectRef.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "downstream-project", projectRef.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "success", projectRef.PatchTriggerAliases[0].Status)
+	require.Len(t, projectRef.PatchTriggerAliases[0].TaskSpecifiers, 1)
+	assert.Equal(t, "my-alias", projectRef.PatchTriggerAliases[0].TaskSpecifiers[0].PatchAlias)
+
 	err = projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
+}
+
+func TestMergeWithProjectConfigPatchTriggerAliasDBTakesPrecedence(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection))
+
+	dbTriggers := []patch.PatchTriggerDefinition{
+		{
+			Alias:        "db-trigger",
+			ChildProject: "db-downstream",
+			Status:       "*",
+		},
+	}
+	projectRef := &ProjectRef{
+		Owner:               "mongodb",
+		Id:                  "ident2",
+		PatchTriggerAliases: dbTriggers,
+	}
+	projectConfig := &ProjectConfig{
+		Id: "version2",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "yaml-downstream",
+					Status:       "success",
+				},
+			},
+		},
+	}
+	assert.NoError(t, projectRef.Insert(t.Context()))
+	assert.NoError(t, projectConfig.Insert(t.Context()))
+
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version2")
+	require.NoError(t, err)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 1)
+	assert.Equal(t, "db-trigger", projectRef.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "db-downstream", projectRef.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "*", projectRef.PatchTriggerAliases[0].Status)
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {
