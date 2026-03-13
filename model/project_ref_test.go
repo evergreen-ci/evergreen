@@ -3406,6 +3406,70 @@ func TestMergeWithProjectConfigPatchTriggerAliasDBTakesPrecedence(t *testing.T) 
 	assert.Equal(t, "*", projectRef.PatchTriggerAliases[0].Status)
 }
 
+func TestMergeWithProjectConfigPatchTriggerAliasScheduledInPR(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection))
+
+	projectRef := &ProjectRef{
+		Owner: "mongodb",
+		Id:    "ident3",
+	}
+	projectConfig := &ProjectConfig{
+		Id: "version3",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "downstream-project",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+					Status: "success",
+				},
+				{
+					Alias:        "yaml-trigger-2",
+					ChildProject: "another-downstream",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{PatchAlias: "my-alias"},
+					},
+				},
+			},
+			GithubPRTriggerAliases: []string{"yaml-trigger", "yaml-trigger-2"},
+			GithubMQTriggerAliases: []string{"yaml-trigger"},
+		},
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version3")
+	require.NoError(t, err)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 2)
+	assert.Equal(t, "yaml-trigger", projectRef.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "downstream-project", projectRef.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "success", projectRef.PatchTriggerAliases[0].Status)
+	assert.Equal(t, "yaml-trigger-2", projectRef.PatchTriggerAliases[1].Alias)
+	assert.Equal(t, "another-downstream", projectRef.PatchTriggerAliases[1].ChildProject)
+
+	require.Len(t, projectRef.GithubPRTriggerAliases, 2)
+	assert.Equal(t, "yaml-trigger", projectRef.GithubPRTriggerAliases[0])
+	assert.Equal(t, "yaml-trigger-2", projectRef.GithubPRTriggerAliases[1])
+
+	require.Len(t, projectRef.GithubMQTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", projectRef.GithubMQTriggerAliases[0])
+
+	alias, found := projectRef.GetPatchTriggerAlias("yaml-trigger")
+	assert.True(t, found)
+	assert.Equal(t, "downstream-project", alias.ChildProject)
+	assert.Equal(t, "success", alias.Status)
+
+	alias, found = projectRef.GetPatchTriggerAlias("yaml-trigger-2")
+	assert.True(t, found)
+	assert.Equal(t, "another-downstream", alias.ChildProject)
+
+	_, found = projectRef.GetPatchTriggerAlias("nonexistent")
+	assert.False(t, found)
+}
+
 func TestSaveProjectPageForSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
