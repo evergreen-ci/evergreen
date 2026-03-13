@@ -1799,6 +1799,59 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.Len(projectRefs, 2)
 }
 
+func TestFindMergedProjectRefsByRepoAndBranchIncludesProjectConfig(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection))
+
+	projectRef := &ProjectRef{
+		Owner:                 "mongodb",
+		Repo:                  "mci",
+		Branch:                "main",
+		Enabled:               true,
+		Id:                    "ident_vc",
+		Identifier:            "ident_vc",
+		PRTestingEnabled:      utility.TruePtr(),
+		VersionControlEnabled: utility.TruePtr(),
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	projectConfig := &ProjectConfig{
+		Id:      "vc_version",
+		Project: "ident_vc",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "downstream",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+					Status: "success",
+				},
+			},
+			GithubPRTriggerAliases: []string{"yaml-trigger"},
+		},
+	}
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
+	require.NoError(t, err)
+	require.Len(t, projectRefs, 1)
+
+	ref := projectRefs[0]
+	assert.Equal(t, "ident_vc", ref.Id)
+	require.Len(t, ref.PatchTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", ref.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "downstream", ref.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "success", ref.PatchTriggerAliases[0].Status)
+
+	require.Len(t, ref.GithubPRTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", ref.GithubPRTriggerAliases[0])
+
+	alias, found := ref.GetPatchTriggerAlias("yaml-trigger")
+	assert.True(t, found)
+	assert.Equal(t, "downstream", alias.ChildProject)
+}
+
 func TestSetGithubAppCredentials(t *testing.T) {
 	sampleAppId := int64(10)
 	samplePrivateKey := []byte("private_key")
