@@ -895,7 +895,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
 	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("merged project ref for project '%s' not found", utility.FromStringPtr(projectId)))
+		return nil, nil
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(ctx, *projectRef); err != nil {
