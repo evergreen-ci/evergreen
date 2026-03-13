@@ -119,15 +119,14 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 		return cachedToken, nil
 	}
 
-	createdAt := time.Now()
-	token, _, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	installToken, err := g.createInstallationTokenForID(ctx, installationID, opts)
 	if err != nil {
 		return "", errors.Wrap(err, "creating installation token")
 	}
 
-	ghInstallationTokenCache.Put(ctx, id, token, createdAt.Add(MaxInstallationTokenLifetime))
+	ghInstallationTokenCache.Put(ctx, id, installToken.Token, installToken.ExpiresAt)
 
-	return token, errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
+	return installToken.Token, nil
 }
 
 // CreateCachedInstallationTokenForGitHubSender is a helper that creates a
@@ -145,17 +144,24 @@ func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo
 		return "", nil, errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	token, permissions, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	installToken, err := g.createInstallationTokenForID(ctx, installationID, opts)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
 	}
 
-	return token, permissions, nil
+	return installToken.Token, installToken.Permissions, nil
+}
+
+// installationToken holds the result of creating a GitHub App installation token.
+type installationToken struct {
+	Token       string
+	Permissions *github.InstallationPermissions
+	ExpiresAt   time.Time
 }
 
 // createInstallationTokenForID returns an installation token from GitHub given an installation ID.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
-func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, installationID int64, opts *github.InstallationTokenOptions) (string, *github.InstallationPermissions, error) {
+func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, installationID int64, opts *github.InstallationTokenOptions) (*installationToken, error) {
 	const caller = "CreateInstallationToken"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubAppEndpointAttribute, caller),
@@ -164,7 +170,7 @@ func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, instal
 
 	client, err := getGitHubClientForAuth(g)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "getting GitHub client for token creation")
+		return nil, errors.Wrap(err, "getting GitHub client for token creation")
 	}
 	defer client.Close()
 
@@ -175,15 +181,24 @@ func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, instal
 	}
 	if err != nil {
 		span.SetAttributes(attribute.String(githubAppErrorAttribute, err.Error()))
-		return "", nil, errors.Wrapf(err, "creating installation token for installation id: %d", installationID)
+		return nil, errors.Wrapf(err, "creating installation token for installation id: %d", installationID)
 	}
 	if token == nil {
 		err := errors.Errorf("Installation token for installation 'id': %d not found", installationID)
 		span.SetAttributes(attribute.String(githubAppErrorAttribute, err.Error()))
-		return "", nil, err
+		return nil, err
 	}
 
-	return token.GetToken(), token.GetPermissions(), nil
+	expiresAt := token.GetExpiresAt().Time
+	if expiresAt.IsZero() {
+		expiresAt = time.Now().Add(MaxInstallationTokenLifetime)
+	}
+
+	return &installationToken{
+		Token:       token.GetToken(),
+		Permissions: token.GetPermissions(),
+		ExpiresAt:   expiresAt,
+	}, nil
 }
 
 // RedactPrivateKey redacts the GitHub app's private key so that it's not exposed via the UI or GraphQL.
