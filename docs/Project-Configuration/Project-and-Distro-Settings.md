@@ -418,8 +418,9 @@ In this example, notice that Spruce tasks matching the e2e alias will trigger _o
 Users can create aliases that can be used in patch builds (in the
 "upstream" project) to kick off a child patch (in the "downstream"
 project). Create aliases **in the upstream project** in the Patch
-Aliases section of the project configuration page. Click "Add Patch Trigger
-Alias".
+Aliases section of the project configuration page (click "Add Patch Trigger
+Alias"), or define them in the project YAML using the `patch_trigger_aliases`
+field when [version control](#version-control) is enabled.
 
 Options:
 
@@ -753,6 +754,58 @@ git_tag_aliases:
 github_checks_aliases:
   - variant: "^ubuntu1604$"
     task: "^test.*$"
+```
+
+### Patch Trigger Aliases
+
+[View setting definition](#patch-trigger-aliases)
+
+```yaml
+patch_trigger_aliases:
+  - alias: "my-downstream-trigger"
+    child_project: "downstream-project-id"
+    status: "success"
+    parent_as_module: "upstream-module-name"
+    task_specifiers:
+      - patch_alias: "my-patch-alias"
+      - task_regex: "^lint.*"
+        variant_regex: "^ubuntu"
+```
+
+Each entry accepts the following fields:
+
+- **alias**: The name of the trigger alias.
+- **child_project**: The downstream project identifier or ID.
+- **status**: (Optional) The parent patch status that triggers the child
+  patch. Accepted values are `success`, `failed`, or `*` (any
+  completion).
+- **parent_as_module**: (Optional) If the upstream project is a module in
+  the downstream project's YAML, specify the module name here so
+  that the child patch includes the parent's changes.
+- **downstream_revision**: (Optional) The revision to base the
+  downstream patch on. Defaults to the downstream project's latest
+  commit.
+- **task_specifiers**: A list of specifiers that determine which tasks
+  run in the downstream project. Each specifier must use either a
+  `patch_alias` or a `task_regex`/`variant_regex` pair (not both).
+
+### GitHub Trigger Aliases
+
+[View setting
+definition](#github-pull-request-testing)
+
+To have patch trigger aliases run automatically for GitHub PRs or merge
+queue patches, list their names in `github_trigger_aliases` or
+`github_mq_trigger_aliases`. The referenced aliases must be defined in
+either the `patch_trigger_aliases` YAML field or on the project settings
+page.
+
+```yaml
+github_trigger_aliases:
+  - "my-downstream-trigger"
+
+github_mq_trigger_aliases:
+  - "my-downstream-trigger"
 ```
 
 ### Scheduling Settings

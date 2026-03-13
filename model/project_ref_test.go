@@ -1799,6 +1799,59 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.Len(projectRefs, 2)
 }
 
+func TestFindMergedProjectRefsByRepoAndBranchIncludesProjectConfig(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection))
+
+	projectRef := &ProjectRef{
+		Owner:                 "mongodb",
+		Repo:                  "mci",
+		Branch:                "main",
+		Enabled:               true,
+		Id:                    "ident_vc",
+		Identifier:            "ident_vc",
+		PRTestingEnabled:      utility.TruePtr(),
+		VersionControlEnabled: utility.TruePtr(),
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	projectConfig := &ProjectConfig{
+		Id:      "vc_version",
+		Project: "ident_vc",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "downstream",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+					Status: "success",
+				},
+			},
+			GithubPRTriggerAliases: []string{"yaml-trigger"},
+		},
+	}
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
+	require.NoError(t, err)
+	require.Len(t, projectRefs, 1)
+
+	ref := projectRefs[0]
+	assert.Equal(t, "ident_vc", ref.Id)
+	require.Len(t, ref.PatchTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", ref.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "downstream", ref.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "success", ref.PatchTriggerAliases[0].Status)
+
+	require.Len(t, ref.GithubPRTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", ref.GithubPRTriggerAliases[0])
+
+	alias, found := ref.GetPatchTriggerAlias("yaml-trigger")
+	assert.True(t, found)
+	assert.Equal(t, "downstream", alias.ChildProject)
+}
+
 func TestSetGithubAppCredentials(t *testing.T) {
 	sampleAppId := int64(10)
 	samplePrivateKey := []byte("private_key")
@@ -3320,6 +3373,16 @@ func TestMergeWithProjectConfig(t *testing.T) {
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			},
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "downstream-project",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{PatchAlias: "my-alias"},
+					},
+					Status: "success",
+				},
+			},
 			GithubPRTriggerAliases: []string{"one", "two"},
 			GithubMQTriggerAliases: []string{"three", "four"},
 		},
@@ -3344,9 +3407,215 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.Equal(t, []string{"one", "two"}, projectRef.GithubPRTriggerAliases)
 	assert.Equal(t, []string{"three", "four"}, projectRef.GithubMQTriggerAliases)
 	assert.Equal(t, "p1", projectRef.PeriodicBuilds[0].ID)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", projectRef.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "downstream-project", projectRef.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "success", projectRef.PatchTriggerAliases[0].Status)
+	require.Len(t, projectRef.PatchTriggerAliases[0].TaskSpecifiers, 1)
+	assert.Equal(t, "my-alias", projectRef.PatchTriggerAliases[0].TaskSpecifiers[0].PatchAlias)
+
 	err = projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
+}
+
+func TestMergeWithProjectConfigPatchTriggerAliasDBTakesPrecedence(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection))
+
+	dbTriggers := []patch.PatchTriggerDefinition{
+		{
+			Alias:        "db-trigger",
+			ChildProject: "db-downstream",
+			Status:       "*",
+		},
+	}
+	projectRef := &ProjectRef{
+		Owner:               "mongodb",
+		Id:                  "ident2",
+		PatchTriggerAliases: dbTriggers,
+	}
+	projectConfig := &ProjectConfig{
+		Id: "version2",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "yaml-downstream",
+					Status:       "success",
+				},
+			},
+		},
+	}
+	assert.NoError(t, projectRef.Insert(t.Context()))
+	assert.NoError(t, projectConfig.Insert(t.Context()))
+
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version2")
+	require.NoError(t, err)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 1)
+	assert.Equal(t, "db-trigger", projectRef.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "db-downstream", projectRef.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "*", projectRef.PatchTriggerAliases[0].Status)
+}
+
+func TestMergeWithProjectConfigPatchTriggerAliasScheduledInPR(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection))
+
+	projectRef := &ProjectRef{
+		Owner: "mongodb",
+		Id:    "ident3",
+	}
+	projectConfig := &ProjectConfig{
+		Id: "version3",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "downstream-project",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+					Status: "success",
+				},
+				{
+					Alias:        "yaml-trigger-2",
+					ChildProject: "another-downstream",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{PatchAlias: "my-alias"},
+					},
+				},
+			},
+			GithubPRTriggerAliases: []string{"yaml-trigger", "yaml-trigger-2"},
+			GithubMQTriggerAliases: []string{"yaml-trigger"},
+		},
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version3")
+	require.NoError(t, err)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 2)
+	assert.Equal(t, "yaml-trigger", projectRef.PatchTriggerAliases[0].Alias)
+	assert.Equal(t, "downstream-project", projectRef.PatchTriggerAliases[0].ChildProject)
+	assert.Equal(t, "success", projectRef.PatchTriggerAliases[0].Status)
+	assert.Equal(t, "yaml-trigger-2", projectRef.PatchTriggerAliases[1].Alias)
+	assert.Equal(t, "another-downstream", projectRef.PatchTriggerAliases[1].ChildProject)
+
+	require.Len(t, projectRef.GithubPRTriggerAliases, 2)
+	assert.Equal(t, "yaml-trigger", projectRef.GithubPRTriggerAliases[0])
+	assert.Equal(t, "yaml-trigger-2", projectRef.GithubPRTriggerAliases[1])
+
+	require.Len(t, projectRef.GithubMQTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", projectRef.GithubMQTriggerAliases[0])
+
+	alias, found := projectRef.GetPatchTriggerAlias("yaml-trigger")
+	assert.True(t, found)
+	assert.Equal(t, "downstream-project", alias.ChildProject)
+	assert.Equal(t, "success", alias.Status)
+
+	alias, found = projectRef.GetPatchTriggerAlias("yaml-trigger-2")
+	assert.True(t, found)
+	assert.Equal(t, "another-downstream", alias.ChildProject)
+
+	_, found = projectRef.GetPatchTriggerAlias("nonexistent")
+	assert.False(t, found)
+}
+
+func TestMergeWithProjectConfigResolvesChildProjectIdentifier(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection))
+
+	childRef := &ProjectRef{
+		Id:         "child_id_123",
+		Identifier: "child-identifier",
+		Enabled:    true,
+	}
+	require.NoError(t, childRef.Insert(t.Context()))
+
+	projectRef := &ProjectRef{
+		Owner:                 "mongodb",
+		Id:                    "parent_project",
+		VersionControlEnabled: utility.TruePtr(),
+	}
+	projectConfig := &ProjectConfig{
+		Id:      "version_resolve",
+		Project: "parent_project",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "my-trigger",
+					ChildProject: "child-identifier",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version_resolve")
+	require.NoError(t, err)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 1)
+	assert.Equal(t, "child_id_123", projectRef.PatchTriggerAliases[0].ChildProject,
+		"ChildProject should be resolved from identifier to ID during merge")
+}
+
+func TestFindMergedProjectRefsByRepoAndBranchResolvesChildProjectIdentifier(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection))
+
+	childRef := &ProjectRef{
+		Id:         "child_id_456",
+		Identifier: "child-identifier",
+		Enabled:    true,
+	}
+	require.NoError(t, childRef.Insert(t.Context()))
+
+	projectRef := &ProjectRef{
+		Owner:                 "mongodb",
+		Repo:                  "mci",
+		Branch:                "main",
+		Enabled:               true,
+		Id:                    "parent_repo_project",
+		Identifier:            "parent_repo_project",
+		PRTestingEnabled:      utility.TruePtr(),
+		VersionControlEnabled: utility.TruePtr(),
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	projectConfig := &ProjectConfig{
+		Id:      "vc_version_resolve",
+		Project: "parent_repo_project",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "child-identifier",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+					Status: "success",
+				},
+			},
+			GithubPRTriggerAliases: []string{"yaml-trigger"},
+		},
+	}
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
+	require.NoError(t, err)
+	require.Len(t, projectRefs, 1)
+
+	ref := projectRefs[0]
+	require.Len(t, ref.PatchTriggerAliases, 1)
+	assert.Equal(t, "child_id_456", ref.PatchTriggerAliases[0].ChildProject,
+		"ChildProject should be resolved from identifier to ID when found via repo/branch lookup")
+
+	require.Len(t, ref.GithubPRTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", ref.GithubPRTriggerAliases[0])
 }
 
 func TestSaveProjectPageForSection(t *testing.T) {

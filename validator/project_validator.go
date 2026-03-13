@@ -502,6 +502,17 @@ func validateProjectConfigAliases(ctx context.Context, pc *model.ProjectConfig) 
 			Level:   Error,
 		})
 	}
+
+	for i, def := range pc.PatchTriggerAliases {
+		_, err := model.ValidateTriggerDefinition(ctx, def, pc.Project)
+		if err != nil {
+			validationErrs = append(validationErrs, ValidationError{
+				Message: fmt.Sprintf("error validating patch trigger alias #%d ('%s'): %s", i+1, def.Alias, err.Error()),
+				Level:   Error,
+			})
+		}
+	}
+
 	return validationErrs
 }
 

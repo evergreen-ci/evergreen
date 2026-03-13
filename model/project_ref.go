@@ -740,6 +740,7 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 			err = recovery.HandlePanicWithError(recover(), err, "project ref and project config structures do not match")
 		}()
 		pRefToMerge := ProjectRef{
+			PatchTriggerAliases:    projectConfig.PatchTriggerAliases,
 			GithubPRTriggerAliases: projectConfig.GithubPRTriggerAliases,
 			GithubMQTriggerAliases: projectConfig.GithubMQTriggerAliases,
 		}
@@ -752,9 +753,30 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 		if projectConfig.TaskAnnotationSettings != nil {
 			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
 		}
+		// Treat empty slices as nil so that YAML values can fill them in.
+		// Unlike the repo merge (where empty explicitly overrides), the
+		// project config YAML is the lowest priority fallback and empty
+		// DB values should not block it.
+		if len(p.PatchTriggerAliases) == 0 {
+			p.PatchTriggerAliases = nil
+		}
+		if len(p.GithubPRTriggerAliases) == 0 {
+			p.GithubPRTriggerAliases = nil
+		}
+		if len(p.GithubMQTriggerAliases) == 0 {
+			p.GithubMQTriggerAliases = nil
+		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
 		util.RecursivelySetUndefinedFields(reflectedRef, reflectedConfig)
+	}
+	// Resolve the child project identifiers as IDs for the patch trigger aliases.
+	for i, def := range p.PatchTriggerAliases {
+		childProjectId, err := GetIdForProject(ctx, def.ChildProject)
+		if err != nil {
+			continue
+		}
+		p.PatchTriggerAliases[i].ChildProject = childProjectId
 	}
 	return err
 }
@@ -1624,6 +1646,11 @@ func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef)
 				return nil, errors.Wrap(err, "merging settings")
 			}
 			pRefs[i] = *mergedProject
+		}
+		if pRefs[i].IsVersionControlEnabled() {
+			if err := pRefs[i].MergeWithProjectConfig(ctx, ""); err != nil {
+				return nil, errors.Wrapf(err, "merging project config with project ref '%s'", pRefs[i].Identifier)
+			}
 		}
 	}
 	return pRefs, nil

@@ -3066,6 +3066,167 @@ func TestValidateProjectAliases(t *testing.T) {
 	})
 }
 
+func TestValidateProjectConfigPatchTriggerAliases(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+
+	childRef := &model.ProjectRef{
+		Id:         "child-project",
+		Identifier: "child-project",
+		Enabled:    true,
+	}
+	require.NoError(t, childRef.Insert(t.Context()))
+
+	t.Run("ValidDefinition", func(t *testing.T) {
+		pc := &model.ProjectConfig{
+			Project: "parent-project",
+			ProjectConfigFields: model.ProjectConfigFields{
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{
+						Alias:        "my-trigger",
+						ChildProject: "child-project",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: ".*", VariantRegex: ".*"},
+						},
+						Status: "success",
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigAliases(t.Context(), pc)
+		assert.Empty(t, errs)
+	})
+
+	t.Run("SelfTriggerErrors", func(t *testing.T) {
+		pc := &model.ProjectConfig{
+			Project: "child-project",
+			ProjectConfigFields: model.ProjectConfigFields{
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{
+						Alias:        "self-trigger",
+						ChildProject: "child-project",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: ".*", VariantRegex: ".*"},
+						},
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigAliases(t.Context(), pc)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "cannot trigger itself")
+	})
+
+	t.Run("InvalidStatus", func(t *testing.T) {
+		pc := &model.ProjectConfig{
+			Project: "parent-project",
+			ProjectConfigFields: model.ProjectConfigFields{
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{
+						Alias:        "bad-status",
+						ChildProject: "child-project",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: ".*", VariantRegex: ".*"},
+						},
+						Status: "invalid_status",
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigAliases(t.Context(), pc)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "invalid status")
+	})
+
+	t.Run("InvalidRegex", func(t *testing.T) {
+		pc := &model.ProjectConfig{
+			Project: "parent-project",
+			ProjectConfigFields: model.ProjectConfigFields{
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{
+						Alias:        "bad-regex",
+						ChildProject: "child-project",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: "[invalid", VariantRegex: ".*"},
+						},
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigAliases(t.Context(), pc)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "invalid task regex")
+	})
+
+	t.Run("MixedRegexAndAlias", func(t *testing.T) {
+		pc := &model.ProjectConfig{
+			Project: "parent-project",
+			ProjectConfigFields: model.ProjectConfigFields{
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{
+						Alias:        "mixed",
+						ChildProject: "child-project",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: ".*", VariantRegex: ".*", PatchAlias: "some-alias"},
+						},
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigAliases(t.Context(), pc)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "can't specify both")
+	})
+
+	t.Run("NonexistentChildProject", func(t *testing.T) {
+		pc := &model.ProjectConfig{
+			Project: "parent-project",
+			ProjectConfigFields: model.ProjectConfigFields{
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{
+						Alias:        "missing-child",
+						ChildProject: "nonexistent-project",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: ".*", VariantRegex: ".*"},
+						},
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigAliases(t.Context(), pc)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "finding child project")
+	})
+
+	t.Run("MultipleErrors", func(t *testing.T) {
+		pc := &model.ProjectConfig{
+			Project: "parent-project",
+			ProjectConfigFields: model.ProjectConfigFields{
+				PatchTriggerAliases: []patch.PatchTriggerDefinition{
+					{
+						Alias:        "bad1",
+						ChildProject: "nonexistent",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: ".*", VariantRegex: ".*"},
+						},
+					},
+					{
+						Alias:        "bad2",
+						ChildProject: "child-project",
+						Status:       "bogus",
+						TaskSpecifiers: []patch.TaskSpecifier{
+							{TaskRegex: ".*", VariantRegex: ".*"},
+						},
+					},
+				},
+			},
+		}
+		errs := validateProjectConfigAliases(t.Context(), pc)
+		require.Len(t, errs, 2)
+		assert.Contains(t, errs[0].Message, "bad1")
+		assert.Contains(t, errs[1].Message, "bad2")
+	})
+}
+
 func TestCheckTaskCommands(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("ensure tasks that do not have at least one command throw "+
