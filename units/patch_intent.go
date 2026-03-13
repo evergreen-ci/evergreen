@@ -1405,30 +1405,34 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
-	var update amboy.Job
 	if j.IntentType == patch.GithubIntentType {
-		update = NewGithubStatusUpdateJobForProcessingError(
+		update := NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
 			patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
 			j.gitHubError,
 		)
+		update.Run(ctx)
+		j.AddError(update.Error())
 	} else if j.IntentType == patch.GithubMergeIntentType {
-		update = NewGithubStatusUpdateJobForProcessingError(
-			thirdparty.GithubStatusDefaultContext,
-			patchDoc.GithubMergeData.Org,
-			patchDoc.GithubMergeData.Repo,
-			patchDoc.GithubMergeData.HeadSHA,
-			j.gitHubError,
-		)
+		// For merge queue items, we need to send error statuses for all required checks.
+		rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
+		for _, rule := range rules {
+			update := NewGithubStatusUpdateJobForProcessingError(
+				rule,
+				patchDoc.GithubMergeData.Org,
+				patchDoc.GithubMergeData.Repo,
+				patchDoc.GithubMergeData.HeadSHA,
+				j.gitHubError,
+			)
+			update.Run(ctx)
+			j.AddError(update.Error())
+		}
 	} else {
 		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
 		return
 	}
-	update.Run(ctx)
-
-	j.AddError(update.Error())
 }
 
 // sendGitHubSuccessMessageForIgnoredVariants sends GitHub success messages for variants that were ignored
