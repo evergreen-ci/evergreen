@@ -662,6 +662,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
 		IsIncludedFile:            true,
+		LocalIncludeDir:           projectOpts.LocalIncludeDir,
 	}
 	if projectOpts.Ref != nil {
 		localOpts.Worktree = dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx)
@@ -1117,6 +1118,9 @@ type GetProjectOpts struct {
 	// Worktree is the directory of the git worktree to use when retrieving
 	// files via git. Only set if reading a remote file using git.
 	Worktree string
+	// LocalIncludeDir is the base directory for resolving relative include
+	// file paths when ReadFileFrom is ReadFromLocal.
+	LocalIncludeDir string
 }
 
 type PatchOpts struct {
@@ -1146,7 +1150,11 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
-		fileContents, err := os.ReadFile(opts.RemotePath)
+		remotePath := opts.RemotePath
+		if !filepath.IsAbs(remotePath) && opts.LocalIncludeDir != "" {
+			remotePath = filepath.Join(opts.LocalIncludeDir, remotePath)
+		}
+		fileContents, err := os.ReadFile(remotePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading project config")
 		}
@@ -1214,8 +1222,9 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	// Look through any given local modules first
 	if path, ok := opts.LocalModules[include.Module]; ok {
 		moduleOpts := GetProjectOpts{
-			RemotePath:   fmt.Sprintf("%s/%s", path, opts.RemotePath),
-			ReadFileFrom: ReadFromLocal,
+			RemotePath:      fmt.Sprintf("%s/%s", path, opts.RemotePath),
+			ReadFileFrom:    ReadFromLocal,
+			LocalIncludeDir: opts.LocalIncludeDir,
 		}
 		return retrieveFile(ctx, moduleOpts)
 	} else if opts.ReadFileFrom == ReadFromLocal {

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 // Options holds the required parameters for spawning a host.
@@ -236,8 +238,14 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 // specified, the generated daemon script is appended after it.
 func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, workDir string) (string, error) {
 	script := settings.DebugSpawnHosts.SetupScript
+	configScript, configPath, err := generateConfigYAMLScript(ctx, so.ProvisionOptions.TaskId, settings, workDir)
+	if err != nil {
+		return "", errors.Wrap(err, "generating config YAML script")
+	}
+	script = appendSetupScript(script, configScript)
+
 	if so.ProvisionOptions.SetupStepNumber != "" {
-		stepScript, err := generateDebugSetupScript(ctx, so, workDir)
+		stepScript, err := generateDebugSetupScript(ctx, so, settings, configPath, workDir)
 		if err != nil {
 			return "", err
 		}
@@ -258,29 +266,71 @@ func appendSetupScript(existing, additional string) string {
 	return fmt.Sprintf("%s\n%s", existing, additional)
 }
 
+func generateConfigYAMLScript(ctx context.Context, taskID string, settings *evergreen.Settings, workDir string) (string, string, error) {
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding task '%s'", taskID)
+	}
+	if t == nil {
+		return "", "", errors.Errorf("task '%s' not found", taskID)
+	}
+
+	pRef, err := model.GetProjectRefForTask(ctx, taskID)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding project ref for task '%s'", taskID)
+	}
+	if pRef == nil {
+		return "", "", errors.Errorf("project ref not found for task '%s'", taskID)
+	}
+
+	sourceDir, err := fetchSourceDir(ctx, t, workDir)
+	if err != nil {
+		return "", "", errors.Wrap(err, "computing source directory")
+	}
+
+	configPath := fmt.Sprintf("%s/%s", sourceDir, pRef.RemotePath)
+
+	v, err := model.VersionFindOneId(ctx, t.Version)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding version '%s'", t.Version)
+	}
+	if v == nil {
+		return "", "", errors.Errorf("version '%s' not found", t.Version)
+	}
+	pp, err := model.ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding parser project for version '%s'", v.Id)
+	}
+	if pp == nil {
+		return "", "", errors.Errorf("parser project not found for version '%s'", v.Id)
+	}
+	yamlBytes, err := yaml.Marshal(pp)
+	if err != nil {
+		return "", "", errors.Wrap(err, "marshalling parser project to YAML")
+	}
+
+	configDir := filepath.Dir(configPath)
+
+	script := fmt.Sprintf(`# Write the project config YAML to disk.
+mkdir -p "%s"
+cat > "%s" << 'EVGEOF'
+%s
+EVGEOF
+`, configDir, configPath, string(yamlBytes))
+
+	return script, configPath, nil
+}
+
 // generateDebugSetupScript builds a shell script that starts the debug daemon
 // in the background, loads the project config, selects the task, and runs
 // commands up to the specified step number.
-func generateDebugSetupScript(ctx context.Context, so SpawnOptions, workDir string) (string, error) {
+func generateDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, configPath string, workDir string) (string, error) {
 	t, err := task.FindOneId(ctx, so.ProvisionOptions.TaskId)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding task '%s'", so.ProvisionOptions.TaskId)
 	}
 	if t == nil {
 		return "", errors.Errorf("task '%s' not found", so.ProvisionOptions.TaskId)
-	}
-
-	pRef, err := model.GetProjectRefForTask(ctx, so.ProvisionOptions.TaskId)
-	if err != nil {
-		return "", errors.Wrapf(err, "finding project ref for task '%s'", so.ProvisionOptions.TaskId)
-	}
-	if pRef == nil {
-		return "", errors.Errorf("project ref not found for task '%s'", so.ProvisionOptions.TaskId)
-	}
-
-	sourceDir, err := fetchSourceDir(ctx, t, workDir)
-	if err != nil {
-		return "", errors.Wrap(err, "computing source directory")
 	}
 
 	// Extract only the command number, ignoring any sub-command portion
@@ -291,8 +341,6 @@ func generateDebugSetupScript(ctx context.Context, so SpawnOptions, workDir stri
 		return "", errors.Errorf("invalid setup step number '%s'", so.ProvisionOptions.SetupStepNumber)
 	}
 	stepNum := parts[0]
-
-	configPath := fmt.Sprintf("%s/%s", sourceDir, pRef.RemotePath)
 
 	return fmt.Sprintf(`# Redirect all setup script output to a log file.
 DEBUG_SETUP_LOG="/tmp/debug-setup.log"
