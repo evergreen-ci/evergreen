@@ -17,7 +17,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -1068,7 +1067,7 @@ func TestReportS3Usage(t *testing.T) {
 					PutRequests: 50,
 					UploadBytes: 2048,
 				},
-				FileCount: 5,
+				Count: 5,
 			},
 			Logs: s3usage.S3UploadMetrics{
 				PutRequests: 10,
@@ -1083,7 +1082,7 @@ func TestReportS3Usage(t *testing.T) {
 		require.NotNil(t, dbTask)
 		assert.Equal(t, 50, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(2048), dbTask.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 5, dbTask.S3Usage.Artifacts.FileCount)
+		assert.Equal(t, 5, dbTask.S3Usage.Artifacts.Count)
 		assert.Equal(t, 10, dbTask.S3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(4096), dbTask.S3Usage.Logs.UploadBytes)
 	})
@@ -1110,37 +1109,5 @@ func TestReportS3Usage(t *testing.T) {
 		assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, 25, dbTask.S3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
-	})
-}
-
-func TestCalculateAndReportFilePutCosts(t *testing.T) {
-	ctx := t.Context()
-
-	t.Run("EmptyFiles", func(t *testing.T) {
-		calculateAndReportFilePutCosts(ctx, "task1", nil)
-		calculateAndReportFilePutCosts(ctx, "task1", []artifact.File{})
-	})
-
-	t.Run("SingleFile", func(t *testing.T) {
-		files := []artifact.File{
-			{Name: "f1", PutRequests: 3},
-		}
-		calculateAndReportFilePutCosts(ctx, "task1", files)
-		assert.True(t, files[0].PutCost > 0)
-	})
-
-	t.Run("MultipleFiles", func(t *testing.T) {
-		files := []artifact.File{
-			{Name: "small", PutRequests: 1},
-			{Name: "medium", PutRequests: 3},
-			{Name: "large", PutRequests: 10},
-		}
-		calculateAndReportFilePutCosts(ctx, "task1", files)
-
-		for _, f := range files {
-			assert.True(t, f.PutCost > 0, "file %s should have non-zero cost", f.Name)
-		}
-		assert.True(t, files[0].PutCost < files[1].PutCost)
-		assert.True(t, files[1].PutCost < files[2].PutCost)
 	})
 }
