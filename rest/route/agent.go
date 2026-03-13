@@ -730,7 +730,6 @@ func calculateAndReportFilePutCosts(ctx context.Context, taskID string, files []
 		attribute.Float64(evergreen.S3ArtifactMaxFilePutCostOtelAttribute, maxCost),
 		attribute.Float64(evergreen.S3ArtifactMinFilePutCostOtelAttribute, minCost),
 	}
-	ctx = utility.ContextWithAppendedAttributes(ctx, s3FileAttrs)
 	span.SetAttributes(s3FileAttrs...)
 }
 
@@ -838,7 +837,6 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
 		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
 	}
-	ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
 	span.SetAttributes(s3Attrs...)
 
 	return gimlet.NewJSONResponse(struct{}{})
