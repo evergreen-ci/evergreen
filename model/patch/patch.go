@@ -218,20 +218,20 @@ type TriggerInfo struct {
 }
 
 type PatchTriggerDefinition struct {
-	Alias          string          `bson:"alias" json:"alias"`
-	ChildProject   string          `bson:"child_project" json:"child_project"`
-	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
+	Alias          string          `bson:"alias" json:"alias" yaml:"alias"`
+	ChildProject   string          `bson:"child_project" json:"child_project" yaml:"child_project"`
+	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers" yaml:"task_specifiers"`
 	// The parent status that the child patch should run on: failure, success, or *
-	Status         string `bson:"status,omitempty" json:"status,omitempty"`
-	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+	Status         string `bson:"status,omitempty" json:"status,omitempty" yaml:"status,omitempty"`
+	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty" yaml:"parent_as_module,omitempty"`
 	// The revision to base the downstream patch off of
-	DownstreamRevision string `bson:"downstream_revision,omitempty" json:"downstream_revision,omitempty"`
+	DownstreamRevision string `bson:"downstream_revision,omitempty" json:"downstream_revision,omitempty" yaml:"downstream_revision,omitempty"`
 }
 
 type TaskSpecifier struct {
-	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty"`
-	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
-	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
+	PatchAlias   string `bson:"patch_alias,omitempty" json:"patch_alias,omitempty" yaml:"patch_alias,omitempty"`
+	TaskRegex    string `bson:"task_regex,omitempty" json:"task_regex,omitempty" yaml:"task_regex,omitempty"`
+	VariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty" yaml:"variant_regex,omitempty"`
 }
 
 // IsFinished returns whether or not the patch has finished based on its
