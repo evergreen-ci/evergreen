@@ -553,21 +553,8 @@ retryLoop:
 		s3usage.S3UploadMethodPut,
 	)
 
-	if s3pc.isMulti() {
-		logger.Task().Infof("Multi-file upload completed: files=%d, total_size=%d bytes, total_puts=%d",
-			len(uploadedFiles), totalFileSize, totalPutRequests)
-	} else if len(uploadedFiles) > 0 {
-		logger.Task().Infof("Single file upload completed: size=%d bytes, total_puts=%d",
-			totalFileSize, totalPutRequests)
-	}
-
-	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles))
-
-	trace.SpanFromContext(ctx).SetAttributes(
-		attribute.Int64("s3_put.total_bytes", totalFileSize),
-		attribute.Int("s3_put.total_put_requests", totalPutRequests),
-		attribute.Int("s3_put.file_count", len(uploadedFiles)),
-	)
+	maxPuts, minPuts := computePerFileExtremes(uploadedFiles)
+	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles), maxPuts, minPuts)
 
 	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile, conf))
 	if err != nil {
@@ -584,6 +571,24 @@ retryLoop:
 	}
 
 	return nil
+}
+
+// computePerFileExtremes returns the max and min PutRequests across all uploaded files.
+func computePerFileExtremes(files []s3usage.FileMetrics) (maxPuts, minPuts int) {
+	if len(files) == 0 {
+		return 0, 0
+	}
+	maxPuts = files[0].PutRequests
+	minPuts = files[0].PutRequests
+	for i := 1; i < len(files); i++ {
+		if files[i].PutRequests > maxPuts {
+			maxPuts = files[i].PutRequests
+		}
+		if files[i].PutRequests < minPuts {
+			minPuts = files[i].PutRequests
+		}
+	}
+	return maxPuts, minPuts
 }
 
 // attachTaskFiles is responsible for sending the
