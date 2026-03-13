@@ -553,21 +553,7 @@ retryLoop:
 		s3usage.S3UploadMethodPut,
 	)
 
-	if s3pc.isMulti() {
-		logger.Task().Infof("Multi-file upload completed: files=%d, total_size=%d bytes, total_puts=%d",
-			len(uploadedFiles), totalFileSize, totalPutRequests)
-	} else if len(uploadedFiles) > 0 {
-		logger.Task().Infof("Single file upload completed: size=%d bytes, total_puts=%d",
-			totalFileSize, totalPutRequests)
-	}
-
 	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles))
-
-	trace.SpanFromContext(ctx).SetAttributes(
-		attribute.Int64("s3_put.total_bytes", totalFileSize),
-		attribute.Int("s3_put.total_put_requests", totalPutRequests),
-		attribute.Int("s3_put.file_count", len(uploadedFiles)),
-	)
 
 	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile, conf))
 	if err != nil {

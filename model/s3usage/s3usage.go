@@ -75,7 +75,6 @@ func CalculateUploadMetrics(
 
 		fileSize := fileInfo.Size()
 		putRequests := CalculatePutRequestsWithContext(bucketType, method, fileSize)
-		logger.Infof("Calculated metrics for file '%s': size=%d bytes, put_requests=%d", file.LocalPath, fileSize, putRequests)
 
 		populatedFiles[i] = FileMetrics{
 			LocalPath:     file.LocalPath,
