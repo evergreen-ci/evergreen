@@ -247,6 +247,11 @@ func Patch() cli.Command {
 			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
 			if params.IncludeModules {
+				if !outputJSON {
+					fmt.Fprint(os.Stderr, "Using --include-modules will apply module configuration changes to the patch "+
+						"regardless of whether you include each module's code changes.\nTo avoid this, "+
+						"use the set-module command to set modules individually instead.\n")
+				}
 				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache)
 				if err != nil {
 					return err
