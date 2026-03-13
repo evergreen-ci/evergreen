@@ -198,6 +198,42 @@ Note that some blocks, such as `post`, `teardown_task`, and `teardown_group`
 run after the `timeout` block and therefore cannot trigger the `timeout` block
 to run.
 
+### Further Examples
+
+Specify that all tasks in the build variant get a particular timeout:
+
+```yaml
+buildvariants:
+  - name: your-build-variant-name
+    display_name: "~ Your Variant"
+    expansions:
+      exec_timeout_secs: 32400 # 9 hour timeout
+      timeout_secs: 18000 # 5 hour idle timeout
+```
+
+Specify that a task gets a particular timeout to apply to any build variant that runs it:
+
+```yaml
+tasks:
+  - name: your_task
+    tags: ["assigned_to_jira_team_your_team", "default"]
+    exec_timeout_secs: 7200 # 2 hour timeout for the task overall
+```
+
+Specify that a task gets a particular timeout on the specified build variants:
+
+```yaml
+buildvariants:
+  - name: your-build-variant-name
+    tasks:
+      - name: your_task
+        exec_timeout_secs: 7200 # 2 hour timeout for the task overall on only this variant
+```
+
+There may be further changes you can do within your team using **variables or expansions**. It's good
+to reach out to your team for further advice here. For example, server [overrides](https://github.com/10gen/mongo/blob/master/etc/evergreen_timeouts.yml) or
+server's resmoke [test configurations](https://github.com/mongodb/mongo-task-generator/blob/master/docs/generating_tasks.md#fuzzer-coverage).
+
 ## Aborting a Task
 
 A task can be aborted once it's started running but before it's finished. If a
@@ -255,11 +291,11 @@ Example in a command:
 
 ```yaml
 - command: shell.exec
-     params:
-        shell: bash
-        # Manually set task end status to setup-failed and append failure metadata tags.
-        script: |
-          curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false, "add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
+  params:
+    shell: bash
+    # Manually set task end status to setup-failed and append failure metadata tags.
+    script: |
+      curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false, "add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
 ```
 
 ### Manually Adding Metadata Tags to a Task
@@ -283,9 +319,9 @@ Example in a command:
 
 ```yaml
 - command: shell.exec
-     params:
-        shell: bash
-        # Manually append failure metadata tags.
-        script: |
-          curl -d '{"add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/failure_metadata_tag
+  params:
+    shell: bash
+    # Manually append failure metadata tags.
+    script: |
+      curl -d '{"add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/failure_metadata_tag
 ```
