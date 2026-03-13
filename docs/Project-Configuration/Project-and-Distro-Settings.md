@@ -167,8 +167,8 @@ Options:
   variables will be redacted from task logs. After saving them, private
   variables cannot be retrieved.
 - Checking **admin only** restricts the variable so it is only available
-  to tasks in system-created versions (e.g. mainline commits, periodic
-  builds, triggers) or tasks activated by a project admin.
+  to tasks in mainline commits, periodic builds, or trigger versions, or
+  to tasks activated by a project admin.
 
 Project variables have some limitations:
 
@@ -185,10 +185,9 @@ Project variables have some limitations:
 #### Admin Only
 
 Admin-only variables are injected into a task's environment only when the task
-belongs to a system-created version (mainline commits, periodic builds, or
-trigger versions) or when the task was activated by a user with project admin
-permissions. Patches and PRs activated by non-admin users will not have access
-to these variables.
+belongs to a mainline commit, periodic build, or trigger version, or when the
+task was activated by a user with project admin permissions. Patches and PRs
+activated by non-admin users will not have access to these variables.
 
 ### Aliases
 
