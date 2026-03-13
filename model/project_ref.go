@@ -753,6 +753,19 @@ func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string)
 		if projectConfig.TaskAnnotationSettings != nil {
 			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
 		}
+		// Treat empty slices as nil so that YAML values can fill them in.
+		// Unlike the repo merge (where empty explicitly overrides), the
+		// project config YAML is the lowest priority fallback and empty
+		// DB values should not block it.
+		if len(p.PatchTriggerAliases) == 0 {
+			p.PatchTriggerAliases = nil
+		}
+		if len(p.GithubPRTriggerAliases) == 0 {
+			p.GithubPRTriggerAliases = nil
+		}
+		if len(p.GithubMQTriggerAliases) == 0 {
+			p.GithubMQTriggerAliases = nil
+		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
 		util.RecursivelySetUndefinedFields(reflectedRef, reflectedConfig)
