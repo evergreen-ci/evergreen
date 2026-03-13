@@ -526,6 +526,36 @@ func TestFlattenOtelVariables(t *testing.T) {
 	assert.Equal(t, "v7", val)
 }
 
+func TestGetProjectMetadata(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+
+	t.Run("ReturnsNilForDeletedProject", func(t *testing.T) {
+		projectId := "deleted_project"
+		patchId := "some_patch_id"
+		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		assert.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("ReturnsProjectMetadataForExistingProject", func(t *testing.T) {
+		projectRef := model.ProjectRef{
+			Id:         "existing_project",
+			Identifier: "existing_project",
+			Owner:      "my_owner",
+			Repo:       "my_repo",
+			Branch:     "main",
+		}
+		assert.NoError(t, projectRef.Insert(t.Context()))
+		projectId := "existing_project"
+		patchId := "some_patch_id"
+		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		assert.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "my_owner", utility.FromStringPtr(result.Owner))
+		assert.Equal(t, "my_repo", utility.FromStringPtr(result.Repo))
+	})
+}
+
 func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(user.Collection, distro.Collection))
 
