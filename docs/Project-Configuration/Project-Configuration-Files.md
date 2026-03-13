@@ -1952,10 +1952,10 @@ Specify that all tasks in the build variant should use a different sized distro.
 
 ```yaml
 buildvariants:
-- name: your-build-variant-name
-  display_name: "~ Your Variant"
-  run_on:
-    - rhel8.8-xlarge
+  - name: your-build-variant-name
+    display_name: "~ Your Variant"
+    run_on:
+      - rhel8.8-xlarge
 ```
 
 Read more about the run_on field [here](Project-Configuration-Files#build-variants).
@@ -1964,14 +1964,14 @@ Read more about the run_on field [here](Project-Configuration-Files#build-varian
 
 ```yaml
 buildvariants:
-- name: your-build-variant-name
-  display_name: "~ Your Variant"
-  run_on:
-    - rhel8.8-small
-  tasks:
-    - name: .tests_that_need_xlarge_distros
-      distros:
-        - rhel8.8-xlarge
+  - name: your-build-variant-name
+    display_name: "~ Your Variant"
+    run_on:
+      - rhel8.8-small
+    tasks:
+      - name: .tests_that_need_xlarge_distros
+        distros:
+          - rhel8.8-xlarge
 ```
 
 There may be further changes you can do within your team using **variables or expansions**. It's good

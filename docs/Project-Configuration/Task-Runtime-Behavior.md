@@ -224,10 +224,10 @@ Specify that a task gets a particular timeout on the specified build variants:
 
 ```yaml
 buildvariants:
-   - name: your-build-variant-name
-     tasks:
-        - name: your_task
-          exec_timeout_secs: 7200 # 2 hour timeout for the task overall on only this variant
+  - name: your-build-variant-name
+    tasks:
+      - name: your_task
+        exec_timeout_secs: 7200 # 2 hour timeout for the task overall on only this variant
 ```
 
 There may be further changes you can do within your team using **variables or expansions**. It's good
