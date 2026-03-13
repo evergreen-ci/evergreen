@@ -40,10 +40,9 @@ func TestCostIsZero(t *testing.T) {
 	})
 }
 
-func TestCostJSONIncludesThroughputWhenZero(t *testing.T) {
-	// When throughput cost is legitimately 0 (e.g., GP2 volumes or GP3 at baseline),
-	// the API should still include the throughput fields with value 0.
-	c := Cost{S3ArtifactPutCost: 0.0004}
+func TestCostJSONIncludesEBSThroughputFieldsWhenZero(t *testing.T) {
+	// Throughput and storage JSON keys omit `omitempty`, so zero values still serialize (for API stability).
+	c := Cost{}
 	data, err := json.Marshal(c)
 	require.NoError(t, err)
 
@@ -54,4 +53,9 @@ func TestCostJSONIncludesThroughputWhenZero(t *testing.T) {
 	assert.Contains(t, unmarshaled, "adjusted_ebs_throughput_cost")
 	assert.Equal(t, 0.0, unmarshaled["on_demand_ebs_throughput_cost"])
 	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_throughput_cost"])
+
+	assert.Contains(t, unmarshaled, "on_demand_ebs_storage_cost")
+	assert.Contains(t, unmarshaled, "adjusted_ebs_storage_cost")
+	assert.Equal(t, 0.0, unmarshaled["on_demand_ebs_storage_cost"])
+	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_storage_cost"])
 }

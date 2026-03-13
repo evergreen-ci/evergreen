@@ -405,10 +405,14 @@ type ComplexityRoot struct {
 	}
 
 	Cost struct {
-		AdjustedEC2Cost   func(childComplexity int) int
-		OnDemandEC2Cost   func(childComplexity int) int
-		S3ArtifactPutCost func(childComplexity int) int
-		S3LogPutCost      func(childComplexity int) int
+		AdjustedEBSStorageCost    func(childComplexity int) int
+		AdjustedEBSThroughputCost func(childComplexity int) int
+		AdjustedEC2Cost           func(childComplexity int) int
+		OnDemandEBSStorageCost    func(childComplexity int) int
+		OnDemandEBSThroughputCost func(childComplexity int) int
+		OnDemandEC2Cost           func(childComplexity int) int
+		S3ArtifactPutCost         func(childComplexity int) int
+		S3LogPutCost              func(childComplexity int) int
 	}
 
 	CostConfig struct {
@@ -4130,12 +4134,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ContainerPoolsConfig.Pools(childComplexity), true
 
+	case "Cost.adjustedEBSStorageCost":
+		if e.complexity.Cost.AdjustedEBSStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedEBSStorageCost(childComplexity), true
+	case "Cost.adjustedEBSThroughputCost":
+		if e.complexity.Cost.AdjustedEBSThroughputCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedEBSThroughputCost(childComplexity), true
 	case "Cost.adjustedEC2Cost":
 		if e.complexity.Cost.AdjustedEC2Cost == nil {
 			break
 		}
 
 		return e.complexity.Cost.AdjustedEC2Cost(childComplexity), true
+	case "Cost.onDemandEBSStorageCost":
+		if e.complexity.Cost.OnDemandEBSStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.OnDemandEBSStorageCost(childComplexity), true
+	case "Cost.onDemandEBSThroughputCost":
+		if e.complexity.Cost.OnDemandEBSThroughputCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.OnDemandEBSThroughputCost(childComplexity), true
 	case "Cost.onDemandEC2Cost":
 		if e.complexity.Cost.OnDemandEC2Cost == nil {
 			break
@@ -24289,6 +24317,122 @@ func (ec *executionContext) _Cost_adjustedEC2Cost(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_Cost_adjustedEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_onDemandEBSThroughputCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_onDemandEBSThroughputCost,
+		func(ctx context.Context) (any, error) {
+			return obj.OnDemandEBSThroughputCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_onDemandEBSThroughputCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedEBSThroughputCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedEBSThroughputCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedEBSThroughputCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedEBSThroughputCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_onDemandEBSStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_onDemandEBSStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.OnDemandEBSStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_onDemandEBSStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedEBSStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedEBSStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedEBSStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedEBSStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -66319,6 +66463,14 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			case "onDemandEBSThroughputCost":
+				return ec.fieldContext_Cost_onDemandEBSThroughputCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "onDemandEBSStorageCost":
+				return ec.fieldContext_Cost_onDemandEBSStorageCost(ctx, field)
+			case "adjustedEBSStorageCost":
+				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
@@ -66358,6 +66510,14 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			case "onDemandEBSThroughputCost":
+				return ec.fieldContext_Cost_onDemandEBSThroughputCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "onDemandEBSStorageCost":
+				return ec.fieldContext_Cost_onDemandEBSStorageCost(ctx, field)
+			case "adjustedEBSStorageCost":
+				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
@@ -74050,6 +74210,14 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			case "onDemandEBSThroughputCost":
+				return ec.fieldContext_Cost_onDemandEBSThroughputCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "onDemandEBSStorageCost":
+				return ec.fieldContext_Cost_onDemandEBSStorageCost(ctx, field)
+			case "adjustedEBSStorageCost":
+				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
@@ -74578,6 +74746,14 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
+			case "onDemandEBSThroughputCost":
+				return ec.fieldContext_Cost_onDemandEBSThroughputCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "onDemandEBSStorageCost":
+				return ec.fieldContext_Cost_onDemandEBSStorageCost(ctx, field)
+			case "adjustedEBSStorageCost":
+				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
@@ -92390,6 +92566,14 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
 		case "adjustedEC2Cost":
 			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
+		case "onDemandEBSThroughputCost":
+			out.Values[i] = ec._Cost_onDemandEBSThroughputCost(ctx, field, obj)
+		case "adjustedEBSThroughputCost":
+			out.Values[i] = ec._Cost_adjustedEBSThroughputCost(ctx, field, obj)
+		case "onDemandEBSStorageCost":
+			out.Values[i] = ec._Cost_onDemandEBSStorageCost(ctx, field, obj)
+		case "adjustedEBSStorageCost":
+			out.Values[i] = ec._Cost_adjustedEBSStorageCost(ctx, field, obj)
 		case "s3ArtifactPutCost":
 			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
 		case "s3LogPutCost":

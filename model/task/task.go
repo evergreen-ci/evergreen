@@ -4112,13 +4112,16 @@ func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, f
 	}
 }
 
-// EBS GP3 throughput pricing constants (us-east-1 rates).
+// EBS GP3 pricing constants (us-east-1 rates).
 // Pricing is standardized to us-east-1 and does not account for regional variations.
+// GP2 volumes use GP3 pricing; price differences are ignored.
 const (
 	// GP3FreeThroughputMBps is the free throughput tier for GP3 volumes (125 MB/s).
 	GP3FreeThroughputMBps = 125
 	// GP3ThroughputPricePerMBpsMonth is the price per MB/s-month above the free tier.
 	GP3ThroughputPricePerMBpsMonth = 0.04
+	// GP3StoragePricePerGBMonth is the on-demand price per GB-month for EBS storage (us-east-1).
+	GP3StoragePricePerGBMonth = 0.08
 	// SecondsPerMonth is 2,592,000 (60 * 60 * 24 * 30) and is used to convert monthly pricing to per-second pricing.
 	SecondsPerMonth = 60 * 60 * 24 * 30
 )
@@ -4144,8 +4147,8 @@ func calculateBillableThroughput(totalThroughput int32) int32 {
 }
 
 // CalculateEBSThroughputOnDemandCost calculates the raw on-demand cost for EBS GP3 throughput.
-// Pricing based on us-east-1 rates: $0.04 per MB/s-month above 125 MB/s baseline.
-// Does not apply discount; use CalculateEBSThroughputAdjustedCost for discounted cost.
+// Pricing is based on us-east-1 rates: $0.04 per MB/s-month above the 125 MB/s baseline.
+// It does not apply a discount; use CalculateEBSThroughputAdjustedCost for the discounted cost.
 func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
 	if runtimeSeconds <= 0 {
 		return 0
@@ -4165,7 +4168,7 @@ func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec
 }
 
 // CalculateEBSThroughputAdjustedCost calculates the adjusted cost for EBS GP3 throughput.
-// Applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+// It applies the discount: adjusted = on_demand * (1 - EBSDiscount).
 func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
 	onDemandCost := CalculateEBSThroughputOnDemandCost(runtimeSeconds, mountPoints)
 	return onDemandCost * (1 - ebsConfig.EBSDiscount)
@@ -4198,6 +4201,51 @@ func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig eve
 		mountPoints,
 		financeConfig.EBSCost,
 	)
+	t.TaskCost.OnDemandEBSStorageCost = CalculateEBSStorageOnDemandCost(
+		runtimeSeconds,
+		mountPoints,
+	)
+	t.TaskCost.AdjustedEBSStorageCost = CalculateEBSStorageAdjustedCost(
+		runtimeSeconds,
+		mountPoints,
+		financeConfig.EBSCost,
+	)
+}
+
+// calculateTotalVolumeSize sums each volume's size in GB across mount points.
+// GP3 pricing standardization applies only in the cost calculation.
+func calculateTotalVolumeSize(mountPoints []ec2mount.MountPoint) int32 {
+	var totalSize int32
+	for _, mp := range mountPoints {
+		if mp.Size <= 0 {
+			continue
+		}
+		totalSize += mp.Size
+	}
+	return totalSize
+}
+
+// CalculateEBSStorageOnDemandCost calculates the raw on-demand cost for EBS storage.
+// Pricing is based on us-east-1 rates: $0.08 per GB-month (GP3); GP2 volumes use the same rate in this model.
+// It does not apply a discount; use CalculateEBSStorageAdjustedCost for the discounted cost.
+func CalculateEBSStorageOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
+	if runtimeSeconds <= 0 {
+		return 0
+	}
+
+	totalSize := calculateTotalVolumeSize(mountPoints)
+	if totalSize == 0 {
+		return 0
+	}
+
+	return (float64(totalSize) * GP3StoragePricePerGBMonth / SecondsPerMonth) * runtimeSeconds
+}
+
+// CalculateEBSStorageAdjustedCost calculates the adjusted EBS storage cost.
+// It applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+func CalculateEBSStorageAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
+	onDemandCost := CalculateEBSStorageOnDemandCost(runtimeSeconds, mountPoints)
+	return onDemandCost * (1 - ebsConfig.EBSDiscount)
 }
 
 func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, *distro.Distro, error) {

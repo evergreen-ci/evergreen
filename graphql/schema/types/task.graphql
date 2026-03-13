@@ -334,6 +334,10 @@ Cost represents the cost breakdown for a task or version.
 type Cost {
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
+  onDemandEBSThroughputCost: Float
+  adjustedEBSThroughputCost: Float
+  onDemandEBSStorageCost: Float
+  adjustedEBSStorageCost: Float
   s3ArtifactPutCost: Float
   s3LogPutCost: Float
 }
