@@ -302,6 +302,7 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `merge_queue.intent_created` - When a merge queue patch is created
 - `merge_queue.patch_processing` - When patch processing begins
 - `merge_queue.patch_completed` - When a merge queue version completes. Status is determined from removal reason if the patch was removed from the queue by GitHub, otherwise from the final version status.
+- `merge_queue.destroyed` - When GitHub sends a "destroyed" MergeGroupEvent webhook. Emitted for all removal reasons (merged, invalidated, dequeued).
 
 **Latency Metrics (Patch-Level):**
 
@@ -316,7 +317,7 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
   - `"success"` - Merged successfully (reason: "merged") or version succeeded
   - `"failed"` - Failed status checks (reason: "invalidated") or version failed
   - `"removed"` - Manually dequeued or other removal (reason: "dequeued")
-- `evergreen.merge_queue.removal_reason` - The reason GitHub removed the patch from the queue ("invalidated", "merged", or "dequeued"). Present in `merge_queue.patch_completed` spans when the patch was removed from the queue.
+- `evergreen.merge_queue.removal_reason` - The reason GitHub removed the patch from the queue ("invalidated", "merged", or "dequeued"). Present in `merge_queue.patch_completed` spans when the patch was removed from the queue before completion, and always present in `merge_queue.destroyed` spans when the webhook arrives.
 - `evergreen.merge_queue.has_test_failure` - Whether the version contains any tasks that failed due to test failures
 - `evergreen.merge_queue.has_system_failure` - Whether the version contains any tasks that failed due to system failures
 - `evergreen.merge_queue.has_setup_failure` - Whether the version contains any tasks that failed due to setup failures

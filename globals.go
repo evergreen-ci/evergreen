@@ -499,16 +499,24 @@ const (
 	TaskGroupOtelAttribute          = "evergreen.task.task_group"
 	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
 
-	// S3 PUT cost otel attributes — task-level aggregates
-	S3PutCostTotalPutRequestsOtelAttribute = "evergreen.task.s3_put_cost.total_put_requests"
-	S3PutCostTotalUploadBytesOtelAttribute = "evergreen.task.s3_put_cost.total_upload_bytes"
-	S3PutCostTotalFileCountOtelAttribute   = "evergreen.task.s3_put_cost.total_file_count"
-	S3PutCostTotalPutCostOtelAttribute     = "evergreen.task.s3_put_cost.total_put_cost"
+	// S3 cost tracking otel span name — shared by per-file and aggregate events
+	S3CostTrackingOtelSpanName = "s3-cost-tracking"
 
-	// S3 PUT cost otel attributes — per file cost statistics
-	S3PutCostAvgFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.avg_file_put_cost"
-	S3PutCostMaxFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.max_file_put_cost"
-	S3PutCostMinFilePutCostOtelAttribute = "evergreen.task.s3_put_cost.min_file_put_cost"
+	// S3 cost tracking otel attributes — artifact aggregates
+	S3ArtifactPutRequestsOtelAttribute = "evergreen.task.s3_cost.artifact_put_requests"
+	S3ArtifactUploadBytesOtelAttribute = "evergreen.task.s3_cost.artifact_upload_bytes"
+	S3ArtifactFileCountOtelAttribute   = "evergreen.task.s3_cost.artifact_file_count"
+	S3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.artifact_put_cost"
+
+	// S3 cost tracking otel attributes — artifact per-file statistics
+	S3ArtifactAvgFilePutCostOtelAttribute = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
+	S3ArtifactMaxFilePutCostOtelAttribute = "evergreen.task.s3_cost.artifact_max_file_put_cost"
+	S3ArtifactMinFilePutCostOtelAttribute = "evergreen.task.s3_cost.artifact_min_file_put_cost"
+
+	// S3 cost tracking otel attributes — log aggregates
+	S3LogPutRequestsOtelAttribute = "evergreen.task.s3_cost.log_put_requests"
+	S3LogUploadBytesOtelAttribute = "evergreen.task.s3_cost.log_upload_bytes"
+	S3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.log_put_cost"
 
 	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"

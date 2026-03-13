@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/taskexec"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -23,6 +24,10 @@ const (
 	daemonDir      = ".evergreen-local"
 	daemonPortFile = "daemon.port"
 	daemonPIDFile  = "daemon.pid"
+
+	stepFlagName  = "step"
+	setupFlagName = "setup"
+	tailFlagName  = "tail"
 )
 
 // getDaemonDir returns the full path to the daemon directory
@@ -147,6 +152,26 @@ func Debug() cli.Command {
 				Usage:     "Jump to a specific step without executing",
 				ArgsUsage: "<step_index>",
 				Action:    jumpToCmd,
+			},
+			{
+				Name:  "logs",
+				Usage: "View debug session logs",
+				Flags: []cli.Flag{
+					cli.IntFlag{
+						Name:  stepFlagName,
+						Usage: "Show logs from a specific step only",
+						Value: -1,
+					},
+					cli.BoolFlag{
+						Name:  setupFlagName,
+						Usage: "Show setup phase logs instead of session logs",
+					},
+					cli.IntFlag{
+						Name:  tailFlagName,
+						Usage: "Show only the last N lines",
+					},
+				},
+				Action: viewLogsCmd,
 			},
 		},
 	}
@@ -296,13 +321,41 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 	return nil
 }
 
-// daemonStatusCmd checks the debug daemon status
+// daemonStatusResponse is the typed response from the /status endpoint.
+type daemonStatusResponse struct {
+	Healthy      bool   `json:"healthy"`
+	TaskSelected bool   `json:"task_selected"`
+	CurrentStep  int    `json:"current_step"`
+	TotalSteps   int    `json:"total_steps"`
+	SelectedTask string `json:"selected_task"`
+}
+
+// daemonStatusCmd checks the debug daemon status.
 func daemonStatusCmd(c *cli.Context) error {
-	if _, err := getDaemonURL(); err != nil {
+	url, err := getDaemonURL()
+	if err != nil {
 		grip.Info("Daemon is not running")
 		return nil
 	}
+
+	resp, err := http.Get(url + "/status")
+	if err != nil {
+		grip.Info("Daemon is running but not responding to status check")
+		return nil
+	}
+	defer resp.Body.Close()
+
+	var status daemonStatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		return errors.Wrap(err, "decoding daemon status response")
+	}
+
 	grip.Info("Daemon is running")
+
+	if status.TaskSelected {
+		grip.Infof("Task: %s (step %d/%d)", status.SelectedTask, status.CurrentStep, status.TotalSteps)
+	}
+
 	return nil
 }
 
@@ -344,6 +397,11 @@ func selectTaskCmd(c *cli.Context) error {
 	// TODO: DEVPROD-26690 Support selecting variant task and apply variant-specific expansions.
 	variantName := c.String("variant")
 
+	// Clear previous session logs when selecting a new task.
+	if err := taskexec.ClearSessionLogs(); err != nil {
+		grip.Warning(errors.Wrap(err, "clearing previous session logs"))
+	}
+
 	url, err := getDaemonURL()
 	if err != nil {
 		return err
@@ -368,49 +426,27 @@ func selectTaskCmd(c *cli.Context) error {
 	return nil
 }
 
-// stepNextCmd executes the next step
+// stepNextCmd executes the next step with streaming output.
 func stepNextCmd(c *cli.Context) error {
 	url, err := getDaemonURL()
 	if err != nil {
 		return err
 	}
 
-	resp, err := postJSON(url+"/step/next", nil)
-	if err != nil {
-		return err
-	}
-
-	if resp["success"].(bool) {
-		grip.Infof("Step executed successfully (now at step %v)\n", resp["current_step"])
-	} else {
-		grip.Infof("Step failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
-	}
-
-	return nil
+	return postAndStreamResponse(url+"/step/next", nil)
 }
 
-// runAllCmd runs all remaining steps
+// runAllCmd runs all remaining steps with streaming output.
 func runAllCmd(c *cli.Context) error {
 	url, err := getDaemonURL()
 	if err != nil {
 		return err
 	}
 
-	grip.Info("Running all remaining steps...")
-	resp, err := postJSON(url+"/step/run-all", nil)
-	if err != nil {
-		return err
-	}
-
-	if resp["success"].(bool) {
-		grip.Infof("Execution complete (at step %v)\n", resp["current_step"])
-	} else {
-		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
-	}
-	return nil
+	return postAndStreamResponse(url+"/step/run-all", nil)
 }
 
-// runUntilCmd runs until a specific step
+// runUntilCmd runs until a specific step with streaming output.
 func runUntilCmd(c *cli.Context) error {
 	if c.NArg() < 1 {
 		return errors.New("step index required")
@@ -426,18 +462,7 @@ func runUntilCmd(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("Running until step %d...\n", index)
-	resp, err := postJSON(fmt.Sprintf("%s/step/run-until/%d", url, index), nil)
-	if err != nil {
-		return err
-	}
-
-	if resp["success"].(bool) {
-		grip.Infof("Execution complete (at step %v)\n", resp["current_step"])
-	} else {
-		grip.Infof("Execution failed: %s (now at step %v)\n", resp["error"], resp["current_step"])
-	}
-	return nil
+	return postAndStreamResponse(fmt.Sprintf("%s/step/run-until/%d", url, index), nil)
 }
 
 // jumpToCmd jumps to a specific step
@@ -545,6 +570,71 @@ func listStepsCmd(c *cli.Context) error {
 		}
 
 		fmt.Printf("%s%d: %s%s\n", marker, index, step["display_name"], status)
+	}
+
+	return nil
+}
+
+// postAndStreamResponse sends a POST request and renders the NDJSON streaming response.
+func postAndStreamResponse(url string, body interface{}) error {
+	var reqBody io.Reader
+	if body != nil {
+		jsonData, err := json.Marshal(body)
+		if err != nil {
+			return errors.Wrap(err, "marshaling request body")
+		}
+		reqBody = bytes.NewReader(jsonData)
+	}
+
+	resp, err := http.Post(url, "application/json", reqBody)
+	if err != nil {
+		return errors.Wrap(err, "sending POST request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyData, _ := io.ReadAll(resp.Body)
+		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))
+	}
+
+	result, err := readAndRenderStream(resp.Body, os.Stdout)
+	if err != nil {
+		return errors.Wrap(err, "reading streaming response")
+	}
+
+	if !result.Success && result.Error != "" {
+		return errors.New(result.Error)
+	}
+
+	return nil
+}
+
+// viewLogsCmd displays debug session logs from local log files.
+func viewLogsCmd(c *cli.Context) error {
+	isSetup := c.Bool(setupFlagName)
+	stepFilter := c.Int(stepFlagName)
+	tail := c.Int(tailFlagName)
+
+	lines, err := taskexec.ReadAllLogs(isSetup)
+	if err != nil {
+		return errors.Wrap(err, "reading logs")
+	}
+
+	if stepFilter >= 0 {
+		lines = taskexec.FilterLogLinesByStep(lines, stepFilter)
+	}
+
+	if tail > 0 && len(lines) > tail {
+		lines = lines[len(lines)-tail:]
+	}
+
+	if len(lines) == 0 {
+		grip.Info("No logs found.")
+		return nil
+	}
+
+	for _, line := range lines {
+		fmt.Println(line)
 	}
 
 	return nil

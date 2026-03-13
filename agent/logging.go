@@ -122,6 +122,7 @@ func (a *Agent) prepLogger(tc *taskContext, commandName string) client.LoggerCon
 			Redacted:           tc.taskConfig.Redacted,
 			InternalRedactions: tc.taskConfig.InternalRedactions,
 		},
+		S3Usage: tc.taskConfig.S3Usage,
 	}
 	agentLog := client.LogOpts{
 		Sender:   model.EvergreenLogSender,

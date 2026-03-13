@@ -131,6 +131,16 @@ Additionally, admins can **Force Repotracker Run** to check for new commits if n
 
 The repotracker does not guarantee every commit runs their corresponding version, please see [run every mainline commit](#run-every-mainline-commit) for more details.
 
+**Important: Do not rewrite commit history on tracked branches.** The repotracker polls
+the GitHub API for commits on the tracked branch and processes all commits between the
+branch HEAD and the last commit it has seen. If the commit history on a tracked branch is
+modified — for example, by force-pushing rebased commits, or by merging another branch
+while preserving its commit history — the repotracker will treat any previously unseen
+commits as new and create versions for them. This can result in unexpected versions being
+created and activated for commits that were not originally part of the tracked branch. To avoid
+this, use squash merges or other strategies that do not rewrite the commit history
+of the tracked branch.
+
 ### Access and Admin Settings
 
 To set a Project Administrator edit the
@@ -156,8 +166,9 @@ Options:
   visible on the projects page or by API routes. Additionally, private
   variables will be redacted from task logs. After saving them, private
   variables cannot be retrieved.
-- Checking **admin only** ensures that the variable can only be used
-  by admins and mainline commits.
+- Checking **admin only** restricts the variable so it is only available
+  to tasks in mainline commits, periodic builds, or trigger versions, or
+  to tasks activated by a project admin.
 
 Project variables have some limitations:
 
@@ -170,6 +181,13 @@ Project variables have some limitations:
 - A project variable's value cannot exceed 8 KB in length. If you need to store
   a value longer than 8 KB, you can store it in multiple variables and
   concatenate them together in a script when your task runs.
+
+#### Admin Only
+
+Admin-only variables are injected into a task's environment only when the task
+belongs to a mainline commit, periodic build, or trigger version, or when the
+task was activated by a user with project admin permissions. Patches and PRs
+activated by non-admin users will not have access to these variables.
 
 ### Aliases
 

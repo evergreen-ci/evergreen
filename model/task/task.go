@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -2118,11 +2119,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		}
 	}
 
-	if detail.S3Usage != nil {
-		t.S3Usage = *detail.S3Usage
-	}
-
-	// Calculate all task costs (EC2 + S3) now that we have the actual runtime
+	// Calculate EC2 runtime costs now that we have the actual runtime.
 	if err := t.UpdateTaskCost(ctx); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":   "failed to calculate task cost",
@@ -2147,7 +2144,6 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				StatusKey:             detail.Status,
 				TimeTakenKey:          t.TimeTaken,
 				TaskCostKey:           t.TaskCost,
-				S3UsageKey:            t.S3Usage,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				DisplayStatusCacheKey: t.DisplayStatusCache,
@@ -4114,16 +4110,28 @@ func (t *Task) calculateRuntimeCost(ctx context.Context) {
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 
+// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
+func (t *Task) SaveS3Usage(ctx context.Context) error {
+	t.calculateS3ArtifactCost(ctx)
+
+	setFields := bson.M{
+		S3UsageKey: t.S3Usage,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"): t.TaskCost.S3ArtifactPutCost,
+	}
+
+	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
+}
+
 // calculateS3ArtifactCost sets the S3 artifact PUT cost on TaskCost based on the task's S3 usage.
 func (t *Task) calculateS3ArtifactCost(ctx context.Context) {
-	if t.S3Usage.UserFiles.PutRequests <= 0 {
+	if t.S3Usage.Artifacts.PutRequests <= 0 {
 		return
 	}
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
 		costConfig = nil
 	}
-	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.UserFiles.PutRequests, costConfig)
+	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
 }
 
 type CostPredictionResult struct {
@@ -4178,6 +4186,30 @@ func addPredictedCostToUpdate(setFields bson.M, predictedCost cost.Cost) {
 	}
 }
 
+// isContextError returns true if the error is due to context timeout or cancellation.
+// The AWS SDK may wrap these errors, so we also check the error message.
+func isContextError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return true
+	}
+	s := err.Error()
+	return strings.Contains(s, "context deadline exceeded") || strings.Contains(s, "canceled")
+}
+
+// allObjectsExistInBucket returns true if all keys exist in the bucket.
+func allObjectsExistInBucket(ctx context.Context, bucket pail.Bucket, keys []string) bool {
+	for _, key := range keys {
+		exists, err := bucket.Exists(ctx, key)
+		if err != nil || !exists {
+			return false
+		}
+	}
+	return true
+}
+
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket.
 func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
 	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
@@ -4218,8 +4250,43 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		return errors.Wrap(err, "getting failed bucket")
 	}
 
-	if err = logService.MoveObjectsToBucket(ctx, allKeys, failedBucket); err != nil {
-		return errors.Wrap(err, "moving logs to failed bucket")
+	moveErr := logService.MoveObjectsToBucket(ctx, allKeys, failedBucket)
+	if moveErr != nil {
+		// When the client times out, S3 CopyObject may have already completed server-side.
+		// Verify whether the objects actually exist in the failed bucket before updating the DB.
+		// If they do, update the DB to fix the inconsistency. If not, return the error for retry.
+		if isContextError(moveErr) {
+			grip.Info(message.Fields{
+				"message":   "failed_bucket_move: move timed out or canceled, verifying objects in destination",
+				"task_id":   t.Id,
+				"execution": t.Execution,
+				"key_count": len(allKeys),
+			})
+			if allObjectsExistInBucket(ctx, failedBucket, allKeys) {
+				grip.Info(message.Fields{
+					"message":   "failed_bucket_move: all objects found in failed bucket, updating DB to fix inconsistency",
+					"task_id":   t.Id,
+					"execution": t.Execution,
+				})
+				t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
+				t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
+				if updateErr := UpdateOne(
+					ctx,
+					bson.M{IdKey: t.Id},
+					bson.M{"$set": bson.M{TaskOutputInfoKey: t.TaskOutputInfo}},
+				); updateErr != nil {
+					return errors.Wrap(moveErr, "moving logs to failed bucket")
+				}
+				return nil
+			}
+			grip.Info(message.Fields{
+				"message":   "failed_bucket_move: not all objects in failed bucket, returning error for retry",
+				"task_id":   t.Id,
+				"execution": t.Execution,
+				"key_count": len(allKeys),
+			})
+		}
+		return errors.Wrap(moveErr, "moving logs to failed bucket")
 	}
 
 	// Update the task output info with the new bucket config.

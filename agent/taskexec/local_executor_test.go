@@ -3,6 +3,7 @@ package taskexec
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -106,5 +107,52 @@ tasks:
 		err = executor.PrepareTask("any-task")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "project not loaded")
+	})
+}
+
+func TestLogFile(t *testing.T) {
+	t.Run("WriteAndRead", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "test.log")
+
+		lf, err := newLogFile(path)
+		require.NoError(t, err)
+		defer lf.Close()
+
+		lf.WriteLogLine(3, "hello world")
+		lf.WriteLogLine(3, "second line")
+
+		require.NoError(t, lf.Close())
+
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+		content := string(data)
+
+		assert.Contains(t, content, "[step:3] hello world")
+		assert.Contains(t, content, "[step:3] second line")
+		lines := strings.Split(strings.TrimSpace(content), "\n")
+		assert.Len(t, lines, 2)
+	})
+
+	t.Run("StepDelimiters", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "test.log")
+
+		lf, err := newLogFile(path)
+		require.NoError(t, err)
+		defer lf.Close()
+
+		lf.WriteStepStart(5, "shell.exec", "main")
+		lf.WriteLogLine(5, "command output")
+		lf.WriteStepEnd(5, true, "1.2s")
+
+		require.NoError(t, lf.Close())
+
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+		content := string(data)
+
+		assert.Contains(t, content, "=== STEP 5 START shell.exec (main) ===")
+		assert.Contains(t, content, "=== STEP 5 END success=true duration=1.2s ===")
 	})
 }

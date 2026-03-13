@@ -4,26 +4,6 @@ import (
 	"context"
 )
 
-// S3UsageTracker tracks S3 API usage for cost calculation.
-type S3UsageTracker interface {
-	IncrementPutRequests(count int)
-}
-
-type s3UsageKey struct{}
-
-// WithS3Usage stores an S3UsageTracker in the context.
-func WithS3Usage(ctx context.Context, usage S3UsageTracker) context.Context {
-	return context.WithValue(ctx, s3UsageKey{}, usage)
-}
-
-// GetS3Usage retrieves the S3UsageTracker from the context, if present.
-func GetS3Usage(ctx context.Context) S3UsageTracker {
-	if usage, ok := ctx.Value(s3UsageKey{}).(S3UsageTracker); ok {
-		return usage
-	}
-	return nil
-}
-
 // LogService is a simple abstraction bridging the logical representation of an
 // Evergreen log with its physical storage. Namely, it supports writing and
 // retrieving logs directly to and from an underlying storage service. Any more
@@ -34,7 +14,8 @@ type LogService interface {
 	// Get returns a log iterator with the given options.
 	Get(context.Context, GetOptions) (LogIterator, error)
 	// Append appends given lines to the specified log and sequence chunk.
-	Append(context.Context, string, int, []LogLine) error
+	// Returns the number of bytes written to storage.
+	Append(context.Context, string, int, []LogLine) (int64, error)
 }
 
 // GetOptions represents the arguments for fetching Evergreen logs.

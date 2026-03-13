@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -246,6 +247,37 @@ func TestFlush(t *testing.T) {
 		assert.NotZero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
 	})
+	t.Run("TracksS3Usage", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+		usage := &s3usage.S3Usage{}
+		mock.sender.opts.S3Usage = usage
+
+		m := message.ConvertToComposer(level.Info, "some log data")
+		mock.sender.Send(m)
+		require.NotEmpty(t, mock.sender.buffer)
+
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Equal(t, 1, usage.Logs.PutRequests)
+		assert.Equal(t, int64(len("some log data")), usage.Logs.UploadBytes)
+
+		m = message.ConvertToComposer(level.Info, "more data")
+		mock.sender.Send(m)
+		require.NotEmpty(t, mock.sender.buffer)
+
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Equal(t, 2, usage.Logs.PutRequests)
+		assert.Equal(t, int64(len("some log data")+len("more data")), usage.Logs.UploadBytes)
+	})
+	t.Run("SkipsS3UsageWhenNil", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+
+		m := message.ConvertToComposer(level.Info, "no tracking")
+		mock.sender.Send(m)
+		require.NotEmpty(t, mock.sender.buffer)
+
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Empty(t, mock.sender.buffer)
+	})
 	t.Run("PersistsParsedData", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
 		ts := time.Now().UnixNano()
@@ -346,7 +378,7 @@ func newSenderTestMock(ctx context.Context) *senderTestMock {
 				Parse: func(rawLine string) (log.LogLine, error) {
 					return log.LogLine{Data: rawLine}, nil
 				},
-				appendLines: func(ctx context.Context, lines []log.LogLine) error {
+				appendLines: func(ctx context.Context, lines []log.LogLine) (int64, error) {
 					return svc.Append(ctx, lines)
 				},
 			},
@@ -375,11 +407,15 @@ type mockLogService struct {
 	hasWriteErr bool
 }
 
-func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) error {
+func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) (int64, error) {
 	if s.hasWriteErr {
-		return errors.New("write error")
+		return 0, errors.New("write error")
+	}
+	var totalBytes int64
+	for _, line := range lines {
+		totalBytes += int64(len(line.Data))
 	}
 	s.lines = append(s.lines, lines...)
 
-	return nil
+	return totalBytes, nil
 }
