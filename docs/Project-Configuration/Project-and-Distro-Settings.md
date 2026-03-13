@@ -789,6 +789,25 @@ Each entry accepts the following fields:
   run in the downstream project. Each specifier must use either a
   `patch_alias` or a `task_regex`/`variant_regex` pair (not both).
 
+### GitHub Trigger Aliases
+
+[View setting
+definition](#github-pull-request-testing)
+
+To have patch trigger aliases run automatically for GitHub PRs or merge
+queue patches, list their names in `github_trigger_aliases` or
+`github_mq_trigger_aliases`. The referenced aliases must be defined in
+either the `patch_trigger_aliases` YAML field or on the project settings
+page.
+
+```yaml
+github_trigger_aliases:
+  - "my-downstream-trigger"
+
+github_mq_trigger_aliases:
+  - "my-downstream-trigger"
+```
+
 ### Scheduling Settings
 
 [View setting
