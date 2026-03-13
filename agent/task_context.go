@@ -327,8 +327,8 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 	}
 
 	bvTask := tc.taskConfig.Project.FindTaskForVariant(
-		tc.taskConfig.Task.BuildVariant,
 		tc.taskConfig.Task.DisplayName,
+		tc.taskConfig.Task.BuildVariant,
 	)
 	if bvTask != nil && bvTask.ExecTimeoutSecs > 0 {
 		return time.Duration(bvTask.ExecTimeoutSecs) * time.Second
