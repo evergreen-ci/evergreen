@@ -298,6 +298,26 @@ type Cost {
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
   s3ArtifactPutCost: Float
+  s3LogChunkPutCost: Float
+}
+
+"""
+S3Usage represents aggregated S3 upload metrics for a task or version.
+"""
+type S3Usage {
+  artifacts: ArtifactS3Metrics!
+  logs: S3UploadMetrics!
+}
+
+type ArtifactS3Metrics {
+  putRequests: Int!
+  uploadBytes: Int!
+  fileCount: Int!
+}
+
+type S3UploadMetrics {
+  putRequests: Int!
+  uploadBytes: Int!
 }
 
 input QuarantineTestInput {

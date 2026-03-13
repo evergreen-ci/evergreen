@@ -52,6 +52,7 @@ type Version {
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
   childVersions: [Version!]
+  cost: Cost
   createTime: Time!
   errors: [String!]!
   externalLinksForMetadata: [ExternalLinkForMetadata!]!
@@ -65,6 +66,7 @@ type Version {
   order: Int!
   parameters: [Parameter!]!
   patch: Patch
+  predictedCost: Cost
   previousVersion: Version
   project: String!
   projectIdentifier: String!
@@ -72,6 +74,7 @@ type Version {
   repo: String!
   requester: String!
   revision: String!
+  s3Usage: S3Usage
   startTime: Time
   status: String!
   taskCount(options: TaskCountOptions): Int
@@ -83,7 +86,6 @@ type Version {
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]
-  predictedCost: Cost
 }
 
 type VersionTasks {

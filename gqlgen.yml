@@ -60,6 +60,8 @@ models:
         value: github.com/evergreen-ci/evergreen.ArchDarwinArm64
       WINDOWS_64_BIT:
         value: github.com/evergreen-ci/evergreen.ArchWindowsAmd64
+  ArtifactS3Metrics:
+    model: github.com/evergreen-ci/evergreen/model/s3usage.ArtifactMetrics
   AuthConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthConfig
   AuthConfigInput:
@@ -763,6 +765,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
   S3UploadCostConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIS3UploadCostConfig
+  S3UploadMetrics:
+    model: github.com/evergreen-ci/evergreen/model/s3usage.S3UploadMetrics
+  S3Usage:
+    model: github.com/evergreen-ci/evergreen/model/s3usage.S3Usage
   SchedulerConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISchedulerConfig
   SchedulerConfigInput:
