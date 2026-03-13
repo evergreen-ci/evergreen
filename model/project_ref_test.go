@@ -3523,6 +3523,101 @@ func TestMergeWithProjectConfigPatchTriggerAliasScheduledInPR(t *testing.T) {
 	assert.False(t, found)
 }
 
+func TestMergeWithProjectConfigResolvesChildProjectIdentifier(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectConfigCollection))
+
+	childRef := &ProjectRef{
+		Id:         "child_id_123",
+		Identifier: "child-identifier",
+		Enabled:    true,
+	}
+	require.NoError(t, childRef.Insert(t.Context()))
+
+	projectRef := &ProjectRef{
+		Owner:                 "mongodb",
+		Id:                    "parent_project",
+		VersionControlEnabled: utility.TruePtr(),
+	}
+	projectConfig := &ProjectConfig{
+		Id:      "version_resolve",
+		Project: "parent_project",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "my-trigger",
+					ChildProject: "child-identifier",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version_resolve")
+	require.NoError(t, err)
+
+	require.Len(t, projectRef.PatchTriggerAliases, 1)
+	assert.Equal(t, "child_id_123", projectRef.PatchTriggerAliases[0].ChildProject,
+		"ChildProject should be resolved from identifier to ID during merge")
+}
+
+func TestFindMergedProjectRefsByRepoAndBranchResolvesChildProjectIdentifier(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectConfigCollection))
+
+	childRef := &ProjectRef{
+		Id:         "child_id_456",
+		Identifier: "child-identifier",
+		Enabled:    true,
+	}
+	require.NoError(t, childRef.Insert(t.Context()))
+
+	projectRef := &ProjectRef{
+		Owner:                 "mongodb",
+		Repo:                  "mci",
+		Branch:                "main",
+		Enabled:               true,
+		Id:                    "parent_repo_project",
+		Identifier:            "parent_repo_project",
+		PRTestingEnabled:      utility.TruePtr(),
+		VersionControlEnabled: utility.TruePtr(),
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	projectConfig := &ProjectConfig{
+		Id:      "vc_version_resolve",
+		Project: "parent_repo_project",
+		ProjectConfigFields: ProjectConfigFields{
+			PatchTriggerAliases: []patch.PatchTriggerDefinition{
+				{
+					Alias:        "yaml-trigger",
+					ChildProject: "child-identifier",
+					TaskSpecifiers: []patch.TaskSpecifier{
+						{TaskRegex: ".*", VariantRegex: ".*"},
+					},
+					Status: "success",
+				},
+			},
+			GithubPRTriggerAliases: []string{"yaml-trigger"},
+		},
+	}
+	require.NoError(t, projectConfig.Insert(t.Context()))
+
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
+	require.NoError(t, err)
+	require.Len(t, projectRefs, 1)
+
+	ref := projectRefs[0]
+	require.Len(t, ref.PatchTriggerAliases, 1)
+	assert.Equal(t, "child_id_456", ref.PatchTriggerAliases[0].ChildProject,
+		"ChildProject should be resolved from identifier to ID when found via repo/branch lookup")
+
+	require.Len(t, ref.GithubPRTriggerAliases, 1)
+	assert.Equal(t, "yaml-trigger", ref.GithubPRTriggerAliases[0])
+}
+
 func TestSaveProjectPageForSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
