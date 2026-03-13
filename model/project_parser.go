@@ -337,11 +337,10 @@ type parserBV struct {
 	Stepback           *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	DeactivatePrevious *bool             `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
 
-	RunOn           parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Tasks           parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DisplayTasks    []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
-	DependsOn       parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	ExecTimeoutSecs int                `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DependsOn    parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	// If Activate is set to false, then we don't initially activate the build variant.
 	Activate          *bool                     `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
@@ -350,6 +349,7 @@ type parserBV struct {
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Paths             parserStringSlice         `yaml:"paths,omitempty" bson:"paths,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -436,9 +436,9 @@ type parserBVTaskUnit struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	Distros           parserStringSlice         `yaml:"distros,omitempty" bson:"distros,omitempty"`
 	RunOn             parserStringSlice         `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
