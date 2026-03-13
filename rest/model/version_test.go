@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,4 +101,65 @@ func TestVersionBuildFromService(t *testing.T) {
 
 	require.NotNil(t, apiVersion.TriggeredGitTag)
 	assert.Equal(apiVersion.TriggeredGitTag.Tag, utility.ToStringPtr("my-triggered-tag"))
+}
+
+func TestVersionBuildFromServiceCostAndS3Usage(t *testing.T) {
+	t.Run("PopulatedCostAndS3Usage", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-with-costs",
+			Cost: cost.Cost{
+				OnDemandEC2Cost:   15.0,
+				AdjustedEC2Cost:   12.0,
+				S3ArtifactPutCost: 0.08,
+				S3LogChunkPutCost: 0.03,
+			},
+			PredictedCost: cost.Cost{
+				OnDemandEC2Cost: 5.0,
+				AdjustedEC2Cost: 4.0,
+			},
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{
+					PutRequests: 15,
+					UploadBytes: 3000,
+				}, FileCount: 10},
+				Logs: s3usage.S3UploadMetrics{
+					PutRequests: 5,
+					UploadBytes: 800,
+				},
+			},
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		require.NotNil(t, apiVersion.Cost)
+		assert.InDelta(t, 15.0, apiVersion.Cost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 12.0, apiVersion.Cost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 0.08, apiVersion.Cost.S3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.03, apiVersion.Cost.S3LogChunkPutCost, 0.001)
+
+		require.NotNil(t, apiVersion.PredictedCost)
+		assert.InDelta(t, 5.0, apiVersion.PredictedCost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 4.0, apiVersion.PredictedCost.AdjustedEC2Cost, 0.01)
+
+		require.NotNil(t, apiVersion.S3Usage)
+		assert.Equal(t, 15, apiVersion.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(3000), apiVersion.S3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, 10, apiVersion.S3Usage.Artifacts.FileCount)
+		assert.Equal(t, 5, apiVersion.S3Usage.Logs.PutRequests)
+		assert.Equal(t, int64(800), apiVersion.S3Usage.Logs.UploadBytes)
+	})
+
+	t.Run("ZeroCostAndS3UsageAreNil", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-no-costs",
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		assert.Nil(t, apiVersion.Cost)
+		assert.Nil(t, apiVersion.PredictedCost)
+		assert.Nil(t, apiVersion.S3Usage)
+	})
 }
