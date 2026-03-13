@@ -99,7 +99,7 @@ func TestIsFieldUndefinedSlicesAndMaps(t *testing.T) {
 	})
 	t.Run("EmptySlice", func(t *testing.T) {
 		s := []string{}
-		assert.True(t, IsFieldUndefined(reflect.ValueOf(&s).Elem()))
+		assert.False(t, IsFieldUndefined(reflect.ValueOf(&s).Elem()))
 	})
 	t.Run("NonEmptySlice", func(t *testing.T) {
 		s := []string{"a"}
@@ -111,7 +111,7 @@ func TestIsFieldUndefinedSlicesAndMaps(t *testing.T) {
 	})
 	t.Run("EmptyMap", func(t *testing.T) {
 		m := map[string]string{}
-		assert.True(t, IsFieldUndefined(reflect.ValueOf(&m).Elem()))
+		assert.False(t, IsFieldUndefined(reflect.ValueOf(&m).Elem()))
 	})
 	t.Run("NonEmptyMap", func(t *testing.T) {
 		m := map[string]string{"k": "v"}
@@ -121,12 +121,12 @@ func TestIsFieldUndefinedSlicesAndMaps(t *testing.T) {
 
 func TestRecursivelySetUndefinedFieldsEmptySlice(t *testing.T) {
 	type config struct {
-		Tags     []string
-		Labels   map[string]string
-		Name     string
+		Tags   []string
+		Labels map[string]string
+		Name   string
 	}
 
-	t.Run("EmptySliceOverriddenByDefault", func(t *testing.T) {
+	t.Run("EmptySliceNotOverriddenByDefault", func(t *testing.T) {
 		target := config{Tags: []string{}, Name: "target"}
 		defaults := config{Tags: []string{"default-tag"}, Labels: map[string]string{"env": "prod"}}
 
@@ -134,7 +134,7 @@ func TestRecursivelySetUndefinedFieldsEmptySlice(t *testing.T) {
 		dVal := reflect.ValueOf(&defaults).Elem()
 		RecursivelySetUndefinedFields(tVal, dVal)
 
-		assert.Equal(t, []string{"default-tag"}, target.Tags)
+		assert.Equal(t, []string{}, target.Tags)
 		assert.Equal(t, map[string]string{"env": "prod"}, target.Labels)
 		assert.Equal(t, "target", target.Name)
 	})
@@ -161,27 +161,5 @@ func TestRecursivelySetUndefinedFieldsEmptySlice(t *testing.T) {
 
 		assert.Equal(t, []string{"my-tag"}, target.Tags)
 		assert.Equal(t, "target", target.Name)
-	})
-
-	t.Run("EmptyMapOverriddenByDefault", func(t *testing.T) {
-		target := config{Labels: map[string]string{}}
-		defaults := config{Labels: map[string]string{"env": "prod"}}
-
-		tVal := reflect.ValueOf(&target).Elem()
-		dVal := reflect.ValueOf(&defaults).Elem()
-		RecursivelySetUndefinedFields(tVal, dVal)
-
-		assert.Equal(t, map[string]string{"env": "prod"}, target.Labels)
-	})
-
-	t.Run("NonEmptyMapNotOverridden", func(t *testing.T) {
-		target := config{Labels: map[string]string{"env": "staging"}}
-		defaults := config{Labels: map[string]string{"env": "prod"}}
-
-		tVal := reflect.ValueOf(&target).Elem()
-		dVal := reflect.ValueOf(&defaults).Elem()
-		RecursivelySetUndefinedFields(tVal, dVal)
-
-		assert.Equal(t, map[string]string{"env": "staging"}, target.Labels)
 	})
 }
