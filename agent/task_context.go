@@ -318,15 +318,22 @@ func (tc *taskContext) getTimeoutType() globals.TimeoutType {
 func (tc *taskContext) getExecTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
+
 	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
 		if tc.taskConfig.MaxExecTimeoutSecs != 0 && dynamicTimeout > tc.taskConfig.MaxExecTimeoutSecs {
 			return time.Duration(tc.taskConfig.MaxExecTimeoutSecs) * time.Second
 		}
 		return time.Duration(dynamicTimeout) * time.Second
 	}
-	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs > 0 {
-		return time.Duration(pt.ExecTimeoutSecs) * time.Second
+
+	bvTask := tc.taskConfig.Project.FindTaskForVariant(
+		tc.taskConfig.Task.DisplayName,
+		tc.taskConfig.Task.BuildVariant,
+	)
+	if bvTask != nil && bvTask.ExecTimeoutSecs > 0 {
+		return time.Duration(bvTask.ExecTimeoutSecs) * time.Second
 	}
+
 	if tc.taskConfig.Project.ExecTimeoutSecs > 0 {
 		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second
 	}

@@ -349,6 +349,7 @@ type parserBV struct {
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Paths             parserStringSlice         `yaml:"paths,omitempty" bson:"paths,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
 	// internal matrix stuff
 	MatrixId  string      `yaml:"matrix_id,omitempty" bson:"matrix_id,omitempty"`
@@ -419,6 +420,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.GitTagOnly == nil &&
 		len(pbv.AllowedRequesters) == 0 &&
 		len(pbv.Paths) == 0 &&
+		pbv.ExecTimeoutSecs == 0 &&
 		pbv.MatrixId == "" &&
 		pbv.MatrixVal == nil &&
 		pbv.Matrix == nil &&
@@ -434,9 +436,9 @@ type parserBVTaskUnit struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
-	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	Distros           parserStringSlice         `yaml:"distros,omitempty" bson:"distros,omitempty"`
 	RunOn             parserStringSlice         `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
@@ -1593,13 +1595,14 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			PatchOnly:          pbv.PatchOnly,
 			AllowForGitTag:     pbv.AllowForGitTag,
 			GitTagOnly:         pbv.GitTagOnly,
+			AllowedRequesters:  pbv.AllowedRequesters,
+			ExecTimeoutSecs:    pbv.ExecTimeoutSecs,
 			Stepback:           pbv.Stepback,
 			DeactivatePrevious: pbv.DeactivatePrevious,
 			RunOn:              pbv.RunOn,
 			Tags:               pbv.Tags,
 			Paths:              pbv.Paths,
 		}
-		bv.AllowedRequesters = pbv.AllowedRequesters
 		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 		if len(unmatchedSelectors) > 0 {
 			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched selector: '%s'", pbv.Name, strings.Join(unmatchedSelectors, "', '")))
@@ -1836,23 +1839,24 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 // * Build variant's settings
 func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) BuildVariantTaskUnit {
 	res := BuildVariantTaskUnit{
-		Name:           name,
-		Variant:        bv.Name,
-		Patchable:      bvt.Patchable,
-		PatchOnly:      bvt.PatchOnly,
-		Disable:        bvt.Disable,
-		AllowForGitTag: bvt.AllowForGitTag,
-		GitTagOnly:     bvt.GitTagOnly,
-		Priority:       bvt.Priority,
-		Stepback:       bvt.Stepback,
-		RunOn:          bvt.RunOn,
-		CronBatchTime:  bvt.CronBatchTime,
-		BatchTime:      bvt.BatchTime,
-		Activate:       bvt.Activate,
-		PS:             bvt.PS,
-		CreateCheckRun: bvt.CreateCheckRun,
+		Name:              name,
+		Variant:           bv.Name,
+		Patchable:         bvt.Patchable,
+		PatchOnly:         bvt.PatchOnly,
+		Disable:           bvt.Disable,
+		AllowForGitTag:    bvt.AllowForGitTag,
+		GitTagOnly:        bvt.GitTagOnly,
+		AllowedRequesters: bvt.AllowedRequesters,
+		ExecTimeoutSecs:   bvt.ExecTimeoutSecs,
+		Priority:          bvt.Priority,
+		Stepback:          bvt.Stepback,
+		RunOn:             bvt.RunOn,
+		CronBatchTime:     bvt.CronBatchTime,
+		BatchTime:         bvt.BatchTime,
+		Activate:          bvt.Activate,
+		PS:                bvt.PS,
+		CreateCheckRun:    bvt.CreateCheckRun,
 	}
-	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
 	}
@@ -1873,6 +1877,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = pt.AllowedRequesters
+	}
+	if res.ExecTimeoutSecs == 0 {
+		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
 	}
 	if res.Stepback == nil {
 		res.Stepback = pt.Stepback
@@ -1905,7 +1912,9 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = bv.AllowedRequesters
 	}
-
+	if res.ExecTimeoutSecs == 0 {
+		res.ExecTimeoutSecs = bv.ExecTimeoutSecs
+	}
 	if res.Disable == nil {
 		res.Disable = bv.Disable
 	}
