@@ -60,7 +60,7 @@ func TestLogService(t *testing.T) {
 						Data:      "\n",
 					},
 				}
-				require.NoError(t, svc.Append(ctx, logName, 1, lines))
+				require.NoError(t, ignoreBytes(svc.Append(ctx, logName, 1, lines)))
 
 				foundLines := readLogLines(t, svc, ctx, GetOptions{LogNames: []string{logName}})
 				require.Len(t, foundLines, len(lines))
@@ -80,7 +80,7 @@ func TestLogService(t *testing.T) {
 						Data:      "Appending an error line to an already existing log.",
 					},
 				)
-				require.NoError(t, svc.Append(ctx, logName, 1, lines[offset:]))
+				require.NoError(t, ignoreBytes(svc.Append(ctx, logName, 1, lines[offset:])))
 
 				offset = len(lines)
 				lines = append(
@@ -96,7 +96,7 @@ func TestLogService(t *testing.T) {
 						Data:      "If two chunks have the same time range, the order of lines should appear in the order they were uploaded.",
 					},
 				)
-				require.NoError(t, svc.Append(ctx, logName, 1, lines[offset:]))
+				require.NoError(t, ignoreBytes(svc.Append(ctx, logName, 1, lines[offset:])))
 
 				lines = append(
 					[]LogLine{
@@ -113,7 +113,7 @@ func TestLogService(t *testing.T) {
 					},
 					lines...,
 				)
-				require.NoError(t, svc.Append(ctx, logName, 0, lines[0:2]))
+				require.NoError(t, ignoreBytes(svc.Append(ctx, logName, 0, lines[0:2])))
 
 				foundLines = readLogLines(t, svc, ctx, GetOptions{LogNames: []string{logName}})
 				require.Len(t, foundLines, len(lines))
@@ -141,7 +141,7 @@ func TestLogService(t *testing.T) {
 						Data:      "Another lonely log line.",
 					},
 				}
-				require.NoError(t, svc.Append(ctx, log0, 0, lines0))
+				require.NoError(t, ignoreBytes(svc.Append(ctx, log0, 0, lines0)))
 				log1 := "common/1.log"
 				lines1 := []LogLine{
 					{
@@ -157,7 +157,7 @@ func TestLogService(t *testing.T) {
 						Data:      "Another line here.",
 					},
 				}
-				require.NoError(t, svc.Append(ctx, log1, 0, lines1))
+				require.NoError(t, ignoreBytes(svc.Append(ctx, log1, 0, lines1)))
 				log2 := "common/2.log"
 				lines2 := []LogLine{
 					{
@@ -179,7 +179,7 @@ func TestLogService(t *testing.T) {
 						Data:      "And this line comes way later.",
 					},
 				}
-				require.NoError(t, svc.Append(ctx, log2, 0, lines2))
+				require.NoError(t, ignoreBytes(svc.Append(ctx, log2, 0, lines2)))
 
 				for _, test := range []struct {
 					name          string
@@ -387,3 +387,5 @@ func readLogLines(t *testing.T, svc LogService, ctx context.Context, opts GetOpt
 	return lines
 
 }
+
+func ignoreBytes(_ int64, err error) error { return err }

@@ -4932,7 +4932,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		task := Task{
 			Id:        "no_time",
 			TimeTaken: 0,
-			S3Usage:   s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 10}},
+			S3Usage:   s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10}}},
 		}
 		require.NoError(t, task.Insert(ctx))
 
@@ -4945,7 +4945,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		task := Task{
 			Id:        "s3_cost",
 			TimeTaken: time.Hour,
-			S3Usage:   s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 1000}},
+			S3Usage:   s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1000}}},
 		}
 		require.NoError(t, task.Insert(ctx))
 
@@ -4976,7 +4976,7 @@ func TestUpdateTaskCost(t *testing.T) {
 			Id:        "both_costs",
 			DistroId:  "test_distro",
 			TimeTaken: time.Hour,
-			S3Usage:   s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 1000}},
+			S3Usage:   s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1000}}},
 		}
 		require.NoError(t, task.Insert(ctx))
 
@@ -5008,10 +5008,12 @@ func TestSaveS3Usage(t *testing.T) {
 		require.NoError(t, tk.Insert(ctx))
 
 		tk.S3Usage = s3usage.S3Usage{
-			UserFiles: s3usage.UserFilesMetrics{
-				PutRequests: 50,
-				UploadBytes: 1024 * 1024,
-				FileCount:   3,
+			Artifacts: s3usage.ArtifactMetrics{
+				S3UploadMetrics: s3usage.S3UploadMetrics{
+					PutRequests: 50,
+					UploadBytes: 1024 * 1024,
+				},
+				FileCount: 3,
 			},
 		}
 		require.NoError(t, tk.SaveS3Usage(ctx))
@@ -5019,9 +5021,9 @@ func TestSaveS3Usage(t *testing.T) {
 		dbTask, err := FindOneId(ctx, "t1")
 		require.NoError(t, err)
 		require.NotNil(t, dbTask)
-		assert.Equal(t, 50, dbTask.S3Usage.UserFiles.PutRequests)
-		assert.Equal(t, int64(1024*1024), dbTask.S3Usage.UserFiles.UploadBytes)
-		assert.Equal(t, 3, dbTask.S3Usage.UserFiles.FileCount)
+		assert.Equal(t, 50, dbTask.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(1024*1024), dbTask.S3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, 3, dbTask.S3Usage.Artifacts.FileCount)
 	})
 
 	t.Run("CalculatesCostFromUsage", func(t *testing.T) {
@@ -5030,10 +5032,12 @@ func TestSaveS3Usage(t *testing.T) {
 		require.NoError(t, tk.Insert(ctx))
 
 		tk.S3Usage = s3usage.S3Usage{
-			UserFiles: s3usage.UserFilesMetrics{
-				PutRequests: 1000,
-				UploadBytes: 5 * 1024 * 1024,
-				FileCount:   10,
+			Artifacts: s3usage.ArtifactMetrics{
+				S3UploadMetrics: s3usage.S3UploadMetrics{
+					PutRequests: 1000,
+					UploadBytes: 5 * 1024 * 1024,
+				},
+				FileCount: 10,
 			},
 		}
 		require.NoError(t, tk.SaveS3Usage(ctx))
@@ -5041,7 +5045,7 @@ func TestSaveS3Usage(t *testing.T) {
 		dbTask, err := FindOneId(ctx, "t2")
 		require.NoError(t, err)
 		require.NotNil(t, dbTask)
-		assert.Equal(t, 1000, dbTask.S3Usage.UserFiles.PutRequests)
+		assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
 	})
 

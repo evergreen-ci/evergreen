@@ -44,7 +44,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					ProjectId:     utility.ToStringPtr("testProject"),
 					Priority:      100,
 					TaskCost:      &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25, S3ArtifactPutCost: 0.00005},
-					S3Usage:       &s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 10, UploadBytes: 5000, FileCount: 3}},
+					S3Usage:       &s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 5000}, FileCount: 3}},
 					Execution:     2,
 					Activated:     true,
 					ActivatedBy:   utility.ToStringPtr("testActivator"),
@@ -90,7 +90,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					Execution:     2,
 					Priority:      100,
 					TaskCost:      cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25},
-					S3Usage:       s3usage.S3Usage{UserFiles: s3usage.UserFilesMetrics{PutRequests: 10, UploadBytes: 5000, FileCount: 3}},
+					S3Usage:       s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 5000}, FileCount: 3}},
 					Activated:     true,
 					ActivatedBy:   "testActivator",
 					BuildId:       "testBuildId",
@@ -241,9 +241,9 @@ func TestTaskBuildFromService(t *testing.T) {
 					So(apiTask.S3Usage, ShouldBeNil)
 				} else {
 					So(apiTask.S3Usage, ShouldNotBeNil)
-					So(apiTask.S3Usage.UserFiles.PutRequests, ShouldEqual, tc.at.S3Usage.UserFiles.PutRequests)
-					So(apiTask.S3Usage.UserFiles.UploadBytes, ShouldEqual, tc.at.S3Usage.UserFiles.UploadBytes)
-					So(apiTask.S3Usage.UserFiles.FileCount, ShouldEqual, tc.at.S3Usage.UserFiles.FileCount)
+					So(apiTask.S3Usage.Artifacts.PutRequests, ShouldEqual, tc.at.S3Usage.Artifacts.PutRequests)
+					So(apiTask.S3Usage.Artifacts.UploadBytes, ShouldEqual, tc.at.S3Usage.Artifacts.UploadBytes)
+					So(apiTask.S3Usage.Artifacts.FileCount, ShouldEqual, tc.at.S3Usage.Artifacts.FileCount)
 				}
 			}
 		})
