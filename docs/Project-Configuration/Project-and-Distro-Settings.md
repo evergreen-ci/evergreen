@@ -166,8 +166,9 @@ Options:
   visible on the projects page or by API routes. Additionally, private
   variables will be redacted from task logs. After saving them, private
   variables cannot be retrieved.
-- Checking **admin only** ensures that the variable can only be used
-  by admins and mainline commits.
+- Checking **admin only** restricts the variable so it is only available
+  to tasks in system-created versions (e.g. mainline commits, periodic
+  builds, triggers) or tasks activated by a project admin.
 
 Project variables have some limitations:
 
@@ -180,6 +181,14 @@ Project variables have some limitations:
 - A project variable's value cannot exceed 8 KB in length. If you need to store
   a value longer than 8 KB, you can store it in multiple variables and
   concatenate them together in a script when your task runs.
+
+#### Admin Only
+
+Admin-only variables are injected into a task's environment only when the task
+belongs to a system-created version (mainline commits, periodic builds, or
+trigger versions) or when the task was activated by a user with project admin
+permissions. Patches and PRs activated by non-admin users will not have access
+to these variables.
 
 ### Aliases
 
