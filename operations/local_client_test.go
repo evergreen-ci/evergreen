@@ -267,7 +267,7 @@ func TestJumpToCmd(t *testing.T) {
 		c := cli.NewContext(app, set, nil)
 		err := jumpToCmd(c)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "step index required")
+		assert.Contains(t, err.Error(), "step number required")
 	})
 
 	t.Run("invalid step index", func(t *testing.T) {
