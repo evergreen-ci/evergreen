@@ -700,6 +700,9 @@ func calculateAndReportFilePutCosts(ctx context.Context, taskID string, files []
 		return
 	}
 
+	ctx, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName)
+	defer span.End()
+
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
 		costConfig = nil
@@ -721,14 +724,13 @@ func calculateAndReportFilePutCosts(ctx context.Context, taskID string, files []
 	}
 	avgCost := totalCost / float64(len(files))
 
-	_, span := tracer.Start(ctx, "s3-put-command-cost")
-	span.SetAttributes(
+	s3FileAttrs := []attribute.KeyValue{
 		attribute.String(evergreen.TaskIDOtelAttribute, taskID),
-		attribute.Float64(evergreen.S3PutCostAvgFilePutCostOtelAttribute, avgCost),
-		attribute.Float64(evergreen.S3PutCostMaxFilePutCostOtelAttribute, maxCost),
-		attribute.Float64(evergreen.S3PutCostMinFilePutCostOtelAttribute, minCost),
-	)
-	span.End()
+		attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, avgCost),
+		attribute.Float64(evergreen.S3ArtifactMaxFilePutCostOtelAttribute, maxCost),
+		attribute.Float64(evergreen.S3ArtifactMinFilePutCostOtelAttribute, minCost),
+	}
+	span.SetAttributes(s3FileAttrs...)
 }
 
 // discoverAndCacheBucketLifecycleRules will look at all the buckets that the files are being uploaded
@@ -776,6 +778,68 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			"num_cached": len(cachedBuckets),
 		})
 	}
+}
+
+// POST /rest/v2/task/{task_id}/s3_usage
+type reportS3UsageHandler struct {
+	taskID  string
+	s3Usage s3usage.S3Usage
+}
+
+func makeReportS3Usage() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Factory() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.s3Usage); err != nil {
+		return errors.Wrapf(err, "reading S3 usage for task '%s'", h.taskID)
+	}
+	return nil
+}
+
+func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
+	ctx, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName)
+	defer span.End()
+
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	t.S3Usage = h.s3Usage
+	if err := t.SaveS3Usage(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "saving S3 usage",
+			"task_id": h.taskID,
+		}))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
+	}
+
+	s3Attrs := []attribute.KeyValue{
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
+		attribute.Int(evergreen.S3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
+		attribute.Int64(evergreen.S3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
+		attribute.Int(evergreen.S3ArtifactFileCountOtelAttribute, t.S3Usage.Artifacts.FileCount),
+		attribute.Float64(evergreen.S3ArtifactPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
+		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
+		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
+	}
+	span.SetAttributes(s3Attrs...)
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // POST /rest/v2/task/{task_id}/set_results_info

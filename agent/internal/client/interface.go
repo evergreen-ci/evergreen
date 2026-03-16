@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -93,6 +94,8 @@ type SharedCommunicator interface {
 	NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error)
 	UpdatePushStatus(context.Context, TaskData, *model.PushLog) error
 	AttachFiles(context.Context, TaskData, []*artifact.File) error
+	// ReportS3Usage reports the task's S3 usage metrics to the server.
+	ReportS3Usage(context.Context, TaskData, s3usage.S3Usage) error
 	GetManifest(context.Context, TaskData) (*manifest.Manifest, error)
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 
@@ -157,6 +160,7 @@ type LoggerConfig struct {
 	SendToGlobalSender bool
 	AWSCredentials     aws.CredentialsProvider
 	RedactorOpts       redactor.RedactionOptions
+	S3Usage            *s3usage.S3Usage
 }
 
 type LogOpts struct {

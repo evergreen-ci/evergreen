@@ -635,6 +635,43 @@ func TestSetActiveState(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeFalse)
 		})
+
+		Convey("activating tasks should recompute NumDependents for all tasks in the version", func() {
+			// Create another task that also depends on dep1
+			anotherTask := &task.Task{
+				Id:          "t4",
+				DisplayName: "anotherTask",
+				Activated:   false,
+				DistroId:    distroId,
+				BuildId:     buildId,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: dep1.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+				Version: "version",
+			}
+			So(anotherTask.Insert(t.Context()), ShouldBeNil)
+
+			// Initially, NumDependents should be 0
+			depTask, err := task.FindOne(ctx, db.Query(task.ById(dep1.Id)))
+			So(err, ShouldBeNil)
+			So(depTask.NumDependents, ShouldEqual, 0)
+
+			// Activate both tasks that depend on dep1
+			So(SetActiveState(ctx, userName, true, testTask, *anotherTask), ShouldBeNil)
+
+			// After activation, dep1's NumDependents should be recomputed to 2
+			depTask, err = task.FindOne(ctx, db.Query(task.ById(dep1.Id)))
+			So(err, ShouldBeNil)
+			So(depTask.NumDependents, ShouldEqual, 2)
+
+			// dep2 should have NumDependents of 1 (only testTask depends on it)
+			depTask2, err := task.FindOne(ctx, db.Query(task.ById(dep2.Id)))
+			So(err, ShouldBeNil)
+			So(depTask2.NumDependents, ShouldEqual, 1)
+		})
 	})
 
 	Convey("with a task that is part of a display task", t, func() {

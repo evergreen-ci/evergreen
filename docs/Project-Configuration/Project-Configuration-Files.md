@@ -950,6 +950,9 @@ Every task has some expansions available by default:
   if the task has timed out. It is only available in the `timeout` task block.
 - `${timed_out_pids}` is a comma separated list of all PIDs that were running when the task's
   timeout limit exceeded. It is only available in the `timeout` task block.
+- `${timed_out_child_pids}` is a comma separated list of descendant PIDs (child processes) of
+  the processes that were running when the task's timeout limit exceeded.
+  It is only available in the `timeout` task block.
 - `${triggered_by_git_tag}` is the name of the tag that triggered this
   version, if applicable
 - `${version_id}` is the id of the task's version
@@ -1934,6 +1937,49 @@ tasks:
     commands:
       - func: my_function
 ```
+
+### Update Distros with Run On
+
+Test owners and Product teams should be confident and empowered to modify their distros as they see fit.
+DevProd cannot scale to adjust individual distros for individual teams; we do own the framework that gives you the ability to modify the distros.
+
+#### Adjust Distro Size
+
+Larger distros increase costs, and should only be increased when necessary.
+It is best to try to understand the underlying root cause of the issue to avoid altogether.
+Specifying larger distros should be a last resort.
+
+##### Example in a variant
+
+Specify that all tasks in the build variant should use a different sized distro.
+
+```yaml
+buildvariants:
+  - name: your-build-variant-name
+    display_name: "~ Your Variant"
+    run_on:
+      - rhel8.8-xlarge
+```
+
+Read more about the run_on field [here](Project-Configuration-Files#build-variants).
+
+##### Example in a task
+
+```yaml
+buildvariants:
+  - name: your-build-variant-name
+    display_name: "~ Your Variant"
+    run_on:
+      - rhel8.8-small
+    tasks:
+      - name: .tests_that_need_xlarge_distros
+        distros:
+          - rhel8.8-xlarge
+```
+
+There may be further changes you can do within your team using **variables or expansions**. It's good
+to reach out to your team for further advice here. For example, server's resmoke test configurations are
+documented [here](https://github.com/mongodb/mongo-task-generator/blob/master/docs/generating_tasks.md#runtime-based-sub-tasks).
 
 ### The Power of YAML
 
