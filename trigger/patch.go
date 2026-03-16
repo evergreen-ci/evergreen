@@ -278,7 +278,15 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	}
 
 	slackColor := evergreenFailColor
+	startTime := t.patch.StartTime
 	finishTime := t.patch.FinishTime
+	if t.patch.IsParent() {
+		var err error
+		startTime, finishTime, err = t.patch.GetCollectiveTimes(ctx)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting collective times for patch '%s'", t.patch.Id)
+		}
+	}
 	if utility.IsZeroTime(finishTime) {
 		finishTime = time.Now()
 	}
@@ -287,10 +295,10 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
-		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
+		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
 	} else if collectiveStatus == evergreen.VersionFailed {
 		data.githubState = message.GithubStateFailure
-		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
+		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
 	}
 
 	if t.patch.IsGithubPRPatch() {

@@ -286,7 +286,6 @@ type ComplexityRoot struct {
 	}
 
 	BetaFeatures struct {
-		ParsleyAIEnabled       func(childComplexity int) int
 		SpruceWaterfallEnabled func(childComplexity int) int
 	}
 
@@ -3577,12 +3576,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AuthUser.Username(childComplexity), true
 
-	case "BetaFeatures.parsleyAIEnabled":
-		if e.complexity.BetaFeatures.ParsleyAIEnabled == nil {
-			break
-		}
-
-		return e.complexity.BetaFeatures.ParsleyAIEnabled(childComplexity), true
 	case "BetaFeatures.spruceWaterfallEnabled":
 		if e.complexity.BetaFeatures.SpruceWaterfallEnabled == nil {
 			break
@@ -21399,35 +21392,6 @@ func (ec *executionContext) _BetaFeatures_spruceWaterfallEnabled(ctx context.Con
 }
 
 func (ec *executionContext) fieldContext_BetaFeatures_spruceWaterfallEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BetaFeatures",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BetaFeatures_parsleyAIEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIBetaFeatures) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BetaFeatures_parsleyAIEnabled,
-		func(ctx context.Context) (any, error) {
-			return obj.ParsleyAIEnabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BetaFeatures_parsleyAIEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BetaFeatures",
 		Field:      field,
@@ -66393,8 +66357,6 @@ func (ec *executionContext) fieldContext_UIConfig_betaFeatures(_ context.Context
 			switch field.Name {
 			case "spruceWaterfallEnabled":
 				return ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
-			case "parsleyAIEnabled":
-				return ec.fieldContext_BetaFeatures_parsleyAIEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BetaFeatures", field.Name)
 		},
@@ -66831,8 +66793,6 @@ func (ec *executionContext) fieldContext_UpdateBetaFeaturesPayload_betaFeatures(
 			switch field.Name {
 			case "spruceWaterfallEnabled":
 				return ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
-			case "parsleyAIEnabled":
-				return ec.fieldContext_BetaFeatures_parsleyAIEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BetaFeatures", field.Name)
 		},
@@ -67437,8 +67397,6 @@ func (ec *executionContext) fieldContext_User_betaFeatures(_ context.Context, fi
 			switch field.Name {
 			case "spruceWaterfallEnabled":
 				return ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
-			case "parsleyAIEnabled":
-				return ec.fieldContext_BetaFeatures_parsleyAIEnabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BetaFeatures", field.Name)
 		},
@@ -74869,7 +74827,7 @@ func (ec *executionContext) unmarshalInputBetaFeaturesInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"spruceWaterfallEnabled", "parsleyAIEnabled"}
+	fieldsInOrder := [...]string{"spruceWaterfallEnabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74883,13 +74841,6 @@ func (ec *executionContext) unmarshalInputBetaFeaturesInput(ctx context.Context,
 				return it, err
 			}
 			it.SpruceWaterfallEnabled = data
-		case "parsleyAIEnabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parsleyAIEnabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ParsleyAIEnabled = data
 		}
 	}
 
@@ -85582,8 +85533,6 @@ func (ec *executionContext) _BetaFeatures(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("BetaFeatures")
 		case "spruceWaterfallEnabled":
 			out.Values[i] = ec._BetaFeatures_spruceWaterfallEnabled(ctx, field, obj)
-		case "parsleyAIEnabled":
-			out.Values[i] = ec._BetaFeatures_parsleyAIEnabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -561,7 +561,7 @@ retryLoop:
 			totalFileSize, totalPutRequests)
 	}
 
-	conf.S3Usage.IncrementUserFiles(totalPutRequests, totalFileSize, len(uploadedFiles))
+	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles))
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.Int64("s3_put.total_bytes", totalFileSize),
