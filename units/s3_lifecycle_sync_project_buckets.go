@@ -160,13 +160,6 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 		return errors.Wrapf(err, "fetching lifecycle configuration for bucket '%s'", bucketName)
 	}
 
-	grip.Info(message.Fields{
-		"message":   "fetched lifecycle rules from AWS",
-		"bucket":    bucketName,
-		"num_rules": len(awsRules),
-		"job_id":    j.ID(),
-	})
-
 	// Upsert each AWS rule as separate document.
 	awsPrefixes := make(map[string]bool)
 	for _, awsRule := range awsRules {
