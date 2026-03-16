@@ -879,6 +879,13 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	}
 	options.IsDebug = utility.FromBoolPtr(spawnHostInput.IsDebug)
 
+	if utility.FromStringPtr(spawnHostInput.SetupStepNumber) != "" {
+		if !options.IsDebug {
+			return nil, InputValidationError.Send(ctx, "setupStepNumber can only be set when isDebug is true.")
+		}
+		options.SetupStepNumber = *spawnHostInput.SetupStepNumber
+	}
+
 	return options, nil
 }
 

@@ -43,7 +43,7 @@ func validateRelativePath(filePath, rootPath string) error {
 // taking included and excluded strings into account.
 // Returns the number of files that were added to the archive
 func buildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, pathsToAdd []archiveContentFile,
-	excludes []string, logger grip.Journaler) (int, error) {
+	excludes []string, logger grip.Journaler, verbose bool) (int, error) {
 
 	numFilesArchived := 0
 	processed := map[string]bool{}
@@ -91,7 +91,9 @@ FileLoop:
 			continue
 		}
 
-		logger.Infof("Adding file to tarball: '%s'.", intarball)
+		if verbose {
+			logger.Infof("Adding file to tarball: '%s'.", intarball)
+		}
 		if _, hasKey := processed[intarball]; hasKey {
 			continue
 		} else {

@@ -128,7 +128,6 @@
               "headerName",
               "issuer",
               "kanopy",
-              "kanopySSHKeyPath",
               "keysetURL",
               "multi",
               "naive",

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -66,6 +67,7 @@ type TaskConfig struct {
 	Timeout            Timeout
 	TaskOutput         evergreen.S3Credentials
 	ModulePaths        map[string]string
+	S3Usage            *s3usage.S3Usage
 	// HasTestResults is true if the task has sent at least one test result.
 	HasTestResults bool
 	// HasFailingTestResult is true if the task has sent at least one test

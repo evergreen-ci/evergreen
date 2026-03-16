@@ -46,7 +46,7 @@ func (j *cronsRemoteWeekJob) Run(ctx context.Context) {
 	}
 
 	ops := []amboy.QueueOperation{
-		// Weekly cron jobs will be added here in a future PR.
+		PopulateS3LifecycleSyncProjectBucketsJob(),
 	}
 
 	queue := j.env.RemoteQueue()

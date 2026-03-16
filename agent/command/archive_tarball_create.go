@@ -33,6 +33,9 @@ type tarballCreate struct {
 	// e.g. "*.zip", "results.out", "ignore/**"
 	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
 
+	// Verbose enables per-file logging during archive creation.
+	Verbose bool `mapstructure:"verbose"`
+
 	// This is only incremented in the case of a panic.
 	Attempt int
 
@@ -98,7 +101,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			}
 		}()
 		var err error
-		filesArchived, err = c.makeArchive(ctx, logger.Task())
+		filesArchived, err = c.makeArchive(ctx, logger.Task(), c.Verbose)
 		select {
 		case errChan <- errors.WithStack(err):
 			return
@@ -153,7 +156,7 @@ const thresholdSizeForParallelGzipCompression = 1024 * 1024
 
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
-func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) (int, error) {
+func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler, verbose bool) (int, error) {
 	pathsToAdd, totalSize, err := findArchiveContents(ctx, c.SourceDir, c.Include, []string{})
 	if err != nil {
 		return 0, errors.Wrap(err, "getting archive contents")
@@ -171,7 +174,7 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 	}()
 
 	// Build the archive
-	out, err := buildArchive(ctx, tarWriter, c.SourceDir, pathsToAdd, c.ExcludeFiles, logger)
+	out, err := buildArchive(ctx, tarWriter, c.SourceDir, pathsToAdd, c.ExcludeFiles, logger, verbose)
 
 	return out, errors.WithStack(err)
 }

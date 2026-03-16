@@ -73,6 +73,8 @@ Parameters:
 - `exclude_files`: a list of filename
   [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
   source directory.
+- `verbose`: when set to `true`, logs each file individually as it is added to
+  the archive. Defaults to `false`.
 
 **Important note about directories**: When specifying directories in the
 `include` list, different patterns have different behaviors:
@@ -142,6 +144,8 @@ Parameters:
 - `exclude_files`: a list of filename
   [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
   source directory.
+- `verbose`: when set to `true`, logs each file individually as it is added to
+  the archive. Defaults to `false`.
 
 **Important note about directories**: When specifying directories in the
 `include` list, different patterns have different behaviors:
@@ -192,6 +196,8 @@ Parameters:
 - `exclude_files`: a list of filename
   [blobs](https://golang.org/pkg/path/filepath/#Match) to exclude from the
   source directory.
+- `verbose`: when set to `true`, logs each file individually as it is added to
+  the archive. Defaults to `false`.
 
 **Important note about directories**: When specifying directories in the
 `include` list, different patterns have different behaviors:

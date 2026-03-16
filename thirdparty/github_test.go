@@ -407,35 +407,17 @@ func (s *githubSuite) TestGitHubUserPermissionLevel() {
 }
 
 func (s *githubSuite) TestGetGithubPullRequestDiff() {
-	s.Run("StandardPullRequest", func() {
-		p := GithubPatch{
-			PRNumber:   448,
-			BaseOwner:  "evergreen-ci",
-			BaseRepo:   "evergreen",
-			BaseBranch: "main",
-		}
+	p := GithubPatch{
+		PRNumber:   448,
+		BaseOwner:  "evergreen-ci",
+		BaseRepo:   "evergreen",
+		BaseBranch: "main",
+	}
 
-		diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
-		s.NoError(err)
-		s.Len(summaries, 2)
-		s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
-	})
-
-	s.Run("PullRequestWithBinaryFile", func() {
-		p := GithubPatch{
-			PRNumber:   9880,
-			BaseOwner:  "evergreen-ci",
-			BaseRepo:   "evergreen",
-			BaseBranch: "main",
-		}
-
-		diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
-		s.NoError(err)
-		s.Len(summaries, 7)
-		// These are the headers that indicate a binary file is included in the patch.
-		s.Contains(diff, "GIT binary patch")
-		s.Contains(diff, "literal 1006867")
-	})
+	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
+	s.NoError(err)
+	s.Len(summaries, 2)
+	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
 }
 
 func (s *githubSuite) TestGetBranchProtectionRules() {

@@ -330,6 +330,12 @@ type ProvisionOptions struct {
 	// UseOAuth indicates whether to run `evergreen fetch` with static credentials (legacy)
 	// or whether to write the command to a file, and have the user run `evergreen host fetch` (OAuth).
 	UseOAuth bool `bson:"use_oauth" json:"use_oauth"`
+
+	// SetupStepNumber, if set, indicates the step number that the debug host
+	// should run until after initializing the daemon. Accepts display step
+	// format (e.g., "5" or "5.1" for function sub-commands). Currently only
+	// the command number is used; the sub-command portion is ignored.
+	SetupStepNumber string `bson:"setup_step_number,omitempty" json:"setup_step_number,omitempty"`
 }
 
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.

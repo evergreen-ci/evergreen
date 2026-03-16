@@ -240,6 +240,35 @@ func (p *Patch) IsFinished() bool {
 	return evergreen.IsFinishedVersionStatus(p.Status)
 }
 
+// GetCollectiveTimes returns the collective start and finish times for the
+// patch family (parent + all child patches). For parent patches with children,
+// it returns the earliest start time and latest finish time across all patches.
+// For non-parent patches or parents without children, it returns the patch's own times.
+func (p *Patch) GetCollectiveTimes(ctx context.Context) (startTime, finishTime time.Time, err error) {
+	startTime = p.StartTime
+	finishTime = p.FinishTime
+
+	if !p.IsParent() || len(p.Triggers.ChildPatches) == 0 {
+		return startTime, finishTime, nil
+	}
+
+	childPatches, err := Find(ctx, ByStringIds(p.Triggers.ChildPatches))
+	if err != nil {
+		return time.Time{}, time.Time{}, errors.Wrap(err, "getting child patches for collective time calculations")
+	}
+
+	for _, childPatch := range childPatches {
+		if !childPatch.StartTime.IsZero() && (startTime.IsZero() || childPatch.StartTime.Before(startTime)) {
+			startTime = childPatch.StartTime
+		}
+		if !childPatch.FinishTime.IsZero() && childPatch.FinishTime.After(finishTime) {
+			finishTime = childPatch.FinishTime
+		}
+	}
+
+	return startTime, finishTime, nil
+}
+
 // SetDescription sets a patch's description in the database
 func (p *Patch) SetDescription(ctx context.Context, desc string) error {
 	if p.Description == desc {

@@ -16,6 +16,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const ndjsonContentType = "application/x-ndjson"
+
 // localDaemonREST implements an API for the local debugger daemon
 type localDaemonREST struct {
 	executor   *taskexec.LocalExecutor
@@ -45,6 +47,7 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
 	router.HandleFunc("/step/jump/{index}", d.handleJumpTo).Methods("POST")
 	router.HandleFunc("/variable/set", d.handleSetVariable).Methods("POST")
+	router.HandleFunc("/status", d.handleStatus).Methods("GET")
 
 	if err := d.writeDaemonInfo(); err != nil {
 		grip.Warning(errors.Wrap(err, "writing daemon info"))
@@ -213,17 +216,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 
 	steps := []map[string]interface{}{}
 	for i, cmd := range state.CommandList {
-		executed := false
-		success := false
-
-		// Check if this step has been executed
-		for _, record := range state.ExecutionHistory {
-			if record.StepIndex == i {
-				executed = true
-				success = record.Success
-				break
-			}
-		}
+		executed, success := state.GetStepExecution(i)
 
 		steps = append(steps, map[string]interface{}{
 			"index":         i,
@@ -242,7 +235,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 	}))
 }
 
-// handleRunUntil runs until a specific step
+// handleRunUntil runs until a specific step with streaming output.
 func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	index, err := strconv.Atoi(vars["index"])
@@ -259,23 +252,12 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	ctx := context.Background()
-	err = d.executor.RunUntil(ctx, index)
-	state := d.executor.GetDebugState()
-
-	response := map[string]interface{}{
-		"success":      err == nil,
-		"current_step": state.CurrentStepIndex,
-	}
-
-	if err != nil {
-		response["error"] = err.Error()
-	}
-
-	grip.Error(json.NewEncoder(w).Encode(response))
+	d.withStreaming(r.Context(), w, func(ctx context.Context) error {
+		return d.executor.RunUntil(ctx, index)
+	})
 }
 
-// handleRunAll runs all remaining steps
+// handleRunAll runs all remaining steps with streaming output.
 func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -285,19 +267,48 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := d.executor.RunAll(r.Context())
+	d.withStreaming(r.Context(), w, func(ctx context.Context) error {
+		return d.executor.RunAll(ctx)
+	})
+}
+
+func (d *localDaemonREST) withStreaming(ctx context.Context, w http.ResponseWriter, fn func(ctx context.Context) error) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	if err := d.executor.SetupLogManager(false); err != nil {
+		grip.Warning(errors.Wrap(err, "setting up log manager"))
+	}
+
 	state := d.executor.GetDebugState()
+	taskLogFile := d.getLogFile()
+	sw := taskexec.NewStreamWriterExported(w, flusher, taskLogFile, state.CurrentStepIndex)
+	d.executor.SetStreamWriter(sw)
 
-	response := map[string]interface{}{
-		"success":      err == nil,
-		"current_step": state.CurrentStepIndex,
+	w.Header().Set("Content-Type", ndjsonContentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+	if err := fn(ctx); err != nil {
+		grip.Error(errors.Wrap(err, "executing streamed operation"))
 	}
 
-	if err != nil {
-		response["error"] = err.Error()
-	}
+	d.executor.ClearStreamWriter()
+	d.executor.CloseLogManager()
+}
 
-	grip.Error(json.NewEncoder(w).Encode(response))
+// getLogFile returns the output log file from the executor's log manager, or nil.
+func (d *localDaemonREST) getLogFile() *taskexec.LogFileHandle {
+	if d.executor == nil {
+		return nil
+	}
+	lm := d.executor.GetLogManager()
+	if lm == nil {
+		return nil
+	}
+	return lm.LogHandle()
 }
 
 // handleSetVariable sets a custom variable.
@@ -324,7 +335,7 @@ func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Reque
 	grip.Error(json.NewEncoder(w).Encode(map[string]bool{"success": true}))
 }
 
-// handleStepNext executes the next step
+// handleStepNext executes the next step with streaming output.
 func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -334,17 +345,26 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	ctx := context.Background()
-	err := d.executor.StepNext(ctx)
-	state := d.executor.GetDebugState()
+	d.withStreaming(r.Context(), w, func(ctx context.Context) error {
+		return d.executor.StepNext(ctx)
+	})
+}
+
+// handleStatus returns the daemon status.
+func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 
 	response := map[string]interface{}{
-		"success":      err == nil,
-		"current_step": state.CurrentStepIndex,
+		"healthy": true,
 	}
 
-	if err != nil {
-		response["error"] = err.Error()
+	if d.executor != nil {
+		state := d.executor.GetDebugState()
+		response["task_selected"] = state.SelectedTask != ""
+		response["selected_task"] = state.SelectedTask
+		response["current_step"] = state.CurrentStepIndex
+		response["total_steps"] = len(state.CommandList)
 	}
 
 	grip.Error(json.NewEncoder(w).Encode(response))

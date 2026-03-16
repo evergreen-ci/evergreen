@@ -179,11 +179,39 @@ func TestBuildArchive(t *testing.T) {
 				pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 				require.NoError(t, err)
 				excludes := []string{"*.pdb"}
-				_, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger)
+				_, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false)
 				So(err, ShouldBeNil)
 			})
 		}
 	})
+}
+
+func TestBuildArchiveVerbose(t *testing.T) {
+	testDir := getDirectoryOfFile()
+	logger := logging.NewGrip("test.archive")
+
+	outputFile, err := os.CreateTemp("", "artifacts_test_verbose.tar.gz")
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, os.RemoveAll(outputFile.Name()))
+	}()
+	require.NoError(t, outputFile.Close())
+
+	f, gz, tarWriter, err := tarGzWriter(outputFile.Name(), false)
+	require.NoError(t, err)
+	defer f.Close()
+	defer gz.Close()
+	defer tarWriter.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	rootPath := filepath.Join(testDir, "testdata", "archive", "artifacts_in")
+	pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, []string{"dir1/**"}, []string{})
+	require.NoError(t, err)
+
+	numFiles, err := buildArchive(ctx, tarWriter, rootPath, pathsToAdd, []string{"*.pdb"}, logger, true)
+	require.NoError(t, err)
+	assert.Greater(t, numFiles, 0)
 }
 
 func TestBuildArchiveRoundTrip(t *testing.T) {
@@ -217,7 +245,7 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 				rootPath := filepath.Join(testDir, "testdata", "archive", "artifacts_in")
 				pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 				require.NoError(t, err)
-				found, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger)
+				found, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false)
 				So(err, ShouldBeNil)
 				So(found, ShouldEqual, 4)
 				So(tarWriter.Close(), ShouldBeNil)

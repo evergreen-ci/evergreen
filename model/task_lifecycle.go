@@ -88,6 +88,34 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 		if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
+
+		// Incrementally update NumDependents for dependencies being activated.
+		// Build a map of tasks being activated for fast lookup.
+		taskMap := make(map[string]*task.Task)
+		for i := range tasksToActivate {
+			taskMap[tasksToActivate[i].Id] = &tasksToActivate[i]
+		}
+
+		// For each task being activated, increment NumDependents of its dependencies.
+		tasksToUpdate := make(map[string]*task.Task)
+		for _, t := range tasksToActivate {
+			for _, dep := range t.DependsOn {
+				if depTask, exists := taskMap[dep.TaskId]; exists {
+					depTask.NumDependents++
+					tasksToUpdate[depTask.Id] = depTask
+				}
+			}
+		}
+
+		if len(tasksToUpdate) > 0 {
+			if err := task.BulkUpdateNumDependents(ctx, tasksToUpdate); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":   "error updating number of dependents",
+					"num_tasks": len(tasksToUpdate),
+				}))
+			}
+		}
+
 		versionIdsToActivate := []string{}
 		for v := range versionIdsSet {
 			versionIdsToActivate = append(versionIdsToActivate, v)
@@ -760,6 +788,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	t.Details = detailsCopy
+
 	if utility.IsZeroTime(t.StartTime) {
 		grip.Warning(message.Fields{
 			"message":      "task is missing start time",
@@ -1802,6 +1831,20 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		return errors.Wrap(err, "finding project ref for merge queue metrics")
 	}
 
+	queueEntryTime := p.GithubMergeData.HeadCommitDate
+	queueEntrySource := "head_commit_date"
+	if queueEntryTime.IsZero() {
+		queueEntryTime = p.CreateTime
+		queueEntrySource = "create_time"
+	}
+
+	// Calculate the collective finish time across the patch family (parent + children).
+	// This matches the API's finish_time to represent when the entire patch family completed.
+	_, collectiveFinishTime, err := p.GetCollectiveTimes(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting collective finish time for merge queue metrics")
+	}
+
 	baseAttrs := patch.BuildMergeQueueSpanAttributes(
 		p.GithubMergeData.Org,
 		p.GithubMergeData.Repo,
@@ -1817,8 +1860,10 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 
-	if !p.FinishTime.IsZero() && !p.CreateTime.IsZero() {
-		timeInQueue := p.FinishTime.Sub(p.CreateTime).Milliseconds()
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrQueueEntrySource, queueEntrySource))
+
+	if !collectiveFinishTime.IsZero() && !queueEntryTime.IsZero() {
+		timeInQueue := collectiveFinishTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
 	}
 
@@ -1845,8 +1890,8 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 			firstTaskStartTime = startTime
 		}
 	}
-	if !firstTaskStartTime.IsZero() && !p.CreateTime.IsZero() {
-		timeToFirstTask := firstTaskStartTime.Sub(p.CreateTime).Milliseconds()
+	if !firstTaskStartTime.IsZero() && !queueEntryTime.IsZero() {
+		timeToFirstTask := firstTaskStartTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeToFirstTaskMs, timeToFirstTask))
 	}
 
@@ -1869,6 +1914,9 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		}
 	}
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrStatus, mergeQueueStatus))
+
+	span.SetAttributes(attribute.Bool(patch.MergeQueueAttrGitRefNotFound, p.GithubMergeData.GitRefNotFound))
+	span.SetAttributes(attribute.Bool(patch.MergeQueueAttrInvalidatedByUpstream, p.GithubMergeData.InvalidatedByUpstream))
 
 	totalCount := len(tasks)
 	metrics := gatherMergeQueueTaskMetrics(tasks)
@@ -1904,6 +1952,54 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	}
 
 	return nil
+}
+
+// EmitMergeQueueDestroyedSpans emits OpenTelemetry spans when GitHub sends a "destroyed"
+// MergeGroupEvent webhook. This captures removal reasons (merged, invalidated, dequeued).
+func EmitMergeQueueDestroyedSpans(ctx context.Context, updatedPatchIDs []string, org, repo, headSHA, headRef, reason string) {
+	if len(updatedPatchIDs) == 0 || reason == "" {
+		return
+	}
+
+	githubHeadPRURL := thirdparty.BuildGithubHeadPRURL(org, repo, headRef)
+
+	rootPatches := make(map[string]*patch.Patch)
+	for _, patchID := range updatedPatchIDs {
+		p, err := patch.FindOneId(ctx, patchID)
+		if err != nil || p == nil {
+			continue
+		}
+		for p.IsChild() {
+			parent, err := patch.FindOneId(ctx, p.Triggers.ParentPatch)
+			if err != nil || parent == nil {
+				break
+			}
+			p = parent
+		}
+		rootPatches[p.Id.Hex()] = p
+	}
+
+	mergeQueueStatus := thirdparty.GetMergeQueueStatusFromReason(reason)
+
+	for rootID, p := range rootPatches {
+		projectRef, err := FindBranchProjectRef(ctx, p.Project)
+		if err != nil {
+			continue
+		}
+		baseBranch := p.GithubMergeData.BaseBranch
+		if baseBranch == "" {
+			baseBranch = p.GithubMergeData.HeadBranch
+		}
+		baseAttrs := patch.BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubHeadPRURL)
+		attrs := append(baseAttrs,
+			attribute.String(patch.MergeQueueAttrPatchID, rootID),
+			attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier),
+			attribute.String(patch.MergeQueueAttrRemovalReason, reason),
+			attribute.String(patch.MergeQueueAttrStatus, mergeQueueStatus),
+		)
+		_, span := tracer.Start(ctx, patch.MergeQueueDestroyedSpan, trace.WithAttributes(attrs...))
+		span.End()
+	}
 }
 
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,

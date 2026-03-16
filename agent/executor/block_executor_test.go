@@ -346,7 +346,7 @@ func TestBlockToLegacyName(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Block_%s", test.block), func(t *testing.T) {
-			result := blockToLegacyName(test.block)
+			result := BlockToLegacyName(test.block)
 			assert.Equal(t, test.expected, result)
 		})
 	}

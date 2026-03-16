@@ -525,6 +525,7 @@ type SpawnHostInput struct {
 	VolumeID                *string                 `json:"volumeId,omitempty"`
 	UseOAuth                *bool                   `json:"useOAuth,omitempty"`
 	IsDebug                 *bool                   `json:"isDebug,omitempty"`
+	SetupStepNumber         *string                 `json:"setupStepNumber,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.
@@ -781,11 +782,6 @@ type WaterfallPagination struct {
 	MostRecentVersionOrder int      `json:"mostRecentVersionOrder"`
 	NextPageOrder          int      `json:"nextPageOrder"`
 	PrevPageOrder          int      `json:"prevPageOrder"`
-}
-
-type WaterfallVersion struct {
-	InactiveVersions []*model.APIVersion `json:"inactiveVersions,omitempty"`
-	Version          *model.APIVersion   `json:"version,omitempty"`
 }
 
 type AccessLevel string

@@ -30,6 +30,9 @@ type autoArchiveCreate struct {
 	// directory, e.g. "*.auto", "results.out", "ignore/**"
 	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
 
+	// Verbose enables per-file logging during archive creation.
+	Verbose bool `mapstructure:"verbose"`
+
 	base
 }
 
@@ -81,7 +84,9 @@ func (c *autoArchiveCreate) Execute(ctx context.Context,
 		filenames = make([]string, len(files))
 		for idx := range files {
 			filenames[idx] = files[idx].path
-			logger.Task().Infof("Adding to archive: %s", filenames[idx])
+			if c.Verbose {
+				logger.Task().Infof("Adding to archive: %s", filenames[idx])
+			}
 		}
 	}
 

@@ -140,7 +140,7 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 				require.NoError(t, err, "should be able to get task info")
 
 				if !evergreen.IsFinishedTaskStatus(task.Status) {
-					grip.Infof("Found task '%s' is not yet finished and has status '%s' (expected '%s').", taskID, task.Status, evergreen.TaskSucceeded)
+					grip.Infof("Found task '%s' is not yet finished and has display status '%s' (expected '%s').", taskID, task.DisplayStatus, evergreen.TaskSucceeded)
 					attempt++
 					continue
 				}
@@ -171,9 +171,10 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 // smokeAPITask represents part of a task from the REST API for use in the smoke
 // test.
 type smokeAPITask struct {
-	DisplayName string            `json:"display_name"`
-	Status      string            `json:"status"`
-	Logs        map[string]string `json:"logs"`
+	DisplayName   string            `json:"display_name"`
+	DisplayStatus string            `json:"display_status"`
+	Status        string            `json:"status"`
+	Logs          map[string]string `json:"logs"`
 }
 
 // getTaskInfo gets basic information about the current status and task logs for

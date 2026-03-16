@@ -12,7 +12,6 @@ import (
 // BetaFeatures represents beta tests, which may be active or inactive.
 type BetaFeatures struct {
 	SpruceWaterfallEnabled bool `bson:"spruce_waterfall_enabled" json:"spruce_waterfall_enabled"`
-	ParsleyAIEnabled       bool `bson:"parsley_ai_enabled" json:"parsley_ai_enabled"`
 }
 
 // UIConfig holds relevant settings for the UI server.

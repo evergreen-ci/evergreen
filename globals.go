@@ -493,10 +493,32 @@ const (
 	TaskDescriptionOtelAttribute    = "evergreen.task.description"
 	TaskTagsOtelAttribute           = "evergreen.task.tags"
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
+	TaskIngestTimeOtelAttribute     = "evergreen.task.ingest_time"
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
+	TaskGroupOtelAttribute          = "evergreen.task.task_group"
+	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
 
-	// task otel attributes
+	// S3 cost tracking otel span name — shared by per-file and aggregate events
+	S3CostTrackingOtelSpanName = "s3-cost-tracking"
+
+	// S3 cost tracking otel attributes — artifact aggregates
+	S3ArtifactPutRequestsOtelAttribute = "evergreen.task.s3_cost.artifact_put_requests"
+	S3ArtifactUploadBytesOtelAttribute = "evergreen.task.s3_cost.artifact_upload_bytes"
+	S3ArtifactFileCountOtelAttribute   = "evergreen.task.s3_cost.artifact_file_count"
+	S3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.artifact_put_cost"
+
+	// S3 cost tracking otel attributes — artifact per-file statistics
+	S3ArtifactAvgFilePutCostOtelAttribute = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
+	S3ArtifactMaxFilePutCostOtelAttribute = "evergreen.task.s3_cost.artifact_max_file_put_cost"
+	S3ArtifactMinFilePutCostOtelAttribute = "evergreen.task.s3_cost.artifact_min_file_put_cost"
+
+	// S3 cost tracking otel attributes — log aggregates
+	S3LogPutRequestsOtelAttribute = "evergreen.task.s3_cost.log_put_requests"
+	S3LogUploadBytesOtelAttribute = "evergreen.task.s3_cost.log_upload_bytes"
+	S3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.log_put_cost"
+
+	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
 
