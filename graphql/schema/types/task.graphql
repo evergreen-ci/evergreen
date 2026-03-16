@@ -89,6 +89,7 @@ type Task {
   errors: [String!]
   estimatedStart: Duration
   execution: Int!
+  executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
@@ -140,6 +141,15 @@ type Task {
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
+}
+
+type TaskExecutionStep {
+  stepNumber: String!
+  displayName: String!
+  commandName: String!
+  isFunction: Boolean!
+  functionName: String!
+  blockType: String!
 }
 
 type AbortInfo {

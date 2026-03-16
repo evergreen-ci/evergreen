@@ -1856,6 +1856,7 @@ type ComplexityRoot struct {
 		Errors                  func(childComplexity int) int
 		EstimatedStart          func(childComplexity int) int
 		Execution               func(childComplexity int) int
+		ExecutionSteps          func(childComplexity int) int
 		ExecutionTasks          func(childComplexity int) int
 		ExecutionTasksFull      func(childComplexity int) int
 		ExpectedDuration        func(childComplexity int) int
@@ -1941,6 +1942,15 @@ type ComplexityRoot struct {
 		ResourceId   func(childComplexity int) int
 		ResourceType func(childComplexity int) int
 		Timestamp    func(childComplexity int) int
+	}
+
+	TaskExecutionStep struct {
+		BlockType    func(childComplexity int) int
+		CommandName  func(childComplexity int) int
+		DisplayName  func(childComplexity int) int
+		FunctionName func(childComplexity int) int
+		IsFunction   func(childComplexity int) int
+		StepNumber   func(childComplexity int) int
 	}
 
 	TaskFiles struct {
@@ -2604,6 +2614,8 @@ type TaskResolver interface {
 
 	Errors(ctx context.Context, obj *model.APITask) ([]string, error)
 	EstimatedStart(ctx context.Context, obj *model.APITask) (*model.APIDuration, error)
+
+	ExecutionSteps(ctx context.Context, obj *model.APITask) ([]*model1.TaskExecutionStep, error)
 
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
@@ -10347,6 +10359,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.Execution(childComplexity), true
+	case "Task.executionSteps":
+		if e.complexity.Task.ExecutionSteps == nil {
+			break
+		}
+
+		return e.complexity.Task.ExecutionSteps(childComplexity), true
 	case "Task.executionTasks":
 		if e.complexity.Task.ExecutionTasks == nil {
 			break
@@ -10794,6 +10812,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskEventLogEntry.Timestamp(childComplexity), true
+
+	case "TaskExecutionStep.blockType":
+		if e.complexity.TaskExecutionStep.BlockType == nil {
+			break
+		}
+
+		return e.complexity.TaskExecutionStep.BlockType(childComplexity), true
+	case "TaskExecutionStep.commandName":
+		if e.complexity.TaskExecutionStep.CommandName == nil {
+			break
+		}
+
+		return e.complexity.TaskExecutionStep.CommandName(childComplexity), true
+	case "TaskExecutionStep.displayName":
+		if e.complexity.TaskExecutionStep.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.TaskExecutionStep.DisplayName(childComplexity), true
+	case "TaskExecutionStep.functionName":
+		if e.complexity.TaskExecutionStep.FunctionName == nil {
+			break
+		}
+
+		return e.complexity.TaskExecutionStep.FunctionName(childComplexity), true
+	case "TaskExecutionStep.isFunction":
+		if e.complexity.TaskExecutionStep.IsFunction == nil {
+			break
+		}
+
+		return e.complexity.TaskExecutionStep.IsFunction(childComplexity), true
+	case "TaskExecutionStep.stepNumber":
+		if e.complexity.TaskExecutionStep.StepNumber == nil {
+			break
+		}
+
+		return e.complexity.TaskExecutionStep.StepNumber(childComplexity), true
 
 	case "TaskFiles.fileCount":
 		if e.complexity.TaskFiles.FileCount == nil {
@@ -19637,6 +19692,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -27935,6 +27992,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -31410,6 +31469,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -34122,6 +34183,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -38072,6 +38135,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -38273,6 +38338,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -38474,6 +38541,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -38675,6 +38744,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -38876,6 +38947,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -39077,6 +39150,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -39278,6 +39353,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -40457,6 +40534,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -50605,6 +50684,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -50806,6 +50887,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -59107,6 +59190,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -59883,6 +59968,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -60096,6 +60183,49 @@ func (ec *executionContext) fieldContext_Task_execution(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_executionSteps(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_executionSteps,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().ExecutionSteps(ctx, obj)
+		},
+		nil,
+		ec.marshalOTaskExecutionStep2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskExecutionStepᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_executionSteps(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "stepNumber":
+				return ec.fieldContext_TaskExecutionStep_stepNumber(ctx, field)
+			case "displayName":
+				return ec.fieldContext_TaskExecutionStep_displayName(ctx, field)
+			case "commandName":
+				return ec.fieldContext_TaskExecutionStep_commandName(ctx, field)
+			case "isFunction":
+				return ec.fieldContext_TaskExecutionStep_isFunction(ctx, field)
+			case "functionName":
+				return ec.fieldContext_TaskExecutionStep_functionName(ctx, field)
+			case "blockType":
+				return ec.fieldContext_TaskExecutionStep_blockType(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskExecutionStep", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_executionTasks(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -60217,6 +60347,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -60615,6 +60747,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -62892,6 +63026,180 @@ func (ec *executionContext) fieldContext_TaskEventLogEntry_timestamp(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskExecutionStep_stepNumber(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskExecutionStep_stepNumber,
+		func(ctx context.Context) (any, error) {
+			return obj.StepNumber, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskExecutionStep_stepNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskExecutionStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskExecutionStep_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskExecutionStep_displayName,
+		func(ctx context.Context) (any, error) {
+			return obj.DisplayName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskExecutionStep_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskExecutionStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskExecutionStep_commandName(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskExecutionStep_commandName,
+		func(ctx context.Context) (any, error) {
+			return obj.CommandName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskExecutionStep_commandName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskExecutionStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskExecutionStep_isFunction(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskExecutionStep_isFunction,
+		func(ctx context.Context) (any, error) {
+			return obj.IsFunction, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskExecutionStep_isFunction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskExecutionStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskExecutionStep_functionName(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskExecutionStep_functionName,
+		func(ctx context.Context) (any, error) {
+			return obj.FunctionName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskExecutionStep_functionName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskExecutionStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskExecutionStep_blockType(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskExecutionStep_blockType,
+		func(ctx context.Context) (any, error) {
+			return obj.BlockType, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskExecutionStep_blockType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskExecutionStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskFiles_fileCount(ctx context.Context, field graphql.CollectedField, obj *TaskFiles) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -63052,6 +63360,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -67072,6 +67382,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -70342,6 +70654,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -99177,6 +99491,39 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "executionSteps":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_executionSteps(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "executionTasks":
 			out.Values[i] = ec._Task_executionTasks(ctx, field, obj)
 		case "executionTasksFull":
@@ -100136,6 +100483,70 @@ func (ec *executionContext) _TaskEventLogEntry(ctx context.Context, sel ast.Sele
 			}
 		case "timestamp":
 			out.Values[i] = ec._TaskEventLogEntry_timestamp(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var taskExecutionStepImplementors = []string{"TaskExecutionStep"}
+
+func (ec *executionContext) _TaskExecutionStep(ctx context.Context, sel ast.SelectionSet, obj *model1.TaskExecutionStep) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskExecutionStepImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskExecutionStep")
+		case "stepNumber":
+			out.Values[i] = ec._TaskExecutionStep_stepNumber(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "displayName":
+			out.Values[i] = ec._TaskExecutionStep_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "commandName":
+			out.Values[i] = ec._TaskExecutionStep_commandName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isFunction":
+			out.Values[i] = ec._TaskExecutionStep_isFunction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "functionName":
+			out.Values[i] = ec._TaskExecutionStep_functionName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blockType":
+			out.Values[i] = ec._TaskExecutionStep_blockType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -109109,6 +109520,16 @@ func (ec *executionContext) marshalNTaskEventLogEntry2ᚖgithubᚗcomᚋevergree
 	return ec._TaskEventLogEntry(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTaskExecutionStep2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskExecutionStep(ctx context.Context, sel ast.SelectionSet, v *model1.TaskExecutionStep) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TaskExecutionStep(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNTaskFiles2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskFiles(ctx context.Context, sel ast.SelectionSet, v TaskFiles) graphql.Marshaler {
 	return ec._TaskFiles(ctx, sel, &v)
 }
@@ -113575,6 +113996,53 @@ func (ec *executionContext) unmarshalOTaskCountOptions2ᚖgithubᚗcomᚋevergre
 
 func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐApiTaskEndDetail(ctx context.Context, sel ast.SelectionSet, v model.ApiTaskEndDetail) graphql.Marshaler {
 	return ec._TaskEndDetail(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOTaskExecutionStep2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskExecutionStepᚄ(ctx context.Context, sel ast.SelectionSet, v []*model1.TaskExecutionStep) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTaskExecutionStep2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐTaskExecutionStep(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
