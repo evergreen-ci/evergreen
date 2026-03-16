@@ -1257,6 +1257,91 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().Nil(next)
 }
 
+// TestFindNextTaskRespectsNumDependentsForRootTasks confirms that when multiple root tasks
+// (no dependencies) are at the same topological level, the dispatcher prioritizes tasks with
+// higher NumDependentsImpact. The scheduler orders tasks by NumDependents so that tasks
+// blocking more dependents run first; the DAG dispatcher's topological sort must preserve
+// this ordering. With topo.SortStabilized(..., nil), root nodes are ordered lexically by
+// node ID, which can override the scheduler's prioritization. This test puts the lower
+// NumDependents task first in the queue (simulating a scenario where queue order doesn't
+// match NumDependents), and asserts that the higher NumDependents task is dispatched first.
+func (s *taskDAGDispatchServiceSuite) TestFindNextTaskRespectsNumDependentsForRootTasks() {
+	s.Require().NoError(db.ClearCollections(task.Collection, host.Collection, VersionCollection))
+	distroID := "distro_1"
+	project := "project_1"
+	variant := "variant_1"
+	version := "version_1"
+
+	taskHighNumDependents := task.Task{
+		Id:                  "root-task-high-num-dependents",
+		DistroId:            distroID,
+		Project:             project,
+		BuildVariant:        variant,
+		Version:             version,
+		Status:              evergreen.TaskUndispatched,
+		DependsOn:           []task.Dependency{},
+		StartTime:           utility.ZeroTime,
+		Activated:           true,
+		CreateTime:          time.Now(),
+		RevisionOrderNumber: 1,
+	}
+	taskLowNumDependents := task.Task{
+		Id:                  "root-task-low-num-dependents",
+		DistroId:            distroID,
+		Project:             project,
+		BuildVariant:        variant,
+		Version:             version,
+		Status:              evergreen.TaskUndispatched,
+		DependsOn:           []task.Dependency{},
+		StartTime:           utility.ZeroTime,
+		Activated:           true,
+		CreateTime:          time.Now(),
+		RevisionOrderNumber: 1,
+	}
+	s.Require().NoError(taskHighNumDependents.Insert(s.T().Context()))
+	s.Require().NoError(taskLowNumDependents.Insert(s.T().Context()))
+
+	s.Require().NoError((&Version{Id: version, ProjectStorageMethod: evergreen.ProjectStorageMethodS3}).Insert(s.T().Context()))
+
+	// Queue order: root-task-low-num-dependents first, root-task-high-num-dependents second.
+	// root-task-high-num-dependents has higher NumDependentsImpact (50) and should be
+	// dispatched first when both are roots.
+	items := []TaskQueueItem{
+		{
+			Id:              "root-task-low-num-dependents",
+			Group:           "",
+			BuildVariant:    variant,
+			Version:         version,
+			Project:         project,
+			Dependencies:    []string{},
+			DependenciesMet: true,
+			SortingValueBreakdown: task.SortingValueBreakdown{
+				RankValueBreakdown: task.RankValueBreakdown{NumDependentsImpact: 0},
+			},
+		},
+		{
+			Id:              "root-task-high-num-dependents",
+			Group:           "",
+			BuildVariant:    variant,
+			Version:         version,
+			Project:         project,
+			Dependencies:    []string{},
+			DependenciesMet: true,
+			SortingValueBreakdown: task.SortingValueBreakdown{
+				RankValueBreakdown: task.RankValueBreakdown{NumDependentsImpact: 50},
+			},
+		},
+	}
+
+	s.taskQueue = TaskQueue{Distro: distroID, Queue: items}
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+
+	next := service.FindNextTask(s.ctx, TaskSpec{}, utility.ZeroTime)
+	s.Require().NotNil(next)
+	s.Equal("root-task-high-num-dependents", next.Id, "tasks with higher NumDependentsImpact should be dispatched first when both are root tasks")
+}
+
 func setTaskStatus(ctx context.Context, taskID string, status string) error {
 	return task.UpdateOne(
 		ctx,

@@ -201,7 +201,24 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		}
 	}
 
-	sorted, err := topo.SortStabilized(d.graph, nil)
+	// Order nodes at the same topological level by NumDependentsImpact (higher first)
+	// so that tasks blocking more dependents are dispatched before tasks with fewer dependents.
+	order := func(nodes []graph.Node) {
+		sort.Slice(nodes, func(i, j int) bool {
+			itemI := d.nodeItemMap[nodes[i].ID()]
+			itemJ := d.nodeItemMap[nodes[j].ID()]
+			if itemI == nil || itemJ == nil {
+				return nodes[i].ID() < nodes[j].ID()
+			}
+			impactI := itemI.SortingValueBreakdown.RankValueBreakdown.NumDependentsImpact
+			impactJ := itemJ.SortingValueBreakdown.RankValueBreakdown.NumDependentsImpact
+			if impactI != impactJ {
+				return impactI > impactJ
+			}
+			return nodes[i].ID() < nodes[j].ID()
+		})
+	}
+	sorted, err := topo.SortStabilized(d.graph, order)
 	if err != nil {
 		unorderableNodes, ok := err.(topo.Unorderable)
 		if !ok {
