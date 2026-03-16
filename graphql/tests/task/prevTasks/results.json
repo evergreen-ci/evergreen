@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "query_file": "prev_tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "prevTask": {
+              "id": "prev_started",
+              "status": "started"
+            },
+            "prevTaskBreaking": {
+              "id": "prev_failed",
+              "status": "failed"
+            },
+            "prevTaskPassing": {
+              "id": "prev_success",
+              "status": "success"
+            },
+            "prevTaskCompleted": {
+              "id": "prev_success",
+              "status": "success"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,9 +1,0 @@
-{
-  task(taskId: "current_task") {
-    id
-    prevTaskCompleted {
-      id
-      status
-    }
-  }
-}
