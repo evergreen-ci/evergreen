@@ -449,9 +449,10 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			ranSetupGroup: !shouldSetupGroup,
-			oomTracker:    jasper.NewOOMTracker(),
-			logger:        client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			ranSetupGroup:       !shouldSetupGroup,
+			oomTracker:          jasper.NewOOMTracker(),
+			cpuAndMemoryMonitor: newResourceMonitor(),
+			logger:              client.NewSingleChannelLogHarness("default", a.defaultLogger),
 		}
 	} else {
 		tc = initialTC
@@ -706,6 +707,10 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
 	if shutdown != nil {
 		defer shutdown(ctx)
+	}
+
+	if !utility.StringSliceContains(evergreen.ProviderContainer, a.opts.CloudProvider) {
+		go tc.cpuAndMemoryMonitor.start(tskCtx)
 	}
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
@@ -1133,6 +1138,12 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+
+	if rcInfo := tc.cpuAndMemoryMonitor.report(); rcInfo != nil {
+		tc.logger.Execution().Infof("Resource constraint detected: CPU constrained=%t (peak %.1f%%), memory constrained=%t (peak %.1f%%).",
+			rcInfo.CPUConstrained, rcInfo.PeakCPUPercent, rcInfo.MemoryConstrained, rcInfo.PeakMemoryPercent)
+		detail.ResourceConstraint = rcInfo
 	}
 }
 
