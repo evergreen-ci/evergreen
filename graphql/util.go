@@ -1447,6 +1447,9 @@ func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string)
 	if err != nil {
 		return nil, err
 	}
+	if prevTask == nil {
+		return nil, nil
+	}
 
 	apiTask := &restModel.APITask{}
 	err = apiTask.BuildFromService(ctx, prevTask, nil)
