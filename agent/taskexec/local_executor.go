@@ -203,13 +203,13 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	}
 	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
 	if untilIndex >= maxIndex {
-		e.logger.Warningf("Running until index %d out of range, falling back to %d", untilIndex, maxIndex)
+		e.logger.Warningf("Running until step out of range (index %d), falling back to %d", untilIndex, maxIndex)
 		untilIndex = maxIndex
 	}
 
 	for e.debugState.CurrentStepIndex <= untilIndex {
 		if err := e.StepNext(ctx); err != nil {
-			e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+			e.logger.Errorf("Step %s failed: %v", e.debugState.CommandList[e.debugState.CurrentStepIndex].FullStepNumber(), err)
 			return err
 		}
 		if e.debugState.CurrentStepIndex > untilIndex {
@@ -229,7 +229,7 @@ func (e *LocalExecutor) JumpTo(index int) error {
 		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
 	}
 	e.debugState.CurrentStepIndex = index
-	e.logger.Infof("Jumped to step %d", index)
+	e.logger.Infof("Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
 	return nil
 }
 
@@ -361,7 +361,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
-				e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+				e.logger.Errorf("Step %s failed: %v", targetCmd.FullStepNumber(), err)
 				if canFailTask {
 					return err
 				}
@@ -369,7 +369,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
 			}
 
-			e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
+			e.logger.Infof("Step %s completed successfully", targetCmd.FullStepNumber())
 			e.debugState.CurrentStepIndex++
 			executed = true
 		}
@@ -396,7 +396,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		return err
 	}
 	if !executed {
-		return errors.Errorf("failed to execute step %d", stepIndex)
+		return errors.Errorf("failed to execute step %s", targetCmd.FullStepNumber())
 	}
 	durationMs := time.Since(startTime).Milliseconds()
 	record.durationMs = durationMs
@@ -423,7 +423,7 @@ func (e *LocalExecutor) getNoOpMessage(cmdName string) string {
 func (e *LocalExecutor) RunAll(ctx context.Context) error {
 	for e.debugState.HasMoreSteps() {
 		if err := e.StepNext(ctx); err != nil {
-			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
+			e.logger.Warningf("Step failed, continuing")
 			return err
 		}
 	}
@@ -683,6 +683,8 @@ func (e *LocalExecutor) rebuildCommandList() error {
 					BlockTotalCmds: len(commands),
 				}
 				if cmd.Function != "" {
+					// rcmdIdx is 0-indexed but step numbers are 1-indexed to match
+					// the step number notation used in the task logs
 					info.FuncSubCmdNum = rcmdIdx + 1
 					info.FuncTotalSubCmds = len(renderedCmds)
 				}
