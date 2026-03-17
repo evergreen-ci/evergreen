@@ -203,7 +203,7 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	}
 	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
 	if untilIndex >= maxIndex {
-		e.logger.Warningf("Running until step out of range (index %d), falling back to %d", untilIndex, maxIndex)
+		e.logger.Warningf("Running until step %s out of range, falling back to %s", e.debugState.CommandList[untilIndex].FullStepNumber(), e.debugState.CommandList[maxIndex].FullStepNumber())
 		untilIndex = maxIndex
 	}
 
