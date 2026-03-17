@@ -133,7 +133,7 @@ func Debug() cli.Command {
 			{
 				Name:      "run-until",
 				Usage:     "Run until a specific step",
-				ArgsUsage: "<step_index>",
+				ArgsUsage: "<step_number>",
 				Action:    runUntilCmd,
 			},
 			{
@@ -150,17 +150,16 @@ func Debug() cli.Command {
 			{
 				Name:      "jump",
 				Usage:     "Jump to a specific step without executing",
-				ArgsUsage: "<step_index>",
+				ArgsUsage: "<step_number>",
 				Action:    jumpToCmd,
 			},
 			{
 				Name:  "logs",
 				Usage: "View debug session logs",
 				Flags: []cli.Flag{
-					cli.IntFlag{
+					cli.StringFlag{
 						Name:  stepFlagName,
-						Usage: "Show logs from a specific step only",
-						Value: -1,
+						Usage: "Show logs from a specific step only (e.g. '3', '2.1', 'pre:1')",
 					},
 					cli.BoolFlag{
 						Name:  setupFlagName,
@@ -449,39 +448,33 @@ func runAllCmd(c *cli.Context) error {
 // runUntilCmd runs until a specific step with streaming output.
 func runUntilCmd(c *cli.Context) error {
 	if c.NArg() < 1 {
-		return errors.New("step index required")
+		return errors.New("step number required")
 	}
 
-	index, err := strconv.Atoi(c.Args().Get(0))
-	if err != nil {
-		return errors.Errorf("invalid step index %d", index)
-	}
+	stepNum := c.Args().Get(0)
 
 	url, err := getDaemonURL()
 	if err != nil {
 		return err
 	}
 
-	return postAndStreamResponse(fmt.Sprintf("%s/step/run-until/%d", url, index), nil)
+	return postAndStreamResponse(fmt.Sprintf("%s/step/run-until/%s", url, stepNum), nil)
 }
 
 // jumpToCmd jumps to a specific step
 func jumpToCmd(c *cli.Context) error {
 	if c.NArg() < 1 {
-		return errors.New("step index required")
+		return errors.New("step number required")
 	}
 
-	index, err := strconv.Atoi(c.Args().Get(0))
-	if err != nil {
-		return errors.Errorf("invalid step index %d", index)
-	}
+	stepNum := c.Args().Get(0)
 
 	url, err := getDaemonURL()
 	if err != nil {
 		return err
 	}
 
-	resp, err := postJSON(fmt.Sprintf("%s/step/jump/%d", url, index), nil)
+	resp, err := postJSON(fmt.Sprintf("%s/step/jump/%s", url, stepNum), nil)
 	if err != nil {
 		return err
 	}
@@ -569,7 +562,7 @@ func listStepsCmd(c *cli.Context) error {
 			}
 		}
 
-		fmt.Printf("%s%d: %s%s\n", marker, index, step["display_name"], status)
+		fmt.Printf("%s%s: %s%s\n", marker, step["step_number"], step["display_name"], status)
 	}
 
 	return nil
@@ -612,7 +605,7 @@ func postAndStreamResponse(url string, body interface{}) error {
 // viewLogsCmd displays debug session logs from local log files.
 func viewLogsCmd(c *cli.Context) error {
 	isSetup := c.Bool(setupFlagName)
-	stepFilter := c.Int(stepFlagName)
+	stepFilter := c.String(stepFlagName)
 	tail := c.Int(tailFlagName)
 
 	lines, err := taskexec.ReadAllLogs(isSetup)
@@ -620,7 +613,7 @@ func viewLogsCmd(c *cli.Context) error {
 		return errors.Wrap(err, "reading logs")
 	}
 
-	if stepFilter >= 0 {
+	if stepFilter != "" {
 		lines = taskexec.FilterLogLinesByStep(lines, stepFilter)
 	}
 

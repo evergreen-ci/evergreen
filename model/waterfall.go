@@ -111,6 +111,8 @@ func getBuildVariantFilterPipeline(variants []string, caseSensitive bool, match 
 // GetActiveVersionsByTaskFilters returns limit versions that satisfy a task name or status filter. It also applies any requester and build variant filters.
 // If neither of these filters is specified, use GetActiveWaterfallVersions: it's faster.
 func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, searchOffset int) ([]Version, error) {
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetActiveVersionsByTaskFilters")})
+
 	match := bson.M{
 		task.ProjectKey: projectId,
 		task.RequesterKey: bson.M{

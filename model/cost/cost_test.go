@@ -31,4 +31,9 @@ func TestCostIsZero(t *testing.T) {
 		cost := Cost{S3ArtifactPutCost: 0.00005}
 		assert.False(t, cost.IsZero())
 	})
+
+	t.Run("NonZeroS3LogPutCost", func(t *testing.T) {
+		cost := Cost{S3LogPutCost: 0.00003}
+		assert.False(t, cost.IsZero())
+	})
 }

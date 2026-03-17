@@ -558,12 +558,13 @@ Parameters:
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
 within an allotted time, set the key `exec_timeout_secs` on the overall project,
-on a specific task, or on a specific task within a build variant to set the maximum allowed length of execution time. Exec timeout only
+on a build variant, on a specific task, or on a specific task within a build variant to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours, and cannot be set above 24 hours.
-`exec_timeout_secs` can be set on the project, on a task, or on a task within a build variant as seen in below example.
-It cannot be set on functions.
+`exec_timeout_secs` can be set on the project, on a build variant, on a task, or on a task within a build variant as
+seen in below example. The precedence order is: build variant task `>` project task `>` build variant `>` project. It
+cannot be set on functions.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).
 
@@ -595,7 +596,14 @@ buildvariants:
     tasks:
       - name: compile
       - name: test
-        exec_timeout_secs: 30 ## override the project and task level exec_timeout_secs for this variant's test task
+        exec_timeout_secs: 30 ## override the project, task, and build variant level exec_timeout_secs for this variant's test task
+  - name: linux
+    display_name: Linux
+    exec_timeout_secs: 120 ## override the project exec_timeout_secs for all tasks in this variant.
+    run_on:
+      - localtestdistro2
+    tasks:
+      - name: compile
 
 tasks:
   - name: compile

@@ -3,6 +3,7 @@ package taskexec
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -28,6 +29,7 @@ const (
 type StreamLine struct {
 	Channel    StreamChannel `json:"ch"`
 	Step       int           `json:"step"`
+	StepNumber string        `json:"step_number,omitempty"`
 	Message    string        `json:"msg,omitempty"`
 	Success    *bool         `json:"success,omitempty"`
 	DurationMs *int64        `json:"duration_ms,omitempty"`
@@ -38,12 +40,13 @@ type StreamLine struct {
 // streamWriter is a shared writer that writes NDJSON lines to an HTTP response
 // and optionally to a local log file. It uses http.Flusher to push data immediately.
 type streamWriter struct {
-	mu      sync.Mutex
-	w       io.Writer
-	flusher http.Flusher
-	logFile *logFile
-	step    int
-	closed  bool
+	mu         sync.Mutex
+	w          io.Writer
+	flusher    http.Flusher
+	logFile    *logFile
+	step       int
+	stepNumber string
+	closed     bool
 }
 
 // newStreamWriter creates a writer backed by an HTTP response writer.
@@ -82,13 +85,24 @@ func (sw *streamWriter) SetStep(step int) {
 	sw.step = step
 }
 
+// SetStepNumber updates the current step number string for subsequent writes.
+func (sw *streamWriter) SetStepNumber(stepNumber string) {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	sw.stepNumber = stepNumber
+}
+
 // WriteLine writes a StreamLine as NDJSON to the response and log file.
 func (sw *streamWriter) WriteLine(line StreamLine) {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
 	if sw.logFile != nil {
-		sw.logFile.writeLogLine(line.Step, line.Message)
+		stepStr := line.StepNumber
+		if stepStr == "" {
+			stepStr = fmt.Sprintf("%d", line.Step)
+		}
+		sw.logFile.writeLogLine(stepStr, line.Message)
 	}
 
 	if sw.closed {
@@ -114,9 +128,10 @@ func (sw *streamWriter) WriteLine(line StreamLine) {
 // WriteChannelMessage is a convenience method for writing a message on a given channel.
 func (sw *streamWriter) WriteChannelMessage(ch StreamChannel, msg string) {
 	sw.WriteLine(StreamLine{
-		Channel: ch,
-		Step:    sw.step,
-		Message: msg,
+		Channel:    ch,
+		Step:       sw.step,
+		StepNumber: sw.stepNumber,
+		Message:    msg,
 	})
 }
 
@@ -125,6 +140,7 @@ func (sw *streamWriter) WriteDone(success bool, durationMs int64, nextStep int, 
 	line := StreamLine{
 		Channel:    DoneChannel,
 		Step:       sw.step,
+		StepNumber: sw.stepNumber,
 		Success:    &success,
 		DurationMs: &durationMs,
 		NextStep:   &nextStep,
