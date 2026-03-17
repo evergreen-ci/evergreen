@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -265,12 +264,6 @@ type ComplexityRoot struct {
 		TaskExecution     func(childComplexity int) int
 		TaskId            func(childComplexity int) int
 		WebhookConfigured func(childComplexity int) int
-	}
-
-	ArtifactS3Metrics struct {
-		FileCount   func(childComplexity int) int
-		PutRequests func(childComplexity int) int
-		UploadBytes func(childComplexity int) int
 	}
 
 	AuthConfig struct {
@@ -1614,16 +1607,6 @@ type ComplexityRoot struct {
 		UploadCostDiscount func(childComplexity int) int
 	}
 
-	S3UploadMetrics struct {
-		PutRequests func(childComplexity int) int
-		UploadBytes func(childComplexity int) int
-	}
-
-	S3Usage struct {
-		Artifacts func(childComplexity int) int
-		Logs      func(childComplexity int) int
-	}
-
 	SESConfig struct {
 		SenderAddress func(childComplexity int) int
 	}
@@ -2257,7 +2240,6 @@ type ComplexityRoot struct {
 		Repo                     func(childComplexity int) int
 		Requester                func(childComplexity int) int
 		Revision                 func(childComplexity int) int
-		S3Usage                  func(childComplexity int) int
 		StartTime                func(childComplexity int) int
 		Status                   func(childComplexity int) int
 		TaskCount                func(childComplexity int, options *TaskCountOptions) int
@@ -3516,25 +3498,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Annotation.WebhookConfigured(childComplexity), true
-
-	case "ArtifactS3Metrics.fileCount":
-		if e.complexity.ArtifactS3Metrics.FileCount == nil {
-			break
-		}
-
-		return e.complexity.ArtifactS3Metrics.FileCount(childComplexity), true
-	case "ArtifactS3Metrics.putRequests":
-		if e.complexity.ArtifactS3Metrics.PutRequests == nil {
-			break
-		}
-
-		return e.complexity.ArtifactS3Metrics.PutRequests(childComplexity), true
-	case "ArtifactS3Metrics.uploadBytes":
-		if e.complexity.ArtifactS3Metrics.UploadBytes == nil {
-			break
-		}
-
-		return e.complexity.ArtifactS3Metrics.UploadBytes(childComplexity), true
 
 	case "AuthConfig.allowServiceUsers":
 		if e.complexity.AuthConfig.AllowServiceUsers == nil {
@@ -9358,32 +9321,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.S3UploadCostConfig.UploadCostDiscount(childComplexity), true
 
-	case "S3UploadMetrics.putRequests":
-		if e.complexity.S3UploadMetrics.PutRequests == nil {
-			break
-		}
-
-		return e.complexity.S3UploadMetrics.PutRequests(childComplexity), true
-	case "S3UploadMetrics.uploadBytes":
-		if e.complexity.S3UploadMetrics.UploadBytes == nil {
-			break
-		}
-
-		return e.complexity.S3UploadMetrics.UploadBytes(childComplexity), true
-
-	case "S3Usage.artifacts":
-		if e.complexity.S3Usage.Artifacts == nil {
-			break
-		}
-
-		return e.complexity.S3Usage.Artifacts(childComplexity), true
-	case "S3Usage.logs":
-		if e.complexity.S3Usage.Logs == nil {
-			break
-		}
-
-		return e.complexity.S3Usage.Logs(childComplexity), true
-
 	case "SESConfig.senderAddress":
 		if e.complexity.SESConfig.SenderAddress == nil {
 			break
@@ -12091,12 +12028,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.Revision(childComplexity), true
-	case "Version.s3Usage":
-		if e.complexity.Version.S3Usage == nil {
-			break
-		}
-
-		return e.complexity.Version.S3Usage(childComplexity), true
 	case "Version.startTime":
 		if e.complexity.Version.StartTime == nil {
 			break
@@ -20930,93 +20861,6 @@ func (ec *executionContext) fieldContext_Annotation_webhookConfigured(_ context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ArtifactS3Metrics_putRequests(ctx context.Context, field graphql.CollectedField, obj *s3usage.ArtifactMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ArtifactS3Metrics_putRequests,
-		func(ctx context.Context) (any, error) {
-			return obj.PutRequests, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ArtifactS3Metrics_putRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ArtifactS3Metrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ArtifactS3Metrics_uploadBytes(ctx context.Context, field graphql.CollectedField, obj *s3usage.ArtifactMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ArtifactS3Metrics_uploadBytes,
-		func(ctx context.Context) (any, error) {
-			return obj.UploadBytes, nil
-		},
-		nil,
-		ec.marshalNInt2int64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ArtifactS3Metrics_uploadBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ArtifactS3Metrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ArtifactS3Metrics_fileCount(ctx context.Context, field graphql.CollectedField, obj *s3usage.ArtifactMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ArtifactS3Metrics_fileCount,
-		func(ctx context.Context) (any, error) {
-			return obj.FileCount, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ArtifactS3Metrics_fileCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ArtifactS3Metrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -34710,8 +34554,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -34829,8 +34671,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -40534,8 +40374,6 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -43847,8 +43685,6 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -51720,8 +51556,6 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -54712,136 +54546,6 @@ func (ec *executionContext) fieldContext_S3UploadCostConfig_uploadCostDiscount(_
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _S3UploadMetrics_putRequests(ctx context.Context, field graphql.CollectedField, obj *s3usage.S3UploadMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_S3UploadMetrics_putRequests,
-		func(ctx context.Context) (any, error) {
-			return obj.PutRequests, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_S3UploadMetrics_putRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "S3UploadMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _S3UploadMetrics_uploadBytes(ctx context.Context, field graphql.CollectedField, obj *s3usage.S3UploadMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_S3UploadMetrics_uploadBytes,
-		func(ctx context.Context) (any, error) {
-			return obj.UploadBytes, nil
-		},
-		nil,
-		ec.marshalNInt2int64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_S3UploadMetrics_uploadBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "S3UploadMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _S3Usage_artifacts(ctx context.Context, field graphql.CollectedField, obj *s3usage.S3Usage) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_S3Usage_artifacts,
-		func(ctx context.Context) (any, error) {
-			return obj.Artifacts, nil
-		},
-		nil,
-		ec.marshalNArtifactS3Metrics2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐArtifactMetrics,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_S3Usage_artifacts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "S3Usage",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "putRequests":
-				return ec.fieldContext_ArtifactS3Metrics_putRequests(ctx, field)
-			case "uploadBytes":
-				return ec.fieldContext_ArtifactS3Metrics_uploadBytes(ctx, field)
-			case "fileCount":
-				return ec.fieldContext_ArtifactS3Metrics_fileCount(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ArtifactS3Metrics", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _S3Usage_logs(ctx context.Context, field graphql.CollectedField, obj *s3usage.S3Usage) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_S3Usage_logs,
-		func(ctx context.Context) (any, error) {
-			return obj.Logs, nil
-		},
-		nil,
-		ec.marshalNS3UploadMetrics2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐS3UploadMetrics,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_S3Usage_logs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "S3Usage",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "putRequests":
-				return ec.fieldContext_S3UploadMetrics_putRequests(ctx, field)
-			case "uploadBytes":
-				return ec.fieldContext_S3UploadMetrics_uploadBytes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type S3UploadMetrics", field.Name)
 		},
 	}
 	return fc, nil
@@ -62400,8 +62104,6 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -67673,8 +67375,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -68960,8 +68660,6 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -69206,8 +68904,6 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -69894,8 +69590,6 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -70202,41 +69896,6 @@ func (ec *executionContext) fieldContext_Version_revision(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Version_s3Usage(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Version_s3Usage,
-		func(ctx context.Context) (any, error) {
-			return obj.S3Usage, nil
-		},
-		nil,
-		ec.marshalOS3Usage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐS3Usage,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Version_s3Usage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Version",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "artifacts":
-				return ec.fieldContext_S3Usage_artifacts(ctx, field)
-			case "logs":
-				return ec.fieldContext_S3Usage_logs(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type S3Usage", field.Name)
 		},
 	}
 	return fc, nil
@@ -71499,8 +71158,6 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_requester(ctx, field)
 			case "revision":
 				return ec.fieldContext_Version_revision(ctx, field)
-			case "s3Usage":
-				return ec.fieldContext_Version_s3Usage(ctx, field)
 			case "startTime":
 				return ec.fieldContext_Version_startTime(ctx, field)
 			case "status":
@@ -85880,55 +85537,6 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
-var artifactS3MetricsImplementors = []string{"ArtifactS3Metrics"}
-
-func (ec *executionContext) _ArtifactS3Metrics(ctx context.Context, sel ast.SelectionSet, obj *s3usage.ArtifactMetrics) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, artifactS3MetricsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ArtifactS3Metrics")
-		case "putRequests":
-			out.Values[i] = ec._ArtifactS3Metrics_putRequests(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "uploadBytes":
-			out.Values[i] = ec._ArtifactS3Metrics_uploadBytes(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "fileCount":
-			out.Values[i] = ec._ArtifactS3Metrics_fileCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var authConfigImplementors = []string{"AuthConfig"}
 
 func (ec *executionContext) _AuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAuthConfig) graphql.Marshaler {
@@ -97593,94 +97201,6 @@ func (ec *executionContext) _S3UploadCostConfig(ctx context.Context, sel ast.Sel
 	return out
 }
 
-var s3UploadMetricsImplementors = []string{"S3UploadMetrics"}
-
-func (ec *executionContext) _S3UploadMetrics(ctx context.Context, sel ast.SelectionSet, obj *s3usage.S3UploadMetrics) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, s3UploadMetricsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("S3UploadMetrics")
-		case "putRequests":
-			out.Values[i] = ec._S3UploadMetrics_putRequests(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "uploadBytes":
-			out.Values[i] = ec._S3UploadMetrics_uploadBytes(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var s3UsageImplementors = []string{"S3Usage"}
-
-func (ec *executionContext) _S3Usage(ctx context.Context, sel ast.SelectionSet, obj *s3usage.S3Usage) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, s3UsageImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("S3Usage")
-		case "artifacts":
-			out.Values[i] = ec._S3Usage_artifacts(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "logs":
-			out.Values[i] = ec._S3Usage_logs(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var sESConfigImplementors = []string{"SESConfig"}
 
 func (ec *executionContext) _SESConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISESConfig) graphql.Marshaler {
@@ -103290,8 +102810,6 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "s3Usage":
-			out.Values[i] = ec._Version_s3Usage(ctx, field, obj)
 		case "startTime":
 			out.Values[i] = ec._Version_startTime(ctx, field, obj)
 		case "status":
@@ -104972,10 +104490,6 @@ var (
 		evergreen.ArchWindowsAmd64: "WINDOWS_64_BIT",
 	}
 )
-
-func (ec *executionContext) marshalNArtifactS3Metrics2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐArtifactMetrics(ctx context.Context, sel ast.SelectionSet, v s3usage.ArtifactMetrics) graphql.Marshaler {
-	return ec._ArtifactS3Metrics(ctx, sel, &v)
-}
 
 func (ec *executionContext) marshalNAuthUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUser(ctx context.Context, sel ast.SelectionSet, v model.APIAuthUser) graphql.Marshaler {
 	return ec._AuthUser(ctx, sel, &v)
@@ -109054,10 +108568,6 @@ var (
 		evergreen.HostAllocatorRoundDefault: "DEFAULT",
 	}
 )
-
-func (ec *executionContext) marshalNS3UploadMetrics2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐS3UploadMetrics(ctx context.Context, sel ast.SelectionSet, v s3usage.S3UploadMetrics) graphql.Marshaler {
-	return ec._S3UploadMetrics(ctx, sel, &v)
-}
 
 func (ec *executionContext) unmarshalNSaveDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSaveDistroInput(ctx context.Context, v any) (SaveDistroInput, error) {
 	res, err := ec.unmarshalInputSaveDistroInput(ctx, v)
@@ -113620,13 +113130,6 @@ func (ec *executionContext) marshalOS3UploadCostConfig2githubᚗcomᚋevergreen�
 func (ec *executionContext) unmarshalOS3UploadCostConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIS3UploadCostConfig(ctx context.Context, v any) (model.APIS3UploadCostConfig, error) {
 	res, err := ec.unmarshalInputS3UploadCostConfigInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOS3Usage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋs3usageᚐS3Usage(ctx context.Context, sel ast.SelectionSet, v *s3usage.S3Usage) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._S3Usage(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSESConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISESConfig(ctx context.Context, sel ast.SelectionSet, v model.APISESConfig) graphql.Marshaler {

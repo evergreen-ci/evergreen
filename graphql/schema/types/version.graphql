@@ -74,7 +74,6 @@ type Version {
   repo: String!
   requester: String!
   revision: String!
-  s3Usage: S3Usage
   startTime: Time
   status: String!
   taskCount(options: TaskCountOptions): Int

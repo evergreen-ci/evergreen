@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -61,8 +60,6 @@ type APIVersion struct {
 	Cost *cost.Cost `json:"cost,omitempty"`
 	// Aggregated predicted cost of all tasks in the version
 	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
-	// Aggregated S3 usage metrics from all tasks in the version
-	S3Usage *s3usage.S3Usage `json:"s3_usage,omitempty"`
 }
 
 type APIGitTag struct {
@@ -142,11 +139,6 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 		predictedCost := v.PredictedCost
 		apiVersion.PredictedCost = &predictedCost
 	}
-	if !v.S3Usage.IsZero() {
-		s3Usage := v.S3Usage
-		apiVersion.S3Usage = &s3Usage
-	}
-
 	if apiVersion.IsPatchRequester() {
 		p, err := patch.FindOneId(ctx, v.Id)
 		if err != nil || p == nil {
