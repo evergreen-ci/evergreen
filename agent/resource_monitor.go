@@ -16,7 +16,7 @@ const (
 	resourceMonitorInterval = 15 * time.Second
 	cpuThresholdPercent     = 90.0
 	memoryThresholdPercent  = 90.0
-	sustainedSampleCount    = 4
+	sustainedSampleCount    = 20
 )
 
 type cpuAndMemoryMonitor struct {
