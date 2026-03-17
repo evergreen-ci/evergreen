@@ -60207,18 +60207,18 @@ func (ec *executionContext) fieldContext_Task_executionSteps(_ context.Context, 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "stepNumber":
-				return ec.fieldContext_TaskExecutionStep_stepNumber(ctx, field)
-			case "displayName":
-				return ec.fieldContext_TaskExecutionStep_displayName(ctx, field)
-			case "commandName":
-				return ec.fieldContext_TaskExecutionStep_commandName(ctx, field)
-			case "isFunction":
-				return ec.fieldContext_TaskExecutionStep_isFunction(ctx, field)
-			case "functionName":
-				return ec.fieldContext_TaskExecutionStep_functionName(ctx, field)
 			case "blockType":
 				return ec.fieldContext_TaskExecutionStep_blockType(ctx, field)
+			case "commandName":
+				return ec.fieldContext_TaskExecutionStep_commandName(ctx, field)
+			case "displayName":
+				return ec.fieldContext_TaskExecutionStep_displayName(ctx, field)
+			case "functionName":
+				return ec.fieldContext_TaskExecutionStep_functionName(ctx, field)
+			case "isFunction":
+				return ec.fieldContext_TaskExecutionStep_isFunction(ctx, field)
+			case "stepNumber":
+				return ec.fieldContext_TaskExecutionStep_stepNumber(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskExecutionStep", field.Name)
 		},
@@ -63026,14 +63026,14 @@ func (ec *executionContext) fieldContext_TaskEventLogEntry_timestamp(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskExecutionStep_stepNumber(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskExecutionStep_blockType(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_TaskExecutionStep_stepNumber,
+		ec.fieldContext_TaskExecutionStep_blockType,
 		func(ctx context.Context) (any, error) {
-			return obj.StepNumber, nil
+			return obj.BlockType, nil
 		},
 		nil,
 		ec.marshalNString2string,
@@ -63042,36 +63042,7 @@ func (ec *executionContext) _TaskExecutionStep_stepNumber(ctx context.Context, f
 	)
 }
 
-func (ec *executionContext) fieldContext_TaskExecutionStep_stepNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskExecutionStep",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskExecutionStep_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TaskExecutionStep_displayName,
-		func(ctx context.Context) (any, error) {
-			return obj.DisplayName, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_TaskExecutionStep_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskExecutionStep_blockType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskExecutionStep",
 		Field:      field,
@@ -63113,30 +63084,30 @@ func (ec *executionContext) fieldContext_TaskExecutionStep_commandName(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskExecutionStep_isFunction(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskExecutionStep_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_TaskExecutionStep_isFunction,
+		ec.fieldContext_TaskExecutionStep_displayName,
 		func(ctx context.Context) (any, error) {
-			return obj.IsFunction, nil
+			return obj.DisplayName, nil
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_TaskExecutionStep_isFunction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskExecutionStep_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskExecutionStep",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -63171,14 +63142,43 @@ func (ec *executionContext) fieldContext_TaskExecutionStep_functionName(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskExecutionStep_blockType(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+func (ec *executionContext) _TaskExecutionStep_isFunction(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_TaskExecutionStep_blockType,
+		ec.fieldContext_TaskExecutionStep_isFunction,
 		func(ctx context.Context) (any, error) {
-			return obj.BlockType, nil
+			return obj.IsFunction, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskExecutionStep_isFunction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskExecutionStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskExecutionStep_stepNumber(ctx context.Context, field graphql.CollectedField, obj *model1.TaskExecutionStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskExecutionStep_stepNumber,
+		func(ctx context.Context) (any, error) {
+			return obj.StepNumber, nil
 		},
 		nil,
 		ec.marshalNString2string,
@@ -63187,7 +63187,7 @@ func (ec *executionContext) _TaskExecutionStep_blockType(ctx context.Context, fi
 	)
 }
 
-func (ec *executionContext) fieldContext_TaskExecutionStep_blockType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskExecutionStep_stepNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskExecutionStep",
 		Field:      field,
@@ -100517,13 +100517,8 @@ func (ec *executionContext) _TaskExecutionStep(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TaskExecutionStep")
-		case "stepNumber":
-			out.Values[i] = ec._TaskExecutionStep_stepNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "displayName":
-			out.Values[i] = ec._TaskExecutionStep_displayName(ctx, field, obj)
+		case "blockType":
+			out.Values[i] = ec._TaskExecutionStep_blockType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -100532,8 +100527,8 @@ func (ec *executionContext) _TaskExecutionStep(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "isFunction":
-			out.Values[i] = ec._TaskExecutionStep_isFunction(ctx, field, obj)
+		case "displayName":
+			out.Values[i] = ec._TaskExecutionStep_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -100542,8 +100537,13 @@ func (ec *executionContext) _TaskExecutionStep(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "blockType":
-			out.Values[i] = ec._TaskExecutionStep_blockType(ctx, field, obj)
+		case "isFunction":
+			out.Values[i] = ec._TaskExecutionStep_isFunction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stepNumber":
+			out.Values[i] = ec._TaskExecutionStep_stepNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
