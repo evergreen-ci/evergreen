@@ -7,7 +7,6 @@ import (
 )
 
 // TaskExecutionStep represents a single step in a task's execution plan.
-// This replicates the step-building logic from agent/taskexec without importing agent packages.
 type TaskExecutionStep struct {
 	StepNumber   string `json:"step_number"`
 	DisplayName  string `json:"display_name"`
@@ -18,7 +17,7 @@ type TaskExecutionStep struct {
 }
 
 // GetTaskExecutionSteps builds a flat list of execution steps for a task,
-// mirroring the logic in agent/taskexec/local_executor.go:rebuildCommandList().
+// mirroring the logic used in the "list-steps" command in the task debugger CLI.
 func GetTaskExecutionSteps(project *Project, taskName string) ([]TaskExecutionStep, error) {
 	task := project.FindProjectTask(taskName)
 	if task == nil {
@@ -57,24 +56,11 @@ func GetTaskExecutionSteps(project *Project, taskName string) ([]TaskExecutionSt
 			if cmd.Function != "" {
 				funcCmds, ok := project.Functions[cmd.Function]
 				if !ok || funcCmds == nil {
-					// Function not found; add a single entry for the unresolved function.
-					steps = append(steps, TaskExecutionStep{
-						StepNumber:   formatStepNumber(block.blockType, cmdNum, 0, 0),
-						DisplayName:  formatDisplayName(cmd.Function, cmd.DisplayName, block.blockType, cmdNum, totalCmds, cmd.Function, 0, 0),
-						CommandName:  cmd.Function,
-						IsFunction:   true,
-						FunctionName: cmd.Function,
-						BlockType:    block.blockType,
-					})
-					continue
+					return nil, fmt.Errorf("function %s not found in project", cmd.Function)
 				}
 
 				subCmds := funcCmds.List()
 				for subIdx, subCmd := range subCmds {
-					if subCmd.Function != "" {
-						// Nested functions are not supported; skip.
-						continue
-					}
 					subCmdNum := subIdx + 1
 					totalSubCmds := len(subCmds)
 					steps = append(steps, TaskExecutionStep{
@@ -100,10 +86,8 @@ func GetTaskExecutionSteps(project *Project, taskName string) ([]TaskExecutionSt
 	return steps, nil
 }
 
-// formatStepNumber formats a step number string following the same logic as
-// agent/taskexec CommandInfo step numbering.
-// - Main block: "1" or "2.1" (if function has >1 sub-cmd)
-// - Pre/post block: "pre:1" or "post:2.1"
+// formatStepNumber formats a step number string. Main block: "1" or "2.1" (if function has a sub-cmd)
+// Pre/post block: "pre:1" or "post:2.1"
 func formatStepNumber(blockType string, cmdNum, subCmdNum, totalSubCmds int) string {
 	var step string
 	if subCmdNum > 0 && totalSubCmds > 1 {
@@ -117,8 +101,6 @@ func formatStepNumber(blockType string, cmdNum, subCmdNum, totalSubCmds int) str
 	return step
 }
 
-// formatDisplayName formats a display name following the same logic as
-// agent/command/registry.go:GetFullDisplayName().
 func formatDisplayName(cmdName, displayName, blockType string, cmdNum, totalCmds int, funcName string, subCmdNum, totalSubCmds int) string {
 	fullName := fmt.Sprintf("'%s'", cmdName)
 	if displayName != "" {

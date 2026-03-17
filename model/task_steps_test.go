@@ -96,7 +96,6 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, steps, 4)
 
-		// Function sub-commands: step 1.1, 1.2, 1.3
 		assert.Equal(t, "1.1", steps[0].StepNumber)
 		assert.Equal(t, "shell.exec", steps[0].CommandName)
 		assert.True(t, steps[0].IsFunction)
@@ -107,7 +106,6 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 		assert.Equal(t, "1.2", steps[1].StepNumber)
 		assert.Equal(t, "1.3", steps[2].StepNumber)
 
-		// Non-function command
 		assert.Equal(t, "2", steps[3].StepNumber)
 		assert.False(t, steps[3].IsFunction)
 	})
@@ -174,7 +172,6 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, steps, 2)
 
-		// Missing function still produces a step entry
 		assert.Equal(t, "1", steps[0].StepNumber)
 		assert.True(t, steps[0].IsFunction)
 		assert.Equal(t, "missing_func", steps[0].FunctionName)
@@ -203,7 +200,6 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, steps, 1)
 
-		// Single sub-command function should NOT have sub-number
 		assert.Equal(t, "1", steps[0].StepNumber)
 		assert.True(t, steps[0].IsFunction)
 	})
