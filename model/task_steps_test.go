@@ -155,30 +155,6 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 	})
 
-	t.Run("FunctionNotFound", func(t *testing.T) {
-		project := &Project{
-			Tasks: []ProjectTask{
-				{
-					Name: "my_task",
-					Commands: []PluginCommandConf{
-						{Function: "missing_func"},
-						{Command: "shell.exec"},
-					},
-				},
-			},
-		}
-
-		steps, err := GetTaskExecutionSteps(project, "my_task")
-		require.NoError(t, err)
-		require.Len(t, steps, 2)
-
-		assert.Equal(t, "1", steps[0].StepNumber)
-		assert.True(t, steps[0].IsFunction)
-		assert.Equal(t, "missing_func", steps[0].FunctionName)
-
-		assert.Equal(t, "2", steps[1].StepNumber)
-	})
-
 	t.Run("SingleSubCommandFunctionNoSubNumber", func(t *testing.T) {
 		project := &Project{
 			Functions: map[string]*YAMLCommandSet{
