@@ -143,13 +143,18 @@ type Task {
   versionMetadata: Version!
 }
 
+"""
+TaskExecutionStep represents a single step in a task's execution plan.
+stepNumber is intentionally a string because step numbers are formatted in
+decimal notation, i.e. '2.1'
+"""
 type TaskExecutionStep {
-  stepNumber: String!
-  displayName: String!
-  commandName: String!
-  isFunction: Boolean!
-  functionName: String!
   blockType: String!
+  commandName: String!
+  displayName: String!
+  functionName: String!
+  isFunction: Boolean!
+  stepNumber: String!
 }
 
 type AbortInfo {
