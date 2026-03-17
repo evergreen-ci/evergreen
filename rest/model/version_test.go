@@ -111,7 +111,7 @@ func TestVersionBuildFromServiceCostAndS3Usage(t *testing.T) {
 				OnDemandEC2Cost:   15.0,
 				AdjustedEC2Cost:   12.0,
 				S3ArtifactPutCost: 0.08,
-				S3LogPutCost: 0.03,
+				S3LogPutCost:      0.03,
 			},
 			PredictedCost: cost.Cost{
 				OnDemandEC2Cost: 5.0,
