@@ -38,9 +38,10 @@ func NewProjectSettingsFromEvent(e ProjectSettingsEvent) ProjectSettings {
 		},
 		GithubHooksEnabled: e.GithubHooksEnabled,
 		Vars: ProjectVars{
-			Vars:          e.Vars.Vars,
-			PrivateVars:   e.Vars.PrivateVars,
-			AdminOnlyVars: e.Vars.AdminOnlyVars,
+			Vars:             e.Vars.Vars,
+			PrivateVars:      e.Vars.PrivateVars,
+			AdminOnlyVars:    e.Vars.AdminOnlyVars,
+			VarsDescriptions: e.Vars.VarsDescriptions,
 		},
 		Aliases:       e.Aliases,
 		Subscriptions: e.Subscriptions,
@@ -52,9 +53,10 @@ func NewProjectSettingsFromEvent(e ProjectSettingsEvent) ProjectSettings {
 type ProjectEventVars struct {
 	// Vars contain the names of project variables and redacted placeholders for
 	// their values.
-	Vars          map[string]string `bson:"vars" json:"vars"`
-	PrivateVars   map[string]bool   `bson:"private_vars" json:"private_vars"`
-	AdminOnlyVars map[string]bool   `bson:"admin_only_vars" json:"admin_only_vars"`
+	Vars             map[string]string `bson:"vars" json:"vars"`
+	PrivateVars      map[string]bool   `bson:"private_vars" json:"private_vars"`
+	AdminOnlyVars    map[string]bool   `bson:"admin_only_vars" json:"admin_only_vars"`
+	VarsDescriptions map[string]string `bson:"vars_descriptions,omitempty" json:"vars_descriptions,omitempty"`
 }
 
 // ProjectEventGitHubAppAuth contains the GitHub app auth data relevant to
@@ -106,9 +108,10 @@ func NewProjectSettingsEvent(p ProjectSettings) ProjectSettingsEvent {
 			PrivateKey: p.GitHubAppAuth.PrivateKey,
 		},
 		Vars: ProjectEventVars{
-			Vars:          p.Vars.Vars,
-			PrivateVars:   p.Vars.PrivateVars,
-			AdminOnlyVars: p.Vars.AdminOnlyVars,
+			Vars:             p.Vars.Vars,
+			PrivateVars:      p.Vars.PrivateVars,
+			AdminOnlyVars:    p.Vars.AdminOnlyVars,
+			VarsDescriptions: p.Vars.VarsDescriptions,
 		},
 	}
 }

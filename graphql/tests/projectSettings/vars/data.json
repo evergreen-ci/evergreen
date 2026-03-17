@@ -118,13 +118,19 @@
         },
         {
           "name": "foo",
-          "parameter_name": "/evg-test/vars/sandbox_project_id/foo"
+          "parameter_name": "/evg-test/vars/sandbox_project_id/foo",
+          "description": "only for testing"
         },
         {
           "name": "admintest",
-          "parameter_name": "/evg-test/vars/sandbox_project_id/admintest"
+          "parameter_name": "/evg-test/vars/sandbox_project_id/admintest",
+          "description": "this value is super important do not delete"
         }
-      ]
+      ],
+      "vars_descriptions": {
+        "foo": "only for testing",
+        "admintest": "this value is super important do not delete"
+      }
     },
     {
       "_id": "spruce",
@@ -135,7 +141,10 @@
           "name": "both",
           "parameter_name": "/evg-test/vars/spruce/both"
         }
-      ]
+      ],
+      "vars_descriptions": {
+        "both": "descriptions aren't redacted"
+      }
     }
   ],
   "fake_parameters": [

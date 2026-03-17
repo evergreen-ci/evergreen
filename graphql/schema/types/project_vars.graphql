@@ -3,6 +3,7 @@ input ProjectVarsInput {
   adminOnlyVarsList: [String!]
   privateVarsList: [String!]
   vars: StringMap
+  varsDescriptions: StringMap
 }
 
 ###### TYPES ######
@@ -10,4 +11,5 @@ type ProjectVars {
   adminOnlyVars: [String!]!
   privateVars: [String!]!
   vars: StringMap
+  varsDescriptions: StringMap
 }

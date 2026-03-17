@@ -1410,9 +1410,10 @@ type ComplexityRoot struct {
 	}
 
 	ProjectVars struct {
-		AdminOnlyVars func(childComplexity int) int
-		PrivateVars   func(childComplexity int) int
-		Vars          func(childComplexity int) int
+		AdminOnlyVars    func(childComplexity int) int
+		PrivateVars      func(childComplexity int) int
+		Vars             func(childComplexity int) int
+		VarsDescriptions func(childComplexity int) int
 	}
 
 	PublicKey struct {
@@ -8328,6 +8329,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectVars.Vars(childComplexity), true
+	case "ProjectVars.varsDescriptions":
+		if e.complexity.ProjectVars.VarsDescriptions == nil {
+			break
+		}
+
+		return e.complexity.ProjectVars.VarsDescriptions(childComplexity), true
 
 	case "PublicKey.key":
 		if e.complexity.PublicKey.Key == nil {
@@ -47819,6 +47826,8 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_vars(_ context.Con
 				return ec.fieldContext_ProjectVars_privateVars(ctx, field)
 			case "vars":
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
+			case "varsDescriptions":
+				return ec.fieldContext_ProjectVars_varsDescriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
 		},
@@ -48294,6 +48303,8 @@ func (ec *executionContext) fieldContext_ProjectSettings_vars(_ context.Context,
 				return ec.fieldContext_ProjectVars_privateVars(ctx, field)
 			case "vars":
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
+			case "varsDescriptions":
+				return ec.fieldContext_ProjectVars_varsDescriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
 		},
@@ -48463,6 +48474,35 @@ func (ec *executionContext) _ProjectVars_vars(ctx context.Context, field graphql
 }
 
 func (ec *executionContext) fieldContext_ProjectVars_vars(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectVars",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type StringMap does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectVars_varsDescriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectVars_varsDescriptions,
+		func(ctx context.Context) (any, error) {
+			return obj.VarsDescriptions, nil
+		},
+		nil,
+		ec.marshalOStringMap2map,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectVars_varsDescriptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectVars",
 		Field:      field,
@@ -53694,6 +53734,8 @@ func (ec *executionContext) fieldContext_RepoSettings_vars(_ context.Context, fi
 				return ec.fieldContext_ProjectVars_privateVars(ctx, field)
 			case "vars":
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
+			case "varsDescriptions":
+				return ec.fieldContext_ProjectVars_varsDescriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
 		},
@@ -80105,7 +80147,7 @@ func (ec *executionContext) unmarshalInputProjectVarsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnlyVarsList", "privateVarsList", "vars"}
+	fieldsInOrder := [...]string{"adminOnlyVarsList", "privateVarsList", "vars", "varsDescriptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80133,6 +80175,13 @@ func (ec *executionContext) unmarshalInputProjectVarsInput(ctx context.Context, 
 				return it, err
 			}
 			it.Vars = data
+		case "varsDescriptions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("varsDescriptions"))
+			data, err := ec.unmarshalOStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VarsDescriptions = data
 		}
 	}
 
@@ -94917,6 +94966,8 @@ func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionS
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "vars":
 			out.Values[i] = ec._ProjectVars_vars(ctx, field, obj)
+		case "varsDescriptions":
+			out.Values[i] = ec._ProjectVars_varsDescriptions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
