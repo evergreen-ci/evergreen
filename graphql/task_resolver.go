@@ -555,7 +555,7 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 func (r *taskResolver) PrevTaskBreaking(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	tsk, err := getPrevTask(ctx, obj, evergreen.TaskFailureStatuses)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous failing task for '%s': %s", obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous failing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	return tsk, nil
@@ -565,7 +565,7 @@ func (r *taskResolver) PrevTaskBreaking(ctx context.Context, obj *restModel.APIT
 func (r *taskResolver) PrevTaskPassing(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	tsk, err := getPrevTask(ctx, obj, []string{evergreen.TaskSucceeded})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous passing task for '%s': %s", obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous passing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	return tsk, nil
@@ -575,7 +575,7 @@ func (r *taskResolver) PrevTaskPassing(ctx context.Context, obj *restModel.APITa
 func (r *taskResolver) PrevTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	tsk, err := getPrevTask(ctx, obj, evergreen.TaskStatuses)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous task for '%s': %s", obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	return tsk, nil
@@ -585,7 +585,7 @@ func (r *taskResolver) PrevTask(ctx context.Context, obj *restModel.APITask) (*r
 func (r *taskResolver) PrevTaskCompleted(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	tsk, err := getPrevTask(ctx, obj, evergreen.TaskCompletedStatuses)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous completed task for '%s': %s", obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous completed task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	return tsk, nil
