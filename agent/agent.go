@@ -709,9 +709,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		defer shutdown(ctx)
 	}
 
-	if !utility.StringSliceContains(evergreen.ProviderContainer, a.opts.CloudProvider) {
-		go tc.cpuAndMemoryMonitor.start(tskCtx)
-	}
+	go tc.cpuAndMemoryMonitor.start(tskCtx)
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)

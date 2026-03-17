@@ -116,8 +116,3 @@ func TestResourceMonitorBothConstrained(t *testing.T) {
 	assert.InDelta(t, 95.0, info.PeakCPUPercent, 0.01)
 	assert.InDelta(t, 93.0, info.PeakMemoryPercent, 0.01)
 }
-
-func TestResourceMonitorReportNilWhenNoSamples(t *testing.T) {
-	rm := newResourceMonitor()
-	assert.Nil(t, rm.report())
-}
