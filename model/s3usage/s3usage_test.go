@@ -174,6 +174,11 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 		assert.Equal(t, 0.0, cost)
 	})
 
+	t.Run("WithNegativePutRequests", func(t *testing.T) {
+		cost := CalculateS3PutCostWithConfig(-5, validConfig)
+		assert.Equal(t, 0.0, cost)
+	})
+
 	t.Run("WithInvalidDiscount", func(t *testing.T) {
 		invalidConfig := &evergreen.CostConfig{
 			S3Cost: evergreen.S3CostConfig{
@@ -186,8 +191,4 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 		assert.Equal(t, 0.0, cost)
 	})
 
-	t.Run("WithNegativePutRequests", func(t *testing.T) {
-		cost := CalculateS3PutCostWithConfig(-5, validConfig)
-		assert.Equal(t, 0.0, cost)
-	})
 }
