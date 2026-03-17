@@ -283,14 +283,7 @@ func generateDebugSetupScript(ctx context.Context, so SpawnOptions, workDir stri
 		return "", errors.Wrap(err, "computing source directory")
 	}
 
-	// Extract only the command number, ignoring any sub-command portion
-	// (e.g., "5.1" -> "5"). Sub-command support can be added to run-until
-	// in the future.
-	parts := strings.SplitN(so.ProvisionOptions.SetupStepNumber, ".", 2)
-	if len(parts) == 0 || parts[0] == "" {
-		return "", errors.Errorf("invalid setup step number '%s'", so.ProvisionOptions.SetupStepNumber)
-	}
-	stepNum := parts[0]
+	stepNum := so.ProvisionOptions.SetupStepNumber
 
 	configPath := fmt.Sprintf("%s/%s", sourceDir, pRef.RemotePath)
 

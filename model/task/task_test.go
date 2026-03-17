@@ -5052,7 +5052,7 @@ func TestSaveS3Usage(t *testing.T) {
 		assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
 		assert.Equal(t, 50, dbTask.S3Usage.Logs.PutRequests)
-		assert.True(t, dbTask.TaskCost.S3LogChunkPutCost > 0)
+		assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
 	})
 
 	t.Run("CalculatesLogChunkCostOnly", func(t *testing.T) {
@@ -5074,7 +5074,7 @@ func TestSaveS3Usage(t *testing.T) {
 		assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, float64(0), dbTask.TaskCost.S3ArtifactPutCost)
 		assert.Equal(t, 100, dbTask.S3Usage.Logs.PutRequests)
-		assert.True(t, dbTask.TaskCost.S3LogChunkPutCost > 0)
+		assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
 	})
 
 	t.Run("ZeroUsagePersistsWithoutCost", func(t *testing.T) {

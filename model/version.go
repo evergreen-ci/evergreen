@@ -33,7 +33,7 @@ const (
 	taskOnDemandCostKey      = "on_demand_ec2_cost"
 	taskAdjustedCostKey      = "adjusted_ec2_cost"
 	taskS3ArtifactPutCostKey = "s3_artifact_put_cost"
-	taskS3LogChunkPutCostKey = "s3_log_chunk_put_cost"
+	taskS3LogPutCostKey = "s3_log_put_cost"
 
 	taskS3UsageKey             = "s3_usage"
 	taskS3ArtifactsKey         = "artifacts"
@@ -377,7 +377,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			"expected_on_demand":          bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
 			"expected_adjusted":           bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
 			"total_s3_artifact_put_cost":  bson.M{"$sum": "$" + taskCostKey + "." + taskS3ArtifactPutCostKey},
-			"total_s3_log_chunk_put_cost": bson.M{"$sum": "$" + taskCostKey + "." + taskS3LogChunkPutCostKey},
+			"total_s3_log_put_cost": bson.M{"$sum": "$" + taskCostKey + "." + taskS3LogPutCostKey},
 			"total_artifact_put_requests": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3PutRequestsKey},
 			"total_artifact_upload_bytes": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3UploadBytesKey},
 			"total_artifact_file_count":   bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactFileCountKey},
@@ -397,7 +397,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		PredictedOnDemand        float64 `bson:"expected_on_demand"`
 		PredictedAdjusted        float64 `bson:"expected_adjusted"`
 		TotalS3ArtifactPutCost   float64 `bson:"total_s3_artifact_put_cost"`
-		TotalS3LogChunkPutCost   float64 `bson:"total_s3_log_chunk_put_cost"`
+		TotalS3LogPutCost   float64 `bson:"total_s3_log_put_cost"`
 		TotalArtifactPutRequests int     `bson:"total_artifact_put_requests"`
 		TotalArtifactUploadBytes int64   `bson:"total_artifact_upload_bytes"`
 		TotalArtifactFileCount   int     `bson:"total_artifact_file_count"`
@@ -414,7 +414,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		total.OnDemandEC2Cost = results[0].TotalOnDemand
 		total.AdjustedEC2Cost = results[0].TotalAdjusted
 		total.S3ArtifactPutCost = results[0].TotalS3ArtifactPutCost
-		total.S3LogChunkPutCost = results[0].TotalS3LogChunkPutCost
+		total.S3LogPutCost = results[0].TotalS3LogPutCost
 		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
 		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
 		s3Total.Artifacts.PutRequests = results[0].TotalArtifactPutRequests

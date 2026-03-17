@@ -405,7 +405,7 @@ type ComplexityRoot struct {
 		AdjustedEC2Cost   func(childComplexity int) int
 		OnDemandEC2Cost   func(childComplexity int) int
 		S3ArtifactPutCost func(childComplexity int) int
-		S3LogChunkPutCost func(childComplexity int) int
+		S3LogPutCost      func(childComplexity int) int
 	}
 
 	CostConfig struct {
@@ -4016,12 +4016,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.S3ArtifactPutCost(childComplexity), true
-	case "Cost.s3LogChunkPutCost":
-		if e.complexity.Cost.S3LogChunkPutCost == nil {
+	case "Cost.s3LogPutCost":
+		if e.complexity.Cost.S3LogPutCost == nil {
 			break
 		}
 
-		return e.complexity.Cost.S3LogChunkPutCost(childComplexity), true
+		return e.complexity.Cost.S3LogPutCost(childComplexity), true
 
 	case "CostConfig.financeFormula":
 		if e.complexity.CostConfig.FinanceFormula == nil {
@@ -23573,14 +23573,14 @@ func (ec *executionContext) fieldContext_Cost_s3ArtifactPutCost(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Cost_s3LogChunkPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Cost_s3LogPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Cost_s3LogChunkPutCost,
+		ec.fieldContext_Cost_s3LogPutCost,
 		func(ctx context.Context) (any, error) {
-			return obj.S3LogChunkPutCost, nil
+			return obj.S3LogPutCost, nil
 		},
 		nil,
 		ec.marshalOFloat2float64,
@@ -23589,7 +23589,7 @@ func (ec *executionContext) _Cost_s3LogChunkPutCost(ctx context.Context, field g
 	)
 }
 
-func (ec *executionContext) fieldContext_Cost_s3LogChunkPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Cost_s3LogPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -62089,8 +62089,8 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogChunkPutCost":
-				return ec.fieldContext_Cost_s3LogChunkPutCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -62128,8 +62128,8 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogChunkPutCost":
-				return ec.fieldContext_Cost_s3LogChunkPutCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -69267,8 +69267,8 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogChunkPutCost":
-				return ec.fieldContext_Cost_s3LogChunkPutCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -69797,8 +69797,8 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogChunkPutCost":
-				return ec.fieldContext_Cost_s3LogChunkPutCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -86836,8 +86836,8 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
 		case "s3ArtifactPutCost":
 			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
-		case "s3LogChunkPutCost":
-			out.Values[i] = ec._Cost_s3LogChunkPutCost(ctx, field, obj)
+		case "s3LogPutCost":
+			out.Values[i] = ec._Cost_s3LogPutCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

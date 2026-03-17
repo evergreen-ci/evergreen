@@ -32,8 +32,8 @@ func TestCostIsZero(t *testing.T) {
 		assert.False(t, cost.IsZero())
 	})
 
-	t.Run("NonZeroS3LogChunkPutCost", func(t *testing.T) {
-		cost := Cost{S3LogChunkPutCost: 0.00003}
+	t.Run("NonZeroS3LogPutCost", func(t *testing.T) {
+		cost := Cost{S3LogPutCost: 0.00003}
 		assert.False(t, cost.IsZero())
 	})
 }
