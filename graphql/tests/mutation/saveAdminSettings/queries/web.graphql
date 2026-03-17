@@ -21,7 +21,7 @@ mutation {
         csrfKey: "12345678901234567890123456789012"
         cacheTemplates: true
         stagingEnvironment: "not-staging"
-        betaFeatures: { spruceWaterfallEnabled: false, parsleyAIEnabled: false }
+        betaFeatures: { spruceWaterfallEnabled: false }
       }
     }
   ) {
@@ -46,7 +46,6 @@ mutation {
       stagingEnvironment
       betaFeatures {
         spruceWaterfallEnabled
-        parsleyAIEnabled
       }
     }
     disabledGQLQueries
