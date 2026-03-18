@@ -30,7 +30,6 @@ var (
 	splunkKey                  = bsonutil.MustHaveTag(Settings{}, "Splunk")
 	slackKey                   = bsonutil.MustHaveTag(Settings{}, "Slack")
 	providersKey               = bsonutil.MustHaveTag(Settings{}, "Providers")
-	kanopySSHKeyPathKey        = bsonutil.MustHaveTag(Settings{}, "KanopySSHKeyPath")
 	authConfigKey              = bsonutil.MustHaveTag(Settings{}, "AuthConfig")
 	repoTrackerConfigKey       = bsonutil.MustHaveTag(Settings{}, "RepoTracker")
 	apiKey                     = bsonutil.MustHaveTag(Settings{}, "Api")

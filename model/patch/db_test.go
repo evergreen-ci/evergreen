@@ -722,9 +722,9 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 		assert.NoError(t, db.Insert(t.Context(), Collection, p))
 	}
 
-	count, err := MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "abc123", thirdparty.MergeQueueReasonInvalidated)
+	updatedPatchIDs, err := MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "abc123", thirdparty.MergeQueueReasonInvalidated)
 	assert.NoError(t, err)
-	assert.Equal(t, 6, count)
+	assert.Len(t, updatedPatchIDs, 6)
 
 	// GitRefNotFound + invalidated
 	p, err := FindOneId(t.Context(), patches[0].Id.Hex())
@@ -777,9 +777,9 @@ func TestMarkMergeQueuePatchesRemovedFromQueue(t *testing.T) {
 	require.NotNil(t, p)
 	assert.True(t, p.GithubMergeData.RemovedFromQueueAt.IsZero())
 
-	count, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "different-sha", "reason")
+	updatedPatchIDs, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "different-sha", "reason")
 	assert.NoError(t, err)
-	assert.Equal(t, 0, count)
+	assert.Len(t, updatedPatchIDs, 0)
 
 	_, err = MarkMergeQueuePatchesRemovedFromQueue(t.Context(), "mongodb", "mongo", "", "reason")
 	assert.Error(t, err)

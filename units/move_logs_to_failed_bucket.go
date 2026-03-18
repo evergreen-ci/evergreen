@@ -18,7 +18,7 @@ import (
 
 const (
 	moveLogsToFailedBucketJobName     = "move-logs-to-failed-bucket"
-	fetchTimeout                      = 10 * time.Minute
+	fetchTimeout                      = 30 * time.Minute
 	moveLogsToFailedBucketMaxAttempts = 3
 )
 
@@ -32,6 +32,7 @@ type moveLogsToFailedBucketJob struct {
 	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
 	TaskID          string                 `bson:"task_id"`
 	SourceBucketCfg evergreen.BucketConfig `bson:"source_bucket_cfg"`
+	Timeout         time.Duration          `bson:"timeout,omitempty"`
 
 	env evergreen.Environment
 }
@@ -49,15 +50,25 @@ func makeMoveLogsToFailedBucketJob() *moveLogsToFailedBucketJob {
 }
 
 // NewMoveLogsToFailedBucketJob creates a job that moves a task's logs to the failed bucket.
-func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig) amboy.Job {
+// Pass an optional timeout as the last argument to override the default (e.g. NewMoveLogsToFailedBucketJob(env, taskID, ts, sourceCfg, 60*time.Minute)).
+func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig, timeout ...time.Duration) amboy.Job {
 	j := makeMoveLogsToFailedBucketJob()
 	j.env = env
 	j.TaskID = taskID
 	j.SourceBucketCfg = sourceBucketCfg
+	if len(timeout) > 0 {
+		j.Timeout = timeout[0]
+	}
 	jobID := fmt.Sprintf("%s.%s.%s", moveLogsToFailedBucketJobName, taskID, ts)
 	j.SetID(jobID)
 	j.SetScopes([]string{jobID})
 	j.SetEnqueueAllScopes(true)
+	maxTime := fetchTimeout
+	if j.Timeout > 0 {
+		maxTime = j.Timeout
+	}
+	// MaxTime tells the Amboy pool how long this job may run; without it the pool may cancel the job before the S3 move completes.
+	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: maxTime})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(moveLogsToFailedBucketMaxAttempts),
@@ -81,7 +92,12 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	fetchContext, cancel := context.WithTimeout(ctx, fetchTimeout)
+	// Use custom timeout if provided, otherwise use default.
+	timeout := fetchTimeout
+	if j.Timeout > 0 {
+		timeout = j.Timeout
+	}
+	fetchContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	// Use the source bucket config captured when the job was created rather than the one on
 	// the task config because that has already been updated to the failed bucket so that future
@@ -91,6 +107,7 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 			"message":   "moving logs to failed bucket",
 			"task_id":   t.Id,
 			"execution": t.Execution,
+			"timeout":   timeout.String(),
 		}))
 		j.AddRetryableError(errors.Wrap(err, "moving logs to failed bucket"))
 		return

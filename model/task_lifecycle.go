@@ -88,6 +88,34 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 		if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
+
+		// Incrementally update NumDependents for dependencies being activated.
+		// Build a map of tasks being activated for fast lookup.
+		taskMap := make(map[string]*task.Task)
+		for i := range tasksToActivate {
+			taskMap[tasksToActivate[i].Id] = &tasksToActivate[i]
+		}
+
+		// For each task being activated, increment NumDependents of its dependencies.
+		tasksToUpdate := make(map[string]*task.Task)
+		for _, t := range tasksToActivate {
+			for _, dep := range t.DependsOn {
+				if depTask, exists := taskMap[dep.TaskId]; exists {
+					depTask.NumDependents++
+					tasksToUpdate[depTask.Id] = depTask
+				}
+			}
+		}
+
+		if len(tasksToUpdate) > 0 {
+			if err := task.BulkUpdateNumDependents(ctx, tasksToUpdate); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":   "error updating number of dependents",
+					"num_tasks": len(tasksToUpdate),
+				}))
+			}
+		}
+
 		versionIdsToActivate := []string{}
 		for v := range versionIdsSet {
 			versionIdsToActivate = append(versionIdsToActivate, v)
@@ -790,17 +818,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, costAttrs)
 		span.SetAttributes(costAttrs...)
-	}
-
-	if !t.S3Usage.IsZero() {
-		s3Attrs := []attribute.KeyValue{
-			attribute.Int(evergreen.S3PutCostTotalPutRequestsOtelAttribute, t.S3Usage.UserFiles.PutRequests),
-			attribute.Int64(evergreen.S3PutCostTotalUploadBytesOtelAttribute, t.S3Usage.UserFiles.UploadBytes),
-			attribute.Int(evergreen.S3PutCostTotalFileCountOtelAttribute, t.S3Usage.UserFiles.FileCount),
-			attribute.Float64(evergreen.S3PutCostTotalPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
-		}
-		ctx = utility.ContextWithAppendedAttributes(ctx, s3Attrs)
-		span.SetAttributes(s3Attrs...)
 	}
 
 	// If the error is from marking the task as finished, we want to
@@ -1840,6 +1857,7 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier),
 	)
 	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchCompletedSpan,
+		trace.WithNewRoot(),
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 
@@ -1935,6 +1953,54 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	}
 
 	return nil
+}
+
+// EmitMergeQueueDestroyedSpans emits OpenTelemetry spans when GitHub sends a "destroyed"
+// MergeGroupEvent webhook. This captures removal reasons (merged, invalidated, dequeued).
+func EmitMergeQueueDestroyedSpans(ctx context.Context, updatedPatchIDs []string, org, repo, headSHA, headRef, reason string) {
+	if len(updatedPatchIDs) == 0 || reason == "" {
+		return
+	}
+
+	githubHeadPRURL := thirdparty.BuildGithubHeadPRURL(org, repo, headRef)
+
+	rootPatches := make(map[string]*patch.Patch)
+	for _, patchID := range updatedPatchIDs {
+		p, err := patch.FindOneId(ctx, patchID)
+		if err != nil || p == nil {
+			continue
+		}
+		for p.IsChild() {
+			parent, err := patch.FindOneId(ctx, p.Triggers.ParentPatch)
+			if err != nil || parent == nil {
+				break
+			}
+			p = parent
+		}
+		rootPatches[p.Id.Hex()] = p
+	}
+
+	mergeQueueStatus := thirdparty.GetMergeQueueStatusFromReason(reason)
+
+	for rootID, p := range rootPatches {
+		projectRef, err := FindBranchProjectRef(ctx, p.Project)
+		if err != nil {
+			continue
+		}
+		baseBranch := p.GithubMergeData.BaseBranch
+		if baseBranch == "" {
+			baseBranch = p.GithubMergeData.HeadBranch
+		}
+		baseAttrs := patch.BuildMergeQueueSpanAttributes(org, repo, baseBranch, headSHA, githubHeadPRURL)
+		attrs := append(baseAttrs,
+			attribute.String(patch.MergeQueueAttrPatchID, rootID),
+			attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier),
+			attribute.String(patch.MergeQueueAttrRemovalReason, reason),
+			attribute.String(patch.MergeQueueAttrStatus, mergeQueueStatus),
+		)
+		_, span := tracer.Start(ctx, patch.MergeQueueDestroyedSpan, trace.WithAttributes(attrs...))
+		span.End()
+	}
 }
 
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,

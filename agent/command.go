@@ -147,7 +147,8 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 				functionSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			}
 			commandSpan.End()
-			if cmd.RetryOnFailure() {
+			// Only retry on failure for non-merge queue tasks.
+			if cmd.RetryOnFailure() && !evergreen.IsGithubMergeQueueRequester(tc.taskConfig.Task.Requester) {
 				tc.logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
 				if restartErr := a.comm.MarkFailedTaskToRestart(ctx, tc.task); restartErr != nil {
 					tc.logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)

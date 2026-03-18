@@ -160,6 +160,7 @@ type LoggerConfig struct {
 	SendToGlobalSender bool
 	AWSCredentials     aws.CredentialsProvider
 	RedactorOpts       redactor.RedactionOptions
+	S3Usage            *s3usage.S3Usage
 }
 
 type LogOpts struct {

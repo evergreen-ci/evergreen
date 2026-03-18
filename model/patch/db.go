@@ -643,13 +643,13 @@ func groupPatchesAndBuildUpdates(ctx context.Context, patches []Patch, reason st
 }
 
 // MarkMergeQueuePatchesRemovedFromQueue updates patches matching the given HeadSHA to mark them
-// as removed from the GitHub merge queue. Returns the number of patches updated.
-func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) (int, error) {
+// as removed from the GitHub merge queue. Returns the IDs of patches that were updated.
+func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) ([]string, error) {
 	if headSHA == "" {
-		return 0, errors.New("headSHA cannot be empty")
+		return nil, errors.New("headSHA cannot be empty")
 	}
 	if reason == "" {
-		return 0, errors.New("reason cannot be empty")
+		return nil, errors.New("reason cannot be empty")
 	}
 
 	query := bson.M{
@@ -663,11 +663,11 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 
 	patches, err := Find(ctx, db.Query(query))
 	if err != nil {
-		return 0, errors.Wrap(err, "finding patches")
+		return nil, errors.Wrap(err, "finding patches")
 	}
 
 	if len(patches) == 0 {
-		return 0, nil
+		return nil, nil
 	}
 
 	removalTime := time.Now().UTC().Round(time.Millisecond)
@@ -675,7 +675,7 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 	patchesInvalidatedByUpstream, updateForUpstream, patchesOwnFailure, updateForOwnFailure :=
 		groupPatchesAndBuildUpdates(ctx, patches, reason, removalTime)
 
-	totalUpdated := 0
+	updatedPatchIDs := []string{}
 
 	updates := []struct {
 		patches []mgobson.ObjectId
@@ -688,13 +688,15 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 
 	for _, u := range updates {
 		if len(u.patches) > 0 {
-			info, err := UpdateAll(ctx, bson.M{IdKey: bson.M{"$in": u.patches}}, u.update)
+			_, err := UpdateAll(ctx, bson.M{IdKey: bson.M{"$in": u.patches}}, u.update)
 			if err != nil {
-				return totalUpdated, errors.Wrap(err, u.errMsg)
+				return updatedPatchIDs, errors.Wrap(err, u.errMsg)
 			}
-			totalUpdated += info.Updated
+			for _, id := range u.patches {
+				updatedPatchIDs = append(updatedPatchIDs, id.Hex())
+			}
 		}
 	}
 
-	return totalUpdated, nil
+	return updatedPatchIDs, nil
 }

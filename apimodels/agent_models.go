@@ -97,6 +97,7 @@ type TimeoutProcessInfo struct {
 	CurrentCommand    string    `bson:"current_command,omitempty" json:"current_command,omitempty"`
 	CurrentCommandPID int       `bson:"current_command_pid,omitempty" json:"current_command_pid,omitempty"`
 	RunningPIDs       []int     `bson:"running_pids,omitempty" json:"running_pids,omitempty"`
+	ChildPIDs         []int     `bson:"child_pids,omitempty" json:"child_pids,omitempty"`
 	Timestamp         time.Time `bson:"timestamp,omitempty" json:"timestamp,omitempty"`
 }
 

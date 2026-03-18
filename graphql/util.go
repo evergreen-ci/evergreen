@@ -1434,3 +1434,28 @@ func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (
 
 	return opts, nil
 }
+
+// getPrevTask finds a task's previous run that matches the given statuses.
+// Note that PreviousCompletedTask defaults to completed statuses if the array is empty.
+func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string) (*restModel.APITask, error) {
+	tsk, err := obj.ToService()
+	if err != nil {
+		return nil, err
+	}
+
+	prevTask, err := tsk.PreviousCompletedTask(ctx, utility.FromStringPtr(obj.ProjectId), statuses)
+	if err != nil {
+		return nil, err
+	}
+	if prevTask == nil {
+		return nil, nil
+	}
+
+	apiTask := &restModel.APITask{}
+	err = apiTask.BuildFromService(ctx, prevTask, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiTask, nil
+}

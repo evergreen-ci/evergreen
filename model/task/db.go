@@ -1676,6 +1676,36 @@ func UpdateAllWithHint(ctx context.Context, query any, update any, hint any) (*a
 	return &adb.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
+// BulkUpdateNumDependents updates NumDependents for multiple tasks in a single bulk operation.
+func BulkUpdateNumDependents(ctx context.Context, tasks map[string]*Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	var writes []mongo.WriteModel
+	for _, t := range tasks {
+		update := bson.M{
+			"$set": bson.M{
+				NumDependentsKey: t.NumDependents,
+			},
+		}
+		if t.NumDependents == 0 {
+			update = bson.M{
+				"$unset": bson.M{
+					NumDependentsKey: "",
+				},
+			}
+		}
+
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{IdKey: t.Id}).
+			SetUpdate(update))
+	}
+
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).BulkWrite(ctx, writes)
+	return errors.Wrap(err, "bulk updating NumDependents")
+}
+
 // Remove deletes the task of the given id from the database
 func Remove(ctx context.Context, id string) error {
 	return db.Remove(
