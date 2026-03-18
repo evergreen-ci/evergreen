@@ -282,7 +282,7 @@ func generateConfigScript(ctx context.Context, taskID string, settings *evergree
 		return "", "", errors.Errorf("project ref not found for task '%s'", taskID)
 	}
 
-	configPath := fmt.Sprintf("%s/%s", homeDir, pRef.RemotePath)
+	configPath := filepath.Join(homeDir, pRef.RemotePath)
 
 	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
