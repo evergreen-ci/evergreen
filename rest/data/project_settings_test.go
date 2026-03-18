@@ -1131,13 +1131,16 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Empty(t, projectVarsFromDB.Vars)
 			assert.Empty(t, projectVarsFromDB.PrivateVars)
 			assert.Empty(t, projectVarsFromDB.AdminOnlyVars)
+			assert.Empty(t, projectVarsFromDB.VarsDescriptions)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 4)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
 			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
+			assert.Len(t, repoVarsFromDB.VarsDescriptions, 1)
 			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
+			assert.Equal(t, "keep my description when you promote me", repoVarsFromDB.VarsDescriptions["a"])
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 			assert.Equal(t, "3", repoVarsFromDB.Vars["c"])
 
@@ -1160,14 +1163,17 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Equal(t, "3", varsFromDB.Vars["c"])
 			assert.Empty(t, varsFromDB.PrivateVars)
 			assert.Empty(t, varsFromDB.AdminOnlyVars)
+			assert.Empty(t, varsFromDB.VarsDescriptions)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 3)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
 			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
+			assert.Len(t, repoVarsFromDB.VarsDescriptions, 1)
 			assert.NotContains(t, repoVarsFromDB.Vars, "c")
 			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
+			assert.Equal(t, "keep my description when you promote me", repoVarsFromDB.VarsDescriptions["a"])
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 
 			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
@@ -1258,10 +1264,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		rVars := model.ProjectVars{
-			Id:            repoRef.Id,
-			Vars:          map[string]string{"d": "4"},
-			PrivateVars:   map[string]bool{"d": true},
-			AdminOnlyVars: map[string]bool{"d": true},
+			Id:               repoRef.Id,
+			Vars:             map[string]string{"d": "4"},
+			PrivateVars:      map[string]bool{"d": true},
+			AdminOnlyVars:    map[string]bool{"d": true},
+			VarsDescriptions: map[string]string{},
 		}
 		assert.NoError(t, rVars.Insert(t.Context()))
 
@@ -1286,10 +1293,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		assert.NoError(t, pUnattached.Insert(t.Context()))
 
 		pVars := model.ProjectVars{
-			Id:            pRef.Id,
-			Vars:          map[string]string{"a": "1", "b": "2", "c": "3"},
-			PrivateVars:   map[string]bool{"a": true},
-			AdminOnlyVars: map[string]bool{},
+			Id:               pRef.Id,
+			Vars:             map[string]string{"a": "1", "b": "2", "c": "3"},
+			PrivateVars:      map[string]bool{"a": true},
+			AdminOnlyVars:    map[string]bool{},
+			VarsDescriptions: map[string]string{"a": "keep my description when you promote me"},
 		}
 		assert.NoError(t, pVars.Insert(t.Context()))
 

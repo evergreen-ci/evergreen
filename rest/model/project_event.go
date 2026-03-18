@@ -184,7 +184,13 @@ func (p *APIProjectVars) BuildFromService(v model.ProjectVars) {
 	p.PrivateVars = v.PrivateVars
 	p.Vars = v.Vars
 	p.AdminOnlyVars = v.AdminOnlyVars
+
 	p.VarsDescriptions = v.VarsDescriptions
+	// We need to initialize VarsDescriptions if nil for backwards compatibility with existing data. We can run into issues if we try
+	// to insert values into nonexistent maps.
+	if p.VarsDescriptions == nil {
+		p.VarsDescriptions = map[string]string{}
+	}
 }
 
 func (a *APIProjectAlias) ToService() model.ProjectAlias {

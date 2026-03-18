@@ -586,7 +586,7 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 		update["$unset"] = unsetUpdate
 	}
 
-	if len(projectVars.PrivateVars) != 0 && len(projectVars.AdminOnlyVars) != 0 && len(projectVars.VarsDescriptions) != 0 {
+	if len(projectVars.PrivateVars) != 0 || len(projectVars.AdminOnlyVars) != 0 || len(projectVars.VarsDescriptions) != 0 {
 		initializeUpdate := bson.M{}
 		originalProjectVars, err := FindOneProjectVars(ctx, projectVars.Id)
 		if err != nil {
