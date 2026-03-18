@@ -438,6 +438,14 @@ type QuarantineTestPayload struct {
 type Query struct {
 }
 
+type RefreshGitHubStatusesInput struct {
+	VersionID string `json:"versionId"`
+}
+
+type RefreshGitHubStatusesPayload struct {
+	Success bool `json:"success"`
+}
+
 type RemoveFavoriteProjectInput struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }

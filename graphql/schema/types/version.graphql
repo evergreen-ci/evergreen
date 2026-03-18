@@ -37,6 +37,14 @@ input SortOrder {
   Key: TaskSortCategory!
 }
 
+input RefreshGitHubStatusesInput {
+  versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+}
+
+type RefreshGitHubStatusesPayload {
+  success: Boolean!
+}
+
 ###### TYPES ######
 """
 Version models a commit within a project.

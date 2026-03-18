@@ -1478,6 +1478,30 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 	return true, nil
 }
 
+// RefreshGitHubChecks is the resolver for the refreshGitHubChecks field.
+func (r *mutationResolver) RefreshGitHubStatuses(ctx context.Context, opts RefreshGitHubStatusesInput) (*RefreshGitHubStatusesPayload, error) {
+	versionID := opts.VersionID
+	p, err := patch.FindOne(ctx, patch.ByVersion(versionID))
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch for version '%s': %s", versionID, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch for version '%s' not found", versionID))
+	}
+	if !p.IsGithubPRPatch() && !p.IsMergeQueuePatch() {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("version '%s' is not associated with a GitHub pull request or merge queue patch", versionID))
+	}
+
+	j := units.NewGithubStatusRefreshJob(p)
+	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating GitHub status refresh job: %s", err.Error()))
+	}
+	return &RefreshGitHubStatusesPayload{
+		Success: true,
+	}, nil
+}
+
 // RestartVersions is the resolver for the restartVersions field.
 func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
 	if len(versionsToRestart) == 0 {
