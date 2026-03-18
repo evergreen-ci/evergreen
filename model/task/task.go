@@ -863,7 +863,7 @@ func (t *Task) NextCompletedTask(ctx context.Context, project string, statuses [
 		statuses = evergreen.TaskCompletedStatuses
 	}
 	query := db.Query(ByAfterRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
-		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"+" + RevisionOrderNumberKey})
 	return FindOne(ctx, query)
 }
 
