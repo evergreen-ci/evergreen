@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 )
 
 var noOpCommands = map[string]string{
@@ -83,12 +83,13 @@ type LocalExecutor struct {
 
 // LocalExecutorOptions contains configuration for the local executor
 type LocalExecutorOptions struct {
-	WorkingDir  string
-	Expansions  map[string]string
-	ServerURL   string
-	TaskID      string
-	OAuthToken  string
-	SpawnHostID string
+	WorkingDir   string
+	Expansions   map[string]string
+	ServerURL    string
+	TaskID       string
+	OAuthToken   string
+	SpawnHostID  string
+	LocalModules map[string]string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -145,24 +146,28 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 	e.logger.Infof("Loading project from: %s", configPath)
 
-	yamlBytes, err := os.ReadFile(configPath)
+	absPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading config file '%s'", configPath)
+		return nil, errors.Wrapf(err, "resolving absolute path for '%s'", configPath)
+	}
+
+	yamlBytes, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading config file '%s'", absPath)
 	}
 
 	project := &model.Project{}
-	pp := &model.ParserProject{}
+	opts := &model.GetProjectOpts{
+		ReadFileFrom:    model.ReadFromLocal,
+		LocalIncludeDir: filepath.Dir(absPath),
+		LocalModules:    e.opts.LocalModules,
+	}
 
-	err = yaml.Unmarshal(yamlBytes, pp)
+	pp, err := model.LoadProjectInto(context.Background(), yamlBytes, opts, "", project)
 	if err != nil {
-		return nil, errors.Wrap(err, "unmarshaling YAML")
+		return nil, errors.Wrap(err, "loading project")
 	}
 	e.parserProject = pp
-
-	project, err = model.TranslateProject(pp)
-	if err != nil {
-		return nil, errors.Wrap(err, "translating project")
-	}
 	e.project = project
 
 	if e.taskConfig != nil {
@@ -203,13 +208,13 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	}
 	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
 	if untilIndex >= maxIndex {
-		e.logger.Warningf("Running until index %d out of range, falling back to %d", untilIndex, maxIndex)
+		e.logger.Warningf("Running until step out of range, falling back to %s", e.debugState.CommandList[maxIndex].FullStepNumber())
 		untilIndex = maxIndex
 	}
 
 	for e.debugState.CurrentStepIndex <= untilIndex {
 		if err := e.StepNext(ctx); err != nil {
-			e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+			e.logger.Errorf("Step %s failed: %v", e.debugState.CommandList[e.debugState.CurrentStepIndex].FullStepNumber(), err)
 			return err
 		}
 		if e.debugState.CurrentStepIndex > untilIndex {
@@ -229,7 +234,7 @@ func (e *LocalExecutor) JumpTo(index int) error {
 		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
 	}
 	e.debugState.CurrentStepIndex = index
-	e.logger.Infof("Jumped to step %d", index)
+	e.logger.Infof("Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
 	return nil
 }
 
@@ -267,6 +272,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 	if e.streamWriter != nil {
 		e.streamWriter.SetStep(stepIndex)
+		e.streamWriter.SetStepNumber(targetCmd.FullStepNumber())
 	}
 
 	startTime := time.Now()
@@ -294,25 +300,21 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 		if e.logManager != nil {
 			lf := e.logManager.LogFile()
-			lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
-			lf.WriteLogLine(stepIndex, noOpMsg)
-			lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
+			stepNum := targetCmd.FullStepNumber()
+			lf.WriteStepStart(stepNum, targetCmd.DisplayName, string(targetCmd.BlockType))
+			lf.WriteLogLine(stepNum, noOpMsg)
+			lf.WriteStepEnd(stepNum, true, getDurationStr(startTime))
 		}
 		return nil
 	}
 
 	if e.logManager != nil {
 		lf := e.logManager.LogFile()
-		lf.WriteStepStart(stepIndex, targetCmd.DisplayName, string(targetCmd.BlockType))
+		lf.WriteStepStart(targetCmd.FullStepNumber(), targetCmd.DisplayName, string(targetCmd.BlockType))
 	}
 
 	if e.streamWriter != nil {
-		blockLabel := string(targetCmd.BlockType)
-		if blockLabel == "" {
-			blockLabel = "main"
-		}
-		msg := fmt.Sprintf("Running '%s' (step %d of %d, block: %s)",
-			targetCmd.DisplayName, stepIndex, len(e.debugState.CommandList), blockLabel)
+		msg := fmt.Sprintf("Running command %s.", targetCmd.DisplayName)
 		e.streamWriter.WriteChannelMessage(ExecChannel, msg)
 	}
 
@@ -364,7 +366,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
-				e.logger.Errorf("Step %d failed: %v", e.debugState.CurrentStepIndex, err)
+				e.logger.Errorf("Step %s failed: %v", targetCmd.FullStepNumber(), err)
 				if canFailTask {
 					return err
 				}
@@ -372,7 +374,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
 			}
 
-			e.logger.Infof("Step %d completed successfully", e.debugState.CurrentStepIndex)
+			e.logger.Infof("Step %s completed successfully", targetCmd.FullStepNumber())
 			e.debugState.CurrentStepIndex++
 			executed = true
 		}
@@ -394,12 +396,12 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		}
 		if e.logManager != nil {
 			lf := e.logManager.LogFile()
-			lf.WriteStepEnd(stepIndex, false, getDurationStr(startTime))
+			lf.WriteStepEnd(targetCmd.FullStepNumber(), false, getDurationStr(startTime))
 		}
 		return err
 	}
 	if !executed {
-		return errors.Errorf("failed to execute step %d", stepIndex)
+		return errors.Errorf("failed to execute step %s", targetCmd.FullStepNumber())
 	}
 	durationMs := time.Since(startTime).Milliseconds()
 	record.durationMs = durationMs
@@ -410,7 +412,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	}
 	if e.logManager != nil {
 		lf := e.logManager.LogFile()
-		lf.WriteStepEnd(stepIndex, true, getDurationStr(startTime))
+		lf.WriteStepEnd(targetCmd.FullStepNumber(), true, getDurationStr(startTime))
 	}
 	return nil
 }
@@ -426,7 +428,7 @@ func (e *LocalExecutor) getNoOpMessage(cmdName string) string {
 func (e *LocalExecutor) RunAll(ctx context.Context) error {
 	for e.debugState.HasMoreSteps() {
 		if err := e.StepNext(ctx); err != nil {
-			e.logger.Warningf("Step %d failed, continuing", e.debugState.CurrentStepIndex-1)
+			e.logger.Warningf("Step failed, continuing")
 			return err
 		}
 	}
@@ -654,35 +656,44 @@ func (e *LocalExecutor) rebuildCommandList() error {
 			if err != nil {
 				e.logger.Warningf("Failed to render command '%s': %v", cmd.Command, err)
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
-					Index:        globalIndex,
-					Command:      cmd,
-					DisplayName:  cmd.GetDisplayName(),
-					IsFunction:   cmd.Function != "",
-					FunctionName: cmd.Function,
-					BlockType:    block.blockType,
-					BlockIndex:   blockIdx,
-					BlockCmdNum:  cmdIdx + 1,
+					Index:          globalIndex,
+					Command:        cmd,
+					DisplayName:    cmd.GetDisplayName(),
+					IsFunction:     cmd.Function != "",
+					FunctionName:   cmd.Function,
+					BlockType:      block.blockType,
+					BlockIndex:     blockIdx,
+					BlockCmdNum:    cmdIdx + 1,
+					BlockTotalCmds: len(commands),
 				})
 				globalIndex++
 				continue
 			}
 
-			for _, rcmd := range renderedCmds {
+			for rcmdIdx, rcmd := range renderedCmds {
 				displayName := rcmd.FullDisplayName()
 				if displayName == "" {
 					displayName = cmd.GetDisplayName()
 				}
 
-				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
-					Index:        globalIndex,
-					Command:      cmd,
-					DisplayName:  displayName,
-					IsFunction:   cmd.Function != "",
-					FunctionName: cmd.Function,
-					BlockType:    block.blockType,
-					BlockIndex:   blockIdx,
-					BlockCmdNum:  cmdIdx + 1,
-				})
+				info := CommandInfo{
+					Index:          globalIndex,
+					Command:        cmd,
+					DisplayName:    displayName,
+					IsFunction:     cmd.Function != "",
+					FunctionName:   cmd.Function,
+					BlockType:      block.blockType,
+					BlockIndex:     blockIdx,
+					BlockCmdNum:    cmdIdx + 1,
+					BlockTotalCmds: len(commands),
+				}
+				if cmd.Function != "" {
+					// rcmdIdx is 0-indexed but step numbers are 1-indexed to match
+					// the step number notation used in the task logs
+					info.FuncSubCmdNum = rcmdIdx + 1
+					info.FuncTotalSubCmds = len(renderedCmds)
+				}
+				e.debugState.CommandList = append(e.debugState.CommandList, info)
 				globalIndex++
 			}
 		}

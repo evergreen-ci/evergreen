@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
@@ -44,8 +43,8 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/task/list-steps", d.handleListSteps).Methods("GET")
 	router.HandleFunc("/step/next", d.handleStepNext).Methods("POST")
 	router.HandleFunc("/step/run-all", d.handleRunAll).Methods("POST")
-	router.HandleFunc("/step/run-until/{index}", d.handleRunUntil).Methods("POST")
-	router.HandleFunc("/step/jump/{index}", d.handleJumpTo).Methods("POST")
+	router.HandleFunc("/step/run-until/{step}", d.handleRunUntil).Methods("POST")
+	router.HandleFunc("/step/jump/{step}", d.handleJumpTo).Methods("POST")
 	router.HandleFunc("/variable/set", d.handleSetVariable).Methods("POST")
 	router.HandleFunc("/status", d.handleStatus).Methods("GET")
 
@@ -176,11 +175,7 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 // handleJumpTo jumps to a specific step
 func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	index, err := strconv.Atoi(vars["index"])
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid step index %d", index), http.StatusBadRequest)
-		return
-	}
+	stepNum := vars["step"]
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -190,12 +185,18 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := d.executor.JumpTo(index); err != nil {
-		http.Error(w, errors.Wrap(err, "jumping to index").Error(), http.StatusBadRequest)
+	state := d.executor.GetDebugState()
+	index, err := state.ResolveStepNumber(stepNum)
+	if err != nil {
+		http.Error(w, errors.Wrap(err, "resolving step number").Error(), http.StatusBadRequest)
 		return
 	}
 
-	state := d.executor.GetDebugState()
+	if err := d.executor.JumpTo(index); err != nil {
+		http.Error(w, errors.Wrap(err, "jumping to step").Error(), http.StatusBadRequest)
+		return
+	}
+
 	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":      true,
 		"current_step": state.CurrentStepIndex,
@@ -220,6 +221,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 
 		steps = append(steps, map[string]interface{}{
 			"index":         i,
+			"step_number":   cmd.FullStepNumber(),
 			"command_type":  cmd.Command.Command,
 			"display_name":  cmd.DisplayName,
 			"is_function":   cmd.IsFunction,
@@ -235,20 +237,23 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 	}))
 }
 
-// handleRunUntil runs until a specific step with streaming output.
+// handleRunUntil runs until a specific step identified by step number string.
 func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	index, err := strconv.Atoi(vars["index"])
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid step index %d", index), http.StatusBadRequest)
-		return
-	}
+	stepNum := vars["step"]
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	if d.executor == nil {
 		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	state := d.executor.GetDebugState()
+	index, err := state.ResolveStepNumber(stepNum)
+	if err != nil {
+		http.Error(w, errors.Wrap(err, "resolving step number").Error(), http.StatusBadRequest)
 		return
 	}
 
