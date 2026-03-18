@@ -1,0 +1,34 @@
+{
+  "project_ref": [
+    {
+      "_id": "happyAbyssinian",
+      "identifier": "happyAbyssinian",
+      "display_name": "Happy Abyssinian"
+    },
+    {
+      "_id": "evergreen",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen"
+    }
+  ],
+  "versions": [
+    {
+      "_id": "not_patch",
+      "identifier": "happyAbyssinian"
+    },
+    {
+      "_id": "forbidden",
+      "identifier": "evergreen"
+    }
+  ],
+  "patches": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "version": "not_patch"
+    },
+    {
+      "_id": "9e4ff3abe3c3317e352062e4",
+      "version": "forbidden"
+    }
+  ]
+}

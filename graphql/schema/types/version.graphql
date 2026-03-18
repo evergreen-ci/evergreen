@@ -38,7 +38,7 @@ input SortOrder {
 }
 
 input RefreshGitHubStatusesInput {
-  versionId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
 }
 
 type RefreshGitHubStatusesPayload {
