@@ -199,6 +199,22 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 	return projectVars, nil
 }
 
+// FindOneProjectVars finds the project variables document for a given project ID, without fetching the variable
+// values from ParameterStore. This is used in cases where we don't need the variable values and want to avoid
+// the overhead of fetching from ParameterStore.
+func FindOneProjectVarsWithoutParameterStore(ctx context.Context, projectId string) (*ProjectVars, error) {
+	projectVars := &ProjectVars{}
+	q := db.Query(bson.M{projectVarIdKey: projectId})
+	err := db.FindOneQ(ctx, ProjectVarsCollection, q, projectVars)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return projectVars, nil
+}
+
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
 func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars, error) {
 	project, err := FindBranchProjectRef(ctx, projectID)
@@ -586,30 +602,35 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 		update["$unset"] = unsetUpdate
 	}
 
-	if len(projectVars.PrivateVars) != 0 && len(projectVars.AdminOnlyVars) != 0 {
+	if len(projectVars.PrivateVars) != 0 || len(projectVars.AdminOnlyVars) != 0 || len(projectVars.VarsDescriptions) != 0 {
+		// Initialize the private, admin-only, and description vars maps if they don't exist.
 		initializeUpdate := bson.M{}
-		originalProjectVars, err := FindOneProjectVars(ctx, projectVars.Id)
+		originalProjectVars, err := FindOneProjectVarsWithoutParameterStore(ctx, projectVars.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
 		}
-		if originalProjectVars == nil {
-			return nil, errors.Errorf("project vars for project '%s' not found", projectVars.Id)
-		}
-		// Initialize the private, admin-only, and description vars maps if they don't exist.
-		if originalProjectVars.PrivateVars == nil {
-			initializeUpdate[privateVarsMapKey] = bson.M{}
-		}
-		if originalProjectVars.AdminOnlyVars == nil {
-			initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
-		}
-		if len(initializeUpdate) > 0 {
-			err := db.Update(ctx,
-				ProjectVarsCollection,
-				bson.M{projectVarIdKey: projectVars.Id},
-				bson.M{"$set": initializeUpdate},
-			)
-			if err != nil {
-				return nil, errors.Wrap(err, "initializing private vars, admin-only vars, and descriptions in DB")
+
+		// If document exists, initialize any nil maps.
+		// If document doesn't exist (nil), skip initialization - the upsert will create it.
+		if originalProjectVars != nil {
+			if originalProjectVars.PrivateVars == nil {
+				initializeUpdate[privateVarsMapKey] = bson.M{}
+			}
+			if originalProjectVars.AdminOnlyVars == nil {
+				initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
+			}
+			if originalProjectVars.VarsDescriptions == nil {
+				initializeUpdate[varsDescriptionsMapKey] = bson.M{}
+			}
+			if len(initializeUpdate) > 0 {
+				err := db.Update(ctx,
+					ProjectVarsCollection,
+					bson.M{projectVarIdKey: projectVars.Id},
+					bson.M{"$set": initializeUpdate},
+				)
+				if err != nil {
+					return nil, errors.Wrap(err, "initializing private vars, admin-only vars, and descriptions in DB")
+				}
 			}
 		}
 	}
