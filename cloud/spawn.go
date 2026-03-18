@@ -244,7 +244,7 @@ func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergre
 	script = appendSetupScript(script, configScript)
 
 	if so.ProvisionOptions.SetupStepNumber != "" {
-		stepScript, err := generateDebugSetupScript(ctx, so, settings, configPath)
+		stepScript, err := generateDebugSetupScript(ctx, so, configPath)
 		if err != nil {
 			return "", err
 		}
@@ -318,7 +318,7 @@ EVGEOF
 // generateDebugSetupScript builds a shell script that starts the debug daemon
 // in the background, loads the project config, selects the task, and runs
 // commands up to the specified step number.
-func generateDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, configPath string) (string, error) {
+func generateDebugSetupScript(ctx context.Context, so SpawnOptions, configPath string) (string, error) {
 	t, err := task.FindOneId(ctx, so.ProvisionOptions.TaskId)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding task '%s'", so.ProvisionOptions.TaskId)
@@ -333,11 +333,6 @@ func generateDebugSetupScript(ctx context.Context, so SpawnOptions, settings *ev
 	}
 	if pRef == nil {
 		return "", errors.Errorf("project ref not found for task '%s'", so.ProvisionOptions.TaskId)
-	}
-
-	sourceDir, err := fetchSourceDir(ctx, t, workDir)
-	if err != nil {
-		return "", errors.Wrap(err, "computing source directory")
 	}
 
 	stepNum := so.ProvisionOptions.SetupStepNumber
