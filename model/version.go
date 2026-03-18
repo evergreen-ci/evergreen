@@ -35,12 +35,12 @@ const (
 	taskS3ArtifactPutCostKey = "s3_artifact_put_cost"
 	taskS3LogPutCostKey      = "s3_log_put_cost"
 
-	taskS3UsageKey             = "s3_usage"
-	taskS3ArtifactsKey         = "artifacts"
-	taskS3LogsKey              = "logs"
-	taskS3PutRequestsKey       = "put_requests"
-	taskS3UploadBytesKey       = "upload_bytes"
-	taskS3ArtifactFileCountKey = "file_count"
+	taskS3UsageKey         = "s3_usage"
+	taskS3ArtifactsKey     = "artifacts"
+	taskS3LogsKey          = "logs"
+	taskS3PutRequestsKey   = "put_requests"
+	taskS3UploadBytesKey   = "upload_bytes"
+	taskS3ArtifactCountKey = "count"
 )
 
 type Version struct {
@@ -380,7 +380,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			"total_s3_log_put_cost":       bson.M{"$sum": "$" + taskCostKey + "." + taskS3LogPutCostKey},
 			"total_artifact_put_requests": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3PutRequestsKey},
 			"total_artifact_upload_bytes": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3UploadBytesKey},
-			"total_artifact_file_count":   bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactFileCountKey},
+			"total_artifact_count":        bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactCountKey},
 			"total_log_put_requests":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3PutRequestsKey},
 			"total_log_upload_bytes":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3UploadBytesKey},
 		}},
@@ -400,7 +400,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		TotalS3LogPutCost        float64 `bson:"total_s3_log_put_cost"`
 		TotalArtifactPutRequests int     `bson:"total_artifact_put_requests"`
 		TotalArtifactUploadBytes int64   `bson:"total_artifact_upload_bytes"`
-		TotalArtifactFileCount   int     `bson:"total_artifact_file_count"`
+		TotalArtifactCount       int     `bson:"total_artifact_count"`
 		TotalLogPutRequests      int     `bson:"total_log_put_requests"`
 		TotalLogUploadBytes      int64   `bson:"total_log_upload_bytes"`
 	}
@@ -419,7 +419,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
 		s3Total.Artifacts.PutRequests = results[0].TotalArtifactPutRequests
 		s3Total.Artifacts.UploadBytes = results[0].TotalArtifactUploadBytes
-		s3Total.Artifacts.FileCount = results[0].TotalArtifactFileCount
+		s3Total.Artifacts.Count = results[0].TotalArtifactCount
 		s3Total.Logs.PutRequests = results[0].TotalLogPutRequests
 		s3Total.Logs.UploadBytes = results[0].TotalLogUploadBytes
 	}

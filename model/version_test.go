@@ -770,7 +770,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 			"cost":           bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "s3_artifact_put_cost": 0.05, "s3_log_put_cost": 0.02},
 			"predicted_cost": bson.M{"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4},
 			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 100, "upload_bytes": int64(5000), "file_count": 10},
+				"artifacts": bson.M{"put_requests": 100, "upload_bytes": int64(5000), "count": 10},
 				"logs":      bson.M{"put_requests": 20, "upload_bytes": int64(1000)},
 			},
 		}))
@@ -779,7 +779,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 			"cost":           bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "s3_artifact_put_cost": 0.03, "s3_log_put_cost": 0.01},
 			"predicted_cost": bson.M{"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6},
 			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "file_count": 5},
+				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
 				"logs":      bson.M{"put_requests": 10, "upload_bytes": int64(500)},
 			},
 		}))
@@ -794,7 +794,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.InDelta(t, 4.0, v.PredictedCost.AdjustedEC2Cost, 0.01)
 		assert.Equal(t, 150, v.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(8000), v.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 15, v.S3Usage.Artifacts.FileCount)
+		assert.Equal(t, 15, v.S3Usage.Artifacts.Count)
 		assert.Equal(t, 30, v.S3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(1500), v.S3Usage.Logs.UploadBytes)
 	})
@@ -861,7 +861,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 			"_id": "t2", "version": "v4", "display_only": false,
 			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "s3_artifact_put_cost": 0.03},
 			"s3_usage": bson.M{
-				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "file_count": 5},
+				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
 			},
 		}))
 
@@ -872,7 +872,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.Equal(t, float64(0), v.Cost.S3LogPutCost)
 		assert.Equal(t, 50, v.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3000), v.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 5, v.S3Usage.Artifacts.FileCount)
+		assert.Equal(t, 5, v.S3Usage.Artifacts.Count)
 		assert.Equal(t, 0, v.S3Usage.Logs.PutRequests)
 	})
 }
