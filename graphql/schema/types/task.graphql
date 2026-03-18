@@ -145,8 +145,6 @@ type Task {
 
 """
 TaskExecutionStep represents a single step in a task's execution plan.
-stepNumber is intentionally a string because step numbers are formatted in
-decimal notation, i.e. '2.1'
 """
 type TaskExecutionStep {
   blockType: String!
@@ -154,6 +152,9 @@ type TaskExecutionStep {
   displayName: String!
   functionName: String!
   isFunction: Boolean!
+  """
+  stepNumber is intentionally a string because step numbers are formatted in decimal notation, i.e. '2.1'
+  """
   stepNumber: String!
 }
 
