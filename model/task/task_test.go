@@ -4940,7 +4940,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		assert.True(t, task.TaskCost.IsZero())
 	})
 
-	t.Run("CalculatesS3CostWhenPutRequestsExist", func(t *testing.T) {
+	t.Run("DoesNotCalculateS3Cost", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 		task := Task{
 			Id:        "s3_cost",
@@ -4950,10 +4950,10 @@ func TestUpdateTaskCost(t *testing.T) {
 		require.NoError(t, task.Insert(ctx))
 
 		require.NoError(t, task.UpdateTaskCost(ctx))
-		assert.True(t, task.TaskCost.S3ArtifactPutCost > 0)
+		assert.Equal(t, float64(0), task.TaskCost.S3ArtifactPutCost)
 	})
 
-	t.Run("CalculatesEC2AndS3CostTogether", func(t *testing.T) {
+	t.Run("CalculatesOnlyEC2Cost", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
 
 		costConfig := evergreen.CostConfig{
@@ -4983,7 +4983,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		require.NoError(t, task.UpdateTaskCost(ctx))
 		assert.True(t, task.TaskCost.OnDemandEC2Cost > 0)
 		assert.True(t, task.TaskCost.AdjustedEC2Cost > 0)
-		assert.True(t, task.TaskCost.S3ArtifactPutCost > 0)
+		assert.Equal(t, float64(0), task.TaskCost.S3ArtifactPutCost)
 	})
 
 	t.Run("SkipsUpdateWhenNoCostsCalculated", func(t *testing.T) {
@@ -5039,6 +5039,10 @@ func TestSaveS3Usage(t *testing.T) {
 				},
 				FileCount: 10,
 			},
+			Logs: s3usage.S3UploadMetrics{
+				PutRequests: 50,
+				UploadBytes: 500000,
+			},
 		}
 		require.NoError(t, tk.SaveS3Usage(ctx))
 
@@ -5047,6 +5051,30 @@ func TestSaveS3Usage(t *testing.T) {
 		require.NotNil(t, dbTask)
 		assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
+		assert.Equal(t, 50, dbTask.S3Usage.Logs.PutRequests)
+		assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
+	})
+
+	t.Run("CalculatesLogChunkCostOnly", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		tk := Task{Id: "t4"}
+		require.NoError(t, tk.Insert(ctx))
+
+		tk.S3Usage = s3usage.S3Usage{
+			Logs: s3usage.S3UploadMetrics{
+				PutRequests: 100,
+				UploadBytes: 200000,
+			},
+		}
+		require.NoError(t, tk.SaveS3Usage(ctx))
+
+		dbTask, err := FindOneId(ctx, "t4")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, float64(0), dbTask.TaskCost.S3ArtifactPutCost)
+		assert.Equal(t, 100, dbTask.S3Usage.Logs.PutRequests)
+		assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
 	})
 
 	t.Run("ZeroUsagePersistsWithoutCost", func(t *testing.T) {

@@ -1,0 +1,90 @@
+{
+  "tests": [
+    {
+      "query_file": "prev_tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "prevTask": {
+              "id": "prev_started",
+              "status": "started"
+            },
+            "prevTaskBreaking": {
+              "id": "prev_failed",
+              "status": "failed"
+            },
+            "prevTaskPassing": {
+              "id": "prev_success",
+              "status": "success"
+            },
+            "prevTaskCompleted": {
+              "id": "prev_success",
+              "status": "success"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_prev_failures.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_failures",
+            "prevTask": {
+              "id": "only_success_prev",
+              "status": "success"
+            },
+            "prevTaskBreaking": null,
+            "prevTaskPassing": {
+              "id": "only_success_prev",
+              "status": "success"
+            },
+            "prevTaskCompleted": {
+              "id": "only_success_prev",
+              "status": "success"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_prev_passing.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_passing",
+            "prevTask": {
+              "id": "only_failed_prev",
+              "status": "failed"
+            },
+            "prevTaskBreaking": {
+              "id": "only_failed_prev",
+              "status": "failed"
+            },
+            "prevTaskPassing": null,
+            "prevTaskCompleted": {
+              "id": "only_failed_prev",
+              "status": "failed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_prev_tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_prev",
+            "prevTask": null,
+            "prevTaskBreaking": null,
+            "prevTaskPassing": null,
+            "prevTaskCompleted": null
+          }
+        }
+      }
+    }
+  ]
+}
