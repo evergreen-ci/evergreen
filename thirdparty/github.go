@@ -1163,7 +1163,9 @@ func GetTaggedCommitFromGithub(ctx context.Context, owner, repo, tag string) (st
 
 // MergeQueueRefExists checks if a GitHub ref exists. The ref should be "heads/branch-name"
 // (e.g. "heads/gh-readonly-queue/main/pr-515-abc123").
-func MergeQueueRefExists(ctx context.Context, owner, repo, ref string) (bool, error) {
+// If token is non-empty, it will be used for authentication. Otherwise, an installation
+// token is created from Evergreen config (requires server environment).
+func MergeQueueRefExists(ctx context.Context, owner, repo, ref string, token string) (bool, error) {
 	caller := "MergeQueueRefExists"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
@@ -1172,12 +1174,18 @@ func MergeQueueRefExists(ctx context.Context, owner, repo, ref string) (bool, er
 	))
 	defer span.End()
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return false, errors.Wrap(err, "getting installation token")
+	var authToken string
+	if token != "" {
+		authToken = token
+	} else {
+		var err error
+		authToken, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return false, errors.Wrap(err, "getting installation token")
+		}
 	}
 
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	githubClient := getGithubClient(authToken, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
 	_, resp, err := githubClient.Git.GetRef(ctx, owner, repo, ref)

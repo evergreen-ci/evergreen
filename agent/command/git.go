@@ -36,10 +36,6 @@ const (
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
 
 	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
-
-	// githubMergeQueueInvalidRefError is the error message returned by Git when it fails to find
-	// a GitHub merge queue reference.
-	githubMergeQueueInvalidRefError = "couldn't find remote ref gh-readonly-queue"
 )
 
 var (
@@ -365,13 +361,16 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		// On the second attempt, check if the merge queue ref was deleted before retrying.
 		if attempt == 2 && conf.Task.Requester == evergreen.GithubMergeRequester && conf.GithubMergeData.HeadBranch != "" {
 			ref := "heads/" + conf.GithubMergeData.HeadBranch
-			exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref)
-			if checkErr != nil {
-				return errors.Wrap(checkErr, "checking if merge queue ref exists")
-			}
-			if !exists {
-				c.refNotFound = true
-				return errors.New("the GitHub merge SHA is not available most likely because the merge completed or was aborted")
+			appToken, tokenErr := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
+			if tokenErr == nil && appToken != "" {
+				exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref, appToken)
+				if checkErr != nil {
+					return errors.Wrap(checkErr, "checking if merge queue ref exists")
+				}
+				if !exists {
+					c.refNotFound = true
+					return errors.New("the GitHub merge SHA is not available most likely because the merge completed or was aborted")
+				}
 			}
 		}
 

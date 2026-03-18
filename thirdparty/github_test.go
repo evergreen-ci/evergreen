@@ -242,13 +242,13 @@ func (s *githubSuite) TestGetTaggedCommitFromGithub() {
 
 func (s *githubSuite) TestMergeQueueRefExists() {
 	s.Run("RefDoesNotExist", func() {
-		exists, err := MergeQueueRefExists(s.ctx, "evergreen-ci", "evergreen", "heads/gh-readonly-queue/main/pr-999999999-nonexistent")
+		exists, err := MergeQueueRefExists(s.ctx, "evergreen-ci", "evergreen", "heads/gh-readonly-queue/main/pr-999999999-nonexistent", "")
 		s.NoError(err)
 		s.False(exists)
 	})
 
 	s.Run("RefExists", func() {
-		exists, err := MergeQueueRefExists(s.ctx, "evergreen-ci", "evergreen", "heads/main")
+		exists, err := MergeQueueRefExists(s.ctx, "evergreen-ci", "evergreen", "heads/main", "")
 		s.NoError(err)
 		s.True(exists)
 	})
