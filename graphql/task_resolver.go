@@ -358,6 +358,39 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	return &duration, nil
 }
 
+// ExecutionSteps is the resolver for the executionSteps field.
+func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITask) ([]*model.TaskExecutionStep, error) {
+	versionID := utility.FromStringPtr(obj.Version)
+	if versionID == "" {
+		return nil, nil
+	}
+
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version: %s", err.Error()))
+	}
+	if v == nil {
+		return nil, nil
+	}
+
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("loading project: %s", err.Error()))
+	}
+
+	taskName := utility.FromStringPtr(obj.DisplayName)
+	steps, err := model.GetTaskExecutionSteps(project, taskName)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building execution steps: %s", err.Error()))
+	}
+
+	result := make([]*model.TaskExecutionStep, len(steps))
+	for i := range steps {
+		result[i] = &steps[i]
+	}
+	return result, nil
+}
+
 // ExecutionTasksFull is the resolver for the executionTasksFull field.
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {

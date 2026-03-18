@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 )
 
 var noOpCommands = map[string]string{
@@ -83,12 +83,13 @@ type LocalExecutor struct {
 
 // LocalExecutorOptions contains configuration for the local executor
 type LocalExecutorOptions struct {
-	WorkingDir  string
-	Expansions  map[string]string
-	ServerURL   string
-	TaskID      string
-	OAuthToken  string
-	SpawnHostID string
+	WorkingDir   string
+	Expansions   map[string]string
+	ServerURL    string
+	TaskID       string
+	OAuthToken   string
+	SpawnHostID  string
+	LocalModules map[string]string
 }
 
 // NewLocalExecutor creates a new local task executor
@@ -145,24 +146,28 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 	e.logger.Infof("Loading project from: %s", configPath)
 
-	yamlBytes, err := os.ReadFile(configPath)
+	absPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading config file '%s'", configPath)
+		return nil, errors.Wrapf(err, "resolving absolute path for '%s'", configPath)
+	}
+
+	yamlBytes, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading config file '%s'", absPath)
 	}
 
 	project := &model.Project{}
-	pp := &model.ParserProject{}
+	opts := &model.GetProjectOpts{
+		ReadFileFrom:    model.ReadFromLocal,
+		LocalIncludeDir: filepath.Dir(absPath),
+		LocalModules:    e.opts.LocalModules,
+	}
 
-	err = yaml.Unmarshal(yamlBytes, pp)
+	pp, err := model.LoadProjectInto(context.Background(), yamlBytes, opts, "", project)
 	if err != nil {
-		return nil, errors.Wrap(err, "unmarshaling YAML")
+		return nil, errors.Wrap(err, "loading project")
 	}
 	e.parserProject = pp
-
-	project, err = model.TranslateProject(pp)
-	if err != nil {
-		return nil, errors.Wrap(err, "translating project")
-	}
 	e.project = project
 
 	if e.taskConfig != nil {
