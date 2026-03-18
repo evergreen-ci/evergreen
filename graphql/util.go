@@ -1444,7 +1444,7 @@ func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string)
 	}
 
 	if tsk.IsPatchRequest() {
-		return nil, InputValidationError.Send(ctx, "cannot get next task for patch")
+		return nil, InputValidationError.Send(ctx, "cannot get previous task for patch")
 	}
 
 	prevTask, err := tsk.PreviousCompletedTask(ctx, utility.FromStringPtr(obj.ProjectId), statuses)
@@ -1464,7 +1464,7 @@ func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string)
 	return apiTask, nil
 }
 
-// getPrevTask finds a mainline task's next run that matches the given statuses.
+// getNextTask finds a mainline task's next run that matches the given statuses.
 // Note that NextCompletedTask defaults to completed statuses if the array is empty.
 func getNextTask(ctx context.Context, obj *restModel.APITask, statuses []string) (*restModel.APITask, error) {
 	tsk, err := obj.ToService()
