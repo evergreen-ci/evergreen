@@ -61760,6 +61760,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskBreaking(_ context.Context
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -61957,6 +61959,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -62154,6 +62158,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
@@ -62351,6 +62357,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_estimatedStart(ctx, field)
 			case "execution":
 				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
 			case "executionTasks":
 				return ec.fieldContext_Task_executionTasks(ctx, field)
 			case "executionTasksFull":
