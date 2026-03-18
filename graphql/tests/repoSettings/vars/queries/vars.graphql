@@ -3,7 +3,6 @@
     vars {
       vars
       privateVars
-      varsDescriptions
     }
   }
 }

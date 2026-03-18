@@ -10,7 +10,6 @@ query {
         githubWebhooksEnabled
         vars {
           vars
-          varsDescriptions
         }
       }
       after {
@@ -21,7 +20,6 @@ query {
         githubWebhooksEnabled
         vars {
           vars
-          varsDescriptions
         }
       }
     }

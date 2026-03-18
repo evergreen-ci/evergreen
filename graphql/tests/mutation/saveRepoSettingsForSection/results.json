@@ -44,10 +44,7 @@
           "saveRepoSettingsForSection": {
             "vars": {
               "vars": { "goodbye": "" },
-              "privateVars": ["goodbye"],
-              "varsDescriptions": {
-                "goodbye": "goodbye description"
-              }
+              "privateVars": ["goodbye"]
             }
           }
         }

@@ -1030,6 +1030,7 @@ type ComplexityRoot struct {
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		PromoteVarsToRepo             func(childComplexity int, opts PromoteVarsToRepoInput) int
 		QuarantineTest                func(childComplexity int, opts QuarantineTestInput) int
+		RefreshGitHubStatuses         func(childComplexity int, opts RefreshGitHubStatusesInput) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		RemoveFavoriteProject         func(childComplexity int, opts RemoveFavoriteProjectInput) int
 		RemovePublicKey               func(childComplexity int, keyName string) int
@@ -1411,10 +1412,9 @@ type ComplexityRoot struct {
 	}
 
 	ProjectVars struct {
-		AdminOnlyVars    func(childComplexity int) int
-		PrivateVars      func(childComplexity int) int
-		Vars             func(childComplexity int) int
-		VarsDescriptions func(childComplexity int) int
+		AdminOnlyVars func(childComplexity int) int
+		PrivateVars   func(childComplexity int) int
+		Vars          func(childComplexity int) int
 	}
 
 	PublicKey struct {
@@ -1474,6 +1474,10 @@ type ComplexityRoot struct {
 		Version                  func(childComplexity int, versionID string) int
 		ViewableProjectRefs      func(childComplexity int) int
 		Waterfall                func(childComplexity int, options WaterfallOptions) int
+	}
+
+	RefreshGitHubStatusesPayload struct {
+		Success func(childComplexity int) int
 	}
 
 	ReleaseModeConfig struct {
@@ -2459,6 +2463,7 @@ type MutationResolver interface {
 	UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
+	RefreshGitHubStatuses(ctx context.Context, opts RefreshGitHubStatusesInput) (*RefreshGitHubStatusesPayload, error)
 	RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) ([]*model.APIVersion, error)
 	ScheduleUndispatchedBaseTasks(ctx context.Context, versionID string) ([]*model.APITask, error)
 	SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error)
@@ -6520,6 +6525,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.QuarantineTest(childComplexity, args["opts"].(QuarantineTestInput)), true
+	case "Mutation.refreshGitHubStatuses":
+		if e.complexity.Mutation.RefreshGitHubStatuses == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_refreshGitHubStatuses_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RefreshGitHubStatuses(childComplexity, args["opts"].(RefreshGitHubStatusesInput)), true
 	case "Mutation.removeAnnotationIssue":
 		if e.complexity.Mutation.RemoveAnnotationIssue == nil {
 			break
@@ -8344,12 +8360,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectVars.Vars(childComplexity), true
-	case "ProjectVars.varsDescriptions":
-		if e.complexity.ProjectVars.VarsDescriptions == nil {
-			break
-		}
-
-		return e.complexity.ProjectVars.VarsDescriptions(childComplexity), true
 
 	case "PublicKey.key":
 		if e.complexity.PublicKey.Key == nil {
@@ -8813,6 +8823,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Waterfall(childComplexity, args["options"].(WaterfallOptions)), true
+
+	case "RefreshGitHubStatusesPayload.success":
+		if e.complexity.RefreshGitHubStatusesPayload.Success == nil {
+			break
+		}
+
+		return e.complexity.RefreshGitHubStatusesPayload.Success(childComplexity), true
 
 	case "ReleaseModeConfig.distroMaxHostsFactor":
 		if e.complexity.ReleaseModeConfig.DistroMaxHostsFactor == nil {
@@ -12569,6 +12586,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPromoteVarsToRepoInput,
 		ec.unmarshalInputPublicKeyInput,
 		ec.unmarshalInputQuarantineTestInput,
+		ec.unmarshalInputRefreshGitHubStatusesInput,
 		ec.unmarshalInputReleaseModeConfigInput,
 		ec.unmarshalInputRemoveFavoriteProjectInput,
 		ec.unmarshalInputRepoPermissionsOptions,
@@ -13728,6 +13746,17 @@ func (ec *executionContext) field_Mutation_quarantineTest_args(ctx context.Conte
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "opts", ec.unmarshalNQuarantineTestInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐQuarantineTestInput)
+	if err != nil {
+		return nil, err
+	}
+	args["opts"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_refreshGitHubStatuses_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "opts", ec.unmarshalNRefreshGitHubStatusesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRefreshGitHubStatusesInput)
 	if err != nil {
 		return nil, err
 	}
@@ -40400,6 +40429,51 @@ func (ec *executionContext) fieldContext_Mutation_updateUserSettings(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_refreshGitHubStatuses(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_refreshGitHubStatuses,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RefreshGitHubStatuses(ctx, fc.Args["opts"].(RefreshGitHubStatusesInput))
+		},
+		nil,
+		ec.marshalORefreshGitHubStatusesPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRefreshGitHubStatusesPayload,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_refreshGitHubStatuses(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_RefreshGitHubStatusesPayload_success(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RefreshGitHubStatusesPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_refreshGitHubStatuses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_restartVersions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -47990,8 +48064,6 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_vars(_ context.Con
 				return ec.fieldContext_ProjectVars_privateVars(ctx, field)
 			case "vars":
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
-			case "varsDescriptions":
-				return ec.fieldContext_ProjectVars_varsDescriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
 		},
@@ -48467,8 +48539,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_vars(_ context.Context,
 				return ec.fieldContext_ProjectVars_privateVars(ctx, field)
 			case "vars":
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
-			case "varsDescriptions":
-				return ec.fieldContext_ProjectVars_varsDescriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
 		},
@@ -48638,35 +48708,6 @@ func (ec *executionContext) _ProjectVars_vars(ctx context.Context, field graphql
 }
 
 func (ec *executionContext) fieldContext_ProjectVars_vars(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectVars",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type StringMap does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ProjectVars_varsDescriptions(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ProjectVars_varsDescriptions,
-		func(ctx context.Context) (any, error) {
-			return obj.VarsDescriptions, nil
-		},
-		nil,
-		ec.marshalOStringMap2map,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ProjectVars_varsDescriptions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectVars",
 		Field:      field,
@@ -51962,6 +52003,35 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _RefreshGitHubStatusesPayload_success(ctx context.Context, field graphql.CollectedField, obj *RefreshGitHubStatusesPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RefreshGitHubStatusesPayload_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RefreshGitHubStatusesPayload_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RefreshGitHubStatusesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ReleaseModeConfig_distroMaxHostsFactor(ctx context.Context, field graphql.CollectedField, obj *model.APIReleaseModeConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -53914,8 +53984,6 @@ func (ec *executionContext) fieldContext_RepoSettings_vars(_ context.Context, fi
 				return ec.fieldContext_ProjectVars_privateVars(ctx, field)
 			case "vars":
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
-			case "varsDescriptions":
-				return ec.fieldContext_ProjectVars_varsDescriptions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
 		},
@@ -81177,7 +81245,7 @@ func (ec *executionContext) unmarshalInputProjectVarsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnlyVarsList", "privateVarsList", "vars", "varsDescriptions"}
+	fieldsInOrder := [...]string{"adminOnlyVarsList", "privateVarsList", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81205,13 +81273,6 @@ func (ec *executionContext) unmarshalInputProjectVarsInput(ctx context.Context, 
 				return it, err
 			}
 			it.Vars = data
-		case "varsDescriptions":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("varsDescriptions"))
-			data, err := ec.unmarshalOStringMap2map(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VarsDescriptions = data
 		}
 	}
 
@@ -81364,6 +81425,58 @@ func (ec *executionContext) unmarshalInputQuarantineTestInput(ctx context.Contex
 				return it, err
 			}
 			it.TestName = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRefreshGitHubStatusesInput(ctx context.Context, obj any) (RefreshGitHubStatusesInput, error) {
+	var it RefreshGitHubStatusesInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"versionId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "versionId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionId"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "TASKS")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.VersionID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -92758,6 +92871,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "refreshGitHubStatuses":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_refreshGitHubStatuses(ctx, field)
+			})
 		case "restartVersions":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_restartVersions(ctx, field)
@@ -95998,8 +96115,6 @@ func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionS
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "vars":
 			out.Values[i] = ec._ProjectVars_vars(ctx, field, obj)
-		case "varsDescriptions":
-			out.Values[i] = ec._ProjectVars_varsDescriptions(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -97125,6 +97240,45 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___schema(ctx, field)
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var refreshGitHubStatusesPayloadImplementors = []string{"RefreshGitHubStatusesPayload"}
+
+func (ec *executionContext) _RefreshGitHubStatusesPayload(ctx context.Context, sel ast.SelectionSet, obj *RefreshGitHubStatusesPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, refreshGitHubStatusesPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RefreshGitHubStatusesPayload")
+		case "success":
+			out.Values[i] = ec._RefreshGitHubStatusesPayload_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -109549,6 +109703,11 @@ func (ec *executionContext) marshalNQuarantineTestPayload2ᚖgithubᚗcomᚋever
 	return ec._QuarantineTestPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRefreshGitHubStatusesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRefreshGitHubStatusesInput(ctx context.Context, v any) (RefreshGitHubStatusesInput, error) {
+	res, err := ec.unmarshalInputRefreshGitHubStatusesInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNRemoveFavoriteProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRemoveFavoriteProjectInput(ctx context.Context, v any) (RemoveFavoriteProjectInput, error) {
 	res, err := ec.unmarshalInputRemoveFavoriteProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -114076,6 +114235,13 @@ func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreen
 	}
 	res, err := ec.unmarshalInputPublicKeyInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORefreshGitHubStatusesPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRefreshGitHubStatusesPayload(ctx context.Context, sel ast.SelectionSet, v *RefreshGitHubStatusesPayload) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RefreshGitHubStatusesPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOReleaseModeConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIReleaseModeConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIReleaseModeConfig) graphql.Marshaler {

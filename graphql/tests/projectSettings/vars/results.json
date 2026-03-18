@@ -8,11 +8,7 @@
             "vars": {
               "vars": { "admintest": "woo", "hello": "", "foo": "bar" },
               "privateVars": ["hello"],
-              "adminOnlyVars": ["admintest"],
-              "varsDescriptions": {
-                "admintest": "this value is super important do not delete",
-                "foo": "only for testing"
-              }
+              "adminOnlyVars": ["admintest"]
             }
           }
         }
@@ -26,10 +22,7 @@
             "vars": {
               "vars": { "both": "" },
               "privateVars": ["both"],
-              "adminOnlyVars": ["both"],
-              "varsDescriptions": {
-                "both": "descriptions aren't redacted"
-              }
+              "adminOnlyVars": ["both"]
             }
           }
         }

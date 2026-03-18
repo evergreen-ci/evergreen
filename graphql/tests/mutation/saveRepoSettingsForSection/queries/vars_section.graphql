@@ -3,18 +3,13 @@ mutation {
     repoSettings: {
       repoId: "sandbox_repo_id"
       projectRef: { id: "sandbox_repo_id" }
-      vars: {
-        vars: { goodbye: "now" }
-        privateVarsList: ["goodbye"]
-        varsDescriptions: { goodbye: "goodbye description" }
-      }
+      vars: { vars: { goodbye: "now" }, privateVarsList: ["goodbye"] }
     }
     section: VARIABLES
   ) {
     vars {
       vars
       privateVars
-      varsDescriptions
     }
   }
 }

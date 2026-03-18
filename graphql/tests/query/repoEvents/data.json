@@ -98,9 +98,6 @@
             "_id": "sandbox_repo_id",
             "vars": {
               "hello": "{REDACTED_BEFORE}"
-            },
-            "vars_descriptions": {
-              "hello": "Old repo variable description"
             }
           }
         },
@@ -117,9 +114,6 @@
             "_id": "sandbox_repo_id",
             "vars": {
               "hello": "{REDACTED_AFTER}"
-            },
-            "vars_descriptions": {
-              "hello": "New repo variable description"
             }
           }
         }

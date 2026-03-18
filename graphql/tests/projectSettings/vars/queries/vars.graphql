@@ -1,10 +1,9 @@
 {
-  projectSettings(projectIdentifier: "sandbox") {
-    vars {
-      vars
-      privateVars
-      adminOnlyVars
-      varsDescriptions
+    projectSettings(projectIdentifier: "sandbox") {
+        vars{
+            vars
+            privateVars
+            adminOnlyVars
+        }
     }
-  }
 }

@@ -4,7 +4,6 @@
       vars
       privateVars
       adminOnlyVars
-      varsDescriptions
     }
   }
 }

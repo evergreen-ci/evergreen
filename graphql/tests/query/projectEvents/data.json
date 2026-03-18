@@ -47,9 +47,6 @@
             "_id": "sandbox_project_id",
             "vars": {
               "hello": "{REDACTED_BEFORE}"
-            },
-            "vars_descriptions": {
-              "hello": "Old description for hello"
             }
           }
         },
@@ -70,9 +67,6 @@
             "_id": "sandbox_project_id",
             "vars": {
               "hello": "{REDACTED_AFTER}"
-            },
-            "vars_descriptions": {
-              "hello": "New description for hello"
             }
           }
         }
