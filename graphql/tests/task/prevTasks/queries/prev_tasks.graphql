@@ -5,7 +5,7 @@
       id
       status
     }
-    prevTaskBreaking {
+    prevTaskFailing {
       id
       status
     }

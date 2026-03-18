@@ -10,7 +10,7 @@
               "id": "prev_started",
               "status": "started"
             },
-            "prevTaskBreaking": {
+            "prevTaskFailing": {
               "id": "prev_failed",
               "status": "failed"
             },
@@ -36,7 +36,7 @@
               "id": "only_success_prev",
               "status": "success"
             },
-            "prevTaskBreaking": null,
+            "prevTaskFailing": null,
             "prevTaskPassing": {
               "id": "only_success_prev",
               "status": "success"
@@ -59,7 +59,7 @@
               "id": "only_failed_prev",
               "status": "failed"
             },
-            "prevTaskBreaking": {
+            "prevTaskFailing": {
               "id": "only_failed_prev",
               "status": "failed"
             },
@@ -79,7 +79,7 @@
           "task": {
             "id": "task_no_prev",
             "prevTask": null,
-            "prevTaskBreaking": null,
+            "prevTaskFailing": null,
             "prevTaskPassing": null,
             "prevTaskCompleted": null
           }
