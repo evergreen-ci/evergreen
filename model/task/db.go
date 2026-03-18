@@ -605,6 +605,23 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 	}
 }
 
+func ByAfterRevisionWithStatusesAndRequesters(revisionOrder int, statuses []string, buildVariant, displayName, project string, requesters []string) bson.M {
+	return bson.M{
+		BuildVariantKey: buildVariant,
+		DisplayNameKey:  displayName,
+		RequesterKey: bson.M{
+			"$in": requesters,
+		},
+		RevisionOrderNumberKey: bson.M{
+			"$gt": revisionOrder,
+		},
+		StatusKey: bson.M{
+			"$in": statuses,
+		},
+		ProjectKey: project,
+	}
+}
+
 // ByTimeStartedAndFailed returns all failed tasks that started or finished between 2 given times
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) bson.M {
 	query := bson.M{

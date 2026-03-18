@@ -856,6 +856,17 @@ func (t *Task) PreviousCompletedTask(ctx context.Context, project string, status
 	return FindOne(ctx, query)
 }
 
+// Find the next completed task for the same project +
+// build variant + display name combination as the specified task
+func (t *Task) NextCompletedTask(ctx context.Context, project string, statuses []string) (*Task, error) {
+	if len(statuses) == 0 {
+		statuses = evergreen.TaskCompletedStatuses
+	}
+	query := db.Query(ByAfterRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
+	return FindOne(ctx, query)
+}
+
 func (t *Task) cacheExpectedDuration(ctx context.Context) error {
 	return UpdateOne(
 		ctx,
