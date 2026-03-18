@@ -1857,6 +1857,7 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 		attribute.String(patch.MergeQueueAttrProjectID, projectRef.Identifier),
 	)
 	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchCompletedSpan,
+		trace.WithNewRoot(),
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 

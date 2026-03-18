@@ -551,6 +551,46 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &order, nil
 }
 
+// PrevTaskBreaking is the resolver for the prevTaskBreaking field.
+func (r *taskResolver) PrevTaskBreaking(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, evergreen.TaskFailureStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous failing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// PrevTaskPassing is the resolver for the prevTaskPassing field.
+func (r *taskResolver) PrevTaskPassing(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, []string{evergreen.TaskSucceeded})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous passing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// PrevTask is the resolver for the prevTask field.
+func (r *taskResolver) PrevTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, evergreen.TaskStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// PrevTaskCompleted is the resolver for the prevTaskCompleted field.
+func (r *taskResolver) PrevTaskCompleted(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, evergreen.TaskCompletedStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous completed task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
 // Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	projectID := utility.FromStringPtr(obj.ProjectId)
