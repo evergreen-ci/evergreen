@@ -1,0 +1,5 @@
+mutation {
+  refreshGitHubStatuses(opts: { versionId: "forbidden" }) {
+    success
+  }
+}

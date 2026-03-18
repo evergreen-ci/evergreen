@@ -1257,6 +1257,89 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().Nil(next)
 }
 
+// TestFindNextTaskRespectsQueueOrderForRootTasks confirms that when multiple root tasks
+// (no dependencies) are at the same topological level, the dispatcher preserves the
+// scheduler's composite ranking. The queue passed to rebuild is already sorted by the
+// scheduler (TotalValue). With topo.SortStabilized(..., nil), root nodes would be ordered
+// lexically by node ID, overriding the scheduler. Using queueIndex as the tiebreaker
+// preserves the scheduler's ordering. This test puts the higher-priority task first in
+// the queue (as the scheduler would) and asserts it is dispatched first.
+func (s *taskDAGDispatchServiceSuite) TestFindNextTaskRespectsQueueOrderForRootTasks() {
+	s.Require().NoError(db.ClearCollections(task.Collection, host.Collection, VersionCollection))
+	distroID := "distro_1"
+	project := "project_1"
+	variant := "variant_1"
+	version := "version_1"
+
+	taskHighNumDependents := task.Task{
+		Id:                  "root-task-high-num-dependents",
+		DistroId:            distroID,
+		Project:             project,
+		BuildVariant:        variant,
+		Version:             version,
+		Status:              evergreen.TaskUndispatched,
+		DependsOn:           []task.Dependency{},
+		StartTime:           utility.ZeroTime,
+		Activated:           true,
+		CreateTime:          time.Now(),
+		RevisionOrderNumber: 1,
+	}
+	taskLowNumDependents := task.Task{
+		Id:                  "root-task-low-num-dependents",
+		DistroId:            distroID,
+		Project:             project,
+		BuildVariant:        variant,
+		Version:             version,
+		Status:              evergreen.TaskUndispatched,
+		DependsOn:           []task.Dependency{},
+		StartTime:           utility.ZeroTime,
+		Activated:           true,
+		CreateTime:          time.Now(),
+		RevisionOrderNumber: 1,
+	}
+	s.Require().NoError(taskHighNumDependents.Insert(s.T().Context()))
+	s.Require().NoError(taskLowNumDependents.Insert(s.T().Context()))
+
+	s.Require().NoError((&Version{Id: version, ProjectStorageMethod: evergreen.ProjectStorageMethodS3}).Insert(s.T().Context()))
+
+	// Queue order matches scheduler: root-task-high-num-dependents first (higher TotalValue),
+	// root-task-low-num-dependents second. The dispatcher should preserve this order.
+	items := []TaskQueueItem{
+		{
+			Id:              "root-task-high-num-dependents",
+			Group:           "",
+			BuildVariant:    variant,
+			Version:         version,
+			Project:         project,
+			Dependencies:    []string{},
+			DependenciesMet: true,
+			SortingValueBreakdown: task.SortingValueBreakdown{
+				RankValueBreakdown: task.RankValueBreakdown{NumDependentsImpact: 50},
+			},
+		},
+		{
+			Id:              "root-task-low-num-dependents",
+			Group:           "",
+			BuildVariant:    variant,
+			Version:         version,
+			Project:         project,
+			Dependencies:    []string{},
+			DependenciesMet: true,
+			SortingValueBreakdown: task.SortingValueBreakdown{
+				RankValueBreakdown: task.RankValueBreakdown{NumDependentsImpact: 0},
+			},
+		},
+	}
+
+	s.taskQueue = TaskQueue{Distro: distroID, Queue: items}
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+
+	next := service.FindNextTask(s.ctx, TaskSpec{}, utility.ZeroTime)
+	s.Require().NotNil(next)
+	s.Equal("root-task-high-num-dependents", next.Id, "dispatcher should preserve scheduler queue order for root tasks")
+}
+
 func setTaskStatus(ctx context.Context, taskID string, status string) error {
 	return task.UpdateOne(
 		ctx,

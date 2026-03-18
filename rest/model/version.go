@@ -139,7 +139,6 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 		predictedCost := v.PredictedCost
 		apiVersion.PredictedCost = &predictedCost
 	}
-
 	if apiVersion.IsPatchRequester() {
 		p, err := patch.FindOneId(ctx, v.Id)
 		if err != nil || p == nil {

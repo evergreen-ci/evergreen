@@ -158,7 +158,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	d.taskGroups = map[string]schedulableUnit{} // map[compositeGroupID(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
 
 	for i := range items {
-		// Add each individual <TaskQueueItem> node to the graph.
+		items[i].queueIndex = i
 		d.addItem(&items[i])
 	}
 
@@ -201,7 +201,19 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		}
 	}
 
-	sorted, err := topo.SortStabilized(d.graph, nil)
+	// Order nodes at the same topological level by their position in the scheduler-sorted queue
+	// so that root tasks maintain the scheduler's composite ranking (TotalValue).
+	order := func(nodes []graph.Node) {
+		sort.Slice(nodes, func(i, j int) bool {
+			itemI := d.nodeItemMap[nodes[i].ID()]
+			itemJ := d.nodeItemMap[nodes[j].ID()]
+			if itemI == nil || itemJ == nil {
+				return nodes[i].ID() < nodes[j].ID()
+			}
+			return itemI.queueIndex < itemJ.queueIndex
+		})
+	}
+	sorted, err := topo.SortStabilized(d.graph, order)
 	if err != nil {
 		unorderableNodes, ok := err.(topo.Unorderable)
 		if !ok {
