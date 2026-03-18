@@ -398,6 +398,7 @@ type ComplexityRoot struct {
 		AdjustedEC2Cost   func(childComplexity int) int
 		OnDemandEC2Cost   func(childComplexity int) int
 		S3ArtifactPutCost func(childComplexity int) int
+		S3LogPutCost      func(childComplexity int) int
 	}
 
 	CostConfig struct {
@@ -1880,6 +1881,10 @@ type ComplexityRoot struct {
 		Patch                   func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
 		PredictedTaskCost       func(childComplexity int) int
+		PrevTask                func(childComplexity int) int
+		PrevTaskBreaking        func(childComplexity int) int
+		PrevTaskCompleted       func(childComplexity int) int
+		PrevTaskPassing         func(childComplexity int) int
 		Priority                func(childComplexity int) int
 		Project                 func(childComplexity int) int
 		ProjectId               func(childComplexity int) int
@@ -2624,6 +2629,10 @@ type TaskResolver interface {
 
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
+	PrevTaskBreaking(ctx context.Context, obj *model.APITask) (*model.APITask, error)
+	PrevTaskPassing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
+	PrevTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
+	PrevTaskCompleted(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
@@ -3977,6 +3986,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.S3ArtifactPutCost(childComplexity), true
+	case "Cost.s3LogPutCost":
+		if e.complexity.Cost.S3LogPutCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.S3LogPutCost(childComplexity), true
 
 	case "CostConfig.financeFormula":
 		if e.complexity.CostConfig.FinanceFormula == nil {
@@ -10492,6 +10507,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.PredictedTaskCost(childComplexity), true
+	case "Task.prevTask":
+		if e.complexity.Task.PrevTask == nil {
+			break
+		}
+
+		return e.complexity.Task.PrevTask(childComplexity), true
+	case "Task.prevTaskBreaking":
+		if e.complexity.Task.PrevTaskBreaking == nil {
+			break
+		}
+
+		return e.complexity.Task.PrevTaskBreaking(childComplexity), true
+	case "Task.prevTaskCompleted":
+		if e.complexity.Task.PrevTaskCompleted == nil {
+			break
+		}
+
+		return e.complexity.Task.PrevTaskCompleted(childComplexity), true
+	case "Task.prevTaskPassing":
+		if e.complexity.Task.PrevTaskPassing == nil {
+			break
+		}
+
+		return e.complexity.Task.PrevTaskPassing(childComplexity), true
 	case "Task.priority":
 		if e.complexity.Task.Priority == nil {
 			break
@@ -19686,6 +19725,14 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -23397,6 +23444,35 @@ func (ec *executionContext) _Cost_s3ArtifactPutCost(ctx context.Context, field g
 }
 
 func (ec *executionContext) fieldContext_Cost_s3ArtifactPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_s3LogPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_s3LogPutCost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3LogPutCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_s3LogPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -27984,6 +28060,14 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -31459,6 +31543,14 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -34171,6 +34263,14 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -38121,6 +38221,14 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -38322,6 +38430,14 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -38523,6 +38639,14 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -38724,6 +38848,14 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -38925,6 +39057,14 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -39126,6 +39266,14 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -39327,6 +39475,14 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -40506,6 +40662,14 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -50687,6 +50851,14 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -50888,6 +51060,14 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -59191,6 +59371,14 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -59967,6 +60155,14 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -60301,6 +60497,14 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -60699,6 +60903,14 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -61148,6 +61360,794 @@ func (ec *executionContext) fieldContext_Task_patchNumber(_ context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_prevTaskBreaking(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_prevTaskBreaking,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().PrevTaskBreaking(ctx, obj)
+		},
+		nil,
+		ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_prevTaskBreaking(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "errors":
+				return ec.fieldContext_Task_errors(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "testSelectionEnabled":
+				return ec.fieldContext_Task_testSelectionEnabled(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_prevTaskPassing(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_prevTaskPassing,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().PrevTaskPassing(ctx, obj)
+		},
+		nil,
+		ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "errors":
+				return ec.fieldContext_Task_errors(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "testSelectionEnabled":
+				return ec.fieldContext_Task_testSelectionEnabled(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_prevTask(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_prevTask,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().PrevTask(ctx, obj)
+		},
+		nil,
+		ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "errors":
+				return ec.fieldContext_Task_errors(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "testSelectionEnabled":
+				return ec.fieldContext_Task_testSelectionEnabled(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_prevTaskCompleted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_prevTaskCompleted,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().PrevTaskCompleted(ctx, obj)
+		},
+		nil,
+		ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "errors":
+				return ec.fieldContext_Task_errors(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "testSelectionEnabled":
+				return ec.fieldContext_Task_testSelectionEnabled(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
 	}
 	return fc, nil
@@ -61781,6 +62781,8 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -61818,6 +62820,8 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -63136,6 +64140,14 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -67156,6 +68168,14 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -70256,6 +71276,8 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -70426,6 +71448,14 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
 				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTaskBreaking":
+				return ec.fieldContext_Task_prevTaskBreaking(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
 			case "priority":
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
@@ -86382,6 +87412,8 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
 		case "s3ArtifactPutCost":
 			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
+		case "s3LogPutCost":
+			out.Values[i] = ec._Cost_s3LogPutCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99615,6 +100647,138 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Task_patchNumber(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "prevTaskBreaking":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_prevTaskBreaking(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "prevTaskPassing":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_prevTaskPassing(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "prevTask":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_prevTask(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "prevTaskCompleted":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_prevTaskCompleted(ctx, field, obj)
 				return res
 			}
 

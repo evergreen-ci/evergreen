@@ -4088,7 +4088,6 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 	}
 
 	t.calculateRuntimeCost(ctx)
-	t.calculateS3ArtifactCost(ctx)
 
 	if t.TaskCost.IsZero() {
 		return nil
@@ -4112,26 +4111,37 @@ func (t *Task) calculateRuntimeCost(ctx context.Context) {
 
 // SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
 func (t *Task) SaveS3Usage(ctx context.Context) error {
-	t.calculateS3ArtifactCost(ctx)
+	t.calculateS3PutCosts(ctx)
 
 	setFields := bson.M{
 		S3UsageKey: t.S3Usage,
 		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"): t.TaskCost.S3ArtifactPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_log_put_cost"):      t.TaskCost.S3LogPutCost,
 	}
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
 }
 
-// calculateS3ArtifactCost sets the S3 artifact PUT cost on TaskCost based on the task's S3 usage.
-func (t *Task) calculateS3ArtifactCost(ctx context.Context) {
-	if t.S3Usage.Artifacts.PutRequests <= 0 {
+// calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
+func (t *Task) calculateS3PutCosts(ctx context.Context) {
+	if t.S3Usage.Artifacts.PutRequests <= 0 && t.S3Usage.Logs.PutRequests <= 0 {
 		return
 	}
+
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
-		costConfig = nil
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not get cost config to calculate S3 PUT costs",
+			"task_id": t.Id,
+		}))
+		return
 	}
-	t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
+	if t.S3Usage.Artifacts.PutRequests > 0 {
+		t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
+	}
+	if t.S3Usage.Logs.PutRequests > 0 {
+		t.TaskCost.S3LogPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Logs.PutRequests, costConfig)
+	}
 }
 
 type CostPredictionResult struct {
