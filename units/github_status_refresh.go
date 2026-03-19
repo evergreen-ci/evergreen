@@ -96,10 +96,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 	if j.urlBase == "" {
 		return errors.New("url base doesn't exist")
 	}
-	j.sender, err = j.env.GetGitHubSender(j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
-	if err != nil {
-		return err
-	}
+
 	if j.patch == nil {
 		j.patch, err = patch.FindOneId(ctx, j.FetchID)
 		if err != nil {
@@ -108,6 +105,11 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		if j.patch == nil {
 			return errors.New("patch not found")
 		}
+	}
+
+	j.sender, err = j.env.GetGitHubSender(j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
+	if err != nil {
+		return err
 	}
 
 	j.builds, err = build.Find(ctx, build.ByVersion(j.FetchID))

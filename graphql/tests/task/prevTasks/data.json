@@ -1,0 +1,100 @@
+{
+  "tasks": [
+    {
+      "_id": "current_task",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "started",
+      "order": 10,
+      "execution": 0
+    },
+    {
+      "_id": "prev_started",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "started",
+      "order": 9,
+      "execution": 0
+    },
+    {
+      "_id": "prev_success",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "success",
+      "order": 8,
+      "execution": 0
+    },
+    {
+      "_id": "prev_failed",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "failed",
+      "order": 7,
+      "execution": 0
+    },
+    {
+      "_id": "task_no_failures",
+      "build_variant": "ubuntu1604",
+      "display_name": "no_failures_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "started",
+      "order": 5,
+      "execution": 0
+    },
+    {
+      "_id": "only_success_prev",
+      "build_variant": "ubuntu1604",
+      "display_name": "no_failures_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "success",
+      "order": 4,
+      "execution": 0
+    },
+    {
+      "_id": "task_no_passing",
+      "build_variant": "ubuntu1604",
+      "display_name": "no_passing_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "started",
+      "order": 5,
+      "execution": 0
+    },
+    {
+      "_id": "only_failed_prev",
+      "build_variant": "ubuntu1604",
+      "display_name": "no_passing_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "failed",
+      "order": 4,
+      "execution": 0
+    },
+    {
+      "_id": "task_no_prev",
+      "build_variant": "ubuntu1604",
+      "display_name": "isolated_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "success",
+      "order": 1,
+      "execution": 0
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

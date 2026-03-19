@@ -20,7 +20,7 @@ func TestS3Usage(t *testing.T) {
 		assert.False(t, s3Usage.IsZero())
 
 		s3Usage = S3Usage{}
-		s3Usage.Artifacts.FileCount = 1
+		s3Usage.Artifacts.Count = 1
 		assert.False(t, s3Usage.IsZero())
 
 		s3Usage = S3Usage{}
@@ -37,17 +37,23 @@ func TestS3Usage(t *testing.T) {
 		s3Usage := S3Usage{}
 		assert.Equal(t, 0, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(0), s3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 0, s3Usage.Artifacts.FileCount)
+		assert.Equal(t, 0, s3Usage.Artifacts.Count)
+		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
+		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 
-		s3Usage.IncrementArtifacts(5, 1024, 2)
+		s3Usage.IncrementArtifacts(5, 1024, 2, 3, 2)
 		assert.Equal(t, 5, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 2, s3Usage.Artifacts.FileCount)
+		assert.Equal(t, 2, s3Usage.Artifacts.Count)
+		assert.Equal(t, 3, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
+		assert.Equal(t, 2, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 
-		s3Usage.IncrementArtifacts(10, 2048, 3)
+		s3Usage.IncrementArtifacts(10, 2048, 3, 8, 1)
 		assert.Equal(t, 15, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 5, s3Usage.Artifacts.FileCount)
+		assert.Equal(t, 5, s3Usage.Artifacts.Count)
+		assert.Equal(t, 8, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
+		assert.Equal(t, 1, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 	})
 
 	t.Run("IncrementLogs", func(t *testing.T) {
@@ -174,6 +180,11 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 		assert.Equal(t, 0.0, cost)
 	})
 
+	t.Run("WithNegativePutRequests", func(t *testing.T) {
+		cost := CalculateS3PutCostWithConfig(-5, validConfig)
+		assert.Equal(t, 0.0, cost)
+	})
+
 	t.Run("WithInvalidDiscount", func(t *testing.T) {
 		invalidConfig := &evergreen.CostConfig{
 			S3Cost: evergreen.S3CostConfig{
@@ -186,8 +197,4 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 		assert.Equal(t, 0.0, cost)
 	})
 
-	t.Run("WithNegativePutRequests", func(t *testing.T) {
-		cost := CalculateS3PutCostWithConfig(-5, validConfig)
-		assert.Equal(t, 0.0, cost)
-	})
 }

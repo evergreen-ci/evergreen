@@ -120,6 +120,7 @@ type Mutation {
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
 
   # version
+  refreshGitHubStatuses(opts: RefreshGitHubStatusesInput!): RefreshGitHubStatusesPayload
   restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
   scheduleUndispatchedBaseTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
   setVersionPriority(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
