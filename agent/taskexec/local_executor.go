@@ -323,8 +323,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	// Only process the specific block (i.e. pre, main, post) containing our target command
 	block := e.commandBlocks[targetBlockIdx]
 	cmdBlock := executor.CommandBlock{
-		Block:    block.blockType,
-		Commands: block.commands,
+		Block:       block.blockType,
+		Commands:    block.commands,
+		CanFailTask: block.canFailTask,
 	}
 	deps := e.createBlockDeps()
 
@@ -374,9 +375,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 				}
 				blockName := executor.BlockToLegacyName(blockType)
 				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
+			} else {
+				e.logger.Infof("Step %s completed successfully", targetCmd.FullStepNumber())
 			}
-
-			e.logger.Infof("Step %s completed successfully", targetCmd.FullStepNumber())
 			e.debugState.CurrentStepIndex++
 			executed = true
 		}
