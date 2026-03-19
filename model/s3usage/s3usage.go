@@ -22,9 +22,12 @@ type S3UploadMetrics struct {
 
 // ArtifactMetrics tracks artifact upload metrics with an additional file count.
 type ArtifactMetrics struct {
-	S3UploadMetrics            `bson:",inline"`
-	Count                      int `bson:"count,omitempty" json:"count,omitempty"`
+	S3UploadMetrics `bson:",inline"`
+	// Count is the total number of artifacts uploaded per task.
+	Count int `bson:"count,omitempty" json:"count,omitempty"`
+	// ArtifactWithMaxPutRequests is the highest PUT request count for a single artifact across all s3.put invocations per task.
 	ArtifactWithMaxPutRequests int `bson:"max_put_requests_per_file,omitempty" json:"max_put_requests_per_file,omitempty"`
+	// ArtifactWithMinPutRequests is the lowest PUT request count for a single artifact across all s3.put invocations per task.
 	ArtifactWithMinPutRequests int `bson:"min_put_requests_per_file,omitempty" json:"min_put_requests_per_file,omitempty"`
 }
 
