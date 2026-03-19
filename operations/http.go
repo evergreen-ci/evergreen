@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
@@ -670,7 +671,7 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	return &reply, nil
 }
 
-func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.APITask, error) {
+func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*task.Task, error) {
 	urlToFetch := fmt.Sprintf("tasks/%s", taskId)
 	if execution != nil {
 		urlToFetch = fmt.Sprintf("%s?execution=%d", urlToFetch, utility.FromIntPtr(execution))
@@ -698,7 +699,11 @@ func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.API
 	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
 		return nil, err
 	}
-	return apiModel, nil
+	res, err := apiModel.ToService()
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting task to service model")
+	}
+	return res, nil
 }
 
 // GetRecentVersions retrieves a list of recent versions for a project,

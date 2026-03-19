@@ -562,7 +562,15 @@ func (at *APITask) ToService() (*task.Task, error) {
 		OverrideDependencies: at.OverrideDependencies,
 		HasAnnotations:       at.HasAnnotations,
 		TestSelectionEnabled: at.TestSelectionEnabled,
+		PatchNumber:          at.Order,
 	}
+
+	var artifacts []artifact.File
+	for _, apiArtifact := range at.Artifacts {
+		svcArtifact := apiArtifact.ToService()
+		artifacts = append(artifacts, svcArtifact)
+	}
+	st.Artifacts = artifacts
 
 	if at.TaskCost != nil {
 		st.TaskCost = *at.TaskCost

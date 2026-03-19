@@ -18,8 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -506,8 +506,8 @@ func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow boo
 // a list of all tasks related to it in the dependency graph. It performs this by doing successive
 // calls to the API to crawl the graph, keeping track of any already-processed tasks in the "found"
 // map.
-func searchDependencies(rc *legacyClient, seed *restModel.APITask, found map[string]bool) ([]*restModel.APITask, error) {
-	out := []*restModel.APITask{}
+func searchDependencies(rc *legacyClient, seed *task.Task, found map[string]bool) ([]*task.Task, error) {
+	out := []*task.Task{}
 	for _, dep := range seed.DependsOn {
 		if _, ok := found[dep.TaskId]; ok {
 			continue
@@ -517,7 +517,7 @@ func searchDependencies(rc *legacyClient, seed *restModel.APITask, found map[str
 			return nil, err
 		}
 		if t != nil {
-			found[utility.FromStringPtr(t.Id)] = true
+			found[t.Id] = true
 			out = append(out, t)
 			more, err := searchDependencies(rc, t, found)
 			if err != nil {
@@ -525,7 +525,7 @@ func searchDependencies(rc *legacyClient, seed *restModel.APITask, found map[str
 			}
 			out = append(out, more...)
 			for _, d := range more {
-				found[utility.FromStringPtr(d.Id)] = true
+				found[d.Id] = true
 			}
 		}
 	}
@@ -542,31 +542,28 @@ type artifactDownload struct {
 // If the task has an associated revision, the format is `artifacts-{revision}_{build_variant}_{task_name}`.
 // Else, the format is `artifacts-{build_variant}_{task_name}`.
 // Note that build_variant will be truncated if it exceeds 100 characters.
-func getArtifactFolderName(task *restModel.APITask) string {
-	buildVariantName := utility.FromStringPtr(task.BuildVariant)
-	bvTruncated := buildVariantName
-	if len(buildVariantName) > 99 {
-		bvTruncated = buildVariantName[:100]
+func getArtifactFolderName(task *task.Task) string {
+	bvTruncated := task.BuildVariant
+	if len(bvTruncated) > 99 {
+		bvTruncated = bvTruncated[:100]
 	}
 
-	requester := utility.FromStringPtr(task.Requester)
-	displayName := utility.FromStringPtr(task.DisplayName)
-	if evergreen.IsPatchRequester(requester) {
-		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.Order, bvTruncated, displayName)
+	if evergreen.IsPatchRequester(task.Requester) {
+		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, bvTruncated, task.DisplayName)
 	}
 
-	revision := utility.FromStringPtr(task.Revision)
+	revision := task.Revision
 	if len(revision) > 5 {
-		return fmt.Sprintf("artifacts-%v-%v_%v", revision[0:6], bvTruncated, displayName)
+		return fmt.Sprintf("artifacts-%v-%v_%v", revision[0:6], bvTruncated, task.DisplayName)
 	}
-	return fmt.Sprintf("artifacts-%v_%v", bvTruncated, displayName)
+	return fmt.Sprintf("artifacts-%v_%v", bvTruncated, task.DisplayName)
 }
 
 // getUrlsChannel takes a seed task, and returns a channel that streams all of the artifacts
 // associated with the task and its dependencies. If "shallow" is set, only artifacts from the seed
 // task will be streamed.
-func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool) (chan artifactDownload, error) {
-	allTasks := []*restModel.APITask{seed}
+func getUrlsChannel(rc *legacyClient, seed *task.Task, shallow bool) (chan artifactDownload, error) {
+	allTasks := []*task.Task{seed}
 	if !shallow {
 		fmt.Printf("Gathering dependencies... ")
 		deps, err := searchDependencies(rc, seed, map[string]bool{})
@@ -585,7 +582,7 @@ func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool) (ch
 					continue
 				}
 				directoryName := getArtifactFolderName(t)
-				urls <- artifactDownload{utility.FromStringPtr(f.Link), directoryName}
+				urls <- artifactDownload{f.Link, directoryName}
 			}
 		}
 		close(urls)
