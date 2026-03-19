@@ -436,7 +436,7 @@ Example that downloads the artifacts for the given task ID and cloning its sourc
 evergreen fetch -t <task-id> --source --artifacts
 ```
 
-Specify the optional `--dir` argument to choose the destination path where the data is fetched to; if omitted, it defaults to the current working directory. 
+Specify the optional `--dir` argument to choose the destination path where the data is fetched to; if omitted, it defaults to the current working directory.
 
 You can also provide the `--execution` argument if you're targeting an older task execution.
 
