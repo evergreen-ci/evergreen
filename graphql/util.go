@@ -1459,3 +1459,14 @@ func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string)
 
 	return apiTask, nil
 }
+
+// Traverse an operation's parents to see if a Waterfall field exists.
+// Return it if so, otherwise return nil without error
+func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
+	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
+		if w, ok := fc.Result.(*Waterfall); ok {
+			return w, true
+		}
+	}
+	return nil, false
+}
