@@ -89,6 +89,7 @@ type Task {
   errors: [String!]
   estimatedStart: Duration
   execution: Int!
+  executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
   executionTasksFull: [Task!]
   expectedDuration: Duration
@@ -145,6 +146,21 @@ type Task {
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
+}
+
+"""
+TaskExecutionStep represents a single step in a task's execution plan.
+"""
+type TaskExecutionStep {
+  blockType: String!
+  commandName: String!
+  displayName: String!
+  functionName: String!
+  isFunction: Boolean!
+  """
+  stepNumber is intentionally a string because step numbers are formatted in decimal notation, i.e. '2.1'
+  """
+  stepNumber: String!
 }
 
 type AbortInfo {

@@ -5013,7 +5013,7 @@ func TestSaveS3Usage(t *testing.T) {
 					PutRequests: 50,
 					UploadBytes: 1024 * 1024,
 				},
-				FileCount: 3,
+				Count: 3,
 			},
 		}
 		require.NoError(t, tk.SaveS3Usage(ctx))
@@ -5023,7 +5023,7 @@ func TestSaveS3Usage(t *testing.T) {
 		require.NotNil(t, dbTask)
 		assert.Equal(t, 50, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(1024*1024), dbTask.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 3, dbTask.S3Usage.Artifacts.FileCount)
+		assert.Equal(t, 3, dbTask.S3Usage.Artifacts.Count)
 	})
 
 	t.Run("CalculatesCostFromUsage", func(t *testing.T) {
@@ -5037,7 +5037,7 @@ func TestSaveS3Usage(t *testing.T) {
 					PutRequests: 1000,
 					UploadBytes: 5 * 1024 * 1024,
 				},
-				FileCount: 10,
+				Count: 10,
 			},
 			Logs: s3usage.S3UploadMetrics{
 				PutRequests: 50,
