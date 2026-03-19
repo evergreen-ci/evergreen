@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 // Options holds the required parameters for spawning a host.
@@ -162,7 +163,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 	if so.IsDebug {
-		debugScript, err := getDebugSetupScript(ctx, so, settings, d.WorkDir)
+		debugScript, err := getDebugSetupScript(ctx, so, settings, d.HomeDir())
 		if err != nil {
 			return nil, errors.Wrap(err, "generating debug setup script")
 		}
@@ -233,11 +234,17 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 
 // getDebugSetupScript returns the debug setup script to use. The
 // admin-configured debug script always runs. If a step number is also
-// specified, the generated daemon script is appended after it.
-func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, workDir string) (string, error) {
+// specified, the debug setup-phase script is appended after it.
+func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, homeDir string) (string, error) {
 	script := settings.DebugSpawnHosts.SetupScript
+	configScript, configPath, err := generateConfigScript(ctx, so.ProvisionOptions.TaskId, settings, homeDir)
+	if err != nil {
+		return "", errors.Wrap(err, "generating config YAML script")
+	}
+	script = appendSetupScript(script, configScript)
+
 	if so.ProvisionOptions.SetupStepNumber != "" {
-		stepScript, err := generateDebugSetupScript(ctx, so, workDir)
+		stepScript, err := generateDebugSetupScript(ctx, so, configPath)
 		if err != nil {
 			return "", err
 		}
@@ -258,10 +265,60 @@ func appendSetupScript(existing, additional string) string {
 	return fmt.Sprintf("%s\n%s", existing, additional)
 }
 
+func generateConfigScript(ctx context.Context, taskID string, settings *evergreen.Settings, homeDir string) (string, string, error) {
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding task '%s'", taskID)
+	}
+	if t == nil {
+		return "", "", errors.Errorf("task '%s' not found", taskID)
+	}
+
+	pRef, err := model.GetProjectRefForTask(ctx, taskID)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding project ref for task '%s'", taskID)
+	}
+	if pRef == nil {
+		return "", "", errors.Errorf("project ref not found for task '%s'", taskID)
+	}
+
+	configPath := filepath.Join(homeDir, pRef.RemotePath)
+
+	v, err := model.VersionFindOneId(ctx, t.Version)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding version '%s'", t.Version)
+	}
+	if v == nil {
+		return "", "", errors.Errorf("version '%s' not found", t.Version)
+	}
+	pp, err := model.ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding parser project for version '%s'", v.Id)
+	}
+	if pp == nil {
+		return "", "", errors.Errorf("parser project not found for version '%s'", v.Id)
+	}
+	yamlBytes, err := yaml.Marshal(pp)
+	if err != nil {
+		return "", "", errors.Wrap(err, "marshalling parser project to YAML")
+	}
+
+	configDir := filepath.Dir(configPath)
+
+	script := fmt.Sprintf(`# Write the project config YAML to disk.
+mkdir -p "%s"
+cat > "%s" << 'EVGEOF'
+%s
+EVGEOF
+`, configDir, configPath, string(yamlBytes))
+
+	return script, configPath, nil
+}
+
 // generateDebugSetupScript builds a shell script that starts the debug daemon
 // in the background, loads the project config, selects the task, and runs
 // commands up to the specified step number.
-func generateDebugSetupScript(ctx context.Context, so SpawnOptions, workDir string) (string, error) {
+func generateDebugSetupScript(ctx context.Context, so SpawnOptions, configPath string) (string, error) {
 	t, err := task.FindOneId(ctx, so.ProvisionOptions.TaskId)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding task '%s'", so.ProvisionOptions.TaskId)
@@ -278,14 +335,7 @@ func generateDebugSetupScript(ctx context.Context, so SpawnOptions, workDir stri
 		return "", errors.Errorf("project ref not found for task '%s'", so.ProvisionOptions.TaskId)
 	}
 
-	sourceDir, err := fetchSourceDir(ctx, t, workDir)
-	if err != nil {
-		return "", errors.Wrap(err, "computing source directory")
-	}
-
 	stepNum := so.ProvisionOptions.SetupStepNumber
-
-	configPath := fmt.Sprintf("%s/%s", sourceDir, pRef.RemotePath)
 
 	return fmt.Sprintf(`# Redirect all setup script output to a log file.
 DEBUG_SETUP_LOG="/tmp/debug-setup.log"
@@ -319,27 +369,6 @@ else
   echo "ERROR: Debug setup script failed during execution."
 fi
 `, configPath, t.DisplayName, stepNum, stepNum), nil
-}
-
-// fetchSourceDir computes the source directory path that "evergreen fetch"
-// creates, matching the naming convention in operations/fetch.go.
-func fetchSourceDir(ctx context.Context, t *task.Task, workDir string) (string, error) {
-	var cloneDir string
-	if evergreen.IsPatchRequester(t.Requester) {
-		p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
-		if err != nil {
-			return "", errors.Wrapf(err, "finding patch for version '%s'", t.Version)
-		}
-		if p == nil {
-			return "", errors.Errorf("patch not found for version '%s'", t.Version)
-		}
-		cloneDir = util.CleanForPath(fmt.Sprintf("source-patch-%d_%s", p.PatchNumber, t.Project))
-	} else if len(t.Revision) >= 6 {
-		cloneDir = util.CleanForPath(fmt.Sprintf("source-%s-%s", t.Project, t.Revision[0:6]))
-	} else {
-		cloneDir = util.CleanForPath(fmt.Sprintf("source-%s", t.Project))
-	}
-	return fmt.Sprintf("%s/%s", workDir, cloneDir), nil
 }
 
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {

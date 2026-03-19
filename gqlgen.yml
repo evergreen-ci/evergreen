@@ -869,6 +869,8 @@ models:
         resolver: true
       estimatedStart:
         resolver: true
+      executionSteps:
+        resolver: true
       executionTasksFull:
         resolver: true
       patchMetadata:
@@ -885,6 +887,8 @@ models:
         resolver: true
   TaskAnnotationSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
+  TaskExecutionStep:
+    model: github.com/evergreen-ci/evergreen/model.TaskExecutionStep
   TaskAnnotationSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskContainerCreationOpts:
