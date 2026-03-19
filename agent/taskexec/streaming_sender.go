@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -221,33 +220,3 @@ func (p *streamingLoggerProducer) Closed() bool {
 func (p *streamingLoggerProducer) setSender(s send.Sender) {
 	p.sender = s
 }
-
-type expandingSender struct {
-	*send.Base
-	expansions *util.Expansions
-	wrapped    send.Sender
-}
-
-func newExpandingSender(name string, expansions *util.Expansions, wrapped send.Sender) *expandingSender {
-	s := &expandingSender{
-		Base:       send.NewBase(name),
-		expansions: expansions,
-		wrapped:    wrapped,
-	}
-	_ = s.SetLevel(send.LevelInfo{Default: level.Trace, Threshold: level.Trace})
-	return s
-}
-
-func (s *expandingSender) Send(m message.Composer) {
-	if !m.Loggable() {
-		return
-	}
-	msg := m.String()
-	expanded, err := s.expansions.ExpandString(msg)
-	if err == nil {
-		msg = expanded
-	}
-	s.wrapped.Send(message.NewDefaultMessage(m.Priority(), msg))
-}
-
-func (s *expandingSender) Flush(_ context.Context) error { return nil }

@@ -449,8 +449,7 @@ func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
 	producer := newStreamingLoggerProducer(sw)
 
 	baseSender := producer.Execution()
-	expandedSender := newExpandingSender("expanding", &e.taskConfig.Expansions, baseSender)
-	redactedSender := redactor.NewRedactingSender(expandedSender, redactor.RedactionOptions{
+	redactedSender := redactor.NewRedactingSender(baseSender, redactor.RedactionOptions{
 		Expansions:         e.taskConfig.NewExpansions,
 		Redacted:           e.taskConfig.Redacted,
 		InternalRedactions: e.taskConfig.InternalRedactions,
