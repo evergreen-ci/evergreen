@@ -499,6 +499,10 @@ const (
 	TaskGroupOtelAttribute          = "evergreen.task.task_group"
 	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
 
+	// EBS cost otel attributes — task-level (throughput)
+	TaskEBSOnDemandThroughputCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_throughput_cost"
+	TaskEBSAdjustedThroughputCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_throughput_cost"
+
 	// S3 cost tracking otel span name — shared by per-file and aggregate events
 	S3CostTrackingOtelSpanName = "s3-cost-tracking"
 
@@ -620,8 +624,10 @@ const (
 	// general Evergreen operations occur in AWS if no particular region is
 	// specified.
 	DefaultEC2Region = "us-east-1"
+	// VolumeTypeGp3 is the AWS EBS gp3 volume type.
+	VolumeTypeGp3 = "gp3"
 	// DefaultEBSType is Amazon's default EBS type.
-	DefaultEBSType = "gp3"
+	DefaultEBSType = VolumeTypeGp3
 	// DefaultEBSAvailabilityZone is the default availability zone for EBS
 	// volumes. This may be a temporary default.
 	DefaultEBSAvailabilityZone = "us-east-1a"

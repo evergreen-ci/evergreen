@@ -176,7 +176,6 @@ const (
 const (
 	VolumeTypeStandard = "standard"
 	VolumeTypeIo1      = "io1"
-	VolumeTypeGp3      = "gp3"
 	VolumeTypeGp2      = "gp2"
 	VolumeTypeSc1      = "sc1"
 	VolumeTypeSt1      = "st1"
@@ -186,7 +185,7 @@ var (
 	ValidVolumeTypes = []string{
 		VolumeTypeStandard,
 		VolumeTypeIo1,
-		VolumeTypeGp3,
+		evergreen.VolumeTypeGp3,
 		VolumeTypeGp2,
 		VolumeTypeSc1,
 		VolumeTypeSt1,

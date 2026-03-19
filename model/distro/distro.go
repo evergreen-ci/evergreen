@@ -608,6 +608,89 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
+// EBS mount point field keys for provider settings documents.
+const (
+	EBSMountPointsKey   = "mount_points"
+	EBSVolumeTypeKey    = "volume_type"
+	EBSThroughputKey    = "throughput"
+	EBSSizeKey          = "size"
+)
+
+// EBSMountPointInfo holds EBS volume configuration for cost calculation.
+type EBSMountPointInfo struct {
+	VolumeType string
+	Throughput int32
+	Size       int32
+}
+
+// ExtractEBSMountPoints parses the distro's EC2 provider settings and returns the mount points.
+// It selects settings by the given region (falling back to evergreen.DefaultEC2Region if empty or not found,
+// then to the first region) to avoid over-counting. Returns an empty slice when the provider is not EC2 or
+// when no mount points are configured.
+func (d *Distro) ExtractEBSMountPoints(region string) ([]EBSMountPointInfo, error) {
+	if d.Provider != evergreen.ProviderNameEc2OnDemand && d.Provider != evergreen.ProviderNameEc2Fleet {
+		return nil, nil
+	}
+	if len(d.ProviderSettingsList) == 0 {
+		return nil, nil
+	}
+	if region == "" {
+		region = evergreen.DefaultEC2Region
+	}
+	settingsDoc, err := d.GetProviderSettingByRegion(region)
+	if err != nil {
+		settingsDoc, err = d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
+		if err != nil {
+			settingsDoc = d.ProviderSettingsList[0]
+		}
+	}
+	rawBytes, err := settingsDoc.MarshalBSON()
+	if err != nil {
+		return nil, nil
+	}
+	var docMap map[string]interface{}
+	if err := bson.Unmarshal(rawBytes, &docMap); err != nil {
+		return nil, nil
+	}
+	mpsInterface, ok := docMap[EBSMountPointsKey]
+	if !ok {
+		return nil, nil
+	}
+	mpsSlice, ok := mpsInterface.(bson.A)
+	if !ok {
+		return nil, nil
+	}
+	var mountPoints []EBSMountPointInfo
+	for _, mpInterface := range mpsSlice {
+		mp, ok := mpInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		volumeType, _ := mp[EBSVolumeTypeKey].(string)
+		mountPoints = append(mountPoints, EBSMountPointInfo{
+			VolumeType: volumeType,
+			Throughput: bsonNumToInt32(mp[EBSThroughputKey]),
+			Size:       bsonNumToInt32(mp[EBSSizeKey]),
+		})
+	}
+	return mountPoints, nil
+}
+
+func bsonNumToInt32(v interface{}) int32 {
+	switch n := v.(type) {
+	case int32:
+		return n
+	case int:
+		return int32(n)
+	case int64:
+		return int32(n)
+	case float64:
+		return int32(n)
+	default:
+		return 0
+	}
+}
+
 func (d *Distro) GetRegionsList(allowedRegions []string) []string {
 	regions := []string{}
 	for _, doc := range d.ProviderSettingsList {

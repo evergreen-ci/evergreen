@@ -103,8 +103,7 @@ var (
 
 // AztoRegion takes an availability zone and returns the region id.
 func AztoRegion(az string) string {
-	// an amazon region is just the availability zone minus the final letter
-	return az[:len(az)-1]
+	return util.AZToRegion(az)
 }
 
 // ec2StateToEvergreenStatus returns a "universal" status code based on EC2's

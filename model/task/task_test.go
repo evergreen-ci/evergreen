@@ -4921,6 +4921,10 @@ func TestTaskCostIsZero(t *testing.T) {
 	assert.False(t, nonZeroBoth.IsZero())
 	nonZeroS3 := cost.Cost{S3ArtifactPutCost: 0.00005}
 	assert.False(t, nonZeroS3.IsZero())
+	nonZeroEBSThroughputOnDemand := cost.Cost{OnDemandEBSThroughputCost: 0.1}
+	assert.False(t, nonZeroEBSThroughputOnDemand.IsZero())
+	nonZeroEBSThroughputAdjusted := cost.Cost{AdjustedEBSThroughputCost: 0.1}
+	assert.False(t, nonZeroEBSThroughputAdjusted.IsZero())
 }
 
 func TestUpdateTaskCost(t *testing.T) {
@@ -4960,6 +4964,7 @@ func TestUpdateTaskCost(t *testing.T) {
 			FinanceFormula:      0.6,
 			SavingsPlanDiscount: 0.5,
 			OnDemandDiscount:    0.04,
+			EBSCost:             evergreen.EBSCostConfig{EBSDiscount: 0},
 		}
 		require.NoError(t, costConfig.Set(ctx))
 
