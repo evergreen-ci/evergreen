@@ -36,6 +36,10 @@ const (
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
 
 	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
+
+	// githubMergeQueueInvalidRefError is the error message returned by Git when it fails to find
+	// a GitHub merge queue reference.
+	githubMergeQueueInvalidRefError = "couldn't find remote ref gh-readonly-queue"
 )
 
 var (
@@ -69,8 +73,6 @@ type gitFetchProject struct {
 	CommitterName string `mapstructure:"committer_name"`
 
 	CommitterEmail string `mapstructure:"committer_email"`
-
-	refNotFound bool
 
 	base
 }
@@ -358,22 +360,6 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 	attempt := 0
 	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
-		// On the second attempt, check if the merge queue ref was deleted before retrying.
-		if attempt == 2 && conf.Task.Requester == evergreen.GithubMergeRequester && conf.GithubMergeData.HeadBranch != "" {
-			ref := "heads/" + conf.GithubMergeData.HeadBranch
-			appToken, tokenErr := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
-			if tokenErr == nil && appToken != "" {
-				exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref, appToken)
-				if checkErr != nil {
-					return errors.Wrap(checkErr, "checking if merge queue ref exists")
-				}
-				if !exists {
-					c.refNotFound = true
-					return errors.New("the GitHub merge SHA is not available most likely because the merge completed or was aborted")
-				}
-			}
-		}
-
 		gitCommands, err := c.buildSourceCloneCommand(conf, opts)
 		if err != nil {
 			return err
@@ -403,10 +389,9 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 
 		if err = fetchSourceCmd.Run(ctx); err != nil {
 			span.SetAttributes(attribute.String(cloneErrorAttribute, err.Error()))
-			return err
 		}
 
-		return nil
+		return err
 	})
 }
 
@@ -425,7 +410,6 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 	return utility.Retry(
 		ctx,
 		func() (bool, error) {
-			c.refNotFound = false
 			if attemptNum > 2 {
 				opts.useVerbose = true // use verbose for the last 2 attempts
 				logger.Task().Error(message.Fields{
@@ -439,7 +423,7 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 				if isSource && attemptNum == 1 {
 					logger.Task().Warning("git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
 				}
-				if c.refNotFound {
+				if strings.Contains(err.Error(), githubMergeQueueInvalidRefError) {
 					if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
 						logger.Task().Warningf("Failed to mark git ref not found: %s", markErr)
 					}

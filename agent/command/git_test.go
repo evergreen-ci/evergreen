@@ -242,8 +242,7 @@ func (s *GitGetProjectSuite) TestRetryFetchStopsOnInvalidGitHubMergeQueueRef() {
 	attempt := 0
 	err = c.retryFetch(s.ctx, logger, s.comm, conf, true, opts, func(o cloneOpts) error {
 		attempt++
-		c.refNotFound = true
-		return errors.New("the GitHub merge SHA is not available most likely because the merge completed or was aborted")
+		return errors.Errorf("fatel: %s", githubMergeQueueInvalidRefError)
 	})
 
 	s.Equal(1, attempt)
