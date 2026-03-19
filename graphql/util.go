@@ -895,7 +895,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
 	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("merged project ref for project '%s' not found", utility.FromStringPtr(projectId)))
+		return nil, nil
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(ctx, *projectRef); err != nil {
@@ -1458,4 +1458,15 @@ func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string)
 	}
 
 	return apiTask, nil
+}
+
+// Traverse an operation's parents to see if a Waterfall field exists.
+// Return it if so, otherwise return nil without error
+func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
+	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
+		if w, ok := fc.Result.(*Waterfall); ok {
+			return w, true
+		}
+	}
+	return nil, false
 }
