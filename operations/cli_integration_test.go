@@ -282,6 +282,10 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
+			// Throw error if task with execution does not exist.
+			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(5))
+			So(err, ShouldNotBeNil)
+
 			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(1))
 			So(err, ShouldBeNil)
 			// downloaded file should exist where we expect
