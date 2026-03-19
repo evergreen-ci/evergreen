@@ -1193,9 +1193,12 @@ oom_tracker: false
 
 If the CPU or Memory on a running task host sustains above 90% for a 5 minute period, it will be flagged
 as a (potentially) resource constrained task, which may be relevant when diagnosing its failures.
-If this occurs, the https://evergreen.corp.mongodb.com/rest/v2/tasks/${task_id} response will have a `resource_constraint`
-field available indicating that CPU and/or memory was constrained during execution. There will also be a log in the
-Agent logs that looks similar to the following: `Resource constraint detected: CPU constrained=true (peak 99.0%), memory constrained=true (peak 99.0%).`
+
+If this occurs, tasks returned from the REST API will have a `resource_constraints`
+field available indicating that CPU and/or memory was constrained during execution.
+
+There will also be a log in the Agent logs that looks similar to the following:
+`Resource constraint detected: CPU constrained=true (peak 99.0%), memory constrained=true (peak 99.0%).`
 
 ### Process Diagnostics: ps
 

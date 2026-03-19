@@ -9,7 +9,7 @@ import (
 
 func TestResourceMonitorRecordCPU(t *testing.T) {
 	t.Run("NoConstraintBelowThreshold", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		for i := 0; i < 10; i++ {
 			rm.recordCPU(50.0)
 		}
@@ -17,7 +17,7 @@ func TestResourceMonitorRecordCPU(t *testing.T) {
 	})
 
 	t.Run("ConstraintAfterSustainedSamples", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		for i := 0; i < sustainedSampleCount-1; i++ {
 			rm.recordCPU(95.0)
 		}
@@ -32,7 +32,7 @@ func TestResourceMonitorRecordCPU(t *testing.T) {
 	})
 
 	t.Run("CounterResetsOnDip", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		for i := 0; i < sustainedSampleCount-1; i++ {
 			rm.recordCPU(95.0)
 		}
@@ -44,8 +44,25 @@ func TestResourceMonitorRecordCPU(t *testing.T) {
 		assert.Nil(t, rm.report())
 	})
 
+	t.Run("ConstraintPersistsAfterDrop", func(t *testing.T) {
+		rm := newResourceMonitor(nil)
+		for i := 0; i < sustainedSampleCount; i++ {
+			rm.recordCPU(95.0)
+		}
+		info := rm.report()
+		require.NotNil(t, info)
+		assert.True(t, info.CPUConstrained)
+		for i := 0; i < 10; i++ {
+			rm.recordCPU(50.0)
+		}
+		info = rm.report()
+		require.NotNil(t, info)
+		assert.True(t, info.CPUConstrained, "CPU constraint should persist even after CPU drops")
+		assert.InDelta(t, 95.0, info.PeakCPUPercent, 0.01)
+	})
+
 	t.Run("PeakTracking", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		rm.recordCPU(70.0)
 		rm.recordCPU(85.0)
 		rm.recordCPU(60.0)
@@ -59,7 +76,7 @@ func TestResourceMonitorRecordCPU(t *testing.T) {
 
 func TestResourceMonitorRecordMemory(t *testing.T) {
 	t.Run("NoConstraintBelowThreshold", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		for i := 0; i < 10; i++ {
 			rm.recordMemory(50.0)
 		}
@@ -67,7 +84,7 @@ func TestResourceMonitorRecordMemory(t *testing.T) {
 	})
 
 	t.Run("ConstraintAfterSustainedSamples", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		for i := 0; i < sustainedSampleCount; i++ {
 			rm.recordMemory(92.0)
 		}
@@ -79,7 +96,7 @@ func TestResourceMonitorRecordMemory(t *testing.T) {
 	})
 
 	t.Run("CounterResetsOnDip", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		for i := 0; i < sustainedSampleCount-1; i++ {
 			rm.recordMemory(95.0)
 		}
@@ -91,7 +108,7 @@ func TestResourceMonitorRecordMemory(t *testing.T) {
 	})
 
 	t.Run("PeakTracking", func(t *testing.T) {
-		rm := newResourceMonitor()
+		rm := newResourceMonitor(nil)
 		rm.recordMemory(70.0)
 		rm.recordMemory(88.0)
 		rm.recordMemory(60.0)
@@ -104,7 +121,7 @@ func TestResourceMonitorRecordMemory(t *testing.T) {
 }
 
 func TestResourceMonitorBothConstrained(t *testing.T) {
-	rm := newResourceMonitor()
+	rm := newResourceMonitor(nil)
 	for i := 0; i < sustainedSampleCount; i++ {
 		rm.recordCPU(95.0)
 		rm.recordMemory(93.0)

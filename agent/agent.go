@@ -444,15 +444,16 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 // data and setting the task directory.
 func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskContext, nt *apimodels.NextTaskResponse, shouldSetupGroup bool, taskDirectory string) (tc *taskContext, shouldExit bool, err error) {
 	if initialTC == nil {
+		logger := client.NewSingleChannelLogHarness("default", a.defaultLogger)
 		tc = &taskContext{
 			task: client.TaskData{
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			ranSetupGroup:       !shouldSetupGroup,
-			oomTracker:          jasper.NewOOMTracker(),
-			cpuAndMemoryMonitor: newResourceMonitor(),
-			logger:              client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			ranSetupGroup:   !shouldSetupGroup,
+			oomTracker:      jasper.NewOOMTracker(),
+			resourceMonitor: newResourceMonitor(logger.Execution()),
+			logger:          logger,
 		}
 	} else {
 		tc = initialTC
@@ -709,7 +710,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		defer shutdown(ctx)
 	}
 
-	go tc.cpuAndMemoryMonitor.start(tskCtx)
+	go tc.resourceMonitor.start(tskCtx)
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
@@ -1138,10 +1139,10 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		}
 	}
 
-	if rcInfo := tc.cpuAndMemoryMonitor.report(); rcInfo != nil {
+	if rcInfo := tc.resourceMonitor.report(); rcInfo != nil {
 		tc.logger.Execution().Infof("Resource constraint detected: CPU constrained=%t (peak %.1f%%), memory constrained=%t (peak %.1f%%).",
 			rcInfo.CPUConstrained, rcInfo.PeakCPUPercent, rcInfo.MemoryConstrained, rcInfo.PeakMemoryPercent)
-		detail.ResourceConstraint = rcInfo
+		detail.ResourceConstraints = rcInfo
 	}
 }
 

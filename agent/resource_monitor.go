@@ -16,10 +16,12 @@ const (
 	resourceMonitorInterval = 15 * time.Second
 	cpuThresholdPercent     = 90.0
 	memoryThresholdPercent  = 90.0
-	sustainedSampleCount    = 20
+	// sustainedSampleCount is the number of consecutive samples above threshold
+	// required to mark a resource as constrained. 20 samples = 5 minutes of sustained usage at 15s intervals.
+	sustainedSampleCount = 20
 )
 
-type cpuAndMemoryMonitor struct {
+type resourceMonitor struct {
 	mu sync.Mutex
 
 	cpuConsecutive    int
@@ -30,14 +32,21 @@ type cpuAndMemoryMonitor struct {
 
 	peakCPUPercent    float64
 	peakMemoryPercent float64
+
+	logger grip.Journaler
 }
 
-func newResourceMonitor() *cpuAndMemoryMonitor {
-	return &cpuAndMemoryMonitor{}
+func newResourceMonitor(logger grip.Journaler) *resourceMonitor {
+	if logger == nil {
+		logger = grip.NewJournaler("resource_monitor")
+	}
+	return &resourceMonitor{
+		logger: logger,
+	}
 }
 
 // start samples CPU and memory usage at regular intervals until the context is cancelled.
-func (rm *cpuAndMemoryMonitor) start(ctx context.Context) {
+func (rm *resourceMonitor) start(ctx context.Context) {
 	ticker := time.NewTicker(resourceMonitorInterval)
 	defer ticker.Stop()
 
@@ -51,24 +60,28 @@ func (rm *cpuAndMemoryMonitor) start(ctx context.Context) {
 	}
 }
 
-func (rm *cpuAndMemoryMonitor) sample(ctx context.Context) {
-	// one second is the interval that is measured over.
-	cpuPercents, err := cpu.PercentWithContext(ctx, time.Second, false)
+func (rm *resourceMonitor) sample(ctx context.Context) {
+	// CPU percent is measured over a 200ms interval. This call will block,
+	// so it should be kept low to avoid long delays. We expect exactly 1
+	// result because we pass percpu=false.
+	cpuPercents, err := cpu.PercentWithContext(ctx, 200*time.Millisecond, false)
 	if err != nil {
-		grip.Debug(errors.Wrap(err, "sampling CPU usage"))
+		rm.logger.Debug(errors.Wrap(err, "sampling CPU usage"))
 	} else if len(cpuPercents) > 0 {
 		rm.recordCPU(cpuPercents[0])
+	} else {
+		rm.logger.Warning("CPU usage sampling returned empty result")
 	}
 
 	memStat, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
-		grip.Debug(errors.Wrap(err, "sampling memory usage"))
+		rm.logger.Warning(errors.Wrap(err, "sampling memory usage"))
 	} else if memStat != nil {
 		rm.recordMemory(memStat.UsedPercent)
 	}
 }
 
-func (rm *cpuAndMemoryMonitor) recordCPU(percent float64) {
+func (rm *resourceMonitor) recordCPU(percent float64) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
@@ -86,7 +99,7 @@ func (rm *cpuAndMemoryMonitor) recordCPU(percent float64) {
 	}
 }
 
-func (rm *cpuAndMemoryMonitor) recordMemory(percent float64) {
+func (rm *resourceMonitor) recordMemory(percent float64) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
@@ -104,7 +117,7 @@ func (rm *cpuAndMemoryMonitor) recordMemory(percent float64) {
 	}
 }
 
-func (rm *cpuAndMemoryMonitor) report() *apimodels.ResourceConstraintInfo {
+func (rm *resourceMonitor) report() *apimodels.ResourceConstraintInfo {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 

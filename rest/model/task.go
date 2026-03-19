@@ -180,12 +180,12 @@ type ApiTaskEndDetail struct {
 	// did not cause the task to fail.
 	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands,omitempty"`
 	// Whether this task ended in a timeout.
-	TimedOut           bool                      `json:"timed_out"`
-	TimeoutType        *string                   `json:"timeout_type"`
-	OOMTracker         APIOomTrackerInfo         `json:"oom_tracker_info"`
-	TraceID            *string                   `json:"trace_id"`
-	DiskDevices        []string                  `json:"disk_devices"`
-	ResourceConstraint APIResourceConstraintInfo `json:"resource_constraint"`
+	TimedOut            bool                      `json:"timed_out"`
+	TimeoutType         *string                   `json:"timeout_type"`
+	OOMTracker          APIOomTrackerInfo         `json:"oom_tracker_info"`
+	TraceID             *string                   `json:"trace_id"`
+	DiskDevices         []string                  `json:"disk_devices"`
+	ResourceConstraints APIResourceConstraintInfo `json:"resource_constraints"`
 }
 
 func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
@@ -215,8 +215,8 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.DiskDevices = t.DiskDevices
 
 	var apiResourceConstraint APIResourceConstraintInfo
-	apiResourceConstraint.BuildFromService(t.ResourceConstraint)
-	at.ResourceConstraint = apiResourceConstraint
+	apiResourceConstraint.BuildFromService(t.ResourceConstraints)
+	at.ResourceConstraints = apiResourceConstraint
 
 	return nil
 }
@@ -239,7 +239,7 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 		OOMTracker:           ad.OOMTracker.ToService(),
 		TraceID:              utility.FromStringPtr(ad.TraceID),
 		DiskDevices:          ad.DiskDevices,
-		ResourceConstraint:   ad.ResourceConstraint.ToService(),
+		ResourceConstraints:  ad.ResourceConstraints.ToService(),
 	}
 }
 
