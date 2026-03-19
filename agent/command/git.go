@@ -425,7 +425,9 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 	return utility.Retry(
 		ctx,
 		func() (bool, error) {
-			c.refNotFound = false
+			if isSource {
+				c.refNotFound = false
+			}
 			if attemptNum > 2 {
 				opts.useVerbose = true // use verbose for the last 2 attempts
 				logger.Task().Error(message.Fields{
@@ -439,7 +441,7 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 				if isSource && attemptNum == 1 {
 					logger.Task().Warning("git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
 				}
-				if c.refNotFound {
+				if isSource && c.refNotFound {
 					if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
 						logger.Task().Warningf("Failed to mark git ref not found: %s", markErr)
 					}
