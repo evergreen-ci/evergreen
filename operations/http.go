@@ -670,6 +670,37 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	return &reply, nil
 }
 
+func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.APITask, error) {
+	urlToFetch := fmt.Sprintf("tasks/%s", taskId)
+	if execution != nil {
+		urlToFetch = fmt.Sprintf("%s?execution=%d", urlToFetch, utility.FromIntPtr(execution))
+	}
+
+	resp, err := ac.get2(urlToFetch, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, newAuthError(resp)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, newVPNError(resp)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	apiModel := &restModel.APITask{}
+	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
+		return nil, err
+	}
+	return apiModel, nil
+}
+
 // GetRecentVersions retrieves a list of recent versions for a project,
 // regardless of their success
 func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
