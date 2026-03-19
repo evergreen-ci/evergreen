@@ -281,11 +281,12 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		_, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
 
-		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
-			// Throw error if task with execution does not exist.
+		Convey("throws an error if task with execution does not exist", func() {
 			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(5))
 			So(err, ShouldNotBeNil)
+		})
 
+		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
 			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(1))
 			So(err, ShouldBeNil)
 			// downloaded file should exist where we expect
@@ -295,13 +296,15 @@ func TestCLIFetchArtifacts(t *testing.T) {
 
 			fileStat, err = os.Stat("./rest_task_variant_task_two/humans.txt")
 			So(os.IsNotExist(err), ShouldBeTrue)
+		})
 
-			Convey("deep fetch artifacts should also download artifacts from dependency", func() {
-				err = fetchArtifacts(rc, parentTask.Id, "", false, nil)
-				So(err, ShouldBeNil)
-				fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
-				So(os.IsNotExist(err), ShouldBeFalse)
-			})
+		Convey("deep fetch artifacts should also download artifacts from dependency", func() {
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil)
+			So(err, ShouldBeNil)
+			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+			So(os.IsNotExist(err), ShouldBeFalse)
 		})
 	})
 }

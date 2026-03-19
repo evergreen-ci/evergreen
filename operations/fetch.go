@@ -93,7 +93,7 @@ func Fetch() cli.Command {
 				Usage: "when using --source with a patch task, skip applying the patch",
 			},
 			cli.IntFlag{
-				Name:  executionFlagName,
+				Name:  joinFlagNames(executionFlagName, "e"),
 				Usage: "specify the execution number of the task",
 			},
 		},
@@ -122,9 +122,7 @@ func Fetch() cli.Command {
 			moduleTokens := c.StringSlice(moduleTokensName)
 
 			var execution *int
-			if !c.IsSet(executionFlagName) {
-				execution = nil
-			} else {
+			if c.IsSet(executionFlagName) {
 				execution = utility.ToIntPtr(c.Int(executionFlagName))
 			}
 
@@ -540,8 +538,10 @@ type artifactDownload struct {
 }
 
 // getArtifactFolderName returns the name of the folder that an artifact will be downloaded to.
-// If you run the fetch command for a version, the artifacts are downloaded into a file of the format `artifacts-{revision}-{build_variant}-{task_name}`.
-// If the task is a patch, the format is `artifacts-patch-{patch_num}-{build_variant}-{task_name}`.
+// If the task is from a patch, the format is `artifacts-patch-{patch_num}_{build_variant}_{task_name}`.
+// If the task has an associated revision, the format is `artifacts-{revision}_{build_variant}_{task_name}`.
+// Else, the format is `artifacts-{build_variant}_{task_name}`.
+// Note that build_variant will be truncated if it exceeds 100 characters.
 func getArtifactFolderName(task *restModel.APITask) string {
 	buildVariantName := utility.FromStringPtr(task.BuildVariant)
 	bvTruncated := buildVariantName
