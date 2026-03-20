@@ -92,7 +92,7 @@ func Fetch() cli.Command {
 				Name:  noPatchFlagName,
 				Usage: "when using --source with a patch task, skip applying the patch",
 			},
-			cli.IntFlag{
+			cli.StringFlag{
 				Name:  joinFlagNames(executionFlagName, "e"),
 				Usage: "specify the execution number of the task. defaults to latest if not provided",
 			},
@@ -123,7 +123,11 @@ func Fetch() cli.Command {
 
 			var execution *int
 			if c.IsSet(executionFlagName) {
-				execution = utility.ToIntPtr(c.Int(executionFlagName))
+				if stringAsInt, err := strconv.Atoi(c.String(executionFlagName)); err == nil {
+					execution = utility.ToIntPtr(stringAsInt)
+				} else {
+					return errors.Wrap(err, "invalid execution number")
+				}
 			}
 
 			moduleTokensMap := parseModuleTokens(moduleTokens)
