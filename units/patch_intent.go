@@ -1115,7 +1115,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		patchDoc.GithubMergeData.HeadSHA,
 		githubHeadPRURL,
 	)
-	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, patchDoc.Id.Hex()))
+	baseAttrs = append(baseAttrs, attribute.String(patch.MergeQueueAttrPatchID, j.PatchID.Hex()))
 	ctx, span := tracer.Start(ctx, patch.MergeQueuePatchProcessingSpan,
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
