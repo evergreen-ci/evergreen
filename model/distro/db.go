@@ -216,6 +216,9 @@ func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error
 		return nil, nil
 	}
 	if len(d.ProviderSettingsList) > 1 {
+		// kim: NOTE: 'default settings' here implies task host settings because
+		// it's used by the host allocator. Makes sense because it's using the
+		// default region.
 		providerSettings, err := d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting provider settings for region '%s' in distro '%s'", evergreen.DefaultEC2Region, id)
