@@ -333,12 +333,12 @@ type Task struct {
 	// task.
 	TestSelectionEnabled bool `bson:"test_selection_enabled" json:"test_selection_enabled"`
 
-	// PatchNumber contains the associated patch number of this task. Not persisted to the DB.
-	PatchNumber int `bson:"-" json:"patch_number,omitempty"`
+	// PatchNumber contains the associated patch number of this task.
+	PatchNumber int `bson:"patch_number,omitempty" json:"patch_number,omitempty"`
 
-	// Artifacts contains the associated artifacts for this task. Not persisted to the DB, but it may be present when converting a REST task
+	// Artifacts contains the associated artifacts for this task. This is not persisted to the DB, but it may be present when converting a REST task
 	// to service.
-	Artifacts []artifact.File `bson:"-" json:"artifacts,omitempty"`
+	Artifacts []artifact.File `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
