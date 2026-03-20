@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -332,13 +331,6 @@ type Task struct {
 	// TestSelectionEnabled indicates whether test selection is enabled for this
 	// task.
 	TestSelectionEnabled bool `bson:"test_selection_enabled" json:"test_selection_enabled"`
-
-	// PatchNumber contains the associated patch number of this task.
-	PatchNumber int `bson:"patch_number,omitempty" json:"patch_number,omitempty"`
-
-	// Artifacts contains the associated artifacts for this task. This is not persisted to the DB, but it may be present when converting a REST task
-	// to service.
-	Artifacts []artifact.File `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
