@@ -94,7 +94,7 @@ func Fetch() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  joinFlagNames(executionFlagName, "e"),
-				Usage: "specify the execution number of the task",
+				Usage: "specify the execution number of the task. defaults to latest if not provided",
 			},
 		},
 		Before: mergeBeforeFuncs(
