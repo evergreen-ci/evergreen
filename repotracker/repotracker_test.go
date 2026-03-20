@@ -1938,6 +1938,90 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	assert.Equal(t, usr.Email(), v.AuthorEmail)
 }
 
+func TestResolveUserFromMetadata(t *testing.T) {
+	ctx := t.Context()
+
+	uidUser := &user.DBUser{
+		Id:           "uid-user",
+		DispName:     "UID User",
+		EmailAddress: "uid@example.com",
+		Settings:     user.UserSettings{GithubUser: user.GithubUser{UID: 1001}},
+	}
+	loginUser := &user.DBUser{
+		Id:           "login-user",
+		DispName:     "Login User",
+		EmailAddress: "login@example.com",
+		Settings:     user.UserSettings{GithubUser: user.GithubUser{LastKnownAs: "loginuser"}},
+	}
+	derivedUser := &user.DBUser{
+		Id:           "hello.world",
+		DispName:     "Hello World",
+		EmailAddress: "hello@example.com",
+	}
+
+	for _, tc := range []struct {
+		name         string
+		metadata     model.VersionMetadata
+		expectedUser *user.DBUser
+	}{
+		{
+			name: "GitTagPusher",
+			metadata: model.VersionMetadata{
+				GitTag: model.GitTag{Pusher: "loginuser"},
+			},
+			expectedUser: loginUser,
+		},
+		{
+			name: "AuthorGithubUID",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{AuthorGithubUID: 1001},
+			},
+			expectedUser: uidUser,
+		},
+		{
+			name: "DerivedIDFromFullName",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{Author: "Hello World"},
+			},
+			expectedUser: derivedUser,
+		},
+		{
+			name: "DerivedIDFromNameWithMiddleName",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{Author: "Hello My World"},
+			},
+			expectedUser: derivedUser,
+		},
+		{
+			name: "SingleWordAuthorNameNoMatch",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{Author: "Hello"},
+			},
+			expectedUser: nil,
+		},
+		{
+			name:         "NoMetadata",
+			metadata:     model.VersionMetadata{},
+			expectedUser: nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(user.Collection))
+			require.NoError(t, uidUser.Insert(ctx))
+			require.NoError(t, loginUser.Insert(ctx))
+			require.NoError(t, derivedUser.Insert(ctx))
+
+			usr := resolveUserFromMetadata(ctx, tc.metadata)
+			if tc.expectedUser == nil {
+				assert.Nil(t, usr)
+			} else {
+				require.NotNil(t, usr)
+				assert.Equal(t, tc.expectedUser.Id, usr.Id)
+			}
+		})
+	}
+}
+
 func TestCreateVersionItemsPathFiltering(t *testing.T) {
 	testCases := []struct {
 		name            string

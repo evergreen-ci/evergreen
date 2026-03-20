@@ -617,7 +617,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			authorEmail = u.Email()
 		}
 	}
-
 	patchVersion := &Version{
 		Id:                   p.Id.Hex(),
 		CreateTime:           time.Now(),
