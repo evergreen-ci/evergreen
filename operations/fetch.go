@@ -123,11 +123,11 @@ func Fetch() cli.Command {
 
 			var execution *int
 			if c.IsSet(executionFlagName) {
-				if stringAsInt, err := strconv.Atoi(c.String(executionFlagName)); err == nil {
-					execution = utility.ToIntPtr(stringAsInt)
-				} else {
+				stringAsInt, err := strconv.Atoi(c.String(executionFlagName))
+				if err != nil {
 					return errors.Wrap(err, "invalid execution number")
 				}
+				execution = utility.ToIntPtr(stringAsInt)
 			}
 
 			moduleTokensMap := parseModuleTokens(moduleTokens)

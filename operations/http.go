@@ -643,6 +643,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	return reply.Patch, nil
 }
 
+// GetTask returns a task using the legacy V1 API.
 func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	resp, err := ac.get("tasks/"+taskId, nil)
 	if err != nil {
@@ -670,6 +671,8 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	return &reply, nil
 }
 
+// GetTaskV2 returns a task using the V2 API. We return an APITask because it contains additional fields (namely patch number and artifacts)
+// that aren't available on the service Task.
 func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.APITask, error) {
 	urlToFetch := fmt.Sprintf("tasks/%s", taskId)
 	if execution != nil {

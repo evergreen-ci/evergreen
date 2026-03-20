@@ -233,7 +233,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			Id:         "project_id",
 			Identifier: "project_name",
 		}
-		assert.NoError(t, p.Insert(t.Context()))
+		assert.NoError(t, p.Insert(ctx))
 
 		parentTask := &task.Task{
 			Id:           "rest_task_test_id1",
@@ -304,7 +304,6 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
 			So(err, ShouldBeNil)
 			So(fileStat.Size(), ShouldBeGreaterThan, 0)
-			So(os.IsNotExist(err), ShouldBeFalse)
 		})
 	})
 }
