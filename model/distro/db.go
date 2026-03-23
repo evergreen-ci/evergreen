@@ -44,9 +44,10 @@ var (
 	IsClusterKey             = bsonutil.MustHaveTag(Distro{}, "IsCluster")
 	IceCreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IceCreamSettings")
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
-	ImageIDKey          = bsonutil.MustHaveTag(Distro{}, "ImageID")
-	SingleTaskDistroKey = bsonutil.MustHaveTag(Distro{}, "SingleTaskDistro")
-	CostDataKey         = bsonutil.MustHaveTag(Distro{}, "CostData")
+	ImageIDKey           = bsonutil.MustHaveTag(Distro{}, "ImageID")
+	SingleTaskDistroKey  = bsonutil.MustHaveTag(Distro{}, "SingleTaskDistro")
+	CostDataKey          = bsonutil.MustHaveTag(Distro{}, "CostData")
+	TaskHostOverridesKey = bsonutil.MustHaveTag(Distro{}, "TaskHostOverrides")
 
 	// bson fields for the CostData struct
 	CostDataOnDemandRateKey    = bsonutil.MustHaveTag(CostData{}, "OnDemandRate")
@@ -216,9 +217,8 @@ func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error
 		return nil, nil
 	}
 	if len(d.ProviderSettingsList) > 1 {
-		// kim: NOTE: 'default settings' here implies task host settings because
-		// it's used by the host allocator. Makes sense because it's using the
-		// default region.
+		// 'default settings' here implies task host settings because it's used
+		// by the host allocator, which uses the default region.
 		providerSettings, err := d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting provider settings for region '%s' in distro '%s'", evergreen.DefaultEC2Region, id)

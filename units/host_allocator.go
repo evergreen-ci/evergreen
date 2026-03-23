@@ -109,6 +109,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("distro '%s' not found", j.DistroID))
 		return
 	}
+	if err := distro.ApplyTaskHostOverrides(); err != nil {
+		j.AddError(errors.Wrapf(err, "applying task host overrides to distro '%s'", j.DistroID))
+		return
+	}
 	if _, err = distro.GetResolvedHostAllocatorSettings(config); err != nil {
 		j.AddError(errors.Errorf("resolving distro '%s' host allocator settings", j.DistroID))
 		return
