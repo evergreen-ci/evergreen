@@ -50,12 +50,13 @@ type taskContext struct {
 	task                 client.TaskData
 	// ranSetupGroup is true during task setup if the task is a new standalone
 	// task or if it's the first task in a task group.
-	ranSetupGroup bool
-	taskConfig    *internal.TaskConfig
-	timeout       timeoutInfo
-	oomTracker    jasper.OOMTracker
-	traceID       string
-	diskDevices   []string
+	ranSetupGroup   bool
+	taskConfig      *internal.TaskConfig
+	timeout         timeoutInfo
+	oomTracker      jasper.OOMTracker
+	traceID         string
+	diskDevices     []string
+	resourceMonitor *resourceMonitor
 	// s3Usage tracks S3 API usage accumulated during task execution
 	s3Usage s3usage.S3Usage
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the

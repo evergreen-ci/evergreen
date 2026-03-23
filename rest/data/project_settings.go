@@ -40,6 +40,11 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.
 	}
 
 	oldId := projectToCopy.Id
+
+	// Id and identifier have to match for the perf plugin to work.
+	if projectToCopy.IsPerfEnabled() {
+		opts.NewProjectId = opts.NewProjectIdentifier
+	}
 	// Project ID will be validated or generated during CreateProject
 	if opts.NewProjectId != "" {
 		projectToCopy.Id = opts.NewProjectId
