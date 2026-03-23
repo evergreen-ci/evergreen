@@ -90,48 +90,6 @@ type TaskHostOverrides struct {
 	DoNotAssignPublicIPv4Address bool     `bson:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address" mapstructure:"do_not_assign_public_ipv4_address"`
 }
 
-// ApplyTaskHostOverrides applies the distro's TaskHostOverrides to the
-// relevant distro fields in-place. This should be called when initializing a
-// task host so that the persisted host distro subdocument already reflects the
-// overridden settings. If TaskHostOverrides is nil or the provider is not EC2,
-// this is a no-op.
-func (d *Distro) ApplyTaskHostOverrides() error {
-	if d.TaskHostOverrides == nil || !evergreen.IsEc2Provider(d.Provider) {
-		return nil
-	}
-	d.ProviderAccount = d.TaskHostOverrides.ProviderAccount
-	for i, doc := range d.ProviderSettingsList {
-		// Task hosts are only spawned in the default EC2 region, so only
-		// override that region's provider settings.
-		region, hasRegion := doc.Lookup("region").StringValueOK()
-		if hasRegion && region != evergreen.DefaultEC2Region {
-			continue
-		}
-		// Override the settings by exporting the existing document to a map,
-		// applying the overrides, and re-marshalling back to a birch document.
-		// Because we're writing to a map[string]interface{} rather than an
-		// EC2ProviderSettings struct, bson.Marshal includes all entries
-		// regardless of value — i.e. zero/empty override values (empty strings,
-		// false booleans, nil slices) will be present in the resulting document
-		// and correctly deserialized by EC2ProviderSettings.FromDocument via
-		// bson.Unmarshal, which does not apply omitempty.
-		settings := doc.ExportMap()
-		settings["iam_instance_profile_arn"] = d.TaskHostOverrides.IAMInstanceProfileARN
-		settings["security_group_ids"] = d.TaskHostOverrides.SecurityGroupIDs
-		settings["subnet_id"] = d.TaskHostOverrides.SubnetID
-		settings["do_not_assign_public_ipv4_address"] = d.TaskHostOverrides.DoNotAssignPublicIPv4Address
-		bytes, err := bson.Marshal(settings)
-		if err != nil {
-			return errors.Wrap(err, "re-marshalling provider settings with task host overrides")
-		}
-		newDoc := &birch.Document{}
-		if err = newDoc.UnmarshalBSON(bytes); err != nil {
-			return errors.Wrap(err, "creating provider settings document with task host overrides")
-		}
-		d.ProviderSettingsList[i] = newDoc
-	}
-	return nil
-}
 
 // DistroData is the same as a distro, with the only difference being that all
 // the provider settings are stored as maps instead of Birch BSON documents.

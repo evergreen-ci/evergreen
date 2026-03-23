@@ -208,6 +208,8 @@ func ByIds(ids []string) bson.M {
 	return bson.M{IdKey: bson.M{"$in": ids}}
 }
 
+// FindByIdWithDefaultSettings finds a distro by ID with only the provider
+// settings for the default EC2 region.
 func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error) {
 	d, err := FindOneId(ctx, id)
 	if err != nil {
@@ -217,8 +219,6 @@ func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error
 		return nil, nil
 	}
 	if len(d.ProviderSettingsList) > 1 {
-		// 'default settings' here implies task host settings because it's used
-		// by the host allocator, which uses the default region.
 		providerSettings, err := d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting provider settings for region '%s' in distro '%s'", evergreen.DefaultEC2Region, id)

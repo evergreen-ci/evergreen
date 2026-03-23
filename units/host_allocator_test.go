@@ -115,7 +115,7 @@ func TestApplyTaskHostOverrides(t *testing.T) {
 			ProviderSettingsList: []*birch.Document{makeProviderSettings(t, original)},
 			TaskHostOverrides:    nil,
 		}
-		require.NoError(t, d.ApplyTaskHostOverrides())
+		require.NoError(t, applyTaskHostOverrides(&d))
 
 		assert.Equal(t, "original-account", d.ProviderAccount)
 		ec2Settings := getProviderSettings(t, d.ProviderSettingsList[0])
@@ -129,7 +129,7 @@ func TestApplyTaskHostOverrides(t *testing.T) {
 			ProviderAccount:   "original-account",
 			TaskHostOverrides: nonZeroOverrides,
 		}
-		require.NoError(t, d.ApplyTaskHostOverrides())
+		require.NoError(t, applyTaskHostOverrides(&d))
 		assert.Equal(t, "original-account", d.ProviderAccount)
 	})
 
@@ -149,7 +149,7 @@ func TestApplyTaskHostOverrides(t *testing.T) {
 			ProviderSettingsList: []*birch.Document{makeProviderSettings(t, original)},
 			TaskHostOverrides:    nonZeroOverrides,
 		}
-		require.NoError(t, d.ApplyTaskHostOverrides())
+		require.NoError(t, applyTaskHostOverrides(&d))
 
 		assert.Equal(t, nonZeroOverrides.ProviderAccount, d.ProviderAccount)
 
@@ -185,7 +185,7 @@ func TestApplyTaskHostOverrides(t *testing.T) {
 			},
 			TaskHostOverrides: nonZeroOverrides,
 		}
-		require.NoError(t, d.ApplyTaskHostOverrides())
+		require.NoError(t, applyTaskHostOverrides(&d))
 
 		otherEC2Settings := getProviderSettings(t, d.ProviderSettingsList[0])
 		assert.Equal(t, otherRegionSettings.SubnetId, otherEC2Settings.SubnetId)
@@ -218,7 +218,7 @@ func TestApplyTaskHostOverrides(t *testing.T) {
 			ProviderSettingsList: []*birch.Document{makeProviderSettings(t, original)},
 			TaskHostOverrides:    zeroOverrides,
 		}
-		require.NoError(t, d.ApplyTaskHostOverrides())
+		require.NoError(t, applyTaskHostOverrides(&d))
 
 		assert.Empty(t, d.ProviderAccount)
 
@@ -234,7 +234,7 @@ func TestApplyTaskHostOverrides(t *testing.T) {
 			ProviderAccount:   "original-account",
 			TaskHostOverrides: nonZeroOverrides,
 		}
-		require.NoError(t, d.ApplyTaskHostOverrides())
+		require.NoError(t, applyTaskHostOverrides(&d))
 		assert.Equal(t, nonZeroOverrides.ProviderAccount, d.ProviderAccount)
 		assert.Empty(t, d.ProviderSettingsList)
 	})

@@ -109,7 +109,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("distro '%s' not found", j.DistroID))
 		return
 	}
-	if err := distro.ApplyTaskHostOverrides(); err != nil {
+	if err := applyTaskHostOverrides(distro); err != nil {
 		j.AddError(errors.Wrapf(err, "applying task host overrides to distro '%s'", j.DistroID))
 		return
 	}
@@ -422,6 +422,40 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 
 	}
 
+}
+
+// applyTaskHostOverrides applies the distro's overrides for task hosts.
+func applyTaskHostOverrides(d *distro.Distro) error {
+	if d.TaskHostOverrides == nil || !evergreen.IsEc2Provider(d.Provider) {
+		return nil
+	}
+
+	d.ProviderAccount = d.TaskHostOverrides.ProviderAccount
+
+	for i, doc := range d.ProviderSettingsList {
+		// Task hosts are only spawned in the default EC2 region, so only
+		// override that region's provider settings.
+		region, hasRegion := doc.Lookup("region").StringValueOK()
+		if !hasRegion || region != evergreen.DefaultEC2Region {
+			continue
+		}
+
+		var updatedSettings cloud.EC2ProviderSettings
+		if err := updatedSettings.FromDocument(doc); err != nil {
+			return errors.Wrapf(err, "reading provider settings at index %d", i)
+		}
+		updatedSettings.IAMInstanceProfileARN = d.TaskHostOverrides.IAMInstanceProfileARN
+		updatedSettings.SecurityGroupIDs = d.TaskHostOverrides.SecurityGroupIDs
+		updatedSettings.SubnetId = d.TaskHostOverrides.SubnetID
+		updatedSettings.DoNotAssignPublicIPv4Address = d.TaskHostOverrides.DoNotAssignPublicIPv4Address
+		updatedDoc, err := updatedSettings.ToDocument()
+		if err != nil {
+			return errors.Wrap(err, "overriding provider settings with task host overrides")
+		}
+
+		d.ProviderSettingsList[i] = updatedDoc
+	}
+	return nil
 }
 
 // saveHostStats saves the latest host usage stats for an EC2 distro.
