@@ -232,6 +232,9 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		AppendTags(c.FullDisplayName()).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
+			if conf.Distro != nil {
+				agentutil.WrapWithContainer(opts, conf.ContainerID)
+			}
 			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
 		})
 
