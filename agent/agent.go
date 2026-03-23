@@ -450,10 +450,9 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 				ID:     nt.TaskId,
 				Secret: nt.TaskSecret,
 			},
-			ranSetupGroup:   !shouldSetupGroup,
-			oomTracker:      jasper.NewOOMTracker(),
-			resourceMonitor: newResourceMonitor(logger.Execution()),
-			logger:          logger,
+			ranSetupGroup: !shouldSetupGroup,
+			oomTracker:    jasper.NewOOMTracker(),
+			logger:        logger,
 		}
 	} else {
 		tc = initialTC
@@ -492,6 +491,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
+
+	tc.resourceMonitor = newResourceMonitor(tc.logger.Execution())
 
 	var taskGroupDirMissing bool
 	if tc.ranSetupGroup {
