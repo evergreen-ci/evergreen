@@ -1465,7 +1465,6 @@ func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string)
 }
 
 // getNextTask finds a mainline task's next run that matches the given statuses.
-// Note that NextCompletedTask defaults to completed statuses if the array is empty.
 func getNextTask(ctx context.Context, obj *restModel.APITask, statuses []string) (*restModel.APITask, error) {
 	tsk, err := obj.ToService()
 	if err != nil {
