@@ -123,11 +123,11 @@ func Fetch() cli.Command {
 
 			shouldFetchSource := c.Bool(sourceFlagName)
 
-			var artifactName *string
+			var artifactName string
 			if c.IsSet(artifactNameFlagName) {
-				artifactName = utility.ToStringPtr(c.String(artifactNameFlagName))
+				artifactName = c.String(artifactNameFlagName)
 			}
-			shouldFetchArtifacts := c.Bool(artifactsFlagName) || artifactName != nil
+			shouldFetchArtifacts := c.Bool(artifactsFlagName) || artifactName != ""
 
 			var execution *int
 			if c.IsSet(executionFlagName) {
@@ -497,7 +497,7 @@ func resetGitRemoteToSSH(owner, repository, rootDir string) error {
 	return c.Run()
 }
 
-func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool, execution *int, artifactName *string) error {
+func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool, execution *int, artifactName string) error {
 	task, err := rc.GetTaskV2(taskId, execution)
 	if err != nil {
 		return errors.Wrapf(err, "getting task '%s'", taskId)
@@ -577,7 +577,7 @@ func getArtifactFolderName(task *restModel.APITask) string {
 // getUrlsChannel takes a seed task, and returns a channel that streams all of the artifacts
 // associated with the task and its dependencies. If "shallow" is set, only artifacts from the seed
 // task will be streamed.
-func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool, artifactName *string) (chan artifactDownload, error) {
+func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool, artifactName string) (chan artifactDownload, error) {
 	allTasks := []*restModel.APITask{seed}
 	if !shallow {
 		fmt.Printf("Gathering dependencies... ")
@@ -597,7 +597,7 @@ func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool, art
 					continue
 				}
 				// If artifact name is specified, skip artifacts that don't match.
-				if artifactName != nil && utility.FromStringPtr(f.Name) != utility.FromStringPtr(artifactName) {
+				if artifactName != "" && utility.FromStringPtr(f.Name) != artifactName {
 					continue
 				}
 				directoryName := getArtifactFolderName(t)

@@ -287,12 +287,12 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("throws an error if task with execution does not exist", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(5), nil)
+			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(5), "")
 			So(err, ShouldNotBeNil)
 		})
 
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(1), nil)
+			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(1), "")
 			So(err, ShouldBeNil)
 
 			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
@@ -308,7 +308,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		})
 
 		Convey("deep fetch artifacts should also download artifacts from dependency", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, nil)
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "")
 			So(err, ShouldBeNil)
 
 			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
@@ -325,7 +325,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		})
 
 		Convey("downloads only specified artifact when artifactName is provided", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, utility.ToStringPtr("Hello World"))
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "Hello World")
 			So(err, ShouldBeNil)
 
 			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
@@ -339,7 +339,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		})
 
 		Convey("downloads no files if artifactName does not match any artifacts", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, utility.ToStringPtr("doesnotexist"))
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "doesnotexist")
 			So(err, ShouldBeNil)
 			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
 			So(os.IsNotExist(err), ShouldBeTrue)
