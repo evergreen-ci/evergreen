@@ -167,9 +167,9 @@ func checkDependenciesMet(ctx context.Context, t *task.Task, cache map[string]ta
 
 }
 
-// SpawnHosts creates task intent hosts for a distro. It returns the created
+// CreateIntentHosts creates task intent hosts for a distro. It returns the created
 // hosts. The pool parameter is assumed to be the one from the distro passed in.
-func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
+func CreateIntentHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
 	startTime := time.Now()
 
 	if newHostsNeeded == 0 {

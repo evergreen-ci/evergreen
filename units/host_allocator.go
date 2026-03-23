@@ -230,7 +230,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostSpawningBegins := time.Now()
 	// Number of new hosts to be allocated
-	hostsSpawned, err := scheduler.SpawnHosts(ctx, *distro, nHosts, containerPool)
+	hostsSpawned, err := scheduler.CreateIntentHosts(ctx, *distro, nHosts, containerPool)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "spawning new hosts"))
 		return
