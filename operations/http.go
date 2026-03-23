@@ -643,6 +643,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	return reply.Patch, nil
 }
 
+// GetTask returns a task using the legacy V1 API.
 func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	resp, err := ac.get("tasks/"+taskId, nil)
 	if err != nil {
@@ -668,6 +669,39 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 		return nil, err
 	}
 	return &reply, nil
+}
+
+// GetTaskV2 returns a task using the V2 API. We return an APITask because it contains additional fields (namely patch number and artifacts)
+// that aren't available on the service Task.
+func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.APITask, error) {
+	urlToFetch := fmt.Sprintf("tasks/%s", taskId)
+	if execution != nil {
+		urlToFetch = fmt.Sprintf("%s?execution=%d", urlToFetch, utility.FromIntPtr(execution))
+	}
+
+	resp, err := ac.get2(urlToFetch, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, newAuthError(resp)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, newVPNError(resp)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	apiModel := &restModel.APITask{}
+	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
+		return nil, err
+	}
+	return apiModel, nil
 }
 
 // GetRecentVersions retrieves a list of recent versions for a project,

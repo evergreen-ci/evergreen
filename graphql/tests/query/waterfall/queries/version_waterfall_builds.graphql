@@ -1,0 +1,15 @@
+{
+  version(versionId: "evergreen_version1") {
+    id
+    waterfallBuilds {
+      id
+      buildVariant
+      displayName
+      version
+      tasks {
+        id
+        displayName
+      }
+    }
+  }
+}

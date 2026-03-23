@@ -123,7 +123,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
 		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
-			PrintTime:     true,
+			PrintTime:     r.FormValue("time") != "false",
 			TimeZone:      getUserTimeZone(MustHaveUser(r)),
 			PrintPriority: r.FormValue("priority") == "true",
 		}))

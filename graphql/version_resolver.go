@@ -607,7 +607,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 		return nil, nil
 	}
 
-	parentWaterfall, ok := graphql.GetFieldContext(ctx).Parent.Parent.Parent.Result.(*Waterfall)
+	parentWaterfall, ok := getWaterfallFromContext(ctx)
 	if ok {
 		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
 		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds

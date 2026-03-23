@@ -23,7 +23,12 @@ type S3UploadMetrics struct {
 // ArtifactMetrics tracks artifact upload metrics with an additional file count.
 type ArtifactMetrics struct {
 	S3UploadMetrics `bson:",inline"`
-	FileCount       int `bson:"file_count,omitempty" json:"file_count,omitempty"`
+	// Count is the total number of artifacts uploaded per task.
+	Count int `bson:"count,omitempty" json:"count,omitempty"`
+	// ArtifactWithMaxPutRequests is the highest PUT request count for a single artifact across all s3.put invocations per task.
+	ArtifactWithMaxPutRequests int `bson:"max_put_requests_per_file,omitempty" json:"max_put_requests_per_file,omitempty"`
+	// ArtifactWithMinPutRequests is the lowest PUT request count for a single artifact across all s3.put invocations per task.
+	ArtifactWithMinPutRequests int `bson:"min_put_requests_per_file,omitempty" json:"min_put_requests_per_file,omitempty"`
 }
 
 // FileMetrics contains metrics for a single uploaded file.
@@ -156,10 +161,18 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 }
 
 // IncrementArtifacts increments the artifact upload metrics (from s3.put commands).
-func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCount int) {
+// maxPuts and minPuts are the per-file extremes from this s3.put invocation.
+func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCount int, maxPuts int, minPuts int) {
 	s.Artifacts.PutRequests += putRequests
 	s.Artifacts.UploadBytes += uploadBytes
-	s.Artifacts.FileCount += fileCount
+	s.Artifacts.Count += fileCount
+
+	if maxPuts > s.Artifacts.ArtifactWithMaxPutRequests {
+		s.Artifacts.ArtifactWithMaxPutRequests = maxPuts
+	}
+	if s.Artifacts.ArtifactWithMinPutRequests == 0 || minPuts < s.Artifacts.ArtifactWithMinPutRequests {
+		s.Artifacts.ArtifactWithMinPutRequests = minPuts
+	}
 }
 
 // IncrementLogs increments the log chunk upload metrics.
@@ -173,6 +186,7 @@ func (s *S3Usage) IsZero() bool {
 	if s == nil {
 		return true
 	}
-	return s.Artifacts.PutRequests == 0 && s.Artifacts.UploadBytes == 0 && s.Artifacts.FileCount == 0 &&
+	return s.Artifacts.PutRequests == 0 && s.Artifacts.UploadBytes == 0 && s.Artifacts.Count == 0 &&
+		s.Artifacts.ArtifactWithMaxPutRequests == 0 && s.Artifacts.ArtifactWithMinPutRequests == 0 &&
 		s.Logs.PutRequests == 0 && s.Logs.UploadBytes == 0
 }
