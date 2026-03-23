@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/service"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -149,42 +150,42 @@ func TestResetGitRemoteToSSH(t *testing.T) {
 
 func TestGetArtifactFolderName(t *testing.T) {
 	testCases := map[string]struct {
-		task     service.RestTask
+		task     restModel.APITask
 		expected string
 	}{
 		"ShortBuildVariant": {
-			task: service.RestTask{
-				BuildVariant: "variant",
-				Requester:    evergreen.PatchVersionRequester,
-				PatchNumber:  123,
-				DisplayName:  "display",
+			task: restModel.APITask{
+				BuildVariant: utility.ToStringPtr("variant"),
+				Requester:    utility.ToStringPtr(evergreen.PatchVersionRequester),
+				Order:        123,
+				DisplayName:  utility.ToStringPtr("display"),
 			},
 			expected: "artifacts-patch-123_variant_display",
 		},
 		"LongBuildVariant": {
-			task: service.RestTask{
-				BuildVariant: strings.Repeat("a", 200),
-				Requester:    evergreen.PatchVersionRequester,
-				PatchNumber:  123,
-				DisplayName:  "display",
+			task: restModel.APITask{
+				BuildVariant: utility.ToStringPtr(strings.Repeat("a", 200)),
+				Requester:    utility.ToStringPtr(evergreen.PatchVersionRequester),
+				Order:        123,
+				DisplayName:  utility.ToStringPtr("display"),
 			},
 			expected: fmt.Sprintf("artifacts-patch-123_%s_display", strings.Repeat("a", 100)),
 		},
 		"ShortRevision": {
-			task: service.RestTask{
-				BuildVariant: "variant",
-				Requester:    evergreen.RepotrackerVersionRequester,
-				Revision:     "abcde",
-				DisplayName:  "display",
+			task: restModel.APITask{
+				BuildVariant: utility.ToStringPtr("variant"),
+				Requester:    utility.ToStringPtr(evergreen.RepotrackerVersionRequester),
+				Revision:     utility.ToStringPtr("abcde"),
+				DisplayName:  utility.ToStringPtr("display"),
 			},
 			expected: "artifacts-variant_display",
 		},
 		"LongRevision": {
-			task: service.RestTask{
-				BuildVariant: "variant",
-				Requester:    evergreen.RepotrackerVersionRequester,
-				Revision:     "abcde1234567",
-				DisplayName:  "display",
+			task: restModel.APITask{
+				BuildVariant: utility.ToStringPtr("variant"),
+				Requester:    utility.ToStringPtr(evergreen.RepotrackerVersionRequester),
+				Revision:     utility.ToStringPtr("abcde1234567"),
+				DisplayName:  utility.ToStringPtr("display"),
 			},
 			expected: "artifacts-abcde1-variant_display",
 		},

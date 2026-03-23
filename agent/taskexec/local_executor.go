@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -321,8 +323,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 	// Only process the specific block (i.e. pre, main, post) containing our target command
 	block := e.commandBlocks[targetBlockIdx]
 	cmdBlock := executor.CommandBlock{
-		Block:    block.blockType,
-		Commands: block.commands,
+		Block:       block.blockType,
+		Commands:    block.commands,
+		CanFailTask: block.canFailTask,
 	}
 	deps := e.createBlockDeps()
 
@@ -372,9 +375,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 				}
 				blockName := executor.BlockToLegacyName(blockType)
 				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
+			} else {
+				e.logger.Infof("Step %s completed successfully", targetCmd.FullStepNumber())
 			}
-
-			e.logger.Infof("Step %s completed successfully", targetCmd.FullStepNumber())
 			e.debugState.CurrentStepIndex++
 			executed = true
 		}
@@ -445,6 +448,16 @@ func (e *LocalExecutor) GetDebugState() *DebugState {
 func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
 	e.streamWriter = sw
 	producer := newStreamingLoggerProducer(sw)
+
+	baseSender := producer.Execution()
+	redactedSender := redactor.NewRedactingSender(baseSender, redactor.RedactionOptions{
+		Expansions:         e.taskConfig.NewExpansions,
+		Redacted:           e.taskConfig.Redacted,
+		InternalRedactions: e.taskConfig.InternalRedactions,
+		PreloadRedactions:  true,
+	})
+
+	producer.setSender(redactedSender)
 	e.streamingProducer = producer
 	e.loggerProducer = newStreamingLoggerProducerAdapter(producer)
 }
@@ -758,7 +771,43 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	for k, v := range expansionsAndVars.Vars {
 		e.taskConfig.Expansions.Put(k, v)
 	}
-	e.taskConfig.NewExpansions = agentutil.NewDynamicExpansions(expansionsAndVars.Expansions)
+
+	allExpansions := make(util.Expansions, len(expansionsAndVars.Expansions)+len(expansionsAndVars.Vars))
+	for k, v := range expansionsAndVars.Expansions {
+		allExpansions[k] = v
+	}
+	for k, v := range expansionsAndVars.Vars {
+		allExpansions[k] = v
+	}
+	e.taskConfig.NewExpansions = agentutil.NewDynamicExpansions(allExpansions)
+
+	if expansionsAndVars.PrivateVars == nil {
+		expansionsAndVars.PrivateVars = map[string]bool{}
+	}
+	for key := range expansionsAndVars.Vars {
+		if expansionsAndVars.PrivateVars[key] {
+			continue
+		}
+		for _, pattern := range expansionsAndVars.RedactKeys {
+			if strings.Contains(strings.ToLower(key), pattern) {
+				expansionsAndVars.PrivateVars[key] = true
+				break
+			}
+		}
+	}
+
+	var redacted []string
+	for key := range expansionsAndVars.PrivateVars {
+		redacted = append(redacted, key)
+	}
+	e.taskConfig.Redacted = redacted
+
+	internalRedactions := expansionsAndVars.InternalRedactions
+	if internalRedactions == nil {
+		internalRedactions = map[string]string{}
+	}
+	e.taskConfig.InternalRedactions = agentutil.NewDynamicExpansions(internalRedactions)
+
 	return nil
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -43,6 +44,7 @@ func Fetch() cli.Command {
 		useAppTokenName   = "use-app-token"
 		moduleTokensName  = "module_tokens"
 		revokeTokensName  = "revoke-tokens"
+		executionFlagName = "execution"
 	)
 
 	return cli.Command{
@@ -90,6 +92,10 @@ func Fetch() cli.Command {
 				Name:  noPatchFlagName,
 				Usage: "when using --source with a patch task, skip applying the patch",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(executionFlagName, "e"),
+				Usage: "specify the execution number of the task. defaults to latest if not provided",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireClientConfig,
@@ -114,6 +120,15 @@ func Fetch() cli.Command {
 			useAppToken := c.Bool(useAppTokenName)
 			revokeTokens := c.Bool(revokeTokensName)
 			moduleTokens := c.StringSlice(moduleTokensName)
+
+			var execution *int
+			if c.IsSet(executionFlagName) {
+				stringAsInt, err := strconv.Atoi(c.String(executionFlagName))
+				if err != nil {
+					return errors.Wrap(err, "invalid execution number")
+				}
+				execution = utility.ToIntPtr(stringAsInt)
+			}
 
 			moduleTokensMap := parseModuleTokens(moduleTokens)
 
@@ -145,7 +160,7 @@ func Fetch() cli.Command {
 			}
 
 			if doFetchArtifacts {
-				if err = fetchArtifacts(rc, taskID, wd, shallow); err != nil {
+				if err = fetchArtifacts(rc, taskID, wd, shallow, execution); err != nil {
 					return err
 				}
 			}
@@ -474,8 +489,8 @@ func resetGitRemoteToSSH(owner, repository, rootDir string) error {
 	return c.Run()
 }
 
-func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool) error {
-	task, err := rc.GetTask(taskId)
+func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool, execution *int) error {
+	task, err := rc.GetTaskV2(taskId, execution)
 	if err != nil {
 		return errors.Wrapf(err, "getting task '%s'", taskId)
 	}
@@ -495,18 +510,18 @@ func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow boo
 // a list of all tasks related to it in the dependency graph. It performs this by doing successive
 // calls to the API to crawl the graph, keeping track of any already-processed tasks in the "found"
 // map.
-func searchDependencies(rc *legacyClient, seed *service.RestTask, found map[string]bool) ([]*service.RestTask, error) {
-	out := []*service.RestTask{}
+func searchDependencies(rc *legacyClient, seed *restModel.APITask, found map[string]bool) ([]*restModel.APITask, error) {
+	out := []*restModel.APITask{}
 	for _, dep := range seed.DependsOn {
 		if _, ok := found[dep.TaskId]; ok {
 			continue
 		}
-		t, err := rc.GetTask(dep.TaskId)
+		t, err := rc.GetTaskV2(dep.TaskId, nil)
 		if err != nil {
 			return nil, err
 		}
 		if t != nil {
-			found[t.Id] = true
+			found[utility.FromStringPtr(t.Id)] = true
 			out = append(out, t)
 			more, err := searchDependencies(rc, t, found)
 			if err != nil {
@@ -514,7 +529,7 @@ func searchDependencies(rc *legacyClient, seed *service.RestTask, found map[stri
 			}
 			out = append(out, more...)
 			for _, d := range more {
-				found[d.Id] = true
+				found[utility.FromStringPtr(d.Id)] = true
 			}
 		}
 	}
@@ -526,27 +541,36 @@ type artifactDownload struct {
 	path string
 }
 
-func getArtifactFolderName(task *service.RestTask) string {
-	bvTruncated := task.BuildVariant
-	if len(task.BuildVariant) > 99 {
-		bvTruncated = task.BuildVariant[:100]
+// getArtifactFolderName returns the name of the folder that an artifact will be downloaded to.
+// If the task is from a patch, the format is `artifacts-patch-{patch_num}_{build_variant}_{task_name}`.
+// If the task has an associated revision, the format is `artifacts-{revision}_{build_variant}_{task_name}`.
+// Else, the format is `artifacts-{build_variant}_{task_name}`.
+// Note that build_variant will be truncated if it exceeds 100 characters.
+func getArtifactFolderName(task *restModel.APITask) string {
+	buildVariantName := utility.FromStringPtr(task.BuildVariant)
+	bvTruncated := buildVariantName
+	if len(buildVariantName) > 99 {
+		bvTruncated = buildVariantName[:100]
 	}
 
-	if evergreen.IsPatchRequester(task.Requester) {
-		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, bvTruncated, task.DisplayName)
+	requester := utility.FromStringPtr(task.Requester)
+	displayName := utility.FromStringPtr(task.DisplayName)
+	if evergreen.IsPatchRequester(requester) {
+		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.Order, bvTruncated, displayName)
 	}
 
-	if len(task.Revision) > 5 {
-		return fmt.Sprintf("artifacts-%v-%v_%v", task.Revision[0:6], bvTruncated, task.DisplayName)
+	revision := utility.FromStringPtr(task.Revision)
+	if len(revision) > 5 {
+		return fmt.Sprintf("artifacts-%v-%v_%v", revision[0:6], bvTruncated, displayName)
 	}
-	return fmt.Sprintf("artifacts-%v_%v", bvTruncated, task.DisplayName)
+	return fmt.Sprintf("artifacts-%v_%v", bvTruncated, displayName)
 }
 
 // getUrlsChannel takes a seed task, and returns a channel that streams all of the artifacts
 // associated with the task and its dependencies. If "shallow" is set, only artifacts from the seed
 // task will be streamed.
-func getUrlsChannel(rc *legacyClient, seed *service.RestTask, shallow bool) (chan artifactDownload, error) {
-	allTasks := []*service.RestTask{seed}
+func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool) (chan artifactDownload, error) {
+	allTasks := []*restModel.APITask{seed}
 	if !shallow {
 		fmt.Printf("Gathering dependencies... ")
 		deps, err := searchDependencies(rc, seed, map[string]bool{})
@@ -560,13 +584,12 @@ func getUrlsChannel(rc *legacyClient, seed *service.RestTask, shallow bool) (cha
 	urls := make(chan artifactDownload)
 	go func() {
 		for _, t := range allTasks {
-			for _, f := range t.Files {
+			for _, f := range t.Artifacts {
 				if f.IgnoreForFetch {
 					continue
 				}
-
 				directoryName := getArtifactFolderName(t)
-				urls <- artifactDownload{f.URL, directoryName}
+				urls <- artifactDownload{utility.FromStringPtr(f.Link), directoryName}
 			}
 		}
 		close(urls)
