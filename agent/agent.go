@@ -69,7 +69,10 @@ type Agent struct {
 	addMetadataTagMutex sync.RWMutex
 	tracer              trace.Tracer
 	otelGrpcConn        *grpc.ClientConn
-	closers             []closerOp
+	closers []closerOp
+	// currentContainer holds the active per-task isolation container, if any.
+	// Set and cleared by maybeStartContainer/destroyContainer.
+	currentContainer interface{ Destroy(context.Context) error }
 }
 
 // Options contains startup options for an Agent.
@@ -715,6 +718,12 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 			}
 		}
 	}()
+
+	if err := a.maybeStartContainer(tskCtx, tc.taskConfig); err != nil {
+		tc.logger.Execution().Errorf("Failed to start isolation container, task will run without isolation: %s", err)
+		// Do not fail the task — degrade gracefully.
+	}
+	defer a.destroyContainer(ctx, tc.taskConfig)
 
 	grip.Info(ctx, message.Fields{
 		"message": "running task",
