@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -909,6 +910,119 @@ func PopulateUnstickVolumesJob() amboy.QueueOperation {
 		}
 
 		return errors.Wrap(catcher.Resolve(), "populating expire volume jobs")
+	}
+}
+
+// defaultRetryFailedLogMoveLookbackMonths is used when the admin setting is unset or 0.
+const defaultRetryFailedLogMoveLookbackMonths = 2
+
+// defaultRetryFailedLogMoveMaxJobsPerRun caps enqueued jobs to avoid S3 rate limiting.
+const defaultRetryFailedLogMoveMaxJobsPerRun = 50
+
+// PopulateRetryFailedLogMoveJobs finds failed tasks whose logs are still in the regular
+// bucket (move job failed or never ran) and enqueues one move-logs-to-failed-bucket job per task.
+// Caps enqueued jobs per run to avoid S3 rate limiting; newest failures are prioritized.
+func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		settings := env.Settings()
+		failedBucketCfg := settings.Buckets.LogBucketFailedTasks
+		if failedBucketCfg.Name == "" {
+			grip.Info(message.Fields{
+				"message": "retry failed log move jobs skipped: log_bucket_failed_tasks is not configured",
+			})
+			return nil
+		}
+
+		lookbackMonths := settings.Buckets.RetryFailedLogMoveLookbackMonths
+		if lookbackMonths <= 0 {
+			lookbackMonths = defaultRetryFailedLogMoveLookbackMonths
+		}
+
+		maxJobs := settings.Buckets.RetryFailedLogMoveMaxJobsPerRun
+		if maxJobs <= 0 {
+			maxJobs = defaultRetryFailedLogMoveMaxJobsPerRun
+		}
+
+		cutoff := time.Now().AddDate(0, -lookbackMonths, 0)
+		filter := bson.M{
+			task.StatusKey:      evergreen.TaskFailed,
+			task.FinishTimeKey:  bson.M{"$gte": cutoff},
+			task.DisplayOnlyKey: bson.M{"$ne": true},
+			task.TaskOutputInfoKey + ".task_logs.bucket_config.name": bson.M{"$exists": true, "$ne": failedBucketCfg.Name},
+		}
+		if len(settings.Buckets.LongRetentionProjects) > 0 {
+			filter[task.ProjectKey] = bson.M{"$nin": settings.Buckets.LongRetentionProjects}
+		}
+
+		query := db.Query(filter).WithFields(
+			task.IdKey, task.ProjectKey, task.FinishTimeKey, task.TaskOutputInfoKey,
+		)
+		tasks, err := task.FindAll(ctx, query)
+		if err != nil {
+			return errors.Wrap(err, "finding failed tasks whose logs need moving")
+		}
+
+		var toRetry []*task.Task
+		for i := range tasks {
+			t := &tasks[i]
+			output, ok := t.GetTaskOutputSafe()
+			if !ok || output.TaskLogs.BucketConfig.Name == "" {
+				continue
+			}
+			if output.TaskLogs.BucketConfig.Name == failedBucketCfg.Name {
+				continue
+			}
+			toRetry = append(toRetry, t)
+		}
+
+		if len(toRetry) == 0 {
+			grip.Info(message.Fields{
+				"message":                 "retry failed log move jobs",
+				"tasks_found":             0,
+				"task_ids_all_candidates": []string{},
+				"task_ids_attempt":        []string{},
+				"lookback_months":         lookbackMonths,
+				"max_jobs_per_run":        maxJobs,
+			})
+			return nil
+		}
+
+		tasksFound := len(toRetry)
+		taskIDsAllCandidates := make([]string, 0, len(toRetry))
+		for _, t := range toRetry {
+			taskIDsAllCandidates = append(taskIDsAllCandidates, t.Id)
+		}
+		sort.Slice(toRetry, func(i, j int) bool {
+			return toRetry[i].FinishTime.After(toRetry[j].FinishTime)
+		})
+		if len(toRetry) > maxJobs {
+			toRetry = toRetry[:maxJobs]
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+		taskIDsAttempt := make([]string, 0, len(toRetry))
+		for _, t := range toRetry {
+			if t.TaskOutputInfo == nil {
+				continue
+			}
+			taskIDsAttempt = append(taskIDsAttempt, t.Id)
+			sourceCfg := t.TaskOutputInfo.TaskLogs.BucketConfig
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerWeeklyRetry)), "enqueueing move logs job for task '%s'", t.Id)
+		}
+
+		grip.Info(message.Fields{
+			"message":                 "retry failed log move jobs",
+			"tasks_found":             tasksFound,
+			"task_ids_all_candidates": taskIDsAllCandidates,
+			"task_ids_attempt":        taskIDsAttempt,
+			"task_count_attempt":      len(taskIDsAttempt),
+			"jobs_enqueued":           len(taskIDsAttempt) - catcher.Len(),
+			"lookback_months":         lookbackMonths,
+			"max_jobs_per_run":        maxJobs,
+		})
+
+		return catcher.Resolve()
 	}
 }
 
