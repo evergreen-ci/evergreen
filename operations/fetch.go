@@ -107,19 +107,12 @@ func Fetch() cli.Command {
 			setPlainLogger,
 			requireStringFlag(taskFlagName),
 			requireWorkingDirFlag(dirFlagName),
-			func(c *cli.Context) error {
-				if c.IsSet(artifactsFlagName) && c.IsSet(artifactNameFlagName) {
-					return errors.New("cannot specify both --artifacts and --artifact_name; use --artifact_name to specify a single artifact to fetch, or --artifacts to fetch all artifacts for the task")
-				}
-				if c.Bool(sourceFlagName) || c.Bool(artifactsFlagName) || c.IsSet(artifactNameFlagName) {
-					return nil
-				}
-				return errors.New("must specify at least one of either --artifacts, --artifact_name, or --source")
-			}),
+			mutuallyExclusiveArgs(false, artifactsFlagName, artifactNameFlagName),
+			requireAtLeastOneFlag(sourceFlagName, artifactsFlagName, artifactNameFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(ConfFlagName)
 			wd := c.String(dirFlagName)
-			doFetchSource := c.Bool(sourceFlagName)
 			taskID := c.String(taskFlagName)
 			noPatch := c.Bool(noPatchFlagName)
 			shallow := c.Bool(shallowFlagName)
@@ -128,11 +121,13 @@ func Fetch() cli.Command {
 			revokeTokens := c.Bool(revokeTokensName)
 			moduleTokens := c.StringSlice(moduleTokensName)
 
+			shouldFetchSource := c.Bool(sourceFlagName)
+
 			var artifactName *string
 			if c.IsSet(artifactNameFlagName) {
 				artifactName = utility.ToStringPtr(c.String(artifactNameFlagName))
 			}
-			doFetchArtifacts := c.Bool(artifactsFlagName) || artifactName != nil
+			shouldFetchArtifacts := c.Bool(artifactsFlagName) || artifactName != nil
 
 			var execution *int
 			if c.IsSet(executionFlagName) {
@@ -166,13 +161,13 @@ func Fetch() cli.Command {
 
 			cleanupWhyIsMyDataMissingFile(wd)
 
-			if doFetchSource {
+			if shouldFetchSource {
 				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
 					return err
 				}
 			}
 
-			if doFetchArtifacts {
+			if shouldFetchArtifacts {
 				if err = fetchArtifacts(rc, taskID, wd, shallow, execution, artifactName); err != nil {
 					return err
 				}
