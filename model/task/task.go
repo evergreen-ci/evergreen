@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/ec2mount"
 	"github.com/evergreen-ci/evergreen/model/ec2settings"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -41,6 +40,10 @@ import (
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 )
+
+// hostCollectionName is the MongoDB hosts collection name (must match host.Collection).
+// We use a local constant instead of host.Collection to avoid an import cycle: model/host imports model/task.
+const hostCollectionName = "hosts"
 
 const (
 	dependencyKey = "dependencies"
@@ -4182,7 +4185,7 @@ func getHostRegionForTask(ctx context.Context, t *Task) string {
 	var result struct {
 		Zone string `bson:"zone"`
 	}
-	err := evergreen.GetEnvironment().DB().Collection(host.Collection).FindOne(ctx,
+	err := evergreen.GetEnvironment().DB().Collection(hostCollectionName).FindOne(ctx,
 		bson.M{"_id": t.HostId},
 		options.FindOne().SetProjection(bson.M{"zone": 1}),
 	).Decode(&result)
