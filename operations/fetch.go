@@ -123,10 +123,7 @@ func Fetch() cli.Command {
 
 			shouldFetchSource := c.Bool(sourceFlagName)
 
-			var artifactName string
-			if c.IsSet(artifactNameFlagName) {
-				artifactName = c.String(artifactNameFlagName)
-			}
+			artifactName := c.String(artifactNameFlagName)
 			shouldFetchArtifacts := c.Bool(artifactsFlagName) || artifactName != ""
 
 			var execution *int
