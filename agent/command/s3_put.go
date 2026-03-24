@@ -428,44 +428,6 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 
 }
 
-func readAdditionalLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AdditionalLink, error) {
-	fileLoc := GetWorkingDirectory(conf, fn)
-	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
-		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
-	}
-	jsonFile, err := os.Open(fileLoc)
-	if err != nil {
-		return nil, errors.Wrapf(err, "opening file '%s'", fn)
-	}
-	defer jsonFile.Close()
-
-	var data []byte
-	data, err = io.ReadAll(jsonFile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
-	}
-
-	var additionalLinks []artifact.AdditionalLink
-	if err := json.Unmarshal(data, &additionalLinks); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling JSON from file")
-	}
-
-	// Expansions may be present in the name or link fields.
-	for i := range additionalLinks {
-		expandedName, err := conf.Expansions.ExpandString(additionalLinks[i].Name)
-		if err != nil {
-			return nil, errors.Wrapf(err, "applying expansions to additional link name '%s'", additionalLinks[i].Name)
-		}
-		expandedLink, err := conf.Expansions.ExpandString(additionalLinks[i].Link)
-		if err != nil {
-			return nil, errors.Wrapf(err, "applying expansions to additional link URL '%s'", additionalLinks[i].Link)
-		}
-		additionalLinks[i].Name = expandedName
-		additionalLinks[i].Link = expandedLink
-	}
-	return additionalLinks, nil
-}
-
 // Wrapper around the Put() function to retry it.
 func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	backoffCounter := getS3OpBackoff()
@@ -751,4 +713,42 @@ func (s3pc *s3put) getRoleARN() string {
 		return s3pc.assumedRoleARN
 	}
 	return s3pc.RoleARN
+}
+
+func readAdditionalLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AdditionalLink, error) {
+	fileLoc := GetWorkingDirectory(conf, fn)
+	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
+		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
+	}
+	jsonFile, err := os.Open(fileLoc)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening file '%s'", fn)
+	}
+	defer jsonFile.Close()
+
+	var data []byte
+	data, err = io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
+	}
+
+	var additionalLinks []artifact.AdditionalLink
+	if err := json.Unmarshal(data, &additionalLinks); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling JSON from file")
+	}
+
+	// Expansions may be present in the name or link fields.
+	for i := range additionalLinks {
+		expandedName, err := conf.Expansions.ExpandString(additionalLinks[i].Name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to additional link name '%s'", additionalLinks[i].Name)
+		}
+		expandedLink, err := conf.Expansions.ExpandString(additionalLinks[i].Link)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to additional link URL '%s'", additionalLinks[i].Link)
+		}
+		additionalLinks[i].Name = expandedName
+		additionalLinks[i].Link = expandedLink
+	}
+	return additionalLinks, nil
 }
