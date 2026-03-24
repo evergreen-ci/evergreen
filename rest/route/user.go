@@ -358,6 +358,9 @@ type UsersPermissionsInput struct {
 type UsersPermissionsResult map[string]gimlet.Permissions
 
 //lint:ignore U1000 Swagger-only type, included because this API route returns an external type
+type swaggerPermissions map[string]int
+
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
 type swaggerUsersPermissionsResult map[string]swaggerPermissions
 
 type allUsersPermissionsGetHandler struct {
@@ -501,9 +504,6 @@ type swaggerPermissionSummary struct {
 //lint:ignore U1000 Swagger-only type, included because this API route returns an external type
 type swaggerPermissionsForResources map[string]swaggerPermissions
 
-//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
-type swaggerPermissions map[string]int
-
 func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	h.userID = vars["user_id"]
@@ -564,6 +564,279 @@ func removeHiddenProjects(ctx context.Context, permissions []rolemanager.Permiss
 		}
 	}
 	return nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /users/{user_id}/permission-details
+
+type userPermissionDetailsGetHandler struct {
+	rm            gimlet.RoleManager
+	userID        string
+	projectFilter string
+	resourceType  string
+	includeAll    bool
+}
+
+func makeGetUserPermissionDetails(rm gimlet.RoleManager) gimlet.RouteHandler {
+	return &userPermissionDetailsGetHandler{rm: rm}
+}
+
+// @Summary		Get user permission details
+// @Description	Returns what this user can do for each project or distro.
+// @Description	By default shows only granted permissions. With all=true, shows all levels with a true/false for each.
+// @Tags			users
+// @Router			/users/{user_id}/permission-details [get]
+// @Security		Api-User || Api-Key
+// @Param			user_id	path		string	true	"the user's ID"
+// @Param			project	query		string	false	"If included, only returns permissions for the specified project (identifier or internal ID)"
+// @Param			type	query		string	false	"Resource type: 'project' (default) or 'distro'"
+// @Param			all		query		boolean	false	"If true, includes baseline permissions all logged-in users share"
+// @Success		200		{object}	model.APIUserProjectPermissions
+func (h *userPermissionDetailsGetHandler) Factory() gimlet.RouteHandler {
+	return &userPermissionDetailsGetHandler{rm: h.rm}
+}
+
+func (h *userPermissionDetailsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.userID = vars["user_id"]
+	if h.userID == "" {
+		return errors.New("no user found")
+	}
+	h.projectFilter = r.URL.Query().Get("project")
+	h.resourceType = r.URL.Query().Get("type")
+	if h.resourceType == "" {
+		h.resourceType = evergreen.ProjectResourceType
+	}
+	h.includeAll = r.URL.Query().Get("all") == "true"
+	return nil
+}
+
+func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	u, err := user.FindOneById(ctx, h.userID)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error finding user",
+			"route":   "userPermissionDetailsGetHandler",
+		}))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding user '%s'", h.userID))
+	}
+	if u == nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Errorf("user '%s' not found", h.userID))
+	}
+	rolesToSearch := u.SystemRoles
+	if !h.includeAll {
+		rolesToSearch, _ = utility.StringSliceSymmetricDifference(u.SystemRoles, evergreen.GeneralAccessRoles)
+	}
+	permissionSummaries, err := rolemanager.PermissionSummaryForRoles(ctx, rolesToSearch, h.rm)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting permissions for user '%s'", h.userID))
+	}
+
+	var resourcePermissions rolemanager.PermissionsForResources
+	for _, summary := range permissionSummaries {
+		if summary.Type == h.resourceType {
+			resourcePermissions = summary.Permissions
+			break
+		}
+	}
+	var permissionKeys []string
+	if h.resourceType == evergreen.ProjectResourceType {
+		permissionKeys = evergreen.ProjectPermissions
+	} else {
+		permissionKeys = evergreen.DistroPermissions
+	}
+	legend := buildLegend(permissionKeys)
+
+	if len(resourcePermissions) == 0 {
+		if h.includeAll {
+			return gimlet.NewJSONResponse(&model.APIUserProjectPermissionsFull{
+				UserID:   h.userID,
+				Legend:   legend,
+				Projects: []model.APIProjectPermissionSummaryFull{},
+			})
+		}
+		return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
+			UserID:   h.userID,
+			Legend:   legend,
+			Projects: []model.APIProjectPermissionSummary{},
+		})
+	}
+
+	if h.projectFilter != "" {
+		ref, err := serviceModel.FindBranchProjectRef(ctx, h.projectFilter)
+		if err != nil {
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding project '%s'", h.projectFilter))
+		}
+		if ref == nil {
+			return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("project '%s' not found", h.projectFilter),
+			})
+		}
+		if perms, ok := resourcePermissions[ref.Id]; ok {
+			resourcePermissions = rolemanager.PermissionsForResources{ref.Id: perms}
+		} else {
+			if h.includeAll {
+				return gimlet.NewJSONResponse(&model.APIUserProjectPermissionsFull{
+					UserID:   h.userID,
+					Legend:   legend,
+					Projects: []model.APIProjectPermissionSummaryFull{},
+				})
+			}
+			return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
+				UserID:   h.userID,
+				Legend:   legend,
+				Projects: []model.APIProjectPermissionSummary{},
+			})
+		}
+	}
+
+	if h.includeAll {
+		summaries, err := buildPermissionDetailSummariesFull(ctx, h.resourceType, resourcePermissions, permissionKeys)
+		if err != nil {
+			return gimlet.NewJSONInternalErrorResponse(err)
+		}
+		return gimlet.NewJSONResponse(&model.APIUserProjectPermissionsFull{
+			UserID:   h.userID,
+			Legend:   legend,
+			Projects: summaries,
+		})
+	}
+
+	summaries, err := buildPermissionDetailSummaries(ctx, h.resourceType, resourcePermissions, permissionKeys)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(err)
+	}
+	return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
+		UserID:   h.userID,
+		Legend:   legend,
+		Projects: summaries,
+	})
+}
+
+// buildPermissionDetailSummaries returns granted-only permission summaries (default view).
+func buildPermissionDetailSummaries(ctx context.Context, resourceType string, resourcePermissions rolemanager.PermissionsForResources, permissionKeys []string) ([]model.APIProjectPermissionSummary, error) {
+	if resourceType == evergreen.ProjectResourceType {
+		resourceIDs := make([]string, 0, len(resourcePermissions))
+		for id := range resourcePermissions {
+			resourceIDs = append(resourceIDs, id)
+		}
+		projectRefs, err := serviceModel.FindProjectRefsByIds(ctx, resourceIDs...)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting project refs")
+		}
+		summaries := make([]model.APIProjectPermissionSummary, 0, len(projectRefs))
+		for _, ref := range projectRefs {
+			if utility.FromBoolPtr(ref.Hidden) {
+				continue
+			}
+			summaries = append(summaries, model.APIProjectPermissionSummary{
+				ProjectID:         ref.Id,
+				ProjectIdentifier: ref.Identifier,
+				Permissions:       buildGrantedPermissions(resourcePermissions[ref.Id], permissionKeys),
+			})
+		}
+		return summaries, nil
+	}
+
+	summaries := make([]model.APIProjectPermissionSummary, 0, len(resourcePermissions))
+	for id, perms := range resourcePermissions {
+		summaries = append(summaries, model.APIProjectPermissionSummary{
+			ProjectID:         id,
+			ProjectIdentifier: id,
+			Permissions:       buildGrantedPermissions(perms, permissionKeys),
+		})
+	}
+	return summaries, nil
+}
+
+// buildPermissionDetailSummariesFull returns full true/false permission summaries (all=true view).
+func buildPermissionDetailSummariesFull(ctx context.Context, resourceType string, resourcePermissions rolemanager.PermissionsForResources, permissionKeys []string) ([]model.APIProjectPermissionSummaryFull, error) {
+	if resourceType == evergreen.ProjectResourceType {
+		resourceIDs := make([]string, 0, len(resourcePermissions))
+		for id := range resourcePermissions {
+			resourceIDs = append(resourceIDs, id)
+		}
+		projectRefs, err := serviceModel.FindProjectRefsByIds(ctx, resourceIDs...)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting project refs")
+		}
+		summaries := make([]model.APIProjectPermissionSummaryFull, 0, len(projectRefs))
+		for _, ref := range projectRefs {
+			if utility.FromBoolPtr(ref.Hidden) {
+				continue
+			}
+			summaries = append(summaries, model.APIProjectPermissionSummaryFull{
+				ProjectID:         ref.Id,
+				ProjectIdentifier: ref.Identifier,
+				Permissions:       buildAllPermissions(resourcePermissions[ref.Id], permissionKeys),
+			})
+		}
+		return summaries, nil
+	}
+
+	summaries := make([]model.APIProjectPermissionSummaryFull, 0, len(resourcePermissions))
+	for id, perms := range resourcePermissions {
+		summaries = append(summaries, model.APIProjectPermissionSummaryFull{
+			ProjectID:         id,
+			ProjectIdentifier: id,
+			Permissions:       buildAllPermissions(perms, permissionKeys),
+		})
+	}
+	return summaries, nil
+}
+
+// buildGrantedPermissions returns granted permission levels grouped by category.
+// Categories with no access are omitted.
+func buildGrantedPermissions(userPerms gimlet.Permissions, permissionKeys []string) map[string][]string {
+	permissions := map[string][]string{}
+	for _, key := range permissionKeys {
+		var granted []string
+		for _, level := range evergreen.GetPermissionLevelsForPermissionKey(key) {
+			if level.Value == 0 {
+				continue
+			}
+			if userPerms[key] >= level.Value {
+				granted = append(granted, level.Description)
+			}
+		}
+		if len(granted) > 0 {
+			permissions[evergreen.GetDisplayNameForPermissionKey(key)] = granted
+		}
+	}
+	return permissions
+}
+
+// buildLegend returns all possible permission level descriptions for each category.
+func buildLegend(permissionKeys []string) map[string][]string {
+	legend := map[string][]string{}
+	for _, key := range permissionKeys {
+		category := evergreen.GetDisplayNameForPermissionKey(key)
+		for _, level := range evergreen.GetPermissionLevelsForPermissionKey(key) {
+			if level.Value == 0 {
+				continue
+			}
+			legend[category] = append(legend[category], level.Description)
+		}
+	}
+	return legend
+}
+
+// buildAllPermissions returns all permission levels grouped by category, with true/false for each level.
+func buildAllPermissions(userPerms gimlet.Permissions, permissionKeys []string) map[string]map[string]bool {
+	permissions := map[string]map[string]bool{}
+	for _, key := range permissionKeys {
+		category := evergreen.GetDisplayNameForPermissionKey(key)
+		permissions[category] = map[string]bool{}
+		for _, level := range evergreen.GetPermissionLevelsForPermissionKey(key) {
+			if level.Value == 0 {
+				continue
+			}
+			permissions[category][level.Description] = userPerms[key] >= level.Value
+		}
+	}
+	return permissions
 }
 
 type rolesPostRequest struct {
