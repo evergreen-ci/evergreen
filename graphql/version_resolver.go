@@ -616,14 +616,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 		}
 	}
 
-	buildIds := make([]string, 0, len(obj.BuildVariantStatus))
-	for _, bvs := range obj.BuildVariantStatus {
-		if bvs.BuildId != nil {
-			buildIds = append(buildIds, *bvs.BuildId)
-		}
-	}
-
-	builds, err := model.GetVersionBuilds(ctx, versionID, buildIds)
+	builds, err := model.GetVersionBuilds(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}

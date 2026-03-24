@@ -318,6 +318,7 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	pipeline = append(pipeline, bson.M{"$limit": MaxWaterfallVersionLimit})
+	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -332,13 +333,19 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 	return res, nil
 }
 
-// GetVersionBuilds returns a list of builds with populated tasks for the given build IDs.
+// GetVersionBuilds returns a list of builds with populated tasks for the given version.
 // Tasks are grouped by display task when applicable - execution tasks are shown under their
 // parent display task, while regular tasks (not part of a display task) are shown individually.
-func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) ([]WaterfallBuild, error) {
+func GetVersionBuilds(ctx context.Context, versionID string) ([]WaterfallBuild, error) {
 	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
 
-	if len(buildIds) == 0 {
+	// TODO DEVPROD-29422: this is only necessary because APIVersion doesn't include BuildIds, and GetAllWaterfallVersions projects out Version.BuildVariants for performance
+	v, err := VersionFindOneId(ctx, versionID)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding version")
+	}
+
+	if len(v.BuildIds) == 0 {
 		return []WaterfallBuild{}, nil
 	}
 
@@ -348,7 +355,7 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 	// This excludes execution tasks that are part of a display task.
 	match := bson.M{
 		task.VersionKey:   versionID,
-		task.BuildIdKey:   bson.M{"$in": buildIds},
+		task.BuildIdKey:   bson.M{"$in": v.BuildIds},
 		task.RequesterKey: bson.M{"$in": evergreen.SystemVersionRequesterTypes},
 		"$or": []bson.M{
 			{task.DisplayOnlyKey: true},
