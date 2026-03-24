@@ -184,6 +184,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, apiSettings.ServiceFlags.ElasticIPsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.PodDiagnosticsDisabled, apiSettings.ServiceFlags.PodDiagnosticsDisabled)
 	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, apiSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
 	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, apiSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
@@ -203,6 +204,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Spawnhost.UnexpirableHostsPerUser, *apiSettings.Spawnhost.UnexpirableHostsPerUser)
 	assert.Equal(testSettings.Spawnhost.UnexpirableVolumesPerUser, *apiSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.Equal(testSettings.DebugSpawnHosts.SetupScript, utility.FromStringPtr(apiSettings.DebugSpawnHosts.SetupScript))
+	assert.Equal(testSettings.Diagnostics.S3BucketName, utility.FromStringPtr(apiSettings.Diagnostics.S3BucketName))
+	assert.Equal(testSettings.Diagnostics.S3Prefix, utility.FromStringPtr(apiSettings.Diagnostics.S3Prefix))
 	assert.Equal(testSettings.Tracer.Enabled, *apiSettings.Tracer.Enabled)
 	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
 	assert.Equal(testSettings.Tracer.CollectorInternalEndpoint, *apiSettings.Tracer.CollectorInternalEndpoint)
@@ -295,6 +298,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, apiSettings.ServiceFlags.ElasticIPsDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.PodDiagnosticsDisabled, dbSettings.ServiceFlags.PodDiagnosticsDisabled)
 	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
 	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
@@ -314,6 +318,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableHostsPerUser, dbSettings.Spawnhost.UnexpirableHostsPerUser)
 	assert.EqualValues(testSettings.Spawnhost.UnexpirableVolumesPerUser, dbSettings.Spawnhost.UnexpirableVolumesPerUser)
 	assert.EqualValues(testSettings.DebugSpawnHosts.SetupScript, dbSettings.DebugSpawnHosts.SetupScript)
+	assert.EqualValues(testSettings.Diagnostics.S3BucketName, dbSettings.Diagnostics.S3BucketName)
+	assert.EqualValues(testSettings.Diagnostics.S3Prefix, dbSettings.Diagnostics.S3Prefix)
 	assert.EqualValues(testSettings.Tracer.Enabled, dbSettings.Tracer.Enabled)
 	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
 	assert.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, dbSettings.Tracer.CollectorInternalEndpoint)
@@ -832,5 +838,47 @@ func TestAPICostConfigWithS3Cost(t *testing.T) {
 			assert.Equal(t, 0.0, svc.S3Cost.Upload.UploadCostDiscount)
 			assert.Equal(t, 0.0, svc.S3Cost.Storage.StandardStorageCostDiscount)
 		})
+	})
+}
+
+func TestAPIDiagnosticsConfig(t *testing.T) {
+	t.Run("BuildFromServiceAndToService", func(t *testing.T) {
+		original := evergreen.DiagnosticsConfig{
+			S3BucketName: "my-diagnostics-bucket",
+			S3Prefix:     "pprof/prod",
+		}
+
+		api := APIDiagnosticsConfig{}
+		require.NoError(t, api.BuildFromService(original))
+		assert.Equal(t, original.S3BucketName, utility.FromStringPtr(api.S3BucketName))
+		assert.Equal(t, original.S3Prefix, utility.FromStringPtr(api.S3Prefix))
+
+		svcInterface, err := api.ToService()
+		require.NoError(t, err)
+		svc, ok := svcInterface.(evergreen.DiagnosticsConfig)
+		require.True(t, ok)
+		assert.Equal(t, original.S3BucketName, svc.S3BucketName)
+		assert.Equal(t, original.S3Prefix, svc.S3Prefix)
+	})
+
+	t.Run("BuildFromServiceWithEmptyFields", func(t *testing.T) {
+		original := evergreen.DiagnosticsConfig{}
+
+		api := APIDiagnosticsConfig{}
+		require.NoError(t, api.BuildFromService(original))
+		assert.Empty(t, utility.FromStringPtr(api.S3BucketName))
+		assert.Empty(t, utility.FromStringPtr(api.S3Prefix))
+
+		svcInterface, err := api.ToService()
+		require.NoError(t, err)
+		svc, ok := svcInterface.(evergreen.DiagnosticsConfig)
+		require.True(t, ok)
+		assert.Empty(t, svc.S3BucketName)
+		assert.Empty(t, svc.S3Prefix)
+	})
+
+	t.Run("BuildFromServiceWrongType", func(t *testing.T) {
+		api := APIDiagnosticsConfig{}
+		assert.Error(t, api.BuildFromService("not a DiagnosticsConfig"))
 	})
 }

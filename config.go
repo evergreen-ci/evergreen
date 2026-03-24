@@ -77,6 +77,7 @@ type Settings struct {
 	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
 	DebugSpawnHosts     DebugSpawnHostsConfig   `yaml:"debug_spawn_hosts" bson:"debug_spawn_hosts" json:"debug_spawn_hosts" id:"debug_spawn_hosts"`
+	Diagnostics         DiagnosticsConfig       `yaml:"diagnostics" bson:"diagnostics" json:"diagnostics" id:"diagnostics"`
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions" secret:"true"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
