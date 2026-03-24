@@ -925,6 +925,10 @@ models:
         resolver: true
   TaskLogLinks:
     model: github.com/evergreen-ci/evergreen/rest/model.LogLinks
+  TaskHostOverrides:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskHostOverrides
+  TaskHostOverridesInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskHostOverrides
   TaskSpecifier:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TaskSpecifierInput:

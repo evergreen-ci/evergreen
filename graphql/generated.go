@@ -479,6 +479,7 @@ type ComplexityRoot struct {
 		Setup                 func(childComplexity int) int
 		SetupAsSudo           func(childComplexity int) int
 		SingleTaskDistro      func(childComplexity int) int
+		TaskHostOverrides     func(childComplexity int) int
 		User                  func(childComplexity int) int
 		UserSpawnAllowed      func(childComplexity int) int
 		ValidProjects         func(childComplexity int) int
@@ -1981,6 +1982,14 @@ type ComplexityRoot struct {
 	TaskHistoryPagination struct {
 		MostRecentTaskOrder func(childComplexity int) int
 		OldestTaskOrder     func(childComplexity int) int
+	}
+
+	TaskHostOverrides struct {
+		DoNotAssignPublicIPv4Address func(childComplexity int) int
+		IAMInstanceProfileARN        func(childComplexity int) int
+		ProviderAccount              func(childComplexity int) int
+		SecurityGroupIDs             func(childComplexity int) int
+		SubnetID                     func(childComplexity int) int
 	}
 
 	TaskInfo struct {
@@ -4326,6 +4335,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.SingleTaskDistro(childComplexity), true
+	case "Distro.taskHostOverrides":
+		if e.complexity.Distro.TaskHostOverrides == nil {
+			break
+		}
+
+		return e.complexity.Distro.TaskHostOverrides(childComplexity), true
 	case "Distro.user":
 		if e.complexity.Distro.User == nil {
 			break
@@ -10972,6 +10987,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TaskHistoryPagination.OldestTaskOrder(childComplexity), true
 
+	case "TaskHostOverrides.doNotAssignPublicIpv4Address":
+		if e.complexity.TaskHostOverrides.DoNotAssignPublicIPv4Address == nil {
+			break
+		}
+
+		return e.complexity.TaskHostOverrides.DoNotAssignPublicIPv4Address(childComplexity), true
+	case "TaskHostOverrides.iamInstanceProfileArn":
+		if e.complexity.TaskHostOverrides.IAMInstanceProfileARN == nil {
+			break
+		}
+
+		return e.complexity.TaskHostOverrides.IAMInstanceProfileARN(childComplexity), true
+	case "TaskHostOverrides.providerAccount":
+		if e.complexity.TaskHostOverrides.ProviderAccount == nil {
+			break
+		}
+
+		return e.complexity.TaskHostOverrides.ProviderAccount(childComplexity), true
+	case "TaskHostOverrides.securityGroupIds":
+		if e.complexity.TaskHostOverrides.SecurityGroupIDs == nil {
+			break
+		}
+
+		return e.complexity.TaskHostOverrides.SecurityGroupIDs(childComplexity), true
+	case "TaskHostOverrides.subnetId":
+		if e.complexity.TaskHostOverrides.SubnetID == nil {
+			break
+		}
+
+		return e.complexity.TaskHostOverrides.SubnetID(childComplexity), true
+
 	case "TaskInfo.id":
 		if e.complexity.TaskInfo.Id == nil {
 			break
@@ -12711,6 +12757,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskCountOptions,
 		ec.unmarshalInputTaskFilterOptions,
 		ec.unmarshalInputTaskHistoryOpts,
+		ec.unmarshalInputTaskHostOverridesInput,
 		ec.unmarshalInputTaskLimitsConfigInput,
 		ec.unmarshalInputTaskPriority,
 		ec.unmarshalInputTaskSpecifierInput,
@@ -25121,6 +25168,47 @@ func (ec *executionContext) fieldContext_Distro_sshOptions(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_taskHostOverrides(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Distro_taskHostOverrides,
+		func(ctx context.Context) (any, error) {
+			return obj.TaskHostOverrides, nil
+		},
+		nil,
+		ec.marshalOTaskHostOverrides2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskHostOverrides,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Distro_taskHostOverrides(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "doNotAssignPublicIpv4Address":
+				return ec.fieldContext_TaskHostOverrides_doNotAssignPublicIpv4Address(ctx, field)
+			case "iamInstanceProfileArn":
+				return ec.fieldContext_TaskHostOverrides_iamInstanceProfileArn(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_TaskHostOverrides_providerAccount(ctx, field)
+			case "securityGroupIds":
+				return ec.fieldContext_TaskHostOverrides_securityGroupIds(ctx, field)
+			case "subnetId":
+				return ec.fieldContext_TaskHostOverrides_subnetId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskHostOverrides", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_user(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -31444,6 +31532,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "taskHostOverrides":
+				return ec.fieldContext_Distro_taskHostOverrides(ctx, field)
 			case "user":
 				return ec.fieldContext_Distro_user(ctx, field)
 			case "userSpawnAllowed":
@@ -49615,6 +49705,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "taskHostOverrides":
+				return ec.fieldContext_Distro_taskHostOverrides(ctx, field)
 			case "user":
 				return ec.fieldContext_Distro_user(ctx, field)
 			case "userSpawnAllowed":
@@ -49777,6 +49869,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "taskHostOverrides":
+				return ec.fieldContext_Distro_taskHostOverrides(ctx, field)
 			case "user":
 				return ec.fieldContext_Distro_user(ctx, field)
 			case "userSpawnAllowed":
@@ -55267,6 +55361,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "taskHostOverrides":
+				return ec.fieldContext_Distro_taskHostOverrides(ctx, field)
 			case "user":
 				return ec.fieldContext_Distro_user(ctx, field)
 			case "userSpawnAllowed":
@@ -64780,6 +64876,151 @@ func (ec *executionContext) fieldContext_TaskHistoryPagination_oldestTaskOrder(_
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHostOverrides_doNotAssignPublicIpv4Address(ctx context.Context, field graphql.CollectedField, obj *model.APITaskHostOverrides) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHostOverrides_doNotAssignPublicIpv4Address,
+		func(ctx context.Context) (any, error) {
+			return obj.DoNotAssignPublicIPv4Address, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHostOverrides_doNotAssignPublicIpv4Address(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHostOverrides",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHostOverrides_iamInstanceProfileArn(ctx context.Context, field graphql.CollectedField, obj *model.APITaskHostOverrides) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHostOverrides_iamInstanceProfileArn,
+		func(ctx context.Context) (any, error) {
+			return obj.IAMInstanceProfileARN, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHostOverrides_iamInstanceProfileArn(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHostOverrides",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHostOverrides_providerAccount(ctx context.Context, field graphql.CollectedField, obj *model.APITaskHostOverrides) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHostOverrides_providerAccount,
+		func(ctx context.Context) (any, error) {
+			return obj.ProviderAccount, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHostOverrides_providerAccount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHostOverrides",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHostOverrides_securityGroupIds(ctx context.Context, field graphql.CollectedField, obj *model.APITaskHostOverrides) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHostOverrides_securityGroupIds,
+		func(ctx context.Context) (any, error) {
+			return obj.SecurityGroupIDs, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHostOverrides_securityGroupIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHostOverrides",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHostOverrides_subnetId(ctx context.Context, field graphql.CollectedField, obj *model.APITaskHostOverrides) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHostOverrides_subnetId,
+		func(ctx context.Context) (any, error) {
+			return obj.SubnetID, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHostOverrides_subnetId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHostOverrides",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -77717,7 +77958,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "taskHostOverrides", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77958,6 +78199,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.SSHOptions = data
+		case "taskHostOverrides":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskHostOverrides"))
+			data, err := ec.unmarshalOTaskHostOverridesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskHostOverrides(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskHostOverrides = data
 		case "user":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -84681,6 +84929,61 @@ func (ec *executionContext) unmarshalInputTaskHistoryOpts(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTaskHostOverridesInput(ctx context.Context, obj any) (model.APITaskHostOverrides, error) {
+	var it model.APITaskHostOverrides
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"doNotAssignPublicIpv4Address", "iamInstanceProfileArn", "providerAccount", "securityGroupIds", "subnetId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "doNotAssignPublicIpv4Address":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("doNotAssignPublicIpv4Address"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DoNotAssignPublicIPv4Address = data
+		case "iamInstanceProfileArn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iamInstanceProfileArn"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IAMInstanceProfileARN = data
+		case "providerAccount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerAccount"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProviderAccount = data
+		case "securityGroupIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("securityGroupIds"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SecurityGroupIDs = data
+		case "subnetId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subnetId"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SubnetID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Context, obj any) (model.APITaskLimitsConfig, error) {
 	var it model.APITaskLimitsConfig
 	asMap := map[string]any{}
@@ -88655,6 +88958,8 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "taskHostOverrides":
+			out.Values[i] = ec._Distro_taskHostOverrides(ctx, field, obj)
 		case "user":
 			out.Values[i] = ec._Distro_user(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -102303,6 +102608,65 @@ func (ec *executionContext) _TaskHistoryPagination(ctx context.Context, sel ast.
 	return out
 }
 
+var taskHostOverridesImplementors = []string{"TaskHostOverrides"}
+
+func (ec *executionContext) _TaskHostOverrides(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskHostOverrides) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskHostOverridesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskHostOverrides")
+		case "doNotAssignPublicIpv4Address":
+			out.Values[i] = ec._TaskHostOverrides_doNotAssignPublicIpv4Address(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iamInstanceProfileArn":
+			out.Values[i] = ec._TaskHostOverrides_iamInstanceProfileArn(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "providerAccount":
+			out.Values[i] = ec._TaskHostOverrides_providerAccount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "securityGroupIds":
+			out.Values[i] = ec._TaskHostOverrides_securityGroupIds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subnetId":
+			out.Values[i] = ec._TaskHostOverrides_subnetId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var taskInfoImplementors = []string{"TaskInfo"}
 
 func (ec *executionContext) _TaskInfo(ctx context.Context, sel ast.SelectionSet, obj *model.TaskInfo) graphql.Marshaler {
@@ -115673,6 +116037,21 @@ func (ec *executionContext) marshalOTaskExecutionStep2ᚕᚖgithubᚗcomᚋeverg
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOTaskHostOverrides2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskHostOverrides(ctx context.Context, sel ast.SelectionSet, v *model.APITaskHostOverrides) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TaskHostOverrides(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTaskHostOverridesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskHostOverrides(ctx context.Context, v any) (*model.APITaskHostOverrides, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTaskHostOverridesInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
