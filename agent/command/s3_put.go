@@ -343,6 +343,10 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 			return errors.Wrap(err, "reading additional links file")
 		}
 		s3pc.additionalLinks = additionalLinks
+
+		if s3pc.isMulti() && len(additionalLinks) > 0 {
+			logger.Task().Warningf("Using additional_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different additional links.", len(s3pc.LocalFilesIncludeFilter))
+		}
 	}
 
 	if expiration, found := getAssumedRoleExpiration(conf, s3pc.AwsSessionToken); found {
