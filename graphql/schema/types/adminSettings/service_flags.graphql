@@ -47,6 +47,7 @@ input ServiceFlagsInput {
   s3LifecycleSyncDisabled: Boolean
   psLoggingDisabled: Boolean
   useMergeQueuePathFilteringDisabled: Boolean
+  podDiagnosticsDisabled: Boolean
 }
 
 type ServiceFlags {
@@ -86,6 +87,7 @@ type ServiceFlags {
   s3LifecycleSyncDisabled: Boolean
   psLoggingDisabled: Boolean
   useMergeQueuePathFilteringDisabled: Boolean
+  podDiagnosticsDisabled: Boolean
 }
 
 # UserServiceFlags are service flags that users have permission to view.

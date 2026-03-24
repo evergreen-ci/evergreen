@@ -253,3 +253,13 @@ input EBSCostConfigInput {
 type EBSCostConfig {
   ebsDiscount: Float
 }
+
+type DiagnosticsConfig {
+  s3BucketName: String
+  s3Prefix: String
+}
+
+input DiagnosticsConfigInput {
+  s3BucketName: String
+  s3Prefix: String
+}
