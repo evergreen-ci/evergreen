@@ -44,6 +44,11 @@ type Entry struct {
 //	Value = link for the file
 type Params map[string]string
 
+type AdditionalLink struct {
+	Name string `json:"name" bson:"name"`
+	Link string `json:"link" bson:"link"`
+}
+
 // File is a pairing of name and link for easy storage/display
 type File struct {
 	// Name is a human-readable name for the file being linked, e.g. "Coverage Report"
@@ -74,6 +79,8 @@ type File struct {
 	PutRequests int `json:"put_requests,omitempty" bson:"put_requests,omitempty"`
 	// PutCost is the calculated S3 PUT request cost for uploading this file.
 	PutCost float64 `json:"put_cost,omitempty" bson:"put_cost,omitempty"`
+	// AdditionalLinks is a list of additional links associated with the file besides the main artifact link.
+	AdditionalLinks []AdditionalLink `json:"additional_links,omitempty" bson:"additional_links,omitempty"`
 }
 
 func (f *File) validate() error {

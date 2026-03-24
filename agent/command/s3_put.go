@@ -2,7 +2,9 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -130,6 +132,13 @@ type s3put struct {
 	// UploadChecksumSHA256, when set to 'true', it will upload the base64 of the SHA256 checksum
 	// of the file to S3 as well.
 	UploadChecksumSHA256 string `mapstructure:"upload_checksum_sha256" plugin:"expand"`
+
+	// AdditionalLinksFile is a the name of a file containing additional links to be attached to the artifact.
+	// This file should be in JSON format and contain an array of objects with "name" and "url" fields.
+	AdditionalLinksFile string `mapstructure:"additional_links_file" plugin:"expand"`
+
+	// additionalLinks stores the actual additional links after they are read in from the AdditionalLinksFile.
+	additionalLinks []artifact.AdditionalLink
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
@@ -314,6 +323,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	if err := s3pc.expandParams(conf); err != nil {
 		return errors.WithStack(err)
 	}
+
 	// re-validate command here, in case an expansion is not defined
 	if err := s3pc.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded parameters")
@@ -325,6 +335,14 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
 		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
 		return nil
+	}
+
+	if s3pc.AdditionalLinksFile != "" {
+		additionalLinks, err := readAdditionalLinksFile(s3pc.AdditionalLinksFile, conf)
+		if err != nil {
+			return errors.Wrap(err, "reading additional links file")
+		}
+		s3pc.additionalLinks = additionalLinks
 	}
 
 	if expiration, found := getAssumedRoleExpiration(conf, s3pc.AwsSessionToken); found {
@@ -404,6 +422,44 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return nil
 	}
 
+}
+
+func readAdditionalLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AdditionalLink, error) {
+	fileLoc := GetWorkingDirectory(conf, fn)
+	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
+		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
+	}
+	jsonFile, err := os.Open(fileLoc)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening file '%s'", fn)
+	}
+	defer jsonFile.Close()
+
+	var data []byte
+	data, err = io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
+	}
+
+	var additionalLinks []artifact.AdditionalLink
+	if err := json.Unmarshal(data, &additionalLinks); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling JSON from file")
+	}
+
+	// Expansions may be present in the name or link fields.
+	for i := range additionalLinks {
+		expandedName, err := conf.Expansions.ExpandString(additionalLinks[i].Name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to additional link name '%s'", additionalLinks[i].Name)
+		}
+		expandedLink, err := conf.Expansions.ExpandString(additionalLinks[i].Link)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to additional link URL '%s'", additionalLinks[i].Link)
+		}
+		additionalLinks[i].Name = expandedName
+		additionalLinks[i].Link = expandedLink
+	}
+	return additionalLinks, nil
 }
 
 // Wrapper around the Put() function to retry it.
@@ -617,18 +673,19 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 		}
 
 		files = append(files, &artifact.File{
-			Name:        displayName,
-			Link:        fileLink,
-			Visibility:  s3pc.Visibility,
-			AWSKey:      key,
-			AWSSecret:   secret,
-			AWSRoleARN:  s3pc.getRoleARN(),
-			ExternalID:  s3pc.externalID,
-			Bucket:      bucket,
-			FileKey:     fileKey,
-			ContentType: s3pc.ContentType,
-			FileSize:    uploadInfo.FileSizeBytes,
-			PutRequests: uploadInfo.PutRequests,
+			Name:            displayName,
+			Link:            fileLink,
+			Visibility:      s3pc.Visibility,
+			AWSKey:          key,
+			AWSSecret:       secret,
+			AWSRoleARN:      s3pc.getRoleARN(),
+			ExternalID:      s3pc.externalID,
+			Bucket:          bucket,
+			FileKey:         fileKey,
+			ContentType:     s3pc.ContentType,
+			FileSize:        uploadInfo.FileSizeBytes,
+			PutRequests:     uploadInfo.PutRequests,
+			AdditionalLinks: s3pc.additionalLinks,
 		})
 	}
 
