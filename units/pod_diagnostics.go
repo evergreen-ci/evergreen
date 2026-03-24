@@ -1,0 +1,282 @@
+package units
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"os"
+	"runtime/pprof"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/pail"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
+)
+
+const podDiagnosticsJobName = "pod-diagnostics"
+
+// Memory usage thresholds and durations that mirror the Prometheus alerting
+// rules: trigger if memory exceeds 70% of the container limit for over a
+// minute, or 90% for over 5 seconds.
+const (
+	memHighPct          = 0.70
+	memCriticalPct      = 0.90
+	memHighDuration     = 60 * time.Second
+	memCriticalDuration = 5 * time.Second
+
+	// collectionCooldown prevents repeated collections during a sustained spike.
+	collectionCooldown = 10 * time.Minute
+)
+
+// podDiagnosticsState tracks threshold crossing durations across job runs.
+// Package-level state is safe here because this job runs on the local queue
+// (single process), so all invocations share the same process memory.
+var (
+	podDiagnosticsStateMu sync.Mutex
+	above70PctSince       time.Time
+	above90PctSince       time.Time
+	lastCollectionAt      time.Time
+)
+
+func init() {
+	registry.AddJobType(podDiagnosticsJobName, func() amboy.Job {
+		return makePodDiagnosticsJob()
+	})
+}
+
+type podDiagnosticsJob struct {
+	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	env      evergreen.Environment
+}
+
+func makePodDiagnosticsJob() *podDiagnosticsJob {
+	return &podDiagnosticsJob{
+		Base: job.Base{
+			JobType: amboy.JobType{
+				Name:    podDiagnosticsJobName,
+				Version: 0,
+			},
+		},
+	}
+}
+
+// NewPodDiagnosticsJob returns a job that checks the current pod's memory
+// usage against the configured thresholds and captures pprof diagnostic data
+// when a threshold condition is met.
+func NewPodDiagnosticsJob(ts string) amboy.Job {
+	j := makePodDiagnosticsJob()
+	j.SetID(fmt.Sprintf("%s.%s", podDiagnosticsJobName, ts))
+	// Scoped so only one instance runs at a time on this pod's local queue.
+	j.SetScopes([]string{podDiagnosticsJobName})
+	j.SetEnqueueAllScopes(true)
+	return j
+}
+
+func (j *podDiagnosticsJob) Run(ctx context.Context) {
+	defer j.MarkComplete()
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
+	usageBytes, limitBytes, err := readCgroupMemory()
+	if err != nil {
+		// Cgroup files won't exist outside container environments; warn but
+		// don't surface this as a job error.
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "reading cgroup memory stats for pod diagnostics",
+			"job":     j.ID(),
+		}))
+		return
+	}
+	if limitBytes == 0 {
+		return // container has no memory limit configured
+	}
+
+	usagePct := float64(usageBytes) / float64(limitBytes)
+
+	podDiagnosticsStateMu.Lock()
+	defer podDiagnosticsStateMu.Unlock()
+
+	now := time.Now()
+
+	// Update duration-tracking state based on current usage.
+	if usagePct >= memCriticalPct {
+		if above90PctSince.IsZero() {
+			above90PctSince = now
+		}
+		if above70PctSince.IsZero() {
+			above70PctSince = now
+		}
+	} else if usagePct >= memHighPct {
+		above90PctSince = time.Time{} // dropped below critical, reset that timer
+		if above70PctSince.IsZero() {
+			above70PctSince = now
+		}
+	} else {
+		above70PctSince = time.Time{}
+		above90PctSince = time.Time{}
+		return // memory is healthy
+	}
+
+	// Enforce cooldown to avoid uploading profiles on every job tick during a
+	// prolonged spike.
+	if !lastCollectionAt.IsZero() && now.Sub(lastCollectionAt) < collectionCooldown {
+		return
+	}
+
+	// Check whether either threshold condition has been met.
+	var triggerReason string
+	switch {
+	case !above90PctSince.IsZero() && now.Sub(above90PctSince) >= memCriticalDuration:
+		triggerReason = fmt.Sprintf(
+			"memory at %.1f%% of container limit for %.0fs (threshold: >90%% for >5s)",
+			usagePct*100, now.Sub(above90PctSince).Seconds())
+	case !above70PctSince.IsZero() && now.Sub(above70PctSince) >= memHighDuration:
+		triggerReason = fmt.Sprintf(
+			"memory at %.1f%% of container limit for %.0fs (threshold: >70%% for >60s)",
+			usagePct*100, now.Sub(above70PctSince).Seconds())
+	default:
+		return // neither threshold condition met yet
+	}
+
+	// Reset timers and record collection time before releasing the lock so
+	// the next job invocation doesn't re-trigger during the cooldown window.
+	above70PctSince = time.Time{}
+	above90PctSince = time.Time{}
+	lastCollectionAt = now
+
+	// Collect and upload outside the lock (state is already reset above).
+	j.collectAndUpload(ctx, usageBytes, limitBytes, usagePct, triggerReason, now)
+}
+
+func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, limitBytes int64, usagePct float64, triggerReason string, ts time.Time) {
+	settings := j.env.Settings()
+	tsStr := ts.UTC().Format("2006-01-02T15-04-05Z")
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	// S3 key structure: <prefix>/<hostname>/<timestamp>-{heap,goroutine}
+	keyBase := fmt.Sprintf("%s/%s", hostname, tsStr)
+
+	heapBuf := &bytes.Buffer{}
+	if err := pprof.WriteHeapProfile(heapBuf); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "capturing heap profile for pod diagnostics",
+			"job":     j.ID(),
+		}))
+		heapBuf = nil
+	}
+
+	goroutineBuf := &bytes.Buffer{}
+	if profile := pprof.Lookup("goroutine"); profile != nil {
+		if err := profile.WriteTo(goroutineBuf, 0); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "capturing goroutine profile for pod diagnostics",
+				"job":     j.ID(),
+			}))
+			goroutineBuf = nil
+		}
+	}
+
+	cfg := settings.Diagnostics
+	s3Uploaded := false
+	if cfg.S3BucketName != "" {
+		if uploadErr := uploadPprofProfiles(ctx, cfg, keyBase, heapBuf, goroutineBuf); uploadErr != nil {
+			grip.Warning(message.WrapError(uploadErr, message.Fields{
+				"message": "uploading pprof profiles to S3",
+				"job":     j.ID(),
+				"bucket":  cfg.S3BucketName,
+			}))
+		} else {
+			s3Uploaded = true
+		}
+	}
+
+	grip.Notice(message.Fields{
+		"message":          "pod diagnostics triggered",
+		"trigger_reason":   triggerReason,
+		"memory_usage_pct": fmt.Sprintf("%.1f%%", usagePct*100),
+		"memory_usage_gb":  fmt.Sprintf("%.2f", float64(usageBytes)/(1<<30)),
+		"memory_limit_gb":  fmt.Sprintf("%.2f", float64(limitBytes)/(1<<30)),
+		"hostname":         hostname,
+		"s3_bucket":        cfg.S3BucketName,
+		"s3_key_base":      keyBase,
+		"s3_uploaded":      s3Uploaded,
+		"job":              j.ID(),
+	})
+}
+
+// uploadPprofProfiles uploads heap and goroutine profiles to S3. nil buffers
+// are skipped.
+func uploadPprofProfiles(ctx context.Context, cfg evergreen.DiagnosticsConfig, keyBase string, heapBuf, goroutineBuf *bytes.Buffer) error {
+	prefix := cfg.S3Prefix
+	if prefix == "" {
+		prefix = "pprof"
+	}
+	bucket, err := pail.NewS3Bucket(ctx, pail.S3Options{
+		Name:   cfg.S3BucketName,
+		Prefix: prefix,
+	})
+	if err != nil {
+		return errors.Wrap(err, "creating S3 bucket client")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	if heapBuf != nil && heapBuf.Len() > 0 {
+		catcher.Wrap(bucket.Put(ctx, keyBase+"-heap", heapBuf), "uploading heap profile")
+	}
+	if goroutineBuf != nil && goroutineBuf.Len() > 0 {
+		catcher.Wrap(bucket.Put(ctx, keyBase+"-goroutine", goroutineBuf), "uploading goroutine profile")
+	}
+	return catcher.Resolve()
+}
+
+// readCgroupMemory returns the current memory usage and limit in bytes for the
+// running container. It tries cgroups v2 first, then falls back to v1.
+func readCgroupMemory() (usageBytes, limitBytes int64, err error) {
+	// cgroups v2
+	if usage, err := readCgroupInt("/sys/fs/cgroup/memory.current"); err == nil {
+		if limit, err := readCgroupInt("/sys/fs/cgroup/memory.max"); err == nil {
+			return usage, limit, nil
+		}
+	}
+	// cgroups v1 fallback
+	usage, err := readCgroupInt("/sys/fs/cgroup/memory/memory.usage_in_bytes")
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "reading cgroup memory usage (tried cgroups v2 and v1 paths)")
+	}
+	limit, err := readCgroupInt("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "reading cgroup memory limit")
+	}
+	return usage, limit, nil
+}
+
+// readCgroupInt reads a single integer from a cgroup file. Returns an error if
+// the file is absent or contains "max" (meaning no limit is configured).
+func readCgroupInt(path string) (int64, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, errors.Wrapf(err, "reading '%s'", path)
+	}
+	s := strings.TrimSpace(string(data))
+	if s == "max" {
+		return 0, errors.Errorf("'%s' reports no limit (value: max)", path)
+	}
+	val, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, errors.Wrapf(err, "parsing value '%s' from '%s'", s, path)
+	}
+	return val, nil
+}
