@@ -608,13 +608,18 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
-// EBS mount point field keys for provider settings documents.
-const (
-	EBSMountPointsKey = "mount_points"
-	EBSVolumeTypeKey  = "volume_type"
-	EBSThroughputKey  = "throughput"
-	EBSSizeKey        = "size"
-)
+// ebsProviderSettingsForMountPoints unmarshals only the mount_points slice from an EC2 provider settings
+// document. Field tags must stay aligned with cloud.EC2ProviderSettings and cloud.MountPoint (model/distro
+// cannot import cloud due to an import cycle).
+type ebsProviderSettingsForMountPoints struct {
+	MountPoints []ebsMountPointForCost `bson:"mount_points,omitempty"`
+}
+
+type ebsMountPointForCost struct {
+	VolumeType string `bson:"volume_type,omitempty"`
+	Throughput int32  `bson:"throughput,omitempty"`
+	Size       int32  `bson:"size,omitempty"`
+}
 
 // EBSMountPointInfo holds EBS volume configuration for cost calculation.
 type EBSMountPointInfo struct {
@@ -648,47 +653,22 @@ func (d *Distro) ExtractEBSMountPoints(region string) ([]EBSMountPointInfo, erro
 	if err != nil {
 		return nil, nil
 	}
-	var docMap map[string]interface{}
-	if err := bson.Unmarshal(rawBytes, &docMap); err != nil {
+	var parsed ebsProviderSettingsForMountPoints
+	if err := bson.Unmarshal(rawBytes, &parsed); err != nil {
 		return nil, nil
 	}
-	mpsInterface, ok := docMap[EBSMountPointsKey]
-	if !ok {
+	if len(parsed.MountPoints) == 0 {
 		return nil, nil
 	}
-	mpsSlice, ok := mpsInterface.(bson.A)
-	if !ok {
-		return nil, nil
-	}
-	var mountPoints []EBSMountPointInfo
-	for _, mpInterface := range mpsSlice {
-		mp, ok := mpInterface.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		volumeType, _ := mp[EBSVolumeTypeKey].(string)
+	mountPoints := make([]EBSMountPointInfo, 0, len(parsed.MountPoints))
+	for _, mp := range parsed.MountPoints {
 		mountPoints = append(mountPoints, EBSMountPointInfo{
-			VolumeType: volumeType,
-			Throughput: bsonNumToInt32(mp[EBSThroughputKey]),
-			Size:       bsonNumToInt32(mp[EBSSizeKey]),
+			VolumeType: mp.VolumeType,
+			Throughput: mp.Throughput,
+			Size:       mp.Size,
 		})
 	}
 	return mountPoints, nil
-}
-
-func bsonNumToInt32(v interface{}) int32 {
-	switch n := v.(type) {
-	case int32:
-		return n
-	case int:
-		return int32(n)
-	case int64:
-		return int32(n)
-	case float64:
-		return int32(n)
-	default:
-		return 0
-	}
 }
 
 func (d *Distro) GetRegionsList(allowedRegions []string) []string {

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -4091,7 +4092,7 @@ func calculateBillableThroughput(totalThroughput int32) int32 {
 // CalculateEBSThroughputOnDemandCost calculates the raw on-demand cost for EBS GP3 throughput.
 // Pricing based on us-east-1 rates: $0.04 per MB/s-month above 125 MB/s baseline.
 // Does not apply discount; use CalculateEBSThroughputAdjustedCost for discounted cost.
-func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []distro.EBSMountPointInfo, ebsConfig evergreen.EBSCostConfig) float64 {
+func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []distro.EBSMountPointInfo) float64 {
 	if runtimeSeconds <= 0 {
 		return 0
 	}
@@ -4117,11 +4118,7 @@ func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []di
 }
 
 // calculateEBSThroughputCost sets the EBS GP3 throughput cost on TaskCost based on the distro's mount points.
-func (t *Task) calculateEBSThroughputCost(ctx context.Context) {
-	financeConfig, _, d, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
-		return
-	}
+func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig evergreen.CostConfig, d *distro.Distro) {
 	if d == nil {
 		return
 	}
@@ -4184,7 +4181,7 @@ func getHostRegionForTask(ctx context.Context, t *Task) string {
 	var result struct {
 		Zone string `bson:"zone"`
 	}
-	err := evergreen.GetEnvironment().DB().Collection("hosts").FindOne(ctx,
+	err := evergreen.GetEnvironment().DB().Collection(host.Collection).FindOne(ctx,
 		bson.M{"_id": t.HostId},
 		options.FindOne().SetProjection(bson.M{"zone": 1}),
 	).Decode(&result)
@@ -4199,9 +4196,12 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		return nil
 	}
 
-	t.calculateRuntimeCost(ctx)
+	financeConfig, costData, d, err := t.getFinanceConfigAndDistro(ctx)
+	if err == nil {
+		t.calculateRuntimeCost(financeConfig, costData)
+		t.calculateEBSThroughputCost(ctx, financeConfig, d)
+	}
 	t.calculateS3PutCosts(ctx)
-	t.calculateEBSThroughputCost(ctx)
 
 	if t.TaskCost.IsZero() {
 		return nil
@@ -4215,11 +4215,7 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 }
 
 // calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
-func (t *Task) calculateRuntimeCost(ctx context.Context) {
-	financeConfig, costData, _, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
-		return
-	}
+func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData distro.CostData) {
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 
