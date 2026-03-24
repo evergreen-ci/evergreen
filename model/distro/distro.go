@@ -610,10 +610,10 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 
 // EBS mount point field keys for provider settings documents.
 const (
-	EBSMountPointsKey   = "mount_points"
-	EBSVolumeTypeKey    = "volume_type"
-	EBSThroughputKey    = "throughput"
-	EBSSizeKey          = "size"
+	EBSMountPointsKey = "mount_points"
+	EBSVolumeTypeKey  = "volume_type"
+	EBSThroughputKey  = "throughput"
+	EBSSizeKey        = "size"
 )
 
 // EBSMountPointInfo holds EBS volume configuration for cost calculation.
