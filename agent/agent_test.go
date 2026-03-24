@@ -162,8 +162,9 @@ func (s *AgentSuite) SetupTest() {
 			ID:     "task_id",
 			Secret: "task_secret",
 		},
-		taskConfig: taskConfig,
-		oomTracker: &mock.OOMTracker{},
+		taskConfig:      taskConfig,
+		oomTracker:      &mock.OOMTracker{},
+		resourceMonitor: newResourceMonitor(nil),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	s.canceler = cancel

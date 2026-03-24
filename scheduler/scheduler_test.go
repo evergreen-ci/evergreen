@@ -35,7 +35,7 @@ func (s *SchedulerSuite) SetupTest() {
 	s.NoError(db.ClearCollections("tasks"))
 }
 
-func TestSpawnHosts(t *testing.T) {
+func TestCreateIntentHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -45,7 +45,7 @@ func TestSpawnHosts(t *testing.T) {
 		Convey("if there are no hosts to be spawned, the Scheduler should not"+
 			" make any calls to the Manager", func() {
 
-			newHostsSpawned, err := SpawnHosts(ctx, distro.Distro{}, 0, nil)
+			newHostsSpawned, err := CreateIntentHosts(ctx, distro.Distro{}, 0, nil)
 			So(err, ShouldBeNil)
 			So(len(newHostsSpawned), ShouldEqual, 0)
 		})
@@ -69,7 +69,7 @@ func TestSpawnHosts(t *testing.T) {
 					},
 				}
 
-				newHostsSpawned, err := SpawnHosts(ctx, d, newHostsNeeded[id], nil)
+				newHostsSpawned, err := CreateIntentHosts(ctx, d, newHostsNeeded[id], nil)
 				So(err, ShouldBeNil)
 
 				So(newHostsNeeded[id], ShouldEqual, len(newHostsSpawned))
@@ -213,7 +213,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	assert.Equal(evergreen.TaskSucceeded, foundDisplayTask.Status)
 }
 
-func (s *SchedulerSuite) TestSpawnHostsParents() {
+func (s *SchedulerSuite) TestCreateIntentHostsParents() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -255,7 +255,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	s.NoError(host2.Insert(ctx))
 	s.NoError(host3.Insert(ctx))
 
-	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
+	newHostsSpawned, err := CreateIntentHosts(ctx, d, 1, pool)
 	s.NoError(err)
 
 	parents := 0
@@ -272,7 +272,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	s.Equal(1, children)
 }
 
-func (s *SchedulerSuite) TestSpawnHostsContainers() {
+func (s *SchedulerSuite) TestCreateIntentHostsContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -315,7 +315,7 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	s.NoError(host2.Insert(ctx))
 	s.NoError(host3.Insert(ctx))
 
-	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
+	newHostsSpawned, err := CreateIntentHosts(ctx, d, 1, pool)
 	s.NoError(err)
 
 	s.Require().Len(newHostsSpawned, 1)
@@ -323,7 +323,7 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	s.False(newHostsSpawned[0].HasContainers)
 }
 
-func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
+func (s *SchedulerSuite) TestCreateIntentHostsParentsAndSomeContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -366,7 +366,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	s.NoError(host2.Insert(ctx))
 	s.NoError(host3.Insert(ctx))
 
-	newHostsSpawned, err := SpawnHosts(ctx, d, 5, pool)
+	newHostsSpawned, err := CreateIntentHosts(ctx, d, 5, pool)
 	s.NoError(err)
 	// 1 parent, 3 children on new parent, 1 child on old parent
 	s.Len(newHostsSpawned, 5)
@@ -386,7 +386,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	s.Equal(1, parents)
 }
 
-func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
+func (s *SchedulerSuite) TestCreateIntentHostsOneNewParent() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -406,7 +406,7 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	s.NoError(d.Insert(ctx))
 	s.NoError(parent.Insert(ctx))
 
-	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
+	newHostsSpawned, err := CreateIntentHosts(ctx, d, 1, pool)
 	s.NoError(err)
 	// 1 parent, 1 child
 	s.Len(newHostsSpawned, 2)
@@ -432,7 +432,7 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	s.Equal(parentHost.Id, parentDoc.Id)
 }
 
-func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
+func (s *SchedulerSuite) TestCreateIntentHostsMaximumCapacity() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -466,7 +466,7 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 	s.NoError(host1.Insert(ctx))
 	s.NoError(host2.Insert(ctx))
 
-	newHostsSpawned, err := SpawnHosts(ctx, d, 2, pool)
+	newHostsSpawned, err := CreateIntentHosts(ctx, d, 2, pool)
 	s.NoError(err)
 
 	s.Require().Len(newHostsSpawned, 1)
@@ -529,7 +529,7 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	s.NoError(host2.Insert(ctx))
 	s.NoError(host3.Insert(ctx))
 
-	newHostsSpawned, err := SpawnHosts(ctx, d, 4, pool)
+	newHostsSpawned, err := CreateIntentHosts(ctx, d, 4, pool)
 	s.NoError(err)
 	s.Len(newHostsSpawned, 3)
 

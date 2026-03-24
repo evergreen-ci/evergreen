@@ -108,14 +108,19 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
+  """nextTask may be in-progress"""
+  nextTask: Task
+  nextTaskCompleted: Task
+  nextTaskFailing: Task
+  nextTaskPassing: Task
   order: Int!
   patch: Patch
   patchNumber: Int
-  prevTaskBreaking: Task
-  prevTaskPassing: Task
   """prevTask may be in-progress"""
   prevTask: Task
   prevTaskCompleted: Task
+  prevTaskFailing: Task
+  prevTaskPassing: Task
   priority: Int
   project: Project
   projectId: String!

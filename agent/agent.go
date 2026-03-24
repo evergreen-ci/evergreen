@@ -444,6 +444,7 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 // data and setting the task directory.
 func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskContext, nt *apimodels.NextTaskResponse, shouldSetupGroup bool, taskDirectory string) (tc *taskContext, shouldExit bool, err error) {
 	if initialTC == nil {
+		logger := client.NewSingleChannelLogHarness("default", a.defaultLogger)
 		tc = &taskContext{
 			task: client.TaskData{
 				ID:     nt.TaskId,
@@ -451,7 +452,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 			},
 			ranSetupGroup: !shouldSetupGroup,
 			oomTracker:    jasper.NewOOMTracker(),
-			logger:        client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			logger:        logger,
 		}
 	} else {
 		tc = initialTC
@@ -490,6 +491,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
+
+	tc.resourceMonitor = newResourceMonitor(tc.logger.Execution())
 
 	var taskGroupDirMissing bool
 	if tc.ranSetupGroup {
@@ -707,6 +710,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	if shutdown != nil {
 		defer shutdown(ctx)
 	}
+
+	go tc.resourceMonitor.start(tskCtx)
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
@@ -1133,6 +1138,12 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+
+	if rcInfo := tc.resourceMonitor.report(); rcInfo != nil {
+		tc.logger.Execution().Infof("Resource constraint detected: CPU constrained=%t (peak %.1f%%), memory constrained=%t (peak %.1f%%).",
+			rcInfo.CPUConstrained, rcInfo.PeakCPUPercent, rcInfo.MemoryConstrained, rcInfo.PeakMemoryPercent)
+		detail.ResourceConstraints = rcInfo
 	}
 }
 
