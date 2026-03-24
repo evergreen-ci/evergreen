@@ -17,6 +17,8 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
+	"github.com/evergreen-ci/evergreen/model/ec2settings"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -4070,7 +4072,7 @@ const (
 )
 
 // calculateTotalGP3Throughput sums the throughput of all GP3 volumes in mount points.
-func calculateTotalGP3Throughput(mountPoints []distro.EBSMountPointInfo) int32 {
+func calculateTotalGP3Throughput(mountPoints []ec2mount.MountPoint) int32 {
 	var totalThroughput int32
 	for _, mp := range mountPoints {
 		if mp.VolumeType == evergreen.VolumeTypeGp3 && mp.Throughput > 0 {
@@ -4092,7 +4094,7 @@ func calculateBillableThroughput(totalThroughput int32) int32 {
 // CalculateEBSThroughputOnDemandCost calculates the raw on-demand cost for EBS GP3 throughput.
 // Pricing based on us-east-1 rates: $0.04 per MB/s-month above 125 MB/s baseline.
 // Does not apply discount; use CalculateEBSThroughputAdjustedCost for discounted cost.
-func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []distro.EBSMountPointInfo) float64 {
+func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
 	if runtimeSeconds <= 0 {
 		return 0
 	}
@@ -4112,8 +4114,8 @@ func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []di
 
 // CalculateEBSThroughputAdjustedCost calculates the adjusted cost for EBS GP3 throughput.
 // Applies the discount: adjusted = on_demand * (1 - EBSDiscount).
-func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []distro.EBSMountPointInfo, ebsConfig evergreen.EBSCostConfig) float64 {
-	onDemandCost := CalculateEBSThroughputOnDemandCost(runtimeSeconds, mountPoints, ebsConfig)
+func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
+	onDemandCost := CalculateEBSThroughputOnDemandCost(runtimeSeconds, mountPoints)
 	return onDemandCost * (1 - ebsConfig.EBSDiscount)
 }
 
@@ -4122,7 +4124,7 @@ func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig eve
 	if d == nil {
 		return
 	}
-	mountPoints, err := d.ExtractEBSMountPoints(getHostRegionForTask(ctx, t))
+	mountPoints, err := ec2settings.MountPointsForDistro(d, getHostRegionForTask(ctx, t))
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":   "failed to extract mount points from distro",
@@ -4138,7 +4140,6 @@ func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig eve
 	t.TaskCost.OnDemandEBSThroughputCost = CalculateEBSThroughputOnDemandCost(
 		runtimeSeconds,
 		mountPoints,
-		financeConfig.EBSCost,
 	)
 	t.TaskCost.AdjustedEBSThroughputCost = CalculateEBSThroughputAdjustedCost(
 		runtimeSeconds,

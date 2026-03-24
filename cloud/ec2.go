@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -153,6 +154,11 @@ func (s *EC2ProviderSettings) FromDocument(doc *birch.Document) error {
 	if err := bson.Unmarshal(bytes, s); err != nil {
 		return errors.Wrap(err, "unmarshalling BSON into EC2 provider settings")
 	}
+	mountPoints, err := ec2mount.MountPointsFromProviderDocument(doc)
+	if err != nil {
+		return err
+	}
+	s.MountPoints = mountPoints
 	return nil
 }
 

@@ -608,69 +608,6 @@ func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, err
 	return nil, errors.Errorf("distro '%s' has no settings for region '%s'", d.Id, region)
 }
 
-// ebsProviderSettingsForMountPoints unmarshals only the mount_points slice from an EC2 provider settings
-// document. Field tags must stay aligned with cloud.EC2ProviderSettings and cloud.MountPoint (model/distro
-// cannot import cloud due to an import cycle).
-type ebsProviderSettingsForMountPoints struct {
-	MountPoints []ebsMountPointForCost `bson:"mount_points,omitempty"`
-}
-
-type ebsMountPointForCost struct {
-	VolumeType string `bson:"volume_type,omitempty"`
-	Throughput int32  `bson:"throughput,omitempty"`
-	Size       int32  `bson:"size,omitempty"`
-}
-
-// EBSMountPointInfo holds EBS volume configuration for cost calculation.
-type EBSMountPointInfo struct {
-	VolumeType string
-	Throughput int32
-	Size       int32
-}
-
-// ExtractEBSMountPoints parses the distro's EC2 provider settings and returns the mount points.
-// It selects settings by the given region (falling back to evergreen.DefaultEC2Region if empty or not found,
-// then to the first region) to avoid over-counting. Returns an empty slice when the provider is not EC2 or
-// when no mount points are configured.
-func (d *Distro) ExtractEBSMountPoints(region string) ([]EBSMountPointInfo, error) {
-	if d.Provider != evergreen.ProviderNameEc2OnDemand && d.Provider != evergreen.ProviderNameEc2Fleet {
-		return nil, nil
-	}
-	if len(d.ProviderSettingsList) == 0 {
-		return nil, nil
-	}
-	if region == "" {
-		region = evergreen.DefaultEC2Region
-	}
-	settingsDoc, err := d.GetProviderSettingByRegion(region)
-	if err != nil {
-		settingsDoc, err = d.GetProviderSettingByRegion(evergreen.DefaultEC2Region)
-		if err != nil {
-			settingsDoc = d.ProviderSettingsList[0]
-		}
-	}
-	rawBytes, err := settingsDoc.MarshalBSON()
-	if err != nil {
-		return nil, nil
-	}
-	var parsed ebsProviderSettingsForMountPoints
-	if err := bson.Unmarshal(rawBytes, &parsed); err != nil {
-		return nil, nil
-	}
-	if len(parsed.MountPoints) == 0 {
-		return nil, nil
-	}
-	mountPoints := make([]EBSMountPointInfo, 0, len(parsed.MountPoints))
-	for _, mp := range parsed.MountPoints {
-		mountPoints = append(mountPoints, EBSMountPointInfo{
-			VolumeType: mp.VolumeType,
-			Throughput: mp.Throughput,
-			Size:       mp.Size,
-		})
-	}
-	return mountPoints, nil
-}
-
 func (d *Distro) GetRegionsList(allowedRegions []string) []string {
 	regions := []string{}
 	for _, doc := range d.ProviderSettingsList {
