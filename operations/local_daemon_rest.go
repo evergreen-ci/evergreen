@@ -178,7 +178,6 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 
 // handleJumpTo jumps to a specific step
 func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
 	vars := mux.Vars(r)
 	stepNum := vars["step"]
 
@@ -197,12 +196,12 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := d.executor.JumpTo(index); err != nil {
+	if err := d.executor.JumpTo(r.Context(), index); err != nil {
 		http.Error(w, errors.Wrap(err, "jumping to step").Error(), http.StatusBadRequest)
 		return
 	}
 
-	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":      true,
 		"current_step": state.CurrentStepIndex,
 	}))
