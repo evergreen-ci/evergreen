@@ -78,13 +78,13 @@ func populateMainlineCommits(t *testing.T) {
 					DisplayName:   fmt.Sprintf("%s_%d", "lint", j),
 					DisplayTaskId: utility.ToStringPtr(""),
 				}
-			if hasFailure {
-				aTask.Status = evergreen.TaskFailed
-				aTask.DisplayStatusCache = evergreen.TaskFailed
-			} else {
-				aTask.Status = evergreen.TaskSucceeded
-				aTask.DisplayStatusCache = evergreen.TaskSucceeded
-			}
+				if hasFailure {
+					aTask.Status = evergreen.TaskFailed
+					aTask.DisplayStatusCache = evergreen.TaskFailed
+				} else {
+					aTask.Status = evergreen.TaskSucceeded
+					aTask.DisplayStatusCache = evergreen.TaskSucceeded
+				}
 				require.NoError(t, aTask.Insert(t.Context()))
 			}
 		}
