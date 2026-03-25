@@ -227,8 +227,7 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 }
 
 // JumpTo moves to the specified step without executing
-func (e *LocalExecutor) JumpTo(index int) error {
-	ctx := context.TODO()
+func (e *LocalExecutor) JumpTo(ctx context.Context, index int) error {
 	if len(e.commandBlocks) == 0 {
 		return errors.New("no commands available, please ensure a task has been selected")
 	}
@@ -242,8 +241,7 @@ func (e *LocalExecutor) JumpTo(index int) error {
 }
 
 // SetVariable sets a custom variable.
-func (e *LocalExecutor) SetVariable(key, value string) {
-	ctx := context.TODO()
+func (e *LocalExecutor) SetVariable(ctx context.Context, key, value string) {
 	e.debugState.CustomVars[key] = value
 	e.expansions.Put(key, value)
 	e.logger.Infof(ctx, "Set variable %s=%s", key, value)

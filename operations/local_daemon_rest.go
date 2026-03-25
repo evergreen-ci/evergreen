@@ -344,7 +344,7 @@ func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	d.executor.SetVariable(req.Key, req.Value)
+	d.executor.SetVariable(r.Context(), req.Key, req.Value)
 	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]bool{"success": true}))
 }
 
