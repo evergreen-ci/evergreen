@@ -1,16 +1,12 @@
 package thirdparty
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"net/url"
 
-	"github.com/andygrunwald/go-jira"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -117,71 +113,6 @@ type JiraHandler struct {
 // JiraHost returns the hostname of the jira service as configured.
 func (jiraHandler *JiraHandler) JiraHost() string { return jiraHandler.opts.BaseURL }
 
-// CreateTicket takes a map of fields to initialize a JIRA ticket with. Returns a response containing the
-// new ticket's key, id, and API URL. See the JIRA API documentation for help.
-func (jiraHandler *JiraHandler) CreateTicket(fields map[string]any) (*JiraCreateTicketResponse, error) {
-	postArgs := struct {
-		Fields map[string]any `json:"fields"`
-	}{fields}
-	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue", jiraHandler.JiraHost())
-	body := &bytes.Buffer{}
-	if err := json.NewEncoder(body).Encode(postArgs); err != nil {
-		return nil, errors.Wrap(err, "unable to serialize ticket body")
-	}
-	req, err := http.NewRequest(http.MethodPost, apiEndpoint, body)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to form create ticket request")
-	}
-	req.Header.Add("Content-Type", "application/json")
-	res, err := jiraHandler.client.Do(req)
-	if res != nil {
-		defer res.Body.Close()
-	}
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if res != nil && (res.StatusCode >= 300 || res.StatusCode < 200) {
-		msg, _ := io.ReadAll(res.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
-	}
-
-	ticketInfo := &JiraCreateTicketResponse{}
-	if err := json.NewDecoder(res.Body).Decode(ticketInfo); err != nil {
-		return nil, errors.Wrap(err, "Unable to decode http body")
-	}
-	return ticketInfo, nil
-}
-
-// UpdateTicket sets the given fields of the ticket with the given key. Returns any errors JIRA returns.
-func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]any) error {
-	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue/%v", jiraHandler.JiraHost(), url.QueryEscape(key))
-	putArgs := struct {
-		Fields map[string]any `json:"fields"`
-	}{fields}
-	body := &bytes.Buffer{}
-	if err := json.NewEncoder(body).Encode(putArgs); err != nil {
-		return errors.Wrap(err, "unable to serialize ticket body")
-	}
-	req, err := http.NewRequest(http.MethodPut, apiEndpoint, body)
-	if err != nil {
-		return errors.Wrap(err, "unable to form update ticket request")
-	}
-	req.Header.Add("Content-Type", "application/json")
-	res, err := jiraHandler.client.Do(req)
-	if res != nil {
-		defer res.Body.Close()
-	}
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if res != nil && (res.StatusCode >= 300 || res.StatusCode < 200) {
-		msg, _ := io.ReadAll(res.Body)
-		return errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
-	}
-
-	return nil
-}
-
 // GetJIRATicket returns the ticket with the given key.
 func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/issue/%v", jiraHandler.JiraHost(), url.QueryEscape(key))
@@ -253,47 +184,4 @@ func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int)
 	}
 
 	return results, nil
-}
-
-// JQLSearchAll performs repeated JQL searches until the query has been exhausted
-func (jiraHandler *JiraHandler) JQLSearchAll(query string) ([]JiraTicket, error) {
-	allIssues := []JiraTicket{}
-
-	index := 0
-	ticketsLeft := math.MaxInt32
-
-	for ticketsLeft > 0 {
-		nextResult, err := jiraHandler.JQLSearch(query, index, -1)
-		if err != nil {
-			return []JiraTicket{}, errors.WithStack(err)
-		}
-
-		numReturned := nextResult.MaxResults
-		ticketsLeft = nextResult.Total - (index + numReturned)
-		index = numReturned + index + 1
-
-		allIssues = append(allIssues, nextResult.Issues...)
-	}
-
-	return allIssues, nil
-
-}
-
-func (jiraHandler *JiraHandler) HttpClient() *http.Client {
-	return jiraHandler.client
-}
-
-func NewJiraHandler(opts send.JiraOptions) JiraHandler {
-	httpClient := utility.GetHTTPClient()
-	if opts.PersonalAccessTokenOpts.Token != "" {
-		transport := jira.BearerAuthTransport{
-			Token:     opts.PersonalAccessTokenOpts.Token,
-			Transport: httpClient.Transport,
-		}
-		httpClient = transport.Client()
-	}
-	return JiraHandler{
-		opts:   opts,
-		client: httpClient,
-	}
 }
