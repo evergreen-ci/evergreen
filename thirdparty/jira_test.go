@@ -12,9 +12,9 @@ import (
 	jiraclient "github.com/andygrunwald/go-jira"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
+	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 	"github.com/trivago/tgo/tcontainer"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 type mockHttp struct {
@@ -99,7 +99,7 @@ func TestJiraIntegration(t *testing.T) {
 		jira := NewJiraHandler(*testConfig.Jira.Export())
 
 		Convey("the request for a ticket should return a valid ticket response", func() {
-			ticket, err := jira.GetIssue(context.Background(), "BF-1")
+			ticket, err := jira.GetIssue(t.Context(), "BF-1")
 			So(err, ShouldBeNil)
 			So(ticket.Key, ShouldEqual, "BF-1")
 
