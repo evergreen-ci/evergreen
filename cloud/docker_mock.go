@@ -23,7 +23,7 @@ type dockerClientMock struct {
 	failGet      bool
 	failList     bool
 	failRemove   bool
-	failStart bool
+	failStart    bool
 
 	// Other options
 	hasOpenPorts bool
@@ -151,4 +151,3 @@ func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) e
 	}
 	return nil
 }
-
