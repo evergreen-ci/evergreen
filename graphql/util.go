@@ -797,7 +797,7 @@ func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdpa
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 	for _, ticket := range searchTickets {
-		jiraIssue, err := jiraHandler.GetJIRATicket(ticket)
+		jiraIssue, err := jiraHandler.GetIssue(ctx, ticket)
 		if err != nil {
 			return nil, err
 		}

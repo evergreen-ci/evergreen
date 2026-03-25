@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"net/url"
 	"path"
 	"time"
@@ -247,7 +248,7 @@ func APIMetadataLinksToService(t []*APIMetadataLink) []annotations.MetadataLink 
 	return m
 }
 
-func GetJiraTicketFromURL(jiraURL string) (*thirdparty.JiraTicket, error) {
+func GetJiraTicketFromURL(ctx context.Context, jiraURL string) (*thirdparty.JiraTicket, error) {
 	settings := evergreen.GetEnvironment().Settings()
 	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
 
@@ -259,7 +260,7 @@ func GetJiraTicketFromURL(jiraURL string) (*thirdparty.JiraTicket, error) {
 	if parsedURL.Host == "jira.mongodb.org" {
 		jiraKey := path.Base(parsedURL.Path)
 
-		jiraTicket, err := jiraHandler.GetJIRATicket(jiraKey)
+		jiraTicket, err := jiraHandler.GetIssue(ctx, jiraKey)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting Jira ticket for key '%s'", jiraKey)
 		}

@@ -1,12 +1,11 @@
 package thirdparty
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 
+	"github.com/andygrunwald/go-jira"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -18,18 +17,16 @@ type SearchReturnInfo struct {
 	FeaturesURL string       `json:"features_url"`
 }
 
-// JiraTickets marshal to and unmarshal from the json issue
+// JiraTicket marshals to and unmarshals from the json issue
 // returned by the rest api at /rest/api/latest/issue/{ticket_id}
 type JiraTicket struct {
 	Key    string        `json:"key"`
-	Expand string        `json:"expand"`
 	Fields *TicketFields `json:"fields"`
 }
 
 // JiraSearchResults marshal to and unmarshal from the json
 // search results returned by the rest api at /rest/api/2/search?jql={jql}
 type JiraSearchResults struct {
-	Expand     string       `json:"expand"`
 	StartAt    int          `json:"startAt"`
 	MaxResults int          `json:"maxResults"`
 	Total      int          `json:"total"`
@@ -37,12 +34,8 @@ type JiraSearchResults struct {
 }
 
 type TicketFields struct {
-	IssueType    *TicketType        `json:"issuetype"`
 	Summary      string             `json:"summary"`
-	Description  string             `json:"description"`
-	Reporter     *User              `json:"reporter"`
 	Assignee     *User              `json:"assignee"`
-	Project      *JiraProject       `json:"project"`
 	Resolution   *JiraResolution    `json:"resolution"`
 	Created      string             `json:"created"`
 	Updated      string             `json:"updated"`
@@ -51,137 +44,101 @@ type TicketFields struct {
 	FailingTasks []string           `json:"customfield_12950"`
 }
 
-// JiraCreateTicketResponse contains the results of a JIRA create ticket API call.
-type JiraCreateTicketResponse struct {
-	Id   string `json:"id"`
-	Key  string `json:"key"`
-	Self string `json:"self"`
-}
-
 type JiraCustomField struct {
-	Id    string `json:"id"`
 	Value string `json:"value"`
-	Self  string `json:"self"`
 }
 
 type JiraStatus struct {
 	Id   string `json:"id"`
-	Self string `json:"self"`
 	Name string `json:"name"`
 }
 
 type JiraResolution struct {
-	Id          string `json:"id"`
-	Self        string `json:"self"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type TicketType struct {
-	Id          string `json:"id"`
-	Self        string `json:"self"`
-	Description string `json:"description"`
-	IconUrl     string `json:"iconUrl"`
-	Name        string `json:"name"`
-	Subtask     bool   `json:"subtask"`
-}
-
-type JiraProject struct {
-	Id         string            `json:"id"`
-	Self       string            `json:"self"`
-	Key        string            `json:"key"`
-	Name       string            `json:"name"`
-	AvatarUrls map[string]string `json:"avatarUrls"`
+	Name string `json:"name"`
 }
 
 type User struct {
-	Id           string            `json:"id"`
-	Self         string            `json:"self"`
-	Name         string            `json:"name"`
-	EmailAddress string            `json:"emailAddress"`
-	DisplayName  string            `json:"displayName"`
-	Active       bool              `json:"active"`
-	TimeZone     string            `json:"timeZone"`
-	AvatarUrls   map[string]string `json:"avatarUrls"`
+	DisplayName string `json:"displayName"`
 }
 
 type JiraHandler struct {
-	client *http.Client
-	opts   send.JiraOptions
+	client *jira.Client
 }
 
-// JiraHost returns the hostname of the jira service as configured.
-func (jiraHandler *JiraHandler) JiraHost() string { return jiraHandler.opts.BaseURL }
-
-// GetJIRATicket returns the ticket with the given key.
-func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
-	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/issue/%v", jiraHandler.JiraHost(), url.QueryEscape(key))
-	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to form get ticket request")
+// GetIssue returns the ticket with the given key using the go-jira client.
+func (jiraHandler *JiraHandler) GetIssue(ctx context.Context, key string) (*JiraTicket, error) {
+	if jiraHandler.client == nil {
+		return nil, errors.New("jira client is not initialized")
 	}
-	res, err := jiraHandler.client.Do(req)
-	if res != nil {
-		defer res.Body.Close()
-	}
+	issue, _, err := jiraHandler.client.Issue.GetWithContext(ctx, key, nil)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-
-	if res == nil {
-		return nil, errors.Errorf("HTTP results are nil even though err was nil")
-	}
-
-	if res.StatusCode >= 300 || res.StatusCode < 200 {
-		return nil, errors.Errorf("HTTP request returned unexpected status `%v`", res.Status)
-	}
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "Unable to read http body")
-	}
-
-	ticket := &JiraTicket{}
-	err = json.Unmarshal(body, ticket)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return ticket, nil
+	return jiraIssueToJiraTicket(issue)
 }
 
 // JQLSearch runs the given JQL query against the given jira instance and returns
-// the results in a JiraSearchResults
+// the results in a JiraSearchResults.
 func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int) (*JiraSearchResults, error) {
-	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/search?jql=%v&startAt=%d&maxResults=%d", jiraHandler.JiraHost(), url.QueryEscape(query), startAt, maxResults)
-	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to form JQL request")
+	if jiraHandler.client == nil {
+		return nil, errors.New("jira client is not initialized")
 	}
-	res, err := jiraHandler.client.Do(req)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	opts := &jira.SearchOptions{StartAt: startAt}
+	if maxResults > 0 {
+		opts.MaxResults = maxResults
 	}
-	if res == nil {
-		return nil, errors.Errorf("HTTP results are nil even though err was not nil")
-	}
-
-	if res.StatusCode >= 300 || res.StatusCode < 200 {
-		return nil, errors.Errorf("HTTP request returned unexpected status `%v`", res.Status)
-	}
-
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "Unable to read http body")
-	}
-
-	results := &JiraSearchResults{}
-	err = json.Unmarshal(body, results)
+	issues, resp, err := jiraHandler.client.Issue.Search(query, opts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	out := &JiraSearchResults{}
+	if resp != nil {
+		out.StartAt = resp.StartAt
+		out.MaxResults = resp.MaxResults
+		out.Total = resp.Total
+	}
+	for i := range issues {
+		t, err := jiraIssueToJiraTicket(&issues[i])
+		if err != nil {
+			return nil, err
+		}
+		if t != nil {
+			out.Issues = append(out.Issues, *t)
+		}
+	}
+	return out, nil
+}
 
-	return results, nil
+func NewJiraHandler(opts send.JiraOptions) JiraHandler {
+	httpClient := utility.GetHTTPClient()
+	if opts.PersonalAccessTokenOpts.Token != "" {
+		transport := jira.BearerAuthTransport{
+			Token:     opts.PersonalAccessTokenOpts.Token,
+			Transport: httpClient.Transport,
+		}
+		httpClient = transport.Client()
+	}
+	jiraClient, err := jira.NewClient(httpClient, opts.BaseURL)
+	if err != nil {
+		return JiraHandler{}
+	}
+	return JiraHandler{client: jiraClient}
+}
+
+// jiraIssueToJiraTicket converts a go-jira Issue into our API shape. go-jira's IssueFields.MarshalJSON
+// merges Unknowns (custom fields) into the same JSON the Jira REST API returns, so we rely on that
+// instead of hand-mapping fields.
+func jiraIssueToJiraTicket(issue *jira.Issue) (*JiraTicket, error) {
+	if issue == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(issue)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling jira issue")
+	}
+	var ticket JiraTicket
+	if err := json.Unmarshal(data, &ticket); err != nil {
+		return nil, errors.Wrap(err, "unmarshaling Jira ticket")
+	}
+	return &ticket, nil
 }
