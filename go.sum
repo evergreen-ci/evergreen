@@ -163,8 +163,6 @@ github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2 h1:bBwDxfZE
 github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2/go.mod h1:YLBfKY+Y1yFapi7AZUR0tfJ8H+pbzF1CO94ixHDaUOM=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f h1:UCLTMndEQDi/BfiYa/MIv6okh7CLmz250oA03FLLA+w=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f/go.mod h1:FnyqGuSg33gR9wNbt2qo9wPaNUfP85+a8+UTVyx/gdg=
-github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d h1:D/ua80GfelpLtry9J8+q/K1MWb7m0V0QiXhOm0kCdj8=
-github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d/go.mod h1:Xiaegoek6n6GQnEt7pFMByuME0vw4sGcqD7KA7ilK7c=
 github.com/evergreen-ci/gimlet v0.0.0-20260325201542-0eb4bfb95c82 h1:svPTW+k/CGabHiiGoFoRkC6N20fuud+7XRuo8ac+4mA=
 github.com/evergreen-ci/gimlet v0.0.0-20260325201542-0eb4bfb95c82/go.mod h1:tRjfOj0/370IbRn90VUSW0n3N6SsiSGheXoBabCWwos=
 github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f h1:sXisMMrOFZVbclIs/pU6xGKDQ4ylpGFzWqqB9QT9NGU=
