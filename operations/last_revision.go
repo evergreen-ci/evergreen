@@ -501,6 +501,7 @@ func (c *lastRevisionCriteria) shouldApply(bv, bvDisplayName string) bool {
 // check returns whether the the criteria applies to the build and if so, if it
 // passes all the criteria. This returns true if the criteria does not apply.
 func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
+	ctx := context.TODO()
 	if !c.shouldApply(info.buildVariant, info.buildVariantDisplayName) {
 		// The criteria does not apply to this build variant, so it
 		// automatically passes checks.
@@ -508,7 +509,7 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 	}
 
 	if info.successProportion() < c.minSuccessProportion {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":                    "build does not meet minimum successful tasks proportion",
 			"version_id":                 info.versionID,
 			"build_id":                   info.buildID,
@@ -521,7 +522,7 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 	}
 
 	if info.finishedProportion() < c.minFinishedProportion {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":                    "build does not meet minimum finished tasks proportion",
 			"version_id":                 info.versionID,
 			"build_id":                   info.buildID,
@@ -545,7 +546,7 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 			continue
 		}
 		if !isSuccessfulTask(tsk, c.knownIssuesAreSuccess) {
-			grip.Debug(message.Fields{
+			grip.Debug(ctx, message.Fields{
 				"message":                    "build has required task but it was not successful",
 				"version_id":                 info.versionID,
 				"build_id":                   info.buildID,
@@ -566,7 +567,7 @@ func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
 // version is found.
 func findLatestMatchingVersion(ctx context.Context, c client.Communicator, latestVersions []model.APIVersion, criteria []lastRevisionCriteria) (*model.APIVersion, error) {
 	for _, v := range latestVersions {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":    "checking version",
 			"version_id": utility.FromStringPtr(v.Id),
 			"revision":   utility.FromStringPtr(v.Revision),
@@ -645,7 +646,7 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 		return true, nil
 	}
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":                    "checking build for last revision criteria",
 		"build_id":                   utility.FromStringPtr(b.Id),
 		"build_variant":              utility.FromStringPtr(b.BuildVariant),

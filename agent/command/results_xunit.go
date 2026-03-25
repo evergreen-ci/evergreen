@@ -86,7 +86,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 		case errChan <- err:
 			return
 		case <-ctx.Done():
-			logger.Task().Infof("Context canceled waiting to parse and upload results: %s.", ctx.Err())
+			logger.Task().Infof(ctx, "Context canceled waiting to parse and upload results: %s.", ctx.Err())
 			return
 		}
 	}()
@@ -95,7 +95,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	case err := <-errChan:
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Infof("Canceled while parsing and uploading results for command '%s': %s.", c.Name(), ctx.Err())
+		logger.Execution().Infof(ctx, "Canceled while parsing and uploading results for command '%s': %s.", c.Name(), ctx.Err())
 		return nil
 	}
 }
@@ -221,7 +221,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 			}
 			if result.invalid {
 				numInvalid++
-				logger.Task().Infof("Result file '%s' does not exist or is a directory.", result.filePath)
+				logger.Task().Infof(ctx, "Result file '%s' does not exist or is a directory.", result.filePath)
 				continue
 			}
 			for idx, suite := range result.suites {
@@ -266,7 +266,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		return err
 	}
 
-	logger.Task().Infof("Posting test logs succeeded for %d of %d logs.", succeeded, len(cumulative.logs))
+	logger.Task().Infof(ctx, "Posting test logs succeeded for %d of %d logs.", succeeded, len(cumulative.logs))
 	if len(cumulative.tests) > 0 {
 		return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
 	}

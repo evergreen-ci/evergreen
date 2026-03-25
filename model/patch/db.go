@@ -114,12 +114,13 @@ func ByStringId(id string) db.Q {
 }
 
 func ByStringIds(ids []string) db.Q {
+	ctx := context.TODO()
 	objectIds := []mgobson.ObjectId{}
 	for _, id := range ids {
 		if IsValidId(id) {
 			objectIds = append(objectIds, NewId(id))
 		} else {
-			grip.Debug(message.Fields{
+			grip.Debug(ctx, message.Fields{
 				"message": "patch id is not valid",
 				"id":      id,
 			})

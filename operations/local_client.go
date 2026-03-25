@@ -246,6 +246,7 @@ func checkDebugSpawnHostEnabled(c *cli.Context) error {
 
 // startDebugDaemonCmd starts the debug daemon
 func startDebugDaemonCmd(c *cli.Context) error {
+	ctx := context.TODO()
 	port := c.Int("port")
 
 	if _, err := getDaemonURL(); err == nil {
@@ -267,7 +268,7 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.Wrap(err, "obtaining OAuth token")
 	}
 
-	grip.Infof("Starting daemon on port %d...", port)
+	grip.Infof(ctx, "Starting daemon on port %d...", port)
 
 	daemon := newLocalDaemonREST(port, conf)
 	return daemon.Start()
@@ -275,6 +276,7 @@ func startDebugDaemonCmd(c *cli.Context) error {
 
 // stopDebugDaemonCmd stops the debug daemon
 func stopDebugDaemonCmd(c *cli.Context) error {
+	ctx := context.TODO()
 	dir, err := getDaemonDir()
 	if err != nil {
 		return err
@@ -285,17 +287,17 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 
 	defer func() {
 		if err := os.Remove(pidFile); err != nil && !os.IsNotExist(err) {
-			grip.Warning(errors.Wrapf(err, "removing PID file %s", pidFile))
+			grip.Warning(ctx, errors.Wrapf(err, "removing PID file %s", pidFile))
 		}
 		if err := os.Remove(portFile); err != nil && !os.IsNotExist(err) {
-			grip.Warning(errors.Wrapf(err, "removing port file %s", portFile))
+			grip.Warning(ctx, errors.Wrapf(err, "removing port file %s", portFile))
 		}
 	}()
 
 	data, err := os.ReadFile(pidFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			grip.Info("Daemon is not running")
+			grip.Info(ctx, "Daemon is not running")
 			return nil
 		}
 		return errors.Wrap(err, "reading PID file")
@@ -313,9 +315,9 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 
 	if err := process.Signal(syscall.SIGTERM); err != nil {
 		// Process might already be dead
-		grip.Info("Daemon process not found (may have already stopped)")
+		grip.Info(ctx, "Daemon process not found (may have already stopped)")
 	} else {
-		grip.Info("Daemon stopped")
+		grip.Info(ctx, "Daemon stopped")
 	}
 	return nil
 }
@@ -331,15 +333,16 @@ type daemonStatusResponse struct {
 
 // daemonStatusCmd checks the debug daemon status.
 func daemonStatusCmd(c *cli.Context) error {
+	ctx := context.TODO()
 	url, err := getDaemonURL()
 	if err != nil {
-		grip.Info("Daemon is not running")
+		grip.Info(ctx, "Daemon is not running")
 		return nil
 	}
 
 	resp, err := http.Get(url + "/status")
 	if err != nil {
-		grip.Info("Daemon is running but not responding to status check")
+		grip.Info(ctx, "Daemon is running but not responding to status check")
 		return nil
 	}
 	defer resp.Body.Close()
@@ -349,10 +352,10 @@ func daemonStatusCmd(c *cli.Context) error {
 		return errors.Wrap(err, "decoding daemon status response")
 	}
 
-	grip.Info("Daemon is running")
+	grip.Info(ctx, "Daemon is running")
 
 	if status.TaskSelected {
-		grip.Infof("Task: %s (step %d/%d)", status.SelectedTask, status.CurrentStep, status.TotalSteps)
+		grip.Infof(ctx, "Task: %s (step %d/%d)", status.SelectedTask, status.CurrentStep, status.TotalSteps)
 	}
 
 	return nil
@@ -360,6 +363,7 @@ func daemonStatusCmd(c *cli.Context) error {
 
 // loadConfigCmd loads a configuration file
 func loadConfigCmd(c *cli.Context) error {
+	ctx := context.TODO()
 	if c.NArg() < 1 {
 		return errors.New("config file path required")
 	}
@@ -380,14 +384,15 @@ func loadConfigCmd(c *cli.Context) error {
 		return errors.Wrap(err, "loading configuration")
 	}
 
-	grip.Infof("Loaded configuration: %s", configPath)
-	grip.Infof("Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
+	grip.Infof(ctx, "Loaded configuration: %s", configPath)
+	grip.Infof(ctx, "Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
 
 	return nil
 }
 
 // selectTaskCmd selects a task for debugging
 func selectTaskCmd(c *cli.Context) error {
+	ctx := context.TODO()
 	if c.NArg() < 1 {
 		return errors.New("task name required")
 	}
@@ -398,7 +403,7 @@ func selectTaskCmd(c *cli.Context) error {
 
 	// Clear previous session logs when selecting a new task.
 	if err := taskexec.ClearSessionLogs(); err != nil {
-		grip.Warning(errors.Wrap(err, "clearing previous session logs"))
+		grip.Warning(ctx, errors.Wrap(err, "clearing previous session logs"))
 	}
 
 	url, err := getDaemonURL()
@@ -416,11 +421,11 @@ func selectTaskCmd(c *cli.Context) error {
 		return err
 	}
 
-	grip.Infof("Selected task: %s\n", taskName)
+	grip.Infof(ctx, "Selected task: %s\n", taskName)
 	if variantName != "" {
-		grip.Infof("Variant: %s\n", variantName)
+		grip.Infof(ctx, "Variant: %s\n", variantName)
 	}
-	grip.Infof("Total steps: %v\n", resp["step_count"])
+	grip.Infof(ctx, "Total steps: %v\n", resp["step_count"])
 
 	return nil
 }
@@ -463,6 +468,7 @@ func runUntilCmd(c *cli.Context) error {
 
 // jumpToCmd jumps to a specific step
 func jumpToCmd(c *cli.Context) error {
+	ctx := context.TODO()
 	if c.NArg() < 1 {
 		return errors.New("step number required")
 	}
@@ -479,7 +485,7 @@ func jumpToCmd(c *cli.Context) error {
 		return err
 	}
 
-	grip.Infof("Jumped to step %v\n", resp["current_step"])
+	grip.Infof(ctx, "Jumped to step %v\n", resp["current_step"])
 	return nil
 }
 
@@ -604,6 +610,7 @@ func postAndStreamResponse(url string, body interface{}) error {
 
 // viewLogsCmd displays debug session logs from local log files.
 func viewLogsCmd(c *cli.Context) error {
+	ctx := context.TODO()
 	isSetup := c.Bool(setupFlagName)
 	stepFilter := c.String(stepFlagName)
 	tail := c.Int(tailFlagName)
@@ -622,7 +629,7 @@ func viewLogsCmd(c *cli.Context) error {
 	}
 
 	if len(lines) == 0 {
-		grip.Info("No logs found.")
+		grip.Info(ctx, "No logs found.")
 		return nil
 	}
 

@@ -4,12 +4,14 @@ import (
 	"math"
 	"reflect"
 
+	"context"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
 
 // IsFieldUndefined is an adaptation of IsZero https://golang.org/src/reflect/value.go?s=34297:34325#L1090
 func IsFieldUndefined(v reflect.Value) bool {
+	ctx := context.TODO()
 	switch v.Kind() {
 	case reflect.Bool:
 		return !v.Bool()
@@ -37,7 +39,7 @@ func IsFieldUndefined(v reflect.Value) bool {
 		return true
 	default:
 		// this should never happen
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":    "field has no valid type",
 			"value_type": v.Type(),
 			"value_kind": v.Kind(),

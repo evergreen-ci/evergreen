@@ -121,6 +121,7 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	var err error
 	projectIdentifier := gimlet.GetVars(r)["project_id"]
 	limit := r.FormValue("limit")
@@ -156,7 +157,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 			Limit(l+1))
 		if err != nil {
 			msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectIdentifier)
-			grip.Error(errors.Wrap(err, msg))
+			grip.Error(ctx, errors.Wrap(err, msg))
 			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 			return
 		}
@@ -196,7 +197,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	// Find all builds/tasks corresponding the set of version ids
 	if err = result.populateBuildsAndTasks(r.Context(), versionIds, versionIdx); err != nil {
 		msg := fmt.Sprintf("Error populating builds/tasks for recent versions of project '%v'", projectIdentifier)
-		grip.Error(errors.Wrap(err, msg))
+		grip.Error(ctx, errors.Wrap(err, msg))
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 	}
 
@@ -215,7 +216,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		})
 		if err != nil {
 			msg := "error setting pages"
-			grip.Error(errors.Wrap(err, msg))
+			grip.Error(ctx, errors.Wrap(err, msg))
 			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		}
 		w.Header().Set("Link", responder.Pages().GetLinks(r.URL.String()))
@@ -282,6 +283,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 // Returns a JSON response with the marshaled output of the version
 // specified in the request (we still want this in yaml).
 func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	projCtx := MustHaveRESTContext(r)
 	srcVersion := projCtx.Version
 	if srcVersion == nil {
@@ -304,7 +306,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	_, err = w.Write(config)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message":    "could not write parser project to response",
 		"version_id": projCtx.Version.Id,
 		"route":      "/versions/{version_id}/config",
@@ -342,6 +344,7 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 // Returns a JSON response with the marshaled output of the version
 // specified by its revision and project name in the request.
 func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	vars := gimlet.GetVars(r)
 	projectName := vars["project_id"]
 	revision := vars["revision"]
@@ -357,7 +360,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 		statusCode := http.StatusNotFound
 
 		if err != nil {
-			grip.Errorf("%v: %+v", msg, err)
+			grip.Errorf(ctx, "%v: %+v", msg, err)
 			statusCode = http.StatusInternalServerError
 		}
 
@@ -485,7 +488,7 @@ func (restapi *restAPI) getVersionStatusByTask(ctx context.Context, versionId st
 	err := db.Aggregate(ctx, task.Collection, pipeline, &groupedTasks)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
-		grip.Errorf("%v: %+v", msg, err)
+		grip.Errorf(ctx, "%v: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
@@ -522,7 +525,7 @@ func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId st
 	)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding builds for version '%v'", versionId)
-		grip.Errorf("%v: %+v", msg, err)
+		grip.Errorf(ctx, "%v: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
@@ -531,7 +534,7 @@ func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId st
 	tasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding tasks for version '%v'", versionId)
-		grip.Errorf("%s: %+v", msg, err)
+		grip.Errorf(ctx, "%s: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}

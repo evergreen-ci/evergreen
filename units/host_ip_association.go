@@ -104,7 +104,7 @@ func (j *hostIPAssociationJob) Run(ctx context.Context) {
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		msg["time_since_host_billing_started_secs"] = time.Since(j.host.BillingStartTime).Seconds()
 	}
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 }
 
 func (j *hostIPAssociationJob) populate(ctx context.Context) error {

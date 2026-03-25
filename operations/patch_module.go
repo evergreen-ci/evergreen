@@ -101,7 +101,7 @@ func PatchSetModule() cli.Command {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 					}
 				}
-				grip.Info("Patch finalized.")
+				grip.Info(ctx, "Patch finalized.")
 			}
 			return nil
 		},
@@ -110,6 +110,7 @@ func PatchSetModule() cli.Command {
 
 func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	p *patch.Patch, module *model.Module, modulePath string) error {
+	ctx := context.TODO()
 	patchId := p.Id.Hex()
 
 	preserveCommits := params.PreserveCommits || conf.PreserveCommits
@@ -138,9 +139,9 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	}
 
 	if !params.SkipConfirm {
-		grip.Infof("Using branch '%s' for module '%s'.", module.Branch, module.Name)
+		grip.Infof(ctx, "Using branch '%s' for module '%s'.", module.Branch, module.Name)
 		if diffData.patchSummary != "" {
-			grip.Info(diffData.patchSummary)
+			grip.Info(ctx, diffData.patchSummary)
 		}
 		if len(diffData.fullPatch) > 0 {
 			if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {
@@ -166,7 +167,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	if err != nil {
 		return err
 	}
-	grip.Infof("Module '%s' updated, base commit is '%s' (and will override the manifest).", module.Name, diffData.base)
+	grip.Infof(ctx, "Module '%s' updated, base commit is '%s' (and will override the manifest).", module.Name, diffData.base)
 	return nil
 }
 

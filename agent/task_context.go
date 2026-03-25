@@ -112,7 +112,7 @@ func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.taskCleanups, trace), "running setup group command cleanups"); err != nil {
-		logger.Execution().Error(err)
+		logger.Execution().Error(ctx, err)
 	}
 }
 
@@ -126,7 +126,7 @@ func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger 
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.setupGroupCleanups, trace), "running setup group command cleanups"); err != nil {
-		logger.Execution().Error(err)
+		logger.Execution().Error(ctx, err)
 	}
 }
 
@@ -182,11 +182,12 @@ func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
+	ctx := context.TODO()
 	tc.Lock()
 	defer tc.Unlock()
 	tc.currentCommand = command
 	if tc.logger != nil {
-		tc.logger.Execution().Infof("Current command set to %s (%s).", tc.currentCommand.FullDisplayName(), tc.currentCommand.Type())
+		tc.logger.Execution().Infof(ctx, "Current command set to %s (%s).", tc.currentCommand.FullDisplayName(), tc.currentCommand.Type())
 	}
 }
 
@@ -200,6 +201,7 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 // This timeout only applies to commands running in specific blocks where idle
 // timeout is allowed.
 func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
+	ctx := context.TODO()
 	tc.Lock()
 	defer tc.Unlock()
 
@@ -216,7 +218,7 @@ func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
 
 	tc.setIdleTimeout(timeout)
 
-	tc.logger.Execution().Debugf("Set idle timeout for %s (%s) to %s.",
+	tc.logger.Execution().Debugf(ctx, "Set idle timeout for %s (%s) to %s.",
 		cmd.FullDisplayName(), cmd.Type(), tc.getIdleTimeout())
 }
 
@@ -399,13 +401,13 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		return tc.taskConfig, nil
 	}
 
-	grip.Info("Fetching task info.")
+	grip.Info(ctx, "Fetching task info.")
 	taskInfo, err := a.fetchTaskInfo(ctx, tc)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching task info")
 	}
 
-	grip.Info("Fetching distro configuration.")
+	grip.Info(ctx, "Fetching distro configuration.")
 	confDistro := &apimodels.DistroView{}
 	confHost := &apimodels.HostView{}
 	if a.opts.Mode == globals.HostMode {
@@ -424,7 +426,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		}
 	}
 
-	grip.Info("Fetching project ref.")
+	grip.Info(ctx, "Fetching project ref.")
 	ctx, getProjectRefSpan := a.tracer.Start(ctx, "get-project-ref")
 	confRef, err := a.comm.GetProjectRef(ctx, tc.task)
 	getProjectRefSpan.End()
@@ -437,7 +439,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 
 	var confPatch *patch.Patch
 	if evergreen.IsGitHubPatchRequester(taskInfo.task.Requester) {
-		grip.Info("Fetching patch document for GitHub PR request.")
+		grip.Info(ctx, "Fetching patch document for GitHub PR request.")
 		ctx, getTaskPatchSpan := a.tracer.Start(ctx, "get-task-patch")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		getTaskPatchSpan.End()
@@ -448,17 +450,17 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 
 	var versionDoc *model.Version
 	if confPatch == nil {
-		grip.Info("Fetching version document for description.")
+		grip.Info(ctx, "Fetching version document for description.")
 		ctx, getTaskVersionSpan := a.tracer.Start(ctx, "get-task-version")
 		versionDoc, err = a.comm.GetTaskVersion(ctx, tc.task)
 		getTaskVersionSpan.End()
 		if err != nil {
 			// Don't return an error since it's not essential to have the version.
-			grip.Error("Error fetching version document for description.")
+			grip.Error(ctx, "Error fetching version document for description.")
 		}
 	}
 
-	grip.Info("Constructing task config.")
+	grip.Info(ctx, "Constructing task config.")
 	tcOpts := internal.TaskConfigOptions{
 		WorkDir:           a.opts.WorkingDirectory,
 		Distro:            confDistro,

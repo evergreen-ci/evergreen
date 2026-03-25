@@ -36,10 +36,11 @@ func main() {
 	// in buildApp(), is all that's necessary for bootstrapping the
 	// environment.
 
+	ctx := context.Background()
 	app := buildApp()
 	defer recoverFromPanic()
 
-	grip.EmergencyFatal(app.Run(args))
+	grip.EmergencyFatal(ctx, app.Run(args))
 }
 
 func buildApp() *cli.App {

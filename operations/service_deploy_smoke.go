@@ -185,7 +185,7 @@ func smokeStartEvergreen() cli.Command {
 					return errors.Wrap(err, "setting up Jasper RPC service")
 				}
 				defer func() {
-					grip.Warning(closeServer())
+					grip.Warning(ctx, closeServer())
 				}()
 
 				clientFile, err := os.CreateTemp("", "evergreen")
@@ -238,6 +238,7 @@ func makeHostAuthEnvVars(hostID, secret string) []string {
 }
 
 func smokeRunBinary(exit chan error, name string, wd string, envVars []string, bin string, cmdParts ...string) error {
+	ctx := context.TODO()
 	cmd := exec.Command(bin, cmdParts...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
 	cmd.Env = append(cmd.Env, envVars...)
@@ -250,7 +251,7 @@ func smokeRunBinary(exit chan error, name string, wd string, envVars []string, b
 	}
 	go func() {
 		exit <- cmd.Wait()
-		grip.Errorf("%s exited", name)
+		grip.Errorf(ctx, "%s exited", name)
 	}()
 	return nil
 }

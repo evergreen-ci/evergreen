@@ -134,7 +134,7 @@ func Patch() cli.Command {
 				// still appear so users can diagnose issues.
 				l := grip.GetSender().Level()
 				l.Threshold = level.Error
-				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
+				grip.Error(context.Background(), errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			args := c.Args()
 			params := &patchParams{
@@ -216,10 +216,10 @@ func Patch() cli.Command {
 			hasTasks := len(params.Tasks) > 0 || len(params.RegexTasks) > 0
 			hasVariants := len(params.Variants) > 0 || len(params.RegexVariants) > 0
 			if hasTasks && !hasVariants {
-				grip.Warningf("warning - you specified tasks without specifying variants")
+				grip.Warningf(ctx, "warning - you specified tasks without specifying variants")
 			}
 			if hasVariants && !hasTasks {
-				grip.Warningf("warning - you specified variants without specifying tasks")
+				grip.Warningf(ctx, "warning - you specified variants without specifying tasks")
 			}
 
 			isReusing := params.RepeatDefinition || params.RepeatFailed
@@ -276,11 +276,11 @@ func Patch() cli.Command {
 				for _, module := range proj.Modules {
 					modulePath, err := params.getModulePath(conf, module.Name, modulePathCache)
 					if err != nil {
-						grip.Error(err)
+						grip.Error(ctx, err)
 						continue
 					}
 					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
-						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
+						grip.Errorf(ctx, "Error adding module '%s' to patch: %s", module.Name, err)
 					}
 				}
 			}
@@ -304,7 +304,7 @@ func Patch() cli.Command {
 				outputJSON: outputJSON,
 			}
 			if err = params.displayPatch(ctx, ac, outputParams); err != nil {
-				grip.Error(err)
+				grip.Error(ctx, err)
 			}
 			params.setDefaultProject(conf)
 			return nil
@@ -435,7 +435,7 @@ func PatchFile() cli.Command {
 				// still appear so users can diagnose issues.
 				l := grip.GetSender().Level()
 				l.Threshold = level.Error
-				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
+				grip.Error(context.Background(), errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			params := &patchParams{
 				Project:          c.String(projectFlagName),
@@ -528,7 +528,7 @@ func PatchFile() cli.Command {
 					if err = ac.UpdatePatchModule(moduleParams); err != nil {
 						return err
 					}
-					grip.Infof("Module '%s' updated.", module.Name)
+					grip.Infof(ctx, "Module '%s' updated.", module.Name)
 
 				}
 			}
@@ -560,6 +560,7 @@ func PatchFile() cli.Command {
 
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
 func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string) ([]patch.LocalModuleInclude, error) {
+	ctx := context.TODO()
 	var yml []byte
 	var err error
 	if path != "" {
@@ -595,7 +596,7 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 	for moduleName, includes := range includesByModule {
 		modulePath, err := params.getModulePath(conf, moduleName, modulePathCache)
 		if err != nil {
-			grip.Error(errors.Wrapf(err, "getting module path for '%s'", moduleName))
+			grip.Error(ctx, errors.Wrapf(err, "getting module path for '%s'", moduleName))
 			continue
 		}
 

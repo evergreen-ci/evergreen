@@ -37,7 +37,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 	}
 
 	if distro.Provider != evergreen.ProviderNameDocker && numExistingHosts >= distro.HostAllocatorSettings.MaximumHosts {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":        "distro is at max hosts",
 			"distro":         distro.Id,
 			"existing_hosts": numExistingHosts,
@@ -53,7 +53,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 		numNewHostsToRequest := minimumHostsThreshold - numExistingHosts
 
 		if numNewHostsToRequest > 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"runner":                     RunnerName,
 				"message":                    "requesting new hosts for disabled distro",
 				"distro":                     distro.Id,
@@ -214,7 +214,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		"task_group_name": taskGroupInfo.Name,
 	}
 	avgMakespan := totalShortRunningTasksExpectedDuration / time.Duration(maxHosts)
-	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
+	grip.AlertWhen(ctx, avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
 
 	return numNewHosts, expectedNumFreeHosts, nil
 }

@@ -167,14 +167,14 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, con
 
 		fileReader, err := os.Open(outputFile)
 		if err != nil {
-			logger.Task().Error(errors.Wrapf(err, "opening file '%s' for parsing", outputFile))
+			logger.Task().Error(ctx, errors.Wrapf(err, "opening file '%s' for parsing", outputFile))
 			continue
 		}
 		defer fileReader.Close() //nolint: evg-lint
 
 		log, results, err := parseTestOutput(ctx, conf, fileReader, suiteName)
 		if err != nil {
-			logger.Task().Error(errors.Wrapf(err, "parsing file '%s'", outputFile))
+			logger.Task().Error(ctx, errors.Wrapf(err, "parsing file '%s'", outputFile))
 			continue
 		}
 

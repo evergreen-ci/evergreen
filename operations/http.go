@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 
+	"context"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -131,6 +132,7 @@ func (ac *legacyClient) post2(path string, body io.Reader) (*http.Response, erro
 }
 
 func (ac *legacyClient) modifyExisting(patchId, action string) error {
+	ctx := context.TODO()
 	data := struct {
 		PatchId string `json:"patch_id"`
 		Action  string `json:"action"`
@@ -139,8 +141,8 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -164,6 +166,7 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 
 // ValidateLocalConfig validates the local project config with the server
 func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
+	ctx := context.TODO()
 	input := validator.ValidationInput{
 		ProjectYaml: data,
 		Quiet:       quiet,
@@ -172,8 +175,8 @@ func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID s
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(input))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(input))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	resp, err := ac.post("validate", rPipe)
 	if err != nil {
@@ -447,10 +450,13 @@ type UpdatePatchModuleParams struct {
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
 func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error {
-	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
-	// when marshalled into JSON.
-	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
-	// and non utf-8 characters will be preserved.
+	ctx :=
+		// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
+		// when marshalled into JSON.
+		// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
+		// and non utf-8 characters will be preserved.
+		context.TODO()
+
 	data := struct {
 		Module     string `json:"module"`
 		PatchBytes []byte `json:"patch_bytes"`
@@ -461,8 +467,8 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -553,10 +559,13 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
 func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
-	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
-	// when marshalled into JSON.
-	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
-	// and non utf-8 characters will be preserved.
+	ctx :=
+		// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
+		// when marshalled into JSON.
+		// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
+		// and non utf-8 characters will be preserved.
+		context.TODO()
+
 	data := struct {
 		Description                        string                     `json:"desc"`
 		Project                            string                     `json:"project"`
@@ -612,8 +621,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 

@@ -58,7 +58,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		return nil, err
 	}
 	event.LogHostCreated(ctx, intentHost.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "inserted intent host",
 		"host_id":  intentHost.Id,
 		"host_tag": intentHost.Tag,
@@ -109,7 +109,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 		// Do not error when trying to populate github tokens because if the repo is not private, cloning the repo will still work.
 		// Additionally, we should still spin up the host even if we can't fetch the data.
 		githubAppToken, moduleTokens, err = units.GetGithubTokensForTask(ctx, h.ProvisionOptions.TaskId)
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "error getting GitHub tokens for fetching data for task",
 			"task":    h.ProvisionOptions.TaskId,
 		}))
@@ -350,7 +350,7 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, params host.Ho
 		// to reprovision, the agent monitor will eventually shut itself down or
 		// stop communicating with the app server. At that point, the host will
 		// be ready to reprovision.
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "could not mark host as needing new agent monitor for reprovisioning",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -381,7 +381,7 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 		// instance ID, there's nothing that can be done to fix it here.
 
 		msg := "intent host is up, but it did not provide an EC2 instance ID, which is required"
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":     msg,
 			"host_id":     h.Id,
 			"host_status": h.Status,
@@ -406,7 +406,7 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 // it's up and running. It is marked as starting to indicate that the host has
 // started and can run tasks.
 func transitionIntentHostToStarting(ctx context.Context, env evergreen.Environment, hostToStart *host.Host, instanceID string) error {
-	grip.Notice(message.Fields{
+	grip.Notice(ctx, message.Fields{
 		"message":     "DB-EC2 state mismatch - EC2 instance started but Evergreen still has it stored as an intent host, fixing now",
 		"old_host_id": hostToStart.Id,
 		"new_host_id": instanceID,
@@ -432,7 +432,7 @@ func transitionIntentHostToStarting(ctx context.Context, env evergreen.Environme
 // host because it's up and running. It is marked as decommissioned to
 // indicate that the host is not valid anymore and should be terminated.
 func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Environment, hostToDecommission *host.Host, instanceID string) error {
-	grip.Notice(message.Fields{
+	grip.Notice(ctx, message.Fields{
 		"message":     "DB-EC2 state mismatch - EC2 instance started but Evergreen already gave up on this host, fixing now",
 		"host_id":     hostToDecommission.Id,
 		"instance_id": instanceID,
@@ -448,7 +448,7 @@ func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Env
 	}
 
 	event.LogHostStatusChanged(ctx, hostToDecommission.Id, oldStatus, hostToDecommission.Status, evergreen.User, "host started agent but intent host is already considered a failure")
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "intent host decommissioned",
 		"host_id":    hostToDecommission.Id,
 		"host_tag":   hostToDecommission.Tag,

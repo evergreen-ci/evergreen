@@ -31,6 +31,7 @@ type Resolver struct {
 }
 
 func New(apiURL string) Config {
+
 	dbConnector := &data.DBConnector{URL: apiURL}
 	c := Config{
 		Resolvers: &Resolver{

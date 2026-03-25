@@ -15,6 +15,7 @@ import (
 // NewOnlyAPIUserManager creates a user manager for special users that can only
 // make API requests. Users cannot be created and must come from the database.
 func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
+
 	opts := usercache.ExternalOptions{
 		PutUserGetToken: func(context.Context, gimlet.User) (string, error) {
 			return "", errors.New("cannot put new users in DB")

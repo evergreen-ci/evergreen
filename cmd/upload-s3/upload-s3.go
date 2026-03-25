@@ -21,18 +21,19 @@ func main() {
 	flag.StringVar(&remote, "remote", "", "the remote path")
 	flag.StringVar(&exclude, "exclude", "", "file pattern to exclude from  upload")
 	flag.Parse()
-	if bucketName == "" {
-		grip.EmergencyFatal("bucket name is missing")
-	}
-	if local == "" {
-		grip.EmergencyFatal("local path is missing")
-	}
-	if remote == "" {
-		grip.EmergencyFatal("remote path is missing")
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	if bucketName == "" {
+		grip.EmergencyFatal(ctx, "bucket name is missing")
+	}
+	if local == "" {
+		grip.EmergencyFatal(ctx, "local path is missing")
+	}
+	if remote == "" {
+		grip.EmergencyFatal(ctx, "remote path is missing")
+	}
 
 	client := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(client)
@@ -46,11 +47,11 @@ func main() {
 	}
 	bucket, err := pail.NewS3Bucket(ctx, opts)
 	if err != nil {
-		grip.EmergencyFatal("could not initialize bucket")
+		grip.EmergencyFatal(ctx, "could not initialize bucket")
 	}
 
 	if err := grip.SetLevel(send.LevelInfo{Threshold: level.Debug, Default: level.Debug}); err != nil {
-		grip.EmergencyFatal(errors.Wrap(err, "setting grip logging level"))
+		grip.EmergencyFatal(ctx, errors.Wrap(err, "setting grip logging level"))
 	}
 
 	if err := bucket.Push(ctx, pail.SyncOptions{
@@ -58,6 +59,6 @@ func main() {
 		Remote:  remote,
 		Exclude: exclude,
 	}); err != nil {
-		grip.EmergencyFatal(errors.Wrapf(err, "pushing contents from local path %s to remote path %s in bucket %s", local, remote, bucketName))
+		grip.EmergencyFatal(ctx, errors.Wrapf(err, "pushing contents from local path %s to remote path %s in bucket %s", local, remote, bucketName))
 	}
 }

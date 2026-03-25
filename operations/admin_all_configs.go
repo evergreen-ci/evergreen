@@ -3,6 +3,7 @@ package operations
 import (
 	"os"
 
+	"context"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -50,6 +51,7 @@ func fetchAllProjectConfigs() cli.Command {
 // fetchAndWriteConfig downloads the most recent config for a project
 // and writes it to "project_name.yml" locally.
 func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeDisabled bool) error {
+	ctx := context.TODO()
 	catcher := grip.NewSimpleCatcher()
 	type projectRepo struct {
 		Owner      string
@@ -69,10 +71,10 @@ func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeD
 			ConfigFile: p.RemotePath,
 		}
 		if exists := configDownloaded[repo]; exists {
-			grip.Infof("Configuration for project '%s' already downloaded", p.Identifier)
+			grip.Infof(ctx, "Configuration for project '%s' already downloaded", p.Identifier)
 			continue
 		}
-		grip.Infof("Downloading configuration for '%s'", p.Identifier)
+		grip.Infof(ctx, "Downloading configuration for '%s'", p.Identifier)
 		versions, err := c.GetRecentVersions(p.Id)
 		if err != nil {
 			catcher.Wrapf(err, "fetching recent versions for '%s'", p.Identifier)

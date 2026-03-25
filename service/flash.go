@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"net/http"
 
+	"context"
 	"github.com/gorilla/sessions"
 	"github.com/mongodb/grip"
 )
@@ -34,14 +35,16 @@ func NewErrorFlash(message string) flashMessage {
 }
 
 func PopFlashes(store *sessions.CookieStore, r *http.Request, w http.ResponseWriter) []any {
+	ctx := context.TODO()
 	session, _ := store.Get(r, FlashSession)
 	flashes := session.Flashes()
-	grip.Warning(session.Save(r, w))
+	grip.Warning(ctx, session.Save(r, w))
 	return flashes
 }
 
 func PushFlash(store *sessions.CookieStore, r *http.Request, w http.ResponseWriter, msg flashMessage) {
+	ctx := context.TODO()
 	session, _ := store.Get(r, FlashSession)
 	session.AddFlash(msg)
-	grip.Warning(session.Save(r, w))
+	grip.Warning(ctx, session.Save(r, w))
 }

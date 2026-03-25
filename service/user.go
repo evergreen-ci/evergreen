@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"context"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -24,6 +25,7 @@ func (uis *UIServer) loginRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	creds := struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -41,7 +43,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := uis.env.UserManager().CreateUserToken(r.Context(), creds.Username, creds.Password)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error creating user token",
 		}))
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)

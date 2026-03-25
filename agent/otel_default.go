@@ -13,6 +13,7 @@ import (
 )
 
 func addProcessMetrics(meter metric.Meter) error {
+
 	processCountRunning, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.running", processCountPrefix), metric.WithUnit("{process}"), metric.WithDescription("Total number of running processes"))
 	if err != nil {
 		return errors.Wrap(err, "making running process counter")

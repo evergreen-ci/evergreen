@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"strconv"
 
+	"context"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 )
 
 func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Patch == nil {
 		http.Error(w, "patch not found", http.StatusNotFound)
@@ -45,5 +47,5 @@ func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write([]byte(diff))
-	grip.Warning(err)
+	grip.Warning(ctx, err)
 }

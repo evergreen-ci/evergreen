@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -160,10 +161,11 @@ func generateTasks() (*shrub.Configuration, error) {
 }
 
 func main() {
+	ctx := context.Background()
 	generate, err := generateTasks()
 	if err != nil {
-		grip.EmergencyFatal(err)
+		grip.EmergencyFatal(ctx, err)
 	}
 	jsonBytes, _ := json.MarshalIndent(generate, "", "  ")
-	grip.Error(os.WriteFile(jsonFilename, jsonBytes, 0644))
+	grip.Error(ctx, os.WriteFile(jsonFilename, jsonBytes, 0644))
 }

@@ -130,6 +130,7 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 }
 
 func githubClientShouldRetry() utility.HTTPRetryFunction {
+	ctx := context.TODO()
 	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
 	// The GitHub API returns 403 Forbidden when a secondary rate limit is
 	// exceeded. This should ideally be covered already by checking for
@@ -182,7 +183,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				return true
 			}
 
-			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+			grip.Error(ctx, message.WrapError(err, makeLogMsg(map[string]any{
 				"message": "GitHub endpoint encountered unretryable error",
 			})))
 
@@ -192,7 +193,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		if resp == nil {
 			errMsg := "GitHub app endpoint returned nil response"
 			span.SetAttributes(attribute.String(githubAppErrorAttribute, errMsg))
-			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+			grip.Error(ctx, message.WrapError(err, makeLogMsg(map[string]any{
 				"message": errMsg,
 			})))
 			return true
@@ -206,7 +207,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			}
 		}
 
-		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
+		grip.ErrorWhen(ctx, resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
 			"message":     "GitHub app endpoint returned response but is not retryable",
 			"status_code": resp.StatusCode,
 		}))

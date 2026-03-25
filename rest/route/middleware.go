@@ -349,17 +349,17 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 // or agent monitor if they are set.
 func updateHostAccessTime(ctx context.Context, h *host.Host) {
 	if err := h.UpdateLastCommunicated(ctx); err != nil {
-		grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
+		grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
 	}
 	// Since the host has contacted the app server, we should prevent the
 	// app server from attempting to deploy agents or agent monitors.
 	// Deciding whether we should redeploy agents or agent monitors
 	// is handled within the REST route handler.
 	if h.NeedsNewAgent {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgent(ctx, false), "problem clearing host needs new agent"))
+		grip.Warning(ctx, message.WrapError(h.SetNeedsNewAgent(ctx, false), "problem clearing host needs new agent"))
 	}
 	if h.NeedsNewAgentMonitor {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
+		grip.Warning(ctx, message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
 	}
 }
 
@@ -608,11 +608,12 @@ func NewGithubAuthMiddleware() gimlet.Middleware {
 type githubAuthMiddleware struct{}
 
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := context.TODO()
 	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "rejecting GitHub webhook",
 			"msg_id":  r.Header.Get("X-Github-Delivery"),
@@ -648,6 +649,7 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 }
 
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := context.TODO()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
@@ -661,7 +663,7 @@ func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	if err = payload.VerifyPayload(); err != nil {
 		msg := "AWS SNS message failed validation"
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": msg,
 			"payload": payload,
 		}))

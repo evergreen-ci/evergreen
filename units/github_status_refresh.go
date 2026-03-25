@@ -73,7 +73,7 @@ func (j *githubStatusRefreshJob) shouldUpdate(ctx context.Context) (bool, error)
 		return false, errors.Wrap(err, "error retrieving admin settings")
 	}
 	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     j.Name,
 			"message": "GitHub status updates are disabled, not updating status",
 		})
@@ -127,6 +127,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 }
 
 func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
+	ctx := context.TODO()
 	c := message.MakeGithubStatusMessageWithRepo(*status)
 	if !c.Loggable() {
 		j.AddError(errors.Errorf("status message is invalid: %+v", status))
@@ -134,8 +135,8 @@ func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
 	}
 	j.AddError(c.SetPriority(level.Notice))
 
-	j.sender.Send(c)
-	grip.Info(message.Fields{
+	j.sender.Send(ctx, c)
+	grip.Info(ctx, message.Fields{
 		"ticket":   thirdparty.GithubInvestigation,
 		"message":  "called github status refresh",
 		"caller":   githubStatusRefreshJobName,

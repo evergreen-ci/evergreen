@@ -197,6 +197,7 @@ func parseTestSuitesStreaming(ctx context.Context, decoder *xml.Decoder) ([]test
 // test log. Logs are only generated if the test case did not succeed (this is
 // part of the XUnit XML file design).
 func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger client.LoggerProducer) (testresult.TestResult, *testlog.TestLog) {
+	ctx := context.TODO()
 
 	res := testresult.TestResult{}
 	var log *testlog.TestLog
@@ -210,12 +211,12 @@ func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger cli
 	res.TestName = util.CleanForPath(res.TestName)
 
 	if math.IsNaN(float64(tc.Time)) {
-		logger.Task().Errorf("Test '%s' time was NaN, its calculated duration will be incorrect", res.TestName)
+		logger.Task().Errorf(ctx, "Test '%s' time was NaN, its calculated duration will be incorrect", res.TestName)
 		tc.Time = 0
 	}
 	// Passing 0 as the sign will check for Inf as well as -Inf.
 	if math.IsInf(float64(tc.Time), 0) {
-		logger.Task().Errorf("Test '%s' time was Inf, its calculated duration will be incorrect", res.TestName)
+		logger.Task().Errorf(ctx, "Test '%s' time was Inf, its calculated duration will be incorrect", res.TestName)
 		tc.Time = 0
 	}
 

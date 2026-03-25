@@ -102,12 +102,12 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 	}
 	defer func() {
 		if doInstall {
-			grip.Error(os.Remove(updatedBin))
+			grip.Error(ctx, os.Remove(updatedBin))
 		}
 	}()
 
 	if doInstall {
-		grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
+		grip.Infoln(ctx, "Upgraded binary successfully downloaded to temporary file:", updatedBin)
 
 		var binaryDest string
 		binaryDest, err = osext.Executable()
@@ -118,32 +118,32 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 		winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
 		winTempDest := filepath.Join(filepath.Dir(binaryDest), winTempFileBase+"-old.exe")
 		if runtime.GOOS == "windows" {
-			grip.Infoln("Moving existing binary", binaryDest, "to", winTempDest)
+			grip.Infoln(ctx, "Moving existing binary", binaryDest, "to", winTempDest)
 			if err = os.Rename(binaryDest, winTempDest); err != nil {
 				return err
 			}
 		} else {
-			grip.Infoln("Unlinking existing binary at", binaryDest)
+			grip.Infoln(ctx, "Unlinking existing binary at", binaryDest)
 			if err = syscall.Unlink(binaryDest); err != nil {
 				return err
 			}
 		}
 
-		grip.Infoln("Moving upgraded binary to", binaryDest)
+		grip.Infoln(ctx, "Moving upgraded binary to", binaryDest)
 		err = copyFile(binaryDest, updatedBin)
 		if err != nil {
 			return err
 		}
 
-		grip.Info("Setting binary permissions...")
+		grip.Info(ctx, "Setting binary permissions...")
 		err = os.Chmod(binaryDest, 0755)
 		if err != nil {
 			return err
 		}
-		grip.Info("Upgrade complete!")
+		grip.Info(ctx, "Upgrade complete!")
 
 		if runtime.GOOS == "windows" {
-			grip.Infoln("Deleting old binary", winTempDest)
+			grip.Infoln(ctx, "Deleting old binary", winTempDest)
 			// Source: https://stackoverflow.com/a/19748576
 			// Since Windows does not allow a binary that's currently in
 			// use to be deleted, wait 2 seconds for the CLI process to
@@ -157,7 +157,7 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 		return nil
 	}
 
-	grip.Infoln("New binary downloaded (but not installed) to path:", updatedBin)
+	grip.Infoln(ctx, "New binary downloaded (but not installed) to path:", updatedBin)
 
 	// Attempt to generate a command that the user can copy/paste to complete the install.
 	binaryDest, err := osext.Executable()
@@ -169,12 +169,13 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 	if runtime.GOOS == "windows" {
 		installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
 	}
-	grip.Infoln("To complete the install, run the following command:", installCommand)
+	grip.Infoln(ctx, "To complete the install, run the following command:", installCommand)
 
 	return nil
 }
 
 func copyFile(dst, src string) error {
+	ctx := context.TODO()
 	s, err := os.Open(src)
 	if err != nil {
 		return err
@@ -182,14 +183,14 @@ func copyFile(dst, src string) error {
 	// no need to check errors on read only file, we already got everything
 	// we need from the filesystem, so nothing can go wrong now.
 	defer func() {
-		grip.Error(s.Close())
+		grip.Error(ctx, s.Close())
 	}()
 	d, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	if _, err := io.Copy(d, s); err != nil {
-		grip.Error(d.Close())
+		grip.Error(ctx, d.Close())
 		return err
 	}
 	return d.Close()
@@ -199,13 +200,14 @@ func copyFile(dst, src string) error {
 // possible client downloads. It returns the first one that succeeds, or an
 // error if none succeed.
 func tryAllPrepareUpdate(update updateStatus) (string, error) {
+	ctx := context.TODO()
 	var err error
 	for _, binary := range update.binaries {
-		grip.Infoln("Fetching update from", binary.URL)
+		grip.Infoln(ctx, "Fetching update from", binary.URL)
 		var updatedBin string
 		updatedBin, err = prepareUpdate(binary.URL, update.newVersion)
 		if err != nil {
-			grip.Error(err)
+			grip.Error(ctx, err)
 			continue
 		}
 		return updatedBin, nil
@@ -216,6 +218,7 @@ func tryAllPrepareUpdate(update updateStatus) (string, error) {
 // prepareUpdate fetches the update at the given URL, writes it to a temporary file, and returns
 // the path to the temporary file.
 func prepareUpdate(url, newVersion string) (string, error) {
+	ctx := context.TODO()
 	tempFile, err := os.CreateTemp("", "")
 	if err != nil {
 		return "", err
@@ -223,18 +226,18 @@ func prepareUpdate(url, newVersion string) (string, error) {
 
 	response, err := http.Get(url)
 	if err != nil {
-		grip.Error(tempFile.Close())
+		grip.Error(ctx, tempFile.Close())
 		return "", err
 	}
 	if response.StatusCode != http.StatusOK {
-		grip.Error(tempFile.Close())
+		grip.Error(ctx, tempFile.Close())
 		return "", errors.Errorf("received status code '%s'", response.Status)
 	}
 
 	defer response.Body.Close()
 	_, err = io.Copy(tempFile, response.Body)
 	if err != nil {
-		grip.Error(tempFile.Close())
+		grip.Error(ctx, tempFile.Close())
 		return "", err
 	}
 
@@ -289,10 +292,13 @@ type updateStatus struct {
 }
 
 func checkUpdate(client client.Communicator, silent bool, force bool) (updateStatus, error) {
-	// This version of the cli has been built with a version, so we can compare it with what the
-	// server says is the latest
+	ctx :=
+		// This version of the cli has been built with a version, so we can compare it with what the
+		// server says is the latest
+		context.TODO()
+
 	clients, err := client.GetClientConfig(context.Background())
-	grip.NoticeWhen(!silent, message.WrapError(err, message.Fields{
+	grip.NoticeWhen(ctx, !silent, message.WrapError(err, message.Fields{
 		"message": "Failed checking for updates",
 	}))
 	if err != nil {
@@ -305,7 +311,7 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 
 	// No update needed
 	if !force && clients.LatestRevision == evergreen.ClientVersion {
-		grip.NoticeWhen(!silent, message.Fields{
+		grip.NoticeWhen(ctx, !silent, message.Fields{
 			"message":  "Binary is already up to date - not updating.",
 			"revision": evergreen.ClientVersion,
 		})
@@ -319,7 +325,7 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 	binarySources := findClientUpdates(*clients)
 	if len(binarySources) == 0 {
 		// Client is out of date but no update available
-		grip.NoticeWhen(!silent, message.WrapError(err, message.Fields{
+		grip.NoticeWhen(ctx, !silent, message.WrapError(err, message.Fields{
 			"message":  "Client is out of date but update is unavailable.",
 			"revision": evergreen.ClientVersion,
 		}))
@@ -330,7 +336,7 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 		}, nil
 	}
 
-	grip.NoticeWhen(!silent, message.WrapError(err, message.Fields{
+	grip.NoticeWhen(ctx, !silent, message.WrapError(err, message.Fields{
 		"message":      "Update to version found",
 		"revision":     evergreen.ClientVersion,
 		"new_revision": clients.LatestRevision,

@@ -57,7 +57,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for github author '%s'", data.GithubAuthor)
 		}
 		if specifiedUser != nil {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":               "overriding patch author as specified by the submitter",
 				"submitter":             dbUser.Id,
 				"new_author":            specifiedUser.Id,
@@ -66,7 +66,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 			})
 			author = specifiedUser.Id
 		}
-		grip.DebugWhen(specifiedUser == nil, message.Fields{
+		grip.DebugWhen(ctx, specifiedUser == nil, message.Fields{
 			"message":         "github user not found",
 			"github_username": data.GithubAuthor,
 			"patch_id":        patchID,
@@ -77,7 +77,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for author '%s'", data.PatchAuthor)
 		}
 		if specifiedUser != nil {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":    "overriding patch author as specified by the submitter",
 				"submitter":  dbUser.Id,
 				"new_author": data.PatchAuthor,
@@ -85,7 +85,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 			})
 			author = specifiedUser.Id
 		}
-		grip.DebugWhen(specifiedUser == nil, message.Fields{
+		grip.DebugWhen(ctx, specifiedUser == nil, message.Fields{
 			"message":  "patch user not found",
 			"username": data.PatchAuthor,
 			"patch_id": patchID,
@@ -125,6 +125,7 @@ type patchData struct {
 // submitPatch creates the Patch document, adds the patched project config to it,
 // and saves the patches to GridFS to be retrieved
 func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	dbUser := MustHaveUser(r)
 
 	data := patchData{}
@@ -216,7 +217,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation":  "patch creation",
 		"message":    "creating patch",
 		"from":       "CLI",
@@ -423,7 +424,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"operation":     "patch creation",
 			"message":       "finalized patch",
 			"from":          "CLI",

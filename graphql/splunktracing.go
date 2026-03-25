@@ -43,7 +43,7 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 
 		duration := end.Sub(start)
 		redactedRequestVariables := RedactFieldsInMap(rc.Variables, redactedFields)
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":     "graphql.tracing",
 			"query":       rc.Operation.Name,
 			"operation":   rc.Operation.Operation,

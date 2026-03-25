@@ -172,7 +172,7 @@ func Fetch() cli.Command {
 
 			if revokeTokens {
 				err = revokeFetchTokens(ctx, client, taskID, token, moduleTokensMap)
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"message": "could not revoke GitHub tokens after fetching data",
 					"task":    taskID,
 				}))
@@ -183,20 +183,22 @@ func Fetch() cli.Command {
 }
 
 func cleanupWhyIsMyDataMissingFile(dir string) {
+	ctx := context.TODO()
 	filePath := filepath.Join(dir, evergreen.WhyIsMyDataMissingName)
 	err := os.Remove(filePath)
 	if err != nil && !os.IsNotExist(err) {
-		grip.Warningf("could not remove %s: %v", filePath, err)
+		grip.Warningf(ctx, "could not remove %s: %v", filePath, err)
 	}
 }
 
 func parseModuleTokens(moduleTokens []string) map[string]string {
+	ctx := context.TODO()
 	moduleTokensMap := make(map[string]string)
 	for _, token := range moduleTokens {
 		// Parse the string formatted as 'moduleName:token'.
 		parts := strings.Split(token, ":")
 		if len(parts) != 2 {
-			grip.Warningf("invalid module token format")
+			grip.Warningf(ctx, "invalid module token format")
 			continue
 		}
 		moduleTokensMap[parts[0]] = parts[1]
@@ -229,7 +231,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	}
 	mfest, err := comm.GetManifestByTask(ctx, taskId)
 	if err != nil && !strings.Contains(err.Error(), "no manifest found") {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":       "problem getting manifest",
 			"task":          taskId,
 			"task_version":  task.Version,
@@ -278,7 +280,10 @@ type cloneOptions struct {
 }
 
 func clone(opts cloneOptions) error {
-	// Check repository existence if no token is provided
+	ctx :=
+		// Check repository existence if no token is provided
+		context.TODO()
+
 	if opts.token == "" {
 		resp, err := http.Get(thirdparty.FormGitURLForApp(opts.owner, opts.repository, opts.token))
 		if err != nil {
@@ -305,7 +310,7 @@ func clone(opts cloneOptions) error {
 	}
 
 	cloneArgs = append(cloneArgs, opts.rootDir)
-	grip.Debug(cloneArgs)
+	grip.Debug(ctx, cloneArgs)
 
 	c := exec.Command("git", cloneArgs...)
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
@@ -316,7 +321,7 @@ func clone(opts cloneOptions) error {
 
 	// try to check out the revision we want
 	checkoutArgs := []string{"checkout", opts.revision}
-	grip.Debug(checkoutArgs)
+	grip.Debug(ctx, checkoutArgs)
 
 	c = exec.Command("git", checkoutArgs...)
 	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
@@ -331,7 +336,7 @@ func clone(opts cloneOptions) error {
 
 		// we have to go deeper
 		fetchArgs := []string{"fetch", "--unshallow"}
-		grip.Debug(fetchArgs)
+		grip.Debug(ctx, fetchArgs)
 
 		c = exec.Command("git", fetchArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
@@ -341,7 +346,7 @@ func clone(opts cloneOptions) error {
 		}
 		// now it's unshallow, so try again to check it out
 		checkoutRetryArgs := []string{"checkout", opts.revision}
-		grip.Debug(checkoutRetryArgs)
+		grip.Debug(ctx, checkoutRetryArgs)
 
 		c = exec.Command("git", checkoutRetryArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir

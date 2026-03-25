@@ -333,6 +333,7 @@ func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
 // the statuses of tasks in the build, to be used by jobs and notification
 // processing.
 func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
+	ctx := context.TODO()
 	success := 0
 	failed := 0
 	other := 0
@@ -358,7 +359,7 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 		}
 	}
 
-	grip.ErrorWhen(other > 0, message.Fields{
+	grip.ErrorWhen(ctx, other > 0, message.Fields{
 		"source":   "status updates",
 		"message":  "unknown task status",
 		"build_id": b.Id,

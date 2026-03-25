@@ -15,6 +15,7 @@ import (
 )
 
 func NewOktaUserManager(conf *evergreen.OktaConfig, evgURL, loginDomain string) (gimlet.UserManager, error) {
+
 	expireAfter := time.Duration(conf.ExpireAfterMinutes) * time.Minute
 	opts := okta.CreationOptions{
 		ClientID:             conf.ClientID,

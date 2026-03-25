@@ -314,8 +314,9 @@ func (s *cronsEventSuite) TestSendNotificationJobs() {
 }
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
+	ctx := context.TODO()
 	err := http.Serve(ln, handler)
-	grip.Error(err)
+	grip.Error(ctx, err)
 	if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 		panic(err)
 	}
@@ -329,17 +330,19 @@ type mockWebhookHandler struct {
 }
 
 func (m *mockWebhookHandler) error(outErr error, w http.ResponseWriter) {
+	ctx := context.TODO()
 	if outErr == nil {
 		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
 
 	_, err := w.Write([]byte(outErr.Error()))
-	grip.Error(err)
+	grip.Error(ctx, err)
 	m.err = outErr
 }
 
 func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	ctx := context.TODO()
 	const (
 		evergreenNotificationIDHeader = "X-Evergreen-Notification-ID"
 		evergreenHMACHeader           = "X-Evergreen-Signature"
@@ -380,7 +383,7 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	m.body = body
 
 	w.WriteHeader(http.StatusNoContent)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   fmt.Sprintf("received %s", mid),
 		"signature": string(sig),
 		"body":      string(body),

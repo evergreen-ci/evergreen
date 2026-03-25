@@ -39,7 +39,7 @@ func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj
 	owner := utility.FromStringPtr(obj.ProjectRef.Owner)
 	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
 	hasApp, err := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, owner, repo)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message": "Error verifying GitHub app installation",
 		"project": utility.FromStringPtr(obj.ProjectRef.Id),
 		"owner":   owner,

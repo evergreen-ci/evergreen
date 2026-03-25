@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -39,9 +40,10 @@ func (i APIDuration) ToDuration() time.Duration {
 }
 
 func MarshalAPIDuration(b APIDuration) graphql.Marshaler {
+	ctx := context.TODO()
 	return graphql.WriterFunc(func(w io.Writer) {
 		_, err := w.Write([]byte(strconv.FormatInt(int64(b), 10)))
-		grip.Error(err)
+		grip.Error(ctx, err)
 	})
 }
 

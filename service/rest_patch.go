@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"context"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
@@ -59,6 +60,7 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 
 // getPatchConfig returns the patched config for a given patch.
 func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "patch not found"})
@@ -102,7 +104,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(projBytes)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message":  "could not write parser project to response",
 		"patch_id": projCtx.Patch.Id.Hex(),
 		"route":    "/rest/v1/patches/{patch_id}/config",

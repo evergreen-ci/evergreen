@@ -29,27 +29,28 @@ import (
 // is specified, it will create that task directory; otherwise, it will create
 // a new task directory based on the current task data.
 func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
+	ctx := context.TODO()
 	if taskDir == "" {
 		var err error
 		taskDir, err = a.generateTaskDirectoryName(tc)
 		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "generating task directory name"))
+			tc.logger.Execution().Error(ctx, errors.Wrap(err, "generating task directory name"))
 			return "", err
 		}
 	}
 
-	tc.logger.Execution().Infof("Making task directory '%s' for task execution.", taskDir)
+	tc.logger.Execution().Infof(ctx, "Making task directory '%s' for task execution.", taskDir)
 
 	if err := os.MkdirAll(taskDir, 0777); err != nil {
-		tc.logger.Execution().Error(errors.Wrapf(err, "creating task directory '%s'", taskDir))
+		tc.logger.Execution().Error(ctx, errors.Wrapf(err, "creating task directory '%s'", taskDir))
 		return "", err
 	}
 
 	tmpDir := filepath.Join(taskDir, "tmp")
-	tc.logger.Execution().Infof("Making task temporary directory '%s' for task execution.", tmpDir)
+	tc.logger.Execution().Infof(ctx, "Making task temporary directory '%s' for task execution.", tmpDir)
 
 	if err := os.MkdirAll(tmpDir, 0777); err != nil {
-		tc.logger.Execution().Warning(errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
+		tc.logger.Execution().Warning(ctx, errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
 	}
 
 	return taskDir, nil
@@ -133,25 +134,25 @@ func (a *Agent) generateTaskDirectoryHash(toHash string) (string, error) {
 // because leaving the task directory behind could impact later tasks.
 func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
-		grip.Info("Task directory is not set, not removing.")
+		grip.Info(ctx, "Task directory is not set, not removing.")
 		return
 	}
 
 	dir := tc.taskConfig.WorkDir
 
-	grip.Infof("Deleting task directory '%s' for completed task.", dir)
+	grip.Infof(ctx, "Deleting task directory '%s' for completed task.", dir)
 
 	// Removing long relative paths hangs on Windows https://github.com/golang/go/issues/36375,
 	// so we have to convert to an absolute path before removing.
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
+		grip.Critical(ctx, errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
 	if err := a.removeAllAndCheck(ctx, abs); err != nil {
-		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
+		grip.Critical(ctx, errors.Wrapf(err, "removing task directory '%s'", dir))
 	} else {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "Successfully deleted directory for completed task.",
 			"directory": tc.taskConfig.WorkDir,
 		})
@@ -169,7 +170,7 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 	checkCtx, checkCancel := context.WithTimeout(ctx, time.Minute)
 	defer checkCancel()
 	if err := a.checkDataDirectoryHealth(checkCtx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":               "failed to check data directory usage",
 			"unremovable_directory": dir,
 		}))
@@ -183,11 +184,12 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 // an issue where some files may be marked read-only, which prevents
 // os.RemoveAll from deleting them.
 func (a *Agent) removeAll(dir string) error {
-	grip.Error(errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
+	ctx := context.TODO()
+	grip.Error(ctx, errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		grip.Error(errors.Wrapf(os.Chmod(path, 0777), "changing permission before removal for path '%s'", path))
+		grip.Error(ctx, errors.Wrapf(os.Chmod(path, 0777), "changing permission before removal for path '%s'", path))
 		return nil
 	}), "recursively walking through path to change permissions"))
 	return os.RemoveAll(dir)
@@ -228,18 +230,18 @@ func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 
 	// Don't run in a development environment
 	if _, err = os.Stat(filepath.Join(dir, ".git")); !os.IsNotExist(err) {
-		grip.Notice("Refusing to clean a directory that contains '.git'.")
+		grip.Notice(ctx, "Refusing to clean a directory that contains '.git'.")
 		return
 	}
 
 	usr, err := user.Current()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "getting current user"))
+		grip.Warning(ctx, errors.Wrap(err, "getting current user"))
 		return
 	}
 
 	if strings.HasPrefix(dir, usr.HomeDir) || strings.Contains(dir, "cygwin") {
-		grip.Notice("Not cleaning up directory, because it is in the home directory.")
+		grip.Notice(ctx, "Not cleaning up directory, because it is in the home directory.")
 		return
 	}
 
@@ -269,10 +271,10 @@ func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 		return
 	}
 
-	grip.Infof("Attempting to clean up directory '%s'.", dir)
+	grip.Infof(ctx, "Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
 		if err = a.removeAllAndCheck(ctx, p); err != nil {
-			grip.Critical(errors.Wrapf(err, "removing path '%s'", p))
+			grip.Critical(ctx, errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}
 }
@@ -306,13 +308,14 @@ func (a *Agent) checkDataDirectoryHealthWithUsage(ctx context.Context, usage *di
 // SetHomeDirectory sets the agent's home directory to the user's home directory
 // if it is not already set.
 func (a *Agent) SetHomeDirectory() {
+	ctx := context.TODO()
 	if a.opts.HomeDirectory != "" {
 		return
 	}
 
 	userHome, err := util.GetUserHome()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "setting the agent's home directory"))
+		grip.Warning(ctx, errors.Wrap(err, "setting the agent's home directory"))
 	}
 
 	a.opts.HomeDirectory = userHome

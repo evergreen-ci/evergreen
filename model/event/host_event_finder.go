@@ -44,7 +44,7 @@ func getRecentFinishedStatusesForHost(ctx context.Context, hostId string, hostPr
 
 	cursor, err := evergreen.GetEnvironment().DB().Collection(EventCollection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "could not get recent host statuses",
 			"host_id": hostId,
 			"count":   n,
@@ -54,7 +54,7 @@ func getRecentFinishedStatusesForHost(ctx context.Context, hostId string, hostPr
 
 	hostStatusDistros := []hostStatusDistro{}
 	if err := cursor.All(ctx, &hostStatusDistros); err != nil {
-		grip.Warning(err)
+		grip.Warning(ctx, err)
 		return 0, []string{}
 	}
 

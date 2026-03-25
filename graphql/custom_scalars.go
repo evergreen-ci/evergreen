@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"io"
 
+	"context"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/mongodb/grip"
 )
 
 // MarshalStringMap handles marshaling StringMap
 func MarshalStringMap(val map[string]string) graphql.Marshaler {
+	ctx := context.TODO()
 	return graphql.WriterFunc(func(w io.Writer) {
 		err := json.NewEncoder(w).Encode(val)
 		if err != nil {
 			_, err = w.Write([]byte(fmt.Sprintf("Error marshaling StringMap %v: %v", val, err.Error())))
 			if err != nil {
-				grip.Error(err)
+				grip.Error(ctx, err)
 			}
 		}
 	})
@@ -42,12 +44,13 @@ func UnmarshalStringMap(v any) (map[string]string, error) {
 
 // MarshalBooleanMap handles marshaling BooleanMap
 func MarshalBooleanMap(val map[string]bool) graphql.Marshaler {
+	ctx := context.TODO()
 	return graphql.WriterFunc(func(w io.Writer) {
 		err := json.NewEncoder(w).Encode(val)
 		if err != nil {
 			_, err = w.Write([]byte(fmt.Sprintf("Error marshaling BooleanMap %v: %v", val, err.Error())))
 			if err != nil {
-				grip.Error(err)
+				grip.Error(ctx, err)
 			}
 		}
 	})

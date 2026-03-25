@@ -13,6 +13,7 @@ import (
 // addProcessMetrics tallies the total number of processes in any state. This is because on Windows gopsutil doesn't support
 // checking process state.
 func addProcessMetrics(meter metric.Meter) error {
+
 	processCount, err := meter.Int64ObservableUpDownCounter(processCountPrefix, metric.WithUnit("{process}"), metric.WithDescription("Total number of processes"))
 	if err != nil {
 		return errors.Wrap(err, "making process counter")

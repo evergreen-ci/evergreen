@@ -104,7 +104,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 		return errors.Wrapf(err, "scanning documents from file '%s'", fn)
 	}
 
-	grip.Infof("imported %d documents into %s", count, collName)
+	grip.Infof(ctx, "imported %d documents into %s", count, collName)
 
 	return nil
 }
@@ -119,7 +119,7 @@ func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 		return errors.Wrap(err, "writing GridFS file")
 	}
 
-	grip.Infof("wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
+	grip.Infof(ctx, "wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
 
 	return nil
 }
@@ -201,7 +201,7 @@ func buildAmboyIndexes(ctx context.Context, dbURI string, db *mongo.Database) er
 		return errors.Wrap(err, "closing queue group")
 	}
 
-	grip.Info("successfully built required Amboy indexes")
+	grip.Info(ctx, "successfully built required Amboy indexes")
 
 	return nil
 }
@@ -224,8 +224,11 @@ func getAmboyQueueOptions(dbURI string, db *mongo.Database) queue.MongoDBQueueOp
 }
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	wd, err := os.Getwd()
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(ctx, err)
 	var (
 		path        string
 		dbName      string
@@ -237,20 +240,17 @@ func main() {
 	flag.StringVar(&amboyDBName, "amboyDBName", "amboy_smoke", "name of the Amboy DB to use")
 	flag.Parse()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	const dbURI = "mongodb://localhost:27017"
 
 	clientOptions := options.Client().ApplyURI(dbURI).SetConnectTimeout(5 * time.Second)
 	client, err := mongo.Connect(ctx, clientOptions)
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(ctx, err)
 
 	db := client.Database(dbName)
-	grip.EmergencyFatal(db.Drop(ctx))
+	grip.EmergencyFatal(ctx, db.Drop(ctx))
 
 	amboyDB := client.Database(amboyDBName)
-	grip.EmergencyFatal(amboyDB.Drop(ctx))
+	grip.EmergencyFatal(ctx, amboyDB.Drop(ctx))
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(buildAmboyIndexes(ctx, dbURI, amboyDB), "building Amboy indexes")
@@ -258,5 +258,5 @@ func main() {
 	catcher.Wrap(writeDummyGridFSFile(ctx, db), "writing dummy file to GridFS")
 	catcher.Wrap(writeDummyTestResultToLocalBucket(ctx), "writing dummy test result to local bucket")
 	catcher.Add(client.Disconnect(ctx))
-	grip.EmergencyFatal(catcher.Resolve())
+	grip.EmergencyFatal(ctx, catcher.Resolve())
 }

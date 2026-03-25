@@ -103,7 +103,7 @@ func RunHostTaskPatchTest(ctx context.Context, t *testing.T, params SmokeTestPar
 
 	// Now that the task generator has run, check the builds again for the
 	// generated tasks.
-	grip.Info("Successfully checked non-generated tasks, checking generated tasks")
+	grip.Info(ctx, "Successfully checked non-generated tasks, checking generated tasks")
 
 	originalTasks := builds[0].Tasks
 	builds, err = getAndCheckBuilds(ctx, params, patchID, client)
@@ -127,19 +127,19 @@ func RunHostTaskPatchTest(ctx context.Context, t *testing.T, params SmokeTestPar
 // eventually. It does *not* guarantee that it has already run, nor that it has
 // actually managed to pick up the latest commits from GitHub.
 func triggerRepotracker(ctx context.Context, t *testing.T, params SmokeTestParams, client *http.Client) {
-	grip.Info("Attempting to trigger repotracker to run.")
+	grip.Info(ctx, "Attempting to trigger repotracker to run.")
 
 	const repotrackerAttempts = 5
 	for i := 0; i < repotrackerAttempts; i++ {
 		time.Sleep(2 * time.Second)
-		grip.Infof("Requesting repotracker for evergreen project. (%d/%d)", i+1, repotrackerAttempts)
+		grip.Infof(ctx, "Requesting repotracker for evergreen project. (%d/%d)", i+1, repotrackerAttempts)
 		_, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodPost, client, fmt.Sprintf("/rest/v2/projects/%s/repotracker", params.ProjectID))
 		if err != nil {
-			grip.Error(errors.Wrap(err, "requesting repotracker to run"))
+			grip.Error(ctx, errors.Wrap(err, "requesting repotracker to run"))
 			continue
 		}
 
-		grip.Info("Successfully triggered repotracker to run.")
+		grip.Info(ctx, "Successfully triggered repotracker to run.")
 
 		return
 	}
@@ -151,18 +151,18 @@ func triggerRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 // create versions for them. The particular versions that it creates for these
 // commits is not that important, only that they exist.
 func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParams, client *http.Client) {
-	grip.Info("Waiting for repotracker to pick up new commits.")
+	grip.Info(ctx, "Waiting for repotracker to pick up new commits.")
 
 	const repotrackerAttempts = 10
 	for i := 0; i < repotrackerAttempts; i++ {
 		time.Sleep(2 * time.Second)
 		respBody, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodGet, client, fmt.Sprintf("/rest/v2/projects/%s/versions?limit=1", params.ProjectID))
 		if err != nil {
-			grip.Error(errors.Wrapf(err, "requesting latest version for project '%s'", params.ProjectID))
+			grip.Error(ctx, errors.Wrapf(err, "requesting latest version for project '%s'", params.ProjectID))
 			continue
 		}
 		if len(respBody) == 0 {
-			grip.Errorf("did not find any latest revisions yet for project '%s'", params.ProjectID)
+			grip.Errorf(ctx, "did not find any latest revisions yet for project '%s'", params.ProjectID)
 			continue
 		}
 
@@ -171,22 +171,22 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 		// ago.
 		latestVersions := []model.APIVersion{}
 		if err := json.Unmarshal(respBody, &latestVersions); err != nil {
-			grip.Error(errors.Wrap(err, "reading version create time from response body"))
+			grip.Error(ctx, errors.Wrap(err, "reading version create time from response body"))
 			continue
 		}
 		if len(latestVersions) == 0 {
-			grip.Errorf("listing latest versions for project '%s' yielded no results", params.ProjectID)
+			grip.Errorf(ctx, "listing latest versions for project '%s' yielded no results", params.ProjectID)
 			continue
 		}
 
 		latestVersion := latestVersions[0]
 		latestVersionID := utility.FromStringPtr(latestVersion.Id)
 		if createTime := utility.FromTimePtr(latestVersion.CreateTime); time.Since(createTime) > 365*24*time.Hour {
-			grip.Infof("Found latest version '%s' for project '%s', but it was created at %s, which was a long time ago, waiting for repotracker to pick up newer commit.", latestVersionID, params.ProjectID, createTime)
+			grip.Infof(ctx, "Found latest version '%s' for project '%s', but it was created at %s, which was a long time ago, waiting for repotracker to pick up newer commit.", latestVersionID, params.ProjectID, createTime)
 			continue
 		}
 
-		grip.Infof("Repotracker successfully picked up a new commit '%s' and created version '%s'.", utility.FromStringPtr(latestVersion.Revision), latestVersionID)
+		grip.Infof(ctx, "Repotracker successfully picked up a new commit '%s' and created version '%s'.", utility.FromStringPtr(latestVersion.Revision), latestVersionID)
 
 		return
 	}
@@ -199,7 +199,7 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 // Note that this requires using the CLI because there's currently no way to
 // create a patch from the REST API.
 func submitSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams) {
-	grip.Info("Submitting patch to smoke test app server.")
+	grip.Info(ctx, "Submitting patch to smoke test app server.")
 
 	cmd, err := internal.SmokeRunBinary(ctx, "smoke-patch-submission", params.EVGHome, params.CLIPath, "-c", params.CLIConfigPath, "patch", "-p", params.ProjectID, "-v", params.BVName, "-t", "all", "-f", "-y", "-d", "Smoke test patch")
 	require.NoError(t, err, "should have submitted patch")
@@ -207,24 +207,24 @@ func submitSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestPar
 	require.NoError(t, err, "expected to finish successful CLI patch")
 	require.Zero(t, exitCode, "CLI patch must return successful exit code")
 
-	grip.Info("Successfully submitted patch to smoke test app server.")
+	grip.Info(ctx, "Successfully submitted patch to smoke test app server.")
 }
 
 // getSmokeTestPatch gets the user's manual patch that was submitted to the app
 // server. It returns the patch ID.
 func getSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams, client *http.Client) string {
-	grip.Infof("Waiting for manual patch for user '%s' to exist.", params.Username)
+	grip.Infof(ctx, "Waiting for manual patch for user '%s' to exist.", params.Username)
 
 	const patchCheckAttempts = 10
 	for i := 0; i < patchCheckAttempts; i++ {
 		time.Sleep(2 * time.Second)
 		respBody, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodGet, client, fmt.Sprintf("/rest/v2/users/%s/patches?limit=1", params.Username))
 		if err != nil {
-			grip.Error(errors.Wrapf(err, "requesting latest patches for user '%s'", params.Username))
+			grip.Error(ctx, errors.Wrapf(err, "requesting latest patches for user '%s'", params.Username))
 			continue
 		}
 		if len(respBody) == 0 {
-			grip.Errorf("did not find any latest patches yet for user '%s'", params.Username)
+			grip.Errorf(ctx, "did not find any latest patches yet for user '%s'", params.Username)
 			continue
 		}
 
@@ -232,22 +232,22 @@ func getSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams
 		// should be just a few moments ago.
 		latestPatches := []model.APIPatch{}
 		if err := json.Unmarshal(respBody, &latestPatches); err != nil {
-			grip.Error(errors.Wrap(err, "reading response body"))
+			grip.Error(ctx, errors.Wrap(err, "reading response body"))
 			continue
 		}
 		if len(latestPatches) == 0 {
-			grip.Errorf("listing latest patches for user '%s' yielded no results", params.Username)
+			grip.Errorf(ctx, "listing latest patches for user '%s' yielded no results", params.Username)
 			continue
 		}
 
 		latestPatch := latestPatches[0]
 		latestPatchID := utility.FromStringPtr(latestPatch.Id)
 		if createTime := utility.FromTimePtr(latestPatch.CreateTime); time.Since(createTime) > time.Hour {
-			grip.Infof("Found latest patch '%s' in project '%s', but it was created at %s, waiting for patch that was just submitted", latestPatchID, utility.FromStringPtr(latestPatch.ProjectId), createTime)
+			grip.Infof(ctx, "Found latest patch '%s' in project '%s', but it was created at %s, waiting for patch that was just submitted", latestPatchID, utility.FromStringPtr(latestPatch.ProjectId), createTime)
 			continue
 		}
 
-		grip.Infof("Successfully found patch '%s' in project '%s' submitted by user '%s'.", latestPatchID, params.ProjectID, params.Username)
+		grip.Infof(ctx, "Successfully found patch '%s' in project '%s' submitted by user '%s'.", latestPatchID, params.ProjectID, params.Username)
 
 		return latestPatchID
 	}
@@ -266,17 +266,17 @@ type smokeAPIBuild struct {
 // getAndCheckBuilds gets build and task information from the Evergreen app
 // server's REST API for the smoke test's manual patch.
 func getAndCheckBuilds(ctx context.Context, params SmokeTestParams, patchID string, client *http.Client) ([]smokeAPIBuild, error) {
-	grip.Infof("Attempting to get builds created by the manual patch '%s'.", patchID)
+	grip.Infof(ctx, "Attempting to get builds created by the manual patch '%s'.", patchID)
 
 	const buildCheckAttempts = 10
 	for i := 0; i < buildCheckAttempts; i++ {
 		// Poll the app server until the patch's builds and tasks exist.
 		time.Sleep(2 * time.Second)
 
-		grip.Infof("Checking for a build of patch '%s'. (%d/%d)", patchID, i+1, buildCheckAttempts)
+		grip.Infof(ctx, "Checking for a build of patch '%s'. (%d/%d)", patchID, i+1, buildCheckAttempts)
 		body, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodGet, client, fmt.Sprintf("/rest/v2/versions/%s/builds", patchID))
 		if err != nil {
-			grip.Error(errors.Wrap(err, "requesting builds"))
+			grip.Error(ctx, errors.Wrap(err, "requesting builds"))
 			continue
 		}
 
@@ -292,7 +292,7 @@ func getAndCheckBuilds(ctx context.Context, params SmokeTestParams, patchID stri
 			continue
 		}
 
-		grip.Infof("Successfully got %d build(s) for manual patch '%s'.", len(builds), patchID)
+		grip.Infof(ctx, "Successfully got %d build(s) for manual patch '%s'.", len(builds), patchID)
 		return builds, nil
 	}
 

@@ -86,7 +86,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		grip.Error(errors.Wrap(err, "otel error"))
+		grip.Error(ctx, errors.Wrap(err, "otel error"))
 	}))
 
 	a.tracer = tp.Tracer(packageName)
@@ -127,7 +127,7 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 	)
 
 	return func(ctx context.Context) {
-		grip.Error(errors.Wrap(meterProvider.Shutdown(ctx), "doing meter provider"))
+		grip.Error(ctx, errors.Wrap(meterProvider.Shutdown(ctx), "doing meter provider"))
 	}, errors.Wrap(instrumentMeter(ctx, meterProvider.Meter(packageName)), "instrumenting meter")
 }
 
@@ -150,6 +150,7 @@ func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 }
 
 func addCPUMetrics(meter metric.Meter) error {
+
 	cpuTimeIdle, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.idle", cpuTimeInstrumentPrefix), metric.WithUnit("s"))
 	if err != nil {
 		return errors.Wrap(err, "making cpu time idle counter")
@@ -212,6 +213,7 @@ func addCPUMetrics(meter metric.Meter) error {
 }
 
 func addMemoryMetrics(meter metric.Meter) error {
+
 	memoryUsageAvailable, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.available", memoryUsageInstrumentPrefix), metric.WithUnit("By"))
 	if err != nil {
 		return errors.Wrap(err, "making memory usage available counter")
@@ -556,7 +558,7 @@ func hostResource(ctx context.Context) *resource.Resource {
 	)
 
 	mergedResource, err := addEnvironmentAttributes(ctx, r)
-	grip.Error(errors.Wrap(err, "adding environment attributes"))
+	grip.Error(ctx, errors.Wrap(err, "adding environment attributes"))
 	if err == nil {
 		r = mergedResource
 	}

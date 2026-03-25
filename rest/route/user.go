@@ -330,7 +330,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		rolesToRemove = append(rolesToRemove, r.ID)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"removed_roles": rolesToRemove,
 		"user":          u.Id,
 		"resource_type": h.resourceType,
@@ -518,7 +518,7 @@ func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) 
 func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	u, err := user.FindOneById(ctx, h.userID)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error finding user",
 			"route":   "userPermissionsGetHandler",
 		}))
@@ -689,7 +689,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "modify roles route executed",
 		"roles_added":   h.rolesToAdd,
 		"roles_removed": h.rolesToRemove,
@@ -959,7 +959,7 @@ func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if catcher.HasErrors() {
 		err := catcher.Resolve()
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":  "users not fully consolidated",
 			"old_user": h.oldUsr.Id,
 			"new_user": newUsr.Id,
@@ -1084,20 +1084,20 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if !ch.dryRun {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":            "executing user offboarding",
 			"user":               ch.user,
 			"terminated_hosts":   toTerminate.TerminatedHosts,
 			"terminated_volumes": toTerminate.TerminatedVolumes,
 		})
 
-		grip.Error(message.WrapError(serviceModel.RemoveAdminFromProjects(ctx, ch.user), message.Fields{
+		grip.Error(ctx, message.WrapError(serviceModel.RemoveAdminFromProjects(ctx, ch.user), message.Fields{
 			"message": "could not remove user as an admin",
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
 
-		grip.Error(message.WrapError(ch.clearLogin(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(ch.clearLogin(ctx), message.Fields{
 			"message": "could not clear login token",
 			"context": "user offboarding",
 			"user":    ch.user,
@@ -1108,7 +1108,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if catcher.HasErrors() {
 		err := catcher.Resolve()
-		grip.CriticalWhen(!ch.dryRun, message.WrapError(err, message.Fields{
+		grip.CriticalWhen(ctx, !ch.dryRun, message.WrapError(err, message.Fields{
 			"message": "the user did not offboard fully",
 			"context": "user offboarding",
 			"user":    ch.user,

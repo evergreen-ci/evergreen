@@ -5,17 +5,20 @@ import (
 	"sync"
 	"testing"
 
+	"context"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func init() {
+	ctx := context.TODO()
 	err := grip.SetSender(send.MakeNative())
-	grip.Error(err)
+	grip.Error(ctx, err)
 }
 
 func TestWindowsProcessRegistry(t *testing.T) {
+	ctx := context.TODO()
 	reg := newProcessRegistry()
 	Convey("the process registry", t, func() {
 		So(len(reg.jobs), ShouldEqual, 0)
@@ -80,7 +83,7 @@ func TestWindowsProcessRegistry(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(reg.jobs), ShouldEqual, 1)
 
-			grip.Error(reg.removeJob(id))
+			grip.Error(ctx, reg.removeJob(id))
 			So(len(reg.jobs), ShouldEqual, 0)
 		})
 	})

@@ -297,9 +297,10 @@ var blockedCIDRs = []*net.IPNet{
 }
 
 func mustParseCIDR(c string) *net.IPNet {
+	ctx := context.TODO()
 	_, n, err := net.ParseCIDR(c)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to parse CIDR",
 			"target":  c,
 		}))

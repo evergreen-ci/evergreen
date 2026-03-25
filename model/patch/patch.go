@@ -926,6 +926,7 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 // GetCollectiveStatusFromPatchStatuses answers the question of what the patch status should be
 // when the patch status and the status of its children are different, given a list of statuses.
 func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
+	ctx := context.TODO()
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false
@@ -948,7 +949,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	}
 
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
-		grip.Critical(message.Fields{
+		grip.Critical(ctx, message.Fields{
 			"message":  "An unknown patch status was found",
 			"cause":    "Programmer error: new statuses should be added to GetCollectiveStatusFromPatchStatuses().",
 			"statuses": statuses,

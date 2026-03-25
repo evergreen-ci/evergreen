@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -1127,13 +1128,16 @@ var (
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.
 func FindEvergreenHome() string {
-	// check if env var is set
+	ctx :=
+		// check if env var is set
+		context.TODO()
+
 	root := os.Getenv(EvergreenHome)
 	if len(root) > 0 {
 		return root
 	}
 
-	grip.Errorf("%s is unset", EvergreenHome)
+	grip.Errorf(ctx, "%s is unset", EvergreenHome)
 	return ""
 }
 

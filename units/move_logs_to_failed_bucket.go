@@ -103,7 +103,7 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 	// the task config because that has already been updated to the failed bucket so that future
 	// logs are written there directly.
 	if err := t.MoveTestAndTaskLogsToFailedBucket(fetchContext, j.env.Settings(), j.SourceBucketCfg); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "moving logs to failed bucket",
 			"task_id":   t.Id,
 			"execution": t.Execution,
@@ -113,7 +113,7 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   "successfully moved logs to failed bucket",
 		"task_id":   t.Id,
 		"execution": t.Execution,

@@ -3,6 +3,7 @@ package apimodels
 import (
 	"time"
 
+	"context"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -68,6 +69,7 @@ func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 // returned log message channel. It is the responsibility of the caller to
 // close the log iterator.
 func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
+	ctx := context.TODO()
 	lines := make(chan LogMessage)
 	go func() {
 		defer recovery.LogStackTraceAndContinue("streaming lines from log iterator")
@@ -83,7 +85,7 @@ func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
 		}
 
 		if err := it.Err(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "streaming lines from log iterator",
 			}))
 		}

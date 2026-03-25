@@ -3,6 +3,7 @@ package s3usage
 import (
 	"os"
 
+	"context"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -63,12 +64,13 @@ func CalculateUploadMetrics(
 	bucketType S3BucketType,
 	method S3UploadMethod,
 ) (populatedFiles []FileMetrics, totalSize int64, totalPuts int) {
+	ctx := context.TODO()
 	populatedFiles = make([]FileMetrics, len(files))
 
 	for i, file := range files {
 		fileInfo, err := os.Stat(file.LocalPath)
 		if err != nil {
-			logger.Warningf("Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
+			logger.Warningf(ctx, "Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
 			populatedFiles[i] = FileMetrics{
 				LocalPath:     file.LocalPath,
 				RemotePath:    file.RemotePath,
@@ -133,8 +135,9 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 // CalculateS3PutCostWithConfig calculates the S3 PUT request cost.
 // Returns 0 if cost cannot be calculated due to missing or invalid config.
 func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
+	ctx := context.TODO()
 	if putRequests <= 0 {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":      "no put requests to calculate cost",
 			"put_requests": putRequests,
 		})
@@ -142,7 +145,7 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 	}
 
 	if costConfig == nil {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": "cost config is not available to calculate S3 PUT cost",
 		})
 		return 0.0
@@ -150,7 +153,7 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 
 	discount := costConfig.S3Cost.Upload.UploadCostDiscount
 	if discount < 0.0 || discount > 1.0 {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":  "invalid S3 upload cost discount",
 			"discount": discount,
 		})

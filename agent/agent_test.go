@@ -34,7 +34,7 @@ import (
 )
 
 func init() {
-	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
+	grip.EmergencyPanic(context.Background(), errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
 }
 
 const defaultProjYml = `
@@ -3107,6 +3107,7 @@ func (s *AgentSuite) TestShouldRunSetupGroup() {
 // callers should flush the task logs before checking them to ensure that they
 // are up-to-date.
 func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []string, logsToNotFind []string) {
+	ctx := context.TODO()
 	expectedLog := make(map[string]bool)
 	for _, log := range logsToFind {
 		expectedLog[log] = false
@@ -3143,6 +3144,6 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 	}
 
 	if displayLogs {
-		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
+		grip.Infof(ctx, "Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
 }

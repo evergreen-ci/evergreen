@@ -26,8 +26,9 @@ const (
 )
 
 func init() {
+	ctx := context.TODO()
 	if ExecutionEnvironmentType != "test" {
-		grip.Alert(message.Fields{
+		grip.Alert(ctx, message.Fields{
 			"op":      "called init() in testutil for production code.",
 			"test.v":  flag.Lookup("test.v"),
 			"v":       flag.Lookup("v"),
@@ -46,7 +47,7 @@ func Setup() {
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
 		env, err := evergreen.NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
 
-		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+		grip.EmergencyPanic(ctx, message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
 		}))
@@ -59,7 +60,7 @@ func Setup() {
 			SSMClient:      fakeparameter.NewFakeSSMClient(),
 			DB:             env.DB(),
 		})
-		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+		grip.EmergencyPanic(ctx, message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment's parameter manager",
 		}))
 

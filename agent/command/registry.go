@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -52,8 +53,9 @@ func init() {
 		"timeout.update":                        timeoutUpdateFactory,
 	}
 
+	ctx := context.Background()
 	for name, factory := range cmds {
-		grip.EmergencyPanic(RegisterCommand(name, factory))
+		grip.EmergencyPanic(ctx, RegisterCommand(name, factory))
 	}
 }
 

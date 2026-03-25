@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"context"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
@@ -102,11 +103,12 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
+	ctx := context.TODO()
 	if err == nil {
 		return
 	}
 
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"method":  r.Method,
 		"url":     r.URL,
 		"code":    code,

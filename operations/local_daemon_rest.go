@@ -36,6 +36,7 @@ func newLocalDaemonREST(port int, conf *ClientSettings) *localDaemonREST {
 
 // Start starts the REST debug daemon
 func (d *localDaemonREST) Start() error {
+	ctx := context.TODO()
 	router := mux.NewRouter()
 	router.HandleFunc("/health", d.handleHealth).Methods("GET")
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
@@ -49,20 +50,22 @@ func (d *localDaemonREST) Start() error {
 	router.HandleFunc("/status", d.handleStatus).Methods("GET")
 
 	if err := d.writeDaemonInfo(); err != nil {
-		grip.Warning(errors.Wrap(err, "writing daemon info"))
+		grip.Warning(ctx, errors.Wrap(err, "writing daemon info"))
 	}
 
-	grip.Infof("Starting REST daemon on port %d", d.port)
+	grip.Infof(ctx, "Starting REST daemon on port %d", d.port)
 	return http.ListenAndServe(fmt.Sprintf(":%d", d.port), router)
 }
 
 // handleHealth checks if the daemon is running
 func (d *localDaemonREST) handleHealth(w http.ResponseWriter, r *http.Request) {
-	grip.Error(json.NewEncoder(w).Encode(map[string]bool{"healthy": true}))
+	ctx := context.TODO()
+	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]bool{"healthy": true}))
 }
 
 // handleLoadConfig loads a configuration file
 func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	var req struct {
 		ConfigPath string `json:"config_path"`
 	}
@@ -110,7 +113,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.executor = executor
 	d.configPath = req.ConfigPath
 
-	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":       true,
 		"task_count":    len(project.Tasks),
 		"variant_count": len(project.BuildVariants),
@@ -119,6 +122,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 // handleSelectTask selects a task for debugging
 func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	var req struct {
 		TaskName string `json:"task_name"`
 	}
@@ -142,7 +146,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 	}
 
 	state := d.executor.GetDebugState()
-	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":    true,
 		"step_count": len(state.CommandList),
 	}))
@@ -174,6 +178,7 @@ func (d *localDaemonREST) writeDaemonInfo() error {
 
 // handleJumpTo jumps to a specific step
 func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	vars := mux.Vars(r)
 	stepNum := vars["step"]
 
@@ -197,7 +202,7 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":      true,
 		"current_step": state.CurrentStepIndex,
 	}))
@@ -205,6 +210,7 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 
 // handleListSteps lists all steps in the current task
 func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -231,7 +237,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]interface{}{
 		"steps":        steps,
 		"current_step": state.CurrentStepIndex,
 	}))
@@ -239,6 +245,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 
 // handleRunUntil runs until a specific step identified by step number string.
 func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
 	stepNum := vars["step"]
 
@@ -264,6 +271,7 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 
 // handleRunAll runs all remaining steps with streaming output.
 func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -285,7 +293,7 @@ func (d *localDaemonREST) withStreaming(ctx context.Context, w http.ResponseWrit
 	}
 
 	if err := d.executor.SetupLogManager(false); err != nil {
-		grip.Warning(errors.Wrap(err, "setting up log manager"))
+		grip.Warning(ctx, errors.Wrap(err, "setting up log manager"))
 	}
 
 	state := d.executor.GetDebugState()
@@ -297,7 +305,7 @@ func (d *localDaemonREST) withStreaming(ctx context.Context, w http.ResponseWrit
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
 	if err := fn(ctx); err != nil {
-		grip.Error(errors.Wrap(err, "executing streamed operation"))
+		grip.Error(ctx, errors.Wrap(err, "executing streamed operation"))
 	}
 
 	d.executor.ClearStreamWriter()
@@ -318,6 +326,7 @@ func (d *localDaemonREST) getLogFile() *taskexec.LogFileHandle {
 
 // handleSetVariable sets a custom variable.
 func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	var req struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
@@ -337,11 +346,12 @@ func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Reque
 	}
 
 	d.executor.SetVariable(req.Key, req.Value)
-	grip.Error(json.NewEncoder(w).Encode(map[string]bool{"success": true}))
+	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]bool{"success": true}))
 }
 
 // handleStepNext executes the next step with streaming output.
 func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request) {
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -357,6 +367,7 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 
 // handleStatus returns the daemon status.
 func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -372,5 +383,5 @@ func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
 		response["total_steps"] = len(state.CommandList)
 	}
 
-	grip.Error(json.NewEncoder(w).Encode(response))
+	grip.Error(ctx, json.NewEncoder(w).Encode(response))
 }

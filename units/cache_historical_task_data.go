@@ -66,7 +66,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 		timingMsg["aborted"] = ctx.Err() != nil
 		timingMsg["total"] = time.Since(startAt).Seconds()
 		timingMsg["run_end_at"] = time.Now()
-		grip.Info(timingMsg)
+		grip.Info(ctx, timingMsg)
 	}()
 
 	flags, err := evergreen.GetServiceFlags(ctx)
@@ -119,7 +119,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 					Date:      toUpdate.Day,
 					Tasks:     toUpdate.Tasks,
 				}), "generating daily task stats")
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"job_id":         j.ID(),
 					"project":        j.ProjectID,
 					"job_type":       j.Type().Name,

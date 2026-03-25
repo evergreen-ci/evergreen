@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"context"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -88,6 +89,7 @@ type taskStatusByTest map[string]taskTestResult
 // Returns a JSON response with the marshaled output of the task
 // specified in the request.
 func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
+	ctx := context.TODO()
 	projCtx := MustHaveRESTContext(r)
 	srcTask := projCtx.Task
 	if srcTask == nil {
@@ -128,7 +130,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(r.Context(), destTask.Id)
 	if err != nil {
 		msg := fmt.Sprintf("Error calculating task queue position for '%v'", srcTask.Id)
-		grip.Errorf("%v: %+v", msg, err)
+		grip.Errorf(ctx, "%v: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
@@ -144,7 +146,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	// Copy over the test results.
 	if err := srcTask.PopulateTestResults(r.Context()); err != nil {
 		err = errors.Wrapf(err, "Error finding test results for task '%s'", srcTask.Id)
-		grip.Error(err)
+		grip.Error(ctx, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: err.Error()})
 		return
 	}
@@ -162,7 +164,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	entries, err := artifact.FindAll(r.Context(), artifact.ByTaskId(srcTask.Id))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%s'", srcTask.Id)
-		grip.Errorf("%v: %+v", msg, err)
+		grip.Errorf(ctx, "%v: %+v", msg, err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 
@@ -171,7 +173,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		strippedFiles, err := artifact.StripHiddenFiles(r.Context(), entry.Files, true)
 		if err != nil {
 			msg := fmt.Sprintf("Error getting artifact files for task '%s'", srcTask.Id)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": msg,
 				"task":    srcTask.Id,
 			}))

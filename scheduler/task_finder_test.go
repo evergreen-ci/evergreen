@@ -39,6 +39,7 @@ type TaskFinderSuite struct {
 }
 
 func TestDBTaskFinder(t *testing.T) {
+
 	s := new(TaskFinderSuite)
 	s.FindRunnableTasks = func(ctx context.Context, d distro.Distro) ([]task.Task, error) {
 		return task.FindHostRunnable(ctx, d.Id, true)

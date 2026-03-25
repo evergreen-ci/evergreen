@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sort"
 
+	"context"
 	"github.com/99designs/gqlgen/codegen/config"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -75,10 +76,11 @@ func isFieldRedacted(fieldName string, fieldsToRedact map[string]bool) bool {
 // RedactFieldsInMap recursively searches for and redacts fields in a map.
 // Assumes map structure like map[string]interface{} where interface{} can be another map, a slice, or a basic datatype.
 func RedactFieldsInMap(data map[string]any, fieldsToRedact map[string]bool) map[string]any {
+	ctx := context.TODO()
 	dataCopy := map[string]any{}
 	if err := util.DeepCopy(data, &dataCopy); err != nil {
 		// If theres an error copying the data, log it and return an empty map.
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to deep copy request variables",
 		}))
 		return map[string]any{}

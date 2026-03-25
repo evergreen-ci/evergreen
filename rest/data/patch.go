@@ -128,7 +128,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 			return errors.Wrapf(err, "finalizing patch '%s'", p.Id.Hex())
 		}
 		if requester == evergreen.PatchVersionRequester {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":     "patch creation",
 				"message":       "finalized patch",
 				"from":          "rest route",

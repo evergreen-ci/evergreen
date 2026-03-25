@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"context"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/pkg/errors"
@@ -49,11 +50,12 @@ func createEnclosingDirectoryIfNeeded(path string) error {
 }
 
 func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger client.LoggerProducer) {
+	ctx := context.TODO()
 	modulePrefix, err := conf.Expansions.ExpandString(prefix)
 	if err != nil {
-		logger.Task().Error(errors.Wrapf(err, "expanding module prefix '%s'", modulePrefix))
+		logger.Task().Error(ctx, errors.Wrapf(err, "expanding module prefix '%s'", modulePrefix))
 		modulePrefix = prefix
-		logger.Task().Warningf("Will attempt to check out into the module prefix '%s' verbatim.", prefix)
+		logger.Task().Warningf(ctx, "Will attempt to check out into the module prefix '%s' verbatim.", prefix)
 	}
 	if conf.ModulePaths == nil {
 		conf.ModulePaths = map[string]string{}

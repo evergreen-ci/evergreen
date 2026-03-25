@@ -244,7 +244,7 @@ func GetGitHubAppAuthForProject(ctx context.Context, projectID string) *githubap
 	}
 	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":            "error finding github app auth",
 			"project_id":         projectID,
 			"project_identifier": pRef.Identifier,
@@ -1041,7 +1041,7 @@ func (p *ProjectRef) addGithubConflictsToUpdate(ctx context.Context, update bson
 	// If the project ref doesn't default to repo, will just return the original project.
 	mergedProject, err := GetProjectRefMergedWithRepo(ctx, *p)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message":            "unable to merge project with attached repo",
 			"project_id":         p.Id,
 			"project_identifier": p.Identifier,
@@ -1052,7 +1052,7 @@ func (p *ProjectRef) addGithubConflictsToUpdate(ctx context.Context, update bson
 	if mergedProject.Enabled {
 		conflicts, err := mergedProject.GetGithubProjectConflicts(ctx)
 		if err != nil {
-			grip.Debug(message.WrapError(err, message.Fields{
+			grip.Debug(ctx, message.WrapError(err, message.Fields{
 				"message":            "unable to get github project conflicts",
 				"project_id":         p.Id,
 				"project_identifier": p.Identifier,
@@ -1318,7 +1318,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	repoRef.Repo = p.Repo
 	_, err = SetTracksPushEvents(ctx, &repoRef.ProjectRef)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "error setting project tracks push events",
 			"repo_id": repoRef.Id,
 			"owner":   repoRef.Owner,
@@ -1331,7 +1331,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
 	err = LogProjectAdded(ctx, repoRef.Id, u.DisplayName())
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message":            "problem logging repo added",
 		"project_id":         repoRef.Id,
 		"project_identifier": repoRef.Identifier,
@@ -1833,7 +1833,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 		}
 	}
 	if len(projectRefs) > 0 {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "project ref enabled but pr testing not enabled",
 			"owner":   owner,
@@ -1849,7 +1849,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
 	if repoRef == nil || !repoRef.IsPRTestingEnabledByCaller(calledBy) {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref not configured for PR testing untracked branches",
 			"owner":   owner,
@@ -1859,7 +1859,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 		return nil, nil
 	}
 	if repoRef.RemotePath == "" {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "repo ref has no remote path, cannot use for PR testing",
 			"owner":   owner,
@@ -1879,7 +1879,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 	var hiddenProject *ProjectRef
 	for i, p := range projectRefs {
 		if !p.Enabled && !p.IsHidden() {
-			grip.Debug(message.Fields{
+			grip.Debug(ctx, message.Fields{
 				"source":  "find project ref for PR testing",
 				"message": "project ref is disabled, not PR testing",
 				"owner":   owner,
@@ -1893,7 +1893,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 		}
 	}
 	if hiddenProject == nil {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"source":  "find project ref for PR testing",
 			"message": "creating hidden project because none exists",
 			"owner":   owner,
@@ -1911,7 +1911,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 			Hidden:    utility.TruePtr(),
 		}
 		if err = hiddenProject.Add(ctx, nil); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"source":  "find project ref for PR testing",
 				"message": "hidden project could not be added",
 				"owner":   owner,
@@ -1940,7 +1940,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx context.Context, o
 		}
 	}
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message": "no matching project ref with commit queue enabled",
 		"owner":   owner,
 		"repo":    repo,
@@ -1954,7 +1954,7 @@ func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, err
 	// Don't return errors because it could cause the project page to break if GitHub is down.
 	hasApp, err := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "Error verifying GitHub app installation",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -1968,7 +1968,7 @@ func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, err
 	// sometimes people change a project to track a personal
 	// branch we don't have access to
 	if !hasApp {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":            "GitHub app not installed",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -3003,7 +3003,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 	// check if user has permissions with mana before asking github about the teams
 	u, err := user.FindByGithubName(ctx, githubUser)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error checking if user is authorized for git tag",
 			"source":  "github hook",
 		}))
@@ -3027,6 +3027,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 // Stderr/Stdin are passed through to the commands as well as Stdout, when opts.Quiet is false
 // The commands' working directories may not exist and need to be created before running the commands
 func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
+	ctx := context.TODO()
 	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.ShouldGitClone() {
 		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Id)
 	}
@@ -3039,7 +3040,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		cmd := jasper.NewCommand().Add(args).
 			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
 			Prerequisite(func() bool {
-				grip.Info(message.Fields{
+				grip.Info(ctx, message.Fields{
 					"directory": opts.Directory,
 					"command":   strings.Join(args, " "),
 					"op":        "repo clone",
@@ -3070,7 +3071,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		cmd := jasper.NewCommand().Directory(dir).SetErrorWriter(utility.NopWriteCloser(os.Stderr)).SetInput(os.Stdin).
 			Append(obj.Command).
 			Prerequisite(func() bool {
-				grip.Info(message.Fields{
+				grip.Info(ctx, message.Fields{
 					"directory":      dir,
 					"command":        cmdString,
 					"command_number": commandNumber,
@@ -3118,7 +3119,7 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 	// If the nextRunTime is still in the past, bring its base time up to present and re-calculate it.
 	// This could happen if the periodic build's pre-existing next run time is in the past.
 	if now.After(nextRunTime) {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":    "next run time is in the past, resetting to current time",
 			"project":    projectId,
 			"definition": definition.ID,
@@ -3234,7 +3235,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 		return "", nil
 	}
 	ghAppAuth, err := pRef.GetGitHubAppAuthForAPI(ctx)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": pRef.Id,
 	}))

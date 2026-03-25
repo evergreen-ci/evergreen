@@ -343,6 +343,7 @@ func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
 }
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
+	ctx := context.TODO()
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
 		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
 
@@ -358,7 +359,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":   "EOF error from github",
 					"method":    req.Method,
 					"url":       url,
@@ -367,13 +368,13 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 				return true
 			}
 			temporary := utility.IsTemporaryError(err)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":   "failed trying to call github",
 				"method":    req.Method,
 				"url":       url,
 				"temporary": temporary,
 			}))
-			grip.InfoWhen(temporary, message.Fields{
+			grip.InfoWhen(ctx, temporary, message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   "error is temporary",
 				"caller":    caller,
@@ -383,7 +384,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp == nil {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   "resp is nil in githubShouldRetry",
 				"caller":    caller,
@@ -397,7 +398,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp.StatusCode >= http.StatusBadRequest {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "bad response code from github",
 				"method":  req.Method,
 				"url":     url,
@@ -411,7 +412,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp.StatusCode == http.StatusBadGateway {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusBadGateway),
 				"caller":    caller,
@@ -421,7 +422,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if config.retry404 && resp.StatusCode == http.StatusNotFound {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusNotFound),
 				"caller":    caller,
@@ -438,7 +439,8 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
 func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
-	grip.Info(message.Fields{
+	ctx := context.TODO()
+	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,
@@ -512,7 +514,7 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 
 	if settings.AuthConfig.Github == nil {
 		settings = evergreen.GetEnvironment().Settings()
-		grip.Info("no Github settings in auth config, using cached settings")
+		grip.Info(ctx, "no Github settings in auth config, using cached settings")
 	}
 
 	return githubapp.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, settings, defaultGitHubAPIRequestLifetime, opts)
@@ -557,7 +559,7 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from query for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
-		grip.Error(errMsg)
+		grip.Error(ctx, errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
 
@@ -595,7 +597,7 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 			return nil, err
 		}
 
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":           "could not retrieve GitHub file using git, falling back to using GitHub API to retrieve it",
 			"owner":             owner,
 			"repo":              repo,
@@ -657,7 +659,7 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 			}
 		} else {
 			errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
-			grip.Error(errMsg)
+			grip.Error(ctx, errMsg)
 			return APIResponseError{errMsg}
 		}
 
@@ -686,7 +688,7 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 			return nil
 		}
 
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":    "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
 			"caller":     caller,
 			"owner":      owner,
@@ -749,7 +751,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     input.Caller,
 			"message": "GitHub status updates are disabled, not updating status",
 		})
@@ -790,8 +792,8 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		return errors.Wrap(err, "setting priority")
 	}
 
-	sender.Send(c)
-	grip.Info(message.Fields{
+	sender.Send(ctx, c)
+	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called github status send",
 		"caller":  "github check subscriptions",
@@ -860,7 +862,7 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 		}
 	} else {
 		apiErr := errors.Errorf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", owner, repo, baseRevision, currentCommitHash, err)
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Error(ctx, message.WrapError(apiErr, message.Fields{
 			"message":             "failed to compare commits to determine order of commits",
 			"op":                  "getCommitComparison",
 			"github_error":        fmt.Sprint(err),
@@ -906,7 +908,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "requesting commit from github",
 		"commit":  githash,
 		"repo":    owner + "/" + repo,
@@ -921,7 +923,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		}
 	} else {
 		err = errors.Wrapf(err, "nil response from repo %s/%s for %s", owner, repo, githash)
-		grip.Error(message.WrapError(errors.Cause(err), message.Fields{
+		grip.Error(ctx, message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
 			"repo":    owner + "/" + repo,
 			"message": "problem querying repo",
@@ -939,7 +941,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	if commit != nil && commit.SHA != nil {
 		msg["commit"] = *commit.SHA
 	}
-	grip.Debug(msg)
+	grip.Debug(ctx, msg)
 
 	if commit == nil {
 		return nil, errors.New("commit not found in github")
@@ -972,7 +974,7 @@ func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Br
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
+	grip.Debugf(ctx, "requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
 
 	branchEvent, resp, err := githubClient.Repositories.GetBranch(ctx, owner, repo, branch, 0)
 	if resp != nil {
@@ -983,7 +985,7 @@ func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Br
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from github for '%s/%s': branch: '%s': %v", owner, repo, branch, err)
-		grip.Error(errMsg)
+		grip.Error(ctx, errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
@@ -1026,20 +1028,20 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 // tryGithubPost posts the data to the Github api endpoint with the url given
 func tryGithubPost(ctx context.Context, url string, oauthToken string, data any) (resp *http.Response, err error) {
 	err = utility.Retry(ctx, func() (bool, error) {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "Attempting GitHub API POST",
 			"ticket":  GithubInvestigation,
 			"url":     url,
 		})
 		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
 		if err != nil {
-			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
+			grip.Errorf(ctx, "failed trying to call github POST on %s: %+v", url, err)
 			return true, err
 		}
 		if resp.StatusCode == http.StatusUnauthorized {
 			err = errors.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
 			defer resp.Body.Close()
-			grip.Error(err)
+			grip.Error(ctx, err)
 			return false, err
 		}
 		if resp.StatusCode != http.StatusOK {
@@ -1258,7 +1260,7 @@ func userInTeam(ctx context.Context, teams []string, org, user, owner, repo stri
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "number of teams in IsUserInGithubTeam",
 		"teams":   len(teams),
