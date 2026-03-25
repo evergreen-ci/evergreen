@@ -489,11 +489,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		if modulePatch != nil {
 			if conf.Task.Requester == evergreen.GithubMergeRequester {
 				revision = module.Branch
-				c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
+				c.logModuleRevision(ctx, logger, revision, moduleName, "defaulting to HEAD for merge")
 			} else {
 				revision = modulePatch.Githash
 				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
+					c.logModuleRevision(ctx, logger, revision, moduleName, "specified in set-module")
 				}
 			}
 		}
@@ -501,23 +501,23 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if revision == "" {
 		revision = c.Revisions[moduleName]
 		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "specified as parameter to git.get_project")
 		}
 	}
 	if revision == "" {
 		revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
 		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "from manifest")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "from manifest")
 		}
 	}
 	// if there is no revision, then use the revision from the module, then branch name
 	if revision == "" {
 		if module.Ref != "" {
 			revision = module.Ref
-			c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "ref field in config file")
 		} else {
 			revision = module.Branch
-			c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "branch field in config file")
 		}
 	}
 
@@ -696,8 +696,7 @@ func reorderPatches(originalPatches []patch.ModulePatch) []patch.ModulePatch {
 	return patches
 }
 
-func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revision, module, reason string) {
-	ctx := context.TODO()
+func (c *gitFetchProject) logModuleRevision(ctx context.Context, logger client.LoggerProducer, revision, module, reason string) {
 	logger.Execution().Infof(ctx, "Using revision/ref '%s' for module '%s' (reason: %s).", revision, module, reason)
 }
 
