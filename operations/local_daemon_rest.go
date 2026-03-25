@@ -99,7 +99,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	project, err := executor.LoadProject(req.ConfigPath)
+	project, err := executor.LoadProject(r.Context(), req.ConfigPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

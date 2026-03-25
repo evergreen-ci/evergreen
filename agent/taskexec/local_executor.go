@@ -145,8 +145,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 }
 
 // LoadProject loads and parses an Evergreen project configuration from a file
-func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
-	ctx := context.TODO()
+func (e *LocalExecutor) LoadProject(ctx context.Context, configPath string) (*model.Project, error) {
 	e.logger.Infof(ctx, "Loading project from: %s", configPath)
 
 	absPath, err := filepath.Abs(configPath)

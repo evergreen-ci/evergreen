@@ -36,7 +36,7 @@ buildvariants:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		project, err := executor.LoadProject(yamlFile)
+		project, err := executor.LoadProject(t.Context(), yamlFile)
 		require.NoError(t, err)
 		assert.NotNil(t, project)
 		assert.Len(t, project.Tasks, 2)
@@ -83,7 +83,7 @@ buildvariants:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		project, err := executor.LoadProject(mainFile)
+		project, err := executor.LoadProject(t.Context(), mainFile)
 		require.NoError(t, err)
 		assert.NotNil(t, project)
 		assert.Len(t, project.Tasks, 2)
@@ -126,7 +126,7 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		project, err := executor.LoadProject(mainFile)
+		project, err := executor.LoadProject(t.Context(), mainFile)
 		require.NoError(t, err)
 		assert.NotNil(t, project)
 		assert.Len(t, project.Tasks, 2)
@@ -156,7 +156,7 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		_, err = executor.LoadProject(mainFile)
+		_, err = executor.LoadProject(t.Context(), mainFile)
 		assert.Error(t, err)
 	})
 }
@@ -204,7 +204,7 @@ tasks:
 		})
 		require.NoError(t, err)
 
-		project, err := executor.LoadProject(mainFile)
+		project, err := executor.LoadProject(t.Context(), mainFile)
 		require.NoError(t, err)
 		assert.NotNil(t, project)
 		assert.Len(t, project.Tasks, 2)
@@ -239,7 +239,7 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		_, err = executor.LoadProject(mainFile)
+		_, err = executor.LoadProject(t.Context(), mainFile)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "local path for module 'mymod' is unspecified")
 	})
@@ -266,7 +266,7 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		_, err = executor.LoadProject(yamlFile)
+		_, err = executor.LoadProject(t.Context(), yamlFile)
 		require.NoError(t, err)
 
 		err = executor.PrepareTask("test-task")
@@ -291,7 +291,7 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		_, err = executor.LoadProject(yamlFile)
+		_, err = executor.LoadProject(t.Context(), yamlFile)
 		require.NoError(t, err)
 
 		err = executor.PrepareTask("nonexistent-task")
