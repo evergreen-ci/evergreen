@@ -329,3 +329,212 @@ func TestGlobPatternBehavior(t *testing.T) {
 		})
 	}
 }
+
+func TestGlobPatternCombinations(t *testing.T) {
+	testDir := getDirectoryOfFile()
+	rootPath := filepath.Join(testDir, "testdata", "glob_combinations")
+
+	// Test cases with combinations of include and exclude patterns
+	testCases := []struct {
+		name          string
+		includes      []string
+		excludes      []string
+		expectedPaths []string
+	}{
+		{
+			name:     "AllGoFiles",
+			includes: []string{"./**.go"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"src/main.go",
+				"src/util.go",
+				"src/subdir/helper.go",
+				"src/subdir/test.go",
+			},
+		},
+		{
+			name:     "MultipleIncludes",
+			includes: []string{"**.json", "**.md"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"config/local.json",
+				"config/settings.json",
+				"docs/guide.md",
+			},
+		},
+		{
+			name:     "SpecificDirectory",
+			includes: []string{"config/**"},
+			expectedPaths: []string{
+				"config",
+				"config/local.json",
+				"config/settings.json",
+			},
+		},
+		{
+			name:          "ExcludeEverything",
+			includes:      []string{"**/*.go"},
+			excludes:      []string{"**"},
+			expectedPaths: []string{},
+		},
+		{
+			name:     "DirectChildrenOnly",
+			includes: []string{"src/*"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"src/main.go",
+				"src/subdir",
+				"src/util.go",
+			},
+		},
+		{
+			name:     "SpecificFiles",
+			includes: []string{"config/local.json", "src/**"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"config/local.json",
+				"src",
+				"src/main.go",
+				"src/util.go",
+				"src/subdir",
+				"src/subdir/helper.go",
+				"src/subdir/test.go",
+			},
+		},
+		{
+			name:     "SpecificFilesAndWildcard",
+			includes: []string{"src/main.go", "src/util.go"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"src/main.go",
+				"src/util.go",
+			},
+		},
+		{
+			name:          "WildcardsBeforeEndDontWork",
+			includes:      []string{"*/**"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			name:          "WildcardsBeforeEndDontWorkWithSpecificEnding",
+			includes:      []string{"*/main.go"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			name:          "WildcardsBeforeEndDontWorkWithDoubleWildcardEnding",
+			includes:      []string{"*/**.go"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			name:          "WildcardsBeforeEndDontWorkWithSingleWildcardEnding",
+			includes:      []string{"*/*.go"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			name:          "EndingInSlashReturnsNone",
+			includes:      []string{"src/"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		//
+		// Test Exclusions. Note that we have to include the rootPath because the util function
+		// currently requires the exclude math to match the full joined path, not just the suffix
+		// to the root path provided.
+		//
+		{
+			name:          "SpecificFileAndExclude",
+			includes:      []string{"src/main.go"},
+			excludes:      []string{filepath.Join(rootPath, "src/main.go")},
+			expectedPaths: []string{},
+		},
+		{
+			name:          "SpecificFileAndExcludeWildcard",
+			includes:      []string{"src/main.go"},
+			excludes:      []string{filepath.Join(rootPath, "src/*.go")},
+			expectedPaths: []string{},
+		},
+		{
+			name:     "SingleWildcardAndExcludeSpecific",
+			includes: []string{"src/*.go"},
+			excludes: []string{filepath.Join(rootPath, "src/main.go")},
+			expectedPaths: []string{
+				"src/util.go",
+			},
+		},
+		{
+			name:     "DoubleWildcardAndExcludeSpecific",
+			includes: []string{"src/**.go"},
+			excludes: []string{filepath.Join(rootPath, "src/main.go")},
+			expectedPaths: []string{
+				"src/subdir/helper.go",
+				"src/subdir/test.go",
+				"src/util.go",
+			},
+		},
+		{
+			name:     "DoubleWildcardAndExcludeWildcard",
+			includes: []string{"src/**.go"},
+			excludes: []string{filepath.Join(rootPath, "src/*.go")},
+			expectedPaths: []string{
+				"src/subdir/helper.go",
+				"src/subdir/test.go",
+			},
+		},
+		{
+			name:     "DoubleWildcardAndExcludeWildcardAndSpecificFile",
+			includes: []string{"src/**.go"},
+			excludes: []string{filepath.Join(rootPath, "src/*.go"), filepath.Join(rootPath, "src/subdir/test.go")},
+			expectedPaths: []string{
+				"src/subdir/helper.go",
+			},
+		},
+		{
+			name:     "DoubleWildcardAllAndExcludeWildcardAndSpecificFile",
+			includes: []string{"src/**"},
+			excludes: []string{filepath.Join(rootPath, "src/*.go"), filepath.Join(rootPath, "src/subdir/test.go")},
+			expectedPaths: []string{
+				"src",
+				"src/subdir",
+				"src/subdir/helper.go",
+			},
+		},
+		{
+			name:     "ExcludeDirectoriesFromDoubleWildcard",
+			includes: []string{"config/**"},
+			excludes: []string{filepath.Join(rootPath, "config/")},
+			expectedPaths: []string{
+				"config/local.json",
+				"config/settings.json",
+			},
+		},
+		{
+			name:     "TestQuestionMarkWildcard",
+			includes: []string{"config/loc??.json"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"config/local.json",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			files, _, err := findContentsToArchive(t.Context(), rootPath, tc.includes, tc.excludes)
+			require.NoError(t, err)
+
+			var actualPaths []string
+			for _, f := range files {
+				rel, err := filepath.Rel(rootPath, f.path)
+				require.NoError(t, err)
+				actualPaths = append(actualPaths, filepath.ToSlash(rel))
+			}
+
+			assert.ElementsMatch(t, tc.expectedPaths, actualPaths,
+				"includes: %v, excludes: %v should find expected paths", tc.includes, tc.excludes)
+		})
+	}
+}
