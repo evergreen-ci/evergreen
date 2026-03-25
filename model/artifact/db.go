@@ -45,17 +45,6 @@ func ByTaskIdAndExecution(id string, execution int) db.Q {
 	})
 }
 
-// ByTaskIdWithoutExecution returns a query for entries with the given Task Id
-// that do not have an execution number associated with them
-func ByTaskIdWithoutExecution(id string) db.Q {
-	return db.Query(bson.M{
-		TaskIdKey: id,
-		ExecutionKey: bson.M{
-			"$exists": false,
-		},
-	})
-}
-
 func ByTaskIdsAndExecutions(tasks []TaskIDAndExecution) db.Q {
 	orClause := []bson.M{}
 	for _, t := range tasks {

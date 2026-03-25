@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -160,45 +159,6 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 		return NewAPIError(resp)
 	}
 	return nil
-}
-
-// ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
-	input := validator.ValidationInput{
-		ProjectYaml: data,
-		Quiet:       quiet,
-		ProjectID:   projectID,
-	}
-	rPipe, wPipe := io.Pipe()
-	encoder := json.NewEncoder(wPipe)
-	go func() {
-		grip.Warning(encoder.Encode(input))
-		grip.Warning(wPipe.Close())
-	}()
-	resp, err := ac.post("validate", rPipe)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusBadRequest {
-		errors := validator.ValidationErrors{}
-		err = utility.ReadJSON(resp.Body, &errors)
-		if err != nil {
-			return nil, NewAPIError(resp)
-		}
-		return errors, nil
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
-	if resp.StatusCode == http.StatusForbidden {
-		return nil, newVPNError(resp)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-	return nil, nil
 }
 
 func (ac *legacyClient) CancelPatch(patchId string) error {

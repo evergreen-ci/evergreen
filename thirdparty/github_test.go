@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -481,25 +480,6 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 	}
 
 	return rem, nil
-}
-
-func TestValidatePR(t *testing.T) {
-	assert := assert.New(t)
-
-	prBody, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
-	assert.NoError(err)
-	assert.Len(prBody, 32977)
-	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
-	assert.NoError(err)
-	prEvent, ok := webhookInterface.(*github.PullRequestEvent)
-	assert.True(ok)
-	pr := prEvent.GetPullRequest()
-	require.NotNil(t, pr)
-
-	assert.NoError(ValidatePR(pr))
-
-	pr.Base = nil
-	assert.Error(ValidatePR(pr))
 }
 
 func TestParseGithubErrorResponse(t *testing.T) {
