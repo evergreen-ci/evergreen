@@ -492,7 +492,7 @@ func getStepback(ctx context.Context, taskId string, projectRef *ProjectRef, pro
 	}
 
 	// Check if the bvtask overrides the stepback policy specified by the project
-	bvtu := project.FindBuildVariantTaskUnit(t.BuildVariant, t.DisplayName)
+	bvtu := project.FindTaskForVariant(t.DisplayName, t.BuildVariant)
 	if bvtu != nil && bvtu.Stepback != nil {
 		s.shouldStepback = utility.FromBoolPtr(bvtu.Stepback)
 		return s, nil

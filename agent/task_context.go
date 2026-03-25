@@ -352,9 +352,9 @@ func (tc *taskContext) getPSCommand() string {
 	defer tc.RUnlock()
 
 	// Check build variant task-level PS (highest priority).
-	bvTask := tc.taskConfig.Project.FindBuildVariantTaskUnit(
-		tc.taskConfig.Task.BuildVariant,
+	bvTask := tc.taskConfig.Project.FindTaskForVariant(
 		tc.taskConfig.Task.DisplayName,
+		tc.taskConfig.Task.BuildVariant,
 	)
 	if bvTask != nil && bvTask.PS != nil {
 		ps, _ := tc.taskConfig.Expansions.ExpandString(*bvTask.PS)
