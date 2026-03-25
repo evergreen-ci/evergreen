@@ -26,7 +26,7 @@ make test-<package>   # e.g., make test-model, make test-rest-route
 # Run all tests in the top-level package (special case).
 make test-evergreen
 
-# Run a specific test names by regexp pattern.
+# Run specific tests by regexp pattern.
 make test-<package> RUN_TEST=<pattern>
 
 # Provide an explicit admin settings file. Typically needed for integration tests involving third-party services like
@@ -51,14 +51,8 @@ make lint-evergreen  # Lint the top-level evergreen package (special case).
 
 ### CI Self-Tests
 
-The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself run in Evergreen. For most tasks in
+The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
 `self-tests.yml`, there's a roughly 1:1 relationship between Makefile targets and Evergreen self-test tasks.
-
-## Conventions
-
-### Comments
-
-Comments should explain *why*, not *what*. Don't restate what the implementation already shows — explain context, intent, or non-obvious behavior.
 
 ## Architecture
 
@@ -73,7 +67,7 @@ Comments should explain *why*, not *what*. Don't restate what the implementation
 | `db/`          | MongoDB interaction layer.                                                                                |
 | `graphql/`     | GraphQL backend.                                                                                          |
 | `model/`       | Core data models; task, host, build, patch, distro, etc. are in subpackages.                              |
-| `operations/`  | CLI command implementations. Also provides an entry point for the app server/agent).                      |
+| `operations/`  | CLI command implementations. Also provides an entry point for the app server/agent.                       |
 | `repotracker/` | Tracks GitHub repos for new commits and PRs.                                                              |
 | `rest/`        | REST API: `route/` (handlers), `data/` (data connectors), `model/` (API models), `client/` (CLI clients). |
 | `scheduler/`   | Orders tasks in distro queues.                                                                            |
@@ -85,6 +79,7 @@ Comments should explain *why*, not *what*. Don't restate what the implementation
 | `validator/`   | Validates project YAML configs and distro settings.                                                       |
 
 ## Go Coding Conventions
+
 ### Naming
 * Use PascalCase (e.g. `MyExportedFunc`) for exported names (variables, constants, structs, functions, methods). Use
   camelCase (e.g. `myVariable`) for everything else.
@@ -106,12 +101,12 @@ Comments should explain *why*, not *what*. Don't restate what the implementation
 * Inline code comments should be full sentences and express complete thoughts. Use proper grammar, punctuation, and
   capitalization.
 * Inline code comments should be used intentionally. Do not write a comment if it just explains exactly what the code is
-  doing. However, they can be used if they will convey something non-obvious that the code itself can't convey.
+  doing. However, they can be used if they will explain the "why", such as context, intent, or non-obvious behavior.
 
 **Good use of comments:**
 * Documentation for exported structs, functions, fields, and methods.
-* Explaining why the code has to do something non-obvious.
 * Explaining broader context that can't be understood easily from the immediate implementation.
+* Explaining why the code has to do something non-obvious.
 * Explaining unusual but necessary implementation decisions.
 
 **Avoid:**
@@ -124,7 +119,7 @@ Comments should explain *why*, not *what*. Don't restate what the implementation
 * Test names should describe both the inputs and expected outputs or behavior (e.g. `NilInputShouldError`, not
   `NilInput`).
 * Use `t.Context` for test contexts.
-* Only add assertion comments if they help clarify the assertion beyond what can be immediately be seen (e.g. testing a
+* Only add assertion comments if they help clarify the assertion beyond what can immediately be seen (e.g. testing a
   non-obvious interaction).
 * Use testify for testing libraries. Do not add new GoConvey tests or testify test suites. It's okay to add to existing
   test functions if they're already structured with GoConvey or testify test suites.
