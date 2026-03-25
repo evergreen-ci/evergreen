@@ -35,16 +35,17 @@ const fileNameMaxLength = 250
 
 func Fetch() cli.Command {
 	const (
-		taskFlagName      = "task"
-		sourceFlagName    = "source"
-		artifactsFlagName = "artifacts"
-		shallowFlagName   = "shallow"
-		noPatchFlagName   = "patch"
-		tokenFlagName     = "token"
-		useAppTokenName   = "use-app-token"
-		moduleTokensName  = "module_tokens"
-		revokeTokensName  = "revoke-tokens"
-		executionFlagName = "execution"
+		taskFlagName         = "task"
+		sourceFlagName       = "source"
+		artifactsFlagName    = "artifacts"
+		artifactNameFlagName = "artifact_name"
+		shallowFlagName      = "shallow"
+		noPatchFlagName      = "patch"
+		tokenFlagName        = "token"
+		useAppTokenName      = "use-app-token"
+		moduleTokensName     = "module_tokens"
+		revokeTokensName     = "revoke-tokens"
+		executionFlagName    = "execution"
 	)
 
 	return cli.Command{
@@ -84,6 +85,10 @@ func Fetch() cli.Command {
 				Name:  artifactsFlagName,
 				Usage: "fetch artifacts for the task and all of its recursive dependents",
 			},
+			cli.StringFlag{
+				Name:  artifactNameFlagName,
+				Usage: "specify the name of a specific artifact to fetch",
+			},
 			cli.BoolFlag{
 				Name:  shallowFlagName,
 				Usage: "don't recursively download artifacts from dependency tasks",
@@ -102,17 +107,12 @@ func Fetch() cli.Command {
 			setPlainLogger,
 			requireStringFlag(taskFlagName),
 			requireWorkingDirFlag(dirFlagName),
-			func(c *cli.Context) error {
-				if c.Bool(sourceFlagName) || c.Bool(artifactsFlagName) {
-					return nil
-				}
-				return errors.New("must specify at least one of either --artifacts or --source")
-			}),
+			mutuallyExclusiveArgs(false, artifactsFlagName, artifactNameFlagName),
+			requireAtLeastOneFlag(sourceFlagName, artifactsFlagName, artifactNameFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(ConfFlagName)
 			wd := c.String(dirFlagName)
-			doFetchSource := c.Bool(sourceFlagName)
-			doFetchArtifacts := c.Bool(artifactsFlagName)
 			taskID := c.String(taskFlagName)
 			noPatch := c.Bool(noPatchFlagName)
 			shallow := c.Bool(shallowFlagName)
@@ -120,6 +120,11 @@ func Fetch() cli.Command {
 			useAppToken := c.Bool(useAppTokenName)
 			revokeTokens := c.Bool(revokeTokensName)
 			moduleTokens := c.StringSlice(moduleTokensName)
+
+			shouldFetchSource := c.Bool(sourceFlagName)
+
+			artifactName := c.String(artifactNameFlagName)
+			shouldFetchArtifacts := c.Bool(artifactsFlagName) || artifactName != ""
 
 			var execution *int
 			if c.IsSet(executionFlagName) {
@@ -153,14 +158,14 @@ func Fetch() cli.Command {
 
 			cleanupWhyIsMyDataMissingFile(wd)
 
-			if doFetchSource {
+			if shouldFetchSource {
 				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
 					return err
 				}
 			}
 
-			if doFetchArtifacts {
-				if err = fetchArtifacts(rc, taskID, wd, shallow, execution); err != nil {
+			if shouldFetchArtifacts {
+				if err = fetchArtifacts(rc, taskID, wd, shallow, execution, artifactName); err != nil {
 					return err
 				}
 			}
@@ -281,7 +286,7 @@ func clone(opts cloneOptions) error {
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return errors.Errorf("%s/%s does not exist or is private an no token was provided: %d", opts.owner, opts.repository, resp.StatusCode)
+			return errors.Errorf("%s/%s does not exist or is private and no token was provided: %d", opts.owner, opts.repository, resp.StatusCode)
 		}
 	}
 	var cloneArgs []string
@@ -489,7 +494,7 @@ func resetGitRemoteToSSH(owner, repository, rootDir string) error {
 	return c.Run()
 }
 
-func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool, execution *int) error {
+func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool, execution *int, artifactName string) error {
 	task, err := rc.GetTaskV2(taskId, execution)
 	if err != nil {
 		return errors.Wrapf(err, "getting task '%s'", taskId)
@@ -498,7 +503,7 @@ func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow boo
 		return errors.New("task not found")
 	}
 
-	urls, err := getUrlsChannel(rc, task, shallow)
+	urls, err := getUrlsChannel(rc, task, shallow, artifactName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -569,7 +574,7 @@ func getArtifactFolderName(task *restModel.APITask) string {
 // getUrlsChannel takes a seed task, and returns a channel that streams all of the artifacts
 // associated with the task and its dependencies. If "shallow" is set, only artifacts from the seed
 // task will be streamed.
-func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool) (chan artifactDownload, error) {
+func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool, artifactName string) (chan artifactDownload, error) {
 	allTasks := []*restModel.APITask{seed}
 	if !shallow {
 		fmt.Printf("Gathering dependencies... ")
@@ -586,6 +591,10 @@ func getUrlsChannel(rc *legacyClient, seed *restModel.APITask, shallow bool) (ch
 		for _, t := range allTasks {
 			for _, f := range t.Artifacts {
 				if f.IgnoreForFetch {
+					continue
+				}
+				// If artifact name is specified, skip artifacts that don't match.
+				if artifactName != "" && utility.FromStringPtr(f.Name) != artifactName {
 					continue
 				}
 				directoryName := getArtifactFolderName(t)

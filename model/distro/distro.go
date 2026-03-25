@@ -69,6 +69,25 @@ type Distro struct {
 
 	// Cost data for pricing calculations
 	CostData CostData `bson:"cost_data,omitempty" json:"cost_data,omitempty" mapstructure:"cost_data,omitempty"`
+
+	// TaskHostOverrides contains settings that should be overridden for EC2
+	// task hosts. If it's non-nil, all fields in this struct replace their
+	// corresponding distro settings, even if the override value is the zero
+	// value (to allow clearing fields).
+	TaskHostOverrides *TaskHostOverrides `bson:"task_host_overrides,omitempty" json:"task_host_overrides,omitempty" mapstructure:"task_host_overrides,omitempty"`
+}
+
+// TaskHostOverrides contains settings that override the distro's provider
+// settings when creating EC2 task hosts.
+type TaskHostOverrides struct {
+	// ProviderAccount overrides the distro's top-level provider account.
+	ProviderAccount string `bson:"provider_account" json:"provider_account" mapstructure:"provider_account"`
+	// The following settings override EC2-specific settings. See
+	// EC2ProviderSettings.
+	IAMInstanceProfileARN        string   `bson:"iam_instance_profile_arn" json:"iam_instance_profile_arn" mapstructure:"iam_instance_profile_arn"`
+	SecurityGroupIDs             []string `bson:"security_group_ids" json:"security_group_ids" mapstructure:"security_group_ids"`
+	SubnetID                     string   `bson:"subnet_id" json:"subnet_id" mapstructure:"subnet_id"`
+	DoNotAssignPublicIPv4Address bool     `bson:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address" mapstructure:"do_not_assign_public_ipv4_address"`
 }
 
 // DistroData is the same as a distro, with the only difference being that all

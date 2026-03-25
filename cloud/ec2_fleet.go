@@ -124,7 +124,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Wrap(err, "getting EC2 settings")
 	}
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s': %+v", h.Distro.Id, ec2Settings)
+		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s'", h.Distro.Id)
 	}
 
 	var err error
