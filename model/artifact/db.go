@@ -66,11 +66,6 @@ func ByTaskIds(taskIds []string) db.Q {
 	})
 }
 
-// ByBuildId returns all entries with the given Build Id, sorted by Task name
-func ByBuildId(id string) db.Q {
-	return db.Query(bson.M{BuildIdKey: id}).Sort([]string{TaskNameKey})
-}
-
 // === DB Logic ===
 
 // Upsert updates the files entry in the db if an entry already exists,

@@ -953,43 +953,6 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	return commit, nil
 }
 
-// GetBranchEvent gets the head of the a given branch via an API call to GitHub
-func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Branch, error) {
-	caller := "GetBranchEvent"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, branch),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-
-	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
-
-	branchEvent, resp, err := githubClient.Repositories.GetBranch(ctx, owner, repo, branch, 0)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from github for '%s/%s': branch: '%s': %v", owner, repo, branch, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
-
-	return branchEvent, nil
-}
-
 // githubRequest performs the specified http request. If the oauth token field is empty it will not use oauth
 func githubRequest(ctx context.Context, method string, url string, oauthToken string, data any) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)

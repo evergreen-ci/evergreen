@@ -253,15 +253,6 @@ func (s *githubSuite) TestMergeQueueRefExists() {
 	})
 }
 
-func (s *githubSuite) TestGetBranchEvent() {
-	branch, err := GetBranchEvent(s.ctx, "evergreen-ci", "evergreen", "main")
-	s.NoError(err)
-	s.NotPanics(func() {
-		s.Equal("main", *branch.Name)
-		s.NotNil(*branch.Commit)
-	})
-}
-
 func (s *githubSuite) TestGithubMergeBaseRevision() {
 	rev, err := GetGithubMergeBaseRevision(s.ctx, "evergreen-ci", "evergreen",
 		"105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
