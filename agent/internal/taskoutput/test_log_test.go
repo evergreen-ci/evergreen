@@ -203,9 +203,6 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 }
 
 func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	comm := client.NewMock("url")
 	getRawLinesAndFormatter := func(format testLogFormat) ([]string, func(log.LogLine) string) {
 		rawLines := []string{
@@ -275,7 +272,7 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 			rawLines, formatLine := getRawLinesAndFormatter(expectedSpec.Format)
 			logPath := utility.RandomString()
 			require.NoError(t, os.WriteFile(filepath.Join(h.dir, logPath), []byte(strings.Join(rawLines, "\n")+"\n"), 0777))
-			require.NoError(t, h.run(ctx))
+			require.NoError(t, h.run(t.Context()))
 
 			assert.Equal(t, expectedSpec, h.spec)
 
@@ -284,7 +281,7 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 
 			// Check that raw log lines were correctly parsed in
 			// accordance with their format.
-			it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{logPath}})
+			it, err := tsk.GetTestLogs(t.Context(), task.TestLogGetOptions{LogPaths: []string{logPath}})
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, it.Close())

@@ -55,7 +55,6 @@ type testLogDirectoryHandler struct {
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
 func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handlerOpts directoryHandlerOpts) directoryHandler {
-
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,
@@ -84,7 +83,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		h.sequenceSize = defaultTestLogSequenceSize
 	}
 
-	h.getSpecFile()
+	h.getSpecFile(ctx)
 
 	type fileChunk struct {
 		path     string
@@ -188,8 +187,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 // reason, an error is logged and the handler uses the default spec.
 //
 // Called once per task run before sweeping the directory for test log files.
-func (h *testLogDirectoryHandler) getSpecFile() {
-	ctx := context.TODO()
+func (h *testLogDirectoryHandler) getSpecFile(ctx context.Context) {
 	data, err := os.ReadFile(filepath.Join(h.dir, testLogSpecFilename))
 	if err != nil {
 		h.logger.Task().Warning(ctx, errors.Wrap(err, "reading test log spec; falling back to default spec"))
