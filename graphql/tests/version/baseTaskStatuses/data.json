@@ -67,6 +67,7 @@
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
       "status": "success",
+      "display_status_cache": "success",
       "branch": "spruce",
       "build_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
     },
@@ -78,6 +79,7 @@
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "build_id": "spruce_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
     },
     {
@@ -87,7 +89,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
-      "status": "success"
+      "status": "success",
+      "display_status_cache": "success"
     },
     {
       "_id": "base-task-2",
@@ -96,7 +99,8 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "r": "github_pull_request",
-      "status": "failed"
+      "status": "failed",
+      "display_status_cache": "failed"
     },
     {
       "_id": "base-task-that-didnt-run-on-version",
@@ -105,7 +109,8 @@
       "build_variant": "lint",
       "display_name": "my status should not be included in BaseTaskStatuses",
       "r": "github_pull_request",
-      "status": "started"
+      "status": "started",
+      "display_status_cache": "started"
     }
   ],
   "project_ref": [

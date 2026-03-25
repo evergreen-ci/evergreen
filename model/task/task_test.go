@@ -59,26 +59,29 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
-		Id:             "t1",
-		Version:        "v1",
-		Execution:      3,
-		Status:         evergreen.TaskFailed,
-		DisplayTaskId:  utility.ToStringPtr(""),
-		HasAnnotations: true,
+		Id:                 "t1",
+		Version:            "v1",
+		Execution:          3,
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskKnownIssue,
+		DisplayTaskId:      utility.ToStringPtr(""),
+		HasAnnotations:     true,
 	}
 	t2 := Task{
-		Id:            "t2",
-		Version:       "v1",
-		Aborted:       true,
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t2",
+		Version:            "v1",
+		Aborted:            true,
+		DisplayStatusCache: evergreen.TaskAborted,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t3 := Task{
-		Id:            "t3",
-		Version:       "v1",
-		Status:        evergreen.TaskSucceeded,
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t3",
+		Version:            "v1",
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t4 := Task{
 		Id:      "t4",
@@ -86,8 +89,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Details: apimodels.TaskEndDetail{
 			Type: evergreen.CommandTypeSetup,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSetupFailed,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t5 := Task{
 		Id:      "t5",
@@ -97,8 +101,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			Description: evergreen.TaskDescriptionHeartbeat,
 			TimedOut:    true,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSystemUnresponse,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t6 := Task{
 		Id:      "t6",
@@ -107,8 +112,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			Type:     evergreen.CommandTypeSystem,
 			TimedOut: true,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSystemTimedOut,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t7 := Task{
 		Id:      "t7",
@@ -116,8 +122,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Details: apimodels.TaskEndDetail{
 			Type: evergreen.CommandTypeSystem,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSystemFailed,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t8 := Task{
 		Id:      "t8",
@@ -125,29 +132,33 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Details: apimodels.TaskEndDetail{
 			TimedOut: true,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskTimedOut,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t9 := Task{
-		Id:            "t9",
-		Version:       "v1",
-		Status:        evergreen.TaskUndispatched,
-		Activated:     false,
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t9",
+		Version:            "v1",
+		Status:             evergreen.TaskUndispatched,
+		DisplayStatusCache: evergreen.TaskUnscheduled,
+		Activated:          false,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t10 := Task{
-		Id:            "t10",
-		Version:       "v1",
-		Status:        evergreen.TaskUndispatched,
-		Activated:     true,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t10",
+		Version:            "v1",
+		Status:             evergreen.TaskUndispatched,
+		DisplayStatusCache: evergreen.TaskWillRun,
+		Activated:          true,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t11 := Task{
-		Id:        "t11",
-		Version:   "v1",
-		Status:    evergreen.TaskUndispatched,
-		Activated: true,
+		Id:                 "t11",
+		Version:            "v1",
+		Status:             evergreen.TaskUndispatched,
+		DisplayStatusCache: evergreen.TaskStatusBlocked,
+		Activated:          true,
 		DependsOn: []Dependency{
 			{
 				TaskId:       "t9",
@@ -3862,32 +3873,36 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.Require().NoError(db.ClearCollections(Collection, OldCollection, annotations.Collection))
 	taskKnown2 := &Task{
-		Id:            "task_known",
-		Execution:     2,
-		Version:       "version_known",
-		Status:        evergreen.TaskSucceeded,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_known",
+		Execution:          2,
+		Version:            "version_known",
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	taskNotKnown := &Task{
-		Id:            "task_not_known",
-		Execution:     0,
-		Version:       "version_not_known",
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_not_known",
+		Execution:          0,
+		Version:            "version_not_known",
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	taskNoAnnotation := &Task{
-		Id:            "task_no_annotation",
-		Execution:     0,
-		Version:       "version_no_annotation",
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_no_annotation",
+		Execution:          0,
+		Version:            "version_no_annotation",
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	taskWithEmptyIssues := &Task{
-		Id:            "task_with_empty_issues",
-		Execution:     0,
-		Version:       "version_with_empty_issues",
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_with_empty_issues",
+		Execution:          0,
+		Version:            "version_with_empty_issues",
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	s.NoError(taskKnown2.Insert(s.T().Context()))
 	s.NoError(taskNotKnown.Insert(s.T().Context()))

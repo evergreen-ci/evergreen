@@ -188,6 +188,7 @@
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
       "status": "success",
+      "display_status_cache": "success",
       "depends_on": [
         {
           "_id": "random_thang",
@@ -210,6 +211,7 @@
       "display_only": true,
       "execution_tasks": ["execution_task"],
       "status": "failed",
+      "display_status_cache": "system-failed",
       "details": {
         "status": "failed",
         "type": "system"
@@ -227,6 +229,7 @@
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "build_id": "ubuntu_build",
       "time_taken": 71999882894,
       "display_task_id": ""
@@ -240,6 +243,7 @@
       "display_name": "lint",
       "r": "github_pull_request",
       "status": "success",
+      "display_status_cache": "success",
       "build_id": "windows_build",
       "time_taken": 10003174082,
       "display_task_id": ""
@@ -253,6 +257,7 @@
       "display_name": "dist",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "task-timed-out",
       "details": {
         "status": "failed",
         "timed_out": true,
@@ -271,6 +276,7 @@
       "display_name": "js-test",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "system-failed",
       "details": {
         "status": "failed",
         "type": "system"
@@ -288,6 +294,7 @@
       "display_name": "test-agent",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "aborted",
       "abort": true,
       "build_id": "ubuntu_build",
       "time_taken": 298882894,
@@ -302,6 +309,7 @@
       "display_name": "this is an execution task",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "build_id": "bv_build",
       "time_taken": 31120678285,
       "display_task_id": "2"
@@ -315,6 +323,7 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
+      "display_status_cache": "success",
       "build_id": "ubuntu_build",
       "display_task_id": ""
     },
@@ -327,6 +336,7 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
+      "display_status_cache": "success",
       "build_id": "windows_build",
       "display_task_id": ""
     },
@@ -339,6 +349,7 @@
       "display_name": "test-cloud",
       "r": "gitter_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "build_id": "ubuntu_build",
       "display_task_id": ""
     },
@@ -349,6 +360,7 @@
       "build_variant": "windows",
       "display_name": "lint",
       "status": "failed",
+      "display_status_cache": "failed",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "details": {
@@ -367,6 +379,7 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
+      "display_status_cache": "success",
       "build_id": "windows_build",
       "display_task_id": ""
     },
@@ -379,6 +392,7 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "success",
+      "display_status_cache": "success",
       "build_id": "windows_build",
       "display_task_id": ""
     },
@@ -391,6 +405,7 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "status": "failed",
+      "display_status_cache": "aborted",
       "abort": true,
       "build_id": "windows_build",
       "display_task_id": ""

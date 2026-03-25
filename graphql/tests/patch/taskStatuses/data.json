@@ -39,6 +39,7 @@
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
       "status": "success",
+      "display_status_cache": "success",
       "display_task_id": ""
     },
     {
@@ -49,6 +50,7 @@
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "display_task_id": ""
     },
     {
@@ -59,6 +61,7 @@
       "display_name": "silver",
       "r": "github_pull_request",
       "status": "setup-failed",
+      "display_status_cache": "setup-failed",
       "display_task_id": ""
     },
     {
@@ -69,6 +72,7 @@
       "display_name": "gold",
       "r": "github_pull_request",
       "status": "undispatched",
+      "display_status_cache": "undispatched",
       "display_task_id": ""
     },
     {
@@ -79,6 +83,7 @@
       "display_name": "lint",
       "r": "github_pull_request",
       "status": "success",
+      "display_status_cache": "success",
       "display_task_id": ""
     },
     {
@@ -89,6 +94,7 @@
       "display_name": "compile",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "display_task_id": ""
     }
   ],
