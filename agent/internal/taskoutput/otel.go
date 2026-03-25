@@ -71,7 +71,7 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 				return errors.Wrap(err, "context canceled before processing file")
 			}
 
-			resourceSpans, err := unmarshalTraces(fileName)
+			resourceSpans, err := unmarshalTraces(gCtx, fileName)
 			if err != nil {
 				return errors.Wrapf(err, "unmarshalling trace file '%s'", fileName)
 			}
@@ -118,8 +118,7 @@ func batchSpans(spans []*tracepb.ResourceSpans, batchSize int) [][]*tracepb.Reso
 	return append(batches, spans)
 }
 
-func unmarshalTraces(fileName string) ([]*tracepb.ResourceSpans, error) {
-	ctx := context.TODO()
+func unmarshalTraces(ctx context.Context, fileName string) ([]*tracepb.ResourceSpans, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening trace file '%s'", fileName)

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ func TestTimeoutSender(t *testing.T) {
 	assert.Equal(t, last1, last2)
 
 	// If a message is sent, the last message time *should* update.
-	sender.Send(context.Background(), message.NewDefaultMessage(level.Error, "hello world!!"))
+	sender.Send(t.Context(), message.NewDefaultMessage(level.Error, "hello world!!"))
 	time.Sleep(20 * time.Millisecond)
 	require.NoError(t, sender.Close())
 	last3 := comm.LastMessageAt()
