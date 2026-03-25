@@ -10,7 +10,7 @@ import (
 
 func TestMountPointsFromProviderDocument(t *testing.T) {
 	settings := struct {
-		Region      string `bson:"region"`
+		Region      string       `bson:"region"`
 		MountPoints []MountPoint `bson:"mount_points"`
 	}{
 		Region: "us-east-1",
