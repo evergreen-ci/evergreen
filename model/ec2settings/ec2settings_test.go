@@ -19,8 +19,8 @@ func TestMountPointsForDistro_NonEC2(t *testing.T) {
 
 func TestMountPointsForDistro_WithMountPoints(t *testing.T) {
 	settings := struct {
-		Region       string `bson:"region"`
-		MountPoints  []struct {
+		Region      string `bson:"region"`
+		MountPoints []struct {
 			VolumeType string `bson:"volume_type"`
 			Throughput int32  `bson:"throughput"`
 			Size       int32  `bson:"size"`

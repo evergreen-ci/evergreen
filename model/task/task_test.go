@@ -4944,7 +4944,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		assert.True(t, task.TaskCost.IsZero())
 	})
 
-	t.Run("DoesNotCalculateS3Cost", func(t *testing.T) {
+	t.Run("CalculatesS3PutCostFromArtifactUsage", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 		task := Task{
 			Id:        "s3_cost",
@@ -4954,10 +4954,13 @@ func TestUpdateTaskCost(t *testing.T) {
 		require.NoError(t, task.Insert(ctx))
 
 		require.NoError(t, task.UpdateTaskCost(ctx))
-		assert.Equal(t, float64(0), task.TaskCost.S3ArtifactPutCost)
+		var costCfg evergreen.CostConfig
+		require.NoError(t, costCfg.Get(ctx))
+		expected := s3usage.CalculateS3PutCostWithConfig(1000, &costCfg)
+		assert.InDelta(t, expected, task.TaskCost.S3ArtifactPutCost, 1e-9)
 	})
 
-	t.Run("CalculatesOnlyEC2Cost", func(t *testing.T) {
+	t.Run("CalculatesEC2AndS3Costs", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
 
 		costConfig := evergreen.CostConfig{
@@ -4988,7 +4991,8 @@ func TestUpdateTaskCost(t *testing.T) {
 		require.NoError(t, task.UpdateTaskCost(ctx))
 		assert.True(t, task.TaskCost.OnDemandEC2Cost > 0)
 		assert.True(t, task.TaskCost.AdjustedEC2Cost > 0)
-		assert.Equal(t, float64(0), task.TaskCost.S3ArtifactPutCost)
+		expectedS3 := s3usage.CalculateS3PutCostWithConfig(1000, &costConfig)
+		assert.InDelta(t, expectedS3, task.TaskCost.S3ArtifactPutCost, 1e-9)
 	})
 
 	t.Run("SkipsUpdateWhenNoCostsCalculated", func(t *testing.T) {
