@@ -58,16 +58,6 @@ const (
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
 )
 
-var UnblockedGithubStatuses = []string{
-	githubPRBehind,
-	githubPRClean,
-	githubPRDirty,
-	githubPRDraft,
-	githubPRHasHooks,
-	githubPRUnknown,
-	githubPRUnstable,
-}
-
 var githubWritePermissions = []string{
 	GithubPermissionAdmin,
 	GithubPermissionWrite,
@@ -253,7 +243,6 @@ const (
 	// GitHub merge queue removal reasons
 	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
 	MergeQueueReasonMerged      = "merged"      // Successfully merged
-	MergeQueueReasonDequeued    = "dequeued"    // Manually removed
 
 	// Merge queue status values for metrics
 	MergeQueueStatusSuccess = "success" // Successfully completed/merged

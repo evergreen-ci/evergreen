@@ -838,7 +838,7 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateBuildVariantTaskNames(task string, variant string, allTaskNames map[string]bool, taskGroupTaskSet map[string]string) []ValidationError {
+func validateBuildVariantTaskNames(task string, variant string, allTaskNames map[string]bool) []ValidationError {
 	var errs []ValidationError
 	if _, ok := allTaskNames[task]; !ok {
 		if task == "" {
@@ -903,7 +903,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
-			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
+			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames)...)
 			if _, ok := taskGroupTaskSet[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{
@@ -1150,7 +1150,7 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkTaskNames(project *model.Project, task *model.ProjectTask) ValidationErrors {
+func checkTaskNames(task *model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
 	// Warn against commas because the CLI allows users to specify
 	// tasks separated by commas in their patches.
@@ -2282,7 +2282,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 			)
 			execTimeoutWarningAdded = true
 		}
-		errs = append(errs, checkTaskNames(project, &task)...)
+		errs = append(errs, checkTaskNames(&task)...)
 	}
 	return errs
 }

@@ -80,9 +80,9 @@ func (c *goTestResults) Execute(ctx context.Context,
 	if len(outputFiles) == 0 {
 		if c.outputIsOptional {
 			return nil
-		} else {
-			return errors.New("no files found to be parsed")
 		}
+
+		return errors.New("no files found to be parsed")
 	}
 
 	// parse all of the files
