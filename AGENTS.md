@@ -125,3 +125,12 @@ The Evergreen codebase has automated tests defined in `self-tests.yml`, which it
   test functions if they're already structured with GoConvey or testify test suites.
 * Prefer not to use `assert.New`/`require.New` if possible because they're difficult to use for nested tests or test
   case lists.
+
+## Pull Requests
+
+For opening PRs, follow the template in `.github/pull_request_template.md`:
+
+**Title format:**
+* Prefix with Jira ticket: `DEVPROD-XXXX: Description of change`
+    * Example: `DEVPROD-1234: Add user authentication`
+* Include the Jira ticket in the placeholder on the first line of the description.
