@@ -48,4 +48,3 @@ func TestDockerIntegrationSuite(t *testing.T) {
 
 	suite.Run(t, s)
 }
-
