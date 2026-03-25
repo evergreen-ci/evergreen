@@ -105,7 +105,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := executor.SetupWorkingDirectory(workDir); err != nil {
+	if err := executor.SetupWorkingDirectory(r.Context(), workDir); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

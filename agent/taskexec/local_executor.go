@@ -183,8 +183,7 @@ func (e *LocalExecutor) LoadProject(ctx context.Context, configPath string) (*mo
 }
 
 // SetupWorkingDirectory prepares the working directory for task execution
-func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
-	ctx := context.TODO()
+func (e *LocalExecutor) SetupWorkingDirectory(ctx context.Context, path string) error {
 	if path == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
