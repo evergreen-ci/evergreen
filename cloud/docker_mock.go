@@ -23,13 +23,11 @@ type dockerClientMock struct {
 	failGet      bool
 	failList     bool
 	failRemove   bool
-	failStart    bool
-	failAttach   bool
+	failStart bool
 
 	// Other options
-	hasOpenPorts        bool
-	baseImage           string
-	containerAttachment *types.HijackedResponse
+	hasOpenPorts bool
+	baseImage    string
 }
 
 func (c *dockerClientMock) generateContainerID() string {
@@ -154,9 +152,3 @@ func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) e
 	return nil
 }
 
-func (c *dockerClientMock) AttachToContainer(context.Context, *host.Host, string, host.DockerOptions) (*types.HijackedResponse, error) {
-	if c.failAttach {
-		return c.containerAttachment, errors.New("failed to attach to container")
-	}
-	return c.containerAttachment, nil
-}
