@@ -225,7 +225,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 				continue
 			}
 			for idx, suite := range result.suites {
-				cumulative = addTestCasesForSuite(suite, idx, conf, cumulative, logger)
+				cumulative = addTestCasesForSuite(ctx, suite, idx, conf, cumulative, logger)
 			}
 		}
 	}
@@ -279,7 +279,7 @@ type testcaseAccumulator struct {
 	logIdxToTestIdx []int
 }
 
-func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, cumulative testcaseAccumulator, logger client.LoggerProducer) testcaseAccumulator {
+func addTestCasesForSuite(ctx context.Context, suite testSuite, idx int, conf *internal.TaskConfig, cumulative testcaseAccumulator, logger client.LoggerProducer) testcaseAccumulator {
 	if len(suite.TestCases) == 0 && suite.Error != nil {
 		// if no test cases but an error, generate a default test case
 		tc := testCase{
@@ -294,7 +294,7 @@ func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, c
 	}
 	for _, tc := range suite.TestCases {
 		// logs are only created when a test case does not succeed
-		test, log := tc.toModelTestResultAndLog(conf, logger)
+		test, log := tc.toModelTestResultAndLog(ctx, conf, logger)
 		if log != nil {
 			if systemLogs := constructSystemLogs(suite.SysOut, suite.SysErr); len(systemLogs) > 0 {
 				log.Lines = append(log.Lines, systemLogs...)
@@ -305,7 +305,7 @@ func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, c
 		cumulative.tests = append(cumulative.tests, test)
 	}
 	if suite.NestedSuites != nil {
-		cumulative = addTestCasesForSuite(*suite.NestedSuites, idx, conf, cumulative, logger)
+		cumulative = addTestCasesForSuite(ctx, *suite.NestedSuites, idx, conf, cumulative, logger)
 	}
 	return cumulative
 }

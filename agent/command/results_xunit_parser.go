@@ -196,9 +196,7 @@ func parseTestSuitesStreaming(ctx context.Context, decoder *xml.Decoder) ([]test
 // toModelTestResultAndLog converts an XUnit test case into a test result and
 // test log. Logs are only generated if the test case did not succeed (this is
 // part of the XUnit XML file design).
-func (tc testCase) toModelTestResultAndLog(conf *internal.TaskConfig, logger client.LoggerProducer) (testresult.TestResult, *testlog.TestLog) {
-	ctx := context.TODO()
-
+func (tc testCase) toModelTestResultAndLog(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer) (testresult.TestResult, *testlog.TestLog) {
 	res := testresult.TestResult{}
 	var log *testlog.TestLog
 
