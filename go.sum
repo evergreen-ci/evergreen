@@ -165,6 +165,8 @@ github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f h1:UCLTMndEQ
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f/go.mod h1:FnyqGuSg33gR9wNbt2qo9wPaNUfP85+a8+UTVyx/gdg=
 github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d h1:D/ua80GfelpLtry9J8+q/K1MWb7m0V0QiXhOm0kCdj8=
 github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d/go.mod h1:Xiaegoek6n6GQnEt7pFMByuME0vw4sGcqD7KA7ilK7c=
+github.com/evergreen-ci/gimlet v0.0.0-20260325201542-0eb4bfb95c82 h1:svPTW+k/CGabHiiGoFoRkC6N20fuud+7XRuo8ac+4mA=
+github.com/evergreen-ci/gimlet v0.0.0-20260325201542-0eb4bfb95c82/go.mod h1:tRjfOj0/370IbRn90VUSW0n3N6SsiSGheXoBabCWwos=
 github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f h1:sXisMMrOFZVbclIs/pU6xGKDQ4ylpGFzWqqB9QT9NGU=
 github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f/go.mod h1:6j2omnZaHKHv2WkpToHHsl0TK7Wja5GmxcYRvjkpJ2k=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -51,7 +52,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.umconf.AttachCookie(token, w)
-	gimlet.WriteJSON(w, map[string]string{})
+	gimlet.WriteJSON(r.Context(), w, map[string]string{})
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {

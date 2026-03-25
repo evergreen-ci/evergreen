@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"context"
+
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
@@ -118,7 +119,7 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		gimlet.WriteJSONResponse(w, code, struct {
+		gimlet.WriteJSONResponse(r.Context(), w, code, struct {
 			Error string `json:"error"`
 		}{err.Error()})
 	} else {
@@ -162,7 +163,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 			"Disallow: /",
 		}, "\n")))
 		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
+			gimlet.WriteResponse(r.Context(), rw, gimlet.MakeTextErrorResponder(err))
 		}
 	})
 
@@ -219,7 +220,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Hosts
 	app.AddRoute("/hosts").Handler(uis.legacyHostsPage).Get()
 	app.AddRoute("/host/{host_id}").Handler(uis.legacyHostPage).Get()
-	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
+	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(context.Background(), gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",
@@ -285,7 +286,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// allow requests from specific origins.
 	for _, r := range app.Routes() {
 		if r.HasMethod(http.MethodPost) || r.HasMethod(http.MethodGet) {
-			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(w http.ResponseWriter, _ *http.Request) { gimlet.WriteJSON(w, "") }).Options()
+			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(w http.ResponseWriter, r *http.Request) { gimlet.WriteJSON(r.Context(), w, "") }).Options()
 		}
 	}
 

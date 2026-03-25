@@ -140,7 +140,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if pref == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound,
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound,
 			gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("project '%s' is not found", data.Project),
@@ -250,7 +250,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSONResponse(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
+	gimlet.WriteJSONResponse(r.Context(), w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
 }
 
 // Get the patch with the specified request it
@@ -275,7 +275,7 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	p, err := getPatchFromRequest(r)
 	if err != nil {
-		gimlet.WriteJSONError(w, err.Error())
+		gimlet.WriteJSONError(r.Context(), w, err.Error())
 		return
 	}
 
@@ -327,7 +327,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(w, "Patch module updated")
+	gimlet.WriteJSON(r.Context(), w, "Patch module updated")
 }
 
 // listPatches returns a user's "n" most recent patches.
@@ -349,7 +349,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 			errors.Wrapf(err, "error finding patches for user %s", dbUser.Id))
 		return
 	}
-	gimlet.WriteJSON(w, patches)
+	gimlet.WriteJSON(r.Context(), w, patches)
 }
 
 func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request) {
@@ -391,7 +391,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		gimlet.WriteJSON(w, "patch updated")
+		gimlet.WriteJSON(r.Context(), w, "patch updated")
 	case "finalize":
 		if p.Activated {
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
@@ -435,14 +435,14 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			"alias":         p.Alias,
 		})
 
-		gimlet.WriteJSON(w, "patch finalized")
+		gimlet.WriteJSON(r.Context(), w, "patch finalized")
 	case "cancel":
 		err = model.CancelPatch(ctx, p, task.AbortInfo{User: dbUser.Id})
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		gimlet.WriteJSON(w, "patch deleted")
+		gimlet.WriteJSON(r.Context(), w, "patch deleted")
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", action), http.StatusBadRequest)
 	}
@@ -454,7 +454,7 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	gimlet.WriteJSON(w, PatchAPIResponse{Patch: p})
+	gimlet.WriteJSON(r.Context(), w, PatchAPIResponse{Patch: p})
 }
 
 func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
@@ -496,7 +496,7 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 	for m := range mods {
 		data.Modules = append(data.Modules, m)
 	}
-	gimlet.WriteJSON(w, &data)
+	gimlet.WriteJSON(r.Context(), w, &data)
 }
 
 func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
@@ -507,14 +507,14 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	moduleName := r.FormValue("module")
 	if moduleName == "" {
-		gimlet.WriteJSONError(w, "You must specify a module to delete")
+		gimlet.WriteJSONError(r.Context(), w, "You must specify a module to delete")
 		return
 	}
 
 	// don't mess with already finalized requests
 	if p.Activated {
 		response := "Can't delete module - path already finalized"
-		gimlet.WriteJSONError(w, response)
+		gimlet.WriteJSONError(r.Context(), w, response)
 		return
 	}
 
@@ -524,5 +524,5 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(w, PatchAPIResponse{Message: "module removed from patch."})
+	gimlet.WriteJSON(r.Context(), w, PatchAPIResponse{Message: "module removed from patch."})
 }

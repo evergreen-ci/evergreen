@@ -840,7 +840,6 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 }
 
 func TestAWSAssumeRole(t *testing.T) {
-	ctx := context.TODO()
 	route := "/task/%s/aws/assume_role"
 	taskID := "taskID"
 	projectID := "project_id"

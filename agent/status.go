@@ -28,7 +28,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 		return errors.Errorf("another process is running on localhost port %d", port)
 	}
 	app := gimlet.NewApp()
-	if err = app.SetPort(port); err != nil {
+	if err = app.SetPort(ctx, port); err != nil {
 		return errors.WithStack(err)
 	}
 	app.NoVersions = true

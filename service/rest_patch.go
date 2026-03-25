@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"context"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
@@ -32,7 +33,7 @@ type RestPatch struct {
 func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "patch not found"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
 
@@ -55,7 +56,7 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 		Patches:     projCtx.Patch.Patches,
 	}
 
-	gimlet.WriteJSON(w, destPatch)
+	gimlet.WriteJSON(r.Context(), w, destPatch)
 }
 
 // getPatchConfig returns the patched config for a given patch.
@@ -63,7 +64,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := context.TODO()
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "patch not found"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
 
@@ -73,31 +74,31 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Patch.ProjectStorageMethod != "" {
 		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Patch.ProjectStorageMethod, projCtx.Patch.Id.Hex())
 		if err != nil {
-			gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project for patch '%s'", projCtx.Patch.Id.Hex()))
+			gimlet.WriteJSONInternalError(r.Context(), w, errors.Wrapf(err, "finding parser project for patch '%s'", projCtx.Patch.Id.Hex()))
 			return
 		}
 		if pp == nil {
-			gimlet.WriteJSONInternalError(w, fmt.Sprintf("parser project for patch '%s' not found", projCtx.Patch.Id.Hex()))
+			gimlet.WriteJSONInternalError(r.Context(), w, fmt.Sprintf("parser project for patch '%s' not found", projCtx.Patch.Id.Hex()))
 			return
 		}
 	} else if projCtx.Version != nil {
 		pp, err = model.ParserProjectFindOneByID(r.Context(), &settings, projCtx.Version.ProjectStorageMethod, projCtx.Version.Id)
 		if err != nil {
-			gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "finding parser project '%s' for version '%s'", projCtx.Version.Id, projCtx.Version.Id))
+			gimlet.WriteJSONInternalError(r.Context(), w, errors.Wrapf(err, "finding parser project '%s' for version '%s'", projCtx.Version.Id, projCtx.Version.Id))
 			return
 		}
 		if pp == nil {
-			gimlet.WriteJSONInternalError(w, fmt.Sprintf("parser project '%s' for patch '%s' not found", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
+			gimlet.WriteJSONInternalError(r.Context(), w, fmt.Sprintf("parser project '%s' for patch '%s' not found", projCtx.Version.Id, projCtx.Patch.Id.Hex()))
 			return
 		}
 	} else {
-		gimlet.WriteJSONInternalError(w, fmt.Sprintf("cannot get parser project for patch '%s' because patch has no associated parser project and version is nil", projCtx.Patch.Id.Hex()))
+		gimlet.WriteJSONInternalError(r.Context(), w, fmt.Sprintf("cannot get parser project for patch '%s' because patch has no associated parser project and version is nil", projCtx.Patch.Id.Hex()))
 		return
 	}
 
 	projBytes, err := yaml.Marshal(pp)
 	if err != nil {
-		gimlet.WriteJSONInternalError(w, errors.Wrapf(err, "marshalling parser project '%s' to YAML", pp.Id))
+		gimlet.WriteJSONInternalError(r.Context(), w, errors.Wrapf(err, "marshalling parser project '%s' to YAML", pp.Id))
 		return
 	}
 
