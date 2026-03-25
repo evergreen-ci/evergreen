@@ -224,7 +224,7 @@ func (s *DistroByIDSuite) SetupTest() {
 func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.rm.(*distroIDGetHandler).distroID = "distro1"
 
-	resp := s.rm.Run(context.TODO())
+	resp := s.rm.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Data())
@@ -251,7 +251,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 func (s *DistroByIDSuite) TestFindByIdFail() {
 	s.rm.(*distroIDGetHandler).distroID = "distro3"
 
-	resp := s.rm.Run(context.TODO())
+	resp := s.rm.Run(context.Background())
 	s.NotNil(resp)
 	s.NotEqual(http.StatusOK, resp.Status())
 }
@@ -286,10 +286,10 @@ func TestDistroAMIHandler(t *testing.T) {
 	r, err := http.NewRequest(http.MethodGet, "/distros/d1/ami", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"distro_id": "d1"})
-	assert.NoError(t, h.Parse(context.TODO(), r))
+	assert.NoError(t, h.Parse(t.Context(), r))
 	assert.Equal(t, "d1", h.distroID)
 
-	resp := h.Run(context.TODO())
+	resp := h.Run(t.Context())
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	ami, ok := resp.Data().(string)
@@ -300,11 +300,11 @@ func TestDistroAMIHandler(t *testing.T) {
 	r, err = http.NewRequest(http.MethodGet, "/distros/d1/ami?region=us-west-1", nil)
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"distro_id": "d1"})
-	assert.NoError(t, h.Parse(context.TODO(), r))
+	assert.NoError(t, h.Parse(t.Context(), r))
 	assert.Equal(t, "d1", h.distroID)
 	assert.Equal(t, "us-west-1", h.region)
 
-	resp = h.Run(context.TODO())
+	resp = h.Run(t.Context())
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	ami, ok = resp.Data().(string)
@@ -313,7 +313,7 @@ func TestDistroAMIHandler(t *testing.T) {
 
 	// fake region
 	h.region = "fake"
-	resp = h.Run(context.TODO())
+	resp = h.Run(t.Context())
 	assert.NotNil(t, resp)
 	assert.NotEqual(t, http.StatusOK, resp.Status())
 }

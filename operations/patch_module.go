@@ -110,7 +110,7 @@ func PatchSetModule() cli.Command {
 
 func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	p *patch.Patch, module *model.Module, modulePath string) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	patchId := p.Id.Hex()
 
 	preserveCommits := params.PreserveCommits || conf.PreserveCommits

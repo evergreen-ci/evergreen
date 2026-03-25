@@ -183,7 +183,7 @@ func Fetch() cli.Command {
 }
 
 func cleanupWhyIsMyDataMissingFile(dir string) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	filePath := filepath.Join(dir, evergreen.WhyIsMyDataMissingName)
 	err := os.Remove(filePath)
 	if err != nil && !os.IsNotExist(err) {
@@ -192,7 +192,7 @@ func cleanupWhyIsMyDataMissingFile(dir string) {
 }
 
 func parseModuleTokens(moduleTokens []string) map[string]string {
-	ctx := context.TODO()
+	ctx := context.Background()
 	moduleTokensMap := make(map[string]string)
 	for _, token := range moduleTokens {
 		// Parse the string formatted as 'moduleName:token'.
@@ -280,10 +280,8 @@ type cloneOptions struct {
 }
 
 func clone(opts cloneOptions) error {
-	ctx :=
-		// Check repository existence if no token is provided
-		context.TODO()
-
+	ctx := context.Background()
+	// Check repository existence if no token is provided
 	if opts.token == "" {
 		resp, err := http.Get(thirdparty.FormGitURLForApp(opts.owner, opts.repository, opts.token))
 		if err != nil {

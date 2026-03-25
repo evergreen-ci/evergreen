@@ -114,7 +114,7 @@ func ByStringId(id string) db.Q {
 }
 
 func ByStringIds(ids []string) db.Q {
-	ctx := context.TODO()
+	ctx := context.Background()
 	objectIds := []mgobson.ObjectId{}
 	for _, id := range ids {
 		if IsValidId(id) {

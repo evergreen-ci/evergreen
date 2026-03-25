@@ -926,7 +926,7 @@ func (p PatchesByCreateTime) Swap(i, j int) {
 // GetCollectiveStatusFromPatchStatuses answers the question of what the patch status should be
 // when the patch status and the status of its children are different, given a list of statuses.
 func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
-	ctx := context.TODO()
+	ctx := context.Background()
 	hasCreated := false
 	hasFailure := false
 	hasSuccess := false

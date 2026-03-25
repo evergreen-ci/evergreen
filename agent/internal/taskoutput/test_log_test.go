@@ -406,7 +406,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 			},
 		},
 	}
-	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
+	logger, err := comm.GetLoggerProducer(t.Context(), tsk, nil)
 	require.NoError(t, err)
 	handlerOpts := directoryHandlerOpts{
 		redactorOpts: redactOpts,

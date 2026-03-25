@@ -774,7 +774,7 @@ type ReadConcern struct {
 }
 
 func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	if rc.Level == "majority" {
 		return readconcern.Majority()

@@ -130,7 +130,7 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 }
 
 func githubClientShouldRetry() utility.HTTPRetryFunction {
-	ctx := context.TODO()
+	ctx := context.Background()
 	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
 	// The GitHub API returns 403 Forbidden when a secondary rate limit is
 	// exceeded. This should ideally be covered already by checking for

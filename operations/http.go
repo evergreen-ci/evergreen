@@ -132,7 +132,7 @@ func (ac *legacyClient) post2(path string, body io.Reader) (*http.Response, erro
 }
 
 func (ac *legacyClient) modifyExisting(patchId, action string) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	data := struct {
 		PatchId string `json:"patch_id"`
 		Action  string `json:"action"`
@@ -166,7 +166,7 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 
 // ValidateLocalConfig validates the local project config with the server
 func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	input := validator.ValidationInput{
 		ProjectYaml: data,
 		Quiet:       quiet,
@@ -450,13 +450,11 @@ type UpdatePatchModuleParams struct {
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
 func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error {
-	ctx :=
-		// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
-		// when marshalled into JSON.
-		// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
-		// and non utf-8 characters will be preserved.
-		context.TODO()
-
+	ctx := context.Background()
+	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
+	// when marshalled into JSON.
+	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
+	// and non utf-8 characters will be preserved.
 	data := struct {
 		Module     string `json:"module"`
 		PatchBytes []byte `json:"patch_bytes"`
@@ -559,13 +557,11 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
 func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
-	ctx :=
-		// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
-		// when marshalled into JSON.
-		// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
-		// and non utf-8 characters will be preserved.
-		context.TODO()
-
+	ctx := context.Background()
+	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
+	// when marshalled into JSON.
+	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
+	// and non utf-8 characters will be preserved.
 	data := struct {
 		Description                        string                     `json:"desc"`
 		Project                            string                     `json:"project"`

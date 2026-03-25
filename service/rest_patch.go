@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"context"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
@@ -61,7 +59,7 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 
 // getPatchConfig returns the patched config for a given patch.
 func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {
 		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "patch not found"})

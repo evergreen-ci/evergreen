@@ -121,7 +121,7 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	var err error
 	projectIdentifier := gimlet.GetVars(r)["project_id"]
 	limit := r.FormValue("limit")
@@ -283,7 +283,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 // Returns a JSON response with the marshaled output of the version
 // specified in the request (we still want this in yaml).
 func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	projCtx := MustHaveRESTContext(r)
 	srcVersion := projCtx.Version
 	if srcVersion == nil {
@@ -344,7 +344,7 @@ func (restapi restAPI) getVersionProject(w http.ResponseWriter, r *http.Request)
 // Returns a JSON response with the marshaled output of the version
 // specified by its revision and project name in the request.
 func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	vars := gimlet.GetVars(r)
 	projectName := vars["project_id"]
 	revision := vars["revision"]

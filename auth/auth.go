@@ -96,7 +96,7 @@ func makeExternalManager() (gimlet.UserManager, evergreen.UserManagerInfo, error
 }
 
 func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	var multiInfo evergreen.UserManagerInfo
 	var rw []gimlet.UserManager
 	for _, kind := range config.Multi.ReadWrite {

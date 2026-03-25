@@ -536,7 +536,7 @@ func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
 
 // handleLocalPanic handles panics that occur during command execution
 func (e *LocalExecutor) handleLocalPanic(panicErr error, originalErr error, op string) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	e.logger.Errorf(ctx, "Panic in %s: %v", op, panicErr)
 	if originalErr != nil {
 		e.logger.Errorf(ctx, "Original error: %v", originalErr)
@@ -556,7 +556,7 @@ func (e *LocalExecutor) runCommandWithTracking(
 	for _, cmd := range cmds {
 		e.debugState.CurrentStepIndex++
 		if e.isLocalNoOpCommand(cmd) {
-			e.handleNoOpCommand(cmd)
+			e.handleNoOpCommand(ctx, cmd)
 			continue
 		}
 
@@ -580,14 +580,12 @@ func (e *LocalExecutor) isLocalNoOpCommand(cmd command.Command) bool {
 }
 
 // handleNoOpCommand logs a message for commands that are no-op in local execution
-func (e *LocalExecutor) handleNoOpCommand(cmd command.Command) {
-	ctx := context.TODO()
+func (e *LocalExecutor) handleNoOpCommand(ctx context.Context, cmd command.Command) {
 	e.logger.Infof(ctx, e.getNoOpMessage(cmd.Name()))
 }
 
 // PrepareTask prepares a task for execution by creating command blocks
-func (e *LocalExecutor) PrepareTask(taskName string) error {
-	ctx := context.TODO()
+func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName string) error {
 	if e.project == nil {
 		return errors.New("project not loaded")
 	}
@@ -625,7 +623,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 		})
 	}
 	e.commandBlocks = blocks
-	if err := e.rebuildCommandList(); err != nil {
+	if err := e.rebuildCommandList(ctx); err != nil {
 		return errors.Wrap(err, "rebuilding command list")
 	}
 
@@ -654,8 +652,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 }
 
 // rebuildCommandList rebuilds the flattened command list from command blocks
-func (e *LocalExecutor) rebuildCommandList() error {
-	ctx := context.TODO()
+func (e *LocalExecutor) rebuildCommandList(ctx context.Context) error {
 	e.debugState.CommandList = []CommandInfo{}
 	globalIndex := 0
 

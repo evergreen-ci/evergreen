@@ -894,7 +894,7 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 		Token:     projectGitHubToken,
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 5*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "init", dir)

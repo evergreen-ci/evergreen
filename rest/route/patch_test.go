@@ -66,7 +66,7 @@ func (s *PatchByIdSuite) SetupTest() {
 
 func (s *PatchByIdSuite) TestFindById() {
 	s.route.patchId = s.objIds[0]
-	res := s.route.Run(context.TODO())
+	res := s.route.Run(context.Background())
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status(), "%+v", res.Data())
 
@@ -81,7 +81,7 @@ func (s *PatchByIdSuite) TestFindByIdFail() {
 	}
 
 	s.route.patchId = new_id.Hex()
-	res := s.route.Run(context.TODO())
+	res := s.route.Run(context.Background())
 	s.Equal(http.StatusNotFound, res.Status())
 }
 
@@ -688,7 +688,7 @@ func (s *CountEstimatedGeneratedTasksSuite) TestFindById() {
 	s.Equal("v1", s.route.files[1].Variant)
 
 	s.route.patchId = "aabbccddeeff001122334455"
-	res := s.route.Run(context.TODO())
+	res := s.route.Run(context.Background())
 	s.Require().NotNil(res)
 	s.Require().Equal(http.StatusOK, res.Status())
 	result := (res.Data()).(*restModel.APINumTasksToFinalize)

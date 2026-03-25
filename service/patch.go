@@ -5,13 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"context"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 )
 
 func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Patch == nil {
 		http.Error(w, "patch not found", http.StatusNotFound)

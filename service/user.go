@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"context"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -26,7 +24,7 @@ func (uis *UIServer) loginRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	creds := struct {
 		Username string `json:"username"`
 		Password string `json:"password"`

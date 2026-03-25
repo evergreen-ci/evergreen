@@ -27,7 +27,7 @@ func TestAnnotationsByBuildHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"build_id": "b1"})
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	assert.NoError(t, h.Parse(ctx, r))
 	assert.Equal(t, "b1", h.buildId)
 	assert.False(t, h.fetchAllExecutions)
@@ -53,7 +53,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	h := &annotationsByBuildHandler{
 		buildId: "b1",
 	}
-	ctx := context.TODO()
+	ctx := t.Context()
 	// no annotations doesn't error
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
@@ -118,7 +118,7 @@ func TestAnnotationsByVersionHandlerParse(t *testing.T) {
 	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"version_id": "v1"})
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	assert.NoError(t, h.Parse(ctx, r))
 	assert.Equal(t, "v1", h.versionId)
 	assert.False(t, h.fetchAllExecutions)
@@ -144,7 +144,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	h := &annotationsByVersionHandler{
 		versionId: "v1",
 	}
-	ctx := context.TODO()
+	ctx := t.Context()
 	// no annotations doesn't error
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)
@@ -211,7 +211,7 @@ func TestAnnotationByTaskGetHandlerParse(t *testing.T) {
 		"task_id": "t1",
 	}
 	r = gimlet.SetURLVars(r, vars)
-	ctx := context.TODO()
+	ctx := t.Context()
 	assert.NoError(t, h.Parse(ctx, r))
 	assert.Equal(t, "t1", h.taskId)
 	// the default should be execution:-1, fetch_all_executions:false
@@ -254,7 +254,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 		execution:          -1, //unspecified
 		fetchAllExecutions: false,
 	}
-	ctx := context.TODO()
+	ctx := t.Context()
 	// no annotations doesn't error
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)

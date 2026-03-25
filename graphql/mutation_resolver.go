@@ -811,7 +811,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(h, nil)
+	apiHost.BuildFromService(ctx, h, nil)
 	return &apiHost, nil
 }
 
@@ -867,7 +867,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, "creating intent for spawn host")
 	}
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(spawnHost, nil)
+	apiHost.BuildFromService(ctx, spawnHost, nil)
 	return &apiHost, nil
 }
 
@@ -983,7 +983,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(h, nil)
+	apiHost.BuildFromService(ctx, h, nil)
 	return &apiHost, nil
 }
 

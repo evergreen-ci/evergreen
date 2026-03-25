@@ -195,7 +195,7 @@ func (s *AgentSuite) SetupTest() {
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
-	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentCommand(ctx, factory())
 	sender, err := s.a.GetSender(ctx, globals.LogOutputStdout, "agent", "task_id", 2)
 	s.Require().NoError(err)
 	s.a.SetDefaultLogger(sender)
@@ -1404,7 +1404,7 @@ tasks:
 func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
-	s.tc.setCurrentCommand(factory())
+	s.tc.setCurrentCommand(s.ctx, factory())
 
 	const systemFailureDescription = "failure message"
 	s.T().Run("TaskFailingWithCurrentCommandDoesNotOverrideDescription", func(t *testing.T) {
@@ -1770,7 +1770,7 @@ task_groups:
 	// Fake out the data so that the previous task already set up the task
 	// group, made the task group directory, and the next task is part of the
 	// same task group.
-	_, err := s.a.createTaskDirectory(s.tc, s.tc.taskConfig.WorkDir)
+	_, err := s.a.createTaskDirectory(s.ctx, s.tc, s.tc.taskConfig.WorkDir)
 	s.Require().NoError(err)
 	s.tc.ranSetupGroup = true
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
@@ -2019,7 +2019,7 @@ tasks:
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:                 evergreen.TaskFailed,
@@ -2084,7 +2084,7 @@ tasks:
 	s.Require().True(ok)
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	addMetadataResp := &triggerAddMetadataTagResp{
 		AddFailureMetadataTags: []string{"failure_tag1", "failure_tag2", "failure_tag2", "failure_tag3"},
@@ -2131,7 +2131,7 @@ tasks:
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:      evergreen.TaskSucceeded,
@@ -2186,7 +2186,7 @@ tasks:
 	userDefinedTaskStatusCmd := factory()
 	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
-	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+	s.tc.setCurrentCommand(s.ctx, userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:         evergreen.TaskFailed,
@@ -3107,7 +3107,7 @@ func (s *AgentSuite) TestShouldRunSetupGroup() {
 // callers should flush the task logs before checking them to ensure that they
 // are up-to-date.
 func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []string, logsToNotFind []string) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	expectedLog := make(map[string]bool)
 	for _, log := range logsToFind {
 		expectedLog[log] = false

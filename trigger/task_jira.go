@@ -315,7 +315,7 @@ func (j *jiraBuilder) getSummary() (string, error) {
 }
 
 func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotificationsCustomField) map[string]any {
-	ctx := context.TODO()
+	ctx := context.Background()
 	fields := map[string]any{}
 	for i := range j.data.Task.LocalTestResults {
 		if j.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {

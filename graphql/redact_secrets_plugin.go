@@ -76,7 +76,7 @@ func isFieldRedacted(fieldName string, fieldsToRedact map[string]bool) bool {
 // RedactFieldsInMap recursively searches for and redacts fields in a map.
 // Assumes map structure like map[string]interface{} where interface{} can be another map, a slice, or a basic datatype.
 func RedactFieldsInMap(data map[string]any, fieldsToRedact map[string]bool) map[string]any {
-	ctx := context.TODO()
+	ctx := context.Background()
 	dataCopy := map[string]any{}
 	if err := util.DeepCopy(data, &dataCopy); err != nil {
 		// If theres an error copying the data, log it and return an empty map.

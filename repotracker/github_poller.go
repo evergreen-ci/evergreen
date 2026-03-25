@@ -100,7 +100,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, 
 // cannot find the revision, it will attempt to add the base revision between the most recent commit
 // and the given revision.
 func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context, revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	var foundLatest bool
@@ -239,7 +239,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 
 // GetRecentRevisions fetches the most recent 'numRevisions'
 func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) ([]model.Revision, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	var revisions []model.Revision

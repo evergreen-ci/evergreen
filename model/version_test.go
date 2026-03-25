@@ -473,7 +473,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		Limit:      4,
 		Requesters: evergreen.SystemVersionRequesterTypes,
 	}
-	ctx := context.TODO()
+	ctx := t.Context()
 	versions, err := GetMainlineCommitVersionsWithOptions(ctx, p.Id, opts)
 	assert.NoError(t, err)
 	assert.Len(t, versions, 4)
@@ -558,7 +558,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
 	assert.NoError(t, v.Insert(t.Context()))
-	ctx := context.TODO()
+	ctx := t.Context()
 	// If you are viewing the latest commit it should return nil to indicate that there is no previous page.
 	orderNumber, err := GetPreviousPageCommitOrderNumber(ctx, p.Id, 10, 2, evergreen.SystemVersionRequesterTypes)
 	assert.NoError(t, err)

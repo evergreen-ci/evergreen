@@ -12,13 +12,13 @@ import (
 )
 
 func init() {
-	ctx := context.TODO()
+	ctx := context.Background()
 	err := grip.SetSender(send.MakeNative())
 	grip.Error(ctx, err)
 }
 
 func TestWindowsProcessRegistry(t *testing.T) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	reg := newProcessRegistry()
 	Convey("the process registry", t, func() {
 		So(len(reg.jobs), ShouldEqual, 0)

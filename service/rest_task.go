@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"context"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -90,7 +88,7 @@ type taskStatusByTest map[string]taskTestResult
 // Returns a JSON response with the marshaled output of the task
 // specified in the request.
 func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	projCtx := MustHaveRESTContext(r)
 	srcTask := projCtx.Task
 	if srcTask == nil {

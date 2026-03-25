@@ -37,7 +37,7 @@ type VersionEventData struct {
 // The logFields parameter contains contextual information (e.g. version_id, status) that will
 // be included in the error log if all retry attempts fail.
 func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	const (
 		maxRetries     = 3
 		contextTimeout = 10 * time.Second

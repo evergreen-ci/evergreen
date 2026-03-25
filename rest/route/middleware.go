@@ -608,7 +608,7 @@ func NewGithubAuthMiddleware() gimlet.Middleware {
 type githubAuthMiddleware struct{}
 
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
 	payload, err := github.ValidatePayload(r, githubSecret)
@@ -649,7 +649,7 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 }
 
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))

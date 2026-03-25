@@ -36,8 +36,7 @@ func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, i
 	}
 }
 
-func (sc *StatsCollector) expandCommands(exp util.Expansions) {
-	ctx := context.TODO()
+func (sc *StatsCollector) expandCommands(ctx context.Context, exp util.Expansions) {
 	expandedCmds := []string{}
 	for _, cmd := range sc.Cmds {
 		expanded, err := exp.ExpandString(cmd)
@@ -60,7 +59,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp util.Expansions) {
 	if sc.Interval == 0 {
 		sc.Interval = 60 * time.Second
 	}
-	sc.expandCommands(exp)
+	sc.expandCommands(ctx, exp)
 
 	go func() {
 		timer := time.NewTimer(0)

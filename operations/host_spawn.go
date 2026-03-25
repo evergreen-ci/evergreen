@@ -975,7 +975,7 @@ func hostListVolume() cli.Command {
 }
 
 func printVolumes(volumes []restModel.APIVolume, userID string) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if len(volumes) == 0 {
 		grip.Infof(ctx, "no volumes started by user '%s'", userID)
 		return
@@ -1190,7 +1190,7 @@ func hostList() cli.Command {
 }
 
 func printHosts(hosts []*restModel.APIHost) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	for _, h := range hosts {
 		hostname := getHostname(h)
 		grip.Infof(ctx, "ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
@@ -1205,7 +1205,7 @@ func printHosts(hosts []*restModel.APIHost) {
 }
 
 func printHostsJSON(hosts []*restModel.APIHost) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	type hostResult struct {
 		Id               string `json:"id"`
 		Name             string `json:"name"`

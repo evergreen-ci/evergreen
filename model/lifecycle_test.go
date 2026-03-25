@@ -986,7 +986,7 @@ func TestBuildMarkFinished(t *testing.T) {
 }
 
 func TestCreateBuildFromVersion(t *testing.T) {
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	Convey("When creating a build from a version", t, func() {
 

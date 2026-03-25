@@ -501,7 +501,7 @@ func (c *lastRevisionCriteria) shouldApply(bv, bvDisplayName string) bool {
 // check returns whether the the criteria applies to the build and if so, if it
 // passes all the criteria. This returns true if the criteria does not apply.
 func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if !c.shouldApply(info.buildVariant, info.buildVariantDisplayName) {
 		// The criteria does not apply to this build variant, so it
 		// automatically passes checks.

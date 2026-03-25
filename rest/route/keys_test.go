@@ -58,7 +58,7 @@ func (s *UserConnectorSuite) SetupTest() {
 
 func (s *UserConnectorSuite) TestGetSSHKeysWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
-		_ = s.get.Run(context.TODO())
+		_ = s.get.Run(context.Background())
 	})
 }
 
@@ -91,7 +91,7 @@ func (s *UserConnectorSuite) TestAddSSHKeyWithNoUserPanics() {
 	s.post.(*keysPostHandler).keyValue = "ssh-rsa 12345"
 
 	s.PanicsWithValue("no user attached to request", func() {
-		_ = s.get.Run(context.TODO())
+		_ = s.get.Run(context.Background())
 	})
 }
 
@@ -224,7 +224,7 @@ func (s *UserConnectorDeleteSuite) TestDeleteSSHKeysWithEmptyPubKeys() {
 
 func (s *UserConnectorDeleteSuite) TestDeleteSSHKeysWithNoUserFails() {
 	s.PanicsWithValue("no user attached to request", func() {
-		_ = s.rm.Run(context.TODO())
+		_ = s.rm.Run(context.Background())
 	})
 }
 

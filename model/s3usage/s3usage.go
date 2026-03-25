@@ -64,7 +64,7 @@ func CalculateUploadMetrics(
 	bucketType S3BucketType,
 	method S3UploadMethod,
 ) (populatedFiles []FileMetrics, totalSize int64, totalPuts int) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	populatedFiles = make([]FileMetrics, len(files))
 
 	for i, file := range files {
@@ -135,7 +135,7 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 // CalculateS3PutCostWithConfig calculates the S3 PUT request cost.
 // Returns 0 if cost cannot be calculated due to missing or invalid config.
 func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if putRequests <= 0 {
 		grip.Warning(ctx, message.Fields{
 			"message":      "no put requests to calculate cost",

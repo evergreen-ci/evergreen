@@ -125,7 +125,7 @@ type patchData struct {
 // submitPatch creates the Patch document, adds the patched project config to it,
 // and saves the patches to GridFS to be retrieved
 func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
-	ctx := context.TODO()
+	ctx := r.Context()
 	dbUser := MustHaveUser(r)
 
 	data := patchData{}

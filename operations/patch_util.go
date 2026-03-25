@@ -159,7 +159,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 }
 
 func (p *patchParams) validateSubmission(diffData *localDiff) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if err := validatePatchSize(diffData, p.Large); err != nil {
 		return err
 	}
@@ -296,7 +296,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 }
 
 func (p *patchParams) setNonRepeatedDefaults(conf *ClientSettings) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if err := p.setLocalAliases(conf); err != nil {
 		grip.Warningf(ctx, "warning - setting local aliases: %s\n", err)
 	}
@@ -324,7 +324,7 @@ func (p *patchParams) hasTasksAndVariants() bool {
 }
 
 func (p *patchParams) loadProject(conf *ClientSettings) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if p.Project == "" {
 		cwd, err := os.Getwd()
 		grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
@@ -389,7 +389,7 @@ func (p *patchParams) addAliasToPatchParams(alias model.ProjectAlias) {
 }
 
 func (p *patchParams) setDefaultProject(conf *ClientSettings) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	cwd, err := os.Getwd()
 	grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
 	cwd, err = filepath.EvalSymlinks(cwd)
@@ -408,9 +408,8 @@ func (p *patchParams) setDefaultProject(conf *ClientSettings) {
 
 // Sets the patch's alias to either the passed in option or the default
 func (p *patchParams) loadAlias(conf *ClientSettings) error {
-	ctx :=
-		// If somebody passed an --alias
-		context.TODO()
+	ctx := context.Background()
+	// If somebody passed an --alias
 
 	if p.Alias != "" {
 		// Check if there's an alias as the default, and if not, ask to save the cl one
@@ -433,7 +432,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 }
 
 func (p *patchParams) loadVariants(conf *ClientSettings) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if len(p.Variants) != 0 {
 		defaultVariants := conf.FindDefaultVariants(p.Project)
 		if len(defaultVariants) == 0 && !p.SkipConfirm &&
@@ -478,7 +477,7 @@ func (p *patchParams) loadTriggerAliases(conf *ClientSettings) error {
 }
 
 func (p *patchParams) loadTasks(conf *ClientSettings) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if len(p.Tasks) != 0 {
 		defaultTasks := conf.FindDefaultTasks(p.Project)
 		if len(defaultTasks) == 0 && !p.SkipConfirm &&
@@ -500,7 +499,7 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 }
 
 func (p *patchParams) getDescription() string {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if p.Description != "" {
 		return p.Description
 	} else if p.AutoDescription {
@@ -530,7 +529,7 @@ func (p *patchParams) getDescription() string {
 // getModulePath takes in a cache in addition to the conf, so that if we've disabled auto-defaulting, we can use the cache
 // without making any updates to conf, since this may be written to for future operations as well.
 func (p *patchParams) getModulePath(conf *ClientSettings, module string, modulePathCache map[string]string) (string, error) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	modulePath, cached := modulePathCache[module]
 	if cached || p.SkipConfirm {
 		if modulePath == "" {

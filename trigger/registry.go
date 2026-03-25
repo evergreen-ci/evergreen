@@ -33,7 +33,7 @@ type triggerRegistry struct {
 }
 
 func (r *triggerRegistry) eventHandler(resourceType, eventDataType string) eventHandler {
-	ctx := context.TODO()
+	ctx := context.Background()
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 

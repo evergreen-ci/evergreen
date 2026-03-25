@@ -1599,7 +1599,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
-	ctx := context.TODO()
+	ctx := context.Background()
 	tg := p.FindTaskGroup(bvTaskGroup.Name)
 	if tg == nil {
 		return nil

@@ -51,7 +51,7 @@ func fetchAllProjectConfigs() cli.Command {
 // fetchAndWriteConfig downloads the most recent config for a project
 // and writes it to "project_name.yml" locally.
 func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeDisabled bool) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	catcher := grip.NewSimpleCatcher()
 	type projectRepo struct {
 		Owner      string

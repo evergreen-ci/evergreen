@@ -1854,22 +1854,23 @@ func TestAssignNextAvailableTask(t *testing.T) {
 
 func TestCheckHostHealth(t *testing.T) {
 	currentRevision := "abc"
+	ctx := t.Context()
 	Convey("With a host that has different statuses", t, func() {
 		h := &host.Host{
 			Provisioned:   true,
 			Status:        evergreen.HostRunning,
 			AgentRevision: currentRevision,
 		}
-		shouldExit := checkHostHealth(h)
+		shouldExit := checkHostHealth(ctx, h)
 		So(shouldExit, ShouldBeFalse)
 		h.Status = evergreen.HostDecommissioned
-		shouldExit = checkHostHealth(h)
+		shouldExit = checkHostHealth(ctx, h)
 		So(shouldExit, ShouldBeTrue)
 		h.Status = evergreen.HostQuarantined
-		shouldExit = checkHostHealth(h)
+		shouldExit = checkHostHealth(ctx, h)
 		So(shouldExit, ShouldBeTrue)
 		Convey("With a host that is running but has a different revision", func() {
-			shouldExit := agentRevisionIsOld(h)
+			shouldExit := agentRevisionIsOld(ctx, h)
 			So(shouldExit, ShouldBeTrue)
 		})
 	})

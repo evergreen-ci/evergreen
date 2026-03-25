@@ -12,7 +12,7 @@ import (
 
 // MarshalStringMap handles marshaling StringMap
 func MarshalStringMap(val map[string]string) graphql.Marshaler {
-	ctx := context.TODO()
+	ctx := context.Background()
 	return graphql.WriterFunc(func(w io.Writer) {
 		err := json.NewEncoder(w).Encode(val)
 		if err != nil {
@@ -44,7 +44,7 @@ func UnmarshalStringMap(v any) (map[string]string, error) {
 
 // MarshalBooleanMap handles marshaling BooleanMap
 func MarshalBooleanMap(val map[string]bool) graphql.Marshaler {
-	ctx := context.TODO()
+	ctx := context.Background()
 	return graphql.WriterFunc(func(w io.Writer) {
 		err := json.NewEncoder(w).Encode(val)
 		if err != nil {

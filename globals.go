@@ -1128,10 +1128,8 @@ var (
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.
 func FindEvergreenHome() string {
-	ctx :=
-		// check if env var is set
-		context.TODO()
-
+	ctx := context.Background()
+	// check if env var is set
 	root := os.Getenv(EvergreenHome)
 	if len(root) > 0 {
 		return root

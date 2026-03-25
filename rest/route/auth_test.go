@@ -24,7 +24,7 @@ func (s *AuthRouteSuite) TestParse() {
 	urlString += "?resource=abc&resource_type=project&permission=read&required_level=10"
 	req := &http.Request{Method: http.MethodGet}
 	req.URL, _ = url.Parse(urlString)
-	err := h.Parse(context.TODO(), req)
+	err := h.Parse(context.Background(), req)
 	s.Require().NoError(err)
 	s.Equal("abc", h.resource)
 	s.Equal("project", h.resourceType)
@@ -38,7 +38,7 @@ func (s *AuthRouteSuite) TestParseFail() {
 	urlString += "?resource=abc&resource_type=project&permission=read&required_level=notAnumber"
 	req := &http.Request{Method: http.MethodGet}
 	req.URL, _ = url.Parse(urlString)
-	err := h.Parse(context.TODO(), req)
+	err := h.Parse(context.Background(), req)
 	s.Error(err)
 	s.Equal("abc", h.resource)
 	s.Equal("project", h.resourceType)

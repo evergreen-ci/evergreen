@@ -11,7 +11,7 @@ import (
 
 // IsFieldUndefined is an adaptation of IsZero https://golang.org/src/reflect/value.go?s=34297:34325#L1090
 func IsFieldUndefined(v reflect.Value) bool {
-	ctx := context.TODO()
+	ctx := context.Background()
 	switch v.Kind() {
 	case reflect.Bool:
 		return !v.Bool()

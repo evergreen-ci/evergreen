@@ -443,7 +443,6 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 // setupTask does some initial setup that the task needs before running such as initializing the logger, loading the task config
 // data and setting the task directory.
 func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskContext, nt *apimodels.NextTaskResponse, shouldSetupGroup bool, taskDirectory string) (tc *taskContext, shouldExit bool, err error) {
-	ctx := context.TODO()
 	setupCtx, span := a.tracer.Start(setupCtx, "setup-task")
 	defer span.End()
 	if initialTC == nil {
@@ -465,10 +464,10 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// the task failed during initial task setup.
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
-		grip.Alert(ctx, errors.New("setup.initial command is not registered"))
+		grip.Alert(setupCtx, errors.New("setup.initial command is not registered"))
 	}
 	if factory != nil {
-		tc.setCurrentCommand(factory())
+		tc.setCurrentCommand(setupCtx, factory())
 	}
 
 	a.comm.UpdateLastMessageTime()
@@ -501,16 +500,16 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	if tc.ranSetupGroup {
 		if _, err := os.Stat(taskDirectory); os.IsNotExist(err) {
 			taskGroupDirMissing = true
-			tc.logger.Execution().Noticef(ctx, "Task directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", taskDirectory)
+			tc.logger.Execution().Noticef(setupCtx, "Task directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", taskDirectory)
 		}
 		tmpDir := filepath.Join(taskDirectory, "tmp")
 		if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
 			taskGroupDirMissing = true
-			tc.logger.Execution().Noticef(ctx, "Task temporary directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", tmpDir)
+			tc.logger.Execution().Noticef(setupCtx, "Task temporary directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", tmpDir)
 		}
 	}
 	if !tc.ranSetupGroup || taskGroupDirMissing {
-		taskDirectory, err = a.createTaskDirectory(tc, taskDirectory)
+		taskDirectory, err = a.createTaskDirectory(setupCtx, tc, taskDirectory)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
@@ -539,25 +538,25 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
-		tc.setCurrentCommand(factory())
+		tc.setCurrentCommand(setupCtx, factory())
 	}
 
-	tc.logger.Task().Infof(ctx, "Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
-	tc.logger.Execution().Info(ctx, "Execution logger initialized.")
-	tc.logger.System().Info(ctx, "System logger initialized.")
+	tc.logger.Task().Infof(setupCtx, "Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
+	tc.logger.Execution().Info(setupCtx, "Execution logger initialized.")
+	tc.logger.System().Info(setupCtx, "System logger initialized.")
 
-	tc.logger.Execution().Error(ctx, errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
+	tc.logger.Execution().Error(setupCtx, errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
 
 	if err := setupCtx.Err(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 
 	hostname, err := os.Hostname()
-	tc.logger.Execution().Info(ctx, errors.Wrap(err, "getting hostname"))
+	tc.logger.Execution().Info(setupCtx, errors.Wrap(err, "getting hostname"))
 	if hostname != "" {
-		tc.logger.Execution().Infof(ctx, "Hostname is '%s'.", hostname)
+		tc.logger.Execution().Infof(setupCtx, "Hostname is '%s'.", hostname)
 	}
-	tc.logger.Task().Infof(ctx, "Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	tc.logger.Task().Infof(setupCtx, "Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
 	return tc, shouldExit, nil
 }
@@ -682,7 +681,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		if pErr == nil {
 			return
 		}
-		err = a.logPanic(tc, pErr, err, op)
+		err = a.logPanic(tskCtx, tc, pErr, err, op)
 	}()
 
 	// Setup occurs before the task is actually running, so it's not abortable. If setup is taking
@@ -748,7 +747,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		if pErr == nil {
 			return
 		}
-		_ = a.logPanic(tc, pErr, nil, op)
+		_ = a.logPanic(ctx, tc, pErr, nil, op)
 		status = evergreen.TaskSystemFailed
 	}()
 
@@ -1091,7 +1090,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 		// (including those from teardown group commands) are captured.
 		grip.Error(ctx, errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
 	}()
-	defer a.clearGlobalFiles(tc)
+	defer a.clearGlobalFiles(ctx, tc)
 
 	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {
@@ -1181,7 +1180,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 		detail.PostErrored = tc.getPostErrored()
 		detail.OtherFailingCommands = tc.getOtherFailingCommands()
-		updateEndTaskFailureDetailsForTestResults(tc, detail)
+		updateEndTaskFailureDetailsForTestResults(ctx, tc, detail)
 
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
@@ -1476,8 +1475,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 
 // updateEndTaskFailureDetailsForTestResults checks and updates the task failure
 // details for missing or failed test results.
-func updateEndTaskFailureDetailsForTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
-	ctx := context.TODO()
+func updateEndTaskFailureDetailsForTestResults(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if detail.Status == evergreen.TaskFailed {
 		// If the task has already failed for another reason, do not overwrite
 		// it with a test result-related failure. Test results failures are
@@ -1542,8 +1540,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 // clearGlobalFiles cleans up certain files that were created in the home directory, including
 // the global git config file, git credentials file, and netrc file.
-func (a *Agent) clearGlobalFiles(tc *taskContext) {
-	ctx := context.TODO()
+func (a *Agent) clearGlobalFiles(ctx context.Context, tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
@@ -1582,8 +1579,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 
 // logPanic logs a panic to the task log and returns the panic error, along with
 // the original error (if any). If there was no panic error, this is a no-op.
-func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) error {
-	ctx := context.TODO()
+func (a *Agent) logPanic(ctx context.Context, tc *taskContext, pErr, originalErr error, op string) error {
 	if pErr == nil {
 		return nil
 	}

@@ -181,8 +181,7 @@ func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {
 	return otherFailingCmds
 }
 
-func (tc *taskContext) setCurrentCommand(command command.Command) {
-	ctx := context.TODO()
+func (tc *taskContext) setCurrentCommand(ctx context.Context, command command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.currentCommand = command
@@ -200,8 +199,7 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 // setCurrentIdleTimeout sets the idle timeout for the current running command.
 // This timeout only applies to commands running in specific blocks where idle
 // timeout is allowed.
-func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
-	ctx := context.TODO()
+func (tc *taskContext) setCurrentIdleTimeout(ctx context.Context, cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 

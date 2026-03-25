@@ -103,7 +103,7 @@ func AztoRegion(az string) string {
 // ec2StateToEvergreenStatus returns a "universal" status code based on EC2's
 // provider-specific status codes.
 func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if ec2State == nil {
 		return StatusUnknown
 	}
@@ -290,7 +290,7 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 const userDataSizeLimit = 16 * 1024
 
 func validateUserDataSize(userData, distroID string) error {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if len(userData) < userDataSizeLimit {
 		return nil
 	}

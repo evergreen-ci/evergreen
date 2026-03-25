@@ -40,7 +40,7 @@ func (i APIDuration) ToDuration() time.Duration {
 }
 
 func MarshalAPIDuration(b APIDuration) graphql.Marshaler {
-	ctx := context.TODO()
+	ctx := context.Background()
 	return graphql.WriterFunc(func(w io.Writer) {
 		_, err := w.Write([]byte(strconv.FormatInt(int64(b), 10)))
 		grip.Error(ctx, err)

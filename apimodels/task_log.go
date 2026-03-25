@@ -69,7 +69,7 @@ func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 // returned log message channel. It is the responsibility of the caller to
 // close the log iterator.
 func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
-	ctx := context.TODO()
+	ctx := context.Background()
 	lines := make(chan LogMessage)
 	go func() {
 		defer recovery.LogStackTraceAndContinue("streaming lines from log iterator")

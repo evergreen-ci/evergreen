@@ -444,7 +444,7 @@ func TestMergingIterator(t *testing.T) {
 }
 
 func TestNewTailIterator(t *testing.T) {
-	_, lines, _, err := generateTestLog(context.TODO(), nil, 100, 10)
+	_, lines, _, err := generateTestLog(t.Context(), nil, 100, 10)
 	require.NoError(t, err)
 
 	for _, test := range []struct {

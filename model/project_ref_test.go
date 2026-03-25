@@ -2085,7 +2085,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	// verify that both the project and repo are part of the scope
 	rm := env.RoleManager()
-	scope, err := rm.GetScope(context.TODO(), GetRepoAdminScope(repoRef.Id))
+	scope, err := rm.GetScope(t.Context(), GetRepoAdminScope(repoRef.Id))
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	assert.Contains(t, scope.Resources, repoRef.Id)

@@ -343,7 +343,7 @@ func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
 }
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
-	ctx := context.TODO()
+	ctx := context.Background()
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
 		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
 
@@ -439,7 +439,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
 func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
-	ctx := context.TODO()
+	ctx := context.Background()
 	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",

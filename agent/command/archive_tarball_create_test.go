@@ -166,7 +166,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(os.MkdirAll(outputDir, 0755), ShouldBeNil)
 				// untar the file
 				untarCmd := jasper.BuildCommand("extract test", level.Info, []string{"tar", "-zxvf", targetPath}, outputDir, nil)
-				So(untarCmd.Run(context.TODO()), ShouldBeNil)
+				So(untarCmd.Run(context.Background()), ShouldBeNil)
 
 				// make sure that the correct files were included
 				exists = utility.FileExists(filepath.Join(outputDir, "targz_me/dir1/dir2/testfile.txt"))

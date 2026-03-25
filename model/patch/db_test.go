@@ -242,7 +242,7 @@ func TestProjectOrUserPatchesCombined(t *testing.T) {
 		Project:    utility.ToStringPtr("evergreen"),
 		CountLimit: 10000,
 	}
-	ctx := context.TODO()
+	ctx := t.Context()
 	patches, err := ProjectOrUserPatchesPage(ctx, opts)
 	assert.NoError(t, err)
 	assert.Len(t, patches, 10)
@@ -321,7 +321,7 @@ func TestProjectOrUserPatchesResults(t *testing.T) {
 		assert.NoError(t, patch.Insert(t.Context()))
 	}
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	t.Run("ReturnsAllPatches", func(t *testing.T) {
 		opts := ProjectOrUserPatchesOptions{
@@ -414,7 +414,7 @@ func TestProjectOrUserPatchesCount(t *testing.T) {
 		assert.NoError(t, patch.Insert(t.Context()))
 	}
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	t.Run("CountsAllPatches", func(t *testing.T) {
 		opts := ProjectOrUserPatchesOptions{

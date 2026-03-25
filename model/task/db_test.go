@@ -881,7 +881,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, dt))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	// execution tasks have been filtered outs
 	opts := GetTasksByVersionOptions{
 		Sorts: []TasksSortOrder{
@@ -908,7 +908,7 @@ func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 
 	assert.NoError(t, inactiveTask.Insert(t.Context()))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	// inactive tasks should be included
 	opts := GetTasksByVersionOptions{IncludeNeverActivatedTasks: true}
@@ -951,7 +951,7 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	opts := GetTasksByVersionOptions{}
 	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
@@ -1021,7 +1021,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	// Normal Patch builds
 	opts := GetTasksByVersionOptions{
@@ -1100,7 +1100,7 @@ func TestGetTasksByVersionErrorHandling(t *testing.T) {
 	}
 	// Normal Patch builds
 	opts := GetTasksByVersionOptions{}
-	ctx := context.TODO()
+	ctx := t.Context()
 	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 40000, count)
@@ -1168,7 +1168,7 @@ func TestGetTaskStatusesByVersion(t *testing.T) {
 		DisplayStatusCache: evergreen.TaskSetupFailed,
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
-	ctx := context.TODO()
+	ctx := t.Context()
 	tasks, err := GetTaskStatusesByVersion(ctx, "v1")
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 4)
@@ -1235,7 +1235,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	// Sort by display name, asc
 	opts := GetTasksByVersionOptions{
@@ -1363,7 +1363,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		DisplayStatusCache: evergreen.TaskFailed,
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
-	ctx := context.TODO()
+	ctx := t.Context()
 	opts := GetTasksByVersionOptions{}
 	stats, err := GetTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
@@ -1444,7 +1444,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 
 	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
 
-		ctx := context.TODO()
+		ctx := t.Context()
 		opts := GetTasksByVersionOptions{}
 		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
@@ -1487,7 +1487,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		opts := GetTasksByVersionOptions{
 			Variants: []string{"bv1"},
 		}
-		ctx := context.TODO()
+		ctx := t.Context()
 		variants, err := GetGroupedTaskStatsByVersion(ctx, "v1", opts)
 		assert.NoError(t, err)
 		assert.Len(t, variants, 1)
@@ -1580,7 +1580,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		DisplayStatusCache: evergreen.TaskFailed,
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5))
-	ctx := context.TODO()
+	ctx := t.Context()
 	statuses, err := GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Len(t, statuses, 2)
@@ -1663,7 +1663,7 @@ func TestHasMatchingTasks(t *testing.T) {
 	opts := HasMatchingTasksOptions{
 		Statuses: []string{evergreen.TaskFailed},
 	}
-	ctx := context.TODO()
+	ctx := t.Context()
 	hasMatchingTasks, err := HasMatchingTasks(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.True(t, hasMatchingTasks)
@@ -2141,7 +2141,7 @@ func TestGetPendingGenerateTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	numPending, err := GetPendingGenerateTasks(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 3, numPending)
@@ -2150,7 +2150,7 @@ func TestGetPendingGenerateTasks(t *testing.T) {
 func TestGetNoPendingGenerateTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	numPending, err := GetPendingGenerateTasks(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numPending)

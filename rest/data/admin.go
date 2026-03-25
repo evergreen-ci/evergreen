@@ -175,7 +175,7 @@ func RestartFailedTasks(ctx context.Context, queue amboy.Queue, opts model.Resta
 			return nil, err
 		}
 	} else {
-		if err = queue.Put(context.TODO(), units.NewTasksRestartJob(opts)); err != nil {
+		if err = queue.Put(ctx, units.NewTasksRestartJob(opts)); err != nil {
 			return nil, errors.Wrap(err, "enqueueing job for task restart")
 		}
 	}

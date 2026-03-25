@@ -86,7 +86,7 @@ func GetAPIParamsFromEnv(t *testing.T, evgHome string) APIParams {
 // WaitForEvergreen waits for the Evergreen app server to be up and accepting
 // requests.
 func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	const attempts = 10
 	for i := 0; i < attempts; i++ {
 		grip.Infof(ctx, "Checking if Evergreen is up. (%d/%d)", i, attempts)
@@ -223,7 +223,7 @@ func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, cli
 // checkTaskLogContent compares the expected result of running the smoke test
 // project YAML (project.yml) against the actual task log's text.
 func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode globals.Mode) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	grip.Infof(ctx, "Checking task logs for task named '%s'", taskName)
 
 	page := string(body)

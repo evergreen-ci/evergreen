@@ -894,7 +894,7 @@ func (pRef *APIProjectRef) DefaultUnsetBooleans() {
 }
 
 func recursivelyDefaultBooleans(structToSet reflect.Value) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	var err error
 	var i int
 	defer func() {

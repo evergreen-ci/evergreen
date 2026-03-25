@@ -57,7 +57,7 @@ type ClientProjectConf struct {
 }
 
 func findConfigFilePath(fn string) (string, error) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	currentBinPath, _ := osext.Executable()
 
 	userHome, _ := util.GetUserHome()
@@ -633,7 +633,7 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 }
 
 func (s *ClientSettings) SetDefaultProject(cwd, project string) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	if s.DisableAutoDefaulting {
 		return
 	}
@@ -650,7 +650,7 @@ func (s *ClientSettings) SetDefaultProject(cwd, project string) {
 }
 
 func (s *ClientSettings) SetAutoUpgradeCLI() {
-	ctx := context.TODO()
+	ctx := context.Background()
 	s.AutoUpgradeCLI = true
 	grip.Info(ctx, "Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }

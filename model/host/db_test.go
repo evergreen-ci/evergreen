@@ -48,7 +48,7 @@ func TestConsolidateHostsForUser(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(t.Context(), VolumesCollection, v1, v2))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	assert.NoError(t, ConsolidateHostsForUser(ctx, "me", "new_me"))
 
 	hostFromDB, err := FindOneId(ctx, "h1")
@@ -896,7 +896,7 @@ func TestCountHostsCanRunTasks(t *testing.T) {
 
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	count, err := CountHostsCanRunTasks(ctx, "d1")
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)

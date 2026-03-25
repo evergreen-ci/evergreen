@@ -36,7 +36,7 @@ type TestServer struct {
 }
 
 func (s *TestServer) Close() {
-	ctx := context.TODO()
+	ctx := context.Background()
 	grip.Noticeln(ctx, "closing test server:", s.URL)
 
 	grip.Error(ctx, s.Listener.Close())

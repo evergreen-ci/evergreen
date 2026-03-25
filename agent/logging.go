@@ -97,7 +97,7 @@ func (a *Agent) SetDefaultLogger(sender send.Sender) {
 }
 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, commandName string) (client.LoggerProducer, error) {
-	config := a.prepLogger(tc, commandName)
+	config := a.prepLogger(ctx, tc, commandName)
 
 	logger, err := a.comm.GetLoggerProducer(ctx, &tc.taskConfig.Task, &config)
 	if err != nil {
@@ -106,8 +106,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, command
 	return logger, nil
 }
 
-func (a *Agent) prepLogger(tc *taskContext, commandName string) client.LoggerConfig {
-	ctx := context.TODO()
+func (a *Agent) prepLogger(ctx context.Context, tc *taskContext, commandName string) client.LoggerConfig {
 	logDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(ctx, errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s'", logDir))
 	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task

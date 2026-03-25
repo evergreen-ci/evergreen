@@ -18,7 +18,7 @@ import (
 )
 
 func Validate() cli.Command {
-	ctx := context.TODO()
+	ctx := context.Background()
 	return cli.Command{
 		Name:  "validate",
 		Usage: "verify that an evergreen project config is valid",
