@@ -1261,11 +1261,31 @@ func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOneId returns a single task with the given ID.
+// FindOneId returns a single task with the given ID, excluding the
+// GeneratedJSONAsString field which can be very large. Use
+// FindOneIdWithGeneratedJSON if the generated JSON is needed.
 func FindOneId(ctx context.Context, id string) (*Task, error) {
+	task := &Task{}
+	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
+
+	err := db.FindOneQ(ctx, Collection, query, task)
+
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding task by ID")
+	}
+
+	return task, nil
+}
+
+// FindOneIdWithGeneratedJSON returns a single task with the given ID,
+// including the GeneratedJSONAsString field.
+func FindOneIdWithGeneratedJSON(ctx context.Context, id string) (*Task, error) {
 	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
 
-	return task, errors.Wrap(err, "finding task by ID")
+	return task, errors.Wrap(err, "finding task by ID with generated json")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
@@ -1404,24 +1424,6 @@ func FindOneIdWithFields(ctx context.Context, id string, projected ...string) (*
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "")
-	}
-
-	return task, nil
-}
-
-// FindOneIdWithoutGeneratedJSON returns a single task with the given ID,
-// excluding the GeneratedJSONAsString field which can be very large.
-func FindOneIdWithoutGeneratedJSON(ctx context.Context, id string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
-
-	err := db.FindOneQ(ctx, Collection, query, task)
-
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task by ID without generated JSON")
 	}
 
 	return task, nil
