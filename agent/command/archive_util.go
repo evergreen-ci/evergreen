@@ -351,9 +351,10 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 		var walk fs.WalkDirFunc
 
-		if filematch == "" {
+		switch {
+		case filematch == "":
 			// If the pattern ends in "/", it will never include anything
-		} else if !strings.ContainsAny(includePattern, "*?[]") {
+		case !strings.ContainsAny(includePattern, "*?[]"):
 			// If there's no glob pattern, no need to walk any directories
 			fullPath := filepath.Join(rootPath, includePattern)
 
@@ -372,7 +373,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 				}
 				catcher.Wrapf(err, "matching single file '%s' in path '%s'", includePattern, rootPath)
 			}
-		} else if filematch == "**" {
+		case filematch == "**":
 			walk = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
@@ -394,7 +395,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 				return nil
 			}
 			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
-		} else if strings.Contains(filematch, "**") {
+		case strings.Contains(filematch, "**"):
 			globSuffix := filematch[2:]
 			walk = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
@@ -418,7 +419,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 				return nil
 			}
 			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
-		} else {
+		default:
 			// We know there are no '**' wildcards since they would have been caught in the above, so no need to recurse
 			files, err := os.ReadDir(dir)
 			if err != nil {
