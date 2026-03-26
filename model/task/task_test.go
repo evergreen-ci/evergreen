@@ -3924,7 +3924,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.NoError(annotationWithSuspectedIssue.Upsert(s.T().Context()))
 	s.NoError(annotationWithEmptyIssues.Upsert(s.T().Context()))
 
-	ctx := t.Context()
+	ctx := s.T().Context()
 	opts := GetTasksByVersionOptions{}
 	t, _, err := GetTasksByVersion(ctx, "version_known", opts)
 	s.NoError(err)
