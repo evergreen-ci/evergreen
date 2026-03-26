@@ -724,7 +724,7 @@ type APIBucketsConfig struct {
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
 	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
 	InternalBuckets                  []string         `json:"internal_buckets"`
-	Credentials                     APIS3Credentials `json:"credentials"`
+	Credentials                      APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
