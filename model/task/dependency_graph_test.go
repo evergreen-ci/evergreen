@@ -452,3 +452,18 @@ func TestTopologicalStableSort(t *testing.T) {
 		assert.Empty(t, sortedNodes)
 	})
 }
+
+func TestNumNodes(t *testing.T) {
+	g := NewDependencyGraph(false)
+	assert.Equal(t, 0, g.NumNodes())
+
+	g.AddTaskNode(TaskNode{Name: "a", Variant: "v"})
+	assert.Equal(t, 1, g.NumNodes())
+
+	g.AddTaskNode(TaskNode{Name: "b", Variant: "v"})
+	assert.Equal(t, 2, g.NumNodes())
+
+	// Adding a duplicate should not increase the count.
+	g.AddTaskNode(TaskNode{Name: "a", Variant: "v"})
+	assert.Equal(t, 2, g.NumNodes())
+}
