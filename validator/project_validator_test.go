@@ -29,15 +29,15 @@ func TestProjectErrorValidators(t *testing.T) {
 	// 2. They must not return any other type of ValidationError level.
 	testProjectValidatorsFunctions(t, projectErrorValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
 		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectErrorValidators should return at least one Error")
-		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings or Notices")
+		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings")
 	})
 }
 
 func TestProjectWarningValidators(t *testing.T) {
-	// projectWarningValidators must only return Warning or Notice.
+	// projectWarningValidators must only return Warning.
 	testProjectValidatorsFunctions(t, projectWarningValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
 		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectWarningValidators should never use Error")
-		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning or Notice")
+		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning")
 	})
 }
 
@@ -1937,7 +1937,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'execTask' defined but not used")
-		assert.Equal(t, Notice, errs[0].Level)
+		assert.Equal(t, Warning, errs[0].Level)
 	})
 	t.Run("DisabledTask", func(t *testing.T) {
 		project := &model.Project{
@@ -1975,7 +1975,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
-		assert.Equal(t, Notice, errs[0].Level)
+		assert.Equal(t, Warning, errs[0].Level)
 	})
 	t.Run("UnusedTaskDisabledForVariant", func(t *testing.T) {
 		project := &model.Project{
@@ -1994,7 +1994,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
-		assert.Equal(t, Notice, errs[0].Level)
+		assert.Equal(t, Warning, errs[0].Level)
 	})
 	t.Run("MultipleVariants", func(t *testing.T) {
 		project := &model.Project{
@@ -3191,7 +3191,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			}
 			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
+			So(len(errs.AtLevel(Warning)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55' with the following admin-defined warning(s): 55 is not the best number")
 		})
 		Convey("an error should be thrown if a variant references a distro has a warning", func() {
@@ -3211,7 +3211,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			}
 			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
+			So(len(errs.AtLevel(Warning)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55-alias' with the following admin-defined warning: and this is not the best alias")
 		})
 		Convey("an error should be thrown if a referenced distro for a "+
@@ -3589,7 +3589,7 @@ functions:
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldResemble, ValidationErrors{})
 		})
-		Convey("a notice should be thrown if a function call specifies retry_on_failure", func() {
+		Convey("a warning should be thrown if a function call specifies retry_on_failure", func() {
 			exampleYml := `
 tasks:
 - name: example_task
@@ -3609,7 +3609,7 @@ functions:
 			So(proj, ShouldNotBeNil)
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
-			errs := validationErrs.AtLevel(Notice)
+			errs := validationErrs.AtLevel(Warning)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "cannot specify retry_on_failure with function 'my-func' for task 'example_task'")
 		})

@@ -315,7 +315,7 @@ func (s *DockerSuite) TestGetContainerImageNoBuild() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport, SkipImageBuild: true})
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.NoError(err)
 }
 
