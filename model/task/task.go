@@ -72,9 +72,6 @@ const (
 )
 
 // maxDependencyDepth is the maximum recursion depth for dependency traversal.
-// This is a defense-in-depth measure; the dedup maps prevent infinite loops
-// from cycles, but this guards against extremely deep dependency graphs.
-// This is a var instead of a const for testability.
 var maxDependencyDepth = 500
 
 var (
