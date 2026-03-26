@@ -65,7 +65,17 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
+
+	// dependencyResolutionTimeout is the maximum time allowed for recursive
+	// dependency resolution.
+	dependencyResolutionTimeout = 10 * time.Minute
 )
+
+// maxDependencyDepth is the maximum recursion depth for dependency traversal.
+// This is a defense-in-depth measure; the dedup maps prevent infinite loops
+// from cycles, but this guards against extremely deep dependency graphs.
+// This is a var instead of a const for testability.
+var maxDependencyDepth = 500
 
 var (
 	// A regex that matches either / or \ for splitting directory paths
@@ -2464,11 +2474,25 @@ func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGe
 // that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
 // depCache should originally be nil. We assume there are no dependency cycles.
 func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[string]Task) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if depCache == nil {
 		depCache = make(map[string]Task)
 	}
 	for _, t := range tasks {
 		depCache[t.Id] = t
+	}
+
+	return getRecursiveDependenciesUpHelper(ctx, tasks, depCache, 0)
+}
+
+func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCache map[string]Task, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
 	}
 
 	tasksToFind := []string{}
@@ -2503,7 +2527,11 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
 
-	recursiveDeps, err := GetRecursiveDependenciesUp(ctx, deps, depCache)
+	for _, dep := range deps {
+		depCache[dep.Id] = dep
+	}
+
+	recursiveDeps, err := getRecursiveDependenciesUpHelper(ctx, deps, depCache, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2515,11 +2543,25 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 // taskMap should originally be nil.
 // We assume there are no dependency cycles.
 func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap map[string]bool) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if taskMap == nil {
 		taskMap = make(map[string]bool)
 	}
 	for _, t := range tasks {
 		taskMap[t] = true
+	}
+
+	return getRecursiveDependenciesDownHelper(ctx, tasks, taskMap, 0)
+}
+
+func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, taskMap map[string]bool, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
 	}
 
 	// find the tasks that depend on these tasks
@@ -2536,10 +2578,11 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	for _, t := range dependOnUsTasks {
 		if !taskMap[t.Id] {
 			newDeps = append(newDeps, t)
+			taskMap[t.Id] = true
 		}
 	}
 
-	// everything is aleady in the map or nothing depends on tasks
+	// everything is already in the map or nothing depends on tasks
 	if len(newDeps) == 0 {
 		return nil, nil
 	}
@@ -2548,7 +2591,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	for _, t := range newDeps {
 		newDepIDs = append(newDepIDs, t.Id)
 	}
-	recurseTasks, err := getRecursiveDependenciesDown(ctx, newDepIDs, taskMap)
+	recurseTasks, err := getRecursiveDependenciesDownHelper(ctx, newDepIDs, taskMap, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
