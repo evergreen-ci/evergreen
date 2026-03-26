@@ -616,7 +616,13 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 		}
 	}
 
-	builds, err := model.GetVersionBuilds(ctx, versionID)
+	// TODO DEVPROD-29422: this is only necessary because APIVersion doesn't include BuildIds, and GetAllWaterfallVersions projects out Version.BuildVariants for performance
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+	}
+
+	builds, err := model.GetVersionBuilds(ctx, versionID, v.BuildIds)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
