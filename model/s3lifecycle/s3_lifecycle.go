@@ -269,31 +269,6 @@ func FindByBucketAndPrefix(ctx context.Context, bucketName, filterPrefix string)
 	return doc, errors.Wrapf(err, "finding lifecycle rule for bucket '%s' prefix '%s'", bucketName, filterPrefix)
 }
 
-// FindMatchingRuleForFileKey finds the most specific enabled lifecycle rule using longest-prefix matching.
-// Tries progressively shorter prefixes until a match is found (O(depth) indexed queries).
-func FindMatchingRuleForFileKey(ctx context.Context, bucketName, fileKey string) (*S3LifecycleRuleDoc, error) {
-	if bucketName == "" {
-		return nil, errors.New("bucket name cannot be empty")
-	}
-	if fileKey == "" {
-		return nil, errors.New("file key cannot be empty")
-	}
-
-	prefixes := pail.ExtractPrefixHierarchy(fileKey)
-
-	for _, prefix := range prefixes {
-		doc, err := FindByBucketAndPrefix(ctx, bucketName, prefix)
-		if err != nil {
-			return nil, err
-		}
-		if doc != nil && doc.RuleStatus == "Enabled" {
-			return doc, nil
-		}
-	}
-
-	return nil, nil
-}
-
 // FindAllRulesForBucket retrieves all lifecycle rules for the specified bucket.
 func FindAllRulesForBucket(ctx context.Context, bucketName string) ([]S3LifecycleRuleDoc, error) {
 	if bucketName == "" {
@@ -347,14 +322,6 @@ func Remove(ctx context.Context, bucketName, filterPrefix string) error {
 		db.Remove(ctx, Collection, bson.M{"_id": docID}),
 		"removing lifecycle rule for bucket '%s' prefix '%s'",
 		bucketName, filterPrefix,
-	)
-}
-
-// RemoveAll removes all documents from the collection. Use with caution.
-func RemoveAll(ctx context.Context) error {
-	return errors.Wrap(
-		db.RemoveAll(ctx, Collection, bson.M{}),
-		"removing all lifecycle rule documents",
 	)
 }
 

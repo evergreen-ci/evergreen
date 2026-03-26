@@ -643,12 +643,12 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating new user '%s'", h.userID))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
-		} else {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("user '%s' not found", h.userID),
-				StatusCode: http.StatusNotFound,
-			})
 		}
+
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("user '%s' not found", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
 	}
 	dbRoles, err := h.rm.GetRoles(ctx, h.rolesToAdd)
 	if err != nil {

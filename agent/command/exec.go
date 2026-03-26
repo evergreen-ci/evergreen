@@ -311,7 +311,8 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 // command in the default PATH locations, the command will fall back to checking
 // the command's PATH environment variable for a matching executable location
 // (if any).
-func (c *subprocessExec) getExecutablePath(ctx context.Context, logger client.LoggerProducer) (absPath string, err error) {
+func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPath string, err error) {
+	ctx := context.TODO()
 	defaultPath, err := exec.LookPath(c.Binary)
 	if defaultPath != "" {
 		return c.Binary, err
@@ -391,7 +392,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		}
 	}
 
-	execPath, err := c.getExecutablePath(ctx, logger)
+	execPath, err := c.getExecutablePath(logger)
 	if execPath == "" && err != nil {
 		return errors.Wrap(err, "resolving executable path")
 	}

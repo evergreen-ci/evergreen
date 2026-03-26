@@ -546,18 +546,6 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 	}
 }
 
-func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
-	return bson.M{
-		VersionKey: bson.M{
-			"$in": versions,
-		},
-		DisplayNameKey: bson.M{
-			"$in": displayNames,
-		},
-		BuildVariantKey: buildVariant,
-	}
-}
-
 func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
 	return bson.M{
 		BuildVariantKey: buildVariant,
@@ -643,18 +631,6 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 		}
 	}
 	return query
-}
-
-func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		StatusKey: bson.M{
-			"$in": statuses,
-		},
-		ProjectKey: project,
-	}
 }
 
 func ByExecutionTask(taskId string) bson.M {
@@ -1487,17 +1463,6 @@ func FindAllTaskIDsFromVersion(ctx context.Context, versionId string) ([]string,
 func FindAllTaskIDsFromBuild(ctx context.Context, buildId string) ([]string, error) {
 	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
 	return findAllTaskIDs(ctx, q)
-}
-
-// FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
-func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId string) ([]Task, error) {
-	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
-	tasks := []Task{}
-	err := db.FindAllQ(ctx, Collection, q, &tasks)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
-	}
-	return tasks, nil
 }
 
 // FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.

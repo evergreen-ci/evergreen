@@ -3,12 +3,8 @@ package apimodels
 import (
 	"time"
 
-	"context"
 	"github.com/evergreen-ci/evergreen/model/log"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -63,33 +59,4 @@ func ReadLogToSlice(it log.LogIterator) ([]*LogMessage, error) {
 	}
 
 	return lines, errors.Wrap(it.Close(), "closing log iterator")
-}
-
-// StreamFromLogIterator streams log lines from the given iterator to the
-// returned log message channel. It is the responsibility of the caller to
-// close the log iterator.
-func StreamFromLogIterator(it log.LogIterator) chan LogMessage {
-	ctx := context.Background()
-	lines := make(chan LogMessage)
-	go func() {
-		defer recovery.LogStackTraceAndContinue("streaming lines from log iterator")
-		defer close(lines)
-
-		for it.Next() {
-			item := it.Item()
-			lines <- LogMessage{
-				Severity:  GetSeverityMapping(item.Priority),
-				Message:   item.Data,
-				Timestamp: time.Unix(0, item.Timestamp),
-			}
-		}
-
-		if err := it.Err(); err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message": "streaming lines from log iterator",
-			}))
-		}
-	}()
-
-	return lines
 }

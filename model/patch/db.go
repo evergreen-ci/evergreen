@@ -114,7 +114,7 @@ func ByStringId(id string) db.Q {
 }
 
 func ByStringIds(ids []string) db.Q {
-	ctx := context.Background()
+	ctx := context.TODO()
 	objectIds := []mgobson.ObjectId{}
 	for _, id := range ids {
 		if IsValidId(id) {
@@ -130,15 +130,6 @@ func ByStringIds(ids []string) db.Q {
 }
 
 var commitQueueFilter = bson.M{"$ne": evergreen.CommitQueueAlias}
-
-// ByProject produces a query that returns projects with the given identifier.
-func ByProjectAndCommitQueue(project string, filterCommitQueue bool) db.Q {
-	q := bson.M{ProjectKey: project}
-	if filterCommitQueue {
-		q[AliasKey] = commitQueueFilter
-	}
-	return db.Query(q)
-}
 
 // ByUser produces a query that returns patches by the given user.
 func ByUserAndCommitQueue(user string, filterCommitQueue bool) db.Q {
@@ -384,11 +375,6 @@ func MostRecentPatchByUserAndProject(user, project string) db.Q {
 // ByVersion produces a query that returns the patch for a given version.
 func ByVersion(version string) db.Q {
 	return db.Query(bson.M{VersionKey: version})
-}
-
-// ByVersion produces a query that returns the patch for a given version.
-func ByVersions(versions []string) db.Q {
-	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
 }
 
 // ExcludePatchDiff is a projection that excludes diff data, helping load times.

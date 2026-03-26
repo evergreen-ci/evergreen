@@ -2447,20 +2447,6 @@ func CountInactiveHostsByProvider(ctx context.Context) ([]InactiveHostCounts, er
 	return counts, nil
 }
 
-// FindAllRunningContainers finds all the containers that are currently running
-func FindAllRunningContainers(ctx context.Context) ([]Host, error) {
-	query := bson.M{
-		ParentIDKey: bson.M{"$exists": true},
-		StatusKey:   evergreen.HostRunning,
-	}
-	hosts, err := Find(ctx, query)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding running containers")
-	}
-
-	return hosts, nil
-}
-
 // FindAllRunningParents finds all running hosts that have child containers
 func FindAllRunningParents(ctx context.Context) ([]Host, error) {
 	query := bson.M{
@@ -2470,21 +2456,6 @@ func FindAllRunningParents(ctx context.Context) ([]Host, error) {
 	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running parents")
-	}
-
-	return hosts, nil
-}
-
-// FindAllRunningParentsOrdered finds all running hosts with child containers,
-// sorted in order of soonest  to latest LastContainerFinishTime
-func FindAllRunningParentsOrdered(ctx context.Context) ([]Host, error) {
-	query := bson.M{
-		StatusKey:        evergreen.HostRunning,
-		HasContainersKey: true,
-	}
-	hosts, err := Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
-	if err != nil {
-		return nil, errors.Wrap(err, "finding ordered running parents")
 	}
 
 	return hosts, nil
@@ -2628,37 +2599,6 @@ func (h *Host) UpdateLastContainerFinishTime(ctx context.Context, t time.Time) e
 	return nil
 }
 
-// FindRunningHosts is the underlying query behind the hosts page's table
-func FindRunningHosts(ctx context.Context, includeSpawnHosts bool) ([]Host, error) {
-	query := bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
-
-	if !includeSpawnHosts {
-		query[StartedByKey] = evergreen.User
-	}
-
-	pipeline := []bson.M{
-		{
-			"$match": query,
-		},
-		{
-			"$lookup": bson.M{
-				"from":         task.Collection,
-				"localField":   RunningTaskKey,
-				"foreignField": task.IdKey,
-				"as":           "task_full",
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path":                       "$task_full",
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}
-
-	return Aggregate(ctx, pipeline)
-}
-
 // FindAllHostsSpawnedByTasks finds all running hosts spawned by the
 // `host.create` command.
 func FindAllHostsSpawnedByTasks(ctx context.Context) ([]Host, error) {
@@ -2772,20 +2712,6 @@ func FindTerminatedHostsRunningTasks(ctx context.Context) ([]Host, error) {
 	}
 
 	return hosts, nil
-}
-
-// CountContainersOnParents counts how many containers are children of the given group of hosts
-func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error) {
-	ids := hosts.GetHostIds()
-	if len(ids) == 0 {
-		return 0, nil
-	}
-
-	query := bson.M{
-		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: bson.M{"$in": ids},
-	}
-	return Count(ctx, query)
 }
 
 // FindUphostContainersOnParents returns the containers that are children of the given hosts

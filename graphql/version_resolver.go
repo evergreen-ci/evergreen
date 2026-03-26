@@ -258,9 +258,9 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 		apiVersion := restModel.APIVersion{}
 		apiVersion.BuildFromService(ctx, *previousVersion)
 		return &apiVersion, nil
-	} else {
-		return nil, nil
 	}
+
+	return nil, nil
 }
 
 // ProjectMetadata is the resolver for the projectMetadata field.

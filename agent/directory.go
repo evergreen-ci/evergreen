@@ -28,7 +28,8 @@ import (
 // task within and a temporary directory within that new directory. If taskDir
 // is specified, it will create that task directory; otherwise, it will create
 // a new task directory based on the current task data.
-func (a *Agent) createTaskDirectory(ctx context.Context, tc *taskContext, taskDir string) (string, error) {
+func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
+	ctx := context.TODO()
 	if taskDir == "" {
 		var err error
 		taskDir, err = a.generateTaskDirectoryName(tc)
@@ -161,7 +162,7 @@ func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 // removeAllAndCheck removes the directory and checks the data directory
 // usage afterwards. If the data directory is unhealthy, the host is disabled.
 func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
-	removeErr := a.removeAll(ctx, dir)
+	removeErr := a.removeAll(dir)
 	if removeErr == nil {
 		return nil
 	}
@@ -182,7 +183,8 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 // for subdirectories and contents before removing. The permissions change fixes
 // an issue where some files may be marked read-only, which prevents
 // os.RemoveAll from deleting them.
-func (a *Agent) removeAll(ctx context.Context, dir string) error {
+func (a *Agent) removeAll(dir string) error {
+	ctx := context.TODO()
 	grip.Error(ctx, errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -306,7 +308,7 @@ func (a *Agent) checkDataDirectoryHealthWithUsage(ctx context.Context, usage *di
 // SetHomeDirectory sets the agent's home directory to the user's home directory
 // if it is not already set.
 func (a *Agent) SetHomeDirectory() {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if a.opts.HomeDirectory != "" {
 		return
 	}

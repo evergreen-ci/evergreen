@@ -1915,7 +1915,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 }
 
 func topologicalSort(tasks []Task) ([]Task, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	var fromTask, toTask string
 	defer func() {
 		taskIds := []string{}

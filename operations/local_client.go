@@ -246,7 +246,7 @@ func checkDebugSpawnHostEnabled(c *cli.Context) error {
 
 // startDebugDaemonCmd starts the debug daemon
 func startDebugDaemonCmd(c *cli.Context) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	port := c.Int("port")
 
 	if _, err := getDaemonURL(); err == nil {
@@ -276,7 +276,7 @@ func startDebugDaemonCmd(c *cli.Context) error {
 
 // stopDebugDaemonCmd stops the debug daemon
 func stopDebugDaemonCmd(c *cli.Context) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	dir, err := getDaemonDir()
 	if err != nil {
 		return err
@@ -333,7 +333,7 @@ type daemonStatusResponse struct {
 
 // daemonStatusCmd checks the debug daemon status.
 func daemonStatusCmd(c *cli.Context) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	url, err := getDaemonURL()
 	if err != nil {
 		grip.Info(ctx, "Daemon is not running")
@@ -363,7 +363,7 @@ func daemonStatusCmd(c *cli.Context) error {
 
 // loadConfigCmd loads a configuration file
 func loadConfigCmd(c *cli.Context) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if c.NArg() < 1 {
 		return errors.New("config file path required")
 	}
@@ -392,7 +392,7 @@ func loadConfigCmd(c *cli.Context) error {
 
 // selectTaskCmd selects a task for debugging
 func selectTaskCmd(c *cli.Context) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if c.NArg() < 1 {
 		return errors.New("task name required")
 	}
@@ -468,7 +468,7 @@ func runUntilCmd(c *cli.Context) error {
 
 // jumpToCmd jumps to a specific step
 func jumpToCmd(c *cli.Context) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if c.NArg() < 1 {
 		return errors.New("step number required")
 	}
@@ -610,7 +610,7 @@ func postAndStreamResponse(url string, body interface{}) error {
 
 // viewLogsCmd displays debug session logs from local log files.
 func viewLogsCmd(c *cli.Context) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	isSetup := c.Bool(setupFlagName)
 	stepFilter := c.String(stepFlagName)
 	tail := c.Int(tailFlagName)

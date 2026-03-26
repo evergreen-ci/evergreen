@@ -188,7 +188,7 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 // GetManagerOptions gets the manager options from the provider settings object for a given
 // provider name.
 func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	region := ""
 	if len(d.ProviderSettingsList) > 1 {
 		if evergreen.IsEc2Provider(d.Provider) {

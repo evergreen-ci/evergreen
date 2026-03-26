@@ -295,7 +295,7 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	}
 
 	apiHost := &restModel.APIHost{}
-	apiHost.BuildFromService(ctx, host, host.RunningTaskFull)
+	apiHost.BuildFromService(host, host.RunningTaskFull)
 	return apiHost, nil
 }
 
@@ -424,7 +424,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			})
 		}
 		apiHost := restModel.APIHost{}
-		apiHost.BuildFromService(ctx, &h, h.RunningTaskFull)
+		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return &HostsResponse{
@@ -650,7 +650,7 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	var apiHosts []*restModel.APIHost
 	for _, h := range hosts {
 		apiHost := restModel.APIHost{}
-		apiHost.BuildFromService(ctx, &h, nil)
+		apiHost.BuildFromService(&h, nil)
 		apiHosts = append(apiHosts, &apiHost)
 	}
 	return apiHosts, nil

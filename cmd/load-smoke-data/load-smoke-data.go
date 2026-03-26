@@ -19,11 +19,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -144,9 +143,9 @@ func writeDummyTestResultToLocalBucket(ctx context.Context) error {
 		CreatedAt: tr.CreatedAt,
 		Results:   make([]testresult.ParquetTestResult, 1),
 	}
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
-	pw.Write(savedParquet)
-	pw.Close()
+	if err := parquet.Write(w, []testresult.ParquetTestResults{savedParquet}); err != nil {
+		return errors.Wrap(err, "writing dummy Parquet test results")
+	}
 	return nil
 }
 

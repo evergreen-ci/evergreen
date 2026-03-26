@@ -238,7 +238,7 @@ func makeHostAuthEnvVars(hostID, secret string) []string {
 }
 
 func smokeRunBinary(exit chan error, name string, wd string, envVars []string, bin string, cmdParts ...string) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	cmd := exec.Command(bin, cmdParts...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
 	cmd.Env = append(cmd.Env, envVars...)

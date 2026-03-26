@@ -632,20 +632,6 @@ func ByIPAndRunning(ip string) bson.M {
 	}
 }
 
-// ByDistroIDOrAliasesRunning returns a query that returns all hosts with
-// matching distro IDs or aliases.
-func ByDistroIDsOrAliasesRunning(distroNames ...string) bson.M {
-	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-	distroAliasesKey := bsonutil.GetDottedKeyName(DistroKey, distro.AliasesKey)
-	return bson.M{
-		StatusKey: evergreen.HostRunning,
-		"$or": []bson.M{
-			{distroIDKey: bson.M{"$in": distroNames}},
-			{distroAliasesKey: bson.M{"$in": distroNames}},
-		},
-	}
-}
-
 // ByIds produces a query that returns all hosts in the given list of ids.
 func ByIds(ids []string) bson.M {
 	return bson.M{IdKey: bson.M{"$in": ids}}

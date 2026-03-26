@@ -58,16 +58,6 @@ const (
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
 )
 
-var UnblockedGithubStatuses = []string{
-	githubPRBehind,
-	githubPRClean,
-	githubPRDirty,
-	githubPRDraft,
-	githubPRHasHooks,
-	githubPRUnknown,
-	githubPRUnstable,
-}
-
 var githubWritePermissions = []string{
 	GithubPermissionAdmin,
 	GithubPermissionWrite,
@@ -83,20 +73,6 @@ var allGitHubPermissions = []string{
 }
 
 const (
-	// All PR statuses except for "blocked" based on statuses listed here:
-	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
-	// Because the pr.MergeableState is not documented, it can change without
-	// notice. That's why we want to only allow fields we know to be unblocked
-	// rather than simply blocking the "blocked" status. That way if it does
-	// change, it doesn't fail silently.
-	githubPRBehind   = "behind"
-	githubPRClean    = "clean"
-	githubPRDirty    = "dirty"
-	githubPRDraft    = "draft"
-	githubPRHasHooks = "has_hooks"
-	githubPRUnknown  = "unknown"
-	githubPRUnstable = "unstable"
-
 	githubCheckRunSuccess        = "success"
 	githubCheckRunFailure        = "failure"
 	githubCheckRunSkipped        = "skipped"
@@ -253,7 +229,6 @@ const (
 	// GitHub merge queue removal reasons
 	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
 	MergeQueueReasonMerged      = "merged"      // Successfully merged
-	MergeQueueReasonDequeued    = "dequeued"    // Manually removed
 
 	// Merge queue status values for metrics
 	MergeQueueStatusSuccess = "success" // Successfully completed/merged
@@ -343,7 +318,6 @@ func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
 }
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
-	ctx := context.Background()
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
 		trace.SpanFromContext(req.Context()).SetAttributes(attribute.Int(githubRetriesAttribute, index))
 
@@ -439,8 +413,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
 func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
-	ctx := context.Background()
-	grip.Info(ctx, message.Fields{
+	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,
@@ -1744,77 +1717,6 @@ func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
 		summaries = append(summaries, summary)
 	}
 	return summaries
-}
-
-func ValidatePR(pr *github.PullRequest) error {
-	if pr == nil {
-		return errors.New("No PR provided")
-	}
-
-	catcher := grip.NewSimpleCatcher()
-	if missingUserLogin(pr) {
-		catcher.Add(errors.New("no valid user"))
-	}
-	if missingBaseSHA(pr) {
-		catcher.Add(errors.New("no valid base SHA"))
-	}
-	if missingBaseRef(pr) {
-		catcher.Add(errors.New("no valid base ref"))
-	}
-	if missingBaseRepoName(pr) {
-		catcher.Add(errors.New("no valid base repo name"))
-	}
-	if missingBaseRepoFullName(pr) {
-		catcher.Add(errors.New("no valid base repo name"))
-	}
-	if missingBaseRepoOwnerLogin(pr) {
-		catcher.Add(errors.New("no valid base repo owner login"))
-	}
-	if missingHeadSHA(pr) {
-		catcher.Add(errors.New("no valid head SHA"))
-	}
-	if pr.GetNumber() == 0 {
-		catcher.Add(errors.New("no valid pr number"))
-	}
-	if pr.GetTitle() == "" {
-		catcher.Add(errors.New("no valid title"))
-	}
-	if pr.GetHTMLURL() == "" {
-		catcher.Add(errors.New("no valid HTML URL"))
-	}
-	if pr.Merged == nil {
-		catcher.Add(errors.New("no valid merged status"))
-	}
-
-	return catcher.Resolve()
-}
-
-func missingUserLogin(pr *github.PullRequest) bool {
-	return pr.User == nil || pr.User.GetLogin() == ""
-}
-
-func missingBaseSHA(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.GetSHA() == ""
-}
-
-func missingBaseRef(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.GetRef() == ""
-}
-
-func missingBaseRepoName(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.GetName() == "" || pr.Base.Repo.GetFullName() == ""
-}
-
-func missingBaseRepoFullName(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.GetFullName() == ""
-}
-
-func missingBaseRepoOwnerLogin(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.Owner == nil || pr.Base.Repo.Owner.GetLogin() == ""
-}
-
-func missingHeadSHA(pr *github.PullRequest) bool {
-	return pr.Head == nil || pr.Head.GetSHA() == ""
 }
 
 // PostCommentToPullRequest posts the given comment to the associated PR.

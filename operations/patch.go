@@ -560,7 +560,7 @@ func PatchFile() cli.Command {
 
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
 func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string) ([]patch.LocalModuleInclude, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	var yml []byte
 	var err error
 	if path != "" {

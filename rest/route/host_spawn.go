@@ -97,7 +97,7 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	hostModel := &model.APIHost{}
-	hostModel.BuildFromService(ctx, intentHost, nil)
+	hostModel.BuildFromService(intentHost, nil)
 	return gimlet.NewJSONResponse(hostModel)
 }
 

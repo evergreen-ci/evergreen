@@ -285,7 +285,8 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(ctx context.Context, cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+	ctx := context.TODO()
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		owner:             conf.ProjectRef.Owner,
@@ -334,7 +335,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	}
 
 	var opts cloneOpts
-	opts, err = c.opts(ctx, cloneToken, logger, conf)
+	opts, err = c.opts(cloneToken, logger, conf)
 	if err != nil {
 		return err
 	}
@@ -638,7 +639,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if module == nil {
 			return errors.Errorf("module '%s' not found", moduleName)
 		}
-		expandModulePrefix(ctx, conf, module.Name, module.Prefix, logger)
+		expandModulePrefix(conf, module.Name, module.Prefix, logger)
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -791,7 +792,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 					module.Name)
 				continue
 			}
-			expandModulePrefix(ctx, conf, module.Name, module.Prefix, logger)
+			expandModulePrefix(conf, module.Name, module.Prefix, logger)
 			moduleDir = filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 		}
 

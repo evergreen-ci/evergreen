@@ -236,7 +236,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	if err == nil {
 		return
 	}

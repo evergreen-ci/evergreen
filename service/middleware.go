@@ -363,7 +363,7 @@ func (uis *UIServer) loadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 // ForbiddenHandler logs a rejected request befure returning a 403 to the client
 func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	reason := csrf.FailureReason(r)
 	grip.Warning(ctx, message.Fields{
 		"action": "forbidden",

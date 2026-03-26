@@ -213,7 +213,7 @@ func (cbtc *CmpBasedTaskComparator) Swap(i, j int) {
 // requested in a patch.
 func (cbtc *CmpBasedTaskComparator) splitTasksByRequester(
 	allTasks []task.Task) *CmpBasedTaskQueues {
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	repoTrackerTasks := make([]task.Task, 0, len(allTasks))
 	patchTasks := make([]task.Task, 0, len(allTasks))

@@ -162,67 +162,6 @@ func SetActiveStateById(ctx context.Context, id, user string, active bool) error
 	return SetActiveState(ctx, user, active, *t)
 }
 
-func DisableTasks(ctx context.Context, caller string, tasks ...task.Task) error {
-	if len(tasks) == 0 {
-		return nil
-	}
-
-	tasksPresent := map[string]struct{}{}
-	var taskIDs []string
-	var execTaskIDs []string
-	for _, t := range tasks {
-		tasksPresent[t.Id] = struct{}{}
-		taskIDs = append(taskIDs, t.Id)
-		execTaskIDs = append(execTaskIDs, t.ExecutionTasks...)
-	}
-
-	_, err := task.UpdateAll(ctx,
-		task.ByIds(append(taskIDs, execTaskIDs...)),
-		bson.M{"$set": bson.M{task.PriorityKey: evergreen.DisabledTaskPriority}},
-	)
-	if err != nil {
-		return errors.Wrap(err, "updating task priorities")
-	}
-
-	execTasks, err := findMissingTasks(ctx, execTaskIDs, tasksPresent)
-	if err != nil {
-		return errors.Wrap(err, "finding additional execution tasks")
-	}
-	tasks = append(tasks, execTasks...)
-
-	for _, t := range tasks {
-		t.Priority = evergreen.DisabledTaskPriority
-		event.LogTaskPriority(ctx, t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
-	}
-
-	if err := task.DeactivateTasks(ctx, tasks, true, caller); err != nil {
-		return errors.Wrap(err, "deactivating dependencies")
-	}
-
-	return nil
-}
-
-// findMissingTasks finds all tasks whose IDs are missing from tasksPresent.
-func findMissingTasks(ctx context.Context, taskIDs []string, tasksPresent map[string]struct{}) ([]task.Task, error) {
-	var missingTaskIDs []string
-	for _, id := range taskIDs {
-		if _, ok := tasksPresent[id]; ok {
-			continue
-		}
-		missingTaskIDs = append(missingTaskIDs, id)
-	}
-	if len(missingTaskIDs) == 0 {
-		return nil, nil
-	}
-
-	missingTasks, err := task.FindAll(ctx, db.Query(task.ByIds(missingTaskIDs)))
-	if err != nil {
-		return nil, err
-	}
-
-	return missingTasks, nil
-}
-
 // activatePreviousTask will set the active state for the first task with a
 // revision order number less than the current task's revision order number.
 // originalStepbackTask is only specified while we're stepping back the generator

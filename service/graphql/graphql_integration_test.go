@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"context"
+
 	"github.com/evergreen-ci/evergreen/graphql"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -17,7 +19,7 @@ import (
 const pathToTests = "../../graphql"
 
 func TestAtomicGQLQueries(t *testing.T) {
-	ctx := t.Context()
+	ctx := context.TODO()
 	grip.Warning(ctx, grip.SetSender(send.MakePlainLogger()))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)

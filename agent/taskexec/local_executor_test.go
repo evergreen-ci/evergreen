@@ -269,7 +269,7 @@ tasks:
 		_, err = executor.LoadProject(t.Context(), yamlFile)
 		require.NoError(t, err)
 
-		err = executor.PrepareTask(t.Context(), "test-task")
+		err = executor.PrepareTask("test-task")
 		require.NoError(t, err)
 		assert.Equal(t, "test-task", executor.debugState.SelectedTask)
 		assert.Greater(t, len(executor.debugState.CommandList), 0)
@@ -294,7 +294,7 @@ tasks:
 		_, err = executor.LoadProject(t.Context(), yamlFile)
 		require.NoError(t, err)
 
-		err = executor.PrepareTask(t.Context(), "nonexistent-task")
+		err = executor.PrepareTask("nonexistent-task")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "task 'nonexistent-task' not found")
 	})
@@ -303,7 +303,7 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		err = executor.PrepareTask(t.Context(), "any-task")
+		err = executor.PrepareTask("any-task")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "project not loaded")
 	})

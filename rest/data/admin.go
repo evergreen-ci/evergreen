@@ -87,9 +87,9 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 		evergreen.StoreAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", catcher)
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "storing admin settings in parameter store")
-		} else {
-			newSettings = paramUpdatedSettings
 		}
+
+		newSettings = paramUpdatedSettings
 
 		err = evergreen.UpdateConfig(ctx, &newSettings)
 		if err != nil {

@@ -69,12 +69,12 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding issue: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // EditAnnotationNote is the resolver for the editAnnotationNote field.
@@ -103,12 +103,12 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving issue to suspected issues: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // RemoveAnnotationIssue is the resolver for the removeAnnotationIssue field.
@@ -123,12 +123,12 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting issue: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := annotations.RemoveSuspectedIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting suspected issue: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := annotations.RemoveSuspectedIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting suspected issue: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // SetAnnotationMetadataLinks is the resolver for the setAnnotationMetadataLinks field.
@@ -811,7 +811,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(ctx, h, nil)
+	apiHost.BuildFromService(h, nil)
 	return &apiHost, nil
 }
 
@@ -867,7 +867,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, "creating intent for spawn host")
 	}
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(ctx, spawnHost, nil)
+	apiHost.BuildFromService(spawnHost, nil)
 	return &apiHost, nil
 }
 
@@ -983,7 +983,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		return nil, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 	apiHost := restModel.APIHost{}
-	apiHost.BuildFromService(ctx, h, nil)
+	apiHost.BuildFromService(h, nil)
 	return &apiHost, nil
 }
 

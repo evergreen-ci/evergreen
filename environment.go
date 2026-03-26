@@ -1280,7 +1280,7 @@ type CreateInstallationTokenFunc func(ctx context.Context, owner, repo string) (
 // In case of GitHub app errors, the function returns the legacy GitHub sender with a global token attached.
 // The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
 func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken CreateInstallationTokenFunc) (send.Sender, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 

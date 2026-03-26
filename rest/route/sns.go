@@ -60,9 +60,12 @@ func (bsns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (bsns *baseSNS) handleSNSConfirmation(ctx context.Context) (handled bool) {
-	// Subscription/Unsubscription is a rare action that we will handle manually
-	// and will be logged to splunk given the logging level.
+func (bsns *baseSNS) handleSNSConfirmation() (handled bool) {
+	ctx :=
+		// Subscription/Unsubscription is a rare action that we will handle manually
+		// and will be logged to splunk given the logging level.
+		context.TODO()
+
 	switch bsns.messageType {
 	case messageTypeSubscriptionConfirmation:
 		grip.Alert(ctx, message.Fields{
@@ -100,7 +103,7 @@ func (sns *ec2SNS) Factory() gimlet.RouteHandler {
 }
 
 func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
-	if sns.handleSNSConfirmation(ctx) {
+	if sns.handleSNSConfirmation() {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 

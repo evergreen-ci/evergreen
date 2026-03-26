@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"context"
+
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -33,7 +34,7 @@ type triggerRegistry struct {
 }
 
 func (r *triggerRegistry) eventHandler(resourceType, eventDataType string) eventHandler {
-	ctx := context.Background()
+	ctx := context.TODO()
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 

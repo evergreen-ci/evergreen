@@ -3027,7 +3027,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 // Stderr/Stdin are passed through to the commands as well as Stdout, when opts.Quiet is false
 // The commands' working directories may not exist and need to be created before running the commands
 func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupCommandOptions) ([]*jasper.Command, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if len(p.WorkstationConfig.SetupCommands) == 0 && !p.WorkstationConfig.ShouldGitClone() {
 		return nil, errors.Errorf("no setup commands configured for project '%s'", p.Id)
 	}

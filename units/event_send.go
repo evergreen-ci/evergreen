@@ -92,7 +92,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.checkDegradedMode(ctx, n); err != nil {
+	if err = j.checkDegradedMode(n); err != nil {
 		j.AddError(errors.Wrapf(n.MarkError(ctx, errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
 		return
 	}
@@ -151,32 +151,33 @@ func (j *eventSendJob) send(ctx context.Context, n *notification.Notification) e
 	return nil
 }
 
-func (j *eventSendJob) checkDegradedMode(ctx context.Context, n *notification.Notification) error {
+func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 	switch n.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
-		return checkFlag(ctx, j.flags.GithubStatusAPIDisabled)
+		return checkFlag(j.flags.GithubStatusAPIDisabled)
 
 	case event.SlackSubscriberType:
-		return checkFlag(ctx, j.flags.SlackNotificationsDisabled)
+		return checkFlag(j.flags.SlackNotificationsDisabled)
 
 	case event.JIRAIssueSubscriberType:
-		return checkFlag(ctx, j.flags.JIRANotificationsDisabled)
+		return checkFlag(j.flags.JIRANotificationsDisabled)
 
 	case event.JIRACommentSubscriberType:
-		return checkFlag(ctx, j.flags.JIRANotificationsDisabled)
+		return checkFlag(j.flags.JIRANotificationsDisabled)
 
 	case event.EvergreenWebhookSubscriberType:
-		return checkFlag(ctx, j.flags.WebhookNotificationsDisabled)
+		return checkFlag(j.flags.WebhookNotificationsDisabled)
 
 	case event.EmailSubscriberType:
-		return checkFlag(ctx, j.flags.EmailNotificationsDisabled)
+		return checkFlag(j.flags.EmailNotificationsDisabled)
 
 	default:
 		return errors.Errorf("unknown subscriber type '%s'", n.Subscriber.Type)
 	}
 }
 
-func checkFlag(ctx context.Context, flag bool) error {
+func checkFlag(flag bool) error {
+	ctx := context.TODO()
 	if flag {
 		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventSendJobName,

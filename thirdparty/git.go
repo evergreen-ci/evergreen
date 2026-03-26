@@ -42,7 +42,7 @@ type Commit struct {
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
 func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	handle, err := os.CreateTemp("", utility.RandomString())
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating local patch file")
@@ -93,8 +93,9 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 // ParseGitSummary takes in a buffer of data and parses it into a slice of
 // git summaries. It returns an error if it is unable to parse the data
 func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
-	ctx := context.Background()
-	// separate stats per file
+	ctx :=
+		// separate stats per file
+		context.TODO()
 
 	fileStats := strings.Split(gitOutput.String(), "\n")
 

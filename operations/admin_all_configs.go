@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"context"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -51,7 +52,7 @@ func fetchAllProjectConfigs() cli.Command {
 // fetchAndWriteConfig downloads the most recent config for a project
 // and writes it to "project_name.yml" locally.
 func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeDisabled bool) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	catcher := grip.NewSimpleCatcher()
 	type projectRepo struct {
 		Owner      string

@@ -90,7 +90,7 @@ type TaskReliability struct {
 // https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
 // and return the lower value (for success rates).
 func (s *TaskReliability) calculateSuccessRate() {
-	ctx := context.Background()
+	ctx := context.TODO()
 	total := float64(s.NumTotal)
 	success := float64(s.NumSuccess)
 	low := 0.0
@@ -148,7 +148,7 @@ func newTaskReliability(taskStat taskstats.TaskStats, z float64) TaskReliability
 // https://www.investopedia.com/terms/z/zscore.asp.
 // https://www.investopedia.com/terms/t/two-tailed-test.asp
 func significanceToZ(significance float64) float64 {
-	ctx := context.Background()
+	ctx := context.TODO()
 	z := distuv.Normal{Mu: 0., Sigma: 1.}.Quantile(1. - significance/2.)
 	grip.Debugf(ctx, "significanceToZ: significance=%.4f, z=%.4f\n", significance, z)
 	return z

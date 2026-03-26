@@ -39,14 +39,6 @@ const (
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 	ec2TemplateNotFound     = "InvalidLaunchTemplateId.NotFound"
 
-	// EC2InsufficientAddressCapacity means that there are no IP addresses
-	// available to allocate.
-	EC2InsufficientAddressCapacity = "InsufficientAddressCapacity"
-	// ec2InsufficientAddressCapacity means that the account has reached its
-	// limit on the number of elastic IPs it can allocate.
-	EC2AddressLimitExceeded = "AddressLimitExceeded"
-	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
-	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
 
 	r53InvalidInput       = "InvalidInput"
@@ -103,7 +95,7 @@ func AztoRegion(az string) string {
 // ec2StateToEvergreenStatus returns a "universal" status code based on EC2's
 // provider-specific status codes.
 func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if ec2State == nil {
 		return StatusUnknown
 	}
@@ -290,7 +282,7 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 const userDataSizeLimit = 16 * 1024
 
 func validateUserDataSize(userData, distroID string) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if len(userData) < userDataSizeLimit {
 		return nil
 	}

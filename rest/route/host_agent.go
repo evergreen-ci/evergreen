@@ -136,7 +136,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if checkHostHealth(ctx, h.host) {
+	if checkHostHealth(h.host) {
 		shouldExit, err := prepareHostForAgentExit(ctx, agentExitParams{
 			host:       h.host,
 			remoteAddr: h.remoteAddr,
@@ -879,7 +879,8 @@ func isTaskGroupNewToHost(h *host.Host, t *task.Task) bool {
 }
 
 // checkHostHealth checks that host is running.
-func checkHostHealth(ctx context.Context, h *host.Host) bool {
+func checkHostHealth(h *host.Host) bool {
+	ctx := context.TODO()
 	if h.Status == evergreen.HostRunning {
 		return false
 	}
@@ -933,7 +934,8 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, h *hos
 }
 
 // agentRevisionIsOld checks that the agent revision is current.
-func agentRevisionIsOld(ctx context.Context, h *host.Host) bool {
+func agentRevisionIsOld(h *host.Host) bool {
+	ctx := context.TODO()
 	if h.AgentRevision != evergreen.AgentVersion {
 		grip.InfoWhen(ctx, h.Distro.LegacyBootstrap(), message.Fields{
 			"message":       "agent has wrong revision, so it should exit",
@@ -947,8 +949,8 @@ func agentRevisionIsOld(ctx context.Context, h *host.Host) bool {
 }
 
 func getDetails(h *host.Host, r *http.Request) (*apimodels.GetNextTaskDetails, error) {
-	ctx := r.Context()
-	isOldAgent := agentRevisionIsOld(ctx, h)
+	ctx := context.TODO()
+	isOldAgent := agentRevisionIsOld(h)
 	// if agent revision is old, we should indicate an exit if there are errors
 	details := &apimodels.GetNextTaskDetails{}
 	if err := utility.ReadJSON(r.Body, details); err != nil {
@@ -1027,7 +1029,7 @@ func setAgentFirstContactTime(ctx context.Context, h *host.Host) {
 }
 
 func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResponse, details *apimodels.GetNextTaskDetails, h *host.Host) (apimodels.NextTaskResponse, error) {
-	if !agentRevisionIsOld(ctx, h) {
+	if !agentRevisionIsOld(h) {
 		return response, nil
 	}
 
@@ -1395,7 +1397,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 	}
 
-	if checkHostHealth(ctx, currentHost) {
+	if checkHostHealth(currentHost) {
 		if _, err := prepareHostForAgentExit(ctx, agentExitParams{
 			host:       currentHost,
 			remoteAddr: h.remoteAddr,

@@ -36,7 +36,7 @@ func newLocalDaemonREST(port int, conf *ClientSettings) *localDaemonREST {
 
 // Start starts the REST debug daemon
 func (d *localDaemonREST) Start() error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	router := mux.NewRouter()
 	router.HandleFunc("/health", d.handleHealth).Methods("GET")
 	router.HandleFunc("/config/load", d.handleLoadConfig).Methods("POST")
@@ -59,13 +59,13 @@ func (d *localDaemonREST) Start() error {
 
 // handleHealth checks if the daemon is running
 func (d *localDaemonREST) handleHealth(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	grip.Error(ctx, json.NewEncoder(w).Encode(map[string]bool{"healthy": true}))
 }
 
 // handleLoadConfig loads a configuration file
 func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	var req struct {
 		ConfigPath string `json:"config_path"`
 	}
@@ -122,7 +122,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 // handleSelectTask selects a task for debugging
 func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	var req struct {
 		TaskName string `json:"task_name"`
 	}
@@ -140,7 +140,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := d.executor.PrepareTask(r.Context(), req.TaskName); err != nil {
+	if err := d.executor.PrepareTask(req.TaskName); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -209,7 +209,7 @@ func (d *localDaemonREST) handleJumpTo(w http.ResponseWriter, r *http.Request) {
 
 // handleListSteps lists all steps in the current task
 func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -325,7 +325,7 @@ func (d *localDaemonREST) getLogFile() *taskexec.LogFileHandle {
 
 // handleSetVariable sets a custom variable.
 func (d *localDaemonREST) handleSetVariable(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	var req struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
@@ -366,7 +366,7 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 
 // handleStatus returns the daemon status.
 func (d *localDaemonREST) handleStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 

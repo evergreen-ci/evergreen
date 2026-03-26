@@ -119,7 +119,7 @@ func (d *basicCachedDAGDispatcherImpl) getNodeByItemID(id string) graph.Node {
 // Each node is a task and each edge definition represents a dependency: an edge (A, B) means that B depends on A.
 // There is a dependency <from> A <to> B.
 func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	fromNode := d.getNodeByItemID(fromID)
 	toNode := d.getNodeByItemID(toID)
 
@@ -152,7 +152,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 }
 
 func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	d.graph = multi.NewDirectedGraph()
 	d.sorted = []graph.Node{}
 	d.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node

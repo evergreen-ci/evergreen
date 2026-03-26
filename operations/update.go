@@ -175,7 +175,7 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 }
 
 func copyFile(dst, src string) error {
-	ctx := context.Background()
+	ctx := context.TODO()
 	s, err := os.Open(src)
 	if err != nil {
 		return err
@@ -200,7 +200,7 @@ func copyFile(dst, src string) error {
 // possible client downloads. It returns the first one that succeeds, or an
 // error if none succeed.
 func tryAllPrepareUpdate(update updateStatus) (string, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	var err error
 	for _, binary := range update.binaries {
 		grip.Infoln(ctx, "Fetching update from", binary.URL)
@@ -218,7 +218,7 @@ func tryAllPrepareUpdate(update updateStatus) (string, error) {
 // prepareUpdate fetches the update at the given URL, writes it to a temporary file, and returns
 // the path to the temporary file.
 func prepareUpdate(url, newVersion string) (string, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	tempFile, err := os.CreateTemp("", "")
 	if err != nil {
 		return "", err
@@ -292,9 +292,10 @@ type updateStatus struct {
 }
 
 func checkUpdate(client client.Communicator, silent bool, force bool) (updateStatus, error) {
-	ctx := context.Background()
-	// This version of the cli has been built with a version, so we can compare it with what the
-	// server says is the latest
+	ctx :=
+		// This version of the cli has been built with a version, so we can compare it with what the
+		// server says is the latest
+		context.TODO()
 
 	clients, err := client.GetClientConfig(context.Background())
 	grip.NoticeWhen(ctx, !silent, message.WrapError(err, message.Fields{

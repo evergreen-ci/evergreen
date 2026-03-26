@@ -104,7 +104,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	ctx := r.Context()
+	ctx := context.TODO()
 	if err == nil {
 		return
 	}

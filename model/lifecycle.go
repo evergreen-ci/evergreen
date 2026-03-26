@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -991,104 +990,6 @@ func setNumDependentsRec(t *task.Task, idToTasks map[string]*task.Task, seen map
 			depTask.NumDependents = depTask.NumDependents + 1
 			setNumDependentsRec(depTask, idToTasks, seen)
 		}
-	}
-}
-
-func RecomputeNumDependents(ctx context.Context, t task.Task) error {
-	pipelineDown := getAllNodesInDepGraph(t.Id, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), task.IdKey)
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipelineDown)
-	if err != nil {
-		return err
-	}
-	depTasks := []task.Task{}
-	err = cursor.All(ctx, &depTasks)
-	if err != nil {
-		return err
-	}
-	taskPtrs := []*task.Task{}
-	for i := range depTasks {
-		taskPtrs = append(taskPtrs, &depTasks[i])
-	}
-
-	pipelineUp := getAllNodesInDepGraph(t.Id, task.IdKey, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey))
-	cursor, err = env.DB().Collection(task.Collection).Aggregate(ctx, pipelineUp)
-	if err != nil {
-		return errors.Wrap(err, "getting upstream dependencies of node")
-	}
-	depTasks = []task.Task{}
-	err = cursor.All(ctx, &depTasks)
-	if err != nil {
-		return err
-	}
-	for i := range depTasks {
-		taskPtrs = append(taskPtrs, &depTasks[i])
-	}
-	query := task.ByVersion(t.Version)
-	_, err = task.UpdateAll(ctx, query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
-	if err != nil {
-		return errors.Wrap(err, "resetting num dependents")
-	}
-	versionTasks, err := task.FindAll(ctx, db.Query(query))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks in version")
-	}
-	for i := range versionTasks {
-		taskPtrs = append(taskPtrs, &versionTasks[i])
-	}
-
-	SetNumDependents(taskPtrs)
-	catcher := grip.NewBasicCatcher()
-	for _, t := range taskPtrs {
-		catcher.Add(t.SetNumDependents(ctx))
-	}
-
-	return errors.Wrap(catcher.Resolve(), "setting num dependents")
-}
-
-func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
-	return []bson.M{
-		{
-			"$match": bson.M{
-				task.IdKey: startTaskId,
-			},
-		},
-		{
-			"$graphLookup": bson.M{
-				"from":             task.Collection,
-				"startWith":        "$" + startKey,
-				"connectFromField": startKey,
-				"connectToField":   linkKey,
-				"as":               "dep_graph",
-			},
-		},
-		{
-			"$addFields": bson.M{
-				"dep_graph": bson.M{
-					"$concatArrays": []any{"$dep_graph", []string{"$$ROOT"}},
-				},
-			},
-		},
-		{
-			"$project": bson.M{
-				"_id":     0,
-				"results": "$dep_graph",
-			},
-		},
-		{
-			"$unwind": "$results",
-		},
-		{
-			"$replaceRoot": bson.M{
-				"newRoot": "$results",
-			},
-		},
-		{
-			"$project": bson.M{
-				task.IdKey:        1,
-				task.DependsOnKey: 1,
-			},
-		},
 	}
 }
 

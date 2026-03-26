@@ -88,8 +88,8 @@ type statusResponse struct {
 
 // statusHandler is a function that produces the status handler.
 func (a *Agent) statusHandler() http.HandlerFunc {
+	ctx := context.TODO()
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 		grip.Debug(ctx, "Preparing status response.")
 		resp := buildResponse(a.opts)
 

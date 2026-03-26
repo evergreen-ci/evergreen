@@ -1189,11 +1189,12 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			grip.Info(ctx, foundHost.TaskStartMessage())
 		}
 	}
-	logTaskStartMessage(ctx, foundHost, t)
+	logTaskStartMessage(foundHost, t)
 	return gimlet.NewJSONResponse(msg)
 }
 
-func logTaskStartMessage(ctx context.Context, h *host.Host, t *task.Task) {
+func logTaskStartMessage(h *host.Host, t *task.Task) {
+	ctx := context.TODO()
 	msg := message.Fields{
 		"stat":                   "task-start-stats",
 		"task_id":                t.Id,

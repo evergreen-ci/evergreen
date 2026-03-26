@@ -174,7 +174,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 
 	flags := evergreen.ServiceFlags{}
 	for i := range s.n {
-		s.True(notificationIsEnabled(ctx, &flags, &s.n[i]))
+		s.True(notificationIsEnabled(&flags, &s.n[i]))
 	}
 
 	// Reset to original flags after the test finishes.
@@ -195,7 +195,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 	s.Require().NoError(flags.Set(ctx))
 
 	for i := range s.n {
-		s.False(notificationIsEnabled(ctx, &flags, &s.n[i]))
+		s.False(notificationIsEnabled(&flags, &s.n[i]))
 	}
 }
 
@@ -314,7 +314,7 @@ func (s *cronsEventSuite) TestSendNotificationJobs() {
 }
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	err := http.Serve(ln, handler)
 	grip.Error(ctx, err)
 	if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
@@ -330,7 +330,7 @@ type mockWebhookHandler struct {
 }
 
 func (m *mockWebhookHandler) error(outErr error, w http.ResponseWriter) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	if outErr == nil {
 		return
 	}
@@ -342,7 +342,7 @@ func (m *mockWebhookHandler) error(outErr error, w http.ResponseWriter) {
 }
 
 func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+	ctx := context.TODO()
 	const (
 		evergreenNotificationIDHeader = "X-Evergreen-Notification-ID"
 		evergreenHMACHeader           = "X-Evergreen-Signature"

@@ -139,7 +139,7 @@ func (r *processRegistry) removeJob(taskId string) error {
 // once. If a job object doesn't already exist, it will create one automatically, scoped by the
 // task ID for which the shell process was started.
 func TrackProcess(taskId string, pid int, logger grip.Journaler) {
-	ctx := context.Background()
+	ctx := context.TODO()
 	job, err := processMapping.getJob(taskId)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to get job object: %s", err)
