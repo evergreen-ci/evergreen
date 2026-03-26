@@ -16,8 +16,8 @@ import (
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/parquet-go/parquet-go"
 	"github.com/mongodb/grip/message"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 )
 
