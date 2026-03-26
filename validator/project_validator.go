@@ -41,7 +41,6 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	Notice
 	EC2HostCreateTotalLimit    = 1000
 	DockerHostCreateTotalLimit = 200
 	HostCreateLimitPerTask     = 3
@@ -58,8 +57,6 @@ func (vel ValidationErrorLevel) String() string {
 		return "ERROR"
 	case Warning:
 		return "WARNING"
-	case Notice:
-		return "NOTICE"
 	}
 	return "?"
 }
@@ -150,9 +147,9 @@ var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigPlugins,
 }
 
-// Functions used to validate the project configuration file for warnings and
-// notices. These are expected to only return ValidationError's with a level of
-// Warning ValidationLevel or Notice ValidationLevel.
+// Functions used to validate the project configuration file for warnings.
+// These are expected to only return ValidationError's with a level of
+// Warning ValidationLevel.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
 	checkTaskRuns,
@@ -880,7 +877,7 @@ func matchTaskToAllowlist(allowlist []string, taskName string) (bool, []Validati
 
 // ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
 // and returns any relevant distro validation info.
-// distroWarnings are considered validation notices.
+// distroWarnings are considered validation warnings.
 func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases, singleTaskDistroIDs []string, singleTaskDistroAllowlist evergreen.ProjectTasksPair, distroWarnings map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
@@ -963,7 +960,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
 								"references distro '%s' with the following admin-defined warning(s): %s",
 								task.Name, buildVariant.Name, name, warning),
-							Level: Notice,
+							Level: Warning,
 						},
 					)
 				}
@@ -1036,7 +1033,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases
 						Message: fmt.Sprintf("buildvariant '%s' "+
 							"references distro '%s' with the following admin-defined warning: %s",
 							buildVariant.Name, name, warning),
-						Level: Notice,
+						Level: Warning,
 					},
 				)
 			}
@@ -1420,7 +1417,7 @@ func checkBVTaskPriority(buildVariant *model.BuildVariant) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("task '%s' has been set above %d priority in build variant '%s', in YAML, will default priority to %d",
 						t.Name, model.MaxConfigSetPriority, buildVariant.Name, model.MaxConfigSetPriority),
-					Level: Notice,
+					Level: Warning,
 				})
 		}
 	}
@@ -1480,7 +1477,7 @@ func validateCommands(section, taskName, tgName string, project *model.Project, 
 		}
 		if cmd.Function != "" && cmd.RetryOnFailure {
 			errs = append(errs, ValidationError{
-				Level:   Notice,
+				Level:   Warning,
 				Message: fmt.Sprintf("cannot specify retry_on_failure with function '%s'%s, can only specify retry_on_failure on individual commands", cmd.Function, formattedTaskMsg),
 			})
 		}
@@ -2267,7 +2264,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("task '%s' has been set above %d priority, in YAML, will default priority to %d",
 						task.Name, model.MaxConfigSetPriority, model.MaxConfigSetPriority),
-					Level: Notice,
+					Level: Warning,
 				},
 			)
 		}
@@ -2287,8 +2284,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// checkTaskUsage returns a notice for each task that is defined but unused by any (un-disabled) variant.
-// TODO: upgrade to a warning in DEVPROD-8154
+// checkTaskUsage returns a warning for each task that is defined but unused by any (un-disabled) variant.
 func checkTaskUsage(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	seen := map[string]bool{}
@@ -2306,7 +2302,7 @@ func checkTaskUsage(project *model.Project) ValidationErrors {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("task '%s' defined but not used by any variants; consider using or disabling",
 					pt.Name),
-				Level: Notice,
+				Level: Warning,
 			})
 		}
 	}

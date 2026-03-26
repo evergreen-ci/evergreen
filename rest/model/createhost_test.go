@@ -33,11 +33,6 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 			Image:   "my-image",
 			Command: "echo hi",
 		},
-		PortBindings: map[string][]string{
-			"1234/tcp": {
-				"98765",
-			},
-		},
 	}
 	c := &APICreateHost{}
 	c.BuildFromService(h)
@@ -45,7 +40,6 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	assert.Equal(utility.FromStringPtr(c.Image), h.DockerOptions.Image)
 	assert.Equal(utility.FromStringPtr(c.Command), h.DockerOptions.Command)
 	assert.Equal(utility.FromStringPtr(c.ParentID), h.ParentID)
-	assert.Equal(c.PortBindings, h.PortBindings)
 
 	assert.NotNil(c.DNSName) // will be set to parent's DNS name for host.list
 	assert.Nil(c.InstanceID)

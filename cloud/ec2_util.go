@@ -19,6 +19,7 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -74,15 +75,8 @@ var (
 	commercialLinuxDistros = []string{"suse"}
 )
 
-type MountPoint struct {
-	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
-	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
-	Size        int32  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
-	Iops        int32  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
-	Throughput  int32  `mapstructure:"throughput" json:"throughput,omitempty" bson:"throughput,omitempty"`
-	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
-	VolumeType  string `mapstructure:"volume_type" json:"volume_type,omitempty" bson:"volume_type,omitempty"`
-}
+// MountPoint is an alias for the shared EC2 mount definition in model/ec2mount.
+type MountPoint = ec2mount.MountPoint
 
 var (
 	// bson fields for the EC2ProviderSettings struct
@@ -103,8 +97,7 @@ var (
 
 // AztoRegion takes an availability zone and returns the region id.
 func AztoRegion(az string) string {
-	// an amazon region is just the availability zone minus the final letter
-	return az[:len(az)-1]
+	return util.AZToRegion(az)
 }
 
 // ec2StateToEvergreenStatus returns a "universal" status code based on EC2's

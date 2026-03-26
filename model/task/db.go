@@ -605,6 +605,23 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 	}
 }
 
+func ByAfterRevisionWithStatusesAndRequesters(revisionOrder int, statuses []string, buildVariant, displayName, project string, requesters []string) bson.M {
+	return bson.M{
+		BuildVariantKey: buildVariant,
+		DisplayNameKey:  displayName,
+		RequesterKey: bson.M{
+			"$in": requesters,
+		},
+		RevisionOrderNumberKey: bson.M{
+			"$gt": revisionOrder,
+		},
+		StatusKey: bson.M{
+			"$in": statuses,
+		},
+		ProjectKey: project,
+	}
+}
+
 // ByTimeStartedAndFailed returns all failed tasks that started or finished between 2 given times
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) bson.M {
 	query := bson.M{
@@ -2157,6 +2174,13 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 			"count":  1,
 		}},
 	}
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			DisplayStatusKey:    1,
+			ExpectedDurationKey: 1,
+			StartTimeKey:        1,
+		},
+	})
 	facet := bson.M{"$facet": bson.M{
 		"counts": groupPipeline,
 		"eta":    maxEtaPipeline,
@@ -2303,8 +2327,12 @@ func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, bas
 				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
 			},
 		}})
-	// Add display status
-	pipeline = append(pipeline, addDisplayStatus)
+	// Alias the persisted display_status_cache as display_status.
+	pipeline = append(pipeline, bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: "$" + DisplayStatusCacheKey,
+		},
+	})
 	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
@@ -2473,10 +2501,13 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, bson.M{"$match": match})
 	}
 
-	// Add a field for the display status of each task
-	pipeline = append(pipeline,
-		addDisplayStatus,
-	)
+	// Alias the persisted display_status_cache as display_status so downstream
+	// stages can reference DisplayStatusKey without recomputing via $switch.
+	pipeline = append(pipeline, bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: "$" + DisplayStatusCacheKey,
+		},
+	})
 
 	if shouldPopulateBaseTask {
 		// First group by variant and task name to group all tasks and their base tasks together

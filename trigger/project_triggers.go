@@ -136,7 +136,6 @@ func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, fi
 		Ref:          &ref,
 		RemotePath:   file,
 		Revision:     ref.Branch,
-		Identifier:   ref.Identifier,
 		ReadFileFrom: model.ReadFromGithub,
 	}
 	return model.GetProjectFromFile(ctx, opts)

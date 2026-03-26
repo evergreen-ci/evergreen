@@ -1,0 +1,8 @@
+{
+  task(taskId: "patch_task") {
+    id
+    nextTask {
+      id
+    }
+  }
+}

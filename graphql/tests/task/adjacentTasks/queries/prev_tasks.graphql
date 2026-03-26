@@ -1,11 +1,11 @@
 {
-  task(taskId: "task_no_failures") {
+  task(taskId: "current_task") {
     id
     prevTask {
       id
       status
     }
-    prevTaskBreaking {
+    prevTaskFailing {
       id
       status
     }

@@ -41,6 +41,36 @@
       "execution": 0
     },
     {
+      "_id": "next_failed",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "failed",
+      "order": 11,
+      "execution": 0
+    },
+    {
+      "_id": "next_success",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "success",
+      "order": 12,
+      "execution": 0
+    },
+    {
+      "_id": "next_started",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "started",
+      "order": 13,
+      "execution": 0
+    },
+    {
       "_id": "task_no_failures",
       "build_variant": "ubuntu1604",
       "display_name": "no_failures_task",
@@ -58,6 +88,16 @@
       "r": "gitter_request",
       "status": "success",
       "order": 4,
+      "execution": 0
+    },
+    {
+      "_id": "only_success_next",
+      "build_variant": "ubuntu1604",
+      "display_name": "no_failures_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "success",
+      "order": 6,
       "execution": 0
     },
     {
@@ -81,13 +121,33 @@
       "execution": 0
     },
     {
-      "_id": "task_no_prev",
+      "_id": "only_failed_next",
+      "build_variant": "ubuntu1604",
+      "display_name": "no_passing_task",
+      "branch": "spruce",
+      "r": "gitter_request",
+      "status": "failed",
+      "order": 6,
+      "execution": 0
+    },
+    {
+      "_id": "task_no_adjacent",
       "build_variant": "ubuntu1604",
       "display_name": "isolated_task",
       "branch": "spruce",
       "r": "gitter_request",
       "status": "success",
       "order": 1,
+      "execution": 0
+    },
+    {
+      "_id": "patch_task",
+      "build_variant": "ubuntu1604",
+      "display_name": "test_task",
+      "branch": "spruce",
+      "r": "patch_request",
+      "status": "success",
+      "order": 15,
       "execution": 0
     }
   ],

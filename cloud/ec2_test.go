@@ -204,7 +204,7 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	s.NoError(err)
 
 	ebsMount := MountPoint{
-		VolumeType: "gp3",
+		VolumeType: evergreen.VolumeTypeGp3,
 		DeviceName: "device",
 		Size:       10,
 		Iops:       100,
@@ -259,7 +259,7 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 	s.NoError(err)
 
 	ebsMount := MountPoint{
-		VolumeType: "gp3",
+		VolumeType: evergreen.VolumeTypeGp3,
 		DeviceName: "device",
 		Size:       10,
 		Iops:       100,

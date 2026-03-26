@@ -155,11 +155,6 @@ func TestValidateFile(t *testing.T) {
 			errorOnWarnings: true,
 			expectErr:       "invalid configuration",
 		},
-		"SucceedsWithNoticesOnly": {
-			validateResult: validator.ValidationErrors{
-				{Level: validator.Notice, Message: "a notice"},
-			},
-		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			mockClient = &client.Mock{
@@ -271,12 +266,6 @@ func TestValidateProjectRemotely(t *testing.T) {
 			},
 			errorOnWarnings: true,
 			expectErr:       "invalid configuration",
-		},
-		"SucceedsWithNoticesOnly": {
-			projectYaml: projectYaml,
-			validateResult: validator.ValidationErrors{
-				{Level: validator.Notice, Message: "a notice"},
-			},
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

@@ -492,7 +492,7 @@ func getStepback(ctx context.Context, taskId string, projectRef *ProjectRef, pro
 	}
 
 	// Check if the bvtask overrides the stepback policy specified by the project
-	bvtu := project.FindBuildVariantTaskUnit(t.BuildVariant, t.DisplayName)
+	bvtu := project.FindTaskForVariant(t.DisplayName, t.BuildVariant)
 	if bvtu != nil && bvtu.Stepback != nil {
 		s.shouldStepback = utility.FromBoolPtr(bvtu.Stepback)
 		return s, nil
@@ -815,6 +815,8 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		costAttrs := []attribute.KeyValue{
 			attribute.Float64(evergreen.TaskOnDemandCostOtelAttribute, t.TaskCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
+			attribute.Float64(evergreen.TaskEBSOnDemandThroughputCostOtelAttribute, t.TaskCost.OnDemandEBSThroughputCost),
+			attribute.Float64(evergreen.TaskEBSAdjustedThroughputCostOtelAttribute, t.TaskCost.AdjustedEBSThroughputCost),
 		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, costAttrs)
 		span.SetAttributes(costAttrs...)

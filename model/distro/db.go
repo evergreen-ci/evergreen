@@ -44,9 +44,10 @@ var (
 	IsClusterKey             = bsonutil.MustHaveTag(Distro{}, "IsCluster")
 	IceCreamSettingsKey      = bsonutil.MustHaveTag(Distro{}, "IceCreamSettings")
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
-	ImageIDKey          = bsonutil.MustHaveTag(Distro{}, "ImageID")
-	SingleTaskDistroKey = bsonutil.MustHaveTag(Distro{}, "SingleTaskDistro")
-	CostDataKey         = bsonutil.MustHaveTag(Distro{}, "CostData")
+	ImageIDKey           = bsonutil.MustHaveTag(Distro{}, "ImageID")
+	SingleTaskDistroKey  = bsonutil.MustHaveTag(Distro{}, "SingleTaskDistro")
+	CostDataKey          = bsonutil.MustHaveTag(Distro{}, "CostData")
+	TaskHostOverridesKey = bsonutil.MustHaveTag(Distro{}, "TaskHostOverrides")
 
 	// bson fields for the CostData struct
 	CostDataOnDemandRateKey    = bsonutil.MustHaveTag(CostData{}, "OnDemandRate")
@@ -207,6 +208,8 @@ func ByIds(ids []string) bson.M {
 	return bson.M{IdKey: bson.M{"$in": ids}}
 }
 
+// FindByIdWithDefaultSettings finds a distro by ID with only the provider
+// settings for the default EC2 region.
 func FindByIdWithDefaultSettings(ctx context.Context, id string) (*Distro, error) {
 	d, err := FindOneId(ctx, id)
 	if err != nil {

@@ -75,3 +75,13 @@ func CoalesceString(in ...string) string {
 func CoalesceStrings(inArray []string, inStrs ...string) string {
 	return CoalesceString(CoalesceString(inArray...), CoalesceString(inStrs...))
 }
+
+// AZToRegion converts an AWS availability zone to its region.
+// An availability zone is the region plus a suffix letter (e.g., "us-east-1a" -> "us-east-1").
+// Returns empty string if the zone is too short to be valid.
+func AZToRegion(az string) string {
+	if len(az) < 2 {
+		return ""
+	}
+	return az[:len(az)-1]
+}

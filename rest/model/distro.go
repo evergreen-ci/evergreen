@@ -391,6 +391,7 @@ type APIDistro struct {
 	ImageID               *string                  `json:"image_id"`
 	ExecUser              *string                  `json:"exec_user"`
 	CostData              APICostData              `json:"cost_data"`
+	TaskHostOverrides     *APITaskHostOverrides    `json:"task_host_overrides"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -461,6 +462,12 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	costData := APICostData{}
 	costData.BuildFromService(d.CostData)
 	apiDistro.CostData = costData
+
+	if d.TaskHostOverrides != nil {
+		overrides := &APITaskHostOverrides{}
+		overrides.BuildFromService(*d.TaskHostOverrides)
+		apiDistro.TaskHostOverrides = overrides
+	}
 }
 
 // ToService returns a service layer distro using the data from APIDistro
@@ -508,7 +515,39 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.IsCluster = apiDistro.IsCluster
 	d.CostData = apiDistro.CostData.ToService()
 
+	if apiDistro.TaskHostOverrides != nil {
+		overrides := apiDistro.TaskHostOverrides.ToService()
+		d.TaskHostOverrides = &overrides
+	}
+
 	return &d
+}
+
+// APITaskHostOverrides is the API model for distro.TaskHostOverrides.
+type APITaskHostOverrides struct {
+	ProviderAccount              *string  `json:"provider_account"`
+	IAMInstanceProfileARN        *string  `json:"iam_instance_profile_arn"`
+	SecurityGroupIDs             []string `json:"security_group_ids"`
+	SubnetID                     *string  `json:"subnet_id"`
+	DoNotAssignPublicIPv4Address bool     `json:"do_not_assign_public_ipv4_address"`
+}
+
+func (a *APITaskHostOverrides) BuildFromService(o distro.TaskHostOverrides) {
+	a.ProviderAccount = utility.ToStringPtr(o.ProviderAccount)
+	a.IAMInstanceProfileARN = utility.ToStringPtr(o.IAMInstanceProfileARN)
+	a.SecurityGroupIDs = o.SecurityGroupIDs
+	a.SubnetID = utility.ToStringPtr(o.SubnetID)
+	a.DoNotAssignPublicIPv4Address = o.DoNotAssignPublicIPv4Address
+}
+
+func (a *APITaskHostOverrides) ToService() distro.TaskHostOverrides {
+	return distro.TaskHostOverrides{
+		ProviderAccount:              utility.FromStringPtr(a.ProviderAccount),
+		IAMInstanceProfileARN:        utility.FromStringPtr(a.IAMInstanceProfileARN),
+		SecurityGroupIDs:             a.SecurityGroupIDs,
+		SubnetID:                     utility.FromStringPtr(a.SubnetID),
+		DoNotAssignPublicIPv4Address: a.DoNotAssignPublicIPv4Address,
+	}
 }
 
 // APIExpansion is derived from a service layer distro.Expansion
