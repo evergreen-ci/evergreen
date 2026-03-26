@@ -309,7 +309,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 
 // getTask returns the task with the given id and execution number
 func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, execution)
+	dbTask, err := task.FindByIdExecution(ctx, taskID, execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}

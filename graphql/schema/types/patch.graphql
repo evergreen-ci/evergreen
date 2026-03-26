@@ -70,7 +70,6 @@ type Patch {
   alias: String
   author: String!
   authorDisplayName: String!
-  baseTaskStatuses: [String!]!
   builds: [Build!]!
   childPatchAliases: [ChildPatchAlias!]
   childPatches: [Patch!]

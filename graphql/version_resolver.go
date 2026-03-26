@@ -21,23 +21,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// BaseTaskStatuses is the resolver for the baseTaskStatuses field.
-func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
-	versionID := utility.FromStringPtr(obj.Id)
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
-	}
-	if baseVersion == nil {
-		return nil, nil
-	}
-	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, versionID, baseVersion.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting base statuses for version '%s': %s", versionID, err.Error()))
-	}
-	return statuses, nil
-}
-
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Id)

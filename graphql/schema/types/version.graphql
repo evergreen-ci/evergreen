@@ -54,7 +54,6 @@ type Version {
   activated: Boolean
   author: String!
   authorEmail: String!
-  baseTaskStatuses: [String!]!
   baseVersion: Version
   branch: String!
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
