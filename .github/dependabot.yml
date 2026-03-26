@@ -10,6 +10,10 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "CHORE: "
+    ignore:
+      # TODO (DEVPROD-28491): Ignore upgrades for OTel dependencies for now. otel v1.40.0+ introduces a regression in
+      # otelhttp and the fix (v1.42.0+) requires Go 1.25.0, which Evergreen cannot use for now. See ticket for details.
+      - dependency-name: "go.opentelemetry.io/*"
     groups:
       otel-dependencies:
         applies-to: version-updates
