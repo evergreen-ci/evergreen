@@ -68,20 +68,7 @@ func (h *hostAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 	if h.hostID = gimlet.GetVars(r)["host_id"]; h.hostID == "" {
 		return errors.New("missing host ID")
 	}
-	host, err := host.FindOneId(ctx, h.hostID)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "getting host").Error(),
-		}
-	}
-	if host == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host '%s' not found", h.hostID),
-		}
-	}
-	h.host = host
+	h.host = MustHaveHost(ctx)
 	details, err := getDetails(h.host, r)
 	if err != nil {
 		return gimlet.ErrorResponse{

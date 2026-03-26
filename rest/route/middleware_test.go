@@ -222,7 +222,15 @@ func TestTaskAuthMiddleware(t *testing.T) {
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
 	rw = httptest.NewRecorder()
-	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		// Verify that the task and host are stored in the request context.
+		foundTask := GetTask(r.Context())
+		assert.NotNil(foundTask)
+		assert.Equal("task1", foundTask.Id)
+		foundHost := GetHost(r.Context())
+		assert.NotNil(foundHost)
+		assert.Equal("host1", foundHost.Id)
+	})
 	assert.Equal(http.StatusOK, rw.Code)
 
 	r.Header.Set(evergreen.TaskHeader, "completedTask")
@@ -257,7 +265,12 @@ func TestHostAuthMiddleware(t *testing.T) {
 					evergreen.HostSecretHeader: []string{h.Secret},
 				},
 			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+				// Verify that the host is stored in the request context.
+				foundHost := GetHost(r.Context())
+				assert.NotNil(t, foundHost)
+				assert.Equal(t, h.Id, foundHost.Id)
+			})
 			assert.Equal(t, http.StatusOK, rw.Code)
 		},
 		"FailsWithInvalidSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {

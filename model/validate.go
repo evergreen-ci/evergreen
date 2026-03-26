@@ -15,12 +15,15 @@ import (
 type (
 	apiTaskKey    int
 	apiProjectKey int
+	apiHostKey    int
 )
 
 const (
 	ApiTaskKey apiTaskKey = 0
 
 	ApiProjectKey apiProjectKey = 0
+
+	ApiHostKey apiHostKey = 0
 )
 
 // ValidateTask ensures that a task ID is set and corresponds to a task in the
