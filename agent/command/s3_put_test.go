@@ -431,10 +431,6 @@ func TestSignedUrlVisibility(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 
-		conf := &internal.TaskConfig{
-			Task: task.Task{Id: "task_id"},
-		}
-
 		remoteFile := "remote file"
 
 		file1Info, err := os.Stat(file1)

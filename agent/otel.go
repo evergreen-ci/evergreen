@@ -410,9 +410,9 @@ func addNetworkMetrics(ctx context.Context, meter metric.Meter) error {
 		lastTime = time.Now()
 	} else if err != nil {
 		return errors.Wrap(err, "getting initial network stats")
+	} else {
+		return errors.New("network counters had an unexpected length")
 	}
-
-	return errors.New("network counters had an unexpected length")
 
 	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
 		now := time.Now()

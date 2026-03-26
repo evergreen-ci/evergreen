@@ -73,20 +73,6 @@ var allGitHubPermissions = []string{
 }
 
 const (
-	// All PR statuses except for "blocked" based on statuses listed here:
-	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
-	// Because the pr.MergeableState is not documented, it can change without
-	// notice. That's why we want to only allow fields we know to be unblocked
-	// rather than simply blocking the "blocked" status. That way if it does
-	// change, it doesn't fail silently.
-	githubPRBehind   = "behind"
-	githubPRClean    = "clean"
-	githubPRDirty    = "dirty"
-	githubPRDraft    = "draft"
-	githubPRHasHooks = "has_hooks"
-	githubPRUnknown  = "unknown"
-	githubPRUnstable = "unstable"
-
 	githubCheckRunSuccess        = "success"
 	githubCheckRunFailure        = "failure"
 	githubCheckRunSkipped        = "skipped"

@@ -882,11 +882,6 @@ const (
 	PriorityLevelTrace     = "trace"
 )
 
-const (
-	devProdServiceId    = "27020"
-	devProdServiceValue = "Other"
-)
-
 // Recognized Evergreen agent CPU architectures, which should be in the form
 // ${GOOS}_${GOARCH}.
 const (
