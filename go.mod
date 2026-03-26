@@ -17,7 +17,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2
-	github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d
+	github.com/evergreen-ci/gimlet v0.0.0-20260326192822-ba1f9242291b
 	github.com/evergreen-ci/pail v0.0.0-20260307024253-2994ff1e98bd
 	github.com/evergreen-ci/poplar v0.0.0-20260311151515-d99a1837f349
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973
 	github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa
-	github.com/mongodb/grip v0.0.0-20251203205830-b5c5c666ab94
+	github.com/mongodb/grip v0.0.0-20260325175240-dee15316ed15
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb

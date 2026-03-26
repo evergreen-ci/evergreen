@@ -163,8 +163,8 @@ github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2 h1:bBwDxfZE
 github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2/go.mod h1:YLBfKY+Y1yFapi7AZUR0tfJ8H+pbzF1CO94ixHDaUOM=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f h1:UCLTMndEQDi/BfiYa/MIv6okh7CLmz250oA03FLLA+w=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f/go.mod h1:FnyqGuSg33gR9wNbt2qo9wPaNUfP85+a8+UTVyx/gdg=
-github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d h1:D/ua80GfelpLtry9J8+q/K1MWb7m0V0QiXhOm0kCdj8=
-github.com/evergreen-ci/gimlet v0.0.0-20260113164336-bfe84f40e50d/go.mod h1:Xiaegoek6n6GQnEt7pFMByuME0vw4sGcqD7KA7ilK7c=
+github.com/evergreen-ci/gimlet v0.0.0-20260326192822-ba1f9242291b h1:cMFpPYz2i2E1pCVWu9Q4XfGFofqM+57nkznwcs93B78=
+github.com/evergreen-ci/gimlet v0.0.0-20260326192822-ba1f9242291b/go.mod h1:tRjfOj0/370IbRn90VUSW0n3N6SsiSGheXoBabCWwos=
 github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f h1:sXisMMrOFZVbclIs/pU6xGKDQ4ylpGFzWqqB9QT9NGU=
 github.com/evergreen-ci/lru v0.0.0-20251209201855-89a4cc8d867f/go.mod h1:6j2omnZaHKHv2WkpToHHsl0TK7Wja5GmxcYRvjkpJ2k=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
@@ -331,8 +331,8 @@ github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa h1:IqpkVPTPZ3M6uoy/A
 github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa/go.mod h1:RMSHZFsUjqxiOzF2e3hm6Qhr3e0n3oD4LGverSprdFI=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac h1:KL3+DC+q8yS+QmdPAvnJiMHNU9VcYD3+4+0U1F+Crzo=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac/go.mod h1:iaQJgZ9mNDQzR9Y8BY6D/Y6i8IzadyjY91a20xE5sOE=
-github.com/mongodb/grip v0.0.0-20251203205830-b5c5c666ab94 h1:kEIOld0OEhvbJSo26V3RrARWnV1gBpFW/6chCZJ1yx4=
-github.com/mongodb/grip v0.0.0-20251203205830-b5c5c666ab94/go.mod h1:nIxXGOFRWYjuwlgZlhj7BvCE6MjPuOFr3xbe9IcbKDo=
+github.com/mongodb/grip v0.0.0-20260325175240-dee15316ed15 h1:24uQdm0yD9ybTgkAyolNVjf6jf8UfLqPC3bfxnf1N0U=
+github.com/mongodb/grip v0.0.0-20260325175240-dee15316ed15/go.mod h1:nIxXGOFRWYjuwlgZlhj7BvCE6MjPuOFr3xbe9IcbKDo=
 github.com/mongodb/jasper v0.0.0-20260115181313-e094cd64f89f h1:D35MCwcI270gcNTwf43wOUOnUKeu39/NUucCWBWR6fM=
 github.com/mongodb/jasper v0.0.0-20260115181313-e094cd64f89f/go.mod h1:j69pJv5RdEmVPsDKUCLf4iA0XT6aNHhF3y9eZepWziY=
 github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8eaE=
