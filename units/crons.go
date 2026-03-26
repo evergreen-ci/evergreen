@@ -3,7 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -611,8 +611,8 @@ func enqueueHostSetupJobs(ctx context.Context, env evergreen.Environment, queue 
 		return errors.Wrap(err, "finding hosts that need provisioning")
 	}
 
-	sort.Slice(hosts, func(i, j int) bool {
-		return hosts[i].StartTime.Before(hosts[j].StartTime)
+	slices.SortFunc(hosts, func(a, b host.Host) int {
+		return a.StartTime.Compare(b.StartTime)
 	})
 
 	catcher := grip.NewBasicCatcher()
@@ -913,7 +913,7 @@ func PopulateUnstickVolumesJob() amboy.QueueOperation {
 	}
 }
 
-// defaultRetryFailedLogMoveLookbackMonths is used when the admin setting is unset or 0.
+// defaultRetryFailedLogMoveLookbackMonths is used when the admin setting is unset or <= 0.
 const defaultRetryFailedLogMoveLookbackMonths = 2
 
 // defaultRetryFailedLogMoveMaxJobsPerRun caps enqueued jobs to avoid S3 rate limiting.
@@ -992,8 +992,8 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		for _, t := range toRetry {
 			taskIDsAllCandidates = append(taskIDsAllCandidates, t.Id)
 		}
-		sort.Slice(toRetry, func(i, j int) bool {
-			return toRetry[i].FinishTime.After(toRetry[j].FinishTime)
+		slices.SortFunc(toRetry, func(a, b *task.Task) int {
+			return b.FinishTime.Compare(a.FinishTime)
 		})
 		if len(toRetry) > maxJobs {
 			toRetry = toRetry[:maxJobs]
