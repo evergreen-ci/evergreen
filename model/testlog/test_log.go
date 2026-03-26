@@ -13,8 +13,6 @@ import (
 
 const (
 	TestLogCollection = "test_logs"
-
-	maxDeleteCount = 100000
 )
 
 type TestLog struct {

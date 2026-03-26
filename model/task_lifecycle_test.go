@@ -37,30 +37,6 @@ var (
 	oneMs = time.Millisecond
 )
 
-// checkDisabled checks that the given task is disabled and logs the expected
-// events.
-func checkDisabled(t *testing.T, dbTask *task.Task) {
-	assert.Equal(t, evergreen.DisabledTaskPriority, dbTask.Priority, "task '%s' should have disabled priority", dbTask.Id)
-	assert.False(t, dbTask.Activated, "task '%s' should be deactivated", dbTask.Id)
-
-	events, err := event.FindAllByResourceID(t.Context(), dbTask.Id)
-	require.NoError(t, err)
-
-	var loggedDeactivationEvent bool
-	var loggedPriorityChangedEvent bool
-	for _, e := range events {
-		switch e.EventType {
-		case event.TaskPriorityChanged:
-			loggedPriorityChangedEvent = true
-		case event.TaskDeactivated:
-			loggedDeactivationEvent = true
-		}
-	}
-
-	assert.True(t, loggedPriorityChangedEvent, "task '%s' did not log an event indicating its priority was set", dbTask.Id)
-	assert.True(t, loggedDeactivationEvent, "task '%s' did not log an event indicating it was deactivated", dbTask.Id)
-}
-
 func requireTaskFromDB(ctx context.Context, t *testing.T, id string) *task.Task {
 	dbTask, err := task.FindOneId(ctx, id)
 	require.NoError(t, err)
