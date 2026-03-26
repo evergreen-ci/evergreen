@@ -65,57 +65,57 @@ type TestResult struct {
 // TestLogInfo describes a metadata for a test result's log stored using
 // Evergreen logging.
 type TestLogInfo struct {
-	LogName       string    `json:"log_name" bson:"log_name" parquet:"name=logname"`
-	LogsToMerge   []*string `json:"logs_to_merge" bson:"logs_to_merge" parquet:"name=logstomerge"`
-	LineNum       int32     `json:"line_num" bson:"line_num" parquet:"name=linenum"`
-	RenderingType *string   `json:"rendering_type" bson:"rendering_type" parquet:"name=renderingtype"`
-	Version       int32     `json:"version" bson:"version"`
+	LogName       string    `json:"log_name" bson:"log_name" parquet:"logname"`
+	LogsToMerge   []*string `json:"logs_to_merge" bson:"logs_to_merge" parquet:"logstomerge,list"`
+	LineNum       int32     `json:"line_num" bson:"line_num" parquet:"linenum"`
+	RenderingType *string   `json:"rendering_type" bson:"rendering_type" parquet:"renderingtype,optional"`
+	Version       int32     `json:"version" bson:"version" parquet:"version"`
 	// TODO: DEVPROD-19170 remove these fields
 	// The following are deprecated fields used for tasks that wrote test results
 	// through Cedar. These tasks wrote using custom parquet tags that included underscores.
 	// Tasks that wrote test results directly to Evergreen will use the tags above that don't
 	// contain any underscores, since when the evergreen test result service first launched
 	// the fields above didn't contain parquet tags and hence defaulted to tag names with no underscores
-	// because of how the parquet-go library automatically resolves tag names. Both fields are now
+	// because of how the legacy Parquet writer resolved tag names. Both fields are now
 	// required to support backwards compatibility.
-	LogNameCedar       string    `parquet:"name=log_name"`
-	LogsToMergeCedar   []*string `parquet:"name=logs_to_merge"`
-	LineNumCedar       int32     `parquet:"name=line_num"`
-	RenderingTypeCedar *string   `parquet:"name=rendering_type"`
+	LogNameCedar       string    `parquet:"log_name"`
+	LogsToMergeCedar   []*string `parquet:"logs_to_merge,list"`
+	LineNumCedar       int32     `parquet:"line_num"`
+	RenderingTypeCedar *string   `parquet:"rendering_type,optional"`
 }
 
 // ParquetTestResults describes a set of test results from a task execution to
 // be stored in Apache Parquet format.
 type ParquetTestResults struct {
-	Version         string              `parquet:"name=version"`
-	Variant         string              `parquet:"name=variant"`
-	TaskName        string              `parquet:"name=task_name"`
-	DisplayTaskName *string             `parquet:"name=display_task_name"`
-	TaskID          string              `parquet:"name=task_id"`
-	DisplayTaskID   *string             `parquet:"name=display_task_id"`
-	Execution       int32               `parquet:"name=execution"`
-	Requester       string              `parquet:"name=request_type"`
-	CreatedAt       time.Time           `parquet:"name=created_at, timeunit=MILLIS"`
-	Results         []ParquetTestResult `parquet:"name=results"`
+	Version         string              `parquet:"version"`
+	Variant         string              `parquet:"variant"`
+	TaskName        string              `parquet:"task_name"`
+	DisplayTaskName *string             `parquet:"display_task_name,optional"`
+	TaskID          string              `parquet:"task_id"`
+	DisplayTaskID   *string             `parquet:"display_task_id,optional"`
+	Execution       int32               `parquet:"execution"`
+	Requester       string              `parquet:"request_type"`
+	CreatedAt       time.Time           `parquet:"created_at,timestamp(millisecond)"`
+	Results         []ParquetTestResult `parquet:"results,list"`
 }
 
 // ParquetTestResult describes a single test result to be stored in Apache
 // Parquet file format.
 type ParquetTestResult struct {
-	TestName        string       `parquet:"name=test_name"`
-	DisplayTestName *string      `parquet:"name=display_test_name"`
-	GroupID         *string      `parquet:"name=group_id"`
-	Status          string       `parquet:"name=status"`
-	LogInfo         *TestLogInfo `parquet:"name=log_info"`
-	TaskCreateTime  time.Time    `parquet:"name=task_create_time, timeunit=MILLIS"`
-	TestStartTime   time.Time    `parquet:"name=test_start_time, timeunit=MILLIS"`
-	TestEndTime     time.Time    `parquet:"name=test_end_time, timeunit=MILLIS"`
+	TestName        string       `parquet:"test_name"`
+	DisplayTestName *string      `parquet:"display_test_name,optional"`
+	GroupID         *string      `parquet:"group_id,optional"`
+	Status          string       `parquet:"status"`
+	LogInfo         *TestLogInfo `parquet:"log_info,optional"`
+	TaskCreateTime  time.Time    `parquet:"task_create_time,timestamp(millisecond)"`
+	TestStartTime   time.Time    `parquet:"test_start_time,timestamp(millisecond)"`
+	TestEndTime     time.Time    `parquet:"test_end_time,timestamp(millisecond)"`
 
 	// Legacy test log fields.
-	LogTestName *string `parquet:"name=log_test_name"`
-	LogURL      *string `parquet:"name=log_url"`
-	RawLogURL   *string `parquet:"name=raw_log_url"`
-	LineNum     *int32  `parquet:"name=line_num"`
+	LogTestName *string `parquet:"log_test_name,optional"`
+	LogURL      *string `parquet:"log_url,optional"`
+	RawLogURL   *string `parquet:"raw_log_url,optional"`
+	LineNum     *int32  `parquet:"line_num,optional"`
 }
 
 func (r ParquetTestResults) ConvertToTestResultSlice() []TestResult {

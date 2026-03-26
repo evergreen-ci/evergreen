@@ -215,6 +215,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               0,
 		Status:                  evergreen.TaskSucceeded,
+		DisplayStatusCache:      evergreen.TaskSucceeded,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t2 := task.Task{
@@ -225,6 +226,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               0,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t3 := task.Task{
@@ -235,6 +237,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskSucceeded,
+		DisplayStatusCache:      evergreen.TaskSucceeded,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t4 := task.Task{
@@ -245,6 +248,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t5 := task.Task{
@@ -255,6 +259,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t6 := task.Task{
@@ -265,6 +270,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 

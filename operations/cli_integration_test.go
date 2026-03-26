@@ -263,7 +263,10 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			TaskId:          parentTask.Id,
 			Execution:       1,
 			TaskDisplayName: "task_one",
-			Files:           []artifact.File{{Link: "http://www.google.com/robots.txt"}},
+			Files: []artifact.File{
+				{Link: "http://www.google.com/robots.txt", Name: "Robots"},
+				{Link: "http://www.google.com/hello_world.txt", Name: "Hello World"},
+			},
 		}
 		err = parentTaskFiles.Upsert(ctx)
 		So(err, ShouldBeNil)
@@ -271,7 +274,9 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		dependencyTaskFiles := &artifact.Entry{
 			TaskId:          dependencyTask.Id,
 			TaskDisplayName: "task_two",
-			Files:           []artifact.File{{Link: "http://www.google.com/humans.txt"}},
+			Files: []artifact.File{
+				{Link: "http://www.google.com/humans.txt", Name: "Humans"},
+			},
 		}
 		err = dependencyTaskFiles.Upsert(ctx)
 		So(err, ShouldBeNil)
@@ -282,15 +287,19 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("throws an error if task with execution does not exist", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(5))
+			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(5), "")
 			So(err, ShouldNotBeNil)
 		})
 
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(1))
+			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(1), "")
 			So(err, ShouldBeNil)
-			// downloaded file should exist where we expect
+
 			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
 			So(err, ShouldBeNil)
 			So(fileStat.Size(), ShouldBeGreaterThan, 0)
 
@@ -299,11 +308,45 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		})
 
 		Convey("deep fetch artifacts should also download artifacts from dependency", func() {
-			err = fetchArtifacts(rc, parentTask.Id, "", false, nil)
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "")
 			So(err, ShouldBeNil)
-			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+
+			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
 			So(err, ShouldBeNil)
 			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+		})
+
+		Convey("downloads only specified artifact when artifactName is provided", func() {
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "Hello World")
+			So(err, ShouldBeNil)
+
+			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+		})
+
+		Convey("downloads no files if artifactName does not match any artifacts", func() {
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "doesnotexist")
+			So(err, ShouldBeNil)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
 		})
 	})
 }

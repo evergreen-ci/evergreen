@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -41,7 +40,6 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	Notice
 	EC2HostCreateTotalLimit    = 1000
 	DockerHostCreateTotalLimit = 200
 	HostCreateLimitPerTask     = 3
@@ -58,8 +56,6 @@ func (vel ValidationErrorLevel) String() string {
 		return "ERROR"
 	case Warning:
 		return "WARNING"
-	case Notice:
-		return "NOTICE"
 	}
 	return "?"
 }
@@ -150,9 +146,9 @@ var projectConfigErrorValidators = []projectConfigValidator{
 	validateProjectConfigPlugins,
 }
 
-// Functions used to validate the project configuration file for warnings and
-// notices. These are expected to only return ValidationError's with a level of
-// Warning ValidationLevel or Notice ValidationLevel.
+// Functions used to validate the project configuration file for warnings.
+// These are expected to only return ValidationError's with a level of
+// Warning ValidationLevel.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
 	checkTaskRuns,
@@ -450,40 +446,6 @@ func validateDependencyGraph(project *model.Project) ValidationErrors {
 	}
 
 	return errs
-}
-
-// tvToTaskUnit generates all task-variant pairs mapped to their corresponding
-// task unit within a build variant.
-func tvToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit {
-	// map of task name and variant -> BuildVariantTaskUnit
-	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTaskUnit{}
-
-	// generate task nodes for every task and variant combination
-
-	taskGroups := map[string]struct{}{}
-	for _, tg := range p.TaskGroups {
-		taskGroups[tg.Name] = struct{}{}
-	}
-	for _, bv := range p.BuildVariants {
-		tasksToAdd := []model.BuildVariantTaskUnit{}
-		for _, t := range bv.Tasks {
-			if _, ok := taskGroups[t.Name]; ok {
-				tasksToAdd = append(tasksToAdd, model.CreateTasksFromGroup(t, p, "")...)
-			} else {
-				tasksToAdd = append(tasksToAdd, t)
-			}
-		}
-		for _, t := range tasksToAdd {
-			t.Variant = bv.Name
-			node := model.TVPair{
-				Variant:  bv.Name,
-				TaskName: t.Name,
-			}
-
-			tasksByNameAndVariant[node] = t
-		}
-	}
-	return tasksByNameAndVariant
 }
 
 func validateProjectConfigAliases(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
@@ -838,7 +800,7 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func validateBuildVariantTaskNames(task string, variant string, allTaskNames map[string]bool, taskGroupTaskSet map[string]string) []ValidationError {
+func validateBuildVariantTaskNames(task string, variant string, allTaskNames map[string]bool) []ValidationError {
 	var errs []ValidationError
 	if _, ok := allTaskNames[task]; !ok {
 		if task == "" {
@@ -880,7 +842,7 @@ func matchTaskToAllowlist(allowlist []string, taskName string) (bool, []Validati
 
 // ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
 // and returns any relevant distro validation info.
-// distroWarnings are considered validation notices.
+// distroWarnings are considered validation warnings.
 func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases, singleTaskDistroIDs []string, singleTaskDistroAllowlist evergreen.ProjectTasksPair, distroWarnings map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
@@ -903,7 +865,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
-			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
+			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames)...)
 			if _, ok := taskGroupTaskSet[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{
@@ -963,7 +925,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
 								"references distro '%s' with the following admin-defined warning(s): %s",
 								task.Name, buildVariant.Name, name, warning),
-							Level: Notice,
+							Level: Warning,
 						},
 					)
 				}
@@ -1036,7 +998,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIDs, distroAliases
 						Message: fmt.Sprintf("buildvariant '%s' "+
 							"references distro '%s' with the following admin-defined warning: %s",
 							buildVariant.Name, name, warning),
-						Level: Notice,
+						Level: Warning,
 					},
 				)
 			}
@@ -1150,7 +1112,7 @@ func validateTaskNames(project *model.Project) ValidationErrors {
 	return errs
 }
 
-func checkTaskNames(project *model.Project, task *model.ProjectTask) ValidationErrors {
+func checkTaskNames(task *model.ProjectTask) ValidationErrors {
 	errs := ValidationErrors{}
 	// Warn against commas because the CLI allows users to specify
 	// tasks separated by commas in their patches.
@@ -1420,7 +1382,7 @@ func checkBVTaskPriority(buildVariant *model.BuildVariant) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("task '%s' has been set above %d priority in build variant '%s', in YAML, will default priority to %d",
 						t.Name, model.MaxConfigSetPriority, buildVariant.Name, model.MaxConfigSetPriority),
-					Level: Notice,
+					Level: Warning,
 				})
 		}
 	}
@@ -1480,7 +1442,7 @@ func validateCommands(section, taskName, tgName string, project *model.Project, 
 		}
 		if cmd.Function != "" && cmd.RetryOnFailure {
 			errs = append(errs, ValidationError{
-				Level:   Notice,
+				Level:   Warning,
 				Message: fmt.Sprintf("cannot specify retry_on_failure with function '%s'%s, can only specify retry_on_failure on individual commands", cmd.Function, formattedTaskMsg),
 			})
 		}
@@ -2174,79 +2136,6 @@ func validateVersionControl(_ context.Context, _ *evergreen.Settings, _ *model.P
 	return errs
 }
 
-// validateTVDependsOnTV checks that the dependent task always has a dependency on the depended on task.
-// The dependedOnTask and every other task along the path must run on all the same requester types as the dependentTask
-// and the dependency on the dependedOnTask must be with a status in statuses, if provided.
-func validateTVDependsOnTV(dependentTask, dependedOnTask model.TVPair, statuses []string, project *model.Project) error {
-	g := project.DependencyGraph()
-	tvTaskUnitMap := tvToTaskUnit(project)
-
-	startNode := task.TaskNode{Name: dependentTask.TaskName, Variant: dependentTask.Variant}
-	targetNode := task.TaskNode{Name: dependedOnTask.TaskName, Variant: dependedOnTask.Variant}
-
-	// The traversal function returns whether the current edge should be traversed by the DFS.
-	traversal := func(edge task.DependencyEdge) bool {
-		from := edge.From
-		to := edge.To
-
-		fromTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: from.Name, Variant: from.Variant}]
-		toTaskUnit := tvTaskUnitMap[model.TVPair{TaskName: to.Name, Variant: to.Variant}]
-
-		var edgeInfo model.TaskUnitDependency
-		for _, dependency := range fromTaskUnit.DependsOn {
-			if dependency.Name == to.Name && dependency.Variant == to.Variant {
-				edgeInfo = dependency
-			}
-		}
-
-		// PatchOptional dependencies are skipped when the fromTaskUnit task is running on a patch.
-		if edgeInfo.PatchOptional && !(fromTaskUnit.SkipOnPatchBuild() || fromTaskUnit.SkipOnNonGitTagBuild()) {
-			return false
-		}
-
-		// The dependency is skipped if toTaskUnit doesn't run on all the same requester types that fromTaskUnit runs on.
-		for _, rType := range evergreen.AllRequesterTypes {
-			if !fromTaskUnit.SkipOnRequester(rType) && toTaskUnit.SkipOnRequester(rType) {
-				return false
-			}
-		}
-
-		// If statuses is specified we need to check the edge's status when the edge points to the target node.
-		if statuses != nil && to == targetNode {
-			return utility.StringSliceContains(statuses, edgeInfo.Status)
-		}
-
-		return true
-	}
-
-	if found := g.DepthFirstSearch(startNode, targetNode, traversal); !found {
-		dependentBVTask := tvTaskUnitMap[dependentTask]
-		runsOnPatches := !(dependentBVTask.SkipOnPatchBuild() || dependentBVTask.SkipOnNonGitTagBuild())
-		runsOnNonPatches := !(dependentBVTask.SkipOnNonPatchBuild() || dependentBVTask.SkipOnNonGitTagBuild())
-		runsOnGitTag := !(dependentBVTask.SkipOnNonPatchBuild() || dependentBVTask.SkipOnGitTagBuild())
-
-		errMsg := "task '%s' in build variant '%s' must depend on" +
-			" task '%s' in build variant '%s' completing"
-		if runsOnPatches && runsOnNonPatches {
-			errMsg += " for both patches and non-patches"
-		} else if runsOnPatches {
-			errMsg += " for patches"
-		} else if runsOnNonPatches {
-			errMsg += " for non-patches"
-		} else if runsOnGitTag {
-			errMsg += " for git-tag builds"
-		}
-		errMsg = fmt.Sprintf(errMsg, dependentTask.TaskName, dependentTask.Variant, dependedOnTask.TaskName, dependedOnTask.Variant)
-
-		if statuses != nil {
-			errMsg = fmt.Sprintf("%s with status in [%s]", errMsg, strings.Join(statuses, ", "))
-		}
-
-		return errors.New(errMsg)
-	}
-	return nil
-}
-
 // checkTasks checks whether project tasks contain warnings by checking if each task
 // has commands, contains exec_timeout_sec, and has valid logger configs, dependencies and task names.
 func checkTasks(project *model.Project) ValidationErrors {
@@ -2267,7 +2156,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 				ValidationError{
 					Message: fmt.Sprintf("task '%s' has been set above %d priority, in YAML, will default priority to %d",
 						task.Name, model.MaxConfigSetPriority, model.MaxConfigSetPriority),
-					Level: Notice,
+					Level: Warning,
 				},
 			)
 		}
@@ -2282,13 +2171,12 @@ func checkTasks(project *model.Project) ValidationErrors {
 			)
 			execTimeoutWarningAdded = true
 		}
-		errs = append(errs, checkTaskNames(project, &task)...)
+		errs = append(errs, checkTaskNames(&task)...)
 	}
 	return errs
 }
 
-// checkTaskUsage returns a notice for each task that is defined but unused by any (un-disabled) variant.
-// TODO: upgrade to a warning in DEVPROD-8154
+// checkTaskUsage returns a warning for each task that is defined but unused by any (un-disabled) variant.
 func checkTaskUsage(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	seen := map[string]bool{}
@@ -2306,7 +2194,7 @@ func checkTaskUsage(project *model.Project) ValidationErrors {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("task '%s' defined but not used by any variants; consider using or disabling",
 					pt.Name),
-				Level: Notice,
+				Level: Warning,
 			})
 		}
 	}

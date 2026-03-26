@@ -1,0 +1,204 @@
+{
+  "tests": [
+    {
+      "query_file": "prev_tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "prevTask": {
+              "id": "prev_started",
+              "status": "started"
+            },
+            "prevTaskFailing": {
+              "id": "prev_failed",
+              "status": "failed"
+            },
+            "prevTaskPassing": {
+              "id": "prev_success",
+              "status": "success"
+            },
+            "prevTaskCompleted": {
+              "id": "prev_success",
+              "status": "success"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "next_tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "nextTask": {
+              "id": "next_failed",
+              "status": "failed"
+            },
+            "nextTaskFailing": {
+              "id": "next_failed",
+              "status": "failed"
+            },
+            "nextTaskPassing": {
+              "id": "next_success",
+              "status": "success"
+            },
+            "nextTaskCompleted": {
+              "id": "next_failed",
+              "status": "failed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_prev_failures.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_failures",
+            "prevTask": {
+              "id": "only_success_prev",
+              "status": "success"
+            },
+            "prevTaskFailing": null,
+            "prevTaskPassing": {
+              "id": "only_success_prev",
+              "status": "success"
+            },
+            "prevTaskCompleted": {
+              "id": "only_success_prev",
+              "status": "success"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_next_failures.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_failures",
+            "nextTask": {
+              "id": "only_success_next",
+              "status": "success"
+            },
+            "nextTaskFailing": null,
+            "nextTaskPassing": {
+              "id": "only_success_next",
+              "status": "success"
+            },
+            "nextTaskCompleted": {
+              "id": "only_success_next",
+              "status": "success"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_prev_passing.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_passing",
+            "prevTask": {
+              "id": "only_failed_prev",
+              "status": "failed"
+            },
+            "prevTaskFailing": {
+              "id": "only_failed_prev",
+              "status": "failed"
+            },
+            "prevTaskPassing": null,
+            "prevTaskCompleted": {
+              "id": "only_failed_prev",
+              "status": "failed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_next_passing.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_passing",
+            "nextTask": {
+              "id": "only_failed_next",
+              "status": "failed"
+            },
+            "nextTaskFailing": {
+              "id": "only_failed_next",
+              "status": "failed"
+            },
+            "nextTaskPassing": null,
+            "nextTaskCompleted": {
+              "id": "only_failed_next",
+              "status": "failed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_adjacent_tasks.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_no_adjacent",
+            "prevTask": null,
+            "prevTaskFailing": null,
+            "prevTaskPassing": null,
+            "prevTaskCompleted": null,
+            "nextTask": null,
+            "nextTaskFailing": null,
+            "nextTaskPassing": null,
+            "nextTaskCompleted": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "breaking_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "current_task",
+            "prevTaskPassing": {
+              "id": "prev_success",
+              "status": "success",
+              "nextTaskFailing": {
+                "id": "next_failed",
+                "status": "failed"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "patch_task_error.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "finding next task for 'patch_task': input: cannot get next task for patch",
+            "path": ["task", "nextTask"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ],
+        "data": {
+          "task": {
+            "id": "patch_task",
+            "nextTask": null
+          }
+        }
+      }
+    }
+  ]
+}

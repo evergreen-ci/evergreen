@@ -16,8 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 )
 
@@ -145,10 +144,7 @@ func uploadParquet(ctx context.Context, credentials evergreen.S3Credentials, out
 	}
 	defer w.Close()
 
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
-	defer pw.Close()
-
-	return errors.Wrap(pw.Write(results), "writing Parquet test results")
+	return errors.Wrap(parquet.Write(w, []testresult.ParquetTestResults{*results}), "writing Parquet test results")
 }
 
 func makeTestResultsInfo(t task.Task, displayTaskInfo *apimodels.DisplayTaskInfo) testresult.TestResultsInfo {

@@ -435,7 +435,8 @@ Required arguments:
 - `--task` (`-t`): The task ID.
 - At least one of:
   - `--source`: Clone the repo for the task.
-  - `--artifacts`: Fetch the artifacts associated with the task.
+  - `--artifacts`: Fetch all artifacts associated with the task.
+  - `--artifact_name`: Fetch a specific artifact by name. Cannot be used in conjunction with `--artifacts`.
 
 Optional arguments:
 
@@ -455,6 +456,12 @@ Fetch only the given task's artifacts (excluding dependencies):
 
 ```bash
 evergreen fetch -t <task-id> --artifacts --shallow
+```
+
+Fetch a single artifact by name:
+
+```bash
+evergreen fetch -t <task-id> --artifact_name "My Artifact Name" --shallow
 ```
 
 ### List

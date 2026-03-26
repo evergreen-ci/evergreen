@@ -1,0 +1,21 @@
+{
+  task(taskId: "task_no_passing") {
+    id
+    prevTask {
+      id
+      status
+    }
+    prevTaskFailing {
+      id
+      status
+    }
+    prevTaskPassing {
+      id
+      status
+    }
+    prevTaskCompleted {
+      id
+      status
+    }
+  }
+}

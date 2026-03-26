@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
@@ -164,8 +163,6 @@ type Host struct {
 	// DockerOptions stores information for creating a container with a specific image and command
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options"`
 
-	// PortBindings is populated if PublishPorts is specified when creating docker container from task
-	PortBindings PortMap `bson:"port_bindings,omitempty" json:"port_bindings,omitempty"`
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
 
@@ -240,32 +237,10 @@ type VolumeAttachment struct {
 	IsHome     bool   `bson:"is_home" json:"is_home"`
 }
 
-// PortMap maps container port to the parent host ports (container port is formatted as <port>/<protocol>)
-type PortMap map[string][]string
-
-func GetPortMap(m nat.PortMap) PortMap {
-	res := map[string][]string{}
-	for containerPort, bindings := range m {
-		hostPorts := []string{}
-		for _, binding := range bindings {
-			hostPorts = append(hostPorts, binding.HostPort)
-		}
-		if len(hostPorts) > 0 {
-			res[string(containerPort)] = hostPorts
-		}
-	}
-	return res
-}
-
 // DockerOptions contains options for starting a container. This fulfills the
 // ProviderSettings interface to populate container information from the distro
 // settings.
 type DockerOptions struct {
-	// Optional parameters to define a registry name and authentication
-	RegistryName     string `mapstructure:"docker_registry_name" bson:"docker_registry_name,omitempty" json:"docker_registry_name,omitempty"`
-	RegistryUsername string `mapstructure:"docker_registry_user" bson:"docker_registry_user,omitempty" json:"docker_registry_user,omitempty"`
-	RegistryPassword string `mapstructure:"docker_registry_pw" bson:"docker_registry_pw,omitempty" json:"docker_registry_pw,omitempty"`
-
 	// Image is required and specifies the image for the container.
 	// This can be a URL or an image base, to be combined with a registry.
 	Image string `mapstructure:"image_url" bson:"image_url,omitempty" json:"image_url,omitempty"`
@@ -273,16 +248,8 @@ type DockerOptions struct {
 	Method string `mapstructure:"build_type" bson:"build_type,omitempty" json:"build_type,omitempty"`
 	// Command is the command to run on the docker (if not specified, will use the default entrypoint).
 	Command string `mapstructure:"command" bson:"command,omitempty" json:"command,omitempty"`
-	// If PublishPorts is true, any port that's exposed in the image will be published
-	PublishPorts bool `mapstructure:"publish_ports" bson:"publish_ports,omitempty" json:"publish_ports,omitempty"`
-	// If extra hosts are provided,these will be added to /etc/hosts on the container (in the form of hostname:IP)
-	ExtraHosts []string `mapstructure:"extra_hosts" bson:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
-	// If the container is created from host create, we want to skip building the image with agent
-	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 	// list of container environment variables KEY=VALUE
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
-	// StdinData is the data to pass to the container command's stdin.
-	StdinData []byte `mapstructure:"stdin_data" bson:"stdin_data,omitempty" json:"stdin_data,omitempty"`
 }
 
 // FromDistroSettings loads the Docker container options from the provider
@@ -816,10 +783,6 @@ func (h *Host) IsEphemeral() bool {
 
 func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
-}
-
-func (h *Host) NeedsPortBindings() bool {
-	return h.DockerOptions.PublishPorts && h.PortBindings == nil
 }
 
 // CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
@@ -1473,26 +1436,6 @@ func (h *Host) SetEC2Metadata(ctx context.Context, params HostMetadataOptions) e
 		h.Volumes = params.Volumes
 	}
 
-	return nil
-}
-
-// probably don't want to store the port mapping exactly this way
-func (h *Host) SetPortMapping(ctx context.Context, portsMap PortMap) error {
-	err := UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				PortBindingsKey: portsMap,
-			},
-		},
-	)
-	if err != nil {
-		return err
-	}
-	h.PortBindings = portsMap
 	return nil
 }
 
@@ -2504,20 +2447,6 @@ func CountInactiveHostsByProvider(ctx context.Context) ([]InactiveHostCounts, er
 	return counts, nil
 }
 
-// FindAllRunningContainers finds all the containers that are currently running
-func FindAllRunningContainers(ctx context.Context) ([]Host, error) {
-	query := bson.M{
-		ParentIDKey: bson.M{"$exists": true},
-		StatusKey:   evergreen.HostRunning,
-	}
-	hosts, err := Find(ctx, query)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding running containers")
-	}
-
-	return hosts, nil
-}
-
 // FindAllRunningParents finds all running hosts that have child containers
 func FindAllRunningParents(ctx context.Context) ([]Host, error) {
 	query := bson.M{
@@ -2527,21 +2456,6 @@ func FindAllRunningParents(ctx context.Context) ([]Host, error) {
 	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding running parents")
-	}
-
-	return hosts, nil
-}
-
-// FindAllRunningParentsOrdered finds all running hosts with child containers,
-// sorted in order of soonest  to latest LastContainerFinishTime
-func FindAllRunningParentsOrdered(ctx context.Context) ([]Host, error) {
-	query := bson.M{
-		StatusKey:        evergreen.HostRunning,
-		HasContainersKey: true,
-	}
-	hosts, err := Find(ctx, query, options.Find().SetSort(bson.M{LastContainerFinishTimeKey: 1}))
-	if err != nil {
-		return nil, errors.Wrap(err, "finding ordered running parents")
 	}
 
 	return hosts, nil
@@ -2685,37 +2599,6 @@ func (h *Host) UpdateLastContainerFinishTime(ctx context.Context, t time.Time) e
 	return nil
 }
 
-// FindRunningHosts is the underlying query behind the hosts page's table
-func FindRunningHosts(ctx context.Context, includeSpawnHosts bool) ([]Host, error) {
-	query := bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
-
-	if !includeSpawnHosts {
-		query[StartedByKey] = evergreen.User
-	}
-
-	pipeline := []bson.M{
-		{
-			"$match": query,
-		},
-		{
-			"$lookup": bson.M{
-				"from":         task.Collection,
-				"localField":   RunningTaskKey,
-				"foreignField": task.IdKey,
-				"as":           "task_full",
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path":                       "$task_full",
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}
-
-	return Aggregate(ctx, pipeline)
-}
-
 // FindAllHostsSpawnedByTasks finds all running hosts spawned by the
 // `host.create` command.
 func FindAllHostsSpawnedByTasks(ctx context.Context) ([]Host, error) {
@@ -2829,20 +2712,6 @@ func FindTerminatedHostsRunningTasks(ctx context.Context) ([]Host, error) {
 	}
 
 	return hosts, nil
-}
-
-// CountContainersOnParents counts how many containers are children of the given group of hosts
-func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error) {
-	ids := hosts.GetHostIds()
-	if len(ids) == 0 {
-		return 0, nil
-	}
-
-	query := bson.M{
-		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: bson.M{"$in": ids},
-	}
-	return Count(ctx, query)
 }
 
 // FindUphostContainersOnParents returns the containers that are children of the given hosts
@@ -3775,28 +3644,6 @@ func CountVirtualWorkstationsByInstanceType(ctx context.Context) ([]VirtualWorks
 	}
 
 	return data, nil
-}
-
-// ClearDockerStdinData clears the Docker stdin data from the host.
-func (h *Host) ClearDockerStdinData(ctx context.Context) error {
-	if len(h.DockerOptions.StdinData) == 0 {
-		return nil
-	}
-
-	dockerStdinDataKey := bsonutil.GetDottedKeyName(DockerOptionsKey, DockerOptionsStdinDataKey)
-	if err := UpdateOne(ctx, bson.M{
-		IdKey: h.Id,
-	},
-		bson.M{
-			"$unset": bson.M{dockerStdinDataKey: true},
-		},
-	); err != nil {
-		return err
-	}
-
-	h.DockerOptions.StdinData = nil
-
-	return nil
 }
 
 // nonAlphanumericRegexp matches any character that is not an alphanumeric
