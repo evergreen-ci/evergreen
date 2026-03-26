@@ -779,12 +779,27 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	t.S3Usage = h.s3Usage
-	if err := t.SaveS3Usage(ctx); err != nil {
+	lookup := func(ctx context.Context, bucket string) (int, bool) {
+		rule, err := s3lifecycle.FindByBucketAndPrefix(ctx, bucket, "")
+		if err != nil || rule == nil || rule.ExpirationDays == nil || *rule.ExpirationDays <= 0 {
+			return 0, false
+		}
+		return *rule.ExpirationDays, true
+	}
+	if err := t.SaveS3Usage(ctx, lookup); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "saving S3 usage",
 			"task_id": h.taskID,
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
+	}
+
+	var avgFilePutCost, maxFilePutCost, minFilePutCost float64
+	if t.S3Usage.Artifacts.Count > 0 && t.S3Usage.Artifacts.PutRequests > 0 {
+		costPerPut := t.TaskCost.S3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
+		avgFilePutCost = t.TaskCost.S3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
+		maxFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
+		minFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMinPutRequests)
 	}
 
 	s3Attrs := []attribute.KeyValue{
@@ -793,18 +808,13 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		attribute.Int64(evergreen.S3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
 		attribute.Int(evergreen.S3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
 		attribute.Float64(evergreen.S3ArtifactPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
+		attribute.Float64(evergreen.S3ArtifactStorageCostOtelAttribute, t.TaskCost.S3ArtifactStorageCost),
 		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
 		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
 		attribute.Float64(evergreen.S3LogPutCostOtelAttribute, t.TaskCost.S3LogPutCost),
-	}
-
-	if t.S3Usage.Artifacts.Count > 0 && t.S3Usage.Artifacts.PutRequests > 0 {
-		costPerPut := t.TaskCost.S3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
-		s3Attrs = append(s3Attrs,
-			attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost/float64(t.S3Usage.Artifacts.Count)),
-			attribute.Float64(evergreen.S3ArtifactWithMaxPutRequestsCostOtelAttribute, costPerPut*float64(t.S3Usage.Artifacts.ArtifactWithMaxPutRequests)),
-			attribute.Float64(evergreen.S3ArtifactWithMinPutRequestsCostOtelAttribute, costPerPut*float64(t.S3Usage.Artifacts.ArtifactWithMinPutRequests)),
-		)
+		attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+		attribute.Float64(evergreen.S3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
+		attribute.Float64(evergreen.S3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
 	}
 
 	span.SetAttributes(s3Attrs...)

@@ -5040,7 +5040,7 @@ func TestSaveS3Usage(t *testing.T) {
 				Count: 3,
 			},
 		}
-		require.NoError(t, tk.SaveS3Usage(ctx))
+		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t1")
 		require.NoError(t, err)
@@ -5050,6 +5050,8 @@ func TestSaveS3Usage(t *testing.T) {
 		assert.Equal(t, 3, dbTask.S3Usage.Artifacts.Count)
 	})
 
+	// CalculatesCostFromUsage checks that costs are calculated when DefaultMaxArtifactExpirationDays
+	// is set in the DB. This test will fail until the value is configured in the environment.
 	t.Run("CalculatesCostFromUsage", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 		tk := Task{Id: "t2"}
@@ -5061,20 +5063,64 @@ func TestSaveS3Usage(t *testing.T) {
 					PutRequests: 1000,
 					UploadBytes: 5 * 1024 * 1024,
 				},
-				Count: 10,
+				Count:         10,
+				BytesByBucket: map[string]int64{"mciuploads": 5 * 1024 * 1024},
 			},
 			Logs: s3usage.S3UploadMetrics{
 				PutRequests: 50,
 				UploadBytes: 500000,
 			},
 		}
-		require.NoError(t, tk.SaveS3Usage(ctx))
+		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t2")
 		require.NoError(t, err)
 		require.NotNil(t, dbTask)
 		assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
+		assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+		assert.Equal(t, 50, dbTask.S3Usage.Logs.PutRequests)
+		assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
+	})
+
+	// CalculatesCostFromUsageWithConfig seeds DefaultMaxArtifactExpirationDays and verifies
+	// the full cost calculation path works correctly end-to-end.
+	t.Run("CalculatesCostFromUsageWithConfig", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, evergreen.ConfigCollection))
+		costConfig := evergreen.CostConfig{
+			S3Cost: evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					DefaultMaxArtifactExpirationDays: 365,
+				},
+			},
+		}
+		require.NoError(t, costConfig.Set(ctx))
+
+		tk := Task{Id: "t2b"}
+		require.NoError(t, tk.Insert(ctx))
+
+		tk.S3Usage = s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{
+				S3UploadMetrics: s3usage.S3UploadMetrics{
+					PutRequests: 1000,
+					UploadBytes: 5 * 1024 * 1024,
+				},
+				Count:         10,
+				BytesByBucket: map[string]int64{"mciuploads": 5 * 1024 * 1024},
+			},
+			Logs: s3usage.S3UploadMetrics{
+				PutRequests: 50,
+				UploadBytes: 500000,
+			},
+		}
+		require.NoError(t, tk.SaveS3Usage(ctx, nil))
+
+		dbTask, err := FindOneId(ctx, "t2b")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
+		assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
+		assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
 		assert.Equal(t, 50, dbTask.S3Usage.Logs.PutRequests)
 		assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
 	})
@@ -5090,7 +5136,7 @@ func TestSaveS3Usage(t *testing.T) {
 				UploadBytes: 200000,
 			},
 		}
-		require.NoError(t, tk.SaveS3Usage(ctx))
+		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t4")
 		require.NoError(t, err)
@@ -5101,18 +5147,100 @@ func TestSaveS3Usage(t *testing.T) {
 		assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
 	})
 
+	// CalculatesArtifactStorageCost checks that storage cost is calculated when
+	// DefaultMaxArtifactExpirationDays is set in the DB. This test will fail until
+	// the value is configured in the environment.
+	t.Run("CalculatesArtifactStorageCost", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		tk := Task{Id: "t5", Project: "some-project"}
+		require.NoError(t, tk.Insert(ctx))
+
+		tk.S3Usage = s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{
+				S3UploadMetrics: s3usage.S3UploadMetrics{
+					UploadBytes: 10 * 1024 * 1024,
+				},
+				BytesByBucket: map[string]int64{"mciuploads": 10 * 1024 * 1024},
+			},
+		}
+		require.NoError(t, tk.SaveS3Usage(ctx, nil))
+
+		dbTask, err := FindOneId(ctx, "t5")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+	})
+
+	// CalculatesArtifactStorageCostWithConfig seeds DefaultMaxArtifactExpirationDays and verifies
+	// that storage cost is correctly calculated for a project with no known expiration rule.
+	t.Run("CalculatesArtifactStorageCostWithConfig", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, evergreen.ConfigCollection))
+		costConfig := evergreen.CostConfig{
+			S3Cost: evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					DefaultMaxArtifactExpirationDays: 365,
+				},
+			},
+		}
+		require.NoError(t, costConfig.Set(ctx))
+
+		tk := Task{Id: "t5b", Project: "some-project"}
+		require.NoError(t, tk.Insert(ctx))
+
+		tk.S3Usage = s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{
+				S3UploadMetrics: s3usage.S3UploadMetrics{
+					UploadBytes: 10 * 1024 * 1024,
+				},
+				BytesByBucket: map[string]int64{"mciuploads": 10 * 1024 * 1024},
+			},
+		}
+		require.NoError(t, tk.SaveS3Usage(ctx, nil))
+
+		dbTask, err := FindOneId(ctx, "t5b")
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+	})
+
 	t.Run("ZeroUsagePersistsWithoutCost", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 		tk := Task{Id: "t3"}
 		require.NoError(t, tk.Insert(ctx))
 
-		require.NoError(t, tk.SaveS3Usage(ctx))
+		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t3")
 		require.NoError(t, err)
 		require.NotNil(t, dbTask)
 		assert.True(t, dbTask.TaskCost.IsZero())
 	})
+}
+
+func TestArtifactExpirationDays(t *testing.T) {
+	days, found := artifactExpirationDays("mongodb-mongo-master", 365)
+	assert.Equal(t, 90, days)
+	assert.True(t, found)
+
+	days, found = artifactExpirationDays("mongodb-mongo-test", 365)
+	assert.Equal(t, 90, days)
+	assert.True(t, found)
+
+	days, found = artifactExpirationDays("mms-something", 365)
+	assert.Equal(t, 90, days)
+	assert.True(t, found)
+
+	days, found = artifactExpirationDays("mongosync-anything", 365)
+	assert.Equal(t, 180, days)
+	assert.True(t, found)
+
+	days, found = artifactExpirationDays("some-other-project", 365)
+	assert.Equal(t, 365, days)
+	assert.False(t, found)
+
+	days, found = artifactExpirationDays("", 365)
+	assert.Equal(t, 365, days)
+	assert.False(t, found)
 }
 
 func TestHasValidDistro(t *testing.T) {

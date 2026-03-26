@@ -33,6 +33,8 @@ type S3StorageCostConfig struct {
 	StandardStorageCostDiscount float64 `bson:"standard_storage_cost_discount" json:"standard_storage_cost_discount" yaml:"standard_storage_cost_discount"`
 	IAStorageCostDiscount       float64 `bson:"i_a_storage_cost_discount" json:"i_a_storage_cost_discount" yaml:"i_a_storage_cost_discount"`
 	ArchiveStorageCostDiscount  float64 `bson:"archive_storage_cost_discount" json:"archive_storage_cost_discount" yaml:"archive_storage_cost_discount"`
+	// DefaultMaxArtifactExpirationDays is the fallback retention period used when no lifecycle rule is found for a bucket.
+	DefaultMaxArtifactExpirationDays int `bson:"default_max_artifact_expiration_days" json:"default_max_artifact_expiration_days" yaml:"default_max_artifact_expiration_days"`
 }
 
 // S3CostConfig represents S3 cost configuration with separate upload and storage settings.
@@ -67,8 +69,12 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			financeConfigFormulaKey:             c.FinanceFormula,
 			financeConfigSavingsPlanDiscountKey: c.SavingsPlanDiscount,
 			financeConfigOnDemandDiscountKey:    c.OnDemandDiscount,
-			financeConfigS3CostKey:              c.S3Cost,
-			financeConfigEBSCostKey:             c.EBSCost,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "upload", "upload_cost_discount"):                  c.S3Cost.Upload.UploadCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "standard_storage_cost_discount"):       c.S3Cost.Storage.StandardStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "i_a_storage_cost_discount"):            c.S3Cost.Storage.IAStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "archive_storage_cost_discount"):        c.S3Cost.Storage.ArchiveStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "default_max_artifact_expiration_days"): c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+			financeConfigEBSCostKey: c.EBSCost,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -90,6 +96,9 @@ func (c *CostConfig) ValidateAndDefault() error {
 	validateDiscountField(c.S3Cost.Storage.IAStorageCostDiscount, "S3 infrequent access storage cost discount", catcher)
 	validateDiscountField(c.S3Cost.Storage.ArchiveStorageCostDiscount, "S3 archive storage cost discount", catcher)
 	validateDiscountField(c.EBSCost.EBSDiscount, "EBS cost discount", catcher)
+	if c.S3Cost.Storage.DefaultMaxArtifactExpirationDays < 0 {
+		catcher.New("default max artifact expiration days must be non-negative")
+	}
 
 	return catcher.Resolve()
 }
@@ -103,5 +112,6 @@ func (c *CostConfig) IsConfigured() bool {
 		c.S3Cost.Storage.StandardStorageCostDiscount != 0 ||
 		c.S3Cost.Storage.IAStorageCostDiscount != 0 ||
 		c.S3Cost.Storage.ArchiveStorageCostDiscount != 0 ||
-		c.EBSCost.EBSDiscount != 0
+		c.EBSCost.EBSDiscount != 0 ||
+		c.S3Cost.Storage.DefaultMaxArtifactExpirationDays != 0
 }

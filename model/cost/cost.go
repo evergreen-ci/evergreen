@@ -14,6 +14,8 @@ type Cost struct {
 	S3ArtifactPutCost float64 `bson:"s3_artifact_put_cost,omitempty" json:"s3_artifact_put_cost,omitempty"`
 	// S3LogPutCost is the calculated S3 PUT request cost for uploading task log chunks.
 	S3LogPutCost float64 `bson:"s3_log_put_cost,omitempty" json:"s3_log_put_cost,omitempty"`
+	// S3ArtifactStorageCost is the calculated S3 storage cost for artifact bytes over their retention period.
+	S3ArtifactStorageCost float64 `bson:"s3_artifact_storage_cost,omitempty" json:"s3_artifact_storage_cost,omitempty"`
 }
 
 // IsZero returns true if all cost components are zero.
@@ -23,5 +25,6 @@ func (c Cost) IsZero() bool {
 		c.OnDemandEBSThroughputCost == 0 &&
 		c.AdjustedEBSThroughputCost == 0 &&
 		c.S3ArtifactPutCost == 0 &&
-		c.S3LogPutCost == 0
+		c.S3LogPutCost == 0 &&
+		c.S3ArtifactStorageCost == 0
 }

@@ -554,7 +554,7 @@ retryLoop:
 	)
 
 	maxPuts, minPuts := computePerFileExtremes(uploadedFiles)
-	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles), maxPuts, minPuts)
+	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles), maxPuts, minPuts, s3pc.Bucket)
 
 	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles))
 	if err != nil {

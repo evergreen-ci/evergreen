@@ -3144,9 +3144,10 @@ func (a *APIS3UploadCostConfig) ToService() (any, error) {
 }
 
 type APIS3StorageCostConfig struct {
-	StandardStorageCostDiscount float64 `json:"standard_storage_cost_discount"`
-	IAStorageCostDiscount       float64 `json:"i_a_storage_cost_discount"`
-	ArchiveStorageCostDiscount  float64 `json:"archive_storage_cost_discount"`
+	StandardStorageCostDiscount      float64 `json:"standard_storage_cost_discount"`
+	IAStorageCostDiscount            float64 `json:"i_a_storage_cost_discount"`
+	ArchiveStorageCostDiscount       float64 `json:"archive_storage_cost_discount"`
+	DefaultMaxArtifactExpirationDays int     `json:"default_max_artifact_expiration_days"`
 }
 
 func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
@@ -3155,6 +3156,7 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 		a.StandardStorageCostDiscount = v.StandardStorageCostDiscount
 		a.IAStorageCostDiscount = v.IAStorageCostDiscount
 		a.ArchiveStorageCostDiscount = v.ArchiveStorageCostDiscount
+		a.DefaultMaxArtifactExpirationDays = v.DefaultMaxArtifactExpirationDays
 		return nil
 	default:
 		return errors.Errorf("incorrect type %T", v)
@@ -3163,9 +3165,10 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 
 func (a *APIS3StorageCostConfig) ToService() (any, error) {
 	return evergreen.S3StorageCostConfig{
-		StandardStorageCostDiscount: a.StandardStorageCostDiscount,
-		IAStorageCostDiscount:       a.IAStorageCostDiscount,
-		ArchiveStorageCostDiscount:  a.ArchiveStorageCostDiscount,
+		StandardStorageCostDiscount:      a.StandardStorageCostDiscount,
+		IAStorageCostDiscount:            a.IAStorageCostDiscount,
+		ArchiveStorageCostDiscount:       a.ArchiveStorageCostDiscount,
+		DefaultMaxArtifactExpirationDays: a.DefaultMaxArtifactExpirationDays,
 	}, nil
 }
 

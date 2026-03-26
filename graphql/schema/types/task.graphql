@@ -325,6 +325,7 @@ type Cost {
   adjustedEC2Cost: Float
   s3ArtifactPutCost: Float
   s3LogPutCost: Float
+  s3ArtifactStorageCost: Float
 }
 
 input QuarantineTestInput {

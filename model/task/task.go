@@ -4235,14 +4235,22 @@ func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 
-// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
-func (t *Task) SaveS3Usage(ctx context.Context) error {
+// BucketExpirationLookup returns the expiration days for a bucket's default lifecycle rule.
+// Returns (days, true) if found, (0, false) if not.
+type BucketExpirationLookup func(ctx context.Context, bucket string) (int, bool)
+
+// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT and storage costs.
+// lookup is used to resolve the actual lifecycle expiration for each artifact bucket; if nil or
+// no rule is found for a bucket, DefaultMaxArtifactExpirationDays from the cost config is used as the fallback.
+func (t *Task) SaveS3Usage(ctx context.Context, lookup BucketExpirationLookup) error {
 	t.calculateS3PutCosts(ctx)
+	t.calculateS3StorageCosts(ctx, lookup)
 
 	setFields := bson.M{
 		S3UsageKey: t.S3Usage,
-		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"): t.TaskCost.S3ArtifactPutCost,
-		bsonutil.GetDottedKeyName(TaskCostKey, "s3_log_put_cost"):      t.TaskCost.S3LogPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"):     t.TaskCost.S3ArtifactPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_log_put_cost"):          t.TaskCost.S3LogPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_storage_cost"): t.TaskCost.S3ArtifactStorageCost,
 	}
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
@@ -4267,6 +4275,67 @@ func (t *Task) calculateS3PutCosts(ctx context.Context) {
 	}
 	if t.S3Usage.Logs.PutRequests > 0 {
 		t.TaskCost.S3LogPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Logs.PutRequests, costConfig)
+	}
+}
+
+// artifactExpirationDays returns the total retention period in days for artifacts based on the project identifier.
+// defaultDays is used for projects with no known bucket configuration and should be set to
+// DefaultMaxArtifactExpirationDays from the cost config.
+// Returns false if no project-specific rule was found and defaultDays was used.
+func artifactExpirationDays(project string, defaultDays int) (int, bool) {
+	if strings.HasPrefix(project, "mongodb-mongo") || strings.HasPrefix(project, "mms") {
+		return 90, true // 30 standard + 60 IA + 0 archive
+	}
+	if strings.HasPrefix(project, "mongosync") {
+		return 180, true // 30 standard + 60 IA + 90 archive
+	}
+	return defaultDays, false
+}
+
+// calculateS3StorageCosts calculates S3 storage costs for artifact bytes, grouped by bucket.
+// For each bucket, lookup is called to resolve the actual lifecycle expiration days.
+// Falls back to 365 days (the maximum for correctly configured Evergreen buckets) if lookup is
+// nil or returns no result, and logs a warning so DevProd can fix the misconfigured bucket.
+func (t *Task) calculateS3StorageCosts(ctx context.Context, lookup BucketExpirationLookup) {
+	if t.S3Usage.Artifacts.UploadBytes <= 0 {
+		return
+	}
+
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not get cost config to calculate S3 storage costs",
+			"task_id": t.Id,
+		}))
+		return
+	}
+
+	resolveExpiration := func(bucket string) int {
+		if lookup != nil {
+			if days, ok := lookup(ctx, bucket); ok {
+				return days
+			}
+			grip.Warning(message.Fields{
+				"message": "no lifecycle expiration found for bucket, falling back to project-based expiration",
+				"bucket":  bucket,
+				"task_id": t.Id,
+			})
+		}
+		days, projectFound := artifactExpirationDays(t.Project, costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays)
+		if !projectFound {
+			grip.Warning(message.Fields{
+				"message":      "using default max artifact expiration days",
+				"reason":       "no project-specific artifact expiration rule found",
+				"project":      t.Project,
+				"task_id":      t.Id,
+				"default_days": days,
+			})
+		}
+		return days
+	}
+
+	for bucket, bytes := range t.S3Usage.Artifacts.BytesByBucket {
+		t.TaskCost.S3ArtifactStorageCost += s3usage.CalculateS3StorageCostWithConfig(bytes, resolveExpiration(bucket), costConfig)
 	}
 }
 

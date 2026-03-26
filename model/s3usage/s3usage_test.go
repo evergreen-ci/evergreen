@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestS3Usage(t *testing.T) {
@@ -41,19 +42,26 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 
-		s3Usage.IncrementArtifacts(5, 1024, 2, 3, 2)
+		s3Usage.IncrementArtifacts(5, 1024, 2, 3, 2, "bucket-a")
 		assert.Equal(t, 5, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 2, s3Usage.Artifacts.Count)
 		assert.Equal(t, 3, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 2, s3Usage.Artifacts.ArtifactWithMinPutRequests)
+		require.NotNil(t, s3Usage.Artifacts.BytesByBucket)
+		assert.Equal(t, int64(1024), s3Usage.Artifacts.BytesByBucket["bucket-a"])
 
-		s3Usage.IncrementArtifacts(10, 2048, 3, 8, 1)
+		s3Usage.IncrementArtifacts(10, 2048, 3, 8, 1, "bucket-b")
 		assert.Equal(t, 15, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 5, s3Usage.Artifacts.Count)
 		assert.Equal(t, 8, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 1, s3Usage.Artifacts.ArtifactWithMinPutRequests)
+		assert.Equal(t, int64(1024), s3Usage.Artifacts.BytesByBucket["bucket-a"], "bucket-a bytes should be unchanged")
+		assert.Equal(t, int64(2048), s3Usage.Artifacts.BytesByBucket["bucket-b"])
+
+		s3Usage.IncrementArtifacts(3, 512, 1, 3, 3, "bucket-a")
+		assert.Equal(t, int64(1536), s3Usage.Artifacts.BytesByBucket["bucket-a"], "bucket-a bytes should accumulate across invocations")
 	})
 
 	t.Run("IncrementLogs", func(t *testing.T) {
@@ -281,5 +289,4 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 		cost := CalculateS3StorageCostWithConfig(GB, 365, nil)
 		assert.Equal(t, 0.0, cost)
 	})
-
 }
