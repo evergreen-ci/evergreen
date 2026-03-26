@@ -2477,9 +2477,6 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 	if depCache == nil {
 		depCache = make(map[string]Task)
 	}
-	for _, t := range tasks {
-		depCache[t.Id] = t
-	}
 
 	return getRecursiveDependenciesUpHelper(ctx, tasks, depCache, 0)
 }
@@ -2490,6 +2487,10 @@ func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCach
 	}
 	if depth >= maxDependencyDepth {
 		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
+	for _, t := range tasks {
+		depCache[t.Id] = t
 	}
 
 	tasksToFind := []string{}
@@ -2524,10 +2525,6 @@ func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCach
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
 
-	for _, dep := range deps {
-		depCache[dep.Id] = dep
-	}
-
 	recursiveDeps, err := getRecursiveDependenciesUpHelper(ctx, deps, depCache, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
@@ -2546,9 +2543,6 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	if taskMap == nil {
 		taskMap = make(map[string]bool)
 	}
-	for _, t := range tasks {
-		taskMap[t] = true
-	}
 
 	return getRecursiveDependenciesDownHelper(ctx, tasks, taskMap, 0)
 }
@@ -2559,6 +2553,10 @@ func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, tas
 	}
 	if depth >= maxDependencyDepth {
 		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
+	for _, t := range tasks {
+		taskMap[t] = true
 	}
 
 	// find the tasks that depend on these tasks
@@ -2575,7 +2573,6 @@ func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, tas
 	for _, t := range dependOnUsTasks {
 		if !taskMap[t.Id] {
 			newDeps = append(newDeps, t)
-			taskMap[t.Id] = true
 		}
 	}
 
