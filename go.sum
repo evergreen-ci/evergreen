@@ -159,8 +159,8 @@ github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888 h1:ypl1JbRMZS5q
 github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888/go.mod h1:vcEVfn330vgy8Vk6VpE9t51KD4oJhfw2e2zy85KqYAI=
 github.com/evergreen-ci/bond v0.0.0-20251209195750-b541586174f7 h1:Ex5a9llpYhm8tsflUnn7ekHlUPOStPBI6V7MhI9bukw=
 github.com/evergreen-ci/bond v0.0.0-20251209195750-b541586174f7/go.mod h1:dwKtHZQ8bJSIDzC1ukv3/BqWyILbs2XqTMaJAx8ZLGA=
-github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2 h1:bBwDxfZES3z3l2Socek1XBKYaTZIZ549PcaBZkw5UH4=
-github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2/go.mod h1:YLBfKY+Y1yFapi7AZUR0tfJ8H+pbzF1CO94ixHDaUOM=
+github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7 h1:Sg7vxkrwplBA6M5D1Y4Q49CKEnzmhkfgalLXEkiRpK8=
+github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7/go.mod h1:+j7L0jgzpxAZbGcZPjyFporVe3L+GMtcIozz+fEETVw=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f h1:UCLTMndEQDi/BfiYa/MIv6okh7CLmz250oA03FLLA+w=
 github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f/go.mod h1:FnyqGuSg33gR9wNbt2qo9wPaNUfP85+a8+UTVyx/gdg=
 github.com/evergreen-ci/gimlet v0.0.0-20260325201542-0eb4bfb95c82 h1:svPTW+k/CGabHiiGoFoRkC6N20fuud+7XRuo8ac+4mA=

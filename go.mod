@@ -16,7 +16,7 @@ require (
 	github.com/docker/go-connections v0.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
-	github.com/evergreen-ci/certdepot v0.0.0-20251209180210-3f52e45cc5a2
+	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
 	github.com/evergreen-ci/gimlet v0.0.0-20260325201542-0eb4bfb95c82
 	github.com/evergreen-ci/pail v0.0.0-20260326185823-a670fac5e872
 	github.com/evergreen-ci/poplar v0.0.0-20260311151515-d99a1837f349
