@@ -1001,13 +1001,14 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfMinute(0).Format(TSFormat)
-		taskIDsAttempt := make([]string, 0, len(toRetry))
+		taskIDsAttempted := make([]string, 0, len(toRetry))
 		for _, t := range toRetry {
-			if t.TaskOutputInfo == nil {
+			output, ok := t.GetTaskOutputSafe()
+			if !ok {
 				continue
 			}
-			taskIDsAttempt = append(taskIDsAttempt, t.Id)
-			sourceCfg := t.TaskOutputInfo.TaskLogs.BucketConfig
+			taskIDsAttempted = append(taskIDsAttempted, t.Id)
+			sourceCfg := output.TaskLogs.BucketConfig
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerWeeklyRetry)), "enqueueing move logs job for task '%s'", t.Id)
 		}
 
@@ -1015,9 +1016,9 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			"message":                 "retry failed log move jobs",
 			"tasks_found":             tasksFound,
 			"task_ids_all_candidates": taskIDsAllCandidates,
-			"task_ids_attempt":        taskIDsAttempt,
-			"task_count_attempt":      len(taskIDsAttempt),
-			"jobs_enqueued":           len(taskIDsAttempt) - catcher.Len(),
+			"task_ids_attempt":        taskIDsAttempted,
+			"task_count_attempt":      len(taskIDsAttempted),
+			"jobs_enqueued":           len(taskIDsAttempted) - catcher.Len(),
 			"lookback_months":         lookbackMonths,
 			"max_jobs_per_run":        maxJobs,
 		})
