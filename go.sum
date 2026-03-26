@@ -325,8 +325,8 @@ github.com/moby/sys/userns v0.1.0 h1:tVLXkFOxVu9A64/yh59slHVv9ahO9UIev4JZusOLG/g
 github.com/moby/sys/userns v0.1.0/go.mod h1:IHUYgu/kao6N8YZlp9Cf444ySSvCmDlmzUcYfDHOl28=
 github.com/moby/term v0.5.0 h1:xt8Q1nalod/v7BqbG21f8mQPqH+xAaC9C3N3wfWbVP0=
 github.com/moby/term v0.5.0/go.mod h1:8FzsFHVUBGZdbDsJw/ot+X+d5HLUbvklYLJ9uGfcI3Y=
-github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973 h1:G2rYMKchVa6vvErWYAn4w6ukQ1ah5Q/X980S0JgIzQM=
-github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973/go.mod h1:MWHcd5dPCusK3PYGh3bb+3RjFRfgXhKJdpotaX4xG/Y=
+github.com/mongodb/amboy v0.0.0-20260326190628-51c8dde3a7f5 h1:Os6cZLqQfyWRzd/KBRfpnLoO+bfdaupek2UDPEX8hDQ=
+github.com/mongodb/amboy v0.0.0-20260326190628-51c8dde3a7f5/go.mod h1:iXRCm5xdjXzVMJ0eqrxseR0AiMMbMyL0K13ozgusw5A=
 github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa h1:IqpkVPTPZ3M6uoy/APjmyzZayUacTdcQMyRLGQe2HRY=
 github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa/go.mod h1:RMSHZFsUjqxiOzF2e3hm6Qhr3e0n3oD4LGverSprdFI=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac h1:KL3+DC+q8yS+QmdPAvnJiMHNU9VcYD3+4+0U1F+Crzo=
