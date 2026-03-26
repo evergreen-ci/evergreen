@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"slices"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -23,8 +22,6 @@ import (
 const (
 	maxGeneratedBuildVariants = 200
 	maxGeneratedTasks         = 25000
-
-	checkForCyclesTimeout = 10 * time.Minute
 
 	numGenerateTaskBVAttribute           = "evergreen.generate_tasks.num_build_variants"
 	numGenerateTasksAttribute            = "evergreen.generate_tasks.num_created"
@@ -458,13 +455,9 @@ func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *
 // CheckForCycles builds a dependency graph from the existing tasks in the version and simulates
 // adding the generated tasks, their dependencies, and dependencies on the generated tasks to the graph.
 // Returns a DependencyCycleError error if the resultant graph contains dependency cycles.
-func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Project, projectRef *ProjectRef, settings *evergreen.Settings) error {
-	ctx, cancel := context.WithTimeout(ctx, checkForCyclesTimeout)
-	defer cancel()
-
+func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Project, projectRef *ProjectRef) error {
 	ctx, span := tracer.Start(ctx, "check-for-cycles")
 	defer span.End()
-
 	existingTasksGraph, err := task.VersionDependencyGraph(ctx, g.Task.Version, false)
 	if err != nil {
 		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
@@ -473,10 +466,6 @@ func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Pr
 	simulatedGraph, err := g.simulateNewTasks(ctx, existingTasksGraph, v, p, projectRef)
 	if err != nil {
 		return errors.Wrap(err, "simulating new tasks")
-	}
-
-	if nodeCount := simulatedGraph.NumNodes(); nodeCount > settings.TaskLimits.MaxTasksPerVersion {
-		return errors.Errorf("dependency graph has %d nodes, which exceeds the maximum of %d", nodeCount, settings.TaskLimits.MaxTasksPerVersion)
 	}
 
 	if cycles := simulatedGraph.Cycles(); len(cycles) > 0 {

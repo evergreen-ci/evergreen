@@ -113,11 +113,6 @@ func (g *DependencyGraph) Nodes() []TaskNode {
 	return tNodes
 }
 
-// NumNodes returns the number of nodes in the graph.
-func (g *DependencyGraph) NumNodes() int {
-	return len(g.tasksToNodes)
-}
-
 // AddTaskNode adds a node to the graph.
 func (g *DependencyGraph) AddTaskNode(tNode TaskNode) {
 	if _, ok := g.tasksToNodes[tNode]; ok {

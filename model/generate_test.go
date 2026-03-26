@@ -2006,7 +2006,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}, &evergreen.Settings{TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 75000}}))
+		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("CreatesLoop", func(t *testing.T) {
@@ -2044,7 +2044,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 			},
 		}
 
-		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}, &evergreen.Settings{TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 75000}}))
+		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 	t.Run("Dependent on Generator", func(t *testing.T) {
 		// Generator generates: [ A (depends on generator) ]
@@ -2077,7 +2077,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}, &evergreen.Settings{TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 75000}}))
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("Loop with generator", func(t *testing.T) {
@@ -2131,7 +2131,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}, &evergreen.Settings{TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 75000}}))
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("NoCycles", func(t *testing.T) {
@@ -2164,7 +2164,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}, &evergreen.Settings{TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 75000}}))
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("InactiveBuild", func(t *testing.T) {
@@ -2198,7 +2198,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}, &evergreen.Settings{TaskLimits: evergreen.TaskLimitsConfig{MaxTasksPerVersion: 75000}}))
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 }
 
