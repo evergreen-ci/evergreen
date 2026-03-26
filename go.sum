@@ -329,6 +329,8 @@ github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973 h1:G2rYMKchVa6vvErWY
 github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973/go.mod h1:MWHcd5dPCusK3PYGh3bb+3RjFRfgXhKJdpotaX4xG/Y=
 github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa h1:IqpkVPTPZ3M6uoy/APjmyzZayUacTdcQMyRLGQe2HRY=
 github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa/go.mod h1:RMSHZFsUjqxiOzF2e3hm6Qhr3e0n3oD4LGverSprdFI=
+github.com/mongodb/anser v0.0.0-20260326151956-de40f3a687fe h1:GitIS0k9LmbnHhzdaLBbpRtYMEhRrvZxc8oqLWPKTJ0=
+github.com/mongodb/anser v0.0.0-20260326151956-de40f3a687fe/go.mod h1:YpqGgNJCoU6aU3700SDvLaNiUayY81+htDgvlfw8WkA=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac h1:KL3+DC+q8yS+QmdPAvnJiMHNU9VcYD3+4+0U1F+Crzo=
 github.com/mongodb/ftdc v0.0.0-20251208183831-018e343a1aac/go.mod h1:iaQJgZ9mNDQzR9Y8BY6D/Y6i8IzadyjY91a20xE5sOE=
 github.com/mongodb/grip v0.0.0-20251203205830-b5c5c666ab94 h1:kEIOld0OEhvbJSo26V3RrARWnV1gBpFW/6chCZJ1yx4=
