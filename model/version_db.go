@@ -130,7 +130,6 @@ func BaseVersionByProjectIdAndRevision(projectId, revision string) db.Q {
 			VersionRequesterKey: bson.M{
 				"$in": []string{
 					evergreen.RepotrackerVersionRequester,
-					evergreen.TriggerRequester,
 				},
 			},
 		})
