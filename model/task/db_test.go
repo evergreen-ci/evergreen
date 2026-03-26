@@ -512,6 +512,24 @@ func TestFindOneIdWithGeneratedJSON(t *testing.T) {
 	assert.Equal(t, taskWithGeneratedJSON.GeneratedJSONAsString, dbTask.GeneratedJSONAsString)
 }
 
+func TestFind(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	taskWithGeneratedJSON := Task{
+		Id:                    "task_with_generated_json",
+		Status:                evergreen.TaskSucceeded,
+		GeneratedJSONAsString: GeneratedJSONFiles{"large_json_1", "large_json_2", "large_json_3"},
+	}
+	require.NoError(t, taskWithGeneratedJSON.Insert(t.Context()))
+
+	tasks, err := Find(t.Context(), bson.M{IdKey: taskWithGeneratedJSON.Id})
+	require.NoError(t, err)
+	require.Len(t, tasks, 1)
+	assert.Equal(t, taskWithGeneratedJSON.Id, tasks[0].Id)
+	assert.Equal(t, taskWithGeneratedJSON.Status, tasks[0].Status)
+	assert.Nil(t, tasks[0].GeneratedJSONAsString)
+}
+
 func TestAddHostCreateDetails(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

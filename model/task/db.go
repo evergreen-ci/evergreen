@@ -1267,16 +1267,13 @@ func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 func FindOneId(ctx context.Context, id string) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
-
 	err := db.FindOneQ(ctx, Collection, query, task)
-
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task by ID")
 	}
-
 	return task, nil
 }
 
@@ -1284,8 +1281,7 @@ func FindOneId(ctx context.Context, id string) (*Task, error) {
 // including the GeneratedJSONAsString field.
 func FindOneIdWithGeneratedJSON(ctx context.Context, id string) (*Task, error) {
 	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
-
-	return task, errors.Wrap(err, "finding task by ID with generated json")
+	return task, errors.Wrap(err, "finding task by ID with generated JSON")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
@@ -1578,7 +1574,7 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
-	query := db.Query(filter)
+	query := db.Query(filter).Project(bson.M{GeneratedJSONAsStringKey: 0})
 	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
