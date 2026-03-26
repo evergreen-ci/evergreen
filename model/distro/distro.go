@@ -312,7 +312,6 @@ type Expansion struct {
 
 const (
 	DockerImageBuildTypeImport = "import"
-	DockerImageBuildTypePull   = "pull"
 
 	// Bootstrapping mechanisms
 	// BootstrapMethodNone is for internal use only.

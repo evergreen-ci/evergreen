@@ -26,8 +26,6 @@ const (
 	HostUpdateError                = "Error updating host"
 	HostTerminationQueueingSuccess = "Host %v successfully queued for termination"
 	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
-	HostStatusWriteConfirm         = "Successfully updated host status"
-	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
 	HostReprovisionConfirm         = "Successfully marked host as needing to reprovision"
 )
 

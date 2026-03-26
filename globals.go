@@ -570,7 +570,6 @@ const (
 	RestartAction     ModificationAction = "restart"
 	SetActiveAction   ModificationAction = "set_active"
 	SetPriorityAction ModificationAction = "set_priority"
-	AbortAction       ModificationAction = "abort"
 )
 
 // Constants for Evergreen package names (including legacy ones).
@@ -871,13 +870,6 @@ func (k SenderKey) String() string {
 	}
 }
 
-// DevProdJiraServiceField defines a required field for DEVPROD tickets, which we sometimes auto-generate.
-// Using "Other" prevents this from getting out of sync with service naming too quickly.
-var DevProdJiraServiceField = map[string]string{
-	"id":    devProdServiceId,
-	"value": devProdServiceValue,
-}
-
 const (
 	PriorityLevelEmergency = "emergency"
 	PriorityLevelAlert     = "alert"
@@ -888,12 +880,6 @@ const (
 	PriorityLevelInfo      = "info"
 	PriorityLevelDebug     = "debug"
 	PriorityLevelTrace     = "trace"
-)
-
-const (
-	DevProdServiceFieldName = "customfield_24158"
-	devProdServiceId        = "27020"
-	devProdServiceValue     = "Other"
 )
 
 // Recognized Evergreen agent CPU architectures, which should be in the form
@@ -986,14 +972,6 @@ var (
 		HostTerminated,
 		HostQuarantined,
 		HostDecommissioned,
-	}
-
-	// NotRunningStatus is a list of host statuses from before the host starts running.
-	NotRunningStatus = []string{
-		HostUninitialized,
-		HostBuilding,
-		HostProvisioning,
-		HostStarting,
 	}
 
 	// IsRunningOrWillRunStatuses includes all statuses for active hosts (see
@@ -1108,8 +1086,6 @@ var (
 		TaskDispatched,
 		TaskInactive,
 	}
-
-	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 

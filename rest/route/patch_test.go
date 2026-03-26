@@ -75,12 +75,12 @@ func (s *PatchByIdSuite) TestFindById() {
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
-	new_id := mgobson.NewObjectId()
+	newId := mgobson.NewObjectId()
 	for _, i := range s.objIds {
-		s.NotEqual(new_id, i)
+		s.NotEqual(newId, i)
 	}
 
-	s.route.patchId = new_id.Hex()
+	s.route.patchId = newId.Hex()
 	res := s.route.Run(context.TODO())
 	s.Equal(http.StatusNotFound, res.Status())
 }
@@ -360,12 +360,12 @@ func (s *PatchAbortSuite) TestAbortFail() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := makeAbortPatch().(*patchAbortHandler)
-	new_id := mgobson.NewObjectId()
+	newId := mgobson.NewObjectId()
 	for _, i := range s.objIds {
-		s.NotEqual(new_id, i)
+		s.NotEqual(newId, i)
 	}
 
-	rm.patchId = new_id.Hex()
+	rm.patchId = newId.Hex()
 	res := rm.Run(ctx)
 	s.NotEqual(http.StatusOK, res.Status())
 }
@@ -420,10 +420,10 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	rm := makeChangePatchStatus(env).(*patchChangeStatusHandler)
 
 	rm.patchId = s.objIds[0]
-	var tmp_true = true
-	rm.Activated = &tmp_true
-	var tmp_seven = int64(7)
-	rm.Priority = &tmp_seven
+	var tmpTrue = true
+	rm.Activated = &tmpTrue
+	var tmpSeven = int64(7)
+	rm.Priority = &tmpSeven
 	res := rm.Run(ctx)
 	s.NotNil(res)
 	p1, err := data.FindPatchById(s.T().Context(), s.objIds[0])

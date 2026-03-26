@@ -58,16 +58,6 @@ const (
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
 )
 
-var UnblockedGithubStatuses = []string{
-	githubPRBehind,
-	githubPRClean,
-	githubPRDirty,
-	githubPRDraft,
-	githubPRHasHooks,
-	githubPRUnknown,
-	githubPRUnstable,
-}
-
 var githubWritePermissions = []string{
 	GithubPermissionAdmin,
 	GithubPermissionWrite,
@@ -83,20 +73,6 @@ var allGitHubPermissions = []string{
 }
 
 const (
-	// All PR statuses except for "blocked" based on statuses listed here:
-	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
-	// Because the pr.MergeableState is not documented, it can change without
-	// notice. That's why we want to only allow fields we know to be unblocked
-	// rather than simply blocking the "blocked" status. That way if it does
-	// change, it doesn't fail silently.
-	githubPRBehind   = "behind"
-	githubPRClean    = "clean"
-	githubPRDirty    = "dirty"
-	githubPRDraft    = "draft"
-	githubPRHasHooks = "has_hooks"
-	githubPRUnknown  = "unknown"
-	githubPRUnstable = "unstable"
-
 	githubCheckRunSuccess        = "success"
 	githubCheckRunFailure        = "failure"
 	githubCheckRunSkipped        = "skipped"
@@ -253,7 +229,6 @@ const (
 	// GitHub merge queue removal reasons
 	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
 	MergeQueueReasonMerged      = "merged"      // Successfully merged
-	MergeQueueReasonDequeued    = "dequeued"    // Manually removed
 
 	// Merge queue status values for metrics
 	MergeQueueStatusSuccess = "success" // Successfully completed/merged
