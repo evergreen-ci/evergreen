@@ -2,7 +2,7 @@ package cloud
 
 import (
 	"os"
-	"testing
+	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
