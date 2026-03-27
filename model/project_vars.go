@@ -609,7 +609,9 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
 		}
-
+		if originalProjectVars == nil {
+			return nil, errors.Errorf("project vars for project '%s' not found", projectVars.Id)
+		}
 		if originalProjectVars.PrivateVars == nil {
 			initializeUpdate[privateVarsMapKey] = bson.M{}
 		}
