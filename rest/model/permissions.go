@@ -24,7 +24,7 @@ type APIPermissionLevel struct {
 // APIUserProjectPermissions is the response for GET /users/{user_id}/permission-details.
 type APIUserProjectPermissions struct {
 	UserID               string                          `json:"user_id"`
-	AvailablePermissions map[string][]APIPermissionLevel `json:"available_permissions"`
+	AvailablePermissions map[string][]APIPermissionLevel `json:"available_permissions,omitempty"`
 	Projects             []APIProjectPermissionSummary   `json:"projects"`
 }
 
