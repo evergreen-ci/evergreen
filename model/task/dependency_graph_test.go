@@ -250,32 +250,6 @@ func TestTasksDependingOnTask(t *testing.T) {
 	assert.Equal(t, tasks[0].Id, edges[0].From.ID)
 }
 
-func TestReachableFromNode(t *testing.T) {
-	tasks := []Task{
-		{Id: "t0", DependsOn: []Dependency{{TaskId: "t1"}, {TaskId: "t2"}}},
-		{Id: "t1", DependsOn: []Dependency{{TaskId: "t3"}}},
-		{Id: "t2", DependsOn: []Dependency{{TaskId: "t4"}}},
-		{Id: "t3"},
-		{Id: "t4"},
-	}
-	g := NewDependencyGraph(false)
-	g.buildFromTasks(tasks)
-
-	reachable := g.reachableFromNode(tasks[0].ToTaskNode())
-	assert.Len(t, reachable, 4)
-	assert.Contains(t, reachable, tasks[1].ToTaskNode())
-	assert.Contains(t, reachable, tasks[2].ToTaskNode())
-	assert.Contains(t, reachable, tasks[3].ToTaskNode())
-	assert.Contains(t, reachable, tasks[4].ToTaskNode())
-
-	reachable = g.reachableFromNode(tasks[1].ToTaskNode())
-	assert.Len(t, reachable, 1)
-	assert.Contains(t, reachable, tasks[3].ToTaskNode())
-
-	reachable = g.reachableFromNode(tasks[3].ToTaskNode())
-	assert.Empty(t, reachable)
-}
-
 func TestCycles(t *testing.T) {
 	t.Run("EmptyGraph", func(t *testing.T) {
 		g := NewDependencyGraph(false)

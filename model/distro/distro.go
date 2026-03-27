@@ -599,15 +599,6 @@ func ValidateArch(arch string) error {
 	return nil
 }
 
-// GetDistroIds returns a slice of distro IDs for the given group of distros
-func (distros DistroGroup) GetDistroIds() []string {
-	var ids []string
-	for _, d := range distros {
-		ids = append(ids, d.Id)
-	}
-	return ids
-}
-
 func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {
 	// if no region given but there's a provider settings list, we assume the list is accurate
 	if region == "" {

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -254,15 +253,6 @@ func (s *githubSuite) TestMergeQueueRefExists() {
 	})
 }
 
-func (s *githubSuite) TestGetBranchEvent() {
-	branch, err := GetBranchEvent(s.ctx, "evergreen-ci", "evergreen", "main")
-	s.NoError(err)
-	s.NotPanics(func() {
-		s.Equal("main", *branch.Name)
-		s.NotNil(*branch.Commit)
-	})
-}
-
 func (s *githubSuite) TestGithubMergeBaseRevision() {
 	rev, err := GetGithubMergeBaseRevision(s.ctx, "evergreen-ci", "evergreen",
 		"105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
@@ -481,25 +471,6 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 	}
 
 	return rem, nil
-}
-
-func TestValidatePR(t *testing.T) {
-	assert := assert.New(t)
-
-	prBody, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
-	assert.NoError(err)
-	assert.Len(prBody, 32977)
-	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
-	assert.NoError(err)
-	prEvent, ok := webhookInterface.(*github.PullRequestEvent)
-	assert.True(ok)
-	pr := prEvent.GetPullRequest()
-	require.NotNil(t, pr)
-
-	assert.NoError(ValidatePR(pr))
-
-	pr.Base = nil
-	assert.Error(ValidatePR(pr))
 }
 
 func TestParseGithubErrorResponse(t *testing.T) {

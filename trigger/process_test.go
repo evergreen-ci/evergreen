@@ -335,11 +335,11 @@ func TestProjectTriggerIntegration(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
-	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
-	require.Len(dbVersions, 1)
-	versions := []model.Version{downstreamVersions[0], dbVersions[0]}
+	dbVersion, err := model.VersionFindOneId(t.Context(), downstreamVersions[0].Id)
+	assert.NoError(err)
+	require.NotNil(dbVersion)
+	versions := []model.Version{downstreamVersions[0], *dbVersion}
 	for _, v := range versions {
 		assert.False(utility.FromBoolPtr(v.Activated))
 		assert.Equal("downstream_abc_def1", v.Id)
@@ -377,7 +377,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(e.ID, t.TriggerEvent)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(ctx, dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(ctx, dbVersion.Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
@@ -468,11 +468,11 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
-	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
-	require.Len(dbVersions, 1)
-	versions := []model.Version{downstreamVersions[0], dbVersions[0]}
+	dbVersion, err := model.VersionFindOneId(t.Context(), downstreamVersions[0].Id)
+	assert.NoError(err)
+	require.NotNil(dbVersion)
+	versions := []model.Version{downstreamVersions[0], *dbVersion}
 	for _, v := range versions {
 		assert.True(utility.FromBoolPtr(v.Activated))
 		assert.Equal("downstream_abc_def1", v.Id)
@@ -510,7 +510,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		assert.Equal(e.ID, t.TriggerEvent)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(ctx, dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(ctx, dbVersion.Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)

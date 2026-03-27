@@ -15,12 +15,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
-	"github.com/fraugster/parquet-go/parquetschema"
-	"github.com/fraugster/parquet-go/parquetschema/autoschema"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 )
 
@@ -29,16 +26,6 @@ const (
 	TestResultServiceEvergreen = 1
 	TestResultServiceLocal     = 2
 )
-
-var ParquetTestResultsSchemaDef *parquetschema.SchemaDefinition
-
-func init() {
-	var err error
-	ParquetTestResultsSchemaDef, err = autoschema.GenerateSchema(new(testresult.ParquetTestResults))
-	if err != nil {
-		panic(errors.Wrap(err, "generating Parquet test results schema definition"))
-	}
-}
 
 // TestResultOutput is the versioned entry point for coordinating persistent
 // storage of a task run's test result data.
@@ -378,34 +365,9 @@ func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials everg
 		return nil, errors.Wrap(err, "reading Parquet test results")
 	}
 
-	fr, err := goparquet.NewFileReader(bytes.NewReader(data))
+	parquetResults, err := parquet.Read[testresult.ParquetTestResults](bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return nil, errors.Wrap(err, "creating Parquet reader")
-	}
-	pr := floor.NewReader(fr)
-	defer func() {
-		err = pr.Close()
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":        "closing Parquet test results reader",
-			"test_result_id": t.ID,
-			"task_id":        t.Info.TaskID,
-			"execution":      t.Info.Execution,
-			"project":        t.Info.Project,
-		}))
-	}()
-
-	var parquetResults []testresult.ParquetTestResults
-	for pr.Next() {
-		row := testresult.ParquetTestResults{}
-		if err := pr.Scan(&row); err != nil {
-			return nil, errors.Wrap(err, "reading Parquet test results row")
-		}
-
-		parquetResults = append(parquetResults, row)
-	}
-
-	if err := pr.Err(); err != nil {
-		return nil, errors.Wrap(err, "reading Parquet test results rows")
+		return nil, errors.Wrap(err, "reading Parquet test results")
 	}
 
 	var results []testresult.TestResult

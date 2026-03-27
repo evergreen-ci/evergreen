@@ -37,11 +37,9 @@ You can start an Evergreen patch from other CI systems.
   distinguish it from a task, which is a unit of work in an Evergreen project.
   Jobs are not visible to users, but they accomplish most of the work necessary
   for Evergreen to run, e.g., starting and provisioning hosts.
-- [anser](https://github.com/mongodb/anser) is a data migration tool for managing
-  schema evolution in MongoDB databases and Go applications. Relies on amboy
-  for orchestration and ftdc/bsonx for bson manipulation. Additionally provides a
-  compatibility layer for translating from the legacy mgo API to the new Go
-  Driver interface.
+- [anser](https://github.com/mongodb/anser) is a helper library for database
+  utilities. Additionally provides a compatibility layer for translating from
+  the legacy mgo API to the new Go Driver interface.
 - [aviation](https://github.com/evergreen-ci/aviation) is middleware for gRPC.
   It is similar to gimlet, Evergreen's HTTP middleware.
 - [birch](https://github.com/evergreen-ci/birch) is a library for building and manipulating bson documents.
