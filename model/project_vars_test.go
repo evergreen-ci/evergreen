@@ -92,9 +92,8 @@ func TestFindMergedProjectVars(t *testing.T) {
 		VarsDescriptions: map[string]string{"admin": "this is for admin eyes only"},
 	}
 	project0Vars := ProjectVars{
-		Id:               project0.Id,
-		Vars:             map[string]string{"world": "goodbye", "new": "var"},
-		VarsDescriptions: map[string]string{"new": "just added"},
+		Id:   project0.Id,
+		Vars: map[string]string{"world": "goodbye", "new": "var"},
 	}
 	require.NoError(t, repoVars.Insert(t.Context()))
 	require.NoError(t, project0Vars.Insert(t.Context()))
@@ -119,7 +118,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Vars:             map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var", "admin": "only"},
 		PrivateVars:      map[string]bool{},
 		AdminOnlyVars:    map[string]bool{"admin": true},
-		VarsDescriptions: map[string]string{"admin": "this is for admin eyes only", "new": "just added"},
+		VarsDescriptions: map[string]string{"admin": "this is for admin eyes only"},
 	}
 
 	// Merged vars should contain all branch project vars and any non-overridden
