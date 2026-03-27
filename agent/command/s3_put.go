@@ -449,10 +449,10 @@ retryLoop:
 					if strings.Contains(err.Error(), utility.WalkThroughError) {
 						logger.Task().Warningf("Error while building file list: %s", err.Error())
 						return nil
-					} else {
-						return errors.Wrapf(err, "processing local files include filter '%s'",
-							strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					}
+
+					return errors.Wrapf(err, "processing local files include filter '%s'",
+						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 				if len(filesList) == 0 {
 					logger.Task().Warningf("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
@@ -497,10 +497,10 @@ retryLoop:
 							// single optional file uploads should return early.
 							logger.Task().Infof("File '%s' not found and skip missing is true, exiting without error.", fpath)
 							return nil
-						} else {
-							// single required uploads should return an error asap.
-							return errors.Wrapf(err, "missing file '%s'", fpath)
 						}
+
+						// single required uploads should return an error asap.
+						return errors.Wrapf(err, "missing file '%s'", fpath)
 					}
 
 					if s3pc.skipExistingBool {
@@ -556,7 +556,7 @@ retryLoop:
 	maxPuts, minPuts := computePerFileExtremes(uploadedFiles)
 	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles), maxPuts, minPuts)
 
-	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile, conf))
+	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles))
 	if err != nil {
 		return err
 	}
@@ -593,7 +593,7 @@ func computePerFileExtremes(files []s3usage.FileMetrics) (maxPuts, minPuts int) 
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []s3usage.FileMetrics, remoteFile string, conf *internal.TaskConfig) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []s3usage.FileMetrics) error {
 	files := []*artifact.File{}
 
 	for _, uploadInfo := range uploadedFiles {

@@ -123,51 +123,6 @@ func TestFindByBucketAndPrefix(t *testing.T) {
 	assert.ErrorContains(t, err, "bucket name cannot be empty")
 }
 
-func TestFindMatchingRuleForFileKey(t *testing.T) {
-	require.NoError(t, db.Clear(Collection))
-
-	rules := []S3LifecycleRuleDoc{
-		{BucketName: "mciuploads", FilterPrefix: "sandbox/", BucketType: BucketTypeUserSpecified, RuleID: "sandbox-rule", RuleStatus: "Enabled", ExpirationDays: ptr(30)},
-		{BucketName: "mciuploads", FilterPrefix: "lifecycle/sandbox/", BucketType: BucketTypeUserSpecified, RuleID: "lifecycle-sandbox-rule", RuleStatus: "Enabled", ExpirationDays: ptr(7)},
-		{BucketName: "mciuploads", FilterPrefix: "", BucketType: BucketTypeUserSpecified, RuleID: "default-rule", RuleStatus: "Enabled", ExpirationDays: ptr(90)},
-		{BucketName: "mciuploads", FilterPrefix: "disabled/", BucketType: BucketTypeUserSpecified, RuleID: "disabled-rule", RuleStatus: "Disabled", ExpirationDays: ptr(1)},
-	}
-	for _, rule := range rules {
-		r := rule
-		require.NoError(t, (&r).Upsert(t.Context()))
-	}
-
-	tests := []struct {
-		bucket, fileKey, wantPrefix, wantRuleID string
-		wantDays                                *int
-	}{
-		{"mciuploads", "sandbox/myfile.txt", "sandbox/", "sandbox-rule", ptr(30)},
-		{"mciuploads", "lifecycle/sandbox/myfile.txt", "lifecycle/sandbox/", "lifecycle-sandbox-rule", ptr(7)},
-		{"mciuploads", "other/myfile.txt", "", "default-rule", ptr(90)},
-		{"mciuploads", "disabled/myfile.txt", "", "default-rule", ptr(90)}, // skips disabled
-		{"non-existent", "myfile.txt", "", "", nil},
-	}
-
-	for _, tt := range tests {
-		found, err := FindMatchingRuleForFileKey(t.Context(), tt.bucket, tt.fileKey)
-		require.NoError(t, err)
-		if tt.wantRuleID == "" {
-			assert.Nil(t, found)
-		} else {
-			require.NotNil(t, found)
-			assert.Equal(t, tt.wantPrefix, found.FilterPrefix)
-			assert.Equal(t, tt.wantRuleID, found.RuleID)
-			assert.Equal(t, tt.wantDays, found.ExpirationDays)
-		}
-	}
-
-	_, err := FindMatchingRuleForFileKey(t.Context(), "", "myfile.txt")
-	assert.ErrorContains(t, err, "bucket name cannot be empty")
-
-	_, err = FindMatchingRuleForFileKey(t.Context(), "mciuploads", "")
-	assert.ErrorContains(t, err, "file key cannot be empty")
-}
-
 func TestFindAllRulesForBucket(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 

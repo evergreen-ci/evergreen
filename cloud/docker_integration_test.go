@@ -3,10 +3,12 @@ package cloud
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -43,7 +45,13 @@ func TestDockerIntegrationSuite(t *testing.T) {
 
 	// Verify that the Docker client can reach the Docker daemon before unit
 	// tests.
-	_, err = dockerClient.Ping(t.Context())
+	err = utility.Retry(t.Context(), func() (bool, error) {
+		_, err = dockerClient.Ping(t.Context())
+		return err != nil, err
+	}, utility.RetryOptions{
+		MaxAttempts: 5,
+		MinDelay:    time.Second,
+	})
 	require.NoError(t, err)
 
 	suite.Run(t, s)

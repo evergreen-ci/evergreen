@@ -570,7 +570,6 @@ const (
 	RestartAction     ModificationAction = "restart"
 	SetActiveAction   ModificationAction = "set_active"
 	SetPriorityAction ModificationAction = "set_priority"
-	AbortAction       ModificationAction = "abort"
 )
 
 // Constants for Evergreen package names (including legacy ones).
@@ -871,13 +870,6 @@ func (k SenderKey) String() string {
 	}
 }
 
-// DevProdJiraServiceField defines a required field for DEVPROD tickets, which we sometimes auto-generate.
-// Using "Other" prevents this from getting out of sync with service naming too quickly.
-var DevProdJiraServiceField = map[string]string{
-	"id":    devProdServiceId,
-	"value": devProdServiceValue,
-}
-
 const (
 	PriorityLevelEmergency = "emergency"
 	PriorityLevelAlert     = "alert"
@@ -888,12 +880,6 @@ const (
 	PriorityLevelInfo      = "info"
 	PriorityLevelDebug     = "debug"
 	PriorityLevelTrace     = "trace"
-)
-
-const (
-	DevProdServiceFieldName = "customfield_24158"
-	devProdServiceId        = "27020"
-	devProdServiceValue     = "Other"
 )
 
 // Recognized Evergreen agent CPU architectures, which should be in the form
@@ -986,14 +972,6 @@ var (
 		HostTerminated,
 		HostQuarantined,
 		HostDecommissioned,
-	}
-
-	// NotRunningStatus is a list of host statuses from before the host starts running.
-	NotRunningStatus = []string{
-		HostUninitialized,
-		HostBuilding,
-		HostProvisioning,
-		HostStarting,
 	}
 
 	// IsRunningOrWillRunStatuses includes all statuses for active hosts (see
@@ -1108,8 +1086,6 @@ var (
 		TaskDispatched,
 		TaskInactive,
 	}
-
-	SyncStatuses = []string{TaskSucceeded, TaskFailed}
 
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 
@@ -1457,72 +1433,6 @@ const (
 	LogViewerHTML    LogViewer = "html"
 	LogViewerParsley LogViewer = "parsley"
 )
-
-// ContainerOS denotes the operating system of a running container.
-type ContainerOS string
-
-const (
-	LinuxOS   ContainerOS = "linux"
-	WindowsOS ContainerOS = "windows"
-)
-
-// ValidContainerOperatingSystems contains all recognized container operating
-// systems.
-var ValidContainerOperatingSystems = []ContainerOS{LinuxOS, WindowsOS}
-
-// Validate checks that the container OS is recognized.
-func (c ContainerOS) Validate() error {
-	switch c {
-	case LinuxOS, WindowsOS:
-		return nil
-	default:
-		return errors.Errorf("unrecognized container OS '%s'", c)
-	}
-}
-
-// ContainerArch represents the CPU architecture necessary to run a container.
-type ContainerArch string
-
-const (
-	ArchARM64 ContainerArch = "arm64"
-	ArchAMD64 ContainerArch = "x86_64"
-)
-
-// ValidContainerArchitectures contains all recognized container CPU
-// architectures.
-var ValidContainerArchitectures = []ContainerArch{ArchARM64, ArchAMD64}
-
-// Validate checks that the container CPU architecture is recognized.
-func (c ContainerArch) Validate() error {
-	switch c {
-	case ArchARM64, ArchAMD64:
-		return nil
-	default:
-		return errors.Errorf("unrecognized CPU architecture '%s'", c)
-	}
-}
-
-// WindowsVersion specifies the compatibility version of Windows that is required for the container to run.
-type WindowsVersion string
-
-const (
-	Windows2022 WindowsVersion = "2022"
-	Windows2019 WindowsVersion = "2019"
-	Windows2016 WindowsVersion = "2016"
-)
-
-// ValidWindowsVersions contains all recognized container Windows versions.
-var ValidWindowsVersions = []WindowsVersion{Windows2016, Windows2019, Windows2022}
-
-// Validate checks that the container Windows version is recognized.
-func (w WindowsVersion) Validate() error {
-	switch w {
-	case Windows2022, Windows2019, Windows2016:
-		return nil
-	default:
-		return errors.Errorf("unrecognized Windows version '%s'", w)
-	}
-}
 
 // ParserProjectStorageMethod represents a means to store the parser project.
 type ParserProjectStorageMethod string

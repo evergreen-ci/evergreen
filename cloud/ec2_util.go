@@ -39,14 +39,6 @@ const (
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 	ec2TemplateNotFound     = "InvalidLaunchTemplateId.NotFound"
 
-	// EC2InsufficientAddressCapacity means that there are no IP addresses
-	// available to allocate.
-	EC2InsufficientAddressCapacity = "InsufficientAddressCapacity"
-	// ec2InsufficientAddressCapacity means that the account has reached its
-	// limit on the number of elastic IPs it can allocate.
-	EC2AddressLimitExceeded = "AddressLimitExceeded"
-	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
-	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
 
 	r53InvalidInput       = "InvalidInput"

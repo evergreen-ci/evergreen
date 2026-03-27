@@ -58,7 +58,7 @@ func (cloudHost *CloudHost) GetDNSName(ctx context.Context) (string, error) {
 	return cloudHost.CloudMgr.GetDNSName(ctx, cloudHost.Host)
 }
 
-func (cloudHost *CloudHost) AssociateIP(ctx context.Context, h *host.Host) error {
+func (cloudHost *CloudHost) AssociateIP(ctx context.Context) error {
 	return cloudHost.CloudMgr.AssociateIP(ctx, cloudHost.Host)
 }
 

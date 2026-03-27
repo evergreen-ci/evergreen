@@ -17,6 +17,8 @@ input BucketsConfigInput {
   logBucketLongRetention: BucketConfigInput
   logBucketFailedTasks: BucketConfigInput
   longRetentionProjects: [String!]
+  retryFailedLogMoveLookbackMonths: Int
+  retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfigInput
   internalBuckets: [String!]
   credentials: S3CredentialsInput @redactSecrets
@@ -27,6 +29,8 @@ type BucketsConfig {
   logBucketLongRetention: BucketConfig
   logBucketFailedTasks: BucketConfig
   longRetentionProjects: [String!]
+  retryFailedLogMoveLookbackMonths: Int
+  retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfig
   internalBuckets: [String!]
   credentials: S3Credentials @requireAdmin
