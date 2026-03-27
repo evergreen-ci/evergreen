@@ -4763,7 +4763,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, files))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
@@ -4775,7 +4775,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, []string{"new_generated_json"}))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
@@ -4789,7 +4789,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)

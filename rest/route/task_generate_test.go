@@ -82,7 +82,7 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	assert.Equal(t, struct{}{}, r.Data())
 	assert.Equal(t, http.StatusOK, r.Status())
 
-	dbTask, err := task.FindOneId(ctx, tsk.Id)
+	dbTask, err := task.FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
 	assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
