@@ -43,7 +43,13 @@ func TestDockerIntegrationSuite(t *testing.T) {
 
 	// Verify that the Docker client can reach the Docker daemon before unit
 	// tests.
-	_, err = dockerClient.Ping(t.Context())
+	err = utility.Retry(t.Context(), func() (bool, error) {
+		_, err = dockerClient.Ping(t.Context())
+		return err != nil, err
+	}, utility.RetryOptions{
+		MaxAttempts: 5,
+		MinDelay:    time.Second,
+	})
 	require.NoError(t, err)
 
 	suite.Run(t, s)
