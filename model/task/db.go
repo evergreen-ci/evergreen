@@ -546,18 +546,6 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 	}
 }
 
-func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
-	return bson.M{
-		VersionKey: bson.M{
-			"$in": versions,
-		},
-		DisplayNameKey: bson.M{
-			"$in": displayNames,
-		},
-		BuildVariantKey: buildVariant,
-	}
-}
-
 func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
 	return bson.M{
 		BuildVariantKey: buildVariant,
@@ -643,18 +631,6 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 		}
 	}
 	return query
-}
-
-func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		StatusKey: bson.M{
-			"$in": statuses,
-		},
-		ProjectKey: project,
-	}
 }
 
 func ByExecutionTask(taskId string) bson.M {
@@ -1489,17 +1465,6 @@ func FindAllTaskIDsFromBuild(ctx context.Context, buildId string) ([]string, err
 	return findAllTaskIDs(ctx, q)
 }
 
-// FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
-func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId string) ([]Task, error) {
-	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
-	tasks := []Task{}
-	err := db.FindAllQ(ctx, Collection, q, &tasks)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
-	}
-	return tasks, nil
-}
-
 // FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
 func FindTasksFromVersions(ctx context.Context, versionIds []string) ([]Task, error) {
 	return FindWithFields(ctx, ByVersions(versionIds),
@@ -2174,6 +2139,13 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 			"count":  1,
 		}},
 	}
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			DisplayStatusKey:    1,
+			ExpectedDurationKey: 1,
+			StartTimeKey:        1,
+		},
+	})
 	facet := bson.M{"$facet": bson.M{
 		"counts": groupPipeline,
 		"eta":    maxEtaPipeline,
@@ -2320,8 +2292,12 @@ func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, bas
 				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
 			},
 		}})
-	// Add display status
-	pipeline = append(pipeline, addDisplayStatus)
+	// Alias the persisted display_status_cache as display_status.
+	pipeline = append(pipeline, bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: "$" + DisplayStatusCacheKey,
+		},
+	})
 	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
@@ -2490,10 +2466,13 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, bson.M{"$match": match})
 	}
 
-	// Add a field for the display status of each task
-	pipeline = append(pipeline,
-		addDisplayStatus,
-	)
+	// Alias the persisted display_status_cache as display_status so downstream
+	// stages can reference DisplayStatusKey without recomputing via $switch.
+	pipeline = append(pipeline, bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: "$" + DisplayStatusCacheKey,
+		},
+	})
 
 	if shouldPopulateBaseTask {
 		// First group by variant and task name to group all tasks and their base tasks together

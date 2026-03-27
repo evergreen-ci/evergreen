@@ -99,7 +99,6 @@ var (
 	SSHKeyNamesKey                         = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
 	SSHPortKey                             = bsonutil.MustHaveTag(Host{}, "SSHPort")
 	HomeVolumeIDKey                        = bsonutil.MustHaveTag(Host{}, "HomeVolumeID")
-	PortBindingsKey                        = bsonutil.MustHaveTag(Host{}, "PortBindings")
 	IsVirtualWorkstationKey                = bsonutil.MustHaveTag(Host{}, "IsVirtualWorkstation")
 	SleepScheduleKey                       = bsonutil.MustHaveTag(Host{}, "SleepSchedule")
 	IsDebugKey                             = bsonutil.MustHaveTag(Host{}, "IsDebug")
@@ -120,7 +119,6 @@ var (
 	VolumeMigratingKey                     = bsonutil.MustHaveTag(Volume{}, "Migrating")
 	VolumeAttachmentIDKey                  = bsonutil.MustHaveTag(VolumeAttachment{}, "VolumeID")
 	VolumeDeviceNameKey                    = bsonutil.MustHaveTag(VolumeAttachment{}, "DeviceName")
-	DockerOptionsStdinDataKey              = bsonutil.MustHaveTag(DockerOptions{}, "StdinData")
 	SleepScheduleNextStopTimeKey           = bsonutil.MustHaveTag(SleepScheduleInfo{}, "NextStopTime")
 	SleepScheduleNextStartTimeKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "NextStartTime")
 	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
@@ -631,20 +629,6 @@ func ByIPAndRunning(ip string) bson.M {
 			{IPv4Key: ip},
 		},
 		StatusKey: evergreen.HostRunning,
-	}
-}
-
-// ByDistroIDOrAliasesRunning returns a query that returns all hosts with
-// matching distro IDs or aliases.
-func ByDistroIDsOrAliasesRunning(distroNames ...string) bson.M {
-	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-	distroAliasesKey := bsonutil.GetDottedKeyName(DistroKey, distro.AliasesKey)
-	return bson.M{
-		StatusKey: evergreen.HostRunning,
-		"$or": []bson.M{
-			{distroIDKey: bson.M{"$in": distroNames}},
-			{distroAliasesKey: bson.M{"$in": distroNames}},
-		},
 	}
 }
 

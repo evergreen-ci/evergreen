@@ -15,11 +15,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
-const (
-	WebRootPath  = "service"
-	DefaultLimit = 10
-)
-
 // GetServer produces an HTTP server instance for a handler.
 func GetServer(addr string, n http.Handler) *http.Server {
 	grip.Notice(message.Fields{

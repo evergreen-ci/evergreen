@@ -293,6 +293,8 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 
 // GetAllWaterfallVersions returns all of a project's versions within an inclusive range of orders.
 func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int, maxOrder int) ([]Version, error) {
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetAllWaterfallVersions")})
+
 	if minOrder != 0 && maxOrder != 0 && minOrder > maxOrder {
 		return nil, errors.New("minOrder must be less than or equal to maxOrder")
 	}
@@ -318,6 +320,8 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	pipeline = append(pipeline, bson.M{"$limit": MaxWaterfallVersionLimit})
+	// Remove BuildVariants because this field can be enormous and slow down the fetch operation.
+	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -332,7 +336,7 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 	return res, nil
 }
 
-// GetVersionBuilds returns a list of builds with populated tasks for the given build IDs.
+// GetVersionBuilds returns a list of builds with populated tasks for the given version.
 // Tasks are grouped by display task when applicable - execution tasks are shown under their
 // parent display task, while regular tasks (not part of a display task) are shown individually.
 func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) ([]WaterfallBuild, error) {
@@ -429,6 +433,8 @@ func GetVersionBuilds(ctx context.Context, versionID string, buildIds []string) 
 // GetNewerActiveWaterfallVersion returns the next newer active version on the waterfall, i.e. a more
 // recent activated version than the current version.
 func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetNewerActiveWaterfallVersion")})
+
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
@@ -465,6 +471,8 @@ func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, versi
 // GetOlderActiveWaterfallVersion returns the next older active version on the waterfall, i.e. an older
 // activated version than the current version.
 func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetOlderActiveWaterfallVersion")})
+
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
@@ -502,6 +510,8 @@ func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, versi
 // githash revision. Notably, it does NOT return the revision order of the version with that githash revision. This
 // is because we want the target commit to be shown in the center of the page.
 func GetOffsetVersionOrderByRevision(ctx context.Context, revision string, projectId string, limit int) (int, error) {
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetOffsetVersionOrderByRevision")})
+
 	if len(revision) < minRevisionLength {
 		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
 	}
@@ -519,6 +529,8 @@ func GetOffsetVersionOrderByRevision(ctx context.Context, revision string, proje
 // GetOffsetVersionOrderByDate returns the revision order of a system-requested version created on or before the given date,
 // incremented by 1 to account for the Waterfall query being non-inclusive.
 func GetOffsetVersionOrderByDate(ctx context.Context, date time.Time, projectId string) (int, error) {
+	ctx = utility.ContextWithAppendedAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetOffsetVersionOrderByDate")})
+
 	found, err := VersionFindOne(ctx, VersionByProjectIdAndCreateTime(projectId, date).WithFields(VersionRevisionOrderNumberKey))
 	if err != nil {
 		return 0, errors.New(fmt.Sprintf("finding version on or before date '%s': %s", date.Format(time.DateOnly), err.Error()))

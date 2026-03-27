@@ -555,6 +555,12 @@ tasks:
     name: test-model-build
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-ec2mount
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-ec2settings
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-event
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

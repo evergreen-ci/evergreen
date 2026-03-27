@@ -312,7 +312,6 @@ type Expansion struct {
 
 const (
 	DockerImageBuildTypeImport = "import"
-	DockerImageBuildTypePull   = "pull"
 
 	// Bootstrapping mechanisms
 	// BootstrapMethodNone is for internal use only.
@@ -598,15 +597,6 @@ func ValidateArch(arch string) error {
 		return errors.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil
-}
-
-// GetDistroIds returns a slice of distro IDs for the given group of distros
-func (distros DistroGroup) GetDistroIds() []string {
-	var ids []string
-	for _, d := range distros {
-		ids = append(ids, d.Id)
-	}
-	return ids
 }
 
 func (d *Distro) GetProviderSettingByRegion(region string) (*birch.Document, error) {

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -26,69 +25,6 @@ type VariantTasks struct {
 	Variant      string        `bson:"variant"`
 	Tasks        []string      `bson:"tasks"`
 	DisplayTasks []DisplayTask `bson:"displaytasks"`
-}
-
-// MergeVariantsTasks merges two slices of VariantsTasks into a single set.
-func MergeVariantsTasks(vts1, vts2 []VariantTasks) []VariantTasks {
-	bvToVT := map[string]VariantTasks{}
-	for _, vt := range vts1 {
-		if _, ok := bvToVT[vt.Variant]; !ok {
-			bvToVT[vt.Variant] = VariantTasks{Variant: vt.Variant}
-		}
-		bvToVT[vt.Variant] = mergeVariantTasks(bvToVT[vt.Variant], vt)
-	}
-	for _, vt := range vts2 {
-		if _, ok := bvToVT[vt.Variant]; !ok {
-			bvToVT[vt.Variant] = VariantTasks{Variant: vt.Variant}
-		}
-		bvToVT[vt.Variant] = mergeVariantTasks(bvToVT[vt.Variant], vt)
-	}
-
-	var merged []VariantTasks
-	for _, vt := range bvToVT {
-		merged = append(merged, vt)
-	}
-	return merged
-}
-
-// mergeVariantTasks merges the current VariantTask for a specific variant with
-// toMerge, whichs has the same variant.  The merged VariantTask contains all
-// unique task names from current and toMerge. All display tasks merged such
-// that, for each display task name, execution tasks are merged into a unique
-// set for that display task.
-func mergeVariantTasks(current VariantTasks, toMerge VariantTasks) VariantTasks {
-	for _, t := range toMerge.Tasks {
-		if !utility.StringSliceContains(current.Tasks, t) {
-			current.Tasks = append(current.Tasks, t)
-		}
-	}
-	for _, dt := range toMerge.DisplayTasks {
-		var found bool
-		for i := range current.DisplayTasks {
-			if current.DisplayTasks[i].Name != dt.Name {
-				continue
-			}
-			current.DisplayTasks[i] = mergeDisplayTasks(current.DisplayTasks[i], dt)
-			found = true
-			break
-		}
-		if !found {
-			current.DisplayTasks = append(current.DisplayTasks, dt)
-		}
-	}
-	return current
-}
-
-// mergeDisplayTasks merges two display tasks such that the resulting
-// DisplayTask's execution tasks are the unique set of execution tasks from
-// current and toMerge.
-func mergeDisplayTasks(current DisplayTask, toMerge DisplayTask) DisplayTask {
-	for _, et := range toMerge.ExecTasks {
-		if !utility.StringSliceContains(current.ExecTasks, et) {
-			current.ExecTasks = append(current.ExecTasks, et)
-		}
-	}
-	return current
 }
 
 type DisplayTask struct {

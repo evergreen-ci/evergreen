@@ -1,6 +1,6 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.24.0
+go 1.24.9
 
 require (
 	github.com/99designs/gqlgen v0.17.86
@@ -32,7 +32,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20251209174146-73c46bb64973
-	github.com/mongodb/anser v0.0.0-20251209174952-11a8088811aa
+	github.com/mongodb/anser v0.0.0-20260326151956-de40f3a687fe
 	github.com/mongodb/grip v0.0.0-20251203205830-b5c5c666ab94
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.19.0
@@ -171,12 +171,12 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
 	github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c
-	github.com/fraugster/parquet-go v0.11.0
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
 	github.com/mongodb/jasper v0.0.0-20260115181313-e094cd64f89f
+	github.com/parquet-go/parquet-go v0.29.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
 	github.com/vikstrous/dataloadgen v0.0.10
@@ -186,8 +186,6 @@ require (
 )
 
 require (
-	github.com/apache/thrift v0.16.0 // indirect
-	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sns v1.39.8 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -209,7 +207,10 @@ require (
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/okta/okta-jwt-verifier-golang/v2 v2.1.1 // indirect
+	github.com/parquet-go/bitpack v1.0.0 // indirect
+	github.com/parquet-go/jsonlite v1.0.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
+	github.com/twpayne/go-geom v1.6.1 // indirect
 	github.com/urfave/cli/v3 v3.6.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.39.0 // indirect
@@ -235,7 +236,5 @@ require (
 	go.step.sm/crypto v0.31.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
-
-replace github.com/fraugster/parquet-go => github.com/evergreen-ci/parquet-go v0.0.0-20260116211725-cd13d4127a88
 
 tool github.com/99designs/gqlgen

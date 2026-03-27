@@ -244,6 +244,7 @@
       "build_variant": "ubuntu1604",
       "display_name": "Some generator task",
       "status": "failed",
+      "display_status_cache": "failed",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
       "generate_task": true,
       "generated_tasks": true
@@ -256,6 +257,7 @@
       "branch": "spruce",
       "display_name": "Some generated task",
       "status": "failed",
+      "display_status_cache": "failed",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
       "generate_task": false,
       "generated_by": "generator_task"
@@ -269,6 +271,7 @@
       "display_name": "Some generator task",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
       "status": "undispatched",
+      "display_status_cache": "unscheduled",
       "r": "gitter_request",
       "branch": "spruce",
       "generate_task": true,
@@ -284,6 +287,7 @@
       "display_name": "Some generated task",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ac",
       "status": "undispatched",
+      "display_status_cache": "unscheduled",
       "branch": "spruce",
       "generate_task": false,
       "generated_by": "base_generator_task",
@@ -299,6 +303,7 @@
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "github_pull_request",
       "status": "undispatched",
+      "display_status_cache": "unscheduled",
       "branch": "spruce",
       "host_id": "host1",
       "activated": false
@@ -311,6 +316,7 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "status": "failed",
+      "display_status_cache": "failed",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "github_pull_request",
       "branch": "spruce"
@@ -323,6 +329,7 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-thirdparty-docker",
       "status": "success",
+      "display_status_cache": "success",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "branch": "spruce"
@@ -334,6 +341,7 @@
       "build_variant": "ubuntu1604",
       "display_name": "test-cloud",
       "status": "undispatched",
+      "display_status_cache": "unscheduled",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
       "branch": "spruce",
