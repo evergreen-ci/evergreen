@@ -905,12 +905,12 @@ func TestComputePerFileExtremes(t *testing.T) {
 	})
 }
 
-func TestReadAdditionalLinksFile(t *testing.T) {
+func TestReadAssociatedLinksFile(t *testing.T) {
 	t.Run("ValidJSONFile", func(t *testing.T) {
 		tempDir := t.TempDir()
 		linksFile := filepath.Join(tempDir, "links.json")
 
-		links := []artifact.AdditionalLink{
+		links := []artifact.AssociatedLink{
 			{Name: "Documentation", Link: "https://example.com/docs"},
 			{Name: "Coverage Report", Link: "https://example.com/coverage"},
 		}
@@ -923,7 +923,7 @@ func TestReadAdditionalLinksFile(t *testing.T) {
 			Expansions: *util.NewExpansions(map[string]string{}),
 		}
 
-		result, err := readAdditionalLinksFile(linksFile, conf)
+		result, err := readAssociatedLinksFile(linksFile, conf)
 		require.NoError(t, err)
 		assert.Len(t, result, 2)
 		assert.Equal(t, "Documentation", result[0].Name)
@@ -941,7 +941,7 @@ func TestReadAdditionalLinksFile(t *testing.T) {
 			Expansions: *util.NewExpansions(map[string]string{}),
 		}
 
-		_, err := readAdditionalLinksFile(linksFile, conf)
+		_, err := readAssociatedLinksFile(linksFile, conf)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "getting information for file")
 	})
@@ -957,7 +957,7 @@ func TestReadAdditionalLinksFile(t *testing.T) {
 			Expansions: *util.NewExpansions(map[string]string{}),
 		}
 
-		_, err := readAdditionalLinksFile(linksFile, conf)
+		_, err := readAssociatedLinksFile(linksFile, conf)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unmarshalling JSON")
 	})
@@ -966,7 +966,7 @@ func TestReadAdditionalLinksFile(t *testing.T) {
 		tempDir := t.TempDir()
 		linksFile := filepath.Join(tempDir, "links.json")
 
-		links := []artifact.AdditionalLink{
+		links := []artifact.AssociatedLink{
 			{Name: "Build ${build_id}", Link: "https://example.com/${task_id}/report"},
 		}
 		data, err := json.Marshal(links)
@@ -981,7 +981,7 @@ func TestReadAdditionalLinksFile(t *testing.T) {
 			}),
 		}
 
-		result, err := readAdditionalLinksFile(linksFile, conf)
+		result, err := readAssociatedLinksFile(linksFile, conf)
 		require.NoError(t, err)
 		assert.Len(t, result, 1)
 		assert.Equal(t, "Build build123", result[0].Name)
@@ -989,14 +989,14 @@ func TestReadAdditionalLinksFile(t *testing.T) {
 	})
 }
 
-func TestS3PutWithAdditionalLinks(t *testing.T) {
+func TestS3PutWithAssociatedLinks(t *testing.T) {
 	ctx := t.Context()
 
 	tempDir := t.TempDir()
 	s3PutFile := filepath.Join(tempDir, "file1")
 	require.NoError(t, os.WriteFile(s3PutFile, []byte("content1"), 0644))
 
-	additionalLinks := []artifact.AdditionalLink{
+	associatedLinks := []artifact.AssociatedLink{
 		{Name: "Documentation", Link: "https://example.com/docs"},
 		{Name: "Coverage", Link: "https://example.com/coverage"},
 	}
@@ -1010,7 +1010,7 @@ func TestS3PutWithAdditionalLinks(t *testing.T) {
 		Permissions:     string(s3Types.BucketCannedACLPublicRead),
 		RemoteFile:      "remote",
 		Visibility:      "",
-		additionalLinks: additionalLinks,
+		associatedLinks: associatedLinks,
 	}
 
 	comm := client.NewMock("http://localhost.com")
@@ -1035,15 +1035,15 @@ func TestS3PutWithAdditionalLinks(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
+	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
 
 	attachedFiles := comm.AttachedFiles
 	files, ok := attachedFiles[conf.Task.Id]
 	require.True(t, ok)
 	assert.Len(t, files, 1)
-	assert.Len(t, files[0].AdditionalLinks, 2)
-	assert.Equal(t, "Documentation", files[0].AdditionalLinks[0].Name)
-	assert.Equal(t, "https://example.com/docs", files[0].AdditionalLinks[0].Link)
-	assert.Equal(t, "Coverage", files[0].AdditionalLinks[1].Name)
-	assert.Equal(t, "https://example.com/coverage", files[0].AdditionalLinks[1].Link)
+	assert.Len(t, files[0].AssociatedLinks, 2)
+	assert.Equal(t, "Documentation", files[0].AssociatedLinks[0].Name)
+	assert.Equal(t, "https://example.com/docs", files[0].AssociatedLinks[0].Link)
+	assert.Equal(t, "Coverage", files[0].AssociatedLinks[1].Name)
+	assert.Equal(t, "https://example.com/coverage", files[0].AssociatedLinks[1].Link)
 }

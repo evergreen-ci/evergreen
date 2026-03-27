@@ -133,12 +133,12 @@ type s3put struct {
 	// of the file to S3 as well.
 	UploadChecksumSHA256 string `mapstructure:"upload_checksum_sha256" plugin:"expand"`
 
-	// AdditionalLinksFile is a the name of a file containing additional links to be attached to the artifact.
+	// AssociatedLinksFile is a the name of a file containing associated links to be attached to the artifact.
 	// This file should be in JSON format and contain an array of objects with "name" and "url" fields.
-	AdditionalLinksFile string `mapstructure:"additional_links_file" plugin:"expand"`
+	AssociatedLinksFile string `mapstructure:"associated_links_file" plugin:"expand"`
 
-	// additionalLinks stores the actual additional links after they are read in from the AdditionalLinksFile.
-	additionalLinks []artifact.AdditionalLink
+	// associatedLinks stores the actual associated links after they are read from the AssociatedLinksFile.
+	associatedLinks []artifact.AssociatedLink
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
@@ -337,15 +337,15 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return nil
 	}
 
-	if s3pc.AdditionalLinksFile != "" {
-		additionalLinks, err := readAdditionalLinksFile(s3pc.AdditionalLinksFile, conf)
+	if s3pc.AssociatedLinksFile != "" {
+		associatedLinks, err := readAssociatedLinksFile(s3pc.AssociatedLinksFile, conf)
 		if err != nil {
-			return errors.Wrap(err, "reading additional links file")
+			return errors.Wrap(err, "reading associated links file")
 		}
-		s3pc.additionalLinks = additionalLinks
+		s3pc.associatedLinks = associatedLinks
 
-		if s3pc.isMulti() && len(additionalLinks) > 0 {
-			logger.Task().Warningf("Using additional_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different additional links.", len(s3pc.LocalFilesIncludeFilter))
+		if s3pc.isMulti() && len(associatedLinks) > 0 {
+			logger.Task().Warningf("Using associated_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different associated links.", len(s3pc.LocalFilesIncludeFilter))
 		}
 	}
 
@@ -651,7 +651,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 			ContentType:     s3pc.ContentType,
 			FileSize:        uploadInfo.FileSizeBytes,
 			PutRequests:     uploadInfo.PutRequests,
-			AdditionalLinks: s3pc.additionalLinks,
+			AssociatedLinks: s3pc.associatedLinks,
 		})
 	}
 
@@ -715,7 +715,7 @@ func (s3pc *s3put) getRoleARN() string {
 	return s3pc.RoleARN
 }
 
-func readAdditionalLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AdditionalLink, error) {
+func readAssociatedLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AssociatedLink, error) {
 	fileLoc := GetWorkingDirectory(conf, fn)
 	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
 		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
@@ -732,23 +732,23 @@ func readAdditionalLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.A
 		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
 	}
 
-	var additionalLinks []artifact.AdditionalLink
-	if err := json.Unmarshal(data, &additionalLinks); err != nil {
+	var associatedLinks []artifact.AssociatedLink
+	if err := json.Unmarshal(data, &associatedLinks); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling JSON from file")
 	}
 
 	// Expansions may be present in the name or link fields.
-	for i := range additionalLinks {
-		expandedName, err := conf.Expansions.ExpandString(additionalLinks[i].Name)
+	for i := range associatedLinks {
+		expandedName, err := conf.Expansions.ExpandString(associatedLinks[i].Name)
 		if err != nil {
-			return nil, errors.Wrapf(err, "applying expansions to additional link name '%s'", additionalLinks[i].Name)
+			return nil, errors.Wrapf(err, "applying expansions to associated link name '%s'", associatedLinks[i].Name)
 		}
-		expandedLink, err := conf.Expansions.ExpandString(additionalLinks[i].Link)
+		expandedLink, err := conf.Expansions.ExpandString(associatedLinks[i].Link)
 		if err != nil {
-			return nil, errors.Wrapf(err, "applying expansions to additional link URL '%s'", additionalLinks[i].Link)
+			return nil, errors.Wrapf(err, "applying expansions to associated link URL '%s'", associatedLinks[i].Link)
 		}
-		additionalLinks[i].Name = expandedName
-		additionalLinks[i].Link = expandedLink
+		associatedLinks[i].Name = expandedName
+		associatedLinks[i].Link = expandedLink
 	}
-	return additionalLinks, nil
+	return associatedLinks, nil
 }
