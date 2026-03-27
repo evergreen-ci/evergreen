@@ -588,9 +588,9 @@ func makeGetUserPermissionDetails(rm gimlet.RoleManager) gimlet.RouteHandler {
 //	@Tags			users
 //	@Router			/users/{user_id}/permission-details [get]
 //	@Security		Api-User || Api-Key
-//	@Param			user_id	path	string	true	"the user's ID"
-//	@Param			project	query	string	false	"If included, only returns permissions for the specified project (identifier or internal ID)"
-//	@Param			type	query	string	false	"Resource type: 'project' (default) or 'distro'"
+//	@Param			user_id	path		string	true	"the user's ID"
+//	@Param			project	query		string	false	"If included, only returns permissions for the specified project (identifier or internal ID)"
+//	@Param			type	query		string	false	"Resource type: 'project' (default) or 'distro'"
 //	@Success		200		{object}	model.APIUserProjectPermissions
 func (h *userPermissionDetailsGetHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionDetailsGetHandler{rm: h.rm}
