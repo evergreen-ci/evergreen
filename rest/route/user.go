@@ -679,20 +679,19 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 		}
 	}
 
-	availablePermissions, err := buildAvailablePermissions(ctx, h.resourceType, permissionKeys, h.rm)
+	summaries, err := buildPermissionDetailSummaries(ctx, h.resourceType, resourcePermissions, permissionKeys)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
-	if len(resourcePermissions) == 0 {
+	if h.projectFilter != "" {
 		return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
-			UserID:               h.userID,
-			AvailablePermissions: availablePermissions,
-			Projects:             []model.APIProjectPermissionSummary{},
+			UserID:   h.userID,
+			Projects: summaries,
 		})
 	}
 
-	summaries, err := buildPermissionDetailSummaries(ctx, h.resourceType, resourcePermissions, permissionKeys)
+	availablePermissions, err := buildAvailablePermissions(ctx, h.resourceType, permissionKeys, h.rm)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
