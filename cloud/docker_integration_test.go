@@ -3,10 +3,12 @@ package cloud
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
