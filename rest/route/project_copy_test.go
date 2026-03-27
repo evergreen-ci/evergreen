@@ -265,14 +265,16 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 	projectVars, err = model.FindOneProjectVars(s.ctx, "projectB")
 	s.NoError(err)
 	s.Len(projectVars.Vars, 3)
+	s.Equal("yellow", projectVars.Vars["banana"])
 	s.Equal("world", projectVars.Vars["hello"])
 	s.Equal("red", projectVars.Vars["apple"])
 	s.True(projectVars.PrivateVars["hello"])
 
 	s.Require().NotNil(projectVars.VarsDescriptions)
 	s.Len(projectVars.VarsDescriptions, 2)
-	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
+	s.Equal("", projectVars.VarsDescriptions["banana"]) // No description since it was added without one.
 	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
+	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
 
 	events, err = model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
@@ -315,7 +317,7 @@ func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
 	s.Len(projectVars.VarsDescriptions, 3)
 	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
 	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
-	s.Equal("banana description", projectVars.VarsDescriptions["banana"]) // unchanged from original projectB
+	s.Equal("banana description", projectVars.VarsDescriptions["banana"]) // Unchanged from original projectB.
 	events, err = model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
 	s.Len(events, 1)
@@ -360,8 +362,7 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 	s.Len(projectVars.VarsDescriptions, 2)
 	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
 	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
-	_, ok = projectVars.VarsDescriptions["banana"] // description should also be deleted
-	s.False(ok)
+	s.Equal("", projectVars.VarsDescriptions["banana"]) // No description, as the variable should have been deleted.
 
 	events, err = model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
@@ -390,7 +391,7 @@ func (s *copyVariablesSuite) TestCopyToRepo() {
 	s.Len(projectVars.VarsDescriptions, 3)
 	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
 	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
-	s.Equal("chicago description", projectVars.VarsDescriptions["chicago"]) // unchanged from original repoRef
+	s.Equal("chicago description", projectVars.VarsDescriptions["chicago"]) // Unchanged from original repoRef.
 
 	events, err := model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
