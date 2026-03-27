@@ -2,24 +2,17 @@ package testlog
 
 import (
 	"context"
-	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
 	TestLogCollection = "test_logs"
-
-	maxDeleteCount = 100000
 )
 
 type TestLog struct {
@@ -62,41 +55,6 @@ func FindOneTestLog(ctx context.Context, name, task string, execution int) (*Tes
 		return nil, nil
 	}
 	return tl, errors.WithStack(err)
-}
-
-func findAllTestLogs(ctx context.Context, query db.Q) ([]TestLog, error) {
-	var result []TestLog
-	if err := db.FindAllQ(ctx, TestLogCollection, query, &result); err != nil {
-		return nil, errors.Wrap(err, "finding test logs")
-	}
-	return result, nil
-}
-
-func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts time.Time, limit int) (int, error) {
-	if limit > maxDeleteCount {
-		return 0, errors.Errorf("cannot delete more than %d documents in a single operation", maxDeleteCount)
-	}
-
-	docsToDelete, err := findAllTestLogs(ctx, db.Query(bson.M{TestLogIdKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}).WithFields(TestLogIdKey).Limit(limit))
-	if err != nil {
-		return 0, errors.Wrap(err, "getting docs to delete")
-	}
-
-	if len(docsToDelete) == 0 {
-		return 0, nil
-	}
-
-	ops := make([]mongo.WriteModel, 0, len(docsToDelete))
-	for _, doc := range docsToDelete {
-		ops = append(ops, mongo.NewDeleteOneModel().SetFilter(bson.M{TestLogIdKey: doc.Id}))
-	}
-
-	res, err := env.DB().Collection(TestLogCollection).BulkWrite(ctx, ops, options.BulkWrite().SetOrdered(false))
-	if err != nil {
-		return 0, errors.WithStack(err)
-	}
-
-	return int(res.DeletedCount), nil
 }
 
 // Insert inserts the TestLog into the database

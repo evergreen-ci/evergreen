@@ -47,6 +47,204 @@ buildvariants:
 	})
 }
 
+func TestLoadProjectWithIncludes(t *testing.T) {
+	t.Run("ResolvesLocalIncludes", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		includeContent := `
+tasks:
+  - name: included-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "from include"
+`
+		err := os.WriteFile(filepath.Join(tmpDir, "extra.yml"), []byte(includeContent), 0644)
+		require.NoError(t, err)
+
+		mainContent := `
+include:
+  - filename: extra.yml
+tasks:
+  - name: main-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "main"
+buildvariants:
+  - name: ubuntu
+    tasks:
+      - name: main-task
+`
+		mainFile := filepath.Join(tmpDir, "main.yml")
+		err = os.WriteFile(mainFile, []byte(mainContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		project, err := executor.LoadProject(mainFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+		assert.Len(t, project.Tasks, 2)
+
+		taskNames := []string{project.Tasks[0].Name, project.Tasks[1].Name}
+		assert.Contains(t, taskNames, "main-task")
+		assert.Contains(t, taskNames, "included-task")
+	})
+
+	t.Run("ResolvesSubdirectoryIncludes", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		subDir := filepath.Join(tmpDir, "subdir")
+		require.NoError(t, os.MkdirAll(subDir, 0755))
+
+		includeContent := `
+tasks:
+  - name: sub-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "from subdir"
+`
+		err := os.WriteFile(filepath.Join(subDir, "extra.yml"), []byte(includeContent), 0644)
+		require.NoError(t, err)
+
+		mainContent := `
+include:
+  - filename: subdir/extra.yml
+tasks:
+  - name: main-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "main"
+`
+		mainFile := filepath.Join(tmpDir, "main.yml")
+		err = os.WriteFile(mainFile, []byte(mainContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		project, err := executor.LoadProject(mainFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+		assert.Len(t, project.Tasks, 2)
+
+		taskNames := []string{project.Tasks[0].Name, project.Tasks[1].Name}
+		assert.Contains(t, taskNames, "main-task")
+		assert.Contains(t, taskNames, "sub-task")
+	})
+
+	t.Run("ErrorsOnMissingInclude", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		mainContent := `
+include:
+  - filename: nonexistent.yml
+tasks:
+  - name: main-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "main"
+`
+		mainFile := filepath.Join(tmpDir, "main.yml")
+		err := os.WriteFile(mainFile, []byte(mainContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(mainFile)
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadProjectWithModuleIncludes(t *testing.T) {
+	t.Run("ModuleIncludeWithLocalModules", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		moduleDir := filepath.Join(tmpDir, "mymodule")
+		require.NoError(t, os.MkdirAll(moduleDir, 0755))
+
+		moduleContent := `
+tasks:
+  - name: module-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "from module"
+`
+		err := os.WriteFile(filepath.Join(moduleDir, "module.yml"), []byte(moduleContent), 0644)
+		require.NoError(t, err)
+
+		mainContent := `
+modules:
+  - name: mymod
+    repo: git@github.com:test/test.git
+    branch: main
+include:
+  - filename: module.yml
+    module: mymod
+tasks:
+  - name: main-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "main"
+`
+		mainFile := filepath.Join(tmpDir, "main.yml")
+		err = os.WriteFile(mainFile, []byte(mainContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{
+			LocalModules: map[string]string{
+				"mymod": moduleDir,
+			},
+		})
+		require.NoError(t, err)
+
+		project, err := executor.LoadProject(mainFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+		assert.Len(t, project.Tasks, 2)
+
+		taskNames := []string{project.Tasks[0].Name, project.Tasks[1].Name}
+		assert.Contains(t, taskNames, "main-task")
+		assert.Contains(t, taskNames, "module-task")
+	})
+
+	t.Run("ModuleIncludeWithoutLocalModulesErrors", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		mainContent := `
+modules:
+  - name: mymod
+    repo: git@github.com:test/test.git
+    branch: main
+include:
+  - filename: module.yml
+    module: mymod
+tasks:
+  - name: main-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "main"
+`
+		mainFile := filepath.Join(tmpDir, "main.yml")
+		err := os.WriteFile(mainFile, []byte(mainContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(mainFile)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "local path for module 'mymod' is unspecified")
+	})
+}
+
 func TestPrepareTask(t *testing.T) {
 	t.Run("PreparesExistingTask", func(t *testing.T) {
 		tmpDir := t.TempDir()

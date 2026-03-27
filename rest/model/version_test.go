@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,4 +100,47 @@ func TestVersionBuildFromService(t *testing.T) {
 
 	require.NotNil(t, apiVersion.TriggeredGitTag)
 	assert.Equal(apiVersion.TriggeredGitTag.Tag, utility.ToStringPtr("my-triggered-tag"))
+}
+
+func TestVersionBuildFromServiceCost(t *testing.T) {
+	t.Run("PopulatedCost", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-with-costs",
+			Cost: cost.Cost{
+				OnDemandEC2Cost:   15.0,
+				AdjustedEC2Cost:   12.0,
+				S3ArtifactPutCost: 0.08,
+				S3LogPutCost:      0.03,
+			},
+			PredictedCost: cost.Cost{
+				OnDemandEC2Cost: 5.0,
+				AdjustedEC2Cost: 4.0,
+			},
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		require.NotNil(t, apiVersion.Cost)
+		assert.InDelta(t, 15.0, apiVersion.Cost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 12.0, apiVersion.Cost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 0.08, apiVersion.Cost.S3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.03, apiVersion.Cost.S3LogPutCost, 0.001)
+
+		require.NotNil(t, apiVersion.PredictedCost)
+		assert.InDelta(t, 5.0, apiVersion.PredictedCost.OnDemandEC2Cost, 0.01)
+		assert.InDelta(t, 4.0, apiVersion.PredictedCost.AdjustedEC2Cost, 0.01)
+	})
+
+	t.Run("ZeroCostIsNil", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-no-costs",
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		assert.Nil(t, apiVersion.Cost)
+		assert.Nil(t, apiVersion.PredictedCost)
+	})
 }

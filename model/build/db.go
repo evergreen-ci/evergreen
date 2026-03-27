@@ -81,22 +81,6 @@ func ByVersionAndVariant(version, bv string) db.Q {
 	})
 }
 
-// ByProject creates a query that finds all builds for a given project id.
-func ByProject(proj string) db.Q {
-	return db.Query(bson.M{ProjectKey: proj})
-}
-
-// ByProjectAndVariant creates a query that finds all completed builds for a given project
-// and variant, while also specifying a requester
-func ByProjectAndVariant(project, variant, requester string, statuses []string) db.Q {
-	return db.Query(bson.M{
-		ProjectKey:      project,
-		StatusKey:       bson.M{"$in": statuses},
-		BuildVariantKey: variant,
-		RequesterKey:    requester,
-	})
-}
-
 // ByRevisionAndVariant creates a query that returns the non-patch build for
 // a revision + buildvariant combination.
 func ByRevisionAndVariant(revision, variant string) db.Q {
@@ -106,16 +90,6 @@ func ByRevisionAndVariant(revision, variant string) db.Q {
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 		BuildVariantKey: variant,
-	})
-}
-
-// ByRevisionWithSystemVersionRequester creates a query that returns all builds for a revision.
-func ByRevisionWithSystemVersionRequester(revision string) db.Q {
-	return db.Query(bson.M{
-		RevisionKey: revision,
-		RequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
 	})
 }
 
@@ -147,34 +121,6 @@ func ByFinishedAfter(finishTime time.Time, project string, requester string) db.
 		query[ProjectKey] = project
 	}
 	return db.Query(query)
-}
-
-// ByBeforeRevision builds a query that returns all builds
-// that happened before the given revision for the project/variant.
-// Results are sorted by revision order, descending.
-func ByBeforeRevision(project, buildVariant string, revision int) db.Q {
-	return db.Query(bson.M{
-		ProjectKey:      project,
-		BuildVariantKey: buildVariant,
-		RequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
-		RevisionOrderNumberKey: bson.M{"$lt": revision},
-	}).Sort([]string{"-" + RevisionOrderNumberKey})
-}
-
-// ByAfterRevision builds a query that returns all builds
-// that happened at or after the given revision for the project/variant.
-// Results are sorted by revision order, ascending.
-func ByAfterRevision(project, buildVariant string, revision int) db.Q {
-	return db.Query(bson.M{
-		ProjectKey:      project,
-		BuildVariantKey: buildVariant,
-		RequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
-		RevisionOrderNumberKey: bson.M{"$gte": revision},
-	}).Sort([]string{RevisionOrderNumberKey})
 }
 
 // DB Boilerplate

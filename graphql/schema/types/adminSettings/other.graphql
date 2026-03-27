@@ -199,6 +199,7 @@ input CostConfigInput {
   savingsPlanDiscount: Float
   onDemandDiscount: Float
   s3Cost: S3CostConfigInput
+  ebsCost: EBSCostConfigInput
 }
 
 type CostConfig {
@@ -206,6 +207,7 @@ type CostConfig {
   savingsPlanDiscount: Float
   onDemandDiscount: Float
   s3Cost: S3CostConfig
+  ebsCost: EBSCostConfig
 }
 
 input S3UploadCostConfigInput {
@@ -234,4 +236,12 @@ input S3CostConfigInput {
 type S3CostConfig {
     upload: S3UploadCostConfig
     storage: S3StorageCostConfig
+}
+
+input EBSCostConfigInput {
+  ebsDiscount: Float
+}
+
+type EBSCostConfig {
+  ebsDiscount: Float
 }

@@ -288,7 +288,8 @@ Evergreen samples merge queue depth metrics every 5 minutes and emits them to Ho
 - `evergreen.merge_queue.running_count` - Patches currently running
 - `evergreen.merge_queue.running_tasks_count` - Count of running tasks across all patches in queue
 - `evergreen.merge_queue.has_running_tasks` - Whether any queue patches have running tasks
-- `evergreen.merge_queue.oldest_patch_age_ms` - Age of oldest pending patch
+- `evergreen.merge_queue.oldest_patch_age_ms` - Age of oldest pending patch. Queue entry time uses the head commit timestamp (when GitHub creates the merge group commit) when available; it falls back to patch creation time if unavailable, which can under-report due to webhook processing delays.
+- `evergreen.merge_queue.queue_entry_source` - Indicates which timestamp was used for `oldest_patch_age_ms`. Values are `"head_commit_date"` (preferred) or `"create_time"` (fallback). Use to filter depth samples for consistent methodology.
 - `evergreen.merge_queue.top_of_queue_patch_id` - Patch ID at the top of the queue
 - `evergreen.merge_queue.top_of_queue_status` - Status of the patch at the top of the queue
 - `evergreen.merge_queue.top_of_queue_sha` - SHA of the patch at the top of the queue
@@ -309,7 +310,7 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to patch completion (when all tasks finish). Queue entry time is the head commit timestamp (when GitHub creates the merge group commit), which closely approximates when the PR entered the queue. If the head commit timestamp is unavailable, it falls back to patch creation time.
 - `evergreen.merge_queue.time_to_first_task_ms` - The time from merge queue entry to when the first task in the patch starts. Queue entry time is determined the same way as `time_in_queue_ms`.
 - `evergreen.merge_queue.slowest_task_duration_ms` - The duration of the slowest task in the patch.
-- `evergreen.merge_queue.queue_entry_source` - Indicates which timestamp was used for queue entry time calculations. Values are `"head_commit_date"` (preferred, when the GitHub commit timestamp is available) or `"create_time"` (fallback, when the head commit timestamp is unavailable). Use this attribute to filter metrics for consistent measurement methodology.
+- `evergreen.merge_queue.queue_entry_source` - Indicates which timestamp was used for queue entry time calculations (e.g., `time_in_queue_ms`, `time_to_first_task_ms`, `oldest_patch_age_ms`). Values are `"head_commit_date"` (preferred, when the GitHub commit timestamp is available) or `"create_time"` (fallback, when the head commit timestamp is unavailable). Use this attribute to filter metrics for consistent measurement methodology.
 
 **Health & Failure Metrics:**
 

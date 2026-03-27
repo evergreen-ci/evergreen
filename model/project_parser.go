@@ -645,7 +645,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 	return TranslateProject(pp)
 }
 
-func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
+func processIntermediateProjectIncludes(ctx context.Context, intermediateProject *ParserProject,
 	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts, dirs *gitIncludeDirs, workerIdx int) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
@@ -657,13 +657,13 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		RemotePath:                include.FileName,
 		Revision:                  projectOpts.Revision,
 		ReadFileFrom:              projectOpts.ReadFileFrom,
-		Identifier:                identifier,
 		UnmarshalStrict:           projectOpts.UnmarshalStrict,
 		LocalModuleIncludes:       projectOpts.LocalModuleIncludes,
 		ReferencePatchID:          projectOpts.ReferencePatchID,
 		ReferenceManifestID:       projectOpts.ReferenceManifestID,
 		AutoUpdateModuleRevisions: projectOpts.AutoUpdateModuleRevisions,
 		IsIncludedFile:            true,
+		LocalIncludeDir:           projectOpts.LocalIncludeDir,
 	}
 	if projectOpts.Ref != nil {
 		localOpts.Worktree = dirs.getWorktreeForOwnerRepoWorker(projectOpts.Ref.Owner, projectOpts.Ref.Repo, workerIdx)
@@ -813,7 +813,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		go func(workerIdx int) {
 			defer wg.Done()
 			for include := range includesToProcess {
-				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, dirs, workerIdx)
+				processIntermediateProjectIncludes(ctx, intermediateProject, include, outputYAMLs, opts, dirs, workerIdx)
 			}
 		}(i)
 	}
@@ -1107,7 +1107,6 @@ type GetProjectOpts struct {
 	// ReadFileFrom determines where the file should be fetched from. If
 	// unspecified, the default is ReadFromGithub.
 	ReadFileFrom              string
-	Identifier                string
 	UnmarshalStrict           bool
 	LocalModuleIncludes       []patch.LocalModuleInclude
 	ReferencePatchID          string
@@ -1119,6 +1118,9 @@ type GetProjectOpts struct {
 	// Worktree is the directory of the git worktree to use when retrieving
 	// files via git. Only set if reading a remote file using git.
 	Worktree string
+	// LocalIncludeDir is the base directory for resolving relative include
+	// file paths when ReadFileFrom is ReadFromLocal.
+	LocalIncludeDir string
 }
 
 type PatchOpts struct {
@@ -1148,7 +1150,11 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 
 	switch opts.ReadFileFrom {
 	case ReadFromLocal:
-		fileContents, err := os.ReadFile(opts.RemotePath)
+		remotePath := opts.RemotePath
+		if !filepath.IsAbs(remotePath) && opts.LocalIncludeDir != "" {
+			remotePath = filepath.Join(opts.LocalIncludeDir, remotePath)
+		}
+		fileContents, err := os.ReadFile(remotePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "reading project config")
 		}
@@ -1216,8 +1222,9 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	// Look through any given local modules first
 	if path, ok := opts.LocalModules[include.Module]; ok {
 		moduleOpts := GetProjectOpts{
-			RemotePath:   fmt.Sprintf("%s/%s", path, opts.RemotePath),
-			ReadFileFrom: ReadFromLocal,
+			RemotePath:      fmt.Sprintf("%s/%s", path, opts.RemotePath),
+			ReadFileFrom:    ReadFromLocal,
+			LocalIncludeDir: opts.LocalIncludeDir,
 		}
 		return retrieveFile(ctx, moduleOpts)
 	} else if opts.ReadFileFrom == ReadFromLocal {
@@ -1239,7 +1246,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Ref:          &pRef,
 		RemotePath:   opts.RemotePath,
 		ReadFileFrom: ReadFromGithub,
-		Identifier:   include.Module,
 		Worktree:     dirs.getWorktreeForOwnerRepoWorker(repoOwner, repoName, workerIdx),
 	}
 	moduleOpts.Revision, err = getRevisionForRemoteModule(ctx, *module, include.Module, opts)

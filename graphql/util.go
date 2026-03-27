@@ -895,7 +895,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
 	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("merged project ref for project '%s' not found", utility.FromStringPtr(projectId)))
+		return nil, nil
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(ctx, *projectRef); err != nil {
@@ -1435,12 +1435,16 @@ func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (
 	return opts, nil
 }
 
-// getPrevTask finds a task's previous run that matches the given statuses.
+// getPrevTask finds a mainline task's previous run that matches the given statuses.
 // Note that PreviousCompletedTask defaults to completed statuses if the array is empty.
 func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string) (*restModel.APITask, error) {
 	tsk, err := obj.ToService()
 	if err != nil {
 		return nil, err
+	}
+
+	if tsk.IsPatchRequest() {
+		return nil, InputValidationError.Send(ctx, "cannot get previous task for patch")
 	}
 
 	prevTask, err := tsk.PreviousCompletedTask(ctx, utility.FromStringPtr(obj.ProjectId), statuses)
@@ -1458,4 +1462,43 @@ func getPrevTask(ctx context.Context, obj *restModel.APITask, statuses []string)
 	}
 
 	return apiTask, nil
+}
+
+// getNextTask finds a mainline task's next run that matches the given statuses.
+func getNextTask(ctx context.Context, obj *restModel.APITask, statuses []string) (*restModel.APITask, error) {
+	tsk, err := obj.ToService()
+	if err != nil {
+		return nil, err
+	}
+
+	if tsk.IsPatchRequest() {
+		return nil, InputValidationError.Send(ctx, "cannot get next task for patch")
+	}
+
+	nextTask, err := tsk.NextCompletedTask(ctx, utility.FromStringPtr(obj.ProjectId), statuses)
+	if err != nil {
+		return nil, err
+	}
+	if nextTask == nil {
+		return nil, nil
+	}
+
+	apiTask := &restModel.APITask{}
+	err = apiTask.BuildFromService(ctx, nextTask, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return apiTask, nil
+}
+
+// Traverse an operation's parents to see if a Waterfall field exists.
+// Return it if so, otherwise return nil without error
+func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
+	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
+		if w, ok := fc.Result.(*Waterfall); ok {
+			return w, true
+		}
+	}
+	return nil, false
 }

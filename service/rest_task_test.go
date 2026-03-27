@@ -22,8 +22,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
+	"github.com/parquet-go/parquet-go"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -94,7 +93,6 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		}
 		defer func() { w.Close() }()
 
-		pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
 		savedParquet := testresult.ParquetTestResults{
 			Version:   tr.Info.Version,
 			Variant:   tr.Info.Variant,
@@ -117,12 +115,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 				TestEndTime:    testResults[i].TestEndTime.UTC(),
 			}
 		}
-		err = pw.Write(savedParquet)
-		if err != nil {
-			return nil, err
-		}
-		err = pw.Close()
-		if err != nil {
+		if err = parquet.Write(w, []testresult.ParquetTestResults{savedParquet}); err != nil {
 			return nil, err
 		}
 

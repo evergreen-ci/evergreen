@@ -1,0 +1,37 @@
+{
+  task(taskId: "task_no_adjacent") {
+    id
+    prevTask {
+      id
+      status
+    }
+    prevTaskFailing {
+      id
+      status
+    }
+    prevTaskPassing {
+      id
+      status
+    }
+    prevTaskCompleted {
+      id
+      status
+    }
+    nextTask {
+      id
+      status
+    }
+    nextTaskFailing {
+      id
+      status
+    }
+    nextTaskPassing {
+      id
+      status
+    }
+    nextTaskCompleted {
+      id
+      status
+    }
+  }
+}

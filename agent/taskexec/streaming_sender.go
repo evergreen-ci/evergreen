@@ -216,3 +216,7 @@ func (p *streamingLoggerProducer) Closed() bool {
 	defer p.mu.Unlock()
 	return p.closed
 }
+
+func (p *streamingLoggerProducer) setSender(s send.Sender) {
+	p.sender = s
+}

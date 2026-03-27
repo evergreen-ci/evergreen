@@ -690,26 +690,9 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	var usr *user.DBUser
 	var err error
-	// Default to the pusher of the git tag, if relevant.
-	if metadata.GitTag.Pusher != "" {
-		usr, err = user.FindByGithubName(ctx, metadata.GitTag.Pusher)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "failed to fetch Evergreen user with GitHub info",
-			"method":         "git_tag",
-			"git_tag_pusher": metadata.GitTag.Pusher,
-		}))
-	}
-	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
-		usr, err = user.FindByGithubUID(ctx, metadata.Revision.AuthorGithubUID)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":             "failed to fetch Evergreen user with GitHub info",
-			"method":              "user_uid",
-			"revision_author_uid": metadata.Revision.AuthorGithubUID,
-		}))
-	}
-	if usr != nil {
+
+	if usr := resolveUserFromMetadata(ctx, metadata); usr != nil {
 		metadata.User = usr
 	}
 
@@ -783,6 +766,47 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		v.AuthorEmail = metadata.User.Email()
 	}
 	return v, nil
+}
+
+func resolveUserFromMetadata(ctx context.Context, metadata model.VersionMetadata) *user.DBUser {
+	var usr *user.DBUser
+	var err error
+	catcher := grip.NewBasicCatcher()
+
+	// Default to the pusher of the git tag, if relevant.
+	if metadata.GitTag.Pusher != "" {
+		usr, err = user.FindByGithubName(ctx, metadata.GitTag.Pusher)
+		catcher.Add(err)
+	}
+	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
+		usr, err = user.FindByGithubUID(ctx, metadata.Revision.AuthorGithubUID)
+		catcher.Add(err)
+	}
+	derivedID := deriveUserID(metadata.Revision.Author)
+	if usr == nil && derivedID != "" {
+		usr, err = user.FindOneById(ctx, derivedID)
+		catcher.Add(err)
+	}
+	grip.DebugWhen(usr == nil, message.Fields{
+		"message":             "failed to resolve Evergreen user for version",
+		"git_tag_pusher":      metadata.GitTag.Pusher,
+		"revision_author_uid": metadata.Revision.AuthorGithubUID,
+		"revision_author":     metadata.Revision.Author,
+		"derived_id":          derivedID,
+		"errors":              catcher.Resolve(),
+	})
+	return usr
+}
+
+// deriveUserID converts a display name to a likely Evergreen user ID by
+// lowercasing and joining the first and last words with a dot
+// ("Hello My World" -> "hello.world", "Hello" -> "").
+func deriveUserID(name string) string {
+	words := strings.Fields(name)
+	if len(words) < 2 {
+		return ""
+	}
+	return strings.ToLower(words[0] + "." + words[len(words)-1])
 }
 
 func makeVersionId(project, revision string) string {

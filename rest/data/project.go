@@ -63,9 +63,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 	if projectRef.Id == "" {
-		if projectRef.Id == "" {
-			projectRef.Id = mgobson.NewObjectId().Hex()
-		}
+		projectRef.Id = mgobson.NewObjectId().Hex()
 	}
 	if err := ValidateProjectName(ctx, projectRef.Id); err != nil {
 		return false, err

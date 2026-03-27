@@ -431,10 +431,6 @@ func TestSignedUrlVisibility(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 
-		conf := &internal.TaskConfig{
-			Task: task.Task{Id: "task_id"},
-		}
-
 		remoteFile := "remote file"
 
 		file1Info, err := os.Stat(file1)
@@ -457,7 +453,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 			},
 		}
 
-		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
+		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
 
 		attachedFiles := comm.AttachedFiles
 		if v, found := attachedFiles[""]; found {
@@ -528,7 +524,7 @@ func TestContentTypeSaved(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
+	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
 
 	attachedFiles := comm.AttachedFiles
 	files, ok := attachedFiles[conf.Task.Id]
@@ -869,4 +865,41 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	_, err = apimodels.ReadLogToSlice(it)
 	require.NoError(t, err)
+}
+
+func TestComputePerFileExtremes(t *testing.T) {
+	t.Run("EmptyInput", func(t *testing.T) {
+		maxPuts, minPuts := computePerFileExtremes(nil)
+		assert.Zero(t, maxPuts)
+		assert.Zero(t, minPuts)
+	})
+	t.Run("SingleFile", func(t *testing.T) {
+		files := []s3usage.FileMetrics{
+			{PutRequests: 5},
+		}
+		maxPuts, minPuts := computePerFileExtremes(files)
+		assert.Equal(t, 5, maxPuts)
+		assert.Equal(t, 5, minPuts)
+	})
+	t.Run("MultipleFiles", func(t *testing.T) {
+		files := []s3usage.FileMetrics{
+			{PutRequests: 3},
+			{PutRequests: 10},
+			{PutRequests: 1},
+			{PutRequests: 7},
+		}
+		maxPuts, minPuts := computePerFileExtremes(files)
+		assert.Equal(t, 10, maxPuts)
+		assert.Equal(t, 1, minPuts)
+	})
+	t.Run("AllSameValue", func(t *testing.T) {
+		files := []s3usage.FileMetrics{
+			{PutRequests: 4},
+			{PutRequests: 4},
+			{PutRequests: 4},
+		}
+		maxPuts, minPuts := computePerFileExtremes(files)
+		assert.Equal(t, 4, maxPuts)
+		assert.Equal(t, 4, minPuts)
+	})
 }

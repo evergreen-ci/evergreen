@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -213,10 +214,11 @@ func TestCLIFetchSource(t *testing.T) {
 }
 
 func TestCLIFetchArtifacts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
 
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness(ctx)
@@ -227,36 +229,56 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		err = os.RemoveAll("artifacts-abcdef-rest_task_variant_task_two")
 		So(err, ShouldBeNil)
 
-		err = (&task.Task{
+		p := &model.ProjectRef{
+			Id:         "project_id",
+			Identifier: "project_name",
+		}
+		assert.NoError(t, p.Insert(ctx))
+
+		parentTask := &task.Task{
 			Id:           "rest_task_test_id1",
 			BuildVariant: "rest_task_variant",
 			Revision:     "abcdef1234",
 			DependsOn:    []task.Dependency{{TaskId: "rest_task_test_id2"}},
 			DisplayName:  "task_one",
-		}).Insert(ctx)
+			Execution:    1,
+			Project:      p.Id,
+		}
+		err = parentTask.Insert(ctx)
 		So(err, ShouldBeNil)
 
-		err = (&task.Task{
+		dependencyTask := &task.Task{
 			Id:           "rest_task_test_id2",
 			Revision:     "abcdef1234",
 			BuildVariant: "rest_task_variant",
 			DependsOn:    []task.Dependency{},
 			DisplayName:  "task_two",
-		}).Insert(ctx)
+			Execution:    0,
+			Project:      p.Id,
+		}
+		err = dependencyTask.Insert(ctx)
 		So(err, ShouldBeNil)
 
-		err = (&artifact.Entry{
-			TaskId:          "rest_task_test_id1",
+		parentTaskFiles := &artifact.Entry{
+			TaskId:          parentTask.Id,
+			Execution:       1,
 			TaskDisplayName: "task_one",
-			Files:           []artifact.File{{Link: "http://www.google.com/robots.txt"}},
-		}).Upsert(t.Context())
+			Files: []artifact.File{
+				{Link: "http://www.google.com/robots.txt", Name: "Robots"},
+				{Link: "http://www.google.com/hello_world.txt", Name: "Hello World"},
+			},
+		}
+		err = parentTaskFiles.Upsert(ctx)
 		So(err, ShouldBeNil)
 
-		err = (&artifact.Entry{
-			TaskId:          "rest_task_test_id2",
+		dependencyTaskFiles := &artifact.Entry{
+			TaskId:          dependencyTask.Id,
 			TaskDisplayName: "task_two",
-			Files:           []artifact.File{{Link: "http://www.google.com/humans.txt"}},
-		}).Upsert(t.Context())
+			Files: []artifact.File{
+				{Link: "http://www.google.com/humans.txt", Name: "Humans"},
+			},
+		}
+		err = dependencyTaskFiles.Upsert(ctx)
 		So(err, ShouldBeNil)
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
@@ -264,22 +286,67 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		_, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
 
+		Convey("throws an error if task with execution does not exist", func() {
+			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(5), "")
+			So(err, ShouldNotBeNil)
+		})
+
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
-			err = fetchArtifacts(rc, "rest_task_test_id1", "", true)
+			err = fetchArtifacts(rc, parentTask.Id, "", true, utility.ToIntPtr(1), "")
 			So(err, ShouldBeNil)
-			// downloaded file should exist where we expect
+
 			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
 			So(err, ShouldBeNil)
 			So(fileStat.Size(), ShouldBeGreaterThan, 0)
 
 			fileStat, err = os.Stat("./rest_task_variant_task_two/humans.txt")
 			So(os.IsNotExist(err), ShouldBeTrue)
-			Convey("deep fetch artifacts should also download artifacts from dependency", func() {
-				err = fetchArtifacts(rc, "rest_task_test_id1", "", false)
-				So(err, ShouldBeNil)
-				fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
-				So(os.IsNotExist(err), ShouldBeFalse)
-			})
+		})
+
+		Convey("deep fetch artifacts should also download artifacts from dependency", func() {
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "")
+			So(err, ShouldBeNil)
+
+			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+		})
+
+		Convey("downloads only specified artifact when artifactName is provided", func() {
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "Hello World")
+			So(err, ShouldBeNil)
+
+			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
+			So(err, ShouldBeNil)
+			So(fileStat.Size(), ShouldBeGreaterThan, 0)
+
+			fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+		})
+
+		Convey("downloads no files if artifactName does not match any artifacts", func() {
+			err = fetchArtifacts(rc, parentTask.Id, "", false, nil, "doesnotexist")
+			So(err, ShouldBeNil)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/hello_world.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
+			_, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
+			So(os.IsNotExist(err), ShouldBeTrue)
 		})
 	})
 }

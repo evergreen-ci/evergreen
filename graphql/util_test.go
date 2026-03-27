@@ -215,6 +215,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               0,
 		Status:                  evergreen.TaskSucceeded,
+		DisplayStatusCache:      evergreen.TaskSucceeded,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t2 := task.Task{
@@ -225,6 +226,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               0,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t3 := task.Task{
@@ -235,6 +237,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskSucceeded,
+		DisplayStatusCache:      evergreen.TaskSucceeded,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t4 := task.Task{
@@ -245,6 +248,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t5 := task.Task{
@@ -255,6 +259,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 1",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 	t6 := task.Task{
@@ -265,6 +270,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		Execution:               1,
 		Status:                  evergreen.TaskFailed,
+		DisplayStatusCache:      evergreen.TaskFailed,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 
@@ -524,6 +530,36 @@ func TestFlattenOtelVariables(t *testing.T) {
 	val, ok = unnestedVars["k6.nested_k7"]
 	assert.True(t, ok)
 	assert.Equal(t, "v7", val)
+}
+
+func TestGetProjectMetadata(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+
+	t.Run("ReturnsNilForDeletedProject", func(t *testing.T) {
+		projectId := "deleted_project"
+		patchId := "some_patch_id"
+		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		assert.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("ReturnsProjectMetadataForExistingProject", func(t *testing.T) {
+		projectRef := model.ProjectRef{
+			Id:         "existing_project",
+			Identifier: "existing_project",
+			Owner:      "my_owner",
+			Repo:       "my_repo",
+			Branch:     "main",
+		}
+		assert.NoError(t, projectRef.Insert(t.Context()))
+		projectId := "existing_project"
+		patchId := "some_patch_id"
+		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		assert.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "my_owner", utility.FromStringPtr(result.Owner))
+		assert.Equal(t, "my_repo", utility.FromStringPtr(result.Repo))
+	})
 }
 
 func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
