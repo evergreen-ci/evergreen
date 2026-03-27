@@ -17,12 +17,13 @@ func TestNewMoveLogsToFailedBucketJob(t *testing.T) {
 	sourceCfg := evergreen.BucketConfig{Name: "test-source-bucket", Type: "s3"}
 
 	t.Run("DefaultTimeout", func(t *testing.T) {
-		job := NewMoveLogsToFailedBucketJob(env, "task-123", "2025-01-16", sourceCfg)
+		job := NewMoveLogsToFailedBucketJob(env, "task-123", "2025-01-16", sourceCfg, MoveLogsTriggerTaskEnd)
 		require.NotNil(t, job)
 
 		moveJob, ok := job.(*moveLogsToFailedBucketJob)
 		require.True(t, ok)
 		assert.Equal(t, "task-123", moveJob.TaskID)
+		assert.Equal(t, MoveLogsTriggerTaskEnd, moveJob.Trigger)
 		assert.Equal(t, sourceCfg, moveJob.SourceBucketCfg)
 		assert.Zero(t, moveJob.Timeout)
 		assert.Equal(t, fetchTimeout, job.TimeInfo().MaxTime)
@@ -30,7 +31,7 @@ func TestNewMoveLogsToFailedBucketJob(t *testing.T) {
 
 	t.Run("CustomTimeout", func(t *testing.T) {
 		customTimeout := 60 * time.Minute
-		job := NewMoveLogsToFailedBucketJob(env, "task-456", "2025-01-16", sourceCfg, customTimeout)
+		job := NewMoveLogsToFailedBucketJob(env, "task-456", "2025-01-16", sourceCfg, MoveLogsTriggerTaskEnd, customTimeout)
 		require.NotNil(t, job)
 
 		moveJob, ok := job.(*moveLogsToFailedBucketJob)

@@ -443,6 +443,8 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 // setupTask does some initial setup that the task needs before running such as initializing the logger, loading the task config
 // data and setting the task directory.
 func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskContext, nt *apimodels.NextTaskResponse, shouldSetupGroup bool, taskDirectory string) (tc *taskContext, shouldExit bool, err error) {
+	setupCtx, span := a.tracer.Start(setupCtx, "setup-task")
+	defer span.End()
 	if initialTC == nil {
 		logger := client.NewSingleChannelLogHarness("default", a.defaultLogger)
 		tc = &taskContext{
@@ -606,14 +608,22 @@ type taskInfo struct {
 // fetchTaskInfo gets the Project, Task, ExpansionAndVars, and DisplayTaskInfo. It stores them inside
 // a TaskConfigOptions struct- it does not set any of its other fields.
 func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, error) {
+	ctx, span := a.tracer.Start(ctx, "fetch-task-info")
+	defer span.End()
+
 	opts := &taskInfo{}
 	var err error
+
+	ctx, getProjectSpan := a.tracer.Start(ctx, "get-project")
 	opts.project, err = a.comm.GetProject(ctx, tc.task)
+	getProjectSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project")
 	}
 
+	ctx, getTaskSpan := a.tracer.Start(ctx, "get-task")
 	opts.task, err = a.comm.GetTask(ctx, tc.task)
+	getTaskSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task")
 	}
@@ -621,12 +631,16 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	// Reset S3Usage for this execution to avoid accumulating from previous restarts
 	opts.task.S3Usage = s3usage.S3Usage{}
 
+	ctx, getExpansionsSpan := a.tracer.Start(ctx, "get-expansions-and-vars")
 	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
+	getExpansionsSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting expansions and variables")
 	}
 
+	ctx, getDisplayTaskSpan := a.tracer.Start(ctx, "get-display-task-info")
 	opts.displayTaskInfo, err = a.comm.GetDisplayTaskInfoFromExecution(ctx, tc.task)
+	getDisplayTaskSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task's display task info")
 	}

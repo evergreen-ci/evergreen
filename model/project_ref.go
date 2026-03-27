@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -1632,23 +1631,6 @@ func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef)
 // FindAllMergedProjectRefs returns all project refs in the db, with repo ref information merged
 func FindAllMergedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
 	return findProjectRefsQ(ctx, bson.M{}, true)
-}
-
-func FindAllProjectRefs(ctx context.Context) ([]ProjectRef, error) {
-	return findProjectRefsQ(ctx, bson.M{}, false)
-}
-
-func FindMergedProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	return findProjectRefsQ(
-		ctx,
-		bson.M{
-			ProjectRefIdKey: bson.M{
-				"$in": ids,
-			},
-		}, true)
 }
 
 // FindMergedEnabledProjectRefsByIds returns all project refs for the provided ids
@@ -3368,40 +3350,6 @@ func IsWebhookConfigured(ctx context.Context, project string, version string) (e
 	} else {
 		return evergreen.WebHook{}, false, nil
 	}
-}
-
-func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) (string, error) {
-	if triggerID == "" || triggerType == "" {
-		return "", nil
-	}
-	var projectID string
-	if triggerType == ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(ctx, triggerID)
-		if err != nil {
-			return "", errors.Wrap(err, "finding upstream task")
-		}
-		if upstreamTask == nil {
-			return "", errors.New("upstream task not found")
-		}
-		projectID = upstreamTask.Project
-	} else if triggerType == ProjectTriggerLevelBuild {
-		upstreamBuild, err := build.FindOneId(ctx, triggerID)
-		if err != nil {
-			return "", errors.Wrap(err, "finding upstream build")
-		}
-		if upstreamBuild == nil {
-			return "", errors.New("upstream build not found")
-		}
-		projectID = upstreamBuild.Project
-	}
-	upstreamProject, err := FindBranchProjectRef(ctx, projectID)
-	if err != nil {
-		return "", errors.Wrap(err, "finding upstream project")
-	}
-	if upstreamProject == nil {
-		return "", errors.New("upstream project not found")
-	}
-	return upstreamProject.DisplayName, nil
 }
 
 // projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that are

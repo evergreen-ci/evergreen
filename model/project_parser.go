@@ -645,7 +645,7 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 	return TranslateProject(pp)
 }
 
-func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
+func processIntermediateProjectIncludes(ctx context.Context, intermediateProject *ParserProject,
 	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts, dirs *gitIncludeDirs, workerIdx int) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
@@ -657,7 +657,6 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		RemotePath:                include.FileName,
 		Revision:                  projectOpts.Revision,
 		ReadFileFrom:              projectOpts.ReadFileFrom,
-		Identifier:                identifier,
 		UnmarshalStrict:           projectOpts.UnmarshalStrict,
 		LocalModuleIncludes:       projectOpts.LocalModuleIncludes,
 		ReferencePatchID:          projectOpts.ReferencePatchID,
@@ -814,7 +813,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		go func(workerIdx int) {
 			defer wg.Done()
 			for include := range includesToProcess {
-				processIntermediateProjectIncludes(ctx, projectID, intermediateProject, include, outputYAMLs, opts, dirs, workerIdx)
+				processIntermediateProjectIncludes(ctx, intermediateProject, include, outputYAMLs, opts, dirs, workerIdx)
 			}
 		}(i)
 	}
@@ -1108,7 +1107,6 @@ type GetProjectOpts struct {
 	// ReadFileFrom determines where the file should be fetched from. If
 	// unspecified, the default is ReadFromGithub.
 	ReadFileFrom              string
-	Identifier                string
 	UnmarshalStrict           bool
 	LocalModuleIncludes       []patch.LocalModuleInclude
 	ReferencePatchID          string
@@ -1248,7 +1246,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Ref:          &pRef,
 		RemotePath:   opts.RemotePath,
 		ReadFileFrom: ReadFromGithub,
-		Identifier:   include.Module,
 		Worktree:     dirs.getWorktreeForOwnerRepoWorker(repoOwner, repoName, workerIdx),
 	}
 	moduleOpts.Revision, err = getRevisionForRemoteModule(ctx, *module, include.Module, opts)

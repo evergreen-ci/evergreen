@@ -124,7 +124,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Wrap(err, "getting EC2 settings")
 	}
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s': %+v", h.Distro.Id, ec2Settings)
+		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s'", h.Distro.Id)
 	}
 
 	var err error
@@ -256,10 +256,6 @@ func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (C
 	}
 
 	return info, nil
-}
-
-func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
-	return errors.New("can't set port mappings with EC2 fleet provider")
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {

@@ -82,7 +82,7 @@ type copyVariablesOptions struct {
 	// If set to true, route returns the variables from source_project that will
 	// be copied. (If private, the values will be redacted.) If dry_run is set,
 	// then the route does not complete the copy, but returns OK if no project
-	// variables in the source project will be overwritten (this concerns
+	// variables in the copy_to project will be overwritten (this concerns
 	// all variables in the destination project, but only redacted
 	// variables in the source project). Otherwise, an error is given which
 	// includes the project variable keys that overlap. If dry_run is not set,

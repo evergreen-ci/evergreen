@@ -17,6 +17,8 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
+	"github.com/evergreen-ci/evergreen/model/ec2settings"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
@@ -39,6 +41,10 @@ import (
 	"gonum.org/v1/gonum/graph/topo"
 )
 
+// hostCollectionName is the MongoDB hosts collection name (must match host.Collection).
+// We use a local constant instead of host.Collection to avoid an import cycle: model/host imports model/task.
+const hostCollectionName = "hosts"
+
 const (
 	dependencyKey = "dependencies"
 
@@ -59,7 +65,14 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
+
+	// dependencyResolutionTimeout is the maximum time allowed for recursive
+	// dependency resolution.
+	dependencyResolutionTimeout = 10 * time.Minute
 )
+
+// maxDependencyDepth is the maximum recursion depth for dependency traversal.
+var maxDependencyDepth = 500
 
 var (
 	// A regex that matches either / or \ for splitting directory paths
@@ -853,6 +866,18 @@ func (t *Task) PreviousCompletedTask(ctx context.Context, project string, status
 	}
 	query := db.Query(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
+	return FindOne(ctx, query)
+}
+
+// NextCompletedTask finds the next completed task for the same project +
+// build variant + display name combination as the specified task.
+// It defaults to completed statuses if the array is empty.
+func (t *Task) NextCompletedTask(ctx context.Context, project string, statuses []string) (*Task, error) {
+	if len(statuses) == 0 {
+		statuses = evergreen.TaskCompletedStatuses
+	}
+	query := db.Query(ByAfterRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{RevisionOrderNumberKey})
 	return FindOne(ctx, query)
 }
 
@@ -2446,9 +2471,24 @@ func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGe
 // that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
 // depCache should originally be nil. We assume there are no dependency cycles.
 func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[string]Task) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if depCache == nil {
 		depCache = make(map[string]Task)
 	}
+
+	return getRecursiveDependenciesUpHelper(ctx, tasks, depCache, 0)
+}
+
+func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCache map[string]Task, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
 	for _, t := range tasks {
 		depCache[t.Id] = t
 	}
@@ -2485,7 +2525,7 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
 
-	recursiveDeps, err := GetRecursiveDependenciesUp(ctx, deps, depCache)
+	recursiveDeps, err := getRecursiveDependenciesUpHelper(ctx, deps, depCache, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2497,9 +2537,24 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 // taskMap should originally be nil.
 // We assume there are no dependency cycles.
 func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap map[string]bool) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if taskMap == nil {
 		taskMap = make(map[string]bool)
 	}
+
+	return getRecursiveDependenciesDownHelper(ctx, tasks, taskMap, 0)
+}
+
+func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, taskMap map[string]bool, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
 	for _, t := range tasks {
 		taskMap[t] = true
 	}
@@ -2521,7 +2576,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 		}
 	}
 
-	// everything is aleady in the map or nothing depends on tasks
+	// everything is already in the map or nothing depends on tasks
 	if len(newDeps) == 0 {
 		return nil, nil
 	}
@@ -2530,7 +2585,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	for _, t := range newDeps {
 		newDepIDs = append(newDepIDs, t.Id)
 	}
-	recurseTasks, err := getRecursiveDependenciesDown(ctx, newDepIDs, taskMap)
+	recurseTasks, err := getRecursiveDependenciesDownHelper(ctx, newDepIDs, taskMap, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -4057,29 +4112,136 @@ func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, f
 	}
 }
 
-func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, error) {
+// EBS GP3 throughput pricing constants (us-east-1 rates).
+// Pricing is standardized to us-east-1 and does not account for regional variations.
+const (
+	// GP3FreeThroughputMBps is the free throughput tier for GP3 volumes (125 MB/s).
+	GP3FreeThroughputMBps = 125
+	// GP3ThroughputPricePerMBpsMonth is the price per MB/s-month above the free tier.
+	GP3ThroughputPricePerMBpsMonth = 0.04
+	// SecondsPerMonth is 2,592,000 (60 * 60 * 24 * 30) and is used to convert monthly pricing to per-second pricing.
+	SecondsPerMonth = 60 * 60 * 24 * 30
+)
+
+// calculateTotalGP3Throughput sums the throughput of all GP3 volumes in mount points.
+func calculateTotalGP3Throughput(mountPoints []ec2mount.MountPoint) int32 {
+	var totalThroughput int32
+	for _, mp := range mountPoints {
+		if mp.VolumeType == evergreen.VolumeTypeGp3 && mp.Throughput > 0 {
+			totalThroughput += mp.Throughput
+		}
+	}
+	return totalThroughput
+}
+
+// calculateBillableThroughput returns the throughput amount that should be billed.
+// Returns 0 if total throughput is at or below the free tier (125 MB/s).
+func calculateBillableThroughput(totalThroughput int32) int32 {
+	if totalThroughput <= GP3FreeThroughputMBps {
+		return 0
+	}
+	return totalThroughput - GP3FreeThroughputMBps
+}
+
+// CalculateEBSThroughputOnDemandCost calculates the raw on-demand cost for EBS GP3 throughput.
+// Pricing based on us-east-1 rates: $0.04 per MB/s-month above 125 MB/s baseline.
+// Does not apply discount; use CalculateEBSThroughputAdjustedCost for discounted cost.
+func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
+	if runtimeSeconds <= 0 {
+		return 0
+	}
+
+	totalThroughput := calculateTotalGP3Throughput(mountPoints)
+	billableThroughput := calculateBillableThroughput(totalThroughput)
+
+	if billableThroughput == 0 {
+		return 0
+	}
+
+	// Convert from per-month to per-second pricing (raw cost, no discount)
+	costPerSecond := (float64(billableThroughput) * GP3ThroughputPricePerMBpsMonth) / SecondsPerMonth
+
+	return costPerSecond * runtimeSeconds
+}
+
+// CalculateEBSThroughputAdjustedCost calculates the adjusted cost for EBS GP3 throughput.
+// Applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
+	onDemandCost := CalculateEBSThroughputOnDemandCost(runtimeSeconds, mountPoints)
+	return onDemandCost * (1 - ebsConfig.EBSDiscount)
+}
+
+// calculateEBSThroughputCost sets the EBS GP3 throughput cost on TaskCost based on the distro's mount points.
+func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig evergreen.CostConfig, d *distro.Distro) {
+	if d == nil {
+		return
+	}
+	mountPoints, err := ec2settings.MountPointsForDistro(d, getHostRegionForTask(ctx, t))
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":   "failed to extract mount points from distro",
+			"task_id":   t.Id,
+			"distro_id": t.DistroId,
+		}))
+		return
+	}
+	if len(mountPoints) == 0 {
+		return
+	}
+	runtimeSeconds := t.TimeTaken.Seconds()
+	t.TaskCost.OnDemandEBSThroughputCost = CalculateEBSThroughputOnDemandCost(
+		runtimeSeconds,
+		mountPoints,
+	)
+	t.TaskCost.AdjustedEBSThroughputCost = CalculateEBSThroughputAdjustedCost(
+		runtimeSeconds,
+		mountPoints,
+		financeConfig.EBSCost,
+	)
+}
+
+func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, *distro.Distro, error) {
 	financeConfig := evergreen.CostConfig{}
 	if err := financeConfig.Get(ctx); err != nil {
-		return financeConfig, distro.CostData{}, errors.Wrap(err, "getting finance configuration")
+		return financeConfig, distro.CostData{}, nil, errors.Wrap(err, "getting finance configuration")
 	}
 
 	if !financeConfig.IsConfigured() {
-		return financeConfig, distro.CostData{}, errors.New("finance configuration not set up")
+		return financeConfig, distro.CostData{}, nil, errors.New("finance configuration not set up")
 	}
 
 	d, err := distro.FindOneId(ctx, t.DistroId)
 	if err != nil {
-		return financeConfig, distro.CostData{}, errors.Wrapf(err, "finding distro '%s'", t.DistroId)
+		return financeConfig, distro.CostData{}, nil, errors.Wrapf(err, "finding distro '%s'", t.DistroId)
 	}
 	if d == nil {
-		return financeConfig, distro.CostData{}, errors.Errorf("distro '%s' not found", t.DistroId)
+		return financeConfig, distro.CostData{}, nil, errors.Errorf("distro '%s' not found", t.DistroId)
 	}
 
 	if !d.CostData.IsConfigured() {
-		return financeConfig, distro.CostData{}, errors.New("distro cost data not configured")
+		return financeConfig, distro.CostData{}, nil, errors.New("distro cost data not configured")
 	}
 
-	return financeConfig, d.CostData, nil
+	return financeConfig, d.CostData, d, nil
+}
+
+// getHostRegionForTask returns the AWS region where the task's host is running, derived from the host's zone.
+// Returns empty string if the host is not found, has no zone, or the task has no host.
+func getHostRegionForTask(ctx context.Context, t *Task) string {
+	if t.HostId == "" {
+		return ""
+	}
+	var result struct {
+		Zone string `bson:"zone"`
+	}
+	err := evergreen.GetEnvironment().DB().Collection(hostCollectionName).FindOne(ctx,
+		bson.M{"_id": t.HostId},
+		options.FindOne().SetProjection(bson.M{"zone": 1}),
+	).Decode(&result)
+	if err != nil {
+		return ""
+	}
+	return util.AZToRegion(result.Zone)
 }
 
 func (t *Task) UpdateTaskCost(ctx context.Context) error {
@@ -4087,7 +4249,12 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		return nil
 	}
 
-	t.calculateRuntimeCost(ctx)
+	financeConfig, costData, d, err := t.getFinanceConfigAndDistro(ctx)
+	if err == nil {
+		t.calculateRuntimeCost(financeConfig, costData)
+		t.calculateEBSThroughputCost(ctx, financeConfig, d)
+	}
+	t.calculateS3PutCosts(ctx)
 
 	if t.TaskCost.IsZero() {
 		return nil
@@ -4101,11 +4268,7 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 }
 
 // calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
-func (t *Task) calculateRuntimeCost(ctx context.Context) {
-	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
-		return
-	}
+func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData distro.CostData) {
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 

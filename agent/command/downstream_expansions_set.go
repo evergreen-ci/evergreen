@@ -91,12 +91,12 @@ func (c *setDownstream) ParseFromFile(filename string) error {
 		return err
 	}
 
-	params_from_file := make(map[string]string)
-	err = yaml.Unmarshal(filedata, params_from_file)
+	paramsFromFile := make(map[string]string)
+	err = yaml.Unmarshal(filedata, paramsFromFile)
 	if err != nil {
 		return err
 	}
-	for k, v := range params_from_file {
+	for k, v := range paramsFromFile {
 		param := patch.Parameter{
 			Key:   k,
 			Value: v,

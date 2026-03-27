@@ -2,16 +2,11 @@ package testlog
 
 import (
 	"testing"
-	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() {
@@ -55,35 +50,4 @@ func TestTestLogInsertAndFind(t *testing.T) {
 
 	})
 
-}
-
-func TestDeleteTestLogsWithLimit(t *testing.T) {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-
-	t.Run("DetectsOutOfBounds", func(t *testing.T) {
-		deletedCount, err := DeleteTestLogsWithLimit(ctx, env, now, maxDeleteCount+1)
-		assert.Error(t, err)
-		assert.Zero(t, deletedCount)
-	})
-	t.Run("QueryValidation", func(t *testing.T) {
-		require.NoError(t, db.Clear(TestLogCollection))
-		require.NoError(t, db.Insert(t.Context(), TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex()}))
-		require.NoError(t, db.Insert(t.Context(), TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex()}))
-
-		num, err := db.Count(t.Context(), TestLogCollection, bson.M{})
-		require.NoError(t, err)
-		assert.Equal(t, 2, num)
-
-		num, err = DeleteTestLogsWithLimit(ctx, env, now, 2)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, num)
-
-		num, err = db.Count(t.Context(), TestLogCollection, bson.M{})
-		require.NoError(t, err)
-		assert.Equal(t, 1, num)
-	})
 }

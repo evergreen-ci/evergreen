@@ -357,7 +357,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		{Id: "TaskDispatchedId", Execution: 0, Status: evergreen.TaskDispatched},
 	}
 
-	old_tasks := []task.Task{
+	oldTasks := []task.Task{
 		{Id: "TaskFailedId_0", Execution: 0, Status: evergreen.TaskFailed},
 		{Id: "t2_0", Execution: 0, Status: evergreen.TaskFailed},
 	}
@@ -368,7 +368,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		assert.NoError(t, each.Insert(t.Context()))
 	}
 
-	for _, each := range old_tasks {
+	for _, each := range oldTasks {
 		assert.NoError(t, each.Insert(t.Context()))
 		assert.NoError(t, each.Archive(ctx))
 	}

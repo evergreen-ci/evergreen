@@ -1361,7 +1361,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
 			t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
 		}
-		j := units.NewMoveLogsToFailedBucketJob(h.env, t.Id, utility.RoundPartOfMinute(0).Format(units.TSFormat), sourceBucketCfg)
+		j := units.NewMoveLogsToFailedBucketJob(h.env, t.Id, utility.RoundPartOfMinute(0).Format(units.TSFormat), sourceBucketCfg, units.MoveLogsTriggerTaskEnd)
 		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not enqueue job to move logs to failed bucket",

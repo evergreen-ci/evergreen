@@ -194,9 +194,9 @@ Evergreen offers the [github.generate_token](Project-Commands#github_generate_to
 
 > Note: Adding a GitHub app to your project setting won't automatically impact your tasks. The `git.get_project` command will not default to it. It will simply enable you to use the `github.generate_token` command if and when you choose to.
 
-If you run into any issues, please see our [FAQ](../FAQ.md#dynamic-github-access-tokens).
+If you run into any issues, please see our [FAQ](../FAQ/Dynamic-Github-Tokens-FAQ#dynamic-github-access-tokens).
 
-If you don't already have a github app, please request one [here](https://jira.mongodb.org/plugins/servlet/desk/portal/81/create/1328). .
+If you don't already have a github app, please request one [here](https://jira.mongodb.org/plugins/servlet/desk/portal/95/create/1502?).
 
 ### Saving An App Id and Key
 

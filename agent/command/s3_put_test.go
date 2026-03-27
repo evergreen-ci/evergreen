@@ -432,10 +432,6 @@ func TestSignedUrlVisibility(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 
-		conf := &internal.TaskConfig{
-			Task: task.Task{Id: "task_id"},
-		}
-
 		remoteFile := "remote file"
 
 		file1Info, err := os.Stat(file1)
@@ -458,7 +454,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 			},
 		}
 
-		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
+		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
 
 		attachedFiles := comm.AttachedFiles
 		if v, found := attachedFiles[""]; found {
@@ -529,7 +525,7 @@ func TestContentTypeSaved(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
+	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
 
 	attachedFiles := comm.AttachedFiles
 	files, ok := attachedFiles[conf.Task.Id]

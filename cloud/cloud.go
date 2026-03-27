@@ -38,9 +38,6 @@ type Manager interface {
 	// Gets the state of an instance
 	GetInstanceState(context.Context, *host.Host) (CloudInstanceState, error)
 
-	// SetPortMappings sets the port mappings for the container
-	SetPortMappings(context.Context, *host.Host, *host.Host) error
-
 	// TerminateInstance destroys the host in the underlying provider and cleans
 	// up IP resources associated with the host, if any (see CleanupIP).
 	TerminateInstance(context.Context, *host.Host, string, string) error
