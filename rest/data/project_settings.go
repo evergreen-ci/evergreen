@@ -157,7 +157,6 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		return nil
 	}
 
-	// Only update and log if variables were actually promoted.
 	if err = UpdateProjectVars(ctx, repoId, apiRepoVars, true); err != nil {
 		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
@@ -200,7 +199,6 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
-	// Only update and log if variables were actually promoted.
 	if err := UpdateProjectVars(ctx, projectId, apiProjectVars, true); err != nil {
 		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
