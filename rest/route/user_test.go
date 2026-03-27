@@ -416,6 +416,15 @@ func TestGetUserPermissions(t *testing.T) {
 	assert.Equal(t, evergreen.ProjectSettingsEdit.Value, data[0].Permissions["resource3"][evergreen.PermissionProjectSettings])
 }
 
+// permissionLevelDescriptions extracts the description strings from a slice of APIPermissionLevel.
+func permissionLevelDescriptions(levels []restModel.APIPermissionLevel) []string {
+	descriptions := make([]string, 0, len(levels))
+	for _, l := range levels {
+		descriptions = append(descriptions, l.Description)
+	}
+	return descriptions
+}
+
 func TestGetUserPermissionDetails(t *testing.T) {
 	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
@@ -455,12 +464,14 @@ func TestGetUserPermissionDetails(t *testing.T) {
 	settingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
 	tasksKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionTasks)
 
-	require.NotEmpty(t, data.Legend, "legend should always be populated")
-	assert.Len(t, data.Legend, len(evergreen.ProjectPermissions), "legend should have one entry per permission category")
-	assert.Contains(t, data.Legend[settingsKey], evergreen.ProjectSettingsEdit.Description)
-	assert.Contains(t, data.Legend[settingsKey], evergreen.ProjectSettingsView.Description)
-	assert.Contains(t, data.Legend[tasksKey], evergreen.TasksBasic.Description)
-	assert.Contains(t, data.Legend[tasksKey], evergreen.TasksAdmin.Description)
+	require.NotEmpty(t, data.AvailablePermissions, "available_permissions should always be populated")
+	assert.Len(t, data.AvailablePermissions, len(evergreen.ProjectPermissions), "available_permissions should have one entry per permission category")
+	require.Contains(t, data.AvailablePermissions, settingsKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[settingsKey]), evergreen.ProjectSettingsEdit.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[settingsKey]), evergreen.ProjectSettingsView.Description)
+	require.Contains(t, data.AvailablePermissions, tasksKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[tasksKey]), evergreen.TasksBasic.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[tasksKey]), evergreen.TasksAdmin.Description)
 
 	byID := map[string]restModel.APIProjectPermissionSummary{}
 	for _, p := range data.Projects {
@@ -495,6 +506,7 @@ func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
 	projectRefs := []model.ProjectRef{
 		{Id: "project-a-id", Identifier: "project-alpha"},
 		{Id: "project-b-id", Identifier: "project-beta"},
+		{Id: "project-c-id", Identifier: "project-gamma"},
 	}
 	for _, ref := range projectRefs {
 		require.NoError(t, ref.Replace(ctx))
@@ -513,9 +525,10 @@ func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
 		require.True(t, ok)
 		require.NotNil(t, data)
 		tasksKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionTasks)
-		require.NotEmpty(t, data.Legend)
-		assert.Contains(t, data.Legend[tasksKey], evergreen.TasksBasic.Description)
-		assert.Contains(t, data.Legend[tasksKey], evergreen.TasksAdmin.Description)
+		require.NotEmpty(t, data.AvailablePermissions)
+		require.Contains(t, data.AvailablePermissions, tasksKey)
+		assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[tasksKey]), evergreen.TasksBasic.Description)
+		assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[tasksKey]), evergreen.TasksAdmin.Description)
 		require.Len(t, data.Projects, 1)
 		assert.Equal(t, "project-a-id", data.Projects[0].ProjectID)
 		assert.Equal(t, "project-alpha", data.Projects[0].ProjectIdentifier)
@@ -533,6 +546,19 @@ func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
 		require.NotNil(t, data)
 		require.Len(t, data.Projects, 1)
 		assert.Equal(t, "project-a-id", data.Projects[0].ProjectID)
+	})
+
+	t.Run("ProjectExistsButUserHasNoPermissions", func(t *testing.T) {
+		handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "project-gamma"}
+		resp := handler.Run(ctx)
+		require.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+		require.True(t, ok)
+		require.NotNil(t, data)
+		require.Len(t, data.Projects, 1)
+		assert.Equal(t, "project-c-id", data.Projects[0].ProjectID)
+		assert.Equal(t, "project-gamma", data.Projects[0].ProjectIdentifier)
+		assert.Empty(t, data.Projects[0].Permissions)
 	})
 
 	t.Run("NonExistentProject", func(t *testing.T) {
@@ -567,11 +593,12 @@ func TestGetUserPermissionDetailsTypeFilter(t *testing.T) {
 	distroSettingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionDistroSettings)
 	projectSettingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
 
-	require.NotEmpty(t, data.Legend, "legend should always be populated")
-	assert.Len(t, data.Legend, len(evergreen.DistroPermissions), "distro legend should have one entry per distro permission category")
-	assert.Contains(t, data.Legend[distroSettingsKey], evergreen.DistroSettingsEdit.Description)
-	assert.Contains(t, data.Legend[distroSettingsKey], evergreen.DistroSettingsAdmin.Description)
-	assert.NotContains(t, data.Legend, projectSettingsKey, "distro legend should not include project permission categories")
+	require.NotEmpty(t, data.AvailablePermissions, "available_permissions should always be populated")
+	assert.Len(t, data.AvailablePermissions, len(evergreen.DistroPermissions), "distro available_permissions should have one entry per distro permission category")
+	require.Contains(t, data.AvailablePermissions, distroSettingsKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[distroSettingsKey]), evergreen.DistroSettingsEdit.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[distroSettingsKey]), evergreen.DistroSettingsAdmin.Description)
+	assert.NotContains(t, data.AvailablePermissions, projectSettingsKey, "distro available_permissions should not include project permission categories")
 
 	require.Len(t, data.Projects, 1)
 	assert.Equal(t, "rhel80", data.Projects[0].ProjectID)
