@@ -358,8 +358,6 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 			return nil, 0, errors.Wrapf(err, "canceled while streaming archive for include pattern '%s'", includePattern)
 		}
 
-		var walk fs.WalkDirFunc
-
 		switch {
 		case filematch == "":
 			// If the pattern ends in "/", it will never include anything
@@ -377,7 +375,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 		case strings.Contains(filematch, "**"):
 			// Note, this may be empty, in which case HasSuffix will always be true.
 			globSuffix := filematch[2:]
-			walk = func(path string, di fs.DirEntry, err error) error {
+			var walk fs.WalkDirFunc = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
