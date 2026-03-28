@@ -25,14 +25,22 @@ type APIPermissionLevel struct {
 type APIUserProjectPermissions struct {
 	UserID               string                          `json:"user_id"`
 	AvailablePermissions map[string][]APIPermissionLevel `json:"available_permissions,omitempty"`
-	Projects             []APIProjectPermissionSummary   `json:"projects"`
+	Projects             *[]APIProjectPermissionSummary  `json:"projects,omitempty"`
+	Distros              *[]APIDistroPermissionSummary   `json:"distros,omitempty"`
 }
 
-// APIProjectPermissionSummary lists the granted permissions for one project or distro, grouped by category.
+// APIProjectPermissionSummary lists the granted permissions for one project, grouped by category.
 // Categories with no access are omitted.
 type APIProjectPermissionSummary struct {
 	ProjectID         string              `json:"project_id"`
 	ProjectIdentifier string              `json:"project_identifier"`
 	IsRepo            bool                `json:"is_repo"`
 	Permissions       map[string][]string `json:"permissions"`
+}
+
+// APIDistroPermissionSummary lists the granted permissions for one distro, grouped by category.
+// Categories with no access are omitted.
+type APIDistroPermissionSummary struct {
+	DistroID    string              `json:"distro_id"`
+	Permissions map[string][]string `json:"permissions"`
 }
