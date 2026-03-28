@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1109,5 +1110,110 @@ func TestReportS3Usage(t *testing.T) {
 		assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, 25, dbTask.S3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
+	})
+}
+
+func TestFindExpirationDaysForFileKey(t *testing.T) {
+	enabled := "Enabled"
+	disabled := "Disabled"
+	days90 := 90
+	days30 := 30
+
+	t.Run("NoRulesShouldReturnNotFound", func(t *testing.T) {
+		_, ok := findExpirationDaysForFileKey(nil, "logs/build/output.txt")
+		assert.False(t, ok)
+	})
+
+	t.Run("NoMatchingPrefixShouldReturnNotFound", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "sandbox/", RuleStatus: enabled, ExpirationDays: &days90},
+		}
+		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.False(t, ok)
+	})
+
+	t.Run("MatchingPrefixShouldReturnDays", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
+		}
+		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.True(t, ok)
+		assert.Equal(t, 90, days)
+	})
+
+	t.Run("MostSpecificPrefixShouldWin", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
+			{FilterPrefix: "logs/build/", RuleStatus: enabled, ExpirationDays: &days30},
+		}
+		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.True(t, ok)
+		assert.Equal(t, 30, days)
+	})
+
+	t.Run("DisabledRuleShouldBeIgnored", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: disabled, ExpirationDays: &days90},
+		}
+		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.False(t, ok)
+	})
+
+	t.Run("NilExpirationDaysShouldReturnNotFound", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: nil},
+		}
+		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.False(t, ok)
+	})
+}
+
+func TestBucketExpirationLookup(t *testing.T) {
+	ctx := t.Context()
+	days90 := 90
+
+	t.Run("NoRulesInDBShouldReturnNotFound", func(t *testing.T) {
+		require.NoError(t, db.Clear(s3lifecycle.Collection))
+		bel := newBucketExpirationLookup()
+		_, ok := bel.lookup(ctx, "mciuploads", "some-project/abc123/file.txt")
+		assert.False(t, ok)
+	})
+
+	t.Run("MatchingRuleInDBShouldReturnDays", func(t *testing.T) {
+		require.NoError(t, db.Clear(s3lifecycle.Collection))
+		rule := &s3lifecycle.S3LifecycleRuleDoc{
+			BucketName:     "mciuploads",
+			FilterPrefix:   "some-project/",
+			RuleStatus:     "Enabled",
+			ExpirationDays: &days90,
+		}
+		require.NoError(t, rule.Upsert(ctx))
+
+		bel := newBucketExpirationLookup()
+		days, ok := bel.lookup(ctx, "mciuploads", "some-project/abc123/file.txt")
+		assert.True(t, ok)
+		assert.Equal(t, 90, days)
+	})
+
+	t.Run("CachesRulesAfterFirstLookup", func(t *testing.T) {
+		require.NoError(t, db.Clear(s3lifecycle.Collection))
+		rule := &s3lifecycle.S3LifecycleRuleDoc{
+			BucketName:     "mciuploads",
+			FilterPrefix:   "some-project/",
+			RuleStatus:     "Enabled",
+			ExpirationDays: &days90,
+		}
+		require.NoError(t, rule.Upsert(ctx))
+
+		bel := newBucketExpirationLookup()
+		days, ok := bel.lookup(ctx, "mciuploads", "some-project/abc123/file.txt")
+		require.True(t, ok)
+		assert.Equal(t, 90, days)
+
+		// Clear DB — second call should still return the cached result.
+		require.NoError(t, db.Clear(s3lifecycle.Collection))
+		days, ok = bel.lookup(ctx, "mciuploads", "some-project/abc123/other.txt")
+		assert.True(t, ok)
+		assert.Equal(t, 90, days)
 	})
 }

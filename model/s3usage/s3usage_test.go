@@ -42,26 +42,39 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 
-		s3Usage.IncrementArtifacts(5, 1024, 2, 3, 2, "bucket-a")
+		filesA := []FileMetrics{
+			{RemotePath: "path/file1.txt", FileSizeBytes: 600},
+			{RemotePath: "path/file2.txt", FileSizeBytes: 424},
+		}
+		s3Usage.IncrementArtifacts(5, 1024, 2, 3, 2, "bucket-a", filesA)
 		assert.Equal(t, 5, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 2, s3Usage.Artifacts.Count)
 		assert.Equal(t, 3, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 2, s3Usage.Artifacts.ArtifactWithMinPutRequests)
-		require.NotNil(t, s3Usage.Artifacts.BytesByBucket)
-		assert.Equal(t, int64(1024), s3Usage.Artifacts.BytesByBucket["bucket-a"])
+		require.NotNil(t, s3Usage.Artifacts.BytesByBucketAndKey)
+		require.NotNil(t, s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"])
+		assert.Equal(t, int64(600), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file1.txt"])
+		assert.Equal(t, int64(424), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file2.txt"])
 
-		s3Usage.IncrementArtifacts(10, 2048, 3, 8, 1, "bucket-b")
+		filesB := []FileMetrics{
+			{RemotePath: "other/file3.txt", FileSizeBytes: 2048},
+		}
+		s3Usage.IncrementArtifacts(10, 2048, 3, 8, 1, "bucket-b", filesB)
 		assert.Equal(t, 15, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 5, s3Usage.Artifacts.Count)
 		assert.Equal(t, 8, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 1, s3Usage.Artifacts.ArtifactWithMinPutRequests)
-		assert.Equal(t, int64(1024), s3Usage.Artifacts.BytesByBucket["bucket-a"], "bucket-a bytes should be unchanged")
-		assert.Equal(t, int64(2048), s3Usage.Artifacts.BytesByBucket["bucket-b"])
+		require.NotNil(t, s3Usage.Artifacts.BytesByBucketAndKey["bucket-b"])
+		assert.Equal(t, int64(600), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file1.txt"], "bucket-a file bytes should be unchanged")
+		assert.Equal(t, int64(2048), s3Usage.Artifacts.BytesByBucketAndKey["bucket-b"]["other/file3.txt"])
 
-		s3Usage.IncrementArtifacts(3, 512, 1, 3, 3, "bucket-a")
-		assert.Equal(t, int64(1536), s3Usage.Artifacts.BytesByBucket["bucket-a"], "bucket-a bytes should accumulate across invocations")
+		filesA2 := []FileMetrics{
+			{RemotePath: "path/file1.txt", FileSizeBytes: 512},
+		}
+		s3Usage.IncrementArtifacts(3, 512, 1, 3, 3, "bucket-a", filesA2)
+		assert.Equal(t, int64(1112), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file1.txt"], "bucket-a file bytes should accumulate across invocations")
 	})
 
 	t.Run("IncrementLogs", func(t *testing.T) {

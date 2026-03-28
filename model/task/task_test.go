@@ -5147,20 +5147,12 @@ func TestSaveS3Usage(t *testing.T) {
 		tk := Task{Id: "t2"}
 		require.NoError(t, tk.Insert(ctx))
 
-		tk.S3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{
-				S3UploadMetrics: s3usage.S3UploadMetrics{
-					PutRequests: 1000,
-					UploadBytes: 5 * 1024 * 1024,
-				},
-				Count:         10,
-				BytesByBucket: map[string]int64{"mciuploads": 5 * 1024 * 1024},
-			},
-			Logs: s3usage.S3UploadMetrics{
-				PutRequests: 50,
-				UploadBytes: 500000,
-			},
-		}
+		tk.S3Usage.IncrementArtifacts(1000, 5*1024*1024, 3, 500, 1, "mciuploads", []s3usage.FileMetrics{
+			{RemotePath: "mongodb-mongo-master/abc123/artifacts/binary.tar.gz", FileSizeBytes: 3 * 1024 * 1024},
+			{RemotePath: "mongodb-mongo-master/abc123/artifacts/debug-symbols.tar.gz", FileSizeBytes: 1 * 1024 * 1024},
+			{RemotePath: "mongodb-mongo-master/abc123/artifacts/test-results.json", FileSizeBytes: 1 * 1024 * 1024},
+		})
+		tk.S3Usage.IncrementLogs(50, 500000)
 		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t2")
@@ -5189,20 +5181,12 @@ func TestSaveS3Usage(t *testing.T) {
 		tk := Task{Id: "t2b"}
 		require.NoError(t, tk.Insert(ctx))
 
-		tk.S3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{
-				S3UploadMetrics: s3usage.S3UploadMetrics{
-					PutRequests: 1000,
-					UploadBytes: 5 * 1024 * 1024,
-				},
-				Count:         10,
-				BytesByBucket: map[string]int64{"mciuploads": 5 * 1024 * 1024},
-			},
-			Logs: s3usage.S3UploadMetrics{
-				PutRequests: 50,
-				UploadBytes: 500000,
-			},
-		}
+		tk.S3Usage.IncrementArtifacts(1000, 5*1024*1024, 3, 500, 1, "mciuploads", []s3usage.FileMetrics{
+			{RemotePath: "mongodb-mongo-master/abc123/artifacts/binary.tar.gz", FileSizeBytes: 3 * 1024 * 1024},
+			{RemotePath: "mongodb-mongo-master/abc123/artifacts/debug-symbols.tar.gz", FileSizeBytes: 1 * 1024 * 1024},
+			{RemotePath: "mongodb-mongo-master/abc123/artifacts/test-results.json", FileSizeBytes: 1 * 1024 * 1024},
+		})
+		tk.S3Usage.IncrementLogs(50, 500000)
 		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t2b")
@@ -5245,14 +5229,10 @@ func TestSaveS3Usage(t *testing.T) {
 		tk := Task{Id: "t5", Project: "some-project"}
 		require.NoError(t, tk.Insert(ctx))
 
-		tk.S3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{
-				S3UploadMetrics: s3usage.S3UploadMetrics{
-					UploadBytes: 10 * 1024 * 1024,
-				},
-				BytesByBucket: map[string]int64{"mciuploads": 10 * 1024 * 1024},
-			},
-		}
+		tk.S3Usage.IncrementArtifacts(0, 10*1024*1024, 2, 0, 0, "mciuploads", []s3usage.FileMetrics{
+			{RemotePath: "some-project/abc123/artifacts/core-dump.tar.gz", FileSizeBytes: 6 * 1024 * 1024},
+			{RemotePath: "some-project/abc123/artifacts/binary.tar.gz", FileSizeBytes: 4 * 1024 * 1024},
+		})
 		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t5")
@@ -5277,14 +5257,10 @@ func TestSaveS3Usage(t *testing.T) {
 		tk := Task{Id: "t5b", Project: "some-project"}
 		require.NoError(t, tk.Insert(ctx))
 
-		tk.S3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{
-				S3UploadMetrics: s3usage.S3UploadMetrics{
-					UploadBytes: 10 * 1024 * 1024,
-				},
-				BytesByBucket: map[string]int64{"mciuploads": 10 * 1024 * 1024},
-			},
-		}
+		tk.S3Usage.IncrementArtifacts(0, 10*1024*1024, 2, 0, 0, "mciuploads", []s3usage.FileMetrics{
+			{RemotePath: "some-project/abc123/artifacts/core-dump.tar.gz", FileSizeBytes: 6 * 1024 * 1024},
+			{RemotePath: "some-project/abc123/artifacts/binary.tar.gz", FileSizeBytes: 4 * 1024 * 1024},
+		})
 		require.NoError(t, tk.SaveS3Usage(ctx, nil))
 
 		dbTask, err := FindOneId(ctx, "t5b")
@@ -5305,32 +5281,6 @@ func TestSaveS3Usage(t *testing.T) {
 		require.NotNil(t, dbTask)
 		assert.True(t, dbTask.TaskCost.IsZero())
 	})
-}
-
-func TestArtifactExpirationDays(t *testing.T) {
-	days, found := artifactExpirationDays("mongodb-mongo-master", 365)
-	assert.Equal(t, 90, days)
-	assert.True(t, found)
-
-	days, found = artifactExpirationDays("mongodb-mongo-test", 365)
-	assert.Equal(t, 90, days)
-	assert.True(t, found)
-
-	days, found = artifactExpirationDays("mms-something", 365)
-	assert.Equal(t, 90, days)
-	assert.True(t, found)
-
-	days, found = artifactExpirationDays("mongosync-anything", 365)
-	assert.Equal(t, 180, days)
-	assert.True(t, found)
-
-	days, found = artifactExpirationDays("some-other-project", 365)
-	assert.Equal(t, 365, days)
-	assert.False(t, found)
-
-	days, found = artifactExpirationDays("", 365)
-	assert.Equal(t, 365, days)
-	assert.False(t, found)
 }
 
 func TestHasValidDistro(t *testing.T) {

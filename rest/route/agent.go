@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -739,6 +740,53 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 	}
 }
 
+// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
+// for the given file key. Returns (0, false) if no matching enabled rule is found.
+func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (int, bool) {
+	pailRules := make([]pail.LifecycleRule, 0, len(rules))
+	for _, doc := range rules {
+		var expDays *int32
+		if doc.ExpirationDays != nil {
+			v := int32(*doc.ExpirationDays)
+			expDays = &v
+		}
+		pailRules = append(pailRules, pail.LifecycleRule{
+			Prefix:         doc.FilterPrefix,
+			Status:         doc.RuleStatus,
+			ExpirationDays: expDays,
+		})
+	}
+	rule := pail.FindMatchingRule(pailRules, fileKey)
+	if rule == nil || rule.ExpirationDays == nil {
+		return 0, false
+	}
+	return int(*rule.ExpirationDays), true
+}
+
+// bucketExpirationLookup caches S3 lifecycle rules per bucket and resolves per-file expiration days.
+type bucketExpirationLookup struct {
+	rulesCache map[string][]s3lifecycle.S3LifecycleRuleDoc
+}
+
+func newBucketExpirationLookup() *bucketExpirationLookup {
+	return &bucketExpirationLookup{
+		rulesCache: map[string][]s3lifecycle.S3LifecycleRuleDoc{},
+	}
+}
+
+func (b *bucketExpirationLookup) lookup(ctx context.Context, bucket, fileKey string) (int, bool) {
+	rules, ok := b.rulesCache[bucket]
+	if !ok {
+		var err error
+		rules, err = s3lifecycle.FindAllRulesForBucket(ctx, bucket)
+		if err != nil {
+			return 0, false
+		}
+		b.rulesCache[bucket] = rules
+	}
+	return findExpirationDaysForFileKey(rules, fileKey)
+}
+
 // POST /rest/v2/task/{task_id}/s3_usage
 type reportS3UsageHandler struct {
 	taskID  string
@@ -779,14 +827,8 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	t.S3Usage = h.s3Usage
-	lookup := func(ctx context.Context, bucket string) (int, bool) {
-		rule, err := s3lifecycle.FindByBucketAndPrefix(ctx, bucket, "")
-		if err != nil || rule == nil || rule.ExpirationDays == nil || *rule.ExpirationDays <= 0 {
-			return 0, false
-		}
-		return *rule.ExpirationDays, true
-	}
-	if err := t.SaveS3Usage(ctx, lookup); err != nil {
+	bel := newBucketExpirationLookup()
+	if err := t.SaveS3Usage(ctx, bel.lookup); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "saving S3 usage",
 			"task_id": h.taskID,

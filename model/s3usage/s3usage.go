@@ -29,9 +29,9 @@ type ArtifactMetrics struct {
 	ArtifactWithMaxPutRequests int `bson:"max_put_requests_per_file,omitempty" json:"max_put_requests_per_file,omitempty"`
 	// ArtifactWithMinPutRequests is the lowest PUT request count for a single artifact across all s3.put invocations per task.
 	ArtifactWithMinPutRequests int `bson:"min_put_requests_per_file,omitempty" json:"min_put_requests_per_file,omitempty"`
-	// BytesByBucket maps S3 bucket name to total bytes uploaded to that bucket across all s3.put invocations.
-	// Used by the server to look up the correct lifecycle rule per bucket for accurate storage cost calculation.
-	BytesByBucket map[string]int64 `bson:"bytes_by_bucket,omitempty" json:"bytes_by_bucket,omitempty"`
+	// BytesByBucketAndKey maps S3 bucket name to a map of file key to bytes uploaded for that file.
+	// Used by the server to look up the most specific lifecycle rule per file for accurate storage cost calculation.
+	BytesByBucketAndKey map[string]map[string]int64 `bson:"bytes_by_bucket_and_key,omitempty" json:"bytes_by_bucket_and_key,omitempty"`
 }
 
 // FileMetrics contains metrics for a single uploaded file.
@@ -216,7 +216,8 @@ func CalculateS3StorageCostWithConfig(uploadBytes int64, expirationDays int, cos
 
 // IncrementArtifacts increments the artifact upload metrics (from s3.put commands).
 // maxPuts and minPuts are the per-file extremes from this s3.put invocation.
-func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCount int, maxPuts int, minPuts int, bucket string) {
+// files is used to populate BytesByBucketAndKey for per-file lifecycle rule lookups on the server.
+func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCount int, maxPuts int, minPuts int, bucket string, files []FileMetrics) {
 	s.Artifacts.PutRequests += putRequests
 	s.Artifacts.UploadBytes += uploadBytes
 	s.Artifacts.Count += fileCount
@@ -228,10 +229,15 @@ func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCou
 		s.Artifacts.ArtifactWithMinPutRequests = minPuts
 	}
 
-	if s.Artifacts.BytesByBucket == nil {
-		s.Artifacts.BytesByBucket = make(map[string]int64)
+	if s.Artifacts.BytesByBucketAndKey == nil {
+		s.Artifacts.BytesByBucketAndKey = make(map[string]map[string]int64)
 	}
-	s.Artifacts.BytesByBucket[bucket] += uploadBytes
+	if s.Artifacts.BytesByBucketAndKey[bucket] == nil {
+		s.Artifacts.BytesByBucketAndKey[bucket] = make(map[string]int64)
+	}
+	for _, f := range files {
+		s.Artifacts.BytesByBucketAndKey[bucket][f.RemotePath] += f.FileSizeBytes
+	}
 }
 
 // IncrementLogs increments the log chunk upload metrics.
