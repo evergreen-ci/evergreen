@@ -315,9 +315,9 @@ func findContentsToArchive(ctx context.Context, rootPath string, includes, exclu
 	return out, totalSize, nil
 }
 
-func anyExcludesMatch(path string, ignores []string) bool {
-	for _, ignore := range ignores {
-		if match, _ := filepath.Match(ignore, path); match {
+func anyExcludesMatch(path string, excludes []string) bool {
+	for _, exclude := range excludes {
+		if match, _ := filepath.Match(exclude, path); match {
 			return true
 		}
 	}
