@@ -1,4 +1,4 @@
-package graphql
+package loaders
 
 import (
 	"context"
@@ -137,7 +137,7 @@ func TestGetUser(t *testing.T) {
 	})
 }
 
-func TestGetVersion(t *testing.T) {
+func TestGetAPIVersion(t *testing.T) {
 	require.NoError(t, db.Clear(model.VersionCollection))
 
 	testVersions := []model.Version{
@@ -179,7 +179,7 @@ func TestGetVersion(t *testing.T) {
 	t.Run("SingleVersionLookup", func(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
-		result, err := GetVersion(ctx, "version1")
+		result, err := GetAPIVersion(ctx, "version1")
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Equal(t, "version1", utility.FromStringPtr(result.Id))
@@ -191,7 +191,7 @@ func TestGetVersion(t *testing.T) {
 	t.Run("VersionNotFound", func(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
-		result, err := GetVersion(ctx, "nonexistent")
+		result, err := GetAPIVersion(ctx, "nonexistent")
 		require.NoError(t, err)
 		assert.Nil(t, result, "should return nil for non-existent version")
 	})
@@ -213,7 +213,7 @@ func TestGetVersion(t *testing.T) {
 			wg.Add(1)
 			go func(versionID string) {
 				defer wg.Done()
-				result, err := GetVersion(ctx, versionID)
+				result, err := GetAPIVersion(ctx, versionID)
 				resultsChan <- getVersionResult{versionID: versionID, found: result != nil, err: err}
 
 			}(id)
@@ -249,7 +249,7 @@ func TestGetVersion(t *testing.T) {
 			wg.Add(1)
 			go func(versionID string) {
 				defer wg.Done()
-				result, err := GetVersion(ctx, versionID)
+				result, err := GetAPIVersion(ctx, versionID)
 				if err != nil {
 					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
 				} else if result == nil {
@@ -284,7 +284,7 @@ func TestMiddleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		wrappedHandler := DataloaderMiddleware(handler)
+		wrappedHandler := Middleware(handler)
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		rec := httptest.NewRecorder()
@@ -294,22 +294,37 @@ func TestMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		// Verify loaders were injected
-		loaders := DataloaderFor(capturedCtx)
-		require.NotNil(t, loaders)
-		require.NotNil(t, loaders.UserLoader)
-		require.NotNil(t, loaders.VersionLoader)
+		l := For(capturedCtx)
+		require.NotNil(t, l)
+		require.NotNil(t, l.UserLoader)
+		require.NotNil(t, l.APIVersionLoader)
 	})
 }
 
-func TestNewLoaders(t *testing.T) {
-	loaders := NewLoaders()
-	require.NotNil(t, loaders)
-	require.NotNil(t, loaders.UserLoader)
-	require.NotNil(t, loaders.VersionLoader)
+func TestNew(t *testing.T) {
+	l := New()
+	require.NotNil(t, l)
+	require.NotNil(t, l.UserLoader)
+	require.NotNil(t, l.APIVersionLoader)
+}
+
+func TestIsBatchError(t *testing.T) {
+	t.Run("ReturnsTrueForBatchError", func(t *testing.T) {
+		err := &batchError{err: assert.AnError}
+		assert.True(t, IsBatchError(err))
+	})
+
+	t.Run("ReturnsFalseForRegularError", func(t *testing.T) {
+		assert.False(t, IsBatchError(assert.AnError))
+	})
+
+	t.Run("ReturnsFalseForNil", func(t *testing.T) {
+		assert.False(t, IsBatchError(nil))
+	})
 }
 
 // setupLoaderContext creates a context with dataloaders injected.
 func setupLoaderContext(ctx context.Context) context.Context {
-	loaders := NewLoaders()
-	return context.WithValue(ctx, loadersKey, loaders)
+	l := New()
+	return context.WithValue(ctx, loadersKey, l)
 }

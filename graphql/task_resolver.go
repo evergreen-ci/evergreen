@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
@@ -825,7 +826,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)
-	apiVersion, err := GetVersion(ctx, versionID)
+	apiVersion, err := loaders.GetAPIVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
 	}
