@@ -22,6 +22,12 @@ const (
 	moveLogsToFailedBucketMaxAttempts = 3
 )
 
+// MoveLogsTriggerTaskEnd is used when the app server enqueues after a failed task ends (agent path).
+const MoveLogsTriggerTaskEnd = "task_end"
+
+// MoveLogsTriggerWeeklyRetry is used by PopulateRetryFailedLogMoveJobs (weekly cron).
+const MoveLogsTriggerWeeklyRetry = "weekly_retry_failed_log_move"
+
 func init() {
 	registry.AddJobType(moveLogsToFailedBucketJobName, func() amboy.Job {
 		return makeMoveLogsToFailedBucketJob()
@@ -32,7 +38,9 @@ type moveLogsToFailedBucketJob struct {
 	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
 	TaskID          string                 `bson:"task_id"`
 	SourceBucketCfg evergreen.BucketConfig `bson:"source_bucket_cfg"`
-	Timeout         time.Duration          `bson:"timeout,omitempty"`
+	// Trigger records why the job was enqueued.
+	Trigger string        `bson:"trigger,omitempty"`
+	Timeout time.Duration `bson:"timeout,omitempty"`
 
 	env evergreen.Environment
 }
@@ -51,11 +59,12 @@ func makeMoveLogsToFailedBucketJob() *moveLogsToFailedBucketJob {
 
 // NewMoveLogsToFailedBucketJob creates a job that moves a task's logs to the failed bucket.
 // Pass an optional timeout as the last argument to override the default (e.g. NewMoveLogsToFailedBucketJob(env, taskID, ts, sourceCfg, 60*time.Minute)).
-func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig, timeout ...time.Duration) amboy.Job {
+func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig, trigger string, timeout ...time.Duration) amboy.Job {
 	j := makeMoveLogsToFailedBucketJob()
 	j.env = env
 	j.TaskID = taskID
 	j.SourceBucketCfg = sourceBucketCfg
+	j.Trigger = trigger
 	if len(timeout) > 0 {
 		j.Timeout = timeout[0]
 	}
@@ -79,6 +88,21 @@ func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, 
 func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
+	grip.Info(message.Fields{
+		"message": "failed_bucket_move: job started",
+		"task_id": j.TaskID,
+		"job":     j.ID(),
+		"trigger": j.Trigger,
+	})
+
+	timeout := fetchTimeout
+	if j.Timeout > 0 {
+		timeout = j.Timeout
+	}
 	t, err := task.FindOneId(ctx, j.TaskID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding task '%s'", j.TaskID))
@@ -88,15 +112,7 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
 	}
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
 
-	// Use custom timeout if provided, otherwise use default.
-	timeout := fetchTimeout
-	if j.Timeout > 0 {
-		timeout = j.Timeout
-	}
 	fetchContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	// Use the source bucket config captured when the job was created rather than the one on
@@ -108,6 +124,7 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 			"task_id":   t.Id,
 			"execution": t.Execution,
 			"timeout":   timeout.String(),
+			"trigger":   j.Trigger,
 		}))
 		j.AddRetryableError(errors.Wrap(err, "moving logs to failed bucket"))
 		return
@@ -118,5 +135,6 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 		"task_id":   t.Id,
 		"execution": t.Execution,
 		"job":       j.ID(),
+		"trigger":   j.Trigger,
 	})
 }
