@@ -430,13 +430,39 @@ This feature helps maintain compatibility and ensures all users have access to i
 
 The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately. The default cloning depth for fetch is 1000.
 
-Example that downloads the artifacts for the given task ID and cloning its source:
+Required arguments:
+
+- `--task` (`-t`): The task ID.
+- At least one of:
+  - `--source`: Clone the repo for the task.
+  - `--artifacts`: Fetch all artifacts associated with the task.
+  - `--artifact_name`: Fetch a specific artifact by name. Cannot be used in conjunction with `--artifacts`.
+
+Optional arguments:
+
+- `--shallow`: Only download artifacts from the given task. If provided, the command will not fetch any artifacts from dependency tasks.
+- `--dir`: The destination path where the data is fetched to. If omitted, it defaults to the current working directory.
+- `--execution`: Can be used to fetch an older task execution. Note that it only applies to the given task; for dependency tasks, the latest execution will always be fetched.
+
+#### Examples
+
+Clone source and fetch artifacts for a task (includes dependency artifacts):
 
 ```bash
 evergreen fetch -t <task-id> --source --artifacts
 ```
 
-Specify the optional `--dir` argument to choose the destination path where the data is fetched to; if omitted, it defaults to the current working directory.
+Fetch only the given task's artifacts (excluding dependencies):
+
+```bash
+evergreen fetch -t <task-id> --artifacts --shallow
+```
+
+Fetch a single artifact by name:
+
+```bash
+evergreen fetch -t <task-id> --artifact_name "My Artifact Name" --shallow
+```
 
 ### List
 

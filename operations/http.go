@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -160,45 +159,6 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 		return NewAPIError(resp)
 	}
 	return nil
-}
-
-// ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
-	input := validator.ValidationInput{
-		ProjectYaml: data,
-		Quiet:       quiet,
-		ProjectID:   projectID,
-	}
-	rPipe, wPipe := io.Pipe()
-	encoder := json.NewEncoder(wPipe)
-	go func() {
-		grip.Warning(encoder.Encode(input))
-		grip.Warning(wPipe.Close())
-	}()
-	resp, err := ac.post("validate", rPipe)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusBadRequest {
-		errors := validator.ValidationErrors{}
-		err = utility.ReadJSON(resp.Body, &errors)
-		if err != nil {
-			return nil, NewAPIError(resp)
-		}
-		return errors, nil
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
-	if resp.StatusCode == http.StatusForbidden {
-		return nil, newVPNError(resp)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-	return nil, nil
 }
 
 func (ac *legacyClient) CancelPatch(patchId string) error {
@@ -643,6 +603,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	return reply.Patch, nil
 }
 
+// GetTask returns a task using the legacy V1 API.
 func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	resp, err := ac.get("tasks/"+taskId, nil)
 	if err != nil {
@@ -668,6 +629,39 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 		return nil, err
 	}
 	return &reply, nil
+}
+
+// GetTaskV2 returns a task using the V2 API. We return an APITask because it contains additional fields (namely patch number and artifacts)
+// that aren't available on the service Task.
+func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.APITask, error) {
+	urlToFetch := fmt.Sprintf("tasks/%s", taskId)
+	if execution != nil {
+		urlToFetch = fmt.Sprintf("%s?execution=%d", urlToFetch, utility.FromIntPtr(execution))
+	}
+
+	resp, err := ac.get2(urlToFetch, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, newAuthError(resp)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, newVPNError(resp)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	apiModel := &restModel.APITask{}
+	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
+		return nil, err
+	}
+	return apiModel, nil
 }
 
 // GetRecentVersions retrieves a list of recent versions for a project,

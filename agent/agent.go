@@ -443,7 +443,10 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 // setupTask does some initial setup that the task needs before running such as initializing the logger, loading the task config
 // data and setting the task directory.
 func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskContext, nt *apimodels.NextTaskResponse, shouldSetupGroup bool, taskDirectory string) (tc *taskContext, shouldExit bool, err error) {
+	setupCtx, span := a.tracer.Start(setupCtx, "setup-task")
+	defer span.End()
 	if initialTC == nil {
+		logger := client.NewSingleChannelLogHarness("default", a.defaultLogger)
 		tc = &taskContext{
 			task: client.TaskData{
 				ID:     nt.TaskId,
@@ -451,7 +454,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 			},
 			ranSetupGroup: !shouldSetupGroup,
 			oomTracker:    jasper.NewOOMTracker(),
-			logger:        client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			logger:        logger,
 		}
 	} else {
 		tc = initialTC
@@ -490,6 +493,8 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
+
+	tc.resourceMonitor = newResourceMonitor(tc.logger.Execution())
 
 	var taskGroupDirMissing bool
 	if tc.ranSetupGroup {
@@ -603,14 +608,22 @@ type taskInfo struct {
 // fetchTaskInfo gets the Project, Task, ExpansionAndVars, and DisplayTaskInfo. It stores them inside
 // a TaskConfigOptions struct- it does not set any of its other fields.
 func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, error) {
+	ctx, span := a.tracer.Start(ctx, "fetch-task-info")
+	defer span.End()
+
 	opts := &taskInfo{}
 	var err error
+
+	ctx, getProjectSpan := a.tracer.Start(ctx, "get-project")
 	opts.project, err = a.comm.GetProject(ctx, tc.task)
+	getProjectSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project")
 	}
 
+	ctx, getTaskSpan := a.tracer.Start(ctx, "get-task")
 	opts.task, err = a.comm.GetTask(ctx, tc.task)
+	getTaskSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task")
 	}
@@ -618,12 +631,16 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, 
 	// Reset S3Usage for this execution to avoid accumulating from previous restarts
 	opts.task.S3Usage = s3usage.S3Usage{}
 
+	ctx, getExpansionsSpan := a.tracer.Start(ctx, "get-expansions-and-vars")
 	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
+	getExpansionsSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting expansions and variables")
 	}
 
+	ctx, getDisplayTaskSpan := a.tracer.Start(ctx, "get-display-task-info")
 	opts.displayTaskInfo, err = a.comm.GetDisplayTaskInfoFromExecution(ctx, tc.task)
+	getDisplayTaskSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task's display task info")
 	}
@@ -707,6 +724,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	if shutdown != nil {
 		defer shutdown(ctx)
 	}
+
+	go tc.resourceMonitor.start(tskCtx)
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
@@ -1133,6 +1152,12 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		} else {
 			tc.logger.Execution().Debugf("Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+
+	if rcInfo := tc.resourceMonitor.report(); rcInfo != nil {
+		tc.logger.Execution().Infof("Resource constraint detected: CPU constrained=%t (peak %.1f%%), memory constrained=%t (peak %.1f%%).",
+			rcInfo.CPUConstrained, rcInfo.PeakCPUPercent, rcInfo.MemoryConstrained, rcInfo.PeakMemoryPercent)
+		detail.ResourceConstraints = rcInfo
 	}
 }
 

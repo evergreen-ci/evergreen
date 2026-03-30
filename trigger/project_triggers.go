@@ -35,7 +35,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 
 	projectInfo.Ref = &args.DownstreamProject
-	v, err := repotracker.CreateVersionFromConfig(context.Background(), &projectInfo, metadata, false, nil)
+	v, err := repotracker.CreateVersionFromConfig(context.WithoutCancel(ctx), &projectInfo, metadata, false, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating version")
 	}
@@ -136,7 +136,6 @@ func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, fi
 		Ref:          &ref,
 		RemotePath:   file,
 		Revision:     ref.Branch,
-		Identifier:   ref.Identifier,
 		ReadFileFrom: model.ReadFromGithub,
 	}
 	return model.GetProjectFromFile(ctx, opts)

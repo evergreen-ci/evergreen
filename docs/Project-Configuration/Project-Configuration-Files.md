@@ -1197,6 +1197,17 @@ To disable the OOM tracker, add the following to the top-level of your yaml.
 oom_tracker: false
 ```
 
+### CPU and Memory Constraint Tracker
+
+If the CPU or Memory on a running task host sustains above 90% for a 5 minute period, it will be flagged
+as a (potentially) resource constrained task, which may be relevant when diagnosing its failures.
+
+If this occurs, tasks returned from the REST API will have a `resource_constraints`
+field available indicating that CPU and/or memory was constrained during execution.
+
+There will also be a log in the Agent logs that looks similar to the following:
+`Resource constraint detected: CPU constrained=true (peak 99.0%), memory constrained=true (peak 99.0%).`
+
 ### Process Diagnostics: ps
 
 You can enable process logging by setting the `ps` field at multiple configuration levels. The specified command will run every 60 seconds during task execution to log process information.

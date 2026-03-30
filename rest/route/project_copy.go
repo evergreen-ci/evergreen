@@ -34,7 +34,7 @@ func makeCopyProject(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Copy a project
-//	@Description	Restricted to admins of the original project. Create a new, initially disabled project (PR testing and CommitQueue also initially disabled). The unique identifier is passed to the query parameter new_project and is required.  Project variables, aliases, subscriptions, etc are copied but the GitHub app ID and key are not. Returns the new project (but not variables/aliases/subscriptions).
+//	@Description	Restricted to admins of the original project. Create a new, initially disabled project (PR testing and CommitQueue also initially disabled). The unique identifier is passed to the query parameter new_project and is required.  Project variables, aliases, subscriptions, etc are copied but the GitHub app ID and key are not. If perf plugin is enabled, the ID will be set to the given identifier to ensure this will work on the new project. Returns the new project (but not variables/aliases/subscriptions).
 //	@Tags			projects
 //	@Router			/projects/{project_id}/copy [post]
 //	@Security		Api-User || Api-Key
@@ -82,7 +82,7 @@ type copyVariablesOptions struct {
 	// If set to true, route returns the variables from source_project that will
 	// be copied. (If private, the values will be redacted.) If dry_run is set,
 	// then the route does not complete the copy, but returns OK if no project
-	// variables in the source project will be overwritten (this concerns
+	// variables in the copy_to project will be overwritten (this concerns
 	// all variables in the destination project, but only redacted
 	// variables in the source project). Otherwise, an error is given which
 	// includes the project variable keys that overlap. If dry_run is not set,

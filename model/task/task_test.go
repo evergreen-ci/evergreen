@@ -59,26 +59,29 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
-		Id:             "t1",
-		Version:        "v1",
-		Execution:      3,
-		Status:         evergreen.TaskFailed,
-		DisplayTaskId:  utility.ToStringPtr(""),
-		HasAnnotations: true,
+		Id:                 "t1",
+		Version:            "v1",
+		Execution:          3,
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskKnownIssue,
+		DisplayTaskId:      utility.ToStringPtr(""),
+		HasAnnotations:     true,
 	}
 	t2 := Task{
-		Id:            "t2",
-		Version:       "v1",
-		Aborted:       true,
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t2",
+		Version:            "v1",
+		Aborted:            true,
+		DisplayStatusCache: evergreen.TaskAborted,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t3 := Task{
-		Id:            "t3",
-		Version:       "v1",
-		Status:        evergreen.TaskSucceeded,
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t3",
+		Version:            "v1",
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t4 := Task{
 		Id:      "t4",
@@ -86,8 +89,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Details: apimodels.TaskEndDetail{
 			Type: evergreen.CommandTypeSetup,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSetupFailed,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t5 := Task{
 		Id:      "t5",
@@ -97,8 +101,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			Description: evergreen.TaskDescriptionHeartbeat,
 			TimedOut:    true,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSystemUnresponse,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t6 := Task{
 		Id:      "t6",
@@ -107,8 +112,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 			Type:     evergreen.CommandTypeSystem,
 			TimedOut: true,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSystemTimedOut,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t7 := Task{
 		Id:      "t7",
@@ -116,8 +122,9 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Details: apimodels.TaskEndDetail{
 			Type: evergreen.CommandTypeSystem,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSystemFailed,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t8 := Task{
 		Id:      "t8",
@@ -125,29 +132,33 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		Details: apimodels.TaskEndDetail{
 			TimedOut: true,
 		},
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskTimedOut,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t9 := Task{
-		Id:            "t9",
-		Version:       "v1",
-		Status:        evergreen.TaskUndispatched,
-		Activated:     false,
-		Execution:     1,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t9",
+		Version:            "v1",
+		Status:             evergreen.TaskUndispatched,
+		DisplayStatusCache: evergreen.TaskUnscheduled,
+		Activated:          false,
+		Execution:          1,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t10 := Task{
-		Id:            "t10",
-		Version:       "v1",
-		Status:        evergreen.TaskUndispatched,
-		Activated:     true,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "t10",
+		Version:            "v1",
+		Status:             evergreen.TaskUndispatched,
+		DisplayStatusCache: evergreen.TaskWillRun,
+		Activated:          true,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	t11 := Task{
-		Id:        "t11",
-		Version:   "v1",
-		Status:    evergreen.TaskUndispatched,
-		Activated: true,
+		Id:                 "t11",
+		Version:            "v1",
+		Status:             evergreen.TaskUndispatched,
+		DisplayStatusCache: evergreen.TaskStatusBlocked,
+		Activated:          true,
 		DependsOn: []Dependency{
 			{
 				TaskId:       "t9",
@@ -2158,6 +2169,96 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 	}
 }
 
+func TestGetRecursiveDependenciesUpDepthLimit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.Clear(Collection))
+
+	originalMax := maxDependencyDepth
+	maxDependencyDepth = 5
+	defer func() { maxDependencyDepth = originalMax }()
+
+	tasks := make([]Task, 8)
+	for i := range tasks {
+		tasks[i] = Task{Id: fmt.Sprintf("t%d", i)}
+		if i > 0 {
+			tasks[i].DependsOn = []Dependency{{TaskId: fmt.Sprintf("t%d", i-1)}}
+		}
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	_, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[7]}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution exceeded maximum depth")
+}
+
+func TestGetRecursiveDependenciesUpContextCancellation(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[1]}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution cancelled or timed out")
+}
+
+func TestGetRecursiveDependenciesDownDepthLimit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.Clear(Collection))
+
+	originalMax := maxDependencyDepth
+	maxDependencyDepth = 5
+	defer func() { maxDependencyDepth = originalMax }()
+
+	tasks := make([]Task, 8)
+	for i := range tasks {
+		tasks[i] = Task{Id: fmt.Sprintf("t%d", i)}
+		if i > 0 {
+			tasks[i].DependsOn = []Dependency{{TaskId: fmt.Sprintf("t%d", i-1)}}
+		}
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	_, err := getRecursiveDependenciesDown(ctx, []string{"t0"}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution exceeded maximum depth")
+}
+
+func TestGetRecursiveDependenciesDownContextCancellation(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := getRecursiveDependenciesDown(ctx, []string{"t0"}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution cancelled or timed out")
+}
+
 func TestDeactivateDependencies(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
@@ -3862,32 +3963,36 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	s.Require().NoError(db.ClearCollections(Collection, OldCollection, annotations.Collection))
 	taskKnown2 := &Task{
-		Id:            "task_known",
-		Execution:     2,
-		Version:       "version_known",
-		Status:        evergreen.TaskSucceeded,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_known",
+		Execution:          2,
+		Version:            "version_known",
+		Status:             evergreen.TaskSucceeded,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	taskNotKnown := &Task{
-		Id:            "task_not_known",
-		Execution:     0,
-		Version:       "version_not_known",
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_not_known",
+		Execution:          0,
+		Version:            "version_not_known",
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	taskNoAnnotation := &Task{
-		Id:            "task_no_annotation",
-		Execution:     0,
-		Version:       "version_no_annotation",
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_no_annotation",
+		Execution:          0,
+		Version:            "version_no_annotation",
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	taskWithEmptyIssues := &Task{
-		Id:            "task_with_empty_issues",
-		Execution:     0,
-		Version:       "version_with_empty_issues",
-		Status:        evergreen.TaskFailed,
-		DisplayTaskId: utility.ToStringPtr(""),
+		Id:                 "task_with_empty_issues",
+		Execution:          0,
+		Version:            "version_with_empty_issues",
+		Status:             evergreen.TaskFailed,
+		DisplayStatusCache: evergreen.TaskFailed,
+		DisplayTaskId:      utility.ToStringPtr(""),
 	}
 	s.NoError(taskKnown2.Insert(s.T().Context()))
 	s.NoError(taskNotKnown.Insert(s.T().Context()))
@@ -4748,7 +4853,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, files))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
@@ -4760,7 +4865,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, []string{"new_generated_json"}))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
@@ -4774,7 +4879,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)
@@ -4921,6 +5026,10 @@ func TestTaskCostIsZero(t *testing.T) {
 	assert.False(t, nonZeroBoth.IsZero())
 	nonZeroS3 := cost.Cost{S3ArtifactPutCost: 0.00005}
 	assert.False(t, nonZeroS3.IsZero())
+	nonZeroEBSThroughputOnDemand := cost.Cost{OnDemandEBSThroughputCost: 0.1}
+	assert.False(t, nonZeroEBSThroughputOnDemand.IsZero())
+	nonZeroEBSThroughputAdjusted := cost.Cost{AdjustedEBSThroughputCost: 0.1}
+	assert.False(t, nonZeroEBSThroughputAdjusted.IsZero())
 }
 
 func TestUpdateTaskCost(t *testing.T) {
@@ -4940,7 +5049,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		assert.True(t, task.TaskCost.IsZero())
 	})
 
-	t.Run("DoesNotCalculateS3Cost", func(t *testing.T) {
+	t.Run("CalculatesS3PutCostFromArtifactUsage", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 		task := Task{
 			Id:        "s3_cost",
@@ -4950,16 +5059,20 @@ func TestUpdateTaskCost(t *testing.T) {
 		require.NoError(t, task.Insert(ctx))
 
 		require.NoError(t, task.UpdateTaskCost(ctx))
-		assert.Equal(t, float64(0), task.TaskCost.S3ArtifactPutCost)
+		var costCfg evergreen.CostConfig
+		require.NoError(t, costCfg.Get(ctx))
+		expected := s3usage.CalculateS3PutCostWithConfig(1000, &costCfg)
+		assert.InDelta(t, expected, task.TaskCost.S3ArtifactPutCost, 1e-9)
 	})
 
-	t.Run("CalculatesOnlyEC2Cost", func(t *testing.T) {
+	t.Run("CalculatesEC2AndS3Costs", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
 
 		costConfig := evergreen.CostConfig{
 			FinanceFormula:      0.6,
 			SavingsPlanDiscount: 0.5,
 			OnDemandDiscount:    0.04,
+			EBSCost:             evergreen.EBSCostConfig{EBSDiscount: 0},
 		}
 		require.NoError(t, costConfig.Set(ctx))
 
@@ -4983,7 +5096,8 @@ func TestUpdateTaskCost(t *testing.T) {
 		require.NoError(t, task.UpdateTaskCost(ctx))
 		assert.True(t, task.TaskCost.OnDemandEC2Cost > 0)
 		assert.True(t, task.TaskCost.AdjustedEC2Cost > 0)
-		assert.Equal(t, float64(0), task.TaskCost.S3ArtifactPutCost)
+		expectedS3 := s3usage.CalculateS3PutCostWithConfig(1000, &costConfig)
+		assert.InDelta(t, expectedS3, task.TaskCost.S3ArtifactPutCost, 1e-9)
 	})
 
 	t.Run("SkipsUpdateWhenNoCostsCalculated", func(t *testing.T) {

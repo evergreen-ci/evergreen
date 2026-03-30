@@ -149,13 +149,6 @@ type AWSVPCConfig struct {
 // that can be used.
 type AWSClientType string
 
-const (
-
-	// AWSClientTypeMock is the mock implementation of an AWS client for testing
-	// purposes only. This should never be used in production.
-	AWSClientTypeMock AWSClientType = "mock"
-)
-
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {
 	APIVersion string `bson:"api_version" json:"api_version" yaml:"api_version"`

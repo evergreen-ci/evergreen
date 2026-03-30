@@ -29,47 +29,6 @@ func buildIdInSlice(builds []Build, id string) bool {
 	return false
 }
 
-func TestGenericBuildFinding(t *testing.T) {
-
-	Convey("When finding builds", t, func() {
-		require.NoError(t, db.Clear(Collection))
-
-		Convey("when finding one build", func() {
-			Convey("the matching build should be returned", func() {
-				buildOne := &Build{Id: "buildOne"}
-				So(buildOne.Insert(t.Context()), ShouldBeNil)
-
-				buildTwo := &Build{Id: "buildTwo"}
-				So(buildTwo.Insert(t.Context()), ShouldBeNil)
-
-				found, err := FindOne(t.Context(), ById(buildOne.Id))
-				So(err, ShouldBeNil)
-				So(found.Id, ShouldEqual, buildOne.Id)
-			})
-		})
-
-		Convey("when finding multiple builds", func() {
-			Convey("a slice of all of the matching builds should be returned", func() {
-
-				buildOne := &Build{Id: "buildOne", Project: "b1"}
-				So(buildOne.Insert(t.Context()), ShouldBeNil)
-
-				buildTwo := &Build{Id: "buildTwo", Project: "b1"}
-				So(buildTwo.Insert(t.Context()), ShouldBeNil)
-
-				buildThree := &Build{Id: "buildThree", Project: "b2"}
-				So(buildThree.Insert(t.Context()), ShouldBeNil)
-
-				found, err := Find(t.Context(), ByProject("b1"))
-				So(err, ShouldBeNil)
-				So(len(found), ShouldEqual, 2)
-				So(buildIdInSlice(found, buildOne.Id), ShouldBeTrue)
-				So(buildIdInSlice(found, buildTwo.Id), ShouldBeTrue)
-			})
-		})
-	})
-}
-
 func TestRecentlyFinishedBuilds(t *testing.T) {
 
 	Convey("When finding all recently finished builds", t, func() {

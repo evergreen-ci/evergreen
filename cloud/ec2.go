@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -153,6 +154,11 @@ func (s *EC2ProviderSettings) FromDocument(doc *birch.Document) error {
 	if err := bson.Unmarshal(bytes, s); err != nil {
 		return errors.Wrap(err, "unmarshalling BSON into EC2 provider settings")
 	}
+	mountPoints, err := ec2mount.MountPointsFromProviderDocument(doc)
+	if err != nil {
+		return err
+	}
+	s.MountPoints = mountPoints
 	return nil
 }
 
@@ -176,7 +182,6 @@ const (
 const (
 	VolumeTypeStandard = "standard"
 	VolumeTypeIo1      = "io1"
-	VolumeTypeGp3      = "gp3"
 	VolumeTypeGp2      = "gp2"
 	VolumeTypeSc1      = "sc1"
 	VolumeTypeSt1      = "st1"
@@ -186,7 +191,7 @@ var (
 	ValidVolumeTypes = []string{
 		VolumeTypeStandard,
 		VolumeTypeIo1,
-		VolumeTypeGp3,
+		evergreen.VolumeTypeGp3,
 		VolumeTypeGp2,
 		VolumeTypeSc1,
 		VolumeTypeSt1,
@@ -453,7 +458,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrap(err, "getting EC2 settings")
 	}
 	if err = ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
+		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s'", h.Distro.Id)
 	}
 	// The KeyName is used by AWS to determine which public key to put on the host.
 	ec2Settings.KeyName, err = getKeyName(ctx, h, m.settings, m.client)
@@ -839,10 +844,6 @@ func (m *ec2Manager) GetInstanceState(ctx context.Context, h *host.Host) (CloudI
 	}
 
 	return info, nil
-}
-
-func (m *ec2Manager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
-	return errors.New("can't set port mappings with EC2 provider")
 }
 
 // TerminateInstance terminates the EC2 instance.

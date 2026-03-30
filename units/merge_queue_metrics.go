@@ -63,7 +63,7 @@ func (j *mergeQueueMetricsJob) Run(ctx context.Context) {
 	}
 
 	for _, projectRef := range projectRefs {
-		if err := j.emitMetricsForProject(ctx, projectRef.Id); err != nil {
+		if err := j.emitMetricsForProject(ctx, &projectRef); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "error emitting merge queue metrics for project",
 				"project_id": projectRef.Id,
@@ -74,10 +74,10 @@ func (j *mergeQueueMetricsJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *mergeQueueMetricsJob) emitMetricsForProject(ctx context.Context, projectID string) error {
-	patches, err := patch.FindMergeQueuePatchesByProject(ctx, projectID)
+func (j *mergeQueueMetricsJob) emitMetricsForProject(ctx context.Context, projectRef *model.ProjectRef) error {
+	patches, err := patch.FindMergeQueuePatchesByProject(ctx, projectRef.Id)
 	if err != nil {
-		return errors.Wrapf(err, "querying merge queue patches for project '%s'", projectID)
+		return errors.Wrapf(err, "querying merge queue patches for project '%s'", projectRef.Id)
 	}
 
 	if len(patches) == 0 {
@@ -106,10 +106,10 @@ func (j *mergeQueueMetricsJob) emitMetricsForProject(ctx context.Context, projec
 	}
 
 	for key, queuePatchList := range queuePatches {
-		if err := j.emitMetricsForQueue(ctx, projectID, key.org, key.repo, key.baseBranch, queuePatchList); err != nil {
+		if err := j.emitMetricsForQueue(ctx, projectRef.Id, key.org, key.repo, key.baseBranch, queuePatchList); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "error emitting metrics for queue",
-				"project_id":  projectID,
+				"project_id":  projectRef.Id,
 				"org":         key.org,
 				"repo":        key.repo,
 				"base_branch": key.baseBranch,
@@ -139,15 +139,34 @@ func (j *mergeQueueMetricsJob) emitMetricsForQueue(ctx context.Context, projectI
 			runningCount++
 		}
 
-		// Track the patch with earliest CreateTime (oldest patch = top of queue).
-		if oldestPatch == nil || p.CreateTime.Before(oldestPatch.CreateTime) {
+		// Track the patch with earliest queue entry time (oldest patch = top of queue).
+		// Use HeadCommitDate when available since it reflects when the PR entered the queue;
+		pQueueTime := p.GithubMergeData.HeadCommitDate
+		if pQueueTime.IsZero() {
+			pQueueTime = p.CreateTime
+		}
+		if oldestPatch == nil {
 			oldestPatch = p
+		} else {
+			oldestQueueTime := oldestPatch.GithubMergeData.HeadCommitDate
+			if oldestQueueTime.IsZero() {
+				oldestQueueTime = oldestPatch.CreateTime
+			}
+			if pQueueTime.Before(oldestQueueTime) {
+				oldestPatch = p
+			}
 		}
 	}
 
 	oldestPatchAgeMs := int64(0)
+	queueEntrySource := "head_commit_date"
 	if oldestPatch != nil {
-		oldestPatchAgeMs = time.Since(oldestPatch.CreateTime).Milliseconds()
+		queueEntryTime := oldestPatch.GithubMergeData.HeadCommitDate
+		if queueEntryTime.IsZero() {
+			queueEntryTime = oldestPatch.CreateTime
+			queueEntrySource = "create_time"
+		}
+		oldestPatchAgeMs = time.Since(queueEntryTime).Milliseconds()
 	}
 
 	runningTasksCount, err := task.CountRunningTasksForVersions(ctx, versionIDs)
@@ -186,6 +205,7 @@ func (j *mergeQueueMetricsJob) emitMetricsForQueue(ctx context.Context, projectI
 			attribute.Int64("evergreen.merge_queue.running_tasks_count", int64(runningTasksCount)),
 			attribute.Bool("evergreen.merge_queue.has_running_tasks", runningTasksCount > 0),
 			attribute.Int64("evergreen.merge_queue.oldest_patch_age_ms", oldestPatchAgeMs),
+			attribute.String(patch.MergeQueueAttrQueueEntrySource, queueEntrySource),
 			attribute.String("evergreen.merge_queue.top_of_queue_patch_id", topOfQueuePatchID),
 			attribute.String("evergreen.merge_queue.top_of_queue_status", topOfQueueStatus),
 			attribute.String("evergreen.merge_queue.top_of_queue_sha", topOfQueueSHA),

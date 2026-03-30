@@ -20,16 +20,6 @@ func CleanName(name string) string {
 	return name
 }
 
-// HasAllowedImageAsPrefix returns true if the given string has one of the allowed image prefixes
-func HasAllowedImageAsPrefix(str string, imageList []string) bool {
-	for _, imagePrefix := range imageList {
-		if strings.HasPrefix(str, imagePrefix) {
-			return true
-		}
-	}
-	return false
-}
-
 // IndexWhiteSpace returns the first index of white space in the given string.
 // Returns -1 if no white space exists.
 func IndexWhiteSpace(s string) int {
@@ -74,4 +64,14 @@ func CoalesceString(in ...string) string {
 
 func CoalesceStrings(inArray []string, inStrs ...string) string {
 	return CoalesceString(CoalesceString(inArray...), CoalesceString(inStrs...))
+}
+
+// AZToRegion converts an AWS availability zone to its region.
+// An availability zone is the region plus a suffix letter (e.g., "us-east-1a" -> "us-east-1").
+// Returns empty string if the zone is too short to be valid.
+func AZToRegion(az string) string {
+	if len(az) < 2 {
+		return ""
+	}
+	return az[:len(az)-1]
 }

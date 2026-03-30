@@ -2,7 +2,9 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -130,6 +132,13 @@ type s3put struct {
 	// UploadChecksumSHA256, when set to 'true', it will upload the base64 of the SHA256 checksum
 	// of the file to S3 as well.
 	UploadChecksumSHA256 string `mapstructure:"upload_checksum_sha256" plugin:"expand"`
+
+	// AssociatedLinksFile is a the name of a file containing associated links to be attached to the artifact.
+	// This file should be in JSON format and contain an array of objects with "name" and "url" fields.
+	AssociatedLinksFile string `mapstructure:"associated_links_file" plugin:"expand"`
+
+	// associatedLinks stores the actual associated links after they are read from the AssociatedLinksFile.
+	associatedLinks []artifact.AssociatedLink
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
@@ -314,6 +323,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	if err := s3pc.expandParams(conf); err != nil {
 		return errors.WithStack(err)
 	}
+
 	// re-validate command here, in case an expansion is not defined
 	if err := s3pc.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded parameters")
@@ -325,6 +335,18 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
 		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
 		return nil
+	}
+
+	if s3pc.AssociatedLinksFile != "" {
+		associatedLinks, err := readAssociatedLinksFile(s3pc.AssociatedLinksFile, conf)
+		if err != nil {
+			return errors.Wrap(err, "reading associated links file")
+		}
+		s3pc.associatedLinks = associatedLinks
+
+		if s3pc.isMulti() && len(associatedLinks) > 0 {
+			logger.Task().Warningf("Using associated_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different associated links.", len(s3pc.LocalFilesIncludeFilter))
+		}
 	}
 
 	if expiration, found := getAssumedRoleExpiration(conf, s3pc.AwsSessionToken); found {
@@ -449,10 +471,10 @@ retryLoop:
 					if strings.Contains(err.Error(), utility.WalkThroughError) {
 						logger.Task().Warningf("Error while building file list: %s", err.Error())
 						return nil
-					} else {
-						return errors.Wrapf(err, "processing local files include filter '%s'",
-							strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					}
+
+					return errors.Wrapf(err, "processing local files include filter '%s'",
+						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 				if len(filesList) == 0 {
 					logger.Task().Warningf("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
@@ -497,10 +519,10 @@ retryLoop:
 							// single optional file uploads should return early.
 							logger.Task().Infof("File '%s' not found and skip missing is true, exiting without error.", fpath)
 							return nil
-						} else {
-							// single required uploads should return an error asap.
-							return errors.Wrapf(err, "missing file '%s'", fpath)
 						}
+
+						// single required uploads should return an error asap.
+						return errors.Wrapf(err, "missing file '%s'", fpath)
 					}
 
 					if s3pc.skipExistingBool {
@@ -556,7 +578,7 @@ retryLoop:
 	maxPuts, minPuts := computePerFileExtremes(uploadedFiles)
 	conf.S3Usage.IncrementArtifacts(totalPutRequests, totalFileSize, len(uploadedFiles), maxPuts, minPuts)
 
-	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile, conf))
+	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles))
 	if err != nil {
 		return err
 	}
@@ -593,7 +615,7 @@ func computePerFileExtremes(files []s3usage.FileMetrics) (maxPuts, minPuts int) 
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []s3usage.FileMetrics, remoteFile string, conf *internal.TaskConfig) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, uploadedFiles []s3usage.FileMetrics) error {
 	files := []*artifact.File{}
 
 	for _, uploadInfo := range uploadedFiles {
@@ -617,18 +639,19 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 		}
 
 		files = append(files, &artifact.File{
-			Name:        displayName,
-			Link:        fileLink,
-			Visibility:  s3pc.Visibility,
-			AWSKey:      key,
-			AWSSecret:   secret,
-			AWSRoleARN:  s3pc.getRoleARN(),
-			ExternalID:  s3pc.externalID,
-			Bucket:      bucket,
-			FileKey:     fileKey,
-			ContentType: s3pc.ContentType,
-			FileSize:    uploadInfo.FileSizeBytes,
-			PutRequests: uploadInfo.PutRequests,
+			Name:            displayName,
+			Link:            fileLink,
+			Visibility:      s3pc.Visibility,
+			AWSKey:          key,
+			AWSSecret:       secret,
+			AWSRoleARN:      s3pc.getRoleARN(),
+			ExternalID:      s3pc.externalID,
+			Bucket:          bucket,
+			FileKey:         fileKey,
+			ContentType:     s3pc.ContentType,
+			FileSize:        uploadInfo.FileSizeBytes,
+			PutRequests:     uploadInfo.PutRequests,
+			AssociatedLinks: s3pc.associatedLinks,
 		})
 	}
 
@@ -690,4 +713,42 @@ func (s3pc *s3put) getRoleARN() string {
 		return s3pc.assumedRoleARN
 	}
 	return s3pc.RoleARN
+}
+
+func readAssociatedLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AssociatedLink, error) {
+	fileLoc := GetWorkingDirectory(conf, fn)
+	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
+		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
+	}
+	jsonFile, err := os.Open(fileLoc)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening file '%s'", fn)
+	}
+	defer jsonFile.Close()
+
+	var data []byte
+	data, err = io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
+	}
+
+	var associatedLinks []artifact.AssociatedLink
+	if err := json.Unmarshal(data, &associatedLinks); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling JSON from file")
+	}
+
+	// Expansions may be present in the name or link fields.
+	for i := range associatedLinks {
+		expandedName, err := conf.Expansions.ExpandString(associatedLinks[i].Name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to associated link name '%s'", associatedLinks[i].Name)
+		}
+		expandedLink, err := conf.Expansions.ExpandString(associatedLinks[i].Link)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to associated link URL '%s'", associatedLinks[i].Link)
+		}
+		associatedLinks[i].Name = expandedName
+		associatedLinks[i].Link = expandedLink
+	}
+	return associatedLinks, nil
 }
