@@ -42,6 +42,12 @@ func TestAPIFileBuildFromService(t *testing.T) {
 		Visibility:     "public",
 		IgnoreForFetch: true,
 		ContentType:    "text/plain",
+		AssociatedLinks: []artifact.AssociatedLink{
+			{
+				Name: "hello_world",
+				Link: "https://hello_world.example.com",
+			},
+		},
 	}
 	apiFile := APIFile{}
 	apiFile.BuildFromService(file)
