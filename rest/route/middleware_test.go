@@ -193,8 +193,8 @@ func TestNotificationSendMiddleware(t *testing.T) {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{evergreen.SuperUserPermissionsID},
 	}
-	assert.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(adminRole))
-	assert.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(superUserScope))
+	assert.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(ctx, adminRole))
+	assert.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(ctx, superUserScope))
 
 	// Create a middleware that requires the notifications send permission.
 	permission := RequiresSuperUserPermission(evergreen.PermissionNotificationsSend, evergreen.NotificationsSend)
