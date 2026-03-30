@@ -1391,7 +1391,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				Body:              body,
 			}
 			composer := message.NewEmailMessage(level.Notice, email)
-			sender.Send(composer)
+			sender.Send(ctx, composer)
 		}
 		return nil, nil
 	}

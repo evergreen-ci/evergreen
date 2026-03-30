@@ -110,7 +110,7 @@ func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
 	case types.InstanceStateNameTerminated, types.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
-		grip.Error(ctx, message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"message": "got an unknown EC2 state name",
 			"status":  ec2State.Name,
 		})
@@ -285,7 +285,7 @@ func validateUserDataSize(userData, distroID string) error {
 		return nil
 	}
 	err := errors.New("user data size limit exceeded")
-	grip.Error(ctx, message.WrapError(err, message.Fields{
+	grip.Error(context.Background(), message.WrapError(err, message.Fields{
 		"size":     len(userData),
 		"max_size": userDataSizeLimit,
 		"distro":   distroID,

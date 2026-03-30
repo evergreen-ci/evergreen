@@ -681,7 +681,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		if pErr == nil {
 			return
 		}
-		err = a.logPanic(tc, pErr, err, op)
+		err = a.logPanic(ctx, tc, pErr, err, op)
 	}()
 
 	// Setup occurs before the task is actually running, so it's not abortable. If setup is taking
@@ -747,7 +747,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		if pErr == nil {
 			return
 		}
-		_ = a.logPanic(tc, pErr, nil, op)
+		_ = a.logPanic(ctx, tc, pErr, nil, op)
 		status = evergreen.TaskSystemFailed
 	}()
 
@@ -1090,7 +1090,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 		// (including those from teardown group commands) are captured.
 		grip.Error(ctx, errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage), "reporting S3 usage"))
 	}()
-	defer a.clearGlobalFiles(tc)
+	defer a.clearGlobalFiles(ctx, tc)
 
 	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {
@@ -1144,7 +1144,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		tc.logger.Execution().Error(ctx, errors.Wrap(tc.oomTracker.Check(oomCtx), "checking for OOM killed processes"))
 		if lines, pids := tc.oomTracker.Report(); len(lines) > 0 {
 			tc.logger.Execution().Debugf(ctx, "Found an OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
-			tc.logger.Execution().Debug(strings.Join(lines, "\n"))
+			tc.logger.Execution().Debug(ctx, strings.Join(lines, "\n"))
 			detail.OOMTracker = &apimodels.OOMTrackerInfo{
 				Detected: true,
 				Pids:     pids,
@@ -1180,7 +1180,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 		detail.PostErrored = tc.getPostErrored()
 		detail.OtherFailingCommands = tc.getOtherFailingCommands()
-		updateEndTaskFailureDetailsForTestResults(tc, detail)
+		updateEndTaskFailureDetailsForTestResults(ctx, tc, detail)
 
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
@@ -1475,7 +1475,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 
 // updateEndTaskFailureDetailsForTestResults checks and updates the task failure
 // details for missing or failed test results.
-func updateEndTaskFailureDetailsForTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
+func updateEndTaskFailureDetailsForTestResults(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if detail.Status == evergreen.TaskFailed {
 		// If the task has already failed for another reason, do not overwrite
 		// it with a test result-related failure. Test results failures are
@@ -1540,7 +1540,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 // clearGlobalFiles cleans up certain files that were created in the home directory, including
 // the global git config file, git credentials file, and netrc file.
-func (a *Agent) clearGlobalFiles(tc *taskContext) {
+func (a *Agent) clearGlobalFiles(ctx context.Context, tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
@@ -1579,7 +1579,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 
 // logPanic logs a panic to the task log and returns the panic error, along with
 // the original error (if any). If there was no panic error, this is a no-op.
-func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) error {
+func (a *Agent) logPanic(ctx context.Context, tc *taskContext, pErr, originalErr error, op string) error {
 	if pErr == nil {
 		return nil
 	}

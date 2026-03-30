@@ -214,7 +214,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		"task_group_name": taskGroupInfo.Name,
 	}
 	avgMakespan := totalShortRunningTasksExpectedDuration / time.Duration(maxHosts)
-	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
+	grip.AlertWhen(ctx, avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
 
 	return numNewHosts, expectedNumFreeHosts, nil
 }

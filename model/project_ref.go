@@ -3021,7 +3021,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		cmd := jasper.NewCommand().Add(args).
 			SetErrorWriter(utility.NopWriteCloser(os.Stderr)).
 			Prerequisite(func() bool {
-				grip.Error(ctx, message.Fields{
+				grip.Error(context.Background(), message.Fields{
 					"directory": opts.Directory,
 					"command":   strings.Join(args, " "),
 					"op":        "repo clone",
@@ -3052,7 +3052,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 		cmd := jasper.NewCommand().Directory(dir).SetErrorWriter(utility.NopWriteCloser(os.Stderr)).SetInput(os.Stdin).
 			Append(obj.Command).
 			Prerequisite(func() bool {
-				grip.Error(ctx, message.Fields{
+				grip.Error(context.Background(), message.Fields{
 					"directory":      dir,
 					"command":        cmdString,
 					"command_number": commandNumber,

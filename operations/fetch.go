@@ -111,6 +111,9 @@ func Fetch() cli.Command {
 			requireAtLeastOneFlag(sourceFlagName, artifactsFlagName, artifactNameFlagName),
 		),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			confPath := c.Parent().String(ConfFlagName)
 			wd := c.String(dirFlagName)
 			taskID := c.String(taskFlagName)
@@ -135,10 +138,7 @@ func Fetch() cli.Command {
 				execution = utility.ToIntPtr(stringAsInt)
 			}
 
-			moduleTokensMap := parseModuleTokens(moduleTokens)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			moduleTokensMap := parseModuleTokens(ctx, moduleTokens)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -156,7 +156,7 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			cleanupWhyIsMyDataMissingFile(wd)
+			cleanupWhyIsMyDataMissingFile(ctx, wd)
 
 			if shouldFetchSource {
 				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
@@ -182,7 +182,7 @@ func Fetch() cli.Command {
 	}
 }
 
-func cleanupWhyIsMyDataMissingFile(dir string) {
+func cleanupWhyIsMyDataMissingFile(ctx context.Context, dir string) {
 	filePath := filepath.Join(dir, evergreen.WhyIsMyDataMissingName)
 	err := os.Remove(filePath)
 	if err != nil && !os.IsNotExist(err) {
@@ -190,7 +190,7 @@ func cleanupWhyIsMyDataMissingFile(dir string) {
 	}
 }
 
-func parseModuleTokens(moduleTokens []string) map[string]string {
+func parseModuleTokens(ctx context.Context, moduleTokens []string) map[string]string {
 	moduleTokensMap := make(map[string]string)
 	for _, token := range moduleTokens {
 		// Parse the string formatted as 'moduleName:token'.
@@ -252,7 +252,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 		}
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
-	err = cloneSource(task, pRef, project, cloneDir, token, useAppToken, moduleTokens, mfest)
+	err = cloneSource(ctx, task, pRef, project, cloneDir, token, useAppToken, moduleTokens, mfest)
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ type cloneOptions struct {
 	isAppToken bool
 }
 
-func clone(opts cloneOptions) error {
+func clone(ctx context.Context, opts cloneOptions) error {
 	// Check repository existence if no token is provided
 	if opts.token == "" {
 		resp, err := http.Get(thirdparty.FormGitURLForApp(opts.owner, opts.repository, opts.token))
@@ -362,10 +362,10 @@ func clone(opts cloneOptions) error {
 	return nil
 }
 
-func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project,
+func cloneSource(ctx context.Context, task *service.RestTask, project *model.ProjectRef, config *model.Project,
 	cloneDir, token string, useAppToken bool, moduleTokens map[string]string, mfest *manifest.Manifest) error {
 	// Fetch the outermost repo for the task
-	err := clone(cloneOptions{
+	err := clone(ctx, cloneOptions{
 		owner:      project.Owner,
 		repository: project.Repo,
 		revision:   task.Revision,
@@ -423,7 +423,7 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 		if err != nil {
 			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
-		err = clone(cloneOptions{
+		err = clone(ctx, cloneOptions{
 			owner:      owner,
 			repository: repo,
 			revision:   revision,

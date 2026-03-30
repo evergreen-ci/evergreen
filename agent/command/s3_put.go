@@ -345,7 +345,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		s3pc.associatedLinks = associatedLinks
 
 		if s3pc.isMulti() && len(associatedLinks) > 0 {
-			logger.Task().Warningf("Using associated_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different associated links.", len(s3pc.LocalFilesIncludeFilter))
+			logger.Task().Warningf(ctx, "Using associated_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different associated links.", len(s3pc.LocalFilesIncludeFilter))
 		}
 	}
 
@@ -469,7 +469,7 @@ retryLoop:
 				if err != nil {
 					// Skip erroring since local files include filter should treat files as optional.
 					if strings.Contains(err.Error(), utility.WalkThroughError) {
-						logger.Task().Warningf("Error while building file list: %s", err.Error())
+						logger.Task().Warningf(ctx, "Error while building file list: %s", err.Error())
 						return nil
 					}
 
@@ -477,7 +477,7 @@ retryLoop:
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 				if len(filesList) == 0 {
-					logger.Task().Warningf("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					logger.Task().Warningf(ctx, "File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					return nil
 				}
 			}
@@ -542,7 +542,7 @@ retryLoop:
 					}
 
 					// in all other cases, log an error and retry after an interval.
-					logger.Task().Error(errors.WithMessage(err, "putting S3 file"))
+					logger.Task().Error(ctx, errors.WithMessage(err, "putting S3 file"))
 					timer.Reset(backoffCounter.Duration())
 					continue retryLoop
 				}
@@ -583,7 +583,7 @@ retryLoop:
 		return err
 	}
 
-	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
+	logger.Task().WarningWhen(ctx, strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
 	processedCount := skippedFilesCount + len(uploadedFiles)
 

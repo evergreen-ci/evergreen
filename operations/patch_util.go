@@ -122,7 +122,7 @@ type patchSubmission struct {
 	localModuleIncludes                []patch.LocalModuleInclude
 }
 
-func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
+func (p *patchParams) createPatch(ctx context.Context, ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
 	patchSub := patchSubmission{
 		projectName:                        p.Project,
 		patchData:                          diffData.fullPatch,
@@ -150,7 +150,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		localModuleIncludes:                p.LocalModuleIncludes,
 	}
 
-	newPatch, err := ac.PutPatch(patchSub)
+	newPatch, err := ac.PutPatch(ctx, patchSub)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 	return newPatch, nil
 }
 
-func (p *patchParams) validateSubmission(diffData *localDiff) error {
+func (p *patchParams) validateSubmission(ctx context.Context, diffData *localDiff) error {
 	if err := validatePatchSize(diffData, p.Large); err != nil {
 		return err
 	}
@@ -243,13 +243,13 @@ func findBrowserCommand() ([]string, error) {
 
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
-	if err := p.loadProject(conf); err != nil {
+	if err := p.loadProject(ctx, conf); err != nil {
 		return nil, errors.Wrap(err, "failed to resolve project")
 	}
 
 	// If reusing a previous definition, ignore defaults.
 	if !p.RepeatFailed && !p.RepeatDefinition {
-		p.setNonRepeatedDefaults(conf)
+		p.setNonRepeatedDefaults(ctx, conf)
 	}
 
 	if err := p.loadParameters(conf); err != nil {
@@ -294,20 +294,20 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	return ref, nil
 }
 
-func (p *patchParams) setNonRepeatedDefaults(conf *ClientSettings) {
+func (p *patchParams) setNonRepeatedDefaults(ctx context.Context, conf *ClientSettings) {
 	if err := p.setLocalAliases(conf); err != nil {
 		grip.Warningf(ctx, "warning - setting local aliases: %s\n", err)
 	}
 
-	if err := p.loadAlias(conf); err != nil {
+	if err := p.loadAlias(ctx, conf); err != nil {
 		grip.Warningf(ctx, "warning - failed to set default alias: %s\n", err)
 	}
 
-	if err := p.loadVariants(conf); err != nil {
+	if err := p.loadVariants(ctx, conf); err != nil {
 		grip.Warningf(ctx, "warning - failed to set default variants: %s\n", err)
 	}
 
-	if err := p.loadTasks(conf); err != nil {
+	if err := p.loadTasks(ctx, conf); err != nil {
 		grip.Warningf(ctx, "warning - failed to set default tasks: %s\n", err)
 	}
 
@@ -321,7 +321,7 @@ func (p *patchParams) hasTasksAndVariants() bool {
 	return len(p.Variants)+len(p.RegexVariants) != 0 && len(p.Tasks)+len(p.RegexTasks) != 0
 }
 
-func (p *patchParams) loadProject(conf *ClientSettings) error {
+func (p *patchParams) loadProject(ctx context.Context, conf *ClientSettings) error {
 	if p.Project == "" {
 		cwd, err := os.Getwd()
 		grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
@@ -385,14 +385,14 @@ func (p *patchParams) addAliasToPatchParams(alias model.ProjectAlias) {
 	p.isUsingLocalAlias = true
 }
 
-func (p *patchParams) setDefaultProject(conf *ClientSettings) {
+func (p *patchParams) setDefaultProject(ctx context.Context, conf *ClientSettings) {
 	cwd, err := os.Getwd()
 	grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
 	cwd, err = filepath.EvalSymlinks(cwd)
 	grip.Error(ctx, errors.Wrapf(err, "resolving symlinks for the current working directory '%s'", cwd))
 
 	if conf.FindDefaultProject(cwd, false) == "" {
-		conf.SetDefaultProject(cwd, p.Project)
+		conf.SetDefaultProject(ctx, cwd, p.Project)
 		if err := conf.Write(""); err != nil {
 			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to set default project",
@@ -403,7 +403,7 @@ func (p *patchParams) setDefaultProject(conf *ClientSettings) {
 }
 
 // Sets the patch's alias to either the passed in option or the default
-func (p *patchParams) loadAlias(conf *ClientSettings) error {
+func (p *patchParams) loadAlias(ctx context.Context, conf *ClientSettings) error {
 	// If somebody passed an --alias
 	if p.Alias != "" {
 		// Check if there's an alias as the default, and if not, ask to save the cl one
@@ -425,7 +425,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 	return nil
 }
 
-func (p *patchParams) loadVariants(conf *ClientSettings) error {
+func (p *patchParams) loadVariants(ctx context.Context, conf *ClientSettings) error {
 	if len(p.Variants) != 0 {
 		defaultVariants := conf.FindDefaultVariants(p.Project)
 		if len(defaultVariants) == 0 && !p.SkipConfirm &&
@@ -469,7 +469,7 @@ func (p *patchParams) loadTriggerAliases(conf *ClientSettings) error {
 	return nil
 }
 
-func (p *patchParams) loadTasks(conf *ClientSettings) error {
+func (p *patchParams) loadTasks(ctx context.Context, conf *ClientSettings) error {
 	if len(p.Tasks) != 0 {
 		defaultTasks := conf.FindDefaultTasks(p.Project)
 		if len(defaultTasks) == 0 && !p.SkipConfirm &&
@@ -490,7 +490,7 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 	return nil
 }
 
-func (p *patchParams) getDescription() string {
+func (p *patchParams) getDescription(ctx context.Context) string {
 	if p.Description != "" {
 		return p.Description
 	} else if p.AutoDescription {
@@ -519,7 +519,7 @@ func (p *patchParams) getDescription() string {
 
 // getModulePath takes in a cache in addition to the conf, so that if we've disabled auto-defaulting, we can use the cache
 // without making any updates to conf, since this may be written to for future operations as well.
-func (p *patchParams) getModulePath(conf *ClientSettings, module string, modulePathCache map[string]string) (string, error) {
+func (p *patchParams) getModulePath(ctx context.Context, conf *ClientSettings, module string, modulePathCache map[string]string) (string, error) {
 	modulePath, cached := modulePathCache[module]
 	if cached || p.SkipConfirm {
 		if modulePath == "" {

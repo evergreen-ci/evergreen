@@ -599,7 +599,7 @@ func newMockSender(name string, appendLine func(log.LogLine) error) *mockSender 
 	}
 }
 
-func (s *mockSender) Send(m message.Composer) {
+func (s *mockSender) Send(_ context.Context, m message.Composer) {
 	ts := time.Now().UnixNano()
 
 	if !s.Level().ShouldLog(m) {

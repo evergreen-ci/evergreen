@@ -20,7 +20,7 @@ var (
 	}
 
 	setPlainLogger = func(c *cli.Context) error {
-		grip.Warning(ctx, grip.SetSender(send.MakePlainLogger()))
+		grip.Warning(context.Background(), grip.SetSender(send.MakePlainLogger()))
 		return nil
 	}
 
@@ -105,6 +105,9 @@ var (
 			i++
 		}
 
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		confPath := rootCtx.String(ConfFlagName)
 		// we do not return an error in case of failure to find the config path flag because we do not want to block the underlying CLI operation.
 		if confPath == "" {
@@ -117,8 +120,6 @@ var (
 			grip.Errorf(ctx, "Problem loading configuration: %s", err.Error())
 		}
 		if conf != nil && conf.AutoUpgradeCLI {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 			if err = checkAndUpdateVersion(conf, ctx, true, false, true); err != nil {
 				grip.Errorf(ctx, "Automatic CLI update failed! Continuing with command execution. Error: %s", err.Error())
 			}

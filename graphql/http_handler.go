@@ -51,7 +51,7 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	srv.SetRecoverFunc(func(ctx context.Context, err any) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
 
-		grip.Critical(message.Fields{
+		grip.Critical(ctx, message.Fields{
 			"path":    "/graphql/query",
 			"message": "unhandled panic",
 			"error":   err,

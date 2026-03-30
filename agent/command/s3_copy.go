@@ -217,7 +217,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 	client.Timeout = 10 * time.Minute
 	defer utility.PutHTTPClient(client)
 	for _, s3CopyFile := range c.S3CopyFiles {
-		logger.Task().WarningWhen(strings.Contains(s3CopyFile.Destination.Bucket, "."), "Destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
+		logger.Task().WarningWhen(ctx, strings.Contains(s3CopyFile.Destination.Bucket, "."), "Destination bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
 		timer.Reset(0)
 
@@ -316,13 +316,13 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 						return errors.Wrap(err, "updating push log status failed for task")
 					}
 					if s3CopyFile.Optional {
-						logger.Execution().Error(err)
-						logger.Execution().Errorf("S3copy.copy failed to copy '%s' to '%s' and file is optional, continuing.",
+						logger.Execution().Error(ctx, err)
+						logger.Execution().Errorf(ctx, "S3copy.copy failed to copy '%s' to '%s' and file is optional, continuing.",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 						timer.Reset(backoffCounter.Duration())
 						continue retryLoop
 					} else {
-						logger.Execution().Errorf("S3copy.copy failed to copy '%s' to '%s' and file is not optional, exiting.", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
+						logger.Execution().Errorf(ctx, "S3copy.copy failed to copy '%s' to '%s' and file is not optional, exiting.", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 						return errors.Wrapf(err, "S3copy.copy failed to copy '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 					}
 				} else {

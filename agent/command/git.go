@@ -285,7 +285,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(ctx context.Context, cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		owner:             conf.ProjectRef.Owner,
@@ -334,14 +334,14 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	}
 
 	var opts cloneOpts
-	opts, err = c.opts(cloneToken, logger, conf)
+	opts, err = c.opts(ctx, cloneToken, logger, conf)
 	if err != nil {
 		return err
 	}
 
 	err = c.fetch(ctx, comm, logger, conf, opts)
 	if err != nil {
-		logger.Task().Error(message.WrapError(err, message.Fields{
+		logger.Task().Error(ctx, message.WrapError(err, message.Fields{
 			"operation":    "git.get_project",
 			"message":      "cloning failed",
 			"num_attempts": gitFetchProjectRetries,
@@ -391,7 +391,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender())
 
 		logger.Task().Info(ctx, "Fetching source from git...")
-		logger.Task().Debugf("Commands are: %s", fetchScript)
+		logger.Task().Debugf(ctx, "Commands are: %s", fetchScript)
 
 		ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
 			attribute.String(cloneOwnerAttribute, opts.owner),
@@ -430,7 +430,7 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 			}
 			if attemptNum > 2 {
 				opts.useVerbose = true // use verbose for the last 2 attempts
-				logger.Task().Error(message.Fields{
+				logger.Task().Error(ctx, message.Fields{
 					"message":      fmt.Sprintf("running git '%s' clone with verbose output", fetchType),
 					"num_attempts": gitFetchProjectRetries,
 					"attempt":      attemptNum,
@@ -443,7 +443,7 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 				}
 				if isSource && c.refNotFound {
 					if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
-						logger.Task().Warningf("Failed to mark git ref not found: %s", markErr)
+						logger.Task().Warningf(ctx, "Failed to mark git ref not found: %s", markErr)
 					}
 					return false, errors.Wrap(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
 				}
@@ -488,11 +488,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		if modulePatch != nil {
 			if conf.Task.Requester == evergreen.GithubMergeRequester {
 				revision = module.Branch
-				c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
+				c.logModuleRevision(ctx, logger, revision, moduleName, "defaulting to HEAD for merge")
 			} else {
 				revision = modulePatch.Githash
 				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
+					c.logModuleRevision(ctx, logger, revision, moduleName, "specified in set-module")
 				}
 			}
 		}
@@ -500,23 +500,23 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if revision == "" {
 		revision = c.Revisions[moduleName]
 		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "specified as parameter to git.get_project")
 		}
 	}
 	if revision == "" {
 		revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
 		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "from manifest")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "from manifest")
 		}
 	}
 	// if there is no revision, then use the revision from the module, then branch name
 	if revision == "" {
 		if module.Ref != "" {
 			revision = module.Ref
-			c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "ref field in config file")
 		} else {
 			revision = module.Branch
-			c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "branch field in config file")
 		}
 	}
 
@@ -537,7 +537,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	opts.owner = owner
 	opts.repo = repo
 	if strings.Contains(module.Repo, "git@github.com:") {
-		logger.Task().Warningf("ssh cloning is being deprecated. We are manually converting '%s'"+
+		logger.Task().Warningf(ctx, "ssh cloning is being deprecated. We are manually converting '%s'"+
 			" to https format. Please update your project config.", module.Repo)
 	}
 
@@ -593,7 +593,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		errOutput := stdErr.String()
 		if errOutput != "" {
 			errOutput = strings.ReplaceAll(errOutput, "\n", fmt.Sprintf("\n%s: ", module.Name))
-			logger.Task().Error(fmt.Sprintf("%s: %s", module.Name, errOutput))
+			logger.Task().Error(ctx, fmt.Sprintf("%s: %s", module.Name, errOutput))
 		}
 
 		if err != nil {
@@ -638,7 +638,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if module == nil {
 			return errors.Errorf("module '%s' not found", moduleName)
 		}
-		expandModulePrefix(conf, module.Name, module.Prefix, logger)
+		expandModulePrefix(ctx, conf, module.Name, module.Prefix, logger)
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -662,7 +662,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	if evergreen.IsPatchRequester(conf.Task.Requester) && !isGitHub(conf) {
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "getting patch contents")
-			logger.Task().Error(err.Error())
+			logger.Task().Error(ctx, err.Error())
 			return err
 		}
 
@@ -671,7 +671,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		// reorder patches so the main patch gets applied last
 		if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
 			err = errors.Wrap(err, "applying patch")
-			logger.Task().Error(err.Error())
+			logger.Task().Error(ctx, err.Error())
 			return err
 		}
 	}
@@ -695,7 +695,7 @@ func reorderPatches(originalPatches []patch.ModulePatch) []patch.ModulePatch {
 	return patches
 }
 
-func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revision, module, reason string) {
+func (c *gitFetchProject) logModuleRevision(ctx context.Context, logger client.LoggerProducer, revision, module, reason string) {
 	logger.Execution().Infof(ctx, "Using revision/ref '%s' for module '%s' (reason: %s).", revision, module, reason)
 }
 
@@ -792,7 +792,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 					module.Name)
 				continue
 			}
-			expandModulePrefix(conf, module.Name, module.Prefix, logger)
+			expandModulePrefix(ctx, conf, module.Name, module.Prefix, logger)
 			moduleDir = filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 		}
 

@@ -240,7 +240,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		return
 	}
 
-	grip.Error(ctx, message.WrapError(err, message.Fields{
+	grip.Error(r.Context(), message.WrapError(err, message.Fields{
 		"method":     r.Method,
 		"url":        r.URL.String(),
 		"code":       code,
@@ -259,7 +259,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 
 	if err := resp.SetStatus(code); err != nil {
-		grip.Warning(ctx, errors.WithStack(resp.SetStatus(http.StatusInternalServerError)))
+		grip.Warning(r.Context(), errors.WithStack(resp.SetStatus(http.StatusInternalServerError)))
 	}
 
 	gimlet.WriteResponse(r.Context(), w, resp)

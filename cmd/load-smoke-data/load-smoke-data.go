@@ -224,7 +224,7 @@ func getAmboyQueueOptions(dbURI string, db *mongo.Database) queue.MongoDBQueueOp
 
 func main() {
 	wd, err := os.Getwd()
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(context.Background(), err)
 	var (
 		path        string
 		dbName      string
@@ -243,13 +243,13 @@ func main() {
 
 	clientOptions := options.Client().ApplyURI(dbURI).SetConnectTimeout(5 * time.Second)
 	client, err := mongo.Connect(ctx, clientOptions)
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(ctx, err)
 
 	db := client.Database(dbName)
-	grip.EmergencyFatal(db.Drop(ctx))
+	grip.EmergencyFatal(ctx, db.Drop(ctx))
 
 	amboyDB := client.Database(amboyDBName)
-	grip.EmergencyFatal(amboyDB.Drop(ctx))
+	grip.EmergencyFatal(ctx, amboyDB.Drop(ctx))
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(buildAmboyIndexes(ctx, dbURI, amboyDB), "building Amboy indexes")
@@ -257,5 +257,5 @@ func main() {
 	catcher.Wrap(writeDummyGridFSFile(ctx, db), "writing dummy file to GridFS")
 	catcher.Wrap(writeDummyTestResultToLocalBucket(ctx), "writing dummy test result to local bucket")
 	catcher.Add(client.Disconnect(ctx))
-	grip.EmergencyFatal(catcher.Resolve())
+	grip.EmergencyFatal(ctx, catcher.Resolve())
 }

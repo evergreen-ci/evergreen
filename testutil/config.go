@@ -27,7 +27,7 @@ const (
 
 func init() {
 	if ExecutionEnvironmentType != "test" {
-		grip.Alert(ctx, message.Fields{
+		grip.Alert(context.Background(), message.Fields{
 			"op":      "called init() in testutil for production code.",
 			"test.v":  flag.Lookup("test.v"),
 			"v":       flag.Lookup("v"),

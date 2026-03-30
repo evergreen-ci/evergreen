@@ -88,7 +88,7 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := addModuleToPatch(params, args, conf, existingPatch, module, ""); err != nil {
+			if err := addModuleToPatch(ctx, params, args, conf, existingPatch, module, ""); err != nil {
 				return err
 			}
 			if params.Finalize {
@@ -97,7 +97,7 @@ func PatchSetModule() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(patchID); err != nil {
+					if err = ac.FinalizePatch(ctx, patchID); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 					}
 				}
@@ -108,7 +108,7 @@ func PatchSetModule() cli.Command {
 	}
 }
 
-func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
+func addModuleToPatch(ctx context.Context, params *patchParams, args cli.Args, conf *ClientSettings,
 	p *patch.Patch, module *model.Module, modulePath string) error {
 	patchId := p.Id.Hex()
 
@@ -162,7 +162,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	if err != nil {
 		return errors.Wrap(err, "setting up legacy Evergreen client")
 	}
-	err = ac.UpdatePatchModule(moduleParams)
+	err = ac.UpdatePatchModule(ctx, moduleParams)
 	if err != nil {
 		return err
 	}

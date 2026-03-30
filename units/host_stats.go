@@ -97,7 +97,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 
 	for _, h := range taskSpawned {
 		if !utility.IsZeroTime(h.StartTime) && h.StartTime.Add(longRunningHostThreshold).Before(time.Now()) {
-			j.logger.Warning(ctx, ctx, message.Fields{
+			j.logger.Warning(ctx, message.Fields{
 				"message":               "long running host spawned by task",
 				"id":                    h.Id,
 				"duration":              time.Since(h.StartTime).Seconds(),

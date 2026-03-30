@@ -41,7 +41,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := uis.env.UserManager().CreateUserToken(r.Context(), creds.Username, creds.Password)
 	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Error(r.Context(), message.WrapError(err, message.Fields{
 			"message": "error creating user token",
 		}))
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)

@@ -228,7 +228,7 @@ func notificationJobs(ctx context.Context, notifications []notification.Notifica
 	catcher := grip.NewBasicCatcher()
 	var jobs []amboy.Job
 	for i := range notifications {
-		if notificationIsEnabled(flags, &notifications[i]) {
+		if notificationIsEnabled(ctx, flags, &notifications[i]) {
 			jobs = append(jobs, NewEventSendJob(notifications[i].ID, ts.Format(TSFormat)))
 		} else {
 			catcher.Wrapf(notifications[i].MarkError(ctx, errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
@@ -237,7 +237,7 @@ func notificationJobs(ctx context.Context, notifications []notification.Notifica
 	return jobs, catcher.Resolve()
 }
 
-func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notification) bool {
+func notificationIsEnabled(ctx context.Context, flags *evergreen.ServiceFlags, n *notification.Notification) bool {
 	switch n.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		return !flags.GithubStatusAPIDisabled

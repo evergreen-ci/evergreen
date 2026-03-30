@@ -534,7 +534,7 @@ func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request
 
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Error(r.Context(), message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "rejecting GitHub webhook",
 			"msg_id":  r.Header.Get("X-Github-Delivery"),
@@ -583,7 +583,7 @@ func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	if err = payload.VerifyPayload(); err != nil {
 		msg := "AWS SNS message failed validation"
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Error(r.Context(), message.WrapError(err, message.Fields{
 			"message": msg,
 			"payload": payload,
 		}))

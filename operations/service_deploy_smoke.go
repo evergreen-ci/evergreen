@@ -250,7 +250,7 @@ func smokeRunBinary(exit chan error, name string, wd string, envVars []string, b
 	}
 	go func() {
 		exit <- cmd.Wait()
-		grip.Errorf(ctx, "%s exited", name)
+		grip.Errorf(context.Background(), "%s exited", name)
 	}()
 	return nil
 }

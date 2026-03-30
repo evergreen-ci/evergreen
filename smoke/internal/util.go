@@ -88,16 +88,16 @@ func GetAPIParamsFromEnv(t *testing.T, evgHome string) APIParams {
 func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 	const attempts = 10
 	for i := 0; i < attempts; i++ {
-		grip.Infof(ctx, "Checking if Evergreen is up. (%d/%d)", i, attempts)
+		grip.Infof(t.Context(), "Checking if Evergreen is up. (%d/%d)", i, attempts)
 		resp, err := client.Get(appServerURL)
 		if err != nil {
-			grip.Error(ctx, errors.Wrap(err, "connecting to Evergreen"))
+			grip.Error(t.Context(), errors.Wrap(err, "connecting to Evergreen"))
 			time.Sleep(time.Second)
 			continue
 		}
 		resp.Body.Close()
 
-		grip.Error(ctx, "Evergreen is up.")
+		grip.Error(t.Context(), "Evergreen is up.")
 
 		return
 	}
@@ -222,7 +222,7 @@ func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, cli
 // checkTaskLogContent compares the expected result of running the smoke test
 // project YAML (project.yml) against the actual task log's text.
 func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode globals.Mode) {
-	grip.Infof(ctx, "Checking task logs for task named '%s'", taskName)
+	grip.Infof(t.Context(), "Checking task logs for task named '%s'", taskName)
 
 	page := string(body)
 

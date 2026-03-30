@@ -117,7 +117,7 @@ func (c *shellExec) ParseParams(params map[string]any) error {
 
 // Execute starts the shell with its given parameters.
 func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	logger.Execution().Debug("Preparing script...")
+	logger.Execution().Debug(ctx, "Preparing script...")
 
 	// We do this before expanding expansions so that expansions are not logged.
 	if c.Silent {
@@ -133,7 +133,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		return errors.WithStack(err)
 	}
 
-	logger.Execution().WarningWhen(filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
+	logger.Execution().WarningWhen(ctx, filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
 		fmt.Sprintf("The working directory is an absolute path [%s], which isn't supported except when prefixed by '%s'.",
 			c.WorkingDir, conf.WorkDir))
 
@@ -144,7 +144,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	taskTmpDir, err := getWorkingDirectoryLegacy(conf, "tmp")
 	if err != nil {
-		logger.Execution().Notice(errors.Wrap(err, "getting task temporary directory"))
+		logger.Execution().Notice(ctx, errors.Wrap(err, "getting task temporary directory"))
 	}
 
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
@@ -157,7 +157,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		addToPath:              c.AddToPath,
 	})
 
-	logger.Execution().Debug(message.Fields{
+	logger.Execution().Debug(ctx, message.Fields{
 		"working_directory": c.WorkingDir,
 		"shell":             c.Shell,
 	})
@@ -206,9 +206,9 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 	err = errors.Wrapf(err, "shell script encountered problem")
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())
-		logger.System().Debug(message.CollectAllProcesses())
-		logger.Execution().Notice(err)
+		logger.System().Debugf(ctx, "Canceled command '%s', dumping running processes.", c.Name())
+		logger.System().Debug(ctx, message.CollectAllProcesses())
+		logger.Execution().Notice(ctx, err)
 		return errors.Wrapf(ctxErr, "canceled while running command '%s'", c.Name())
 	}
 

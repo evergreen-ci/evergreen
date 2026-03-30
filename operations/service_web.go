@@ -53,7 +53,7 @@ func startWebService() cli.Command {
 			// When running within a container, detect the number of CPUs available to the container
 			// and set GOMAXPROCS. This noops when running outside of a container.
 			_, err := maxprocs.Set()
-			grip.EmergencyFatal(errors.Wrap(err, "setting max procs"))
+			grip.EmergencyFatal(ctx, errors.Wrap(err, "setting max procs"))
 
 			var tp trace.TracerProvider
 			sdkTracerProvider, err := startupTracerProvider(ctx, c.String(traceEndpointFlagName))
@@ -74,7 +74,7 @@ func startWebService() cli.Command {
 			clientS3Bucket := c.String(clientS3BucketFlagName)
 			db := parseDB(c)
 			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, clientS3Bucket, db, tp)
-			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
+			grip.EmergencyFatal(ctx, errors.Wrap(err, "configuring application environment"))
 
 			if c.Bool(testingEnvFlagName) {
 				// If running in a testing environment (e.g. local Evergreen),
@@ -98,19 +98,19 @@ func startWebService() cli.Command {
 
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
-				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(ctx), "saving config"))
+				grip.EmergencyFatal(ctx, errors.Wrap(env.SaveConfig(ctx), "saving config"))
 			}
 
 			// Remove the span from the remoteQueueCtx since the queue caches the ctx.
 			remoteQueueCtx := trace.ContextWithSpan(ctx, nil)
-			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(remoteQueueCtx), "starting remote queue"))
+			grip.EmergencyFatal(ctx, errors.Wrap(env.RemoteQueue().Start(remoteQueueCtx), "starting remote queue"))
 
 			settings := env.Settings()
 			// Remove the span from the senderCtx since the sender caches the ctx.
 			senderCtx := trace.ContextWithSpan(ctx, nil)
 			sender, err := settings.GetSender(senderCtx, env)
-			grip.EmergencyFatal(err)
-			grip.EmergencyFatal(grip.SetSender(sender))
+			grip.EmergencyFatal(ctx, err)
+			grip.EmergencyFatal(ctx, grip.SetSender(sender))
 			queue := env.RemoteQueue()
 
 			// Create the user manager before setting up job queues to allow
@@ -131,7 +131,7 @@ func startWebService() cli.Command {
 				"process": grip.Name(),
 			})
 
-			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env, tracer), "starting background work"))
+			grip.EmergencyFatal(ctx, errors.Wrap(startSystemCronJobs(ctx, env, tracer), "starting background work"))
 
 			var (
 				apiServer *http.Server
@@ -147,8 +147,8 @@ func startWebService() cli.Command {
 				return errors.WithStack(err)
 			}
 
-			apiServer = service.GetServer(settings.Api.HttpListenAddr, serviceHandler)
-			uiServer = service.GetServer(settings.Ui.HttpListenAddr, serviceHandler)
+			apiServer = service.GetServer(ctx, settings.Api.HttpListenAddr, serviceHandler)
+			uiServer = service.GetServer(ctx, settings.Ui.HttpListenAddr, serviceHandler)
 
 			catcher := grip.NewBasicCatcher()
 			apiWait := make(chan struct{})
@@ -165,7 +165,7 @@ func startWebService() cli.Command {
 				close(uiWait)
 			}()
 
-			adminServer := service.GetServer(settings.PprofPort, adminHandler)
+			adminServer := service.GetServer(ctx, settings.PprofPort, adminHandler)
 			adminWait := make(chan struct{})
 			go func() {
 				defer recovery.LogStackTraceAndContinue("admin server")

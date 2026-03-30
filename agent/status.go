@@ -28,7 +28,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 		return errors.Errorf("another process is running on localhost port %d", port)
 	}
 	app := gimlet.NewApp()
-	if err = app.SetPort(port); err != nil {
+	if err = app.SetPort(ctx, port); err != nil {
 		return errors.WithStack(err)
 	}
 	app.NoVersions = true
@@ -54,7 +54,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	grip.Infoln("Starting status server on address:", srv.Addr)
+	grip.Infof(ctx, "Starting status server on address: %s", srv.Addr)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -62,7 +62,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 				grip.Error(ctx, err)
 				return
 			}
-			grip.EmergencyFatal(err)
+			grip.EmergencyFatal(ctx, err)
 		}
 	}()
 
@@ -89,7 +89,8 @@ type statusResponse struct {
 // statusHandler is a function that produces the status handler.
 func (a *Agent) statusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		grip.Debug(ctx, "Preparing status response.")
+		reqCtx := r.Context()
+		grip.Debug(reqCtx, "Preparing status response.")
 		resp := buildResponse(a.opts)
 
 		// in the future we may want to use the same render
@@ -97,14 +98,14 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 		// manually is probably good enough for now.
 		out, err := json.MarshalIndent(resp, " ", " ")
 		if err != nil {
-			grip.Error(ctx, errors.Wrap(err, "marshalling JSON for status handler response"))
+			grip.Error(reqCtx, errors.Wrap(err, "marshalling JSON for status handler response"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, err = w.Write(out)
-		grip.Error(ctx, errors.Wrap(err, "writing status handler response"))
+		grip.Error(reqCtx, errors.Wrap(err, "writing status handler response"))
 	}
 }
 

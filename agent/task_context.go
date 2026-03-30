@@ -112,7 +112,7 @@ func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.taskCleanups, trace), "running setup group command cleanups"); err != nil {
-		logger.Execution().Error(err)
+		logger.Execution().Error(ctx, err)
 	}
 }
 
@@ -126,7 +126,7 @@ func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger 
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.setupGroupCleanups, trace), "running setup group command cleanups"); err != nil {
-		logger.Execution().Error(err)
+		logger.Execution().Error(ctx, err)
 	}
 }
 
@@ -199,7 +199,7 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 // setCurrentIdleTimeout sets the idle timeout for the current running command.
 // This timeout only applies to commands running in specific blocks where idle
 // timeout is allowed.
-func (tc *taskContext) setCurrentIdleTimeout(cmd command.Command) {
+func (tc *taskContext) setCurrentIdleTimeout(ctx context.Context, cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 

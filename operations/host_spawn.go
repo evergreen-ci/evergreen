@@ -711,14 +711,14 @@ Examples:
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			grip.Error(ctx, "Note: User must be on the VPN to gain access to the host.")
 			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)
 			dryRun := c.Bool(dryRunFlagName)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -968,13 +968,13 @@ func hostListVolume() cli.Command {
 			if err != nil {
 				return err
 			}
-			printVolumes(volumes, conf.User)
+			printVolumes(ctx, volumes, conf.User)
 			return nil
 		},
 	}
 }
 
-func printVolumes(volumes []restModel.APIVolume, userID string) {
+func printVolumes(ctx context.Context, volumes []restModel.APIVolume, userID string) {
 	if len(volumes) == 0 {
 		grip.Infof(ctx, "no volumes started by user '%s'", userID)
 		return
@@ -1178,9 +1178,9 @@ func hostList() cli.Command {
 			}
 
 			if showJSON {
-				printHostsJSON(hosts)
+				printHostsJSON(ctx, hosts)
 			} else {
-				printHosts(hosts)
+				printHosts(ctx, hosts)
 			}
 
 			return nil
@@ -1188,7 +1188,7 @@ func hostList() cli.Command {
 	}
 }
 
-func printHosts(hosts []*restModel.APIHost) {
+func printHosts(ctx context.Context, hosts []*restModel.APIHost) {
 	for _, h := range hosts {
 		hostname := getHostname(h)
 		grip.Infof(ctx, "ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
@@ -1202,7 +1202,7 @@ func printHosts(hosts []*restModel.APIHost) {
 	}
 }
 
-func printHostsJSON(hosts []*restModel.APIHost) {
+func printHostsJSON(ctx context.Context, hosts []*restModel.APIHost) {
 	type hostResult struct {
 		Id               string `json:"id"`
 		Name             string `json:"name"`

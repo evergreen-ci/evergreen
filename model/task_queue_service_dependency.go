@@ -129,7 +129,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 
 	// A Node for the "dependent" <to> task is not present in the DAG.
 	if toNode == nil {
-		grip.Warning(ctx, message.Fields{
+		grip.Warning(context.Background(), message.Fields{
 			"dispatcher":         DAGDispatcher,
 			"function":           "addEdge",
 			"message":            "a Node for a dependent taskQueueItem is not present in the DAG",
@@ -217,7 +217,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	if err != nil {
 		unorderableNodes, ok := err.(topo.Unorderable)
 		if !ok {
-			grip.Alert(ctx, message.WrapError(err, message.Fields{
+			grip.Alert(context.Background(), message.WrapError(err, message.Fields{
 				"dispatcher":                 DAGDispatcher,
 				"function":                   "rebuild",
 				"message":                    "problem ordering the tasks and associated dependencies within the DirectedGraph",
@@ -237,7 +237,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			}
 			cycles = append(cycles, cycleIDs)
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"dispatcher": DAGDispatcher,
 			"function":   "rebuild",
 			"message":    "tasks in the queue form dependency cycle(s)",

@@ -239,7 +239,7 @@ tarReaderLoop:
 				return errors.WithStack(err)
 			}
 
-			err := writeFileWithContentsAndPermission(namePath, tarReader, os.FileMode(hdr.Mode))
+			err := writeFileWithContentsAndPermission(ctx, namePath, tarReader, os.FileMode(hdr.Mode))
 			if err != nil {
 				return err
 			}
@@ -249,7 +249,7 @@ tarReaderLoop:
 	}
 }
 
-func writeFileWithContentsAndPermission(path string, contents io.Reader, mode fs.FileMode) error {
+func writeFileWithContentsAndPermission(ctx context.Context, path string, contents io.Reader, mode fs.FileMode) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return errors.WithStack(err)

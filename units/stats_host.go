@@ -126,7 +126,7 @@ func (j *hostStatsCollector) statsByDistro(ctx context.Context) error {
 		"data":          stats.hosts,
 	})
 
-	j.logger.WarningWhen(stats.excess > 0, message.Fields{
+	j.logger.WarningWhen(ctx, stats.excess > 0, message.Fields{
 		"report": "maxHosts exceeded",
 		"data":   stats.hosts.MaxHostsExceeded(),
 		"total":  stats.excess,

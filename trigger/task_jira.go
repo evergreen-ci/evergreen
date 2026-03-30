@@ -224,7 +224,7 @@ func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
 	labels := []string{}
 	for _, project := range j.mappings.CustomFields {
 		if project.Project == j.project {
-			fields = j.makeCustomFields(project.Fields)
+			fields = j.makeCustomFields(ctx, project.Fields)
 			components = project.Components
 			labels = project.Labels
 		}
@@ -314,7 +314,7 @@ func (j *jiraBuilder) getSummary() (string, error) {
 	return subj.String(), catcher.Resolve()
 }
 
-func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotificationsCustomField) map[string]any {
+func (j *jiraBuilder) makeCustomFields(ctx context.Context, customFields []evergreen.JIRANotificationsCustomField) map[string]any {
 	fields := map[string]any{}
 	for i := range j.data.Task.LocalTestResults {
 		if j.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {

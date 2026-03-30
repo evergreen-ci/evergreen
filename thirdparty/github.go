@@ -333,7 +333,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				grip.Error(ctx, message.WrapError(err, message.Fields{
+				grip.Error(req.Context(), message.WrapError(err, message.Fields{
 					"message":   "EOF error from github",
 					"method":    req.Method,
 					"url":       url,
@@ -342,13 +342,13 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 				return true
 			}
 			temporary := utility.IsTemporaryError(err)
-			grip.Error(ctx, message.WrapError(err, message.Fields{
+			grip.Error(req.Context(), message.WrapError(err, message.Fields{
 				"message":   "failed trying to call github",
 				"method":    req.Method,
 				"url":       url,
 				"temporary": temporary,
 			}))
-			grip.InfoWhen(ctx, temporary, message.Fields{
+			grip.InfoWhen(req.Context(), temporary, message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   "error is temporary",
 				"caller":    caller,
@@ -358,7 +358,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp == nil {
-			grip.Error(ctx, message.Fields{
+			grip.Error(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   "resp is nil in githubShouldRetry",
 				"caller":    caller,
@@ -372,7 +372,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp.StatusCode >= http.StatusBadRequest {
-			grip.Error(ctx, message.Fields{
+			grip.Error(req.Context(), message.Fields{
 				"message": "bad response code from github",
 				"method":  req.Method,
 				"url":     url,
@@ -386,7 +386,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp.StatusCode == http.StatusBadGateway {
-			grip.Error(ctx, message.Fields{
+			grip.Error(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusBadGateway),
 				"caller":    caller,
@@ -396,7 +396,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if config.retry404 && resp.StatusCode == http.StatusNotFound {
-			grip.Error(ctx, message.Fields{
+			grip.Error(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusNotFound),
 				"caller":    caller,
@@ -413,7 +413,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
 func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
-	grip.Error(ctx, message.Fields{
+	grip.Error(context.Background(), message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,
@@ -765,7 +765,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		return errors.Wrap(err, "setting priority")
 	}
 
-	sender.Send(c)
+	sender.Send(ctx, c)
 	grip.Error(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called github status send",

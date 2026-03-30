@@ -16,7 +16,7 @@ import (
 )
 
 // GetServer produces an HTTP server instance for a handler.
-func GetServer(addr string, n http.Handler) *http.Server {
+func GetServer(ctx context.Context, addr string, n http.Handler) *http.Server {
 	grip.Notice(ctx, message.Fields{
 		"action":  "starting service",
 		"service": addr,

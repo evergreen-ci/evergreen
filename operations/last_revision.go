@@ -500,7 +500,7 @@ func (c *lastRevisionCriteria) shouldApply(bv, bvDisplayName string) bool {
 
 // check returns whether the the criteria applies to the build and if so, if it
 // passes all the criteria. This returns true if the criteria does not apply.
-func (c *lastRevisionCriteria) check(info lastRevisionBuildInfo) bool {
+func (c *lastRevisionCriteria) check(ctx context.Context, info lastRevisionBuildInfo) bool {
 	if !c.shouldApply(info.buildVariant, info.buildVariantDisplayName) {
 		// The criteria does not apply to this build variant, so it
 		// automatically passes checks.
@@ -682,7 +682,7 @@ func checkBuildPassesCriteria(ctx context.Context, c client.Communicator, b mode
 
 	for _, c := range criteria {
 		buildInfo := newLastRevisionBuildInfo(b, tasks, c.knownIssuesAreSuccess)
-		passesCriteria := c.check(buildInfo)
+		passesCriteria := c.check(ctx, buildInfo)
 		if !passesCriteria {
 			return false, nil
 		}

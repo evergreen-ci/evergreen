@@ -229,7 +229,7 @@ func (cbtc *CmpBasedTaskComparator) splitTasksByRequester(
 		case task.Requester == evergreen.AdHocRequester:
 			patchTasks = append(patchTasks, task)
 		default:
-			grip.Error(ctx, message.Fields{
+			grip.Error(context.Background(), message.Fields{
 				"task":      task.Id,
 				"requester": task.Requester,
 				"runner":    RunnerName,

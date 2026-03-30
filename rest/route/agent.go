@@ -208,7 +208,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if newestPushLog != nil {
 		// the error is not being returned in order to avoid a retry
-		grip.Warningln("conflict with existing pushed file:", copyToLocation)
+		grip.Warningln(ctx, "conflict with existing pushed file:", copyToLocation)
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
@@ -1189,11 +1189,11 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			grip.Error(ctx, foundHost.TaskStartMessage())
 		}
 	}
-	logTaskStartMessage(foundHost, t)
+	logTaskStartMessage(ctx, foundHost, t)
 	return gimlet.NewJSONResponse(msg)
 }
 
-func logTaskStartMessage(h *host.Host, t *task.Task) {
+func logTaskStartMessage(ctx context.Context, h *host.Host, t *task.Task) {
 	msg := message.Fields{
 		"stat":                   "task-start-stats",
 		"task_id":                t.Id,
@@ -1528,7 +1528,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	grip.Infoln("Setting downstream expansions for task:", t.Id)
+	grip.Infoln(ctx, "Setting downstream expansions for task:", t.Id)
 
 	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
 

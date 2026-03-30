@@ -186,7 +186,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, h host.Host, cloudStatus cloud.CloudStatus) error {
 	switch cloudStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping, cloud.StatusNonExistent:
-		j.logHostStatusMessage(&h, cloudStatus)
+		j.logHostStatusMessage(ctx, &h, cloudStatus)
 		grip.Error(ctx, message.Fields{
 			"message":   "host was terminated externally",
 			"operation": "setCloudHostStatus",
@@ -206,7 +206,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, h host.Host,
 		if h.UserHost && h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			catcher.Wrap(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewUserDataDoneJob(j.env, h.Id, utility.RoundPartOfHour(1))), "enqueueing job to check when user data is done")
 		}
-		j.logHostStatusMessage(&h, cloudStatus)
+		j.logHostStatusMessage(ctx, &h, cloudStatus)
 		return catcher.Resolve()
 	}
 
@@ -255,7 +255,7 @@ func (j *cloudHostReadyJob) setNextState(ctx context.Context, h *host.Host) erro
 // logHostStatusMessage logs the appropriate message once the status of a host's
 // cloud instance is known and the host can transition to the next step in
 // provisioning.
-func (j *cloudHostReadyJob) logHostStatusMessage(h *host.Host, cloudStatus cloud.CloudStatus) {
+func (j *cloudHostReadyJob) logHostStatusMessage(ctx context.Context, h *host.Host, cloudStatus cloud.CloudStatus) {
 	switch cloudStatus {
 	case cloud.StatusStopped, cloud.StatusStopping:
 		grip.Warning(ctx, message.Fields{

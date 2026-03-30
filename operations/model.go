@@ -56,7 +56,7 @@ type ClientProjectConf struct {
 	LocalAliases   []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
 
-func findConfigFilePath(fn string) (string, error) {
+func findConfigFilePath(ctx context.Context, fn string) (string, error) {
 	currentBinPath, _ := osext.Executable()
 
 	userHome, _ := util.GetUserHome()
@@ -155,7 +155,7 @@ type ClientSettings struct {
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
-	path, err := findConfigFilePath(fn)
+	path, err := findConfigFilePath(context.Background(), fn)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding config file '%s'", fn)
 	}
@@ -366,7 +366,7 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 	}
 
 	if checkForUpdate {
-		update, err := checkUpdate(c, true, false)
+		update, err := checkUpdate(ctx, c, true, false)
 		if err != nil {
 			grip.Debug(ctx, err)
 		}
@@ -631,7 +631,7 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 	})
 }
 
-func (s *ClientSettings) SetDefaultProject(cwd, project string) {
+func (s *ClientSettings) SetDefaultProject(ctx context.Context, cwd, project string) {
 	if s.DisableAutoDefaulting {
 		return
 	}
@@ -647,7 +647,7 @@ func (s *ClientSettings) SetDefaultProject(cwd, project string) {
 	grip.Infof(ctx, "Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
 }
 
-func (s *ClientSettings) SetAutoUpgradeCLI() {
+func (s *ClientSettings) SetAutoUpgradeCLI(ctx context.Context) {
 	s.AutoUpgradeCLI = true
 	grip.Error(ctx, "Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }

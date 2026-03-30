@@ -146,7 +146,8 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 
 // LoadProject loads and parses an Evergreen project configuration from a file
 func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
-	e.logger.Infof(ctx, "Loading project from: %s", configPath)
+	logCtx := context.Background()
+	e.logger.Infof(logCtx, "Loading project from: %s", configPath)
 
 	absPath, err := filepath.Abs(configPath)
 	if err != nil {
@@ -176,7 +177,7 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 		e.taskConfig.Project = *project
 	}
 
-	e.logger.Infof(ctx, "Loaded project with %d tasks and %d build variants",
+	e.logger.Infof(logCtx, "Loaded project with %d tasks and %d build variants",
 		len(project.Tasks), len(project.BuildVariants))
 
 	return project, nil
@@ -198,7 +199,7 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 
 	e.workDir = path
 	e.expansions.Put("workdir", path)
-	e.logger.Infof(ctx, "Working directory set to: %s", path)
+	e.logger.Infof(context.Background(), "Working directory set to: %s", path)
 
 	return nil
 }
@@ -216,7 +217,7 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 
 	for e.debugState.CurrentStepIndex <= untilIndex {
 		if err := e.StepNext(ctx); err != nil {
-			e.logger.Errorf("Step %s failed: %v", e.debugState.CommandList[e.debugState.CurrentStepIndex].FullStepNumber(), err)
+			e.logger.Errorf(ctx, "Step %s failed: %v", e.debugState.CommandList[e.debugState.CurrentStepIndex].FullStepNumber(), err)
 			return err
 		}
 		if e.debugState.CurrentStepIndex > untilIndex {
@@ -236,7 +237,7 @@ func (e *LocalExecutor) JumpTo(index int) error {
 		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
 	}
 	e.debugState.CurrentStepIndex = index
-	e.logger.Infof(ctx, "Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
+	e.logger.Infof(context.Background(), "Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
 	return nil
 }
 
@@ -244,7 +245,7 @@ func (e *LocalExecutor) JumpTo(index int) error {
 func (e *LocalExecutor) SetVariable(key, value string) {
 	e.debugState.CustomVars[key] = value
 	e.expansions.Put(key, value)
-	e.logger.Infof(ctx, "Set variable %s=%s", key, value)
+	e.logger.Infof(context.Background(), "Set variable %s=%s", key, value)
 }
 
 // StepNext executes the current step and advances to the next
@@ -369,7 +370,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
-				e.logger.Errorf("Step %s failed: %v", targetCmd.FullStepNumber(), err)
+				e.logger.Errorf(ctx, "Step %s failed: %v", targetCmd.FullStepNumber(), err)
 				if canFailTask {
 					return err
 				}
@@ -536,9 +537,10 @@ func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
 
 // handleLocalPanic handles panics that occur during command execution
 func (e *LocalExecutor) handleLocalPanic(panicErr error, originalErr error, op string) error {
-	e.logger.Errorf("Panic in %s: %v", op, panicErr)
+	panicCtx := context.Background()
+	e.logger.Errorf(panicCtx, "Panic in %s: %v", op, panicErr)
 	if originalErr != nil {
-		e.logger.Errorf("Original error: %v", originalErr)
+		e.logger.Errorf(panicCtx, "Original error: %v", originalErr)
 		return errors.Wrapf(panicErr, "panic during %s (original error: %v)", op, originalErr)
 	}
 	return errors.Wrapf(panicErr, "panic during %s", op)
@@ -555,14 +557,14 @@ func (e *LocalExecutor) runCommandWithTracking(
 	for _, cmd := range cmds {
 		e.debugState.CurrentStepIndex++
 		if e.isLocalNoOpCommand(cmd) {
-			e.handleNoOpCommand(cmd)
+			e.handleNoOpCommand(ctx, cmd)
 			continue
 		}
 
 		cmd.SetJasperManager(e.jasperManager)
 		err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 		if err != nil {
-			e.logger.Errorf("Command failed: %v", err)
+			e.logger.Errorf(ctx, "Command failed: %v", err)
 			if canFailTask {
 				return err
 			}
@@ -579,12 +581,13 @@ func (e *LocalExecutor) isLocalNoOpCommand(cmd command.Command) bool {
 }
 
 // handleNoOpCommand logs a message for commands that are no-op in local execution
-func (e *LocalExecutor) handleNoOpCommand(cmd command.Command) {
+func (e *LocalExecutor) handleNoOpCommand(ctx context.Context, cmd command.Command) {
 	e.logger.Infof(ctx, e.getNoOpMessage(cmd.Name()))
 }
 
 // PrepareTask prepares a task for execution by creating command blocks
 func (e *LocalExecutor) PrepareTask(taskName string) error {
+	logCtx := context.Background()
 	if e.project == nil {
 		return errors.New("project not loaded")
 	}
@@ -595,7 +598,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	}
 
 	e.debugState.SelectedTask = taskName
-	e.logger.Infof(ctx, "Preparing task: %s", taskName)
+	e.logger.Infof(logCtx, "Preparing task: %s", taskName)
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
@@ -644,7 +647,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 			e.commandBlocks[i].endIndex = currentIdx - 1
 		}
 	}
-	e.logger.Infof(ctx, "Task prepared with %d commands in %d blocks",
+	e.logger.Infof(logCtx, "Task prepared with %d commands in %d blocks",
 		len(e.debugState.CommandList), len(e.commandBlocks))
 
 	return nil
@@ -652,6 +655,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 
 // rebuildCommandList rebuilds the flattened command list from command blocks
 func (e *LocalExecutor) rebuildCommandList() error {
+	logCtx := context.Background()
 	e.debugState.CommandList = []CommandInfo{}
 	globalIndex := 0
 
@@ -667,7 +671,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 
 			renderedCmds, err := command.Render(cmd, e.project, blockInfo)
 			if err != nil {
-				e.logger.Warningf(ctx, "Failed to render command '%s': %v", cmd.Command, err)
+				e.logger.Warningf(logCtx, "Failed to render command '%s': %v", cmd.Command, err)
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
@@ -712,7 +716,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 		}
 	}
 
-	e.logger.Infof(ctx, "Rebuilt command list with %d total commands", len(e.debugState.CommandList))
+	e.logger.Infof(logCtx, "Rebuilt command list with %d total commands", len(e.debugState.CommandList))
 	return nil
 }
 
@@ -737,7 +741,7 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 
 	tsk, err := e.communicator.GetTask(ctx, taskData)
 	if err != nil {
-		e.logger.Errorf("Failed to fetch task from backend: %v", err)
+		e.logger.Errorf(ctx, "Failed to fetch task from backend: %v", err)
 		return err
 	}
 	if tsk == nil {

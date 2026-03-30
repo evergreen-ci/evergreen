@@ -49,7 +49,7 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir, execUser string, log
 		p := os.Process{Pid: pid}
 		err := p.Kill()
 		if err != nil {
-			logger.Errorf("Cleanup got error killing process with PID %d: %s.", pid, err)
+			logger.Errorf(ctx, "Cleanup got error killing process with PID %d: %s.", pid, err)
 		} else {
 			logger.Infof(ctx, "Cleanup killed process with PID %d.", pid)
 		}

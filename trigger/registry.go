@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -31,7 +32,7 @@ type triggerRegistry struct {
 	lock                   sync.RWMutex
 }
 
-func (r *triggerRegistry) eventHandler(resourceType, eventDataType string) eventHandler {
+func (r *triggerRegistry) eventHandler(ctx context.Context, resourceType, eventDataType string) eventHandler {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 

@@ -47,8 +47,9 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 		return nil, errors.Wrapf(err, "creating local patch file")
 	}
 	defer func() {
-		grip.Error(ctx, handle.Close())
-		grip.Error(ctx, os.Remove(handle.Name()))
+		bg := context.Background()
+		grip.Error(bg, handle.Close())
+		grip.Error(bg, os.Remove(handle.Name()))
 	}()
 	// convert the patch to bytes
 	buf := []byte(patch)
@@ -102,7 +103,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		// we expect to get the number of additions,
 		// the number of deletions, and the filename
 		if len(details) != 3 {
-			grip.Debug(ctx, message.Fields{
+			grip.Debug(context.Background(), message.Fields{
 				"message": "file stat details has unexpected length",
 				"details": details,
 				"length":  len(details),
@@ -113,7 +114,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		additions, err = strconv.Atoi(details[0])
 		if err != nil {
 			if details[0] == "-" {
-				grip.Warningf(ctx, "Line addition count for %v is '%v' assuming "+
+				grip.Warningf(context.Background(), "Line addition count for %v is '%v' assuming "+
 					"binary data diff, using 0", details[2], details[0])
 				additions = 0
 			} else {
@@ -124,7 +125,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		deletions, err = strconv.Atoi(details[1])
 		if err != nil {
 			if details[1] == "-" {
-				grip.Warningf(ctx, "Line deletion count for %v is '%v' assuming "+
+				grip.Warningf(context.Background(), "Line deletion count for %v is '%v' assuming "+
 					"binary data diff, using 0", details[2], details[1])
 				deletions = 0
 			} else {

@@ -102,7 +102,7 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(projBytes)
-	grip.Warning(ctx, message.WrapError(err, message.Fields{
+	grip.Warning(r.Context(), message.WrapError(err, message.Fields{
 		"message":  "could not write parser project to response",
 		"patch_id": projCtx.Patch.Id.Hex(),
 		"route":    "/rest/v1/patches/{patch_id}/config",

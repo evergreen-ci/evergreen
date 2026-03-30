@@ -80,7 +80,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 		},
 		HandlePanic: func(panicErr error, originalErr error, op string) error {
-			return a.logPanic(tc, panicErr, originalErr, op)
+			return a.logPanic(ctx, tc, panicErr, originalErr, op)
 		},
 		RunCommandOrFunc: func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error {
 			opts := runCommandsOptions{
@@ -198,7 +198,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		// Only set the idle timeout in cases where the idle timeout is actually
 		// respected. In all other blocks, setting the idle timeout should have
 		// no effect.
-		tc.setCurrentIdleTimeout(cmd)
+		tc.setCurrentIdleTimeout(ctx, cmd)
 	}
 	a.comm.UpdateLastMessageTime()
 	defer func() {
@@ -234,7 +234,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 			if pErr == nil {
 				return
 			}
-			_ = a.logPanic(tc, pErr, nil, op)
+			_ = a.logPanic(ctx, tc, pErr, nil, op)
 
 			cmdChan <- pErr
 		}()
