@@ -367,6 +367,23 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			cmd := cmds[targetIndexWithinExpanded]
 			cmd.SetJasperManager(e.jasperManager)
 
+			// Apply function vars to expansions before execution,
+			// mirroring agent/command.go:168-178 in the production agent.
+			prevExp := map[string]string{}
+			for key, val := range commandInfo.Vars {
+				prevVal := e.taskConfig.Expansions.Get(key)
+				prevExp[key] = prevVal
+
+				newVal, err := e.taskConfig.Expansions.ExpandString(val)
+				if err != nil {
+					return errors.Wrapf(err, "expanding '%s'", val)
+				}
+				e.taskConfig.NewExpansions.Put(key, newVal)
+			}
+			defer func() {
+				e.taskConfig.NewExpansions.Update(prevExp)
+			}()
+
 			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
 				e.logger.Errorf("Step %s failed: %v", targetCmd.FullStepNumber(), err)
@@ -596,6 +613,14 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof("Preparing task: %s", taskName)
+
+	// Set built-in expansions that production sets via model.PopulateExpansions().
+	// task_name is critical for resolving ${task_name} in function vars like
+	// vars: { target: "${task_name}" }.
+	e.taskConfig.Expansions.Put("task_name", taskName)
+	if e.taskConfig.NewExpansions != nil {
+		e.taskConfig.NewExpansions.Put("task_name", taskName)
+	}
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
