@@ -101,18 +101,18 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 func (c *createHost) logAMI(ctx context.Context, comm client.Communicator, logger client.LoggerProducer,
 	taskData client.TaskData) {
 	if c.CreateHost.AMI != "" {
-		logger.Task().Infof("host.create: using given AMI '%s'.", c.CreateHost.AMI)
+		logger.Task().Infof(ctx, "host.create: using given AMI '%s'.", c.CreateHost.AMI)
 		return
 	}
 
 	ami, err := comm.GetDistroAMI(ctx, c.CreateHost.Distro, c.CreateHost.Region, taskData)
 	if err != nil {
-		logger.Task().Warning(errors.Wrapf(err, "host.create: unable to retrieve AMI from distro '%s'.",
+		logger.Task().Warning(ctx, errors.Wrapf(err, "host.create: unable to retrieve AMI from distro '%s'.",
 			c.CreateHost.Distro))
 		return
 	}
 
-	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s').", ami, c.CreateHost.Distro)
+	logger.Task().Infof(ctx, "host.create: using AMI '%s' (for distro '%s').", ami, c.CreateHost.Distro)
 }
 
 func (c *createHost) populateUserdata() error {

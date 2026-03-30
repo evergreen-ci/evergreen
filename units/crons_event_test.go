@@ -315,7 +315,7 @@ func (s *cronsEventSuite) TestSendNotificationJobs() {
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
 	err := http.Serve(ln, handler)
-	grip.Error(err)
+	grip.Error(ctx,err)
 	if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 		panic(err)
 	}
@@ -335,7 +335,7 @@ func (m *mockWebhookHandler) error(outErr error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusBadRequest)
 
 	_, err := w.Write([]byte(outErr.Error()))
-	grip.Error(err)
+	grip.Error(ctx,err)
 	m.err = outErr
 }
 
@@ -380,7 +380,7 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	m.body = body
 
 	w.WriteHeader(http.StatusNoContent)
-	grip.Info(message.Fields{
+	grip.Error(ctx,message.Fields{
 		"message":   fmt.Sprintf("received %s", mid),
 		"signature": string(sig),
 		"body":      string(body),

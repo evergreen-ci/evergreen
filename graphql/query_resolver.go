@@ -416,7 +416,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			forbiddenHosts = append(forbiddenHosts, h.Id)
 		}
 		if len(forbiddenHosts) > 0 {
-			grip.Info(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":         "User does not have permission to view hosts",
 				"forbidden_hosts": forbiddenHosts,
 				"user":            usr.Username(),

@@ -78,7 +78,7 @@ func RedactFieldsInMap(data map[string]any, fieldsToRedact map[string]bool) map[
 	dataCopy := map[string]any{}
 	if err := util.DeepCopy(data, &dataCopy); err != nil {
 		// If theres an error copying the data, log it and return an empty map.
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to deep copy request variables",
 		}))
 		return map[string]any{}

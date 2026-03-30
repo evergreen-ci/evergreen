@@ -244,7 +244,7 @@ func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Proje
 
 	data, err = os.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
-		grip.Error(err)
+		grip.Error(ctx, err)
 	}
 	proj := &serviceModel.Project{}
 	_, err = serviceModel.LoadProjectInto(ctx, data, nil, "", proj)

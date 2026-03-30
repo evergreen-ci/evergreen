@@ -121,10 +121,10 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	// We do this before expanding expansions so that expansions are not logged.
 	if c.Silent {
-		logger.Execution().Infof("Executing script with shell '%s' (source hidden)...",
+		logger.Execution().Infof(ctx, "Executing script with shell '%s' (source hidden)...",
 			c.Shell)
 	} else {
-		logger.Execution().Infof("Executing script with shell '%s':\n%s",
+		logger.Execution().Infof(ctx, "Executing script with shell '%s':\n%s",
 			c.Shell, c.Script)
 	}
 
@@ -213,7 +213,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 
 	if c.ContinueOnError && err != nil {
-		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
+		logger.Execution().Noticef(ctx, "Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
 	}
 

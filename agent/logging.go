@@ -55,7 +55,7 @@ func (a *Agent) GetSender(ctx context.Context, output globals.LogOutputType, pre
 	if splunkInfo.Populated() {
 		// Send alerts or higher from the agent to Splunk, since they are
 		// generally critical problems (e.g. panics) in the agent runtime.
-		grip.Info("Configuring Splunk sender.")
+		grip.Error(ctx,"Configuring Splunk sender.")
 		alertThreshold := send.LevelInfo{Default: level.Alert, Threshold: level.Alert}
 		sender, err := send.NewSplunkLogger("evergreen.agent", splunkInfo, alertThreshold)
 		if err != nil {
@@ -108,11 +108,11 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, command
 
 func (a *Agent) prepLogger(tc *taskContext, commandName string) client.LoggerConfig {
 	logDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
-	grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s'", logDir))
+	grip.Error(ctx,errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s'", logDir))
 	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task
 	if commandName != "" {
 		logDir = filepath.Join(logDir, commandName)
-		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
+		grip.Error(ctx,errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
 	}
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,

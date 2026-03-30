@@ -103,7 +103,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 		return errors.Wrapf(err, "scanning documents from file '%s'", fn)
 	}
 
-	grip.Infof("imported %d documents into %s", count, collName)
+	grip.Infof(ctx, "imported %d documents into %s", count, collName)
 
 	return nil
 }
@@ -118,7 +118,7 @@ func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 		return errors.Wrap(err, "writing GridFS file")
 	}
 
-	grip.Infof("wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
+	grip.Infof(ctx, "wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
 
 	return nil
 }
@@ -200,7 +200,7 @@ func buildAmboyIndexes(ctx context.Context, dbURI string, db *mongo.Database) er
 		return errors.Wrap(err, "closing queue group")
 	}
 
-	grip.Info("successfully built required Amboy indexes")
+	grip.Error(ctx, "successfully built required Amboy indexes")
 
 	return nil
 }

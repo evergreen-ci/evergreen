@@ -139,13 +139,13 @@ waitForHosts:
 	if !c.Silent {
 		if len(results.Hosts) > 0 {
 			jsonBytes, err := json.MarshalIndent(results.Hosts, "  ", "   ")
-			logger.Task().Warning(errors.Wrap(err, "formatting host data as JSON"))
-			logger.Task().Info(string(jsonBytes))
+			logger.Task().Warning(ctx, errors.Wrap(err, "formatting host data as JSON"))
+			logger.Task().Info(ctx, string(jsonBytes))
 		}
 		if len(results.Details) > 0 {
 			jsonBytes, err := json.MarshalIndent(results.Details, "  ", "   ")
-			logger.Task().Warning(errors.Wrap(err, "formatting host failure details as JSON"))
-			logger.Task().Info(string(jsonBytes))
+			logger.Task().Warning(ctx, errors.Wrap(err, "formatting host failure details as JSON"))
+			logger.Task().Info(ctx, string(jsonBytes))
 		}
 	}
 	if timeout {

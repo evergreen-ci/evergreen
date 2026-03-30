@@ -36,9 +36,9 @@ func main() {
 	res, err := client.Database(dbName).Collection(collection).UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{key: value}})
 	grip.EmergencyFatal(err)
 	if res.MatchedCount == 0 {
-		grip.Warningf("no documents updated: %+v", res)
+		grip.Warningf(ctx, "no documents updated: %+v", res)
 		os.Exit(2)
 	}
-	grip.Infof("set the value of '%s' for document '%s' in collection '%s'", key, id, collection)
+	grip.Infof(ctx, "set the value of '%s' for document '%s' in collection '%s'", key, id, collection)
 	grip.Emergency(client.Disconnect(ctx))
 }

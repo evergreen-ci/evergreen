@@ -167,9 +167,9 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 			return errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
-		grip.Info(diffData.patchSummary)
+		grip.Error(ctx, diffData.patchSummary)
 		if diffData.log != "" {
-			grip.Info(diffData.log)
+			grip.Error(ctx, diffData.log)
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue?", true) {
@@ -188,7 +188,7 @@ func (p *patchParams) displayPatch(ctx context.Context, ac *legacyClient, params
 		return err
 	}
 
-	grip.Info("Patch successfully created.")
+	grip.Error(ctx, "Patch successfully created.")
 	// Logging using grip.Error instead of grip.Info for two reasons related to
 	// patch vs patch-file and how grip is set up:
 	// 1. The patch display log has historically been written to stdout for
@@ -199,12 +199,12 @@ func (p *patchParams) displayPatch(ctx context.Context, ac *legacyClient, params
 	// To maintain the inconsistent behavior of how this logs for the patch and
 	// patch-file commands, using grip.Error ensures it will log to the intended
 	// location and will not be suppressed in a patch with JSON output.
-	grip.Error(patchDisp)
+	grip.Error(ctx, patchDisp)
 
 	if len(params.patches) == 1 && p.Browse {
 		browserCmd, err := findBrowserCommand()
 		if err != nil {
-			grip.Warning(errors.Wrap(err, "finding browser command"))
+			grip.Warning(ctx, errors.Wrap(err, "finding browser command"))
 			return nil
 		}
 		url := params.patches[0].GetURL(params.uiHost)
@@ -253,7 +253,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	}
 
 	if err := p.loadParameters(conf); err != nil {
-		grip.Warningf("warning - failed to set default parameters: %s\n", err)
+		grip.Warningf(ctx, "warning - failed to set default parameters: %s\n", err)
 	}
 
 	useUncommitted := p.Uncommitted || conf.UncommittedChanges
@@ -296,23 +296,23 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 func (p *patchParams) setNonRepeatedDefaults(conf *ClientSettings) {
 	if err := p.setLocalAliases(conf); err != nil {
-		grip.Warningf("warning - setting local aliases: %s\n", err)
+		grip.Warningf(ctx, "warning - setting local aliases: %s\n", err)
 	}
 
 	if err := p.loadAlias(conf); err != nil {
-		grip.Warningf("warning - failed to set default alias: %s\n", err)
+		grip.Warningf(ctx, "warning - failed to set default alias: %s\n", err)
 	}
 
 	if err := p.loadVariants(conf); err != nil {
-		grip.Warningf("warning - failed to set default variants: %s\n", err)
+		grip.Warningf(ctx, "warning - failed to set default variants: %s\n", err)
 	}
 
 	if err := p.loadTasks(conf); err != nil {
-		grip.Warningf("warning - failed to set default tasks: %s\n", err)
+		grip.Warningf(ctx, "warning - failed to set default tasks: %s\n", err)
 	}
 
 	if err := p.loadTriggerAliases(conf); err != nil {
-		grip.Warningf("warning - failed to set default trigger aliases: %s\n", err)
+		grip.Warningf(ctx, "warning - failed to set default trigger aliases: %s\n", err)
 	}
 }
 
@@ -324,9 +324,9 @@ func (p *patchParams) hasTasksAndVariants() bool {
 func (p *patchParams) loadProject(conf *ClientSettings) error {
 	if p.Project == "" {
 		cwd, err := os.Getwd()
-		grip.Error(errors.Wrap(err, "getting current working directory"))
+		grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
 		cwd, err = filepath.EvalSymlinks(cwd)
-		grip.Error(errors.Wrap(err, "resolving current working directory symlinks"))
+		grip.Error(ctx, errors.Wrap(err, "resolving current working directory symlinks"))
 
 		project, isDefaultProject := conf.resolveProject(cwd, true)
 		if project == "" {
@@ -334,7 +334,7 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 		}
 		p.Project = project
 		if isDefaultProject {
-			grip.Infof("Using default project '%s'. To specify a different project, use the --project flag.", p.Project)
+			grip.Infof(ctx, "Using default project '%s'. To specify a different project, use the --project flag.", p.Project)
 		}
 	}
 
@@ -387,14 +387,14 @@ func (p *patchParams) addAliasToPatchParams(alias model.ProjectAlias) {
 
 func (p *patchParams) setDefaultProject(conf *ClientSettings) {
 	cwd, err := os.Getwd()
-	grip.Error(errors.Wrap(err, "getting current working directory"))
+	grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
 	cwd, err = filepath.EvalSymlinks(cwd)
-	grip.Error(errors.Wrapf(err, "resolving symlinks for the current working directory '%s'", cwd))
+	grip.Error(ctx, errors.Wrapf(err, "resolving symlinks for the current working directory '%s'", cwd))
 
 	if conf.FindDefaultProject(cwd, false) == "" {
 		conf.SetDefaultProject(cwd, p.Project)
 		if err := conf.Write(""); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to set default project",
 				"project": p.Project,
 			}))
@@ -419,7 +419,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 	} else if !p.hasTasksAndVariants() {
 		// No --alias or variant/task pair was passed, use the default
 		p.Alias = conf.FindDefaultAlias(p.Project)
-		grip.InfoWhen(p.Alias != "", "Using default alias set in local config")
+		grip.InfoWhen(ctx, p.Alias != "", "Using default alias set in local config")
 	}
 
 	return nil
@@ -438,7 +438,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 		}
 	} else if p.Alias == "" && len(p.RegexVariants) == 0 && !p.isUsingLocalAlias {
 		p.Variants = conf.FindDefaultVariants(p.Project)
-		grip.InfoWhen(len(p.Variants) > 0, "Using default variants set in local config")
+		grip.InfoWhen(ctx, len(p.Variants) > 0, "Using default variants set in local config")
 	}
 
 	return nil
@@ -483,7 +483,7 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 	} else if p.Alias == "" && len(p.RegexTasks) == 0 && !p.isUsingLocalAlias {
 		// Only use default tasks if no alias or regex tasks were specified.
 		p.Tasks = conf.FindDefaultTasks(p.Project)
-		grip.InfoWhen(len(p.Tasks) > 0, "Using default tasks set in local config")
+		grip.InfoWhen(ctx, len(p.Tasks) > 0, "Using default tasks set in local config")
 
 	}
 
@@ -496,7 +496,7 @@ func (p *patchParams) getDescription() string {
 	} else if p.AutoDescription {
 		description, err := getDefaultDescription()
 		if err != nil {
-			grip.Error(err)
+			grip.Error(ctx, err)
 		}
 		return description
 	}
@@ -510,7 +510,7 @@ func (p *patchParams) getDescription() string {
 		var err error
 		description, err = getDefaultDescription()
 		if err != nil {
-			grip.Error(err)
+			grip.Error(ctx, err)
 		}
 	}
 
@@ -541,11 +541,11 @@ func (p *patchParams) getModulePath(conf *ClientSettings, module string, moduleP
 			return "", errors.Wrapf(err, "verifying module '%s''", module)
 		}
 		conf.setModulePath(p.Project, modulePathCache)
-		grip.Infof("Project module '%s' will be set to use path '%s'. "+
+		grip.Infof(ctx, "Project module '%s' will be set to use path '%s'. "+
 			"To disable automatic defaulting, set 'disable_auto_defaulting' to true.", module, modulePath)
 
 		if err := conf.Write(""); err != nil {
-			grip.Errorf("problem setting module '%s' path in config: %s", module, err.Error())
+			grip.Errorf(ctx, "problem setting module '%s' path in config: %s", module, err.Error())
 		}
 	}
 	return modulePath, nil

@@ -34,7 +34,7 @@ import (
 )
 
 func init() {
-	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
+	grip.EmergencyPanic(ctx, errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
 }
 
 const defaultProjYml = `
@@ -2767,12 +2767,12 @@ callback_timeout_secs: 1
 	})
 }
 
-func (s *AgentSuite) TestFetchTaskInfo() {
+func (s *AgentSuite) TestFetchTaskInfo(ctx) {
 	s.mockCommunicator.GetProjectResponse = &model.Project{
 		Identifier: "some_cool_project",
 	}
 
-	tcOpts, err := s.a.fetchTaskInfo(s.ctx, s.tc)
+	tcOpts, err := s.a.fetchTaskInfo(ctx, s.ctx, s.tc)
 	s.NoError(err)
 
 	s.Require().NotZero(s.tc.taskConfig.Project)
@@ -3143,6 +3143,6 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 	}
 
 	if displayLogs {
-		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
+		grip.Infof(ctx, "Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
 }

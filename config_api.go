@@ -69,19 +69,19 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 		// Check that the client exists and is accessible.
 		req, err := http.NewRequestWithContext(ctx, http.MethodHead, clientBinary.URL, nil)
 		if err != nil {
-			grip.Notice(message.WrapError(err, checkFailedMsg))
+			grip.Notice(ctx, message.WrapError(err, checkFailedMsg))
 			continue
 		}
 		resp, err := client.Do(req)
 		if err != nil {
-			grip.Notice(message.WrapError(err, checkFailedMsg))
+			grip.Notice(ctx, message.WrapError(err, checkFailedMsg))
 			continue
 		}
 
 		_ = resp.Body.Close()
 		if resp.StatusCode >= 400 {
 			checkFailedMsg["status_code"] = resp.StatusCode
-			grip.Notice(checkFailedMsg)
+			grip.Notice(ctx, checkFailedMsg)
 			continue
 		}
 

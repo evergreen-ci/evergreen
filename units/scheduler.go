@@ -64,7 +64,7 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 	}
 
 	if flags.SchedulerDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"distro":   j.DistroID,
 			"job":      j.ID(),

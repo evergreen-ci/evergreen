@@ -1109,7 +1109,7 @@ func FindEvergreenHome() string {
 		return root
 	}
 
-	grip.Errorf("%s is unset", EvergreenHome)
+	grip.Errorf(ctx, "%s is unset", EvergreenHome)
 	return ""
 }
 

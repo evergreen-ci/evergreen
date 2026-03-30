@@ -276,7 +276,7 @@ func (t *hostTriggers) makeHostTemporaryExemptionNotification(ctx context.Contex
 func (t *hostTriggers) getTimeZone(ctx context.Context, sub *event.Subscription, trigger string) *time.Location {
 	if sub.OwnerType == event.OwnerTypePerson {
 		userTimeZone, err := getUserTimeZone(ctx, sub.Owner)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":    "problem getting user time zone",
 			"user":       sub.Owner,
 			"event_type": t.event.EventType,

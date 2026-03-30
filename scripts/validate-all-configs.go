@@ -45,7 +45,7 @@ func main() {
 	flag.Parse()
 
 	if err := validateConfigs(configsDir, outputFile); err != nil {
-		grip.Error(err)
+		grip.Error(ctx, err)
 		os.Exit(1)
 	}
 }

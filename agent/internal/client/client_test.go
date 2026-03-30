@@ -74,7 +74,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 		logger.Task().Alert("More fluff")
 		require.NoError(t, err)
 
-		logger.Task().Info(secret)
+		logger.Task().Info(ctx, secret)
 		logger.Task().Alert("Even more fluff")
 		require.NoError(t, logger.Close())
 
@@ -105,7 +105,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 		logger.Task().Alert("More fluff")
 		require.NoError(t, err)
 
-		logger.Task().Info(secret)
+		logger.Task().Info(ctx, secret)
 		logger.Task().Alert("Even more fluff")
 		require.NoError(t, logger.Close())
 

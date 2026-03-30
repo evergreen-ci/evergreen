@@ -145,7 +145,7 @@ func TrackProcess(taskId string, pid int, logger grip.Journaler) {
 		return
 	}
 
-	logger.Infof("Tracking process with PID %d.", pid)
+	logger.Infof(ctx, "Tracking process with PID %d.", pid)
 
 	if err = job.AssignProcess(uint(pid)); err != nil {
 		logger.Errorf("Failed assigning process with PID %d to job object: %s.", pid, err)

@@ -37,7 +37,7 @@ func (r *triggerRegistry) eventHandler(resourceType, eventDataType string) event
 
 	f, ok := r.handlers[registryKey{resourceType: resourceType, eventDataType: eventDataType}]
 	if !ok {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": "unknown event handler",
 			"r_type":  resourceType,
 			"cause":   "programmer error",

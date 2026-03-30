@@ -17,7 +17,7 @@ import (
 
 // GetServer produces an HTTP server instance for a handler.
 func GetServer(addr string, n http.Handler) *http.Server {
-	grip.Notice(message.Fields{
+	grip.Notice(ctx, message.Fields{
 		"action":  "starting service",
 		"service": addr,
 		"build":   evergreen.BuildRevision,

@@ -54,7 +54,7 @@ func main() {
 		}, options.Update().SetUpsert(true))
 	grip.EmergencyFatal(errors.Wrap(err, "updating project var parameter"))
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no project var documents updated: %+v", res)
+		grip.Warningf(ctx, "no project var documents updated: %+v", res)
 		os.Exit(2)
 	}
 	now := time.Now()
@@ -69,7 +69,7 @@ func main() {
 	}, fp, options.Replace().SetUpsert(true))
 	grip.EmergencyFatal(errors.Wrap(err, "updating fake parameter"))
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no fake parameter documents updated: %+v", res)
+		grip.Warningf(ctx, "no fake parameter documents updated: %+v", res)
 		os.Exit(3)
 	}
 
@@ -82,14 +82,14 @@ func main() {
 	}, rec, options.Replace().SetUpsert(true))
 	grip.EmergencyFatal(errors.Wrap(err, "updating parameter record"))
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no parameter record documents updated: %+v", res)
+		grip.Warningf(ctx, "no parameter record documents updated: %+v", res)
 		os.Exit(4)
 	}
 
 	grip.EmergencyFatal(err)
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no documents updated: %+v", res)
+		grip.Warningf(ctx, "no documents updated: %+v", res)
 		os.Exit(5)
 	}
-	grip.Infof("set the value of '%s' for project '%s'", key, project)
+	grip.Infof(ctx, "set the value of '%s' for project '%s'", key, project)
 }

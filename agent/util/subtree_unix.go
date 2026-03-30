@@ -51,16 +51,16 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir, execUser string, log
 		if err != nil {
 			logger.Errorf("Cleanup got error killing process with PID %d: %s.", pid, err)
 		} else {
-			logger.Infof("Cleanup killed process with PID %d.", pid)
+			logger.Infof(ctx, "Cleanup killed process with PID %d.", pid)
 		}
 	}
 
 	pidsStillRunning, err := waitForExit(ctx, pidsToKill)
 	if err != nil {
-		logger.Infof("Problem waiting for processes to exit: %s.", err)
+		logger.Infof(ctx, "Problem waiting for processes to exit: %s.", err)
 	}
 	for _, pid := range pidsStillRunning {
-		logger.Infof("Failed to clean up process with PID %d.", pid)
+		logger.Infof(ctx, "Failed to clean up process with PID %d.", pid)
 	}
 
 	return nil

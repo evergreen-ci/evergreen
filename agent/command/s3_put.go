@@ -329,11 +329,11 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return errors.Wrap(err, "validating expanded parameters")
 	}
 	if conf.Task.IsPatchRequest() && !s3pc.isPatchable {
-		logger.Task().Infof("Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
+		logger.Task().Infof(ctx, "Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
 		return nil
 	}
 	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
-		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
+		logger.Task().Infof(ctx, "Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
 		return nil
 	}
 
@@ -387,22 +387,22 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 
 	if !shouldRunForVariant(s3pc.BuildVariants, conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 put of local file '%s' for variant '%s'.",
+		logger.Task().Infof(ctx, "Skipping S3 put of local file '%s' for variant '%s'.",
 			s3pc.LocalFile, conf.BuildVariant.Name)
 		return nil
 	}
 
 	if s3pc.isPrivate(s3pc.Visibility) {
-		logger.Task().Infof("Putting private files into S3.")
+		logger.Task().Infof(ctx, "Putting private files into S3.")
 
 	} else {
 		if s3pc.isMulti() {
-			logger.Task().Infof("Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
+			logger.Task().Infof(ctx, "Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
 				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
 		} else if s3pc.isPublic() {
-			logger.Task().Infof("Putting local file '%s' into path '%s/%s' (%s).", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
+			logger.Task().Infof(ctx, "Putting local file '%s' into path '%s/%s' (%s).", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
 		} else {
-			logger.Task().Infof("Putting local file '%s' into '%s/%s'.", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
+			logger.Task().Infof(ctx, "Putting local file '%s' into '%s/%s'.", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
 		}
 	}
 
@@ -413,7 +413,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		case errChan <- err:
 			return
 		case <-ctx.Done():
-			logger.Task().Infof("Context canceled waiting for s3 put: %s.", ctx.Err())
+			logger.Task().Infof(ctx, "Context canceled waiting for s3 put: %s.", ctx.Err())
 			return
 		}
 	}()
@@ -422,7 +422,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		logger.Execution().Infof("Canceled while running command '%s': %s.", s3pc.Name(), ctx.Err())
+		logger.Execution().Infof(ctx, "Canceled while running command '%s': %s.", s3pc.Name(), ctx.Err())
 		return nil
 	}
 
@@ -445,9 +445,9 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
 		if s3pc.isPrivate(s3pc.Visibility) {
-			logger.Task().Infof("Performing S3 put of a private file.")
+			logger.Task().Infof(ctx, "Performing S3 put of a private file.")
 		} else {
-			logger.Task().Infof("Performing S3 put to file '%s' in bucket '%s' (attempt %d of %d).",
+			logger.Task().Infof(ctx, "Performing S3 put to file '%s' in bucket '%s' (attempt %d of %d).",
 				s3pc.RemoteFile, s3pc.Bucket,
 				i, maxS3OpAttempts)
 		}
@@ -513,11 +513,11 @@ retryLoop:
 						if s3pc.isMulti() {
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.
-							logger.Task().Infof("File '%s' not found, but continuing to upload other files.", fpath)
+							logger.Task().Infof(ctx, "File '%s' not found, but continuing to upload other files.", fpath)
 							continue uploadLoop
 						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
-							logger.Task().Infof("File '%s' not found and skip missing is true, exiting without error.", fpath)
+							logger.Task().Infof(ctx, "File '%s' not found and skip missing is true, exiting without error.", fpath)
 							return nil
 						}
 
@@ -535,7 +535,7 @@ retryLoop:
 							if ae.ErrorCode() == "PreconditionFailed" {
 								skippedFilesCount++
 
-								logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
+								logger.Task().Infof(ctx, "Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
 								continue uploadLoop
 							}
 						}
@@ -564,7 +564,7 @@ retryLoop:
 	}
 
 	if len(uploadedFiles) == 0 && s3pc.skipMissing {
-		logger.Task().Info("S3 put uploaded no files")
+		logger.Task().Info(ctx, "S3 put uploaded no files")
 		return nil
 	}
 
@@ -588,7 +588,7 @@ retryLoop:
 	processedCount := skippedFilesCount + len(uploadedFiles)
 
 	if processedCount != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
+		logger.Task().Infof(ctx, "Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
 		return errors.Errorf("uploaded %d files of %d requested", processedCount, len(filesList))
 	}
 

@@ -44,11 +44,11 @@ func subscriptionsList() cli.Command {
 			}
 
 			if len(subs) == 0 {
-				grip.Info("no subscriptions found")
+				grip.Error(ctx, "no subscriptions found")
 			}
 
 			for i := range subs {
-				grip.Info(subs[i].String())
+				grip.Error(ctx, subs[i].String())
 			}
 
 			return nil

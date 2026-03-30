@@ -37,7 +37,7 @@ func IsFieldUndefined(v reflect.Value) bool {
 		return true
 	default:
 		// this should never happen
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":    "field has no valid type",
 			"value_type": v.Type(),
 			"value_kind": v.Kind(),

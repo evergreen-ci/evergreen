@@ -168,7 +168,7 @@ func Agent() cli.Command {
 				return errors.Wrapf(err, "creating working directory '%s'", opts.WorkingDirectory)
 			}
 
-			grip.Info(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":            "starting agent",
 				"commands":           command.RegisteredCommandNames(),
 				"dir":                opts.WorkingDirectory,
@@ -199,7 +199,7 @@ func Agent() cli.Command {
 			agt.SetDefaultLogger(sender)
 			agt.SetHomeDirectory()
 
-			grip.Warning(message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
+			grip.Warning(ctx, message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
 				"message": "could not set nice on agent process and all of its threads, some threads may proceed with default nice",
 			}))
 
@@ -270,7 +270,7 @@ func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelF
 	select {
 	case <-ctx.Done():
 	case <-sigChan:
-		grip.Info("service exiting after receiving signal")
+		grip.Error(ctx, "service exiting after receiving signal")
 	}
 
 	// Close may not succeed if the context is cancelled, but this is a

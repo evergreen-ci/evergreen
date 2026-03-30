@@ -107,7 +107,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 	}
 
 	comm := client.NewDebugCommunicator(opts.ServerURL, opts.OAuthToken, opts.SpawnHostID)
-	logger.Infof("Using backend communication with server: %s", opts.ServerURL)
+	logger.Infof(ctx, "Using backend communication with server: %s", opts.ServerURL)
 
 	loggerProducer := &localLoggerProducer{
 		logger: logger,
@@ -146,7 +146,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 
 // LoadProject loads and parses an Evergreen project configuration from a file
 func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
-	e.logger.Infof("Loading project from: %s", configPath)
+	e.logger.Infof(ctx, "Loading project from: %s", configPath)
 
 	absPath, err := filepath.Abs(configPath)
 	if err != nil {
@@ -176,7 +176,7 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 		e.taskConfig.Project = *project
 	}
 
-	e.logger.Infof("Loaded project with %d tasks and %d build variants",
+	e.logger.Infof(ctx, "Loaded project with %d tasks and %d build variants",
 		len(project.Tasks), len(project.BuildVariants))
 
 	return project, nil
@@ -198,7 +198,7 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 
 	e.workDir = path
 	e.expansions.Put("workdir", path)
-	e.logger.Infof("Working directory set to: %s", path)
+	e.logger.Infof(ctx, "Working directory set to: %s", path)
 
 	return nil
 }
@@ -210,7 +210,7 @@ func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	}
 	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
 	if untilIndex >= maxIndex {
-		e.logger.Warningf("Running until step out of range, falling back to %s", e.debugState.CommandList[maxIndex].FullStepNumber())
+		e.logger.Warningf(ctx, "Running until step out of range, falling back to %s", e.debugState.CommandList[maxIndex].FullStepNumber())
 		untilIndex = maxIndex
 	}
 
@@ -236,7 +236,7 @@ func (e *LocalExecutor) JumpTo(index int) error {
 		return errors.Errorf("invalid step index %d (valid range: 0-%d)", index, maxIndex)
 	}
 	e.debugState.CurrentStepIndex = index
-	e.logger.Infof("Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
+	e.logger.Infof(ctx, "Jumped to step %s", e.debugState.CommandList[index].FullStepNumber())
 	return nil
 }
 
@@ -244,7 +244,7 @@ func (e *LocalExecutor) JumpTo(index int) error {
 func (e *LocalExecutor) SetVariable(key, value string) {
 	e.debugState.CustomVars[key] = value
 	e.expansions.Put(key, value)
-	e.logger.Infof("Set variable %s=%s", key, value)
+	e.logger.Infof(ctx, "Set variable %s=%s", key, value)
 }
 
 // StepNext executes the current step and advances to the next
@@ -285,7 +285,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 		if e.streamWriter != nil {
 			e.streamWriter.WriteChannelMessage(ExecChannel, noOpMsg)
 		}
-		e.logger.Infof(noOpMsg)
+		e.logger.Infof(ctx, noOpMsg)
 		e.debugState.CurrentStepIndex++
 		durationMs := time.Since(startTime).Milliseconds()
 		record := executionRecord{
@@ -374,9 +374,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 					return err
 				}
 				blockName := executor.BlockToLegacyName(blockType)
-				e.logger.Warningf("Continuing after non-fatal error in %s block: %v", blockName, err)
+				e.logger.Warningf(ctx, "Continuing after non-fatal error in %s block: %v", blockName, err)
 			} else {
-				e.logger.Infof("Step %s completed successfully", targetCmd.FullStepNumber())
+				e.logger.Infof(ctx, "Step %s completed successfully", targetCmd.FullStepNumber())
 			}
 			e.debugState.CurrentStepIndex++
 			executed = true
@@ -431,7 +431,7 @@ func (e *LocalExecutor) getNoOpMessage(cmdName string) string {
 func (e *LocalExecutor) RunAll(ctx context.Context) error {
 	for e.debugState.HasMoreSteps() {
 		if err := e.StepNext(ctx); err != nil {
-			e.logger.Warningf("Step failed, continuing")
+			e.logger.Warningf(ctx, "Step failed, continuing")
 			return err
 		}
 	}
@@ -566,7 +566,7 @@ func (e *LocalExecutor) runCommandWithTracking(
 			if canFailTask {
 				return err
 			}
-			e.logger.Warningf("Continuing after non-fatal error: %v", err)
+			e.logger.Warningf(ctx, "Continuing after non-fatal error: %v", err)
 		}
 	}
 	return nil
@@ -580,7 +580,7 @@ func (e *LocalExecutor) isLocalNoOpCommand(cmd command.Command) bool {
 
 // handleNoOpCommand logs a message for commands that are no-op in local execution
 func (e *LocalExecutor) handleNoOpCommand(cmd command.Command) {
-	e.logger.Infof(e.getNoOpMessage(cmd.Name()))
+	e.logger.Infof(ctx, e.getNoOpMessage(cmd.Name()))
 }
 
 // PrepareTask prepares a task for execution by creating command blocks
@@ -595,7 +595,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	}
 
 	e.debugState.SelectedTask = taskName
-	e.logger.Infof("Preparing task: %s", taskName)
+	e.logger.Infof(ctx, "Preparing task: %s", taskName)
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
@@ -644,7 +644,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 			e.commandBlocks[i].endIndex = currentIdx - 1
 		}
 	}
-	e.logger.Infof("Task prepared with %d commands in %d blocks",
+	e.logger.Infof(ctx, "Task prepared with %d commands in %d blocks",
 		len(e.debugState.CommandList), len(e.commandBlocks))
 
 	return nil
@@ -667,7 +667,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 
 			renderedCmds, err := command.Render(cmd, e.project, blockInfo)
 			if err != nil {
-				e.logger.Warningf("Failed to render command '%s': %v", cmd.Command, err)
+				e.logger.Warningf(ctx, "Failed to render command '%s': %v", cmd.Command, err)
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
@@ -712,7 +712,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 		}
 	}
 
-	e.logger.Infof("Rebuilt command list with %d total commands", len(e.debugState.CommandList))
+	e.logger.Infof(ctx, "Rebuilt command list with %d total commands", len(e.debugState.CommandList))
 	return nil
 }
 

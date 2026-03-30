@@ -266,7 +266,7 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 	// but that should be a brief window.
 	// Passing 0 as the PID refers to the current thread.
 	if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
-		logger.Execution().Warningf("Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
 	}
 
 	proc, err := jpm.CreateProcess(ictx, opts)
@@ -282,11 +282,11 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 	// lower nice value to ensure that this agent thread will have its original
 	// CPU priority.
 	if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
-		logger.Execution().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
+		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
 	}
 
 	if cancel != nil {
-		grip.Warning(message.WrapError(proc.RegisterTrigger(ctx, func(info jasper.ProcessInfo) {
+		grip.Warning(ctx, message.WrapError(proc.RegisterTrigger(ctx, func(info jasper.ProcessInfo) {
 			cancel()
 		}), "registering canceller for process"))
 	}
@@ -298,7 +298,7 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 	if background {
 		logger.Execution().Debugf("Running process in the background with PID %d.", pid)
 	} else {
-		logger.Execution().Infof("Started process with PID %d.", pid)
+		logger.Execution().Infof(ctx, "Started process with PID %d.", pid)
 	}
 
 	return proc, nil
@@ -428,7 +428,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, logger client.LoggerProducer) error {
 	if c.Silent {
-		logger.Execution().Info("Executing command in silent mode.")
+		logger.Execution().Info(ctx, "Executing command in silent mode.")
 	}
 
 	err := cmd.Run(ctx)
@@ -439,7 +439,7 @@ func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, lo
 	}
 
 	if c.ContinueOnError && err != nil {
-		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
+		logger.Execution().Noticef(ctx, "Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
 	}
 

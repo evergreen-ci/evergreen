@@ -65,7 +65,7 @@ func (w *evergreenWebhookMessage) Loggable() bool {
 	}
 
 	_, err := url.Parse(w.raw.URL)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message":         "evergreen-webhook invalid url",
 		"notification_id": w.raw.NotificationID,
 	}))
@@ -184,7 +184,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		}
 
 		msgFields["message"] = "successfully sent webhook notification"
-		grip.Info(msgFields)
+		grip.Error(ctx, msgFields)
 
 		return false, nil
 	}, utility.RetryOptions{

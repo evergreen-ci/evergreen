@@ -58,7 +58,7 @@ func startWebService() cli.Command {
 			var tp trace.TracerProvider
 			sdkTracerProvider, err := startupTracerProvider(ctx, c.String(traceEndpointFlagName))
 			if err != nil || sdkTracerProvider == nil {
-				grip.Error(message.WrapError(err, "initializing startup tracer provider"))
+				grip.Error(ctx, message.WrapError(err, "initializing startup tracer provider"))
 				tp = noop.NewTracerProvider()
 			} else {
 				tp = sdkTracerProvider
@@ -124,7 +124,7 @@ func startWebService() cli.Command {
 			defer recovery.LogStackTraceAndExit("evergreen service")
 
 			grip.SetName("evergreen.service")
-			grip.Notice(message.Fields{
+			grip.Notice(ctx, message.Fields{
 				"agent":   evergreen.AgentVersion,
 				"cli":     evergreen.ClientVersion,
 				"build":   evergreen.BuildRevision,
@@ -190,10 +190,10 @@ func startWebService() cli.Command {
 			<-uiWait
 			<-adminWait
 
-			grip.Notice("waiting for web services to terminate gracefully")
+			grip.Notice(ctx, "waiting for web services to terminate gracefully")
 			<-gracefulWait
 
-			grip.Notice("waiting for background tasks to finish")
+			grip.Notice(ctx, "waiting for background tasks to finish")
 			ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
 			defer cancel()
 			catcher.Add(env.Close(ctx))
@@ -232,7 +232,7 @@ func startupTracerProvider(ctx context.Context, traceEndpoint string) (*sdktrace
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		grip.Error(errors.Wrap(err, "otel error"))
+		grip.Error(ctx, errors.Wrap(err, "otel error"))
 	}))
 
 	return tp, nil
@@ -251,7 +251,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	time.Sleep(time.Duration(env.Settings().ShutdownWaitSeconds) * time.Second)
 	waiters := make([]chan struct{}, 0)
 
-	grip.Info("received SIGTERM, terminating web service")
+	grip.Error(ctx, "received SIGTERM, terminating web service")
 	for _, s := range servers {
 		if s == nil {
 			continue

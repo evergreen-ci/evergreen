@@ -103,7 +103,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 
 	err = j.send(ctx, n)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"job_id":            j.ID(),
 		"notification_id":   n.ID,
 		"notification_type": n.Subscriber.Type,
@@ -178,7 +178,7 @@ func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
 
 func checkFlag(flag bool) error {
 	if flag {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventSendJobName,
 			"message": "sender is disabled, not sending notification",
 		})

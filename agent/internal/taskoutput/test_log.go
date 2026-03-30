@@ -190,22 +190,22 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 func (h *testLogDirectoryHandler) getSpecFile() {
 	data, err := os.ReadFile(filepath.Join(h.dir, testLogSpecFilename))
 	if err != nil {
-		h.logger.Task().Warning(errors.Wrap(err, "reading test log spec; falling back to default spec"))
+		h.logger.Task().Warning(ctx, errors.Wrap(err, "reading test log spec; falling back to default spec"))
 		return
 	}
 	if err = yaml.Unmarshal(data, &h.spec); err != nil {
-		h.logger.Task().Warning(errors.Wrap(err, "unmarshalling test log spec; falling back to default spec"))
+		h.logger.Task().Warning(ctx, errors.Wrap(err, "unmarshalling test log spec; falling back to default spec"))
 		return
 	}
 
 	if err = h.spec.Format.validate(); err != nil {
-		h.logger.Task().Warning(errors.Wrapf(err, "invalid test log format specified; falling back to default text format"))
+		h.logger.Task().Warning(ctx, errors.Wrapf(err, "invalid test log format specified; falling back to default text format"))
 	}
 }
 
 // ingest reads and ships a test log file.
 func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, sequence int, offset, limit int64) {
-	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
+	h.logger.Task().Infof(ctx, "new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
 	// and contain only slash ('/') separators.
@@ -215,7 +215,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 		return
 	}
 	logPath = filepath.ToSlash(logPath)
-	h.logger.Task().Infof("storing test log file '%s' as '%s'", path, logPath)
+	h.logger.Task().Infof(ctx, "storing test log file '%s' as '%s'", path, logPath)
 
 	f, err := os.Open(path)
 	if err != nil {

@@ -69,10 +69,10 @@ func fetchAndWriteConfigs(c *legacyClient, projects []model.ProjectRef, includeD
 			ConfigFile: p.RemotePath,
 		}
 		if exists := configDownloaded[repo]; exists {
-			grip.Infof("Configuration for project '%s' already downloaded", p.Identifier)
+			grip.Infof(ctx, "Configuration for project '%s' already downloaded", p.Identifier)
 			continue
 		}
-		grip.Infof("Downloading configuration for '%s'", p.Identifier)
+		grip.Infof(ctx, "Downloading configuration for '%s'", p.Identifier)
 		versions, err := c.GetRecentVersions(p.Id)
 		if err != nil {
 			catcher.Wrapf(err, "fetching recent versions for '%s'", p.Identifier)

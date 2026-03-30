@@ -240,7 +240,7 @@ func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
 		Labels:      labels,
 	}
 
-	grip.Info(message.Fields{
+	grip.Error(ctx, message.Fields{
 		"message":      "creating Jira ticket for failure",
 		"type":         j.issueType,
 		"jira_project": j.project,
@@ -333,7 +333,7 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 		if err != nil {
 			// Admins should be notified of misconfiguration, but we shouldn't block
 			// ticket generation
-			grip.Alert(message.WrapError(err, message.Fields{
+			grip.Alert(ctx, message.WrapError(err, message.Fields{
 				"message":      "invalid custom field template",
 				"jira_project": j.project,
 				"jira_field":   field.Field,
@@ -344,7 +344,7 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 
 		buf := &bytes.Buffer{}
 		if err = tmpl.Execute(buf, &j.data); err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
+			grip.Alert(ctx, message.WrapError(err, message.Fields{
 				"message":      "template execution failed",
 				"jira_project": j.project,
 				"jira_field":   field.Field,

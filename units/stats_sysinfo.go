@@ -48,5 +48,5 @@ func makeSysInfoStatsCollector() *sysInfoStatsCollector {
 func (j *sysInfoStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
-	j.logger.Info(message.CollectGoStatsRates())
+	j.logger.Info(ctx, message.CollectGoStatsRates())
 }

@@ -165,5 +165,5 @@ func main() {
 		grip.EmergencyFatal(err)
 	}
 	jsonBytes, _ := json.MarshalIndent(generate, "", "  ")
-	grip.Error(os.WriteFile(jsonFilename, jsonBytes, 0644))
+	grip.Error(ctx, os.WriteFile(jsonFilename, jsonBytes, 0644))
 }

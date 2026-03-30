@@ -68,7 +68,7 @@ func CalculateUploadMetrics(
 	for i, file := range files {
 		fileInfo, err := os.Stat(file.LocalPath)
 		if err != nil {
-			logger.Warningf("Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
+			logger.Warningf(ctx, "Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
 			populatedFiles[i] = FileMetrics{
 				LocalPath:     file.LocalPath,
 				RemotePath:    file.RemotePath,
@@ -134,7 +134,7 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 // Returns 0 if cost cannot be calculated due to missing or invalid config.
 func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
 	if putRequests <= 0 {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":      "no put requests to calculate cost",
 			"put_requests": putRequests,
 		})
@@ -142,7 +142,7 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 	}
 
 	if costConfig == nil {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": "cost config is not available to calculate S3 PUT cost",
 		})
 		return 0.0
@@ -150,7 +150,7 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 
 	discount := costConfig.S3Cost.Upload.UploadCostDiscount
 	if discount < 0.0 || discount > 1.0 {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":  "invalid S3 upload cost discount",
 			"discount": discount,
 		})

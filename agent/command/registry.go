@@ -53,7 +53,7 @@ func init() {
 	}
 
 	for name, factory := range cmds {
-		grip.EmergencyPanic(RegisterCommand(name, factory))
+		grip.EmergencyPanic(ctx, RegisterCommand(name, factory))
 	}
 }
 

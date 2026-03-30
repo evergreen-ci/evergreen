@@ -27,7 +27,7 @@ func (u *GithubLoginUser) Roles() []string         { return []string{} }
 func (u *GithubLoginUser) IsAPIOnly() bool         { return false }
 
 func (u *GithubLoginUser) HasPermission(context.Context, gimlet.PermissionOpts) bool {
-	grip.Alert("HasPermission has not been implemented for GithubLoginUser")
+	grip.Alert(ctx, "HasPermission has not been implemented for GithubLoginUser")
 	return false
 }
 

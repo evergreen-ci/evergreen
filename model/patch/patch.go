@@ -841,7 +841,7 @@ func (p *Patch) GetRequester() string {
 	return evergreen.PatchVersionRequester
 }
 
-func (p *Patch) HasValidGitInfo() bool {
+func (p *Patch) HasValidGitInfo(ctx) bool {
 	return p.GitInfo != nil && p.GitInfo.Email != "" && p.GitInfo.Username != ""
 }
 
@@ -884,7 +884,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	}
 
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
-		grip.Critical(message.Fields{
+		grip.Critical(ctx, message.Fields{
 			"message":  "An unknown patch status was found",
 			"cause":    "Programmer error: new statuses should be added to GetCollectiveStatusFromPatchStatuses().",
 			"statuses": statuses,

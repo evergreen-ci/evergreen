@@ -138,8 +138,8 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -421,8 +421,8 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -572,8 +572,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 

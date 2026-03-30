@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"fmt"
 	"io"
@@ -123,7 +124,7 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			assert.NotNil(t, m)
 
 			var capturedErr error
-			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+			assert.NoError(t, s.SetErrorHandler(func(_ context.Context, err error, _ message.Composer) {
 				capturedErr = err
 			}))
 
@@ -270,7 +271,7 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 		return resp, nil
 	}
 	resp.StatusCode = http.StatusNoContent
-	grip.Info(message.Fields{
+	grip.Error(ctx, message.Fields{
 		"message":   fmt.Sprintf("received %s", mid),
 		"signature": string(sig),
 		"body":      string(body),

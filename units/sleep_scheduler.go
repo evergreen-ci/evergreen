@@ -137,7 +137,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 }
 
 func (j *sleepSchedulerJob) logMissingNextStart(h host.Host, oldNextStart, newNextStart time.Time) {
-	grip.Notice(message.Fields{
+	grip.Notice(ctx, message.Fields{
 		"message":             "host is missing next start time, re-scheduled to next available start time",
 		"host_id":             h.Id,
 		"started_by":          h.StartedBy,
@@ -148,7 +148,7 @@ func (j *sleepSchedulerJob) logMissingNextStart(h host.Host, oldNextStart, newNe
 }
 
 func (j *sleepSchedulerJob) logMissingNextStop(h host.Host, oldNextStop, newNextStop time.Time) {
-	grip.Notice(message.Fields{
+	grip.Notice(ctx, message.Fields{
 		"message":            "host is missing next stop time, re-scheduled to next available stop time",
 		"host_id":            h.Id,
 		"started_by":         h.StartedBy,
@@ -214,7 +214,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 }
 
 func (j *sleepSchedulerJob) logExceededNextStartTimeout(h host.Host, oldNextStart, newNextStart time.Time) {
-	grip.Warning(message.Fields{
+	grip.Warning(ctx, message.Fields{
 		"message":             "host has exceeded scheduled start timeout, re-scheduled to next available start time",
 		"host_id":             h.Id,
 		"started_by":          h.StartedBy,
@@ -225,7 +225,7 @@ func (j *sleepSchedulerJob) logExceededNextStartTimeout(h host.Host, oldNextStar
 }
 
 func (j *sleepSchedulerJob) logExceededNextStopTimeout(h host.Host, oldNextStop, newNextStop time.Time) {
-	grip.Warning(message.Fields{
+	grip.Warning(ctx, message.Fields{
 		"message":            "host has exceeded scheduled stop timeout, re-scheduled to next available stop time",
 		"host_id":            h.Id,
 		"started_by":         h.StartedBy,
@@ -317,13 +317,13 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 		hostIDsToStart = append(hostIDsToStart, h.Id)
 	}
 
-	grip.InfoWhen(len(hostIDsToStop) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(hostIDsToStop) > 0, message.Fields{
 		"message":  "enqueueing jobs to stop hosts for sleep schedule",
 		"num_jobs": len(hostIDsToStop),
 		"host_ids": hostIDsToStop,
 		"job":      j.ID(),
 	})
-	grip.InfoWhen(len(hostIDsToStart) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(hostIDsToStart) > 0, message.Fields{
 		"message":  "enqueueing jobs to start hosts for sleep schedule",
 		"num_jobs": len(hostIDsToStart),
 		"host_ids": hostIDsToStart,
