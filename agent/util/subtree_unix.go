@@ -29,7 +29,7 @@ const (
 
 // TrackProcess is a noop by default if we don't need to do any special
 // bookkeeping up-front.
-func TrackProcess(key string, pid int, logger grip.Journaler) {}
+func TrackProcess(ctx context.Context, key string, pid int, logger grip.Journaler) {}
 
 // KillSpawnedProcs kills processes that descend from the agent and waits
 // for them to terminate.

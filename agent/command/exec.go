@@ -293,7 +293,7 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 
 	pid := proc.Info(ctx).PID
 
-	agentutil.TrackProcess(taskID, pid, logger.System())
+	agentutil.TrackProcess(ctx, taskID, pid, logger.System())
 
 	if background {
 		logger.Execution().Debugf(ctx, "Running process in the background with PID %d.", pid)
