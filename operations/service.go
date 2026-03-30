@@ -89,6 +89,13 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment, tracer 
 		DebugLogging:    false,
 	}
 
+	// Align week/month crons to Unix epoch boundaries so restarts more frequent than
+	// the interval still reach the next tick (RoundPartOfDay(0) would always defer
+	// the first run by a full interval from midnight UTC on the restart day).
+	unixEpoch := time.Unix(0, 0).UTC()
+	weekInterval := 7 * 24 * time.Hour
+	monthInterval := 30 * 24 * time.Hour
+
 	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Second, utility.RoundPartOfMinute(0), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFifteenSecondJob()))
 	})
@@ -104,10 +111,10 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment, tracer 
 	amboy.IntervalQueueOperation(ctx, populateQueue, time.Hour, utility.RoundPartOfDay(1), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteHourJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, 7*24*time.Hour, utility.RoundPartOfDay(0), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, weekInterval, util.NextIntervalBoundary(time.Now(), weekInterval, unixEpoch), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteWeekJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, 30*24*time.Hour, utility.RoundPartOfDay(0), opts, func(ctx context.Context, queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, populateQueue, monthInterval, util.NextIntervalBoundary(time.Now(), monthInterval, unixEpoch), opts, func(ctx context.Context, queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteMonthJob()))
 	})
 

@@ -2169,6 +2169,96 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 	}
 }
 
+func TestGetRecursiveDependenciesUpDepthLimit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.Clear(Collection))
+
+	originalMax := maxDependencyDepth
+	maxDependencyDepth = 5
+	defer func() { maxDependencyDepth = originalMax }()
+
+	tasks := make([]Task, 8)
+	for i := range tasks {
+		tasks[i] = Task{Id: fmt.Sprintf("t%d", i)}
+		if i > 0 {
+			tasks[i].DependsOn = []Dependency{{TaskId: fmt.Sprintf("t%d", i-1)}}
+		}
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	_, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[7]}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution exceeded maximum depth")
+}
+
+func TestGetRecursiveDependenciesUpContextCancellation(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[1]}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution cancelled or timed out")
+}
+
+func TestGetRecursiveDependenciesDownDepthLimit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.Clear(Collection))
+
+	originalMax := maxDependencyDepth
+	maxDependencyDepth = 5
+	defer func() { maxDependencyDepth = originalMax }()
+
+	tasks := make([]Task, 8)
+	for i := range tasks {
+		tasks[i] = Task{Id: fmt.Sprintf("t%d", i)}
+		if i > 0 {
+			tasks[i].DependsOn = []Dependency{{TaskId: fmt.Sprintf("t%d", i-1)}}
+		}
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	_, err := getRecursiveDependenciesDown(ctx, []string{"t0"}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution exceeded maximum depth")
+}
+
+func TestGetRecursiveDependenciesDownContextCancellation(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+
+	tasks := []Task{
+		{Id: "t0"},
+		{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert(t.Context()))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := getRecursiveDependenciesDown(ctx, []string{"t0"}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependency resolution cancelled or timed out")
+}
+
 func TestDeactivateDependencies(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
@@ -4763,7 +4853,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, files))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
@@ -4775,7 +4865,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, []string{"new_generated_json"}))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
@@ -4789,7 +4879,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
 
-			dbTask, err := FindOneId(ctx, tsk.Id)
+			dbTask, err := FindOneIdWithGeneratedJSON(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)

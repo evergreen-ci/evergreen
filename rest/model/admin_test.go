@@ -113,8 +113,16 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
+	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, utility.FromIntPtr(apiSettings.Buckets.RetryFailedLogMoveLookbackMonths))
+	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, utility.FromIntPtr(apiSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun))
+	assert.Equal(testSettings.Buckets.TestResultsBucket.Name, utility.FromStringPtr(apiSettings.Buckets.TestResultsBucket.Name))
+	assert.EqualValues(testSettings.Buckets.TestResultsBucket.Type, utility.FromStringPtr(apiSettings.Buckets.TestResultsBucket.Type))
+	assert.Equal(testSettings.Buckets.TestResultsBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.TestResultsBucket.DBName))
+	assert.Equal(testSettings.Buckets.TestResultsBucket.TestResultsPrefix, utility.FromStringPtr(apiSettings.Buckets.TestResultsBucket.TestResultsPrefix))
+	assert.Equal(testSettings.Buckets.TestResultsBucket.RoleARN, utility.FromStringPtr(apiSettings.Buckets.TestResultsBucket.RoleARN))
 	assert.EqualValues(testSettings.Buckets.Credentials.Key, utility.FromStringPtr(apiSettings.Buckets.Credentials.Key))
 	assert.EqualValues(testSettings.Buckets.Credentials.Secret, utility.FromStringPtr(apiSettings.Buckets.Credentials.Secret))
+	assert.EqualValues(testSettings.Buckets.Credentials.Bucket, utility.FromStringPtr(apiSettings.Buckets.Credentials.Bucket))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Distro, utility.FromStringPtr(apiSettings.ContainerPools.Pools[0].Distro))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, utility.FromStringPtr(apiSettings.ContainerPools.Pools[0].Id))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, apiSettings.ContainerPools.Pools[0].MaxContainers)
@@ -233,8 +241,12 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
+	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, dbSettings.Buckets.RetryFailedLogMoveLookbackMonths)
+	assert.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, dbSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun)
+	assert.EqualValues(testSettings.Buckets.TestResultsBucket, dbSettings.Buckets.TestResultsBucket)
 	assert.EqualValues(testSettings.Buckets.Credentials.Key, dbSettings.Buckets.Credentials.Key)
 	assert.EqualValues(testSettings.Buckets.Credentials.Secret, dbSettings.Buckets.Credentials.Secret)
+	assert.EqualValues(testSettings.Buckets.Credentials.Bucket, dbSettings.Buckets.Credentials.Bucket)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Distro, dbSettings.ContainerPools.Pools[0].Distro)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, dbSettings.ContainerPools.Pools[0].Id)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, dbSettings.ContainerPools.Pools[0].MaxContainers)
@@ -304,6 +316,46 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, dbSettings.Tracer.CollectorInternalEndpoint)
 	assert.EqualValues(testSettings.GitHubCheckRun.CheckRunLimit, dbSettings.GitHubCheckRun.CheckRunLimit)
 	assert.EqualValues(testSettings.Sage.BaseURL, dbSettings.Sage.BaseURL)
+}
+
+func TestAPIBucketsConfigJSON(t *testing.T) {
+	const payload = `{
+		"log_bucket": {"name": "logs", "type": "s3"},
+		"log_bucket_long_retention": {},
+		"log_bucket_failed_tasks": {},
+		"retry_failed_log_move_lookback_months": 3,
+		"retry_failed_log_move_max_jobs_per_run": 25,
+		"test_results_bucket": {
+			"name": "tr-bucket",
+			"type": "s3",
+			"db_name": "tr_db",
+			"test_results_prefix": "prefix/",
+			"role_arn": "arn:aws:iam::123456789012:role/tr"
+		},
+		"internal_buckets": ["internal-a", "internal-b"],
+		"credentials": {"key": "k", "secret": "s", "bucket": "cb"}
+	}`
+	var out APIBucketsConfig
+	require.NoError(t, json.Unmarshal([]byte(payload), &out))
+	assert.Equal(t, 3, utility.FromIntPtr(out.RetryFailedLogMoveLookbackMonths))
+	assert.Equal(t, 25, utility.FromIntPtr(out.RetryFailedLogMoveMaxJobsPerRun))
+	assert.Equal(t, "tr-bucket", utility.FromStringPtr(out.TestResultsBucket.Name))
+	assert.Equal(t, "tr_db", utility.FromStringPtr(out.TestResultsBucket.DBName))
+	assert.Equal(t, "prefix/", utility.FromStringPtr(out.TestResultsBucket.TestResultsPrefix))
+	assert.Equal(t, "arn:aws:iam::123456789012:role/tr", utility.FromStringPtr(out.TestResultsBucket.RoleARN))
+	assert.ElementsMatch(t, []string{"internal-a", "internal-b"}, out.InternalBuckets)
+	assert.Equal(t, "k", utility.FromStringPtr(out.Credentials.Key))
+	assert.Equal(t, "s", utility.FromStringPtr(out.Credentials.Secret))
+	assert.Equal(t, "cb", utility.FromStringPtr(out.Credentials.Bucket))
+
+	roundTrip, err := json.Marshal(&out)
+	require.NoError(t, err)
+	var again APIBucketsConfig
+	require.NoError(t, json.Unmarshal(roundTrip, &again))
+	assert.ElementsMatch(t, out.InternalBuckets, again.InternalBuckets)
+	assert.Equal(t, out.RetryFailedLogMoveMaxJobsPerRun, again.RetryFailedLogMoveMaxJobsPerRun)
+	assert.Equal(t, out.TestResultsBucket.Name, again.TestResultsBucket.Name)
+	assert.Equal(t, out.Credentials.Bucket, again.Credentials.Bucket)
 }
 
 func TestRestart(t *testing.T) {

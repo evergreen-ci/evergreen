@@ -716,13 +716,15 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket              APIBucketConfig  `json:"log_bucket"`
-	LogBucketLongRetention APIBucketConfig  `json:"log_bucket_long_retention"`
-	LogBucketFailedTasks   APIBucketConfig  `json:"log_bucket_failed_tasks"`
-	LongRetentionProjects  []string         `json:"long_retention_projects"`
-	TestResultsBucket      APIBucketConfig  `json:"test_results_bucket"`
-	InternalBuckets        []string         `json:"internal_buckets"`
-	Credentials            APIS3Credentials `json:"credentials"`
+	LogBucket                        APIBucketConfig  `json:"log_bucket"`
+	LogBucketLongRetention           APIBucketConfig  `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks             APIBucketConfig  `json:"log_bucket_failed_tasks"`
+	LongRetentionProjects            []string         `json:"long_retention_projects"`
+	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
+	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
+	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
+	InternalBuckets                  []string         `json:"internal_buckets"`
+	Credentials                      APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -762,6 +764,8 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
+		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackMonths)
+		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
 
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
 		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
@@ -808,7 +812,9 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
 			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
-		LongRetentionProjects: a.LongRetentionProjects,
+		LongRetentionProjects:            a.LongRetentionProjects,
+		RetryFailedLogMoveLookbackMonths: utility.FromIntPtr(a.RetryFailedLogMoveLookbackMonths),
+		RetryFailedLogMoveMaxJobsPerRun:  utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket: evergreen.BucketConfig{
 			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
 			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
@@ -3146,7 +3152,6 @@ func (a *APIS3UploadCostConfig) ToService() (any, error) {
 type APIS3StorageCostConfig struct {
 	StandardStorageCostDiscount float64 `json:"standard_storage_cost_discount"`
 	IAStorageCostDiscount       float64 `json:"i_a_storage_cost_discount"`
-	ArchiveStorageCostDiscount  float64 `json:"archive_storage_cost_discount"`
 }
 
 func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
@@ -3154,7 +3159,6 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 	case evergreen.S3StorageCostConfig:
 		a.StandardStorageCostDiscount = v.StandardStorageCostDiscount
 		a.IAStorageCostDiscount = v.IAStorageCostDiscount
-		a.ArchiveStorageCostDiscount = v.ArchiveStorageCostDiscount
 		return nil
 	default:
 		return errors.Errorf("incorrect type %T", v)
@@ -3165,7 +3169,6 @@ func (a *APIS3StorageCostConfig) ToService() (any, error) {
 	return evergreen.S3StorageCostConfig{
 		StandardStorageCostDiscount: a.StandardStorageCostDiscount,
 		IAStorageCostDiscount:       a.IAStorageCostDiscount,
-		ArchiveStorageCostDiscount:  a.ArchiveStorageCostDiscount,
 	}, nil
 }
 
