@@ -108,12 +108,12 @@ func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.Canc
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	tc.logger.Execution().Info(ctx,, "Starting idle timeout watcher.")
+	tc.logger.Execution().Info(ctx, "Starting idle timeout watcher.")
 
 	for {
 		select {
 		case <-ctx.Done():
-			tc.logger.Execution().Info(ctx,, "Idle timeout watcher canceled.")
+			tc.logger.Execution().Info(ctx, "Idle timeout watcher canceled.")
 			return
 		case <-ticker.C:
 			timeout := tc.getCurrentIdleTimeout()
@@ -152,12 +152,12 @@ func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
 
-	opts.tc.logger.Execution().Infof(ctx,, "Starting %s timeout watcher.", opts.kind)
+	opts.tc.logger.Execution().Infof(ctx, "Starting %s timeout watcher.", opts.kind)
 
 	for {
 		select {
 		case <-ctx.Done():
-			opts.tc.logger.Execution().Infof(ctx,, "Stopped %s timeout watcher.", opts.kind)
+			opts.tc.logger.Execution().Infof(ctx, "Stopped %s timeout watcher.", opts.kind)
 			return
 		case <-ticker.C:
 			timeout := opts.getTimeout()

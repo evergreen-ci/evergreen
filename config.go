@@ -416,7 +416,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
 						fieldValue.Set(newMap)
 					} else {
-						grip.ErrorWhen(ctx.Err() == nil, message.Fields{
+						grip.ErrorWhen(ctx, ctx.Err() == nil, message.Fields{
 							"message":  "readAdminSecrets did not find all map keys in parameter store",
 							"path":     fieldPath,
 							"keys":     fieldValue.MapKeys(),
@@ -782,7 +782,7 @@ func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
 	} else if rc.Level == "" {
 		return readconcern.Majority()
 	} else {
-		grip.Error(ctx, message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"error":   "ReadConcern Level is not majority or local, setting to majority",
 			"rcLevel": rc.Level})
 		return readconcern.Majority()

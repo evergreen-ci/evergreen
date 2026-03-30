@@ -34,7 +34,7 @@ import (
 )
 
 func init() {
-	grip.EmergencyPanic(ctx, errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
+	grip.EmergencyPanic(context.Background(), errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
 }
 
 const defaultProjYml = `
@@ -1770,7 +1770,7 @@ task_groups:
 	// Fake out the data so that the previous task already set up the task
 	// group, made the task group directory, and the next task is part of the
 	// same task group.
-	_, err := s.a.createTaskDirectory(s.tc, s.tc.taskConfig.WorkDir)
+	_, err := s.a.createTaskDirectory(context.Background(), s.tc, s.tc.taskConfig.WorkDir)
 	s.Require().NoError(err)
 	s.tc.ranSetupGroup = true
 	s.tc.taskConfig.Task.TaskGroup = taskGroup

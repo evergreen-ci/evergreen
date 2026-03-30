@@ -28,7 +28,7 @@ import (
 // task within and a temporary directory within that new directory. If taskDir
 // is specified, it will create that task directory; otherwise, it will create
 // a new task directory based on the current task data.
-func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
+func (a *Agent) createTaskDirectory(ctx context.Context, tc *taskContext, taskDir string) (string, error) {
 	if taskDir == "" {
 		var err error
 		taskDir, err = a.generateTaskDirectoryName(tc)
@@ -38,7 +38,7 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 		}
 	}
 
-	tc.logger.Execution().Infof(ctx,, "Making task directory '%s' for task execution.", taskDir)
+	tc.logger.Execution().Infof(ctx, "Making task directory '%s' for task execution.", taskDir)
 
 	if err := os.MkdirAll(taskDir, 0777); err != nil {
 		tc.logger.Execution().Error(ctx, errors.Wrapf(err, "creating task directory '%s'", taskDir))
@@ -46,10 +46,10 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 	}
 
 	tmpDir := filepath.Join(taskDir, "tmp")
-	tc.logger.Execution().Infof(ctx,, "Making task temporary directory '%s' for task execution.", tmpDir)
+	tc.logger.Execution().Infof(ctx, "Making task temporary directory '%s' for task execution.", tmpDir)
 
 	if err := os.MkdirAll(tmpDir, 0777); err != nil {
-		tc.logger.Execution().Warning(errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
+		tc.logger.Execution().Warning(ctx, errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
 	}
 
 	return taskDir, nil

@@ -464,7 +464,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// the task failed during initial task setup.
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
-		grip.Alert(ctx, errors.New("setup.initial command is not registered"))
+		grip.Alert(setupCtx, errors.New("setup.initial command is not registered"))
 	}
 	if factory != nil {
 		tc.setCurrentCommand(factory())
@@ -500,16 +500,16 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	if tc.ranSetupGroup {
 		if _, err := os.Stat(taskDirectory); os.IsNotExist(err) {
 			taskGroupDirMissing = true
-			tc.logger.Execution().Noticef(ctx, "Task directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", taskDirectory)
+			tc.logger.Execution().Noticef(setupCtx, "Task directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", taskDirectory)
 		}
 		tmpDir := filepath.Join(taskDirectory, "tmp")
 		if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
 			taskGroupDirMissing = true
-			tc.logger.Execution().Noticef(ctx, "Task temporary directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", tmpDir)
+			tc.logger.Execution().Noticef(setupCtx, "Task temporary directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", tmpDir)
 		}
 	}
 	if !tc.ranSetupGroup || taskGroupDirMissing {
-		taskDirectory, err = a.createTaskDirectory(tc, taskDirectory)
+		taskDirectory, err = a.createTaskDirectory(setupCtx, tc, taskDirectory)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
@@ -541,22 +541,22 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		tc.setCurrentCommand(factory())
 	}
 
-	tc.logger.Task().Infof(ctx, "Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
-	tc.logger.Execution().Info(ctx,, "Execution logger initialized.")
-	tc.logger.System().Info(ctx, "System logger initialized.")
+	tc.logger.Task().Infof(setupCtx, "Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)
+	tc.logger.Execution().Info(setupCtx, "Execution logger initialized.")
+	tc.logger.System().Info(setupCtx, "System logger initialized.")
 
-	tc.logger.Execution().Error(ctx, errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
+	tc.logger.Execution().Error(setupCtx, errors.Wrap(tc.getDeviceNames(setupCtx), "getting device names for disks"))
 
 	if err := setupCtx.Err(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 
 	hostname, err := os.Hostname()
-	tc.logger.Execution().Info(ctx,, errors.Wrap(err, "getting hostname"))
+	tc.logger.Execution().Info(setupCtx, errors.Wrap(err, "getting hostname"))
 	if hostname != "" {
-		tc.logger.Execution().Infof(ctx,, "Hostname is '%s'.", hostname)
+		tc.logger.Execution().Infof(setupCtx, "Hostname is '%s'.", hostname)
 	}
-	tc.logger.Task().Infof(ctx, "Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
+	tc.logger.Task().Infof(setupCtx, "Starting task '%s', execution %d.", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
 
 	return tc, shouldExit, nil
 }
@@ -700,11 +700,11 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 			// processes/Docker artifacts for the next task, disable the host.
 			// Otherwise, the next task will start with lingering state from the
 			// prior task.
-			tc.logger.Execution().Criticalf("Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
+			tc.logger.Execution().Criticalf(ctx, "Unable to clean up processes/Docker artifacts for finished task, disabling this host. Error: %s", err.Error())
 			if disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
 				Reason: "could not clean up processes/Docker artifacts after task is finished",
 			}); disableErr != nil {
-				tc.logger.Execution().Criticalf("Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
+				tc.logger.Execution().Criticalf(ctx, "Unable to disable unhealthy host that has leftover processes/Docker artifacts. Error: %s", disableErr.Error())
 			}
 		}
 	}()
@@ -752,7 +752,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	}()
 
 	if ctx.Err() != nil {
-		tc.logger.Execution().Infof(ctx,, "Stopping task execution during setup: %s", ctx.Err())
+		tc.logger.Execution().Infof(ctx, "Stopping task execution during setup: %s", ctx.Err())
 		return evergreen.TaskSystemFailed
 	}
 
@@ -772,14 +772,14 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	}
 	go a.startTimeoutWatcher(timeoutWatcherCtx, execTimeoutCancel, timeoutOpts)
 
-	tc.logger.Execution().Infof(ctx,, "Setting heartbeat timeout to type '%s'.", globals.ExecTimeout)
+	tc.logger.Execution().Infof(ctx, "Setting heartbeat timeout to type '%s'.", globals.ExecTimeout)
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{
 		startAt:    time.Now(),
 		getTimeout: tc.getExecTimeout,
 		kind:       globals.ExecTimeout,
 	})
 	defer func() {
-		tc.logger.Execution().Infof(ctx,, "Resetting heartbeat timeout from type '%s' back to default.", globals.ExecTimeout)
+		tc.logger.Execution().Infof(ctx, "Resetting heartbeat timeout from type '%s' back to default.", globals.ExecTimeout)
 		tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	}()
 
@@ -818,12 +818,12 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	statsCollector.logStats(execTimeoutCtx, tc.taskConfig.Expansions)
 
 	if execTimeoutCtx.Err() != nil {
-		tc.logger.Execution().Infof(ctx,, "Stopping task execution after setup: %s", execTimeoutCtx.Err())
+		tc.logger.Execution().Infof(ctx, "Stopping task execution after setup: %s", execTimeoutCtx.Err())
 		return evergreen.TaskSystemFailed
 	}
 
 	// notify API server that the task has been started.
-	tc.logger.Execution().Info(ctx,, "Reporting task started.")
+	tc.logger.Execution().Info(ctx, "Reporting task started.")
 	if err := a.comm.StartTask(execTimeoutCtx, tc.task, tc.traceID, tc.diskDevices); err != nil {
 		tc.logger.Execution().Error(ctx, errors.Wrap(err, "marking task started"))
 		return evergreen.TaskSystemFailed
@@ -836,7 +836,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	}
 
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
-		tc.logger.Execution().Info(ctx,, "OOM tracker clearing system messages.")
+		tc.logger.Execution().Info(ctx, "OOM tracker clearing system messages.")
 		if err := tc.oomTracker.Clear(execTimeoutCtx); err != nil {
 			tc.logger.Execution().Error(ctx, errors.Wrap(err, "clearing OOM tracker system messages"))
 		}
@@ -933,13 +933,13 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // runDefaultTimeoutHandler extracts and logs PIDs of running processes when a task times out.
 func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	tc.logger.Execution().Info(ctx,, "Running default timeout handler to collect process information.")
+	tc.logger.Execution().Info(ctx, "Running default timeout handler to collect process information.")
 
 	var currentCmdPID int
 	var currentCmdName string
 	if currentCmd := tc.getCurrentCommand(); currentCmd != nil {
 		currentCmdName = currentCmd.FullDisplayName()
-		tc.logger.Execution().Infof(ctx,, "Current command at timeout: %s", currentCmdName)
+		tc.logger.Execution().Infof(ctx, "Current command at timeout: %s", currentCmdName)
 	}
 
 	var runningPIDs []int
@@ -953,7 +953,7 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 		tc.logger.Execution().Error(ctx, errors.Wrap(err, "listing running processes during timeout"))
 		return
 	}
-	tc.logger.Execution().Infof(ctx,, "Found %d running processes managed by Jasper", len(procs))
+	tc.logger.Execution().Infof(ctx, "Found %d running processes managed by Jasper", len(procs))
 	for _, proc := range procs {
 		info := proc.Info(ctx)
 		if info.PID > 0 {
@@ -993,23 +993,23 @@ func (a *Agent) runDefaultTimeoutHandler(ctx context.Context, tc *taskContext, d
 	childPIDs := getDescendantPIDs(ctx, runningPIDs, tc.logger, a.tracer)
 
 	if len(runningPIDs) > 0 {
-		tc.logger.Execution().Infof(ctx,, "Process PIDs at timeout: %v", runningPIDs)
-		tc.logger.Execution().Info(ctx,, "Detailed process information:")
+		tc.logger.Execution().Infof(ctx, "Process PIDs at timeout: %v", runningPIDs)
+		tc.logger.Execution().Info(ctx, "Detailed process information:")
 		for _, detail := range processDetails {
-			tc.logger.Execution().Info(ctx,, detail)
+			tc.logger.Execution().Info(ctx, detail)
 		}
 
 		if currentCmdPID > 0 {
-			tc.logger.Execution().Infof(ctx,, "Suspected current command PID: %d", currentCmdPID)
+			tc.logger.Execution().Infof(ctx, "Suspected current command PID: %d", currentCmdPID)
 		}
 
 		if len(childPIDs) > 0 {
-			tc.logger.Execution().Infof(ctx,, "Descendant child PIDs: %v", childPIDs)
+			tc.logger.Execution().Infof(ctx, "Descendant child PIDs: %v", childPIDs)
 		}
 
 		tc.logger.Task().Infof(ctx, "Default timeout handler collected %d process PIDs for debugging.", len(runningPIDs))
 	} else {
-		tc.logger.Execution().Info(ctx,, "No running processes found during timeout")
+		tc.logger.Execution().Info(ctx, "No running processes found during timeout")
 	}
 	if detail.TimeoutProcessInfo == nil {
 		detail.TimeoutProcessInfo = &apimodels.TimeoutProcessInfo{
@@ -1155,7 +1155,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 	}
 
 	if rcInfo := tc.resourceMonitor.report(); rcInfo != nil {
-		tc.logger.Execution().Infof(ctx,, "Resource constraint detected: CPU constrained=%t (peak %.1f%%), memory constrained=%t (peak %.1f%%).",
+		tc.logger.Execution().Infof(ctx, "Resource constraint detected: CPU constrained=%t (peak %.1f%%), memory constrained=%t (peak %.1f%%).",
 			rcInfo.CPUConstrained, rcInfo.PeakCPUPercent, rcInfo.MemoryConstrained, rcInfo.PeakMemoryPercent)
 		detail.ResourceConstraints = rcInfo
 	}
@@ -1233,7 +1233,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	_ = a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
-		tc.logger.Execution().Infof(ctx,, "Sending final task status: '%s'.", detail.Status)
+		tc.logger.Execution().Infof(ctx, "Sending final task status: '%s'.", detail.Status)
 		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 		grip.Error(ctx, errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
@@ -1552,7 +1552,7 @@ func (a *Agent) clearGlobalFiles(tc *taskContext) {
 		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
 			logger.Infof(ctx, "Global '%s' file does not exist.", file)
 		} else if err := os.Remove(globalPath); err != nil {
-			logger.Error(ctx,errors.Wrapf(err, "removing global '%s' file", file))
+			logger.Error(ctx, errors.Wrapf(err, "removing global '%s' file", file))
 		} else {
 			logger.Infof(ctx, "Cleared '%s'.", file)
 		}

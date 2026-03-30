@@ -186,7 +186,7 @@ func (tc *taskContext) setCurrentCommand(command command.Command) {
 	defer tc.Unlock()
 	tc.currentCommand = command
 	if tc.logger != nil {
-		tc.logger.Execution().Infof(ctx,, "Current command set to %s (%s).", tc.currentCommand.FullDisplayName(), tc.currentCommand.Type())
+		tc.logger.Execution().Infof(context.Background(), "Current command set to %s (%s).", tc.currentCommand.FullDisplayName(), tc.currentCommand.Type())
 	}
 }
 

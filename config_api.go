@@ -88,7 +88,7 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 		c.ClientBinaries = append(c.ClientBinaries, clientBinary)
 	}
 
-	grip.AlertWhen(len(c.ClientBinaries) == 0, message.Fields{
+	grip.AlertWhen(ctx, len(c.ClientBinaries) == 0, message.Fields{
 		"message":       "could not find any valid Evergreen client binaries during app startup, the API server will not be able to distribute Evergreen clients",
 		"s3_url_prefix": s3URLPrefix,
 	})

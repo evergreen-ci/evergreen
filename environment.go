@@ -922,7 +922,7 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 // for the error handler to work, the global application logging must already be
 // set up (see (*Settings).GetSender).
 func (e *envState) setSenderErrorHandler(s send.Sender, name string) error {
-	return s.SetErrorHandler(func(err error, m message.Composer) {
+	return s.SetErrorHandler(func(ctx context.Context, err error, m message.Composer) {
 		if err == nil {
 			return
 		}
@@ -1308,7 +1308,7 @@ func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken C
 	// Just log and continue if the GitHub sender fails to set the error
 	// handler. While having the error log is useful for monitoring, it's not
 	// essential for the sender to work.
-	grip.Error(ctx, message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
+	grip.Error(e.ctx, message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
 		"message": "could not set fallback error handler for GitHub status sender",
 		"owner":   owner,
 		"repo":    repo,

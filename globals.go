@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"os"
 	"strings"
 	"time"
@@ -1109,7 +1110,7 @@ func FindEvergreenHome() string {
 		return root
 	}
 
-	grip.Errorf(ctx, "%s is unset", EvergreenHome)
+	grip.Errorf(context.Background(), "%s is unset", EvergreenHome)
 	return ""
 }
 
