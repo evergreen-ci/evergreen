@@ -44,6 +44,7 @@ type Entry struct {
 //	Value = link for the file
 type Params map[string]string
 
+// AssociatedLink represents a link related to a file besides the main artifact link.
 type AssociatedLink struct {
 	Name string `json:"name" bson:"name"`
 	Link string `json:"link" bson:"link"`
@@ -79,7 +80,7 @@ type File struct {
 	PutRequests int `json:"put_requests,omitempty" bson:"put_requests,omitempty"`
 	// PutCost is the calculated S3 PUT request cost for uploading this file.
 	PutCost float64 `json:"put_cost,omitempty" bson:"put_cost,omitempty"`
-	// AssociatedLinks is a list of associated links related to the file besides the main artifact link.
+	// AssociatedLinks is a list of links related to the file besides the main artifact link.
 	AssociatedLinks []AssociatedLink `json:"associated_links,omitempty" bson:"associated_links,omitempty"`
 }
 
