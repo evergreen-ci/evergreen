@@ -118,7 +118,13 @@ func Debug() cli.Command {
 				Name:      "select",
 				Usage:     "Select a task for debugging",
 				ArgsUsage: "<task_name>",
-				Action:    selectTaskCmd,
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:  "variant, v",
+						Usage: "Build variant to apply variant-specific expansions",
+					},
+				},
+				Action: selectTaskCmd,
 			},
 			{
 				Name:   "next",
@@ -393,7 +399,6 @@ func selectTaskCmd(c *cli.Context) error {
 	}
 
 	taskName := c.Args().Get(0)
-	// TODO: DEVPROD-26690 Support selecting variant task and apply variant-specific expansions.
 	variantName := c.String("variant")
 
 	// Clear previous session logs when selecting a new task.
