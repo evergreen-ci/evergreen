@@ -584,7 +584,7 @@ func (e *LocalExecutor) handleNoOpCommand(ctx context.Context, cmd command.Comma
 }
 
 // PrepareTask prepares a task for execution by creating command blocks
-func (e *LocalExecutor) PrepareTask(taskName string) error {
+func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName string) error {
 	if e.project == nil {
 		return errors.New("project not loaded")
 	}
@@ -595,7 +595,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	}
 
 	e.debugState.SelectedTask = taskName
-	e.logger.Infof(context.Background(), "Preparing task: %s", taskName)
+	e.logger.Infof(ctx, "Preparing task: %s", taskName)
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
@@ -644,7 +644,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 			e.commandBlocks[i].endIndex = currentIdx - 1
 		}
 	}
-	e.logger.Infof(context.Background(), "Task prepared with %d commands in %d blocks",
+	e.logger.Infof(ctx, "Task prepared with %d commands in %d blocks",
 		len(e.debugState.CommandList), len(e.commandBlocks))
 
 	return nil

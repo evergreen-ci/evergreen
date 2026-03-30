@@ -136,7 +136,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := d.executor.PrepareTask(req.TaskName); err != nil {
+	if err := d.executor.PrepareTask(r.Context(), req.TaskName); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
