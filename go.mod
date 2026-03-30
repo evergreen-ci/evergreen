@@ -93,9 +93,9 @@ require (
 	github.com/dghubble/oauth1 v0.7.3 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
-	github.com/evergreen-ci/aviation v0.0.0-20260115180700-baca116d6d12 // indirect
+	github.com/evergreen-ci/aviation v0.0.0-20260326191247-419265529eba // indirect
 	github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 // indirect
-	github.com/evergreen-ci/bond v0.0.0-20251209195750-b541586174f7 // indirect
+	github.com/evergreen-ci/bond v0.0.0-20260326192958-a16b1d604e29 // indirect
 	github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810 // indirect
 	github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
@@ -175,7 +175,7 @@ require (
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
-	github.com/mongodb/jasper v0.0.0-20260115181313-e094cd64f89f
+	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
 	github.com/parquet-go/parquet-go v0.29.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
