@@ -225,11 +225,15 @@ type S3UploadCostConfig {
 input S3StorageCostConfigInput {
     standardStorageCostDiscount: Float
     iAStorageCostDiscount: Float
+    archiveStorageCostDiscount: Float
+    defaultMaxArtifactExpirationDays: Int
 }
 
 type S3StorageCostConfig {
     standardStorageCostDiscount: Float
     iAStorageCostDiscount: Float
+    archiveStorageCostDiscount: Float
+    defaultMaxArtifactExpirationDays: Int
 }
 
 input S3CostConfigInput {

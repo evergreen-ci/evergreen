@@ -1612,8 +1612,10 @@ type ComplexityRoot struct {
 	}
 
 	S3StorageCostConfig struct {
-		IAStorageCostDiscount       func(childComplexity int) int
-		StandardStorageCostDiscount func(childComplexity int) int
+		ArchiveStorageCostDiscount       func(childComplexity int) int
+		DefaultMaxArtifactExpirationDays func(childComplexity int) int
+		IAStorageCostDiscount            func(childComplexity int) int
+		StandardStorageCostDiscount      func(childComplexity int) int
 	}
 
 	S3UploadCostConfig struct {
@@ -9400,6 +9402,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.S3Credentials.Secret(childComplexity), true
 
+	case "S3StorageCostConfig.archiveStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.ArchiveStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.ArchiveStorageCostDiscount(childComplexity), true
+	case "S3StorageCostConfig.defaultMaxArtifactExpirationDays":
+		if e.complexity.S3StorageCostConfig.DefaultMaxArtifactExpirationDays == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.DefaultMaxArtifactExpirationDays(childComplexity), true
 	case "S3StorageCostConfig.iAStorageCostDiscount":
 		if e.complexity.S3StorageCostConfig.IAStorageCostDiscount == nil {
 			break
@@ -55091,6 +55105,10 @@ func (ec *executionContext) fieldContext_S3CostConfig_storage(_ context.Context,
 				return ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount(ctx, field)
 			case "iAStorageCostDiscount":
 				return ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount(ctx, field)
+			case "archiveStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_archiveStorageCostDiscount(ctx, field)
+			case "defaultMaxArtifactExpirationDays":
+				return ec.fieldContext_S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type S3StorageCostConfig", field.Name)
 		},
@@ -55251,6 +55269,64 @@ func (ec *executionContext) fieldContext_S3StorageCostConfig_iAStorageCostDiscou
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_archiveStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_archiveStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.ArchiveStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_archiveStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_defaultMaxArtifactExpirationDays,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultMaxArtifactExpirationDays, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_defaultMaxArtifactExpirationDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -84243,7 +84319,7 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount"}
+	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount", "archiveStorageCostDiscount", "defaultMaxArtifactExpirationDays"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84264,6 +84340,20 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 				return it, err
 			}
 			it.IAStorageCostDiscount = data
+		case "archiveStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("archiveStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ArchiveStorageCostDiscount = data
+		case "defaultMaxArtifactExpirationDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultMaxArtifactExpirationDays"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultMaxArtifactExpirationDays = data
 		}
 	}
 
@@ -100271,6 +100361,10 @@ func (ec *executionContext) _S3StorageCostConfig(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._S3StorageCostConfig_standardStorageCostDiscount(ctx, field, obj)
 		case "iAStorageCostDiscount":
 			out.Values[i] = ec._S3StorageCostConfig_iAStorageCostDiscount(ctx, field, obj)
+		case "archiveStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_archiveStorageCostDiscount(ctx, field, obj)
+		case "defaultMaxArtifactExpirationDays":
+			out.Values[i] = ec._S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
