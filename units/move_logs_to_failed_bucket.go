@@ -92,7 +92,7 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "failed_bucket_move: job started",
 		"task_id": j.TaskID,
 		"job":     j.ID(),

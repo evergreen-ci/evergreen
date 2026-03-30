@@ -940,7 +940,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		settings := env.Settings()
 		failedBucketCfg := settings.Buckets.LogBucketFailedTasks
 		if failedBucketCfg.Name == "" {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message": "retry failed log move jobs skipped: log_bucket_failed_tasks is not configured",
 			})
 			return nil
@@ -989,7 +989,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		}
 
 		if len(toRetry) == 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":                 "retry failed log move jobs",
 				"tasks_found":             0,
 				"task_ids_all_candidates": []string{},
@@ -1025,7 +1025,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerWeeklyRetry)), "enqueueing move logs job for task '%s'", t.Id)
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                 "retry failed log move jobs",
 			"tasks_found":             tasksFound,
 			"task_ids_all_candidates": taskIDsAllCandidates,

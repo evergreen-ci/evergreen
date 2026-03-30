@@ -345,7 +345,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		s3pc.associatedLinks = associatedLinks
 
 		if s3pc.isMulti() && len(associatedLinks) > 0 {
-			logger.Task().Warningf("Using associated_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different associated links.", len(s3pc.LocalFilesIncludeFilter))
+			logger.Task().Warningf(ctx, "Using associated_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different associated links.", len(s3pc.LocalFilesIncludeFilter))
 		}
 	}
 
