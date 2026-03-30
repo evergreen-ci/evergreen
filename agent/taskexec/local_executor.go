@@ -537,10 +537,9 @@ func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
 
 // handleLocalPanic handles panics that occur during command execution
 func (e *LocalExecutor) handleLocalPanic(panicErr error, originalErr error, op string) error {
-	panicCtx := context.Background()
-	e.logger.Errorf(panicCtx, "Panic in %s: %v", op, panicErr)
+	e.logger.Errorf(context.Background(), "Panic in %s: %v", op, panicErr)
 	if originalErr != nil {
-		e.logger.Errorf(panicCtx, "Original error: %v", originalErr)
+		e.logger.Errorf(context.Background(), "Original error: %v", originalErr)
 		return errors.Wrapf(panicErr, "panic during %s (original error: %v)", op, originalErr)
 	}
 	return errors.Wrapf(panicErr, "panic during %s", op)
