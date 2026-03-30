@@ -66,7 +66,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 		timingMsg["aborted"] = ctx.Err() != nil
 		timingMsg["total"] = time.Since(startAt).Seconds()
 		timingMsg["run_end_at"] = time.Now()
-		grip.Error(ctx, timingMsg)
+		grip.Info(ctx, timingMsg)
 	}()
 
 	flags, err := evergreen.GetServiceFlags(ctx)

@@ -729,7 +729,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 	}
 
 	if len(cachedBuckets) > 0 {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":    "successfully cached bucket lifecycle rules",
 			"buckets":    cachedBuckets,
 			"task_id":    t.Id,
@@ -1186,7 +1186,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			if err = foundHost.IncIdleTime(ctx, foundHost.WastedComputeTime()); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", foundHost.Id))
 			}
-			grip.Error(ctx, foundHost.TaskStartMessage())
+			grip.Info(ctx, foundHost.TaskStartMessage())
 		}
 	}
 	logTaskStartMessage(ctx, foundHost, t)
@@ -1239,7 +1239,7 @@ func logTaskStartMessage(ctx context.Context, h *host.Host, t *task.Task) {
 			}
 		}
 	}
-	grip.Error(ctx, msg)
+	grip.Info(ctx, msg)
 }
 
 // GET /task/{task_id}/git/patchfile/{patchfile_id}

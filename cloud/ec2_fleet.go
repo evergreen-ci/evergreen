@@ -299,7 +299,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	}
 
 	for _, stateChange := range resp.TerminatingInstances {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":       "terminated instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
@@ -578,7 +578,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	})
 	if err != nil {
 		if errors.Cause(err) == ec2TemplateNameExistsError {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":  "template already exists for host",
 				"host_id":  h.Id,
 				"host_tag": h.Tag,

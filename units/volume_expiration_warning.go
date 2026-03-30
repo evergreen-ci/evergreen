@@ -119,7 +119,7 @@ func tryVolumeNotification(ctx context.Context, v host.Volume, numHours int) (bo
 		return false, nil
 	}
 	event.LogVolumeExpirationWarningSent(ctx, v.ID)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "sent volume expiration warning",
 		"volume_id":  v.ID,
 		"host_id":    v.Host,

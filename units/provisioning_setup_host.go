@@ -102,7 +102,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		}
 	}
 	if j.host.Status != evergreen.HostProvisioning || j.host.Provisioned {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"job":     j.ID(),
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -122,7 +122,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	defer func() {
 		if j.host.Status != evergreen.HostRunning && j.IsLastAttempt() {
 			event.LogHostProvisionFailed(ctx, j.host.Id, "host has used up all attempts to provision")
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":         "provisioning failed",
 				"reason":          "host has used up all attempts to provision",
 				"current_attempt": j.RetryInfo().CurrentAttempt,
@@ -142,7 +142,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		}
 	}()
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "attempting to setup host",
 		"distro":  j.host.Distro.Id,
 		"host_id": j.host.Id,
@@ -155,7 +155,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	}
 
 	setupStartTime := time.Now()
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "provisioning host",
 		"job":     j.ID(),
 		"distro":  j.host.Distro.Id,
@@ -170,7 +170,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		}
 
 		if j.canRetryProvisioning() {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
+			grip.Info(ctx, message.WrapError(err, message.Fields{
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 				"host_id":         j.host.Id,
 				"host_tag":        j.host.Tag,
@@ -195,7 +195,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		return nil
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":         "successfully finished provisioning host",
 		"host_id":         j.host.Id,
 		"DNS":             j.host.Host,
@@ -270,7 +270,7 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, h *hos
 		return errors.Wrap(err, "getting command to write Jasper credentials file")
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "putting Jasper credentials on host",
 		"host_id": h.Id,
 		"distro":  h.Distro.Id,
@@ -412,7 +412,7 @@ func expandScript(s string, settings *evergreen.Settings) (string, error) {
 
 // Provision the host, and update the database accordingly.
 func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Settings) error {
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"job":     j.ID(),
 		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
@@ -429,7 +429,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			}))
 			return errors.Wrapf(err, "putting Jasper on host '%s'", j.host.Id)
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "successfully fetched Jasper binary and started service",
 			"host_id": j.host.Id,
 			"job":     j.ID(),
@@ -469,7 +469,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return catcher.Resolve()
 		}
 
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "running setup script for spawn host",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -494,7 +494,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 
 		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message": "fetching data for task on host",
 				"task":    j.host.ProvisionOptions.TaskId,
 				"distro":  j.host.Distro.Id,
@@ -516,7 +516,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "setup complete for host",
 		"host_id":  j.host.Id,
 		"host_tag": j.host.Tag,
@@ -529,7 +529,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		return errors.Wrapf(err, "marking host '%s' as provisioned", j.host.Id)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"host_id":                 j.host.Id,
 		"host_tag":                j.host.Tag,
 		"distro":                  j.host.Distro.Id,

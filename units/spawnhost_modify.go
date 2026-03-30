@@ -131,7 +131,7 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 		}
 
 		event.LogHostModifySucceeded(ctx, h.Id, string(j.Source))
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "modified spawn host",
 			"host_id":  h.Id,
 			"host_tag": h.Tag,

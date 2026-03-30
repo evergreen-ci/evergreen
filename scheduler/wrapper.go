@@ -62,7 +62,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 					"distro":  distro.Id,
 				}))
 			}
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"distro":      distro.Id,
 				"removed_len": queueInfo.Length,
 				"operation":   "removed queue of disabled distro",
@@ -90,7 +90,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	if err != nil {
 		return errors.Wrapf(err, "problem while running task finder for distro '%s'", distro.Id)
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":        RunnerName,
 		"distro":        distro.Id,
 		"operation":     "runtime-stats",
@@ -113,7 +113,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return errors.WithStack(err)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":        RunnerName,
 		"distro":        distro.Id,
 		"alias":         false,
@@ -179,7 +179,7 @@ func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) 
 			}
 			if dbHost != nil {
 				event.LogHostStatusChanged(ctx, dbHost.Id, dbHost.Status, staticHost.Status, evergreen.User, "host status changed by host allocator")
-				grip.Error(ctx, message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":    "static host status updated",
 					"operation":  "doStaticHostUpdate",
 					"host_id":    dbHost.Id,
@@ -202,7 +202,7 @@ func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) 
 				event.LogHostConvertingProvisioning(ctx, staticHost.Id, staticHost.Distro.BootstrapSettings.Method, evergreen.User)
 			}
 
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":               "set needs reprovision",
 				"host_id":               dbHost.Id,
 				"distro":                dbHost.Distro.Id,

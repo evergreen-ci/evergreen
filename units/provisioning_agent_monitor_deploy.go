@@ -174,7 +174,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 	if alive {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "not deploying a new agent monitor because it is still alive",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -242,7 +242,7 @@ func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, er
 
 // fetchClient fetches the client on the host through the host's Jasper service.
 func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "fetching latest Evergreen binary for agent monitor",
 		"host_id":       j.host.Id,
 		"distro":        j.host.Distro.Id,
@@ -299,7 +299,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 		return nil
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "running setup script on host",
 		"host_id":       j.host.Id,
 		"distro":        j.host.Distro.Id,
@@ -339,7 +339,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 		}
 	}
 
-	grip.Error(ctx, j.deployMessage())
+	grip.Info(ctx, j.deployMessage())
 	if _, err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
@@ -351,7 +351,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	}
 
 	event.LogHostAgentMonitorDeployed(ctx, j.host.Id)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "agent monitor deployed",
 		"host_id":       j.host.Id,
 		"host_tag":      j.host.Tag,

@@ -28,7 +28,7 @@ func TestSmokeEndpoints(t *testing.T) {
 	defer cancel()
 
 	params := getSmokeTestParamsFromEnv(t)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "got smoke test parameters",
 		"params":  fmt.Sprintf("%#v", params),
 	})
@@ -53,12 +53,12 @@ func TestSmokeEndpoints(t *testing.T) {
 
 	internal.WaitForEvergreen(t, params.AppServerURL, client)
 
-	grip.Error(ctx, "Testing UI Endpoints")
+	grip.Info(ctx, "Testing UI Endpoints")
 	for url, expected := range td.UI {
 		makeSmokeGetRequestAndCheck(ctx, t, params, client, url, expected)
 	}
 
-	grip.Error(ctx, "Testing API Endpoints")
+	grip.Info(ctx, "Testing API Endpoints")
 	for url, expected := range td.API {
 		makeSmokeGetRequestAndCheck(ctx, t, params, client, "/api"+url, expected)
 	}

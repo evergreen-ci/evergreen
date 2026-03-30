@@ -99,7 +99,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 	}
 
 	if err = repotracker.CollectRevisionsForProject(ctx, settings, *ref); err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"job":     repotrackerJobName,
 			"job_id":  j.ID(),
 			"project": j.ProjectID,

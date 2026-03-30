@@ -133,7 +133,7 @@ func (a *Agent) generateTaskDirectoryHash(toHash string) (string, error) {
 // because leaving the task directory behind could impact later tasks.
 func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
-		grip.Error(ctx, "Task directory is not set, not removing.")
+		grip.Info(ctx, "Task directory is not set, not removing.")
 		return
 	}
 
@@ -151,7 +151,7 @@ func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if err := a.removeAllAndCheck(ctx, abs); err != nil {
 		grip.Critical(ctx, errors.Wrapf(err, "removing task directory '%s'", dir))
 	} else {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "Successfully deleted directory for completed task.",
 			"directory": tc.taskConfig.WorkDir,
 		})

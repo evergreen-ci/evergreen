@@ -1480,7 +1480,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			TestSelectionParams:                 tsParams,
 		}
 
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"op":        "creating build for version",
 			"variant":   pair.Variant,
 			"activated": activateVariant,
@@ -1491,7 +1491,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			return nil, nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":        "skipping empty build for version",
 				"variant":   pair.Variant,
 				"activated": activateVariant,

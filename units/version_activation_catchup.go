@@ -99,7 +99,7 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 		count++
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                       "version activation catch up report",
 		"projects":                      len(projects),
 		"project_to_versions_activated": activations,

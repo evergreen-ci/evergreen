@@ -63,7 +63,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.S3LifecycleSyncDisabled {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "S3 lifecycle sync is disabled, skipping admin buckets sync",
 			"job_id":  j.ID(),
 		})
@@ -89,7 +89,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 	successCount := 0
 
 	for bucketName, bucketInfo := range adminBuckets {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "syncing lifecycle rules for admin bucket",
 			"bucket":  bucketName,
 			"region":  bucketInfo.Region,
@@ -161,7 +161,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		}
 
 		successCount++
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                    "successfully synced lifecycle rules for admin bucket",
 			"bucket":                     bucketName,
 			"expiration_days":            expirationDays,
@@ -172,7 +172,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		})
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "completed S3 lifecycle sync for admin buckets",
 		"success_count": successCount,
 		"failure_count": len(adminBuckets) - successCount,

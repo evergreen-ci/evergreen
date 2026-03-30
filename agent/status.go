@@ -54,12 +54,12 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	grip.Infof(ctx, "Starting status server on address: %s", srv.Addr)
+	grip.Infoln(ctx, "Starting status server on address:", srv.Addr)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			if err.Error() == "http: Server closed" {
-				grip.Error(ctx, err)
+				grip.Info(ctx, err)
 				return
 			}
 			grip.EmergencyFatal(ctx, err)
@@ -68,7 +68,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 
 	go func() {
 		<-ctx.Done()
-		grip.Error(ctx, "Shutting down status server.")
+		grip.Info(ctx, "Shutting down status server.")
 		grip.Critical(ctx, srv.Shutdown(ctx))
 	}()
 

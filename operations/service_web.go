@@ -251,7 +251,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	time.Sleep(time.Duration(env.Settings().ShutdownWaitSeconds) * time.Second)
 	waiters := make([]chan struct{}, 0)
 
-	grip.Error(ctx, "received SIGTERM, terminating web service")
+	grip.Info(ctx, "received SIGTERM, terminating web service")
 	for _, s := range servers {
 		if s == nil {
 			continue

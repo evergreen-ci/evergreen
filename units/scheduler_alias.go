@@ -105,7 +105,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":        scheduler.RunnerName,
 		"distro":        j.DistroID,
 		"alias":         true,

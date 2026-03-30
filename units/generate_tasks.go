@@ -285,7 +285,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 				return
 			}
 			if activatedTasks > evergreen.NumTasksForLargePatch {
-				grip.Error(ctx, message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":             "patch has large number of activated tasks",
 					"op":                  "generate.tasks",
 					"num_tasks_activated": activatedTasks,

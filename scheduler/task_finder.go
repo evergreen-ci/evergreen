@@ -188,7 +188,7 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 		runnabletasks = append(runnabletasks, t)
 
 	}
-	grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
+	grip.Info(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 		"runner":            RunnerName,
 		"schedulable_tasks": len(undispatchedTasks),
 	}))
@@ -293,7 +293,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 		}
 		runnabletasks = append(runnabletasks, t)
 	}
-	grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
+	grip.Info(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 		"runner":            RunnerName,
 		"planner":           d.PlannerSettings.Version,
 		"schedulable_tasks": len(undispatchedTasks),

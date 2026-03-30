@@ -167,9 +167,9 @@ func (p *patchParams) validateSubmission(ctx context.Context, diffData *localDif
 			return errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
-		grip.Error(ctx, diffData.patchSummary)
+		grip.Info(ctx, diffData.patchSummary)
 		if diffData.log != "" {
-			grip.Error(ctx, diffData.log)
+			grip.Info(ctx, diffData.log)
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue?", true) {
@@ -188,7 +188,7 @@ func (p *patchParams) displayPatch(ctx context.Context, ac *legacyClient, params
 		return err
 	}
 
-	grip.Error(ctx, "Patch successfully created.")
+	grip.Info(ctx, "Patch successfully created.")
 	// Logging using grip.Error instead of grip.Info for two reasons related to
 	// patch vs patch-file and how grip is set up:
 	// 1. The patch display log has historically been written to stdout for

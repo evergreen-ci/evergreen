@@ -77,7 +77,7 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.C
 		catcher.Wrapf(model.ClearAndResetStrandedHostTask(ctx, evergreen.GetEnvironment().Settings(), &h), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   "fixed tasks stranded on already-terminated hosts",
 		"job":       j.ID(),
 		"op":        j.Type().Name,
@@ -116,7 +116,7 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching(ctx context.Context) e
 		err = task.DeactivateTasks(ctx, tasksToDeactivate, true, j.ID())
 		catcher.Wrapf(err, "deactivating tasks exceeding the unschedulable threshold")
 
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "deactivated tasks that are stuck dispatching and have exceeded the scheduling threshold",
 			"job":       j.ID(),
 			"op":        j.Type().Name,

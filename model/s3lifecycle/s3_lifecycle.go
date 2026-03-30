@@ -118,7 +118,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		return false
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "discovering lifecycle rules for new bucket",
 		"bucket":  bucketName,
 		"project": projectID,
@@ -159,7 +159,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":     "successfully cached lifecycle rules for bucket",
 		"bucket":      bucketName,
 		"rules_count": len(awsRules),

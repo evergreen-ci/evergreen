@@ -195,7 +195,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":             hostAllocatorJobName,
 		"distro":             j.DistroID,
 		"single_task_distro": distro.SingleTaskDistro,
@@ -218,7 +218,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}))
 
 	if numIntentHosts > maxIntentHosts {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"runner":    hostAllocatorJobName,
 			"instance":  j.ID(),
 			"distro":    j.DistroID,
@@ -236,7 +236,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":             hostAllocatorJobName,
 		"distro":             distro.Id,
 		"single_task_distro": distro.SingleTaskDistro,
@@ -336,7 +336,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                            "distro-scheduler-report",
 		"job_type":                           hostAllocatorJobName,
 		"distro":                             distro.Id,

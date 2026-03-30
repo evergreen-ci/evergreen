@@ -96,7 +96,7 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"job":             alertableInstanceTypeNotifyJobName,
 		"message":         "finished running alertable instance type notify job",
 		"num_hosts_found": len(hosts),

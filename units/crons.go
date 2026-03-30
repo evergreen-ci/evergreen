@@ -135,7 +135,7 @@ func eventNotifierJobs(ctx context.Context, env evergreen.Environment, ts time.T
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all unprocessed events")
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "unprocessed event count",
 		"pending": len(events),
 		"source":  "events-processing",
@@ -567,7 +567,7 @@ func hostCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Ti
 	if err != nil {
 		return nil, errors.Wrap(err, "finding uninitialized hosts")
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "uninitialized hosts",
 		"number":  len(hosts),
 		"runner":  "hostinit",
@@ -643,7 +643,7 @@ func enqueueHostSetupJobs(ctx context.Context, env evergreen.Environment, queue 
 		jobsSubmitted++
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"provisioning_hosts": len(hosts),
 		"throttle":           hostInitSettings.ProvisioningThrottle,
 		"jobs_submitted":     jobsSubmitted,
@@ -838,7 +838,7 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewSpawnhostExpirationCheckJob(ts, &h)), "enqueueing spawn host expiration check job for host '%s'", h.Id)
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "extending spawn host expiration times",
 			"hosts":   hostIds,
 		})
@@ -927,7 +927,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		settings := env.Settings()
 		failedBucketCfg := settings.Buckets.LogBucketFailedTasks
 		if failedBucketCfg.Name == "" {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message": "retry failed log move jobs skipped: log_bucket_failed_tasks is not configured",
 			})
 			return nil
@@ -976,7 +976,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		}
 
 		if len(toRetry) == 0 {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":                 "retry failed log move jobs",
 				"tasks_found":             0,
 				"task_ids_all_candidates": []string{},
@@ -1012,7 +1012,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerWeeklyRetry)), "enqueueing move logs job for task '%s'", t.Id)
 		}
 
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                 "retry failed log move jobs",
 			"tasks_found":             tasksFound,
 			"task_ids_all_candidates": taskIDsAllCandidates,

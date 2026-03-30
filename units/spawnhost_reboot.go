@@ -87,7 +87,7 @@ func (j *spawnhostRebootJob) Run(ctx context.Context) {
 			return errors.Wrapf(err, "rebooting spawn host '%s'", j.HostID)
 		}
 		event.LogHostRebootSucceeded(ctx, h.Id, string(j.Source))
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":    "rebooted spawn host",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,

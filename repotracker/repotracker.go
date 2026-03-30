@@ -92,7 +92,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
 		// projects.
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":            "skip disabled project",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -237,7 +237,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}))
 
 		if existingVersion != nil {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":            "skipping creating version because it already exists",
 				"runner":             RunnerName,
 				"project":            ref.Id,
@@ -1119,7 +1119,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 			return errors.Wrapf(err, "committing transaction for version '%s'", v.Id)
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "successfully created version",
 			"version": v.Id,
 			"hash":    v.Revision,

@@ -43,7 +43,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":     "GitHub pull request queued",
 		"intent_type": intent.GetType(),
 		"intent_id":   intent.ID(),
@@ -80,7 +80,7 @@ func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":     "GitHub merge group queued",
 		"intent_type": intent.GetType(),
 		"intent_id":   intent.ID(),

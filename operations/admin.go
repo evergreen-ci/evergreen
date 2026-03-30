@@ -148,7 +148,7 @@ func doViewSettings() cli.ActionFunc {
 			return errors.Wrap(err, "marshalling Evergreen settings")
 		}
 
-		grip.Error(ctx, settingsYaml)
+		grip.Info(ctx, settingsYaml)
 
 		return nil
 	}
@@ -200,7 +200,7 @@ func updateSettings() cli.Command {
 				return errors.Wrap(err, "marshalling Evergreen settings")
 			}
 
-			grip.Error(ctx, settingsYaml)
+			grip.Info(ctx, settingsYaml)
 
 			return nil
 		},
@@ -249,7 +249,7 @@ func listEvents() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "marshalling events")
 			}
-			grip.Error(ctx, eventsPretty)
+			grip.Info(ctx, eventsPretty)
 
 			return nil
 		},
@@ -438,7 +438,7 @@ func getServiceUsers() cli.Command {
 				return err
 			}
 			for _, u := range users {
-				grip.Error(ctx, u)
+				grip.Info(ctx, u)
 			}
 			return nil
 		},

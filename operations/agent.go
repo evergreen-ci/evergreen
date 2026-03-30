@@ -168,7 +168,7 @@ func Agent() cli.Command {
 				return errors.Wrapf(err, "creating working directory '%s'", opts.WorkingDirectory)
 			}
 
-			grip.Error(context.Background(), message.Fields{
+			grip.Info(context.Background(), message.Fields{
 				"message":            "starting agent",
 				"commands":           command.RegisteredCommandNames(),
 				"dir":                opts.WorkingDirectory,
@@ -270,7 +270,7 @@ func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelF
 	select {
 	case <-ctx.Done():
 	case <-sigChan:
-		grip.Error(ctx, "service exiting after receiving signal")
+		grip.Info(ctx, "service exiting after receiving signal")
 	}
 
 	// Close may not succeed if the context is cancelled, but this is a

@@ -200,7 +200,7 @@ func buildAmboyIndexes(ctx context.Context, dbURI string, db *mongo.Database) er
 		return errors.Wrap(err, "closing queue group")
 	}
 
-	grip.Error(ctx, "successfully built required Amboy indexes")
+	grip.Info(ctx, "successfully built required Amboy indexes")
 
 	return nil
 }

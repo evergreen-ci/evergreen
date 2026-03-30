@@ -129,7 +129,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 
 	event.LogHostScriptExecuted(ctx, j.host.Id, logs)
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "host executed script successfully",
 		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,

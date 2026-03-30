@@ -58,7 +58,7 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 	if len(subscriptions) == 0 {
 		return nil, nil
 	}
-	grip.Error(ctx, msg)
+	grip.Info(ctx, msg)
 
 	notifications := make([]notification.Notification, 0, len(subscriptions))
 
@@ -82,7 +82,7 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 		if n == nil {
 			continue
 		}
-		grip.Error(ctx, msg)
+		grip.Info(ctx, msg)
 
 		notifications = append(notifications, *n)
 	}
@@ -356,7 +356,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 		for _, commit := range event.Commits {
 			commits = append(triggeredDownstreamProjectIDs, utility.FromStringPtr(commit.ID))
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"source":                           "GitHub hook",
 			"message":                          "triggered downstream versions for project push event",
 			"upstream_commits":                 commits,

@@ -123,7 +123,7 @@ func loadProjectYAML(path string, quiet, errorOnWarnings bool, localModuleMap ma
 		opts.UnmarshalStrict = true
 	}
 	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project, projectID)
-	grip.Error(ctx, validationErrs)
+	grip.Info(ctx, validationErrs)
 	if validationErrs.Has(validator.Error) {
 		return nil, errors.Errorf("%s is an invalid configuration", path)
 	}
@@ -159,7 +159,7 @@ func validateProjectRemotely(conf *ClientSettings, projectYaml []byte, path stri
 		return errors.Wrapf(err, "validating project '%s'", projectID)
 	}
 
-	grip.Error(ctx, projErrors)
+	grip.Info(ctx, projErrors)
 	if projErrors.Has(validator.Error) || (errorOnWarnings && projErrors.Has(validator.Warning)) {
 		return errors.Errorf("%s is an invalid configuration", path)
 	} else if projErrors.Has(validator.Warning) {

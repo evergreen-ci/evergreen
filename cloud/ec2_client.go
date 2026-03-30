@@ -219,7 +219,7 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -244,7 +244,7 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -268,7 +268,7 @@ func (c *awsClientImpl) ModifyInstanceAttribute(ctx context.Context, input *ec2.
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -292,7 +292,7 @@ func (c *awsClientImpl) DescribeInstanceTypeOfferings(ctx context.Context, input
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -317,7 +317,7 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -342,7 +342,7 @@ func (c *awsClientImpl) DeleteTags(ctx context.Context, input *ec2.DeleteTagsInp
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -377,7 +377,7 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -402,7 +402,7 @@ func (c *awsClientImpl) StopInstances(ctx context.Context, input *ec2.StopInstan
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -427,7 +427,7 @@ func (c *awsClientImpl) StartInstances(ctx context.Context, input *ec2.StartInst
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -452,7 +452,7 @@ func (c *awsClientImpl) RebootInstances(ctx context.Context, input *ec2.RebootIn
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -481,7 +481,7 @@ func (c *awsClientImpl) CreateVolume(ctx context.Context, input *ec2.CreateVolum
 					return true, err
 				}
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -510,7 +510,7 @@ func (c *awsClientImpl) DeleteVolume(ctx context.Context, input *ec2.DeleteVolum
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -539,7 +539,7 @@ func (c *awsClientImpl) ModifyVolume(ctx context.Context, input *ec2.ModifyVolum
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -568,7 +568,7 @@ func (c *awsClientImpl) AttachVolume(ctx context.Context, input *ec2.AttachVolum
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -594,7 +594,7 @@ func (c *awsClientImpl) DetachVolume(ctx context.Context, input *ec2.DetachVolum
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -621,7 +621,7 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -671,7 +671,7 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -698,7 +698,7 @@ func (c *awsClientImpl) ImportKeyPair(ctx context.Context, input *ec2.ImportKeyP
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -723,7 +723,7 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -748,13 +748,13 @@ func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.Cre
 					grip.Debug(ctx, message.WrapError(apiErr, msg))
 					// Don't retry if the template was already created.
 					if strings.Contains(apiErr.Error(), ec2TemplateNameExists) {
-						grip.Error(ctx, msg)
+						grip.Info(ctx, msg)
 						return false, ec2TemplateNameExistsError
 					}
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -782,7 +782,7 @@ func (c *awsClientImpl) GetLaunchTemplates(ctx context.Context, input *ec2.Descr
 				}
 				templates = append(templates, output.LaunchTemplates...)
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -811,7 +811,7 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -861,7 +861,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 				// This condition is unexpected, so do not retry.
 				return false, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -1002,7 +1002,7 @@ func (c *awsClientImpl) AssociateAddress(ctx context.Context, h *host.Host, inpu
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, retryOpts)
 	if err != nil {
@@ -1035,7 +1035,7 @@ func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *rou
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -1064,7 +1064,7 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 				}
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
@@ -1088,7 +1088,7 @@ func (c *awsClientImpl) GetCallerIdentity(ctx context.Context, input *sts.GetCal
 				// GetCallerIdentity doesn't require any permissions, so if we get an error, it's likely a network issue.
 				return true, err
 			}
-			grip.Error(ctx, msg)
+			grip.Info(ctx, msg)
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {

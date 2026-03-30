@@ -186,7 +186,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		}
 
 		msgFields["message"] = "successfully sent webhook notification"
-		grip.Error(ctx, msgFields)
+		grip.Info(ctx, msgFields)
 
 		return false, nil
 	}, utility.RetryOptions{

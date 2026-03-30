@@ -358,7 +358,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp == nil {
-			grip.Error(req.Context(), message.Fields{
+			grip.Info(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   "resp is nil in githubShouldRetry",
 				"caller":    caller,
@@ -386,7 +386,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp.StatusCode == http.StatusBadGateway {
-			grip.Error(req.Context(), message.Fields{
+			grip.Info(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusBadGateway),
 				"caller":    caller,
@@ -396,7 +396,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if config.retry404 && resp.StatusCode == http.StatusNotFound {
-			grip.Error(req.Context(), message.Fields{
+			grip.Info(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusNotFound),
 				"caller":    caller,
@@ -413,7 +413,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
 func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
-	grip.Error(context.Background(), message.Fields{
+	grip.Info(context.Background(), message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,
@@ -487,7 +487,7 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 
 	if settings.AuthConfig.Github == nil {
 		settings = evergreen.GetEnvironment().Settings()
-		grip.Error(ctx, "no Github settings in auth config, using cached settings")
+		grip.Info(ctx, "no Github settings in auth config, using cached settings")
 	}
 
 	return githubapp.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, settings, defaultGitHubAPIRequestLifetime, opts)
@@ -766,7 +766,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 	}
 
 	sender.Send(ctx, c)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called github status send",
 		"caller":  "github check subscriptions",
@@ -881,7 +881,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "requesting commit from github",
 		"commit":  githash,
 		"repo":    owner + "/" + repo,
@@ -964,7 +964,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 // tryGithubPost posts the data to the Github api endpoint with the url given
 func tryGithubPost(ctx context.Context, url string, oauthToken string, data any) (resp *http.Response, err error) {
 	err = utility.Retry(ctx, func() (bool, error) {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "Attempting GitHub API POST",
 			"ticket":  GithubInvestigation,
 			"url":     url,
@@ -1196,7 +1196,7 @@ func userInTeam(ctx context.Context, teams []string, org, user, owner, repo stri
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "number of teams in IsUserInGithubTeam",
 		"teams":   len(teams),

@@ -233,7 +233,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// If there is no saved token file path,
 		// print the opt-out message as the OAuth flow starts.
 		if s.OAuth.TokenFilePath == "" && printMessages {
-			grip.Error(ctx, optOut)
+			grip.Info(ctx, optOut)
 		}
 		if err := s.SetOAuthToken(ctx); err != nil {
 			return c, errors.Wrap(err, "setting config OAuth token")
@@ -243,7 +243,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// To use OAuth tokens, we need to use the corp URL.
 		c.SetAPIServerHost(s.getApiServerHost(true))
 	} else if reason != "" && printMessages {
-		grip.Error(ctx, reason)
+		grip.Info(ctx, reason)
 	}
 
 	// Check CLI version AFTER authentication is set up
@@ -649,7 +649,7 @@ func (s *ClientSettings) SetDefaultProject(ctx context.Context, cwd, project str
 
 func (s *ClientSettings) SetAutoUpgradeCLI(ctx context.Context) {
 	s.AutoUpgradeCLI = true
-	grip.Error(ctx, "Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
+	grip.Info(ctx, "Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }
 
 func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {

@@ -165,7 +165,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 			continue
 		}
 
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "host ID not found in AWS, will terminate",
 			"operation": "terminateUnknownHosts",
 			"host_id":   h.Id,
@@ -187,7 +187,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, h host.Host,
 	switch cloudStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping, cloud.StatusNonExistent:
 		j.logHostStatusMessage(ctx, &h, cloudStatus)
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "host was terminated externally",
 			"operation": "setCloudHostStatus",
 			"host_id":   h.Id,
@@ -210,7 +210,7 @@ func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, h host.Host,
 		return catcher.Resolve()
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":      "host not ready for setup",
 		"host_id":      h.Id,
 		"distro":       h.Distro.Id,
@@ -283,7 +283,7 @@ func (j *cloudHostReadyJob) logHostStatusMessage(ctx context.Context, h *host.Ho
 			"job":          j.ID(),
 		})
 	case cloud.StatusRunning:
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":      "host's instance was successfully found up and running",
 			"host_id":      h.Id,
 			"distro":       h.Distro.Id,

@@ -162,7 +162,7 @@ func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) {
 		j.AddRetryableError(err)
 		return
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":         "stopping initial host",
 		"job_id":          j.ID(),
 		"initial_host_id": j.InitialHostID,
@@ -190,7 +190,7 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		return
 	}
 	event.LogHostCreated(ctx, intentHost.Id)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":        "new intent host created",
 		"job_id":         j.ID(),
 		"intent_host_id": intentHost.Id,

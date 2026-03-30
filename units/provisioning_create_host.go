@@ -154,7 +154,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 		removeHostIntent := false
 		if distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"host_id":            j.HostID,
 				"attempt":            j.RetryInfo().CurrentAttempt,
 				"distro":             j.host.Distro.Id,
@@ -177,7 +177,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		if allActiveDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"host_id":                 j.HostID,
 				"attempt":                 j.RetryInfo().CurrentAttempt,
 				"distro":                  j.host.Distro.Id,
@@ -288,7 +288,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if err = ctx.Err(); err != nil {
 		return errors.Wrap(err, "creating host")
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "attempting to start host",
 		"host_id":            j.host.Id,
 		"single_task_distro": j.host.Distro.SingleTaskDistro,
@@ -329,7 +329,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// SpawnHost returns, but NOT as initializing hosts that could still be
 	// spawned by Evergreen.
 	if err = j.host.SetStatusAtomically(ctx, evergreen.HostBuilding, evergreen.User, ""); err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message": "host could not be transitioned from initializing to building, so it may already be building",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -373,7 +373,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		event.LogHostStartSucceeded(ctx, j.host.Id, evergreen.User)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully started host",
 		"host_id":            j.host.Id,
 		"host_tag":           j.host.Tag,
@@ -408,7 +408,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "image already exists, will start container",
 			"host_id":  j.host.Id,
 			"image":    j.host.DockerOptions.Image,
@@ -420,7 +420,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 
 	//  If the image is not already present on the parent, run job to build the new image
 	if !j.BuildImageStarted {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "image not on host, will import image",
 			"host_id":  j.host.Id,
 			"image":    j.host.DockerOptions.Image,

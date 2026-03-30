@@ -120,9 +120,9 @@ func keysList() cli.Command {
 			}
 
 			if len(keys) == 0 {
-				grip.Error(ctx, "No keys found")
+				grip.Info(ctx, "No keys found")
 			} else {
-				grip.Error(ctx, "Public keys stored in Evergreen:")
+				grip.Info(ctx, "Public keys stored in Evergreen:")
 				for _, key := range keys {
 					grip.Infof(ctx, "Name: '%s', Key: '%s'\n", utility.FromStringPtr(key.Name), utility.FromStringPtr(key.Key))
 				}

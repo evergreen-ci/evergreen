@@ -101,7 +101,7 @@ func PatchSetModule() cli.Command {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 					}
 				}
-				grip.Error(ctx, "Patch finalized.")
+				grip.Info(ctx, "Patch finalized.")
 			}
 			return nil
 		},
@@ -140,7 +140,7 @@ func addModuleToPatch(ctx context.Context, params *patchParams, args cli.Args, c
 	if !params.SkipConfirm {
 		grip.Infof(ctx, "Using branch '%s' for module '%s'.", module.Branch, module.Name)
 		if diffData.patchSummary != "" {
-			grip.Error(ctx, diffData.patchSummary)
+			grip.Info(ctx, diffData.patchSummary)
 		}
 		if len(diffData.fullPatch) > 0 {
 			if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {

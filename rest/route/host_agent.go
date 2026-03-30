@@ -253,7 +253,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	if nextTask == nil {
 		// we found a task, but it's not part of the task group so we didn't assign it
 		if shouldRunTeardown {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":         "next_task",
 				"message":    "host task group finished, not assigning task and instead requesting host to run teardown group",
 				"host_id":    h.host.Id,
@@ -266,7 +266,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
 			// if the task is empty, still send it with a status ok and check it on the other side
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":      "next_task",
 				"message": "no task to assign to host",
 				"host_id": h.host.Id,
@@ -889,7 +889,7 @@ func checkHostHealth(ctx context.Context, h *host.Host) bool {
 		return false
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                 "host is not running, so agent should exit",
 		"status":                  h.Status,
 		"bootstrap_method":        h.Distro.BootstrapSettings.Method,
@@ -964,7 +964,7 @@ func getDetails(h *host.Host, r *http.Request) (*apimodels.GetNextTaskDetails, e
 				return nil, innerErr
 			}
 		}
-		grip.Error(r.Context(), message.WrapError(err, message.Fields{
+		grip.Info(r.Context(), message.WrapError(err, message.Fields{
 			"host_id":       h.Id,
 			"operation":     "next_task",
 			"message":       "unable to unmarshal next task details",
@@ -1048,7 +1048,7 @@ func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResp
 		}
 
 		event.LogHostAgentDeployed(ctx, h.Id)
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":        "updated host agent revision",
 			"operation":      "NextTask",
 			"host_id":        h.Id,
@@ -1105,7 +1105,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 		}
 	}
 
-	grip.Error(ctx, getMessage("attempting to re-send running task back to host after it's already been assigned"))
+	grip.Info(ctx, getMessage("attempting to re-send running task back to host after it's already been assigned"))
 
 	var err error
 	var t *task.Task
@@ -1188,7 +1188,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	grip.Error(ctx, getMessage("unset host's running task because task is inactive"))
+	grip.Info(ctx, getMessage("unset host's running task because task is inactive"))
 
 	return gimlet.NewJSONResponse(response)
 }
@@ -1442,7 +1442,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		msg["display_task_id"] = t.DisplayTaskId
 	}
 
-	grip.Error(ctx, msg)
+	grip.Info(ctx, msg)
 	return gimlet.NewJSONResponse(endTaskResp)
 }
 

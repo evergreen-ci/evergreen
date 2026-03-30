@@ -188,7 +188,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "prepping remote host")
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "prepping host finished successfully",
 		"host_id": j.host.Id,
 		"job":     j.ID(),
@@ -202,10 +202,10 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	}
 
 	// Start agent to listen for tasks
-	grip.Error(ctx, j.getHostMessage())
+	grip.Info(ctx, j.getHostMessage())
 	if logs, err := j.startAgentOnRemote(ctx, settings); err != nil {
 		event.LogHostAgentDeployFailed(ctx, j.host.Id, err)
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message":  "error starting agent on remote",
 			"logs":     logs,
 			"host_id":  j.host.Id,
@@ -216,7 +216,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		}))
 		return errors.Wrap(err, "starting agent on remote")
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "agent successfully started for host",
 		"host_id":  j.host.Id,
 		"host_tag": j.host.Tag,
@@ -252,7 +252,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
 		event.LogHostAgentDeployFailed(ctx, j.host.Id, err)
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message":  "error prepping remote host",
 			"logs":     output,
 			"host_id":  j.host.Id,
@@ -295,7 +295,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(j.host.AgentCommand(settings, ""), " ")
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "starting agent on host",
 		"host_id": j.host.Id,
 		"command": remoteCmd,
@@ -312,7 +312,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	}
 
 	event.LogHostAgentDeployed(ctx, j.host.Id)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":        "started the agent on a remote host",
 		"operation":      j.ID(),
 		"host_id":        j.host.Id,

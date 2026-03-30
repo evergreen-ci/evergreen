@@ -58,7 +58,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return errors.New("repotracker is disabled")
 	}
 	if len(settings.GithubOrgs) > 0 && !utility.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
@@ -85,7 +85,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return err
 	}
 	if len(refs) == 0 {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
@@ -137,7 +137,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		},
 	}))
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"source":  "GitHub hook",
 		"msg_id":  msgID,
 		"event":   "push",

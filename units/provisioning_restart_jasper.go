@@ -167,7 +167,7 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 
 	event.LogHostJasperRestarted(ctx, j.host.Id, j.settings.HostJasper.Version)
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "restarted Jasper service with new credentials",
 		"host_id":  j.host.Id,
 		"distro":   j.host.Distro.Id,

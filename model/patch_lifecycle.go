@@ -732,7 +732,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			return nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":      "skipping empty build for patch version",
 				"variant": vt.Variant,
 				"version": patchVersion.Id,
@@ -860,7 +860,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 				numTasksActivated++
 			}
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":             "version has large number of activated tasks",
 			"op":                  "finalize patch",
 			"num_tasks_activated": numTasksActivated,
@@ -1074,7 +1074,7 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 	if err != nil {
 		return errors.Wrap(err, "fetching initial patch")
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"source":         "github hook",
 		"created_before": createdBefore.String(),
 		"owner":          owner,

@@ -1292,7 +1292,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	}
 	if task.RevisionOrderNumber >= upperBoundTask.RevisionOrderNumber ||
 		task.RevisionOrderNumber <= lowerBoundTask.RevisionOrderNumber {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                 "found midway task is out of bounds",
 			"t1_id":                   t1Id,
 			"t1_order_number":         t1.RevisionOrderNumber,
@@ -1397,7 +1397,7 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 	default:
 		event.LogTaskFinished(ctx, t.Id, t.Execution, evergreen.TaskSystemFailed)
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "marking task system failed",
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
@@ -3443,7 +3443,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	}
 
 	if t.DisplayTaskId == nil {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "missing display task ID",
 			"task_id": t.Id,
 			"dt_id":   dtId,
@@ -4429,14 +4429,14 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		// Verify whether the objects actually exist in the failed bucket before updating the DB.
 		// If they do, update the DB to fix the inconsistency. If not, return the error for retry.
 		if isContextError(moveErr) {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "failed_bucket_move: move timed out or canceled, verifying objects in destination",
 				"task_id":   t.Id,
 				"execution": t.Execution,
 				"key_count": len(allKeys),
 			})
 			if allObjectsExistInBucket(ctx, failedBucket, allKeys) {
-				grip.Error(ctx, message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":   "failed_bucket_move: all objects found in failed bucket, updating DB to fix inconsistency",
 					"task_id":   t.Id,
 					"execution": t.Execution,
@@ -4452,7 +4452,7 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 				}
 				return nil
 			}
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "failed_bucket_move: not all objects in failed bucket, returning error for retry",
 				"task_id":   t.Id,
 				"execution": t.Execution,

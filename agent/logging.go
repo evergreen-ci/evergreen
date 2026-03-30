@@ -55,7 +55,7 @@ func (a *Agent) GetSender(ctx context.Context, output globals.LogOutputType, pre
 	if splunkInfo.Populated() {
 		// Send alerts or higher from the agent to Splunk, since they are
 		// generally critical problems (e.g. panics) in the agent runtime.
-		grip.Error(ctx, "Configuring Splunk sender.")
+		grip.Info(ctx, "Configuring Splunk sender.")
 		alertThreshold := send.LevelInfo{Default: level.Alert, Threshold: level.Alert}
 		sender, err := send.NewSplunkLogger("evergreen.agent", splunkInfo, alertThreshold)
 		if err != nil {

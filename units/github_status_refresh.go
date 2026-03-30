@@ -135,7 +135,7 @@ func (j *githubStatusRefreshJob) sendStatus(ctx context.Context, status *message
 	j.AddError(c.SetPriority(level.Notice))
 
 	j.sender.Send(ctx, c)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"ticket":   thirdparty.GithubInvestigation,
 		"message":  "called github status refresh",
 		"caller":   githubStatusRefreshJobName,

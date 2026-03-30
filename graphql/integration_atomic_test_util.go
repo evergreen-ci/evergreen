@@ -154,10 +154,10 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 						grip.Error(ctx, errors.Wrap(err, "actual value was not json"))
 						return
 					}
-					grip.Error(ctx, "=== expected ===")
-					grip.Error(ctx, string(testCase.Result))
-					grip.Error(ctx, "=== actual ===")
-					grip.Error(ctx, actual.Bytes())
+					grip.Info(ctx, "=== expected ===")
+					grip.Info(ctx, string(testCase.Result))
+					grip.Info(ctx, "=== actual ===")
+					grip.Info(ctx, actual.Bytes())
 				}
 			}
 			name := testCase.QueryFile

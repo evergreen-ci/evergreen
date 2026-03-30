@@ -399,13 +399,13 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		return tc.taskConfig, nil
 	}
 
-	grip.Error(ctx, "Fetching task info.")
+	grip.Info(ctx, "Fetching task info.")
 	taskInfo, err := a.fetchTaskInfo(ctx, tc)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching task info")
 	}
 
-	grip.Error(ctx, "Fetching distro configuration.")
+	grip.Info(ctx, "Fetching distro configuration.")
 	confDistro := &apimodels.DistroView{}
 	confHost := &apimodels.HostView{}
 	if a.opts.Mode == globals.HostMode {
@@ -424,7 +424,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		}
 	}
 
-	grip.Error(ctx, "Fetching project ref.")
+	grip.Info(ctx, "Fetching project ref.")
 	ctx, getProjectRefSpan := a.tracer.Start(ctx, "get-project-ref")
 	confRef, err := a.comm.GetProjectRef(ctx, tc.task)
 	getProjectRefSpan.End()
@@ -437,7 +437,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 
 	var confPatch *patch.Patch
 	if evergreen.IsGitHubPatchRequester(taskInfo.task.Requester) {
-		grip.Error(ctx, "Fetching patch document for GitHub PR request.")
+		grip.Info(ctx, "Fetching patch document for GitHub PR request.")
 		ctx, getTaskPatchSpan := a.tracer.Start(ctx, "get-task-patch")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		getTaskPatchSpan.End()
@@ -448,7 +448,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 
 	var versionDoc *model.Version
 	if confPatch == nil {
-		grip.Error(ctx, "Fetching version document for description.")
+		grip.Info(ctx, "Fetching version document for description.")
 		ctx, getTaskVersionSpan := a.tracer.Start(ctx, "get-task-version")
 		versionDoc, err = a.comm.GetTaskVersion(ctx, tc.task)
 		getTaskVersionSpan.End()
@@ -458,7 +458,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		}
 	}
 
-	grip.Error(ctx, "Constructing task config.")
+	grip.Info(ctx, "Constructing task config.")
 	tcOpts := internal.TaskConfigOptions{
 		WorkDir:           a.opts.WorkingDirectory,
 		Distro:            confDistro,

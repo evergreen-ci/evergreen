@@ -135,12 +135,12 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 			return err
 		}
 
-		grip.Error(ctx, "Setting binary permissions...")
+		grip.Info(ctx, "Setting binary permissions...")
 		err = os.Chmod(binaryDest, 0755)
 		if err != nil {
 			return err
 		}
-		grip.Error(ctx, "Upgrade complete!")
+		grip.Info(ctx, "Upgrade complete!")
 
 		if runtime.GOOS == "windows" {
 			grip.Infoln(ctx, "Deleting old binary", winTempDest)

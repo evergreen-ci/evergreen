@@ -295,7 +295,7 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 	data, err := os.ReadFile(pidFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			grip.Error(context.Background(), "Daemon is not running")
+			grip.Info(context.Background(), "Daemon is not running")
 			return nil
 		}
 		return errors.Wrap(err, "reading PID file")
@@ -313,9 +313,9 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 
 	if err := process.Signal(syscall.SIGTERM); err != nil {
 		// Process might already be dead
-		grip.Error(context.Background(), "Daemon process not found (may have already stopped)")
+		grip.Info(context.Background(), "Daemon process not found (may have already stopped)")
 	} else {
-		grip.Error(context.Background(), "Daemon stopped")
+		grip.Info(context.Background(), "Daemon stopped")
 	}
 	return nil
 }
@@ -333,13 +333,13 @@ type daemonStatusResponse struct {
 func daemonStatusCmd(c *cli.Context) error {
 	url, err := getDaemonURL()
 	if err != nil {
-		grip.Error(context.Background(), "Daemon is not running")
+		grip.Info(context.Background(), "Daemon is not running")
 		return nil
 	}
 
 	resp, err := http.Get(url + "/status")
 	if err != nil {
-		grip.Error(context.Background(), "Daemon is running but not responding to status check")
+		grip.Info(context.Background(), "Daemon is running but not responding to status check")
 		return nil
 	}
 	defer resp.Body.Close()
@@ -349,7 +349,7 @@ func daemonStatusCmd(c *cli.Context) error {
 		return errors.Wrap(err, "decoding daemon status response")
 	}
 
-	grip.Error(context.Background(), "Daemon is running")
+	grip.Info(context.Background(), "Daemon is running")
 
 	if status.TaskSelected {
 		grip.Infof(context.Background(), "Task: %s (step %d/%d)", status.SelectedTask, status.CurrentStep, status.TotalSteps)
@@ -622,7 +622,7 @@ func viewLogsCmd(c *cli.Context) error {
 	}
 
 	if len(lines) == 0 {
-		grip.Error(context.Background(), "No logs found.")
+		grip.Info(context.Background(), "No logs found.")
 		return nil
 	}
 

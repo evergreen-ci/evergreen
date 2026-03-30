@@ -619,7 +619,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage["outcome"] = "sending alert"
 			errMessage[message.FieldsMsgName] = "identified transition to failure!"
-			grip.Error(ctx, errMessage)
+			grip.Info(ctx, errMessage)
 
 			return true, nil
 		}

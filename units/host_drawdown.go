@@ -103,7 +103,7 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		}))
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"id":                       j.ID(),
 		"job_type":                 hostDrawdownJobName,
 		"distro_id":                j.DrawdownInfo.DistroID,

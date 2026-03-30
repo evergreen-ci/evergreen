@@ -126,7 +126,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}))
 		}
 		if !idle {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"job":      j.ID(),
 				"host_id":  j.HostID,
 				"job_type": j.Type().Name,
@@ -335,7 +335,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			terminationMessage["instance_type"] = instanceType
 		}
 	}
-	grip.Error(ctx, terminationMessage)
+	grip.Info(ctx, terminationMessage)
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
@@ -357,7 +357,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if j.host.StartedBy == evergreen.User && j.host.TaskCount == 0 {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":          "task host ran no tasks before it was terminated",
 			"status":           prevStatus,
 			"host_id":          j.HostID,
@@ -443,7 +443,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) err
 	}
 
 	if cloudInfo.Status == cloud.StatusTerminated {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":             "host is already terminated in the cloud, setting the host status to terminated",
 			"cloud_status":        cloudInfo.Status,
 			"cloud_status_reason": cloudInfo.StateReason,

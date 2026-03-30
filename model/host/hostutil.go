@@ -1273,7 +1273,7 @@ func (h *Host) SetUserDataHostProvisioned(ctx context.Context) error {
 		return errors.Wrap(err, "marking host as done provisioning itself and now running")
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":              "host successfully provisioned",
 		"host_id":              h.Id,
 		"distro":               h.Distro.Id,

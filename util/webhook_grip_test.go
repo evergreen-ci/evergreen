@@ -271,7 +271,7 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 		return resp, nil
 	}
 	resp.StatusCode = http.StatusNoContent
-	grip.Error(context.Background(), message.Fields{
+	grip.Info(context.Background(), message.Fields{
 		"message":   fmt.Sprintf("received %s", mid),
 		"signature": string(sig),
 		"body":      string(body),

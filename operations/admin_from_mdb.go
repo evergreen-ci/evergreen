@@ -267,7 +267,7 @@ func processCollection(ctx context.Context, collBuf *bytes.Buffer, client *mongo
 		count++
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"count":      count,
 		"collection": collection,
 		"database":   dbName,

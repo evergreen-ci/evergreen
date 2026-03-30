@@ -127,7 +127,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"operation":     "events-processing",

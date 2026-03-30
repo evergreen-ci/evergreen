@@ -866,7 +866,7 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 
 	for _, id := range ids {
 		event.LogHostCreatedError(ctx, id, "stale building host took too long to start")
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "stale building host took too long to start",
 			"host_id": id,
 			"distro":  distroID,
@@ -1446,7 +1446,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		if err := toInsert.InsertWithEnv(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "inserted host to replace intent host",
 			"host_id":  toInsert.Id,
 			"host_tag": toInsert.Tag,
@@ -1460,7 +1460,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                   "successfully replaced host document",
 		"host_id":                   toInsert.Id,
 		"host_tag":                  toInsert.Tag,
@@ -1738,7 +1738,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 		})
 		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
 		if res != nil && res.ModifiedCount > 0 {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "marked newly-added hosts as permanently exempt",
 				"num_hosts": res.ModifiedCount,
 			})
@@ -1756,7 +1756,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	})
 	catcher.Wrap(err, "marking newly-removed hosts as no longer permanently exempt")
 	if res != nil && res.ModifiedCount > 0 {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "marked newly-removed hosts as no longer permanently exempt",
 			"num_hosts": res.ModifiedCount,
 		})

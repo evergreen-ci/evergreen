@@ -103,7 +103,7 @@ func RunHostTaskPatchTest(ctx context.Context, t *testing.T, params SmokeTestPar
 
 	// Now that the task generator has run, check the builds again for the
 	// generated tasks.
-	grip.Error(ctx, "Successfully checked non-generated tasks, checking generated tasks")
+	grip.Info(ctx, "Successfully checked non-generated tasks, checking generated tasks")
 
 	originalTasks := builds[0].Tasks
 	builds, err = getAndCheckBuilds(ctx, params, patchID, client)
@@ -127,7 +127,7 @@ func RunHostTaskPatchTest(ctx context.Context, t *testing.T, params SmokeTestPar
 // eventually. It does *not* guarantee that it has already run, nor that it has
 // actually managed to pick up the latest commits from GitHub.
 func triggerRepotracker(ctx context.Context, t *testing.T, params SmokeTestParams, client *http.Client) {
-	grip.Error(ctx, "Attempting to trigger repotracker to run.")
+	grip.Info(ctx, "Attempting to trigger repotracker to run.")
 
 	const repotrackerAttempts = 5
 	for i := 0; i < repotrackerAttempts; i++ {
@@ -139,7 +139,7 @@ func triggerRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 			continue
 		}
 
-		grip.Error(ctx, "Successfully triggered repotracker to run.")
+		grip.Info(ctx, "Successfully triggered repotracker to run.")
 
 		return
 	}
@@ -151,7 +151,7 @@ func triggerRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 // create versions for them. The particular versions that it creates for these
 // commits is not that important, only that they exist.
 func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParams, client *http.Client) {
-	grip.Error(ctx, "Waiting for repotracker to pick up new commits.")
+	grip.Info(ctx, "Waiting for repotracker to pick up new commits.")
 
 	const repotrackerAttempts = 10
 	for i := 0; i < repotrackerAttempts; i++ {
@@ -199,7 +199,7 @@ func waitForRepotracker(ctx context.Context, t *testing.T, params SmokeTestParam
 // Note that this requires using the CLI because there's currently no way to
 // create a patch from the REST API.
 func submitSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestParams) {
-	grip.Error(ctx, "Submitting patch to smoke test app server.")
+	grip.Info(ctx, "Submitting patch to smoke test app server.")
 
 	cmd, err := internal.SmokeRunBinary(ctx, "smoke-patch-submission", params.EVGHome, params.CLIPath, "-c", params.CLIConfigPath, "patch", "-p", params.ProjectID, "-v", params.BVName, "-t", "all", "-f", "-y", "-d", "Smoke test patch")
 	require.NoError(t, err, "should have submitted patch")
@@ -207,7 +207,7 @@ func submitSmokeTestPatch(ctx context.Context, t *testing.T, params SmokeTestPar
 	require.NoError(t, err, "expected to finish successful CLI patch")
 	require.Zero(t, exitCode, "CLI patch must return successful exit code")
 
-	grip.Error(ctx, "Successfully submitted patch to smoke test app server.")
+	grip.Info(ctx, "Successfully submitted patch to smoke test app server.")
 }
 
 // getSmokeTestPatch gets the user's manual patch that was submitted to the app

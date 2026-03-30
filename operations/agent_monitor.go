@@ -282,7 +282,7 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 	select {
 	case <-ctx.Done():
 	case <-sigChan:
-		grip.Error(ctx, "monitor exiting after receiving signal")
+		grip.Info(ctx, "monitor exiting after receiving signal")
 	}
 }
 
@@ -481,7 +481,7 @@ func (m *monitor) run(ctx context.Context) {
 			}
 
 			if healthCheck.shouldExit {
-				grip.Error(ctx, message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":     "host status indicates it should exit, shutting down",
 					"host_id":     m.hostID,
 					"host_status": healthCheck.status,
@@ -526,7 +526,7 @@ func (m *monitor) run(ctx context.Context) {
 			// guarantee and is not required for the agent to run.
 			grip.Warning(ctx, errors.Wrap(m.allowAgentNice(ctx), "allowing agent to set nice"))
 
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":     "starting agent on host via Jasper",
 				"client_path": m.clientPath,
 				"distro":      m.distroID,

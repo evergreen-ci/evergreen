@@ -57,7 +57,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for github author '%s'", data.GithubAuthor)
 		}
 		if specifiedUser != nil {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":               "overriding patch author as specified by the submitter",
 				"submitter":             dbUser.Id,
 				"new_author":            specifiedUser.Id,
@@ -77,7 +77,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for author '%s'", data.PatchAuthor)
 		}
 		if specifiedUser != nil {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":    "overriding patch author as specified by the submitter",
 				"submitter":  dbUser.Id,
 				"new_author": data.PatchAuthor,
@@ -216,7 +216,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grip.Error(r.Context(), message.Fields{
+	grip.Info(r.Context(), message.Fields{
 		"operation":  "patch creation",
 		"message":    "creating patch",
 		"from":       "CLI",
@@ -423,7 +423,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"operation":     "patch creation",
 			"message":       "finalized patch",
 			"from":          "CLI",

@@ -330,7 +330,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		rolesToRemove = append(rolesToRemove, r.ID)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"removed_roles": rolesToRemove,
 		"user":          u.Id,
 		"resource_type": h.resourceType,
@@ -689,7 +689,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "modify roles route executed",
 		"roles_added":   h.rolesToAdd,
 		"roles_removed": h.rolesToRemove,
@@ -1084,7 +1084,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if !ch.dryRun {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":            "executing user offboarding",
 			"user":               ch.user,
 			"terminated_hosts":   toTerminate.TerminatedHosts,

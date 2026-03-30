@@ -19,7 +19,7 @@ func TestSmokeHostTask(t *testing.T) {
 	defer cancel()
 
 	params := GetSmokeTestParamsFromEnv(t)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "got smoke test parameters",
 		"params":  fmt.Sprintf("%#v", params),
 	})

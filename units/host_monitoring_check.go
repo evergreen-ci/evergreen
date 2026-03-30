@@ -132,7 +132,7 @@ func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx cont
 		return nil
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                            "quarantining unresponsive static host",
 		"host_id":                            j.host.Id,
 		"distro_id":                          j.host.Distro.Id,
@@ -167,7 +167,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 	case cloud.StatusRunning:
 		userDataProvisioning := h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && h.Status == evergreen.HostStarting
 		if h.Status != evergreen.HostRunning && !userDataProvisioning {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op_id":   id,
 				"message": "found running host with incorrect status",
 				"status":  h.Status,
@@ -201,7 +201,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		}
 
 		event.LogHostTerminatedExternally(ctx, h.Id, h.Status)
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":      "host terminated externally",
 			"operation":    "handleExternallyTerminatedHost",
 			"host_id":      h.Id,
@@ -250,7 +250,7 @@ func handleTerminatedHostSpawnedByTask(ctx context.Context, h *host.Host) error 
 
 	intent, err := insertNewHostForTask(ctx, h)
 	if err != nil || intent == nil {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":        "host was externally terminated",
 			"action":         "adding host create details",
 			"host_id":        h.Id,
@@ -264,7 +264,7 @@ func handleTerminatedHostSpawnedByTask(ctx context.Context, h *host.Host) error 
 		return catcher.Resolve()
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":              "inserted a host intent to replace a terminated host for a task",
 		"original_host_id":     h.Id,
 		"original_host_status": h.Status,

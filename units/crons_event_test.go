@@ -380,7 +380,7 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	m.body = body
 
 	w.WriteHeader(http.StatusNoContent)
-	grip.Error(req.Context(), message.Fields{
+	grip.Info(req.Context(), message.Fields{
 		"message":   fmt.Sprintf("received %s", mid),
 		"signature": string(sig),
 		"body":      string(body),

@@ -158,7 +158,7 @@ func retrySSMClientOp[Input any, Output any](ctx context.Context, client *ssm.Cl
 			grip.Debug(ctx, message.WrapError(err, msg))
 			return true, err
 		}
-		grip.Error(ctx, msg)
+		grip.Info(ctx, msg)
 		return false, nil
 	}, ssmDefaultRetryOptions())
 	if err != nil {

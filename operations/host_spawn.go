@@ -530,7 +530,7 @@ func hostConfigure() cli.Command {
 				return errors.Wrapf(err, "getting project setup commands")
 			}
 
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":          "setup project",
 				"directory":          directory,
 				"commands":           len(cmds),
@@ -714,7 +714,7 @@ Examples:
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			grip.Error(ctx, "Note: User must be on the VPN to gain access to the host.")
+			grip.Info(ctx, "Note: User must be on the VPN to gain access to the host.")
 			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)
@@ -1388,7 +1388,7 @@ func hostRunCommand() cli.Command {
 					return errors.Wrapf(err, "getting matching hosts")
 				}
 				if len(hosts) == 0 {
-					grip.Error(ctx, "no matching hosts")
+					grip.Info(ctx, "no matching hosts")
 					return nil
 				}
 				for _, host := range hosts {
@@ -1427,7 +1427,7 @@ func hostRunCommand() cli.Command {
 				for _, hostOutput := range hostsOutput {
 					if hostOutput.Complete {
 						grip.Infof(ctx, "'%s' output: ", hostOutput.HostID)
-						grip.Error(ctx, hostOutput.Output)
+						grip.Info(ctx, hostOutput.Output)
 					} else {
 						hostsOutput[runningProcesses] = hostOutput
 						runningProcesses++

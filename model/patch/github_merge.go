@@ -133,7 +133,7 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "creating new merge intent for GitHub merge queue",
 		"DocumentID": msgDeliveryID,
 		"MsgID":      msgDeliveryID,

@@ -191,7 +191,7 @@ func (a *Agent) Close(ctx context.Context) {
 			continue
 		}
 
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "calling closer",
 			"index":   idx,
 			"closer":  closer.name,
@@ -250,7 +250,7 @@ func (a *Agent) loop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Error(ctx, "Agent loop canceled.")
+			grip.Info(ctx, "Agent loop canceled.")
 			return nil
 		case <-timer.C:
 			var previousTaskGroup string
@@ -709,7 +709,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		}
 	}()
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "running task",
 		"task_id": tc.task.ID,
 	})

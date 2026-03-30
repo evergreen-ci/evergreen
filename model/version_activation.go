@@ -30,7 +30,7 @@ func activateMostRecentNonIgnoredCommitForProject(ctx context.Context, projectRe
 		return nil, errors.WithStack(err)
 	}
 	if activateVersion == nil {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "no version to activate for repository",
 			"project":   projectRef.Id,
 			"operation": "project-activation",
@@ -74,7 +74,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 	}
 
 	if len(activateVersions) == 0 {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "no versions to activate for repository",
 			"project":   projectRef.Id,
 			"operation": "project-activation-every-commit",
@@ -139,7 +139,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		if !isElapsedBuild && len(readyTasks) == 0 {
 			continue
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "activating revision",
 			"operation": "project-activation",
 			"variant":   bv.BuildVariant,
@@ -149,7 +149,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 
 		// we only get this far if something in the build is being updated
 		if !bv.Activated {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":       "activating build",
 				"operation":     "project-activation",
 				"variant":       bv.BuildVariant,
@@ -163,7 +163,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		// If it's an elapsed build, update all tasks for the build, minus batch time tasks that aren't ready.
 		// If it's elapsed tasks, update only those tasks.
 		if isElapsedBuild {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":      "activating tasks for build",
 				"operation":    "project-activation",
 				"variant":      bv.BuildVariant,
@@ -179,7 +179,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 			elapsedBuildIds = append(elapsedBuildIds, bv.BuildId)
 			allIgnoreTaskIds = append(allIgnoreTaskIds, ignoreTasks...)
 		} else {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":           "activating batchtime tasks",
 				"operation":         "project-activation",
 				"variant":           bv.BuildVariant,

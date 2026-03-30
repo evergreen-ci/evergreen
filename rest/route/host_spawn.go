@@ -567,7 +567,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager"))
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "attaching volume to spawnhost",
 		"host_id": h.hostID,
 		"volume":  h.attachment,
@@ -648,7 +648,7 @@ func (h *detachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "detaching volume from spawn host",
 		"host_id": h.hostID,
 		"volume":  h.attachment.VolumeID,

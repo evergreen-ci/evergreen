@@ -67,7 +67,7 @@ func LogDistroAdded(ctx context.Context, distroId, userId string, data any) {
 func LogDistroModified(ctx context.Context, distroId, userId string, before, after any) {
 	// Stop if there are no changes
 	if reflect.DeepEqual(before, after) {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "no changes found when logging modified distro",
 			"distro_id": distroId,
 			"source":    "event-log-fail",

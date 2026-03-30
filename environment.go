@@ -1375,7 +1375,7 @@ func (e *envState) Close(ctx context.Context) error {
 		wg.Add(1)
 		go func(idx int, name string, clfn func(context.Context) error) {
 			defer wg.Done()
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":      "calling closer",
 				"index":        idx,
 				"closer":       name,
@@ -1395,7 +1395,7 @@ func (e *envState) Close(ctx context.Context) error {
 			continue
 		}
 
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":      "calling closer",
 			"index":        idx,
 			"closer":       closer.name,

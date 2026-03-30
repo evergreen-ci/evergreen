@@ -524,7 +524,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		s = task.StepbackInfo{
 			LastPassingStepbackTaskId: lastPassing.Id,
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                       "starting bisect stepback",
 			"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
 			"task_id":                       t.Id,
@@ -572,7 +572,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                       "bisect stepback",
 		"last_failing_stepback_task_id": s.LastFailingStepbackTaskId,
 		"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
@@ -621,7 +621,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 			BuildVariant:              generated.BuildVariant,
 			LastPassingStepbackTaskId: lastPassingGenerated.GeneratedBy,
 		}
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                       "starting bisect stepback on generator task",
 			"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
 			"generator_task_id":             generator.Id,
@@ -680,7 +680,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                         "bisect stepback on generator task",
 		"last_failing_stepback_task_id":   s.LastFailingStepbackTaskId,
 		"last_passing_stepback_task_id":   s.LastPassingStepbackTaskId,
@@ -779,7 +779,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		event.LogTaskFinished(ctx, t.Id, t.Execution, status)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "marking task finished",
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
@@ -957,7 +957,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 		msg["dependencies_met_time"] = t.DependenciesMetTime
 	}
 
-	grip.Error(ctx, msg)
+	grip.Info(ctx, msg)
 	return nil
 }
 
@@ -2270,7 +2270,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully fixed stranded host task",
 		"task":               t.Id,
 		"execution":          t.Execution,
@@ -2310,7 +2310,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully fixed stale task",
 		"task":               t.Id,
 		"execution":          t.Execution,
@@ -2460,7 +2460,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 
 	if !originalDisplayTask.IsFinished() && updatedDisplayTask.IsFinished() {
 		event.LogTaskFinished(ctx, originalDisplayTask.Id, originalDisplayTask.Execution, updatedDisplayTask.GetDisplayStatus())
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "display task finished",
 			"task_id":   originalDisplayTask.Id,
 			"status":    originalDisplayTask.Status,

@@ -97,7 +97,7 @@ func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 		}
 		resp.Body.Close()
 
-		grip.Error(t.Context(), "Evergreen is up.")
+		grip.Info(t.Context(), "Evergreen is up.")
 
 		return
 	}
@@ -336,7 +336,7 @@ func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...strin
 
 // StartAppServer starts the smoke test app server.
 func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.Process {
-	grip.Error(ctx, "Starting smoke test app server.")
+	grip.Info(ctx, "Starting smoke test app server.")
 
 	appServerCmd, err := SmokeRunBinary(ctx,
 		"smoke-app-server",
@@ -351,7 +351,7 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.
 	)
 	require.NoError(t, err, "should have started Evergreen smoke test app server")
 
-	grip.Error(ctx, "Successfully started smoke test app server.")
+	grip.Info(ctx, "Successfully started smoke test app server.")
 
 	return appServerCmd
 }
@@ -359,7 +359,7 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.
 // StartAgent starts the smoke test agent with the given execution mode and
 // ID.
 func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode globals.Mode, execModeID, execModeSecret string) jasper.Process {
-	grip.Error(ctx, "Starting smoke test agent.")
+	grip.Info(ctx, "Starting smoke test agent.")
 
 	agentCmd, err := SmokeRunBinary(ctx,
 		"smoke-agent",
@@ -377,7 +377,7 @@ func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode global
 	)
 	require.NoError(t, err, "should have started Evergreen agent")
 
-	grip.Error(ctx, "Successfully started smoke test agent.")
+	grip.Info(ctx, "Successfully started smoke test agent.")
 
 	return agentCmd
 }

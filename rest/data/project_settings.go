@@ -567,7 +567,7 @@ func terminateDebugHostsForProject(ctx context.Context, projectId, userId string
 			"num_errors": catcher.Len(),
 		}))
 	} else {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "enqueued debug host termination jobs after disabling debug spawn hosts setting",
 			"project":   projectId,
 			"num_hosts": len(debugHosts),

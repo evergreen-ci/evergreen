@@ -106,7 +106,7 @@ func (s *TaskReliability) calculateSuccessRate() {
 		low = math.Max(0, (c1-dist)/denominator)
 	}
 	s.SuccessRate = (math.Ceil(low*100) / 100)
-	grip.Error(context.Background(), message.Fields{
+	grip.Info(context.Background(), message.Fields{
 		"message":      "calculated task success rate",
 		"num_success":  s.NumSuccess,
 		"num_failed":   s.NumFailed,

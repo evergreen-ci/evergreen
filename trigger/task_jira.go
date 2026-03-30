@@ -240,7 +240,7 @@ func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
 		Labels:      labels,
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":      "creating Jira ticket for failure",
 		"type":         j.issueType,
 		"jira_project": j.project,

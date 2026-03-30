@@ -466,7 +466,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			return err
 		}
 		if j.IntentType == patch.CliIntentType {
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":     "patch creation",
 				"message":       "finalized patch at time of patch creation",
 				"from":          "CLI",
@@ -1340,7 +1340,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser || githubUser == githubActionsUser {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"job":       j.ID(),
 			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),
 			"source":    "patch intents",
@@ -1615,7 +1615,7 @@ func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context,
 		}
 	}
 	if len(patchDoc.FilesChanged()) == 0 {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":     "patch has no changed files, skip path filtering",
 			"patch_id":    patchDoc.Id.Hex(),
 			"intent_type": j.IntentType,

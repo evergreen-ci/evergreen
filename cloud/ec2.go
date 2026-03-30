@@ -906,7 +906,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	}
 
 	for _, stateChange := range resp.TerminatingInstances {
-		grip.Error(ctx, message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":       "terminated instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
@@ -988,7 +988,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 				"user":    user,
 			}))
 		case StatusStopped:
-			grip.Error(ctx, message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":       "stopped instance",
 				"user":          user,
 				"host_provider": h.Distro.Provider,
@@ -1030,7 +1030,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		return errors.Wrap(err, "checking if spawn host stopped")
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "stopped instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,
@@ -1081,7 +1081,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "checking if spawn host started")
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "started instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,
@@ -1132,7 +1132,7 @@ func (m *ec2Manager) RebootInstance(ctx context.Context, h *host.Host, user stri
 		return errors.Wrap(err, "checking if spawn host rebooted")
 	}
 
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "rebooted instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,

@@ -123,7 +123,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 	// Okta has expired, in which case they should be logged out, so that they
 	// are forced to log in to get a new refresh token.
 	if err != nil && strings.Contains(err.Error(), "invalid_grant") && strings.Contains(err.Error(), "The refresh token is invalid or expired.") {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message": "user's refresh token is invalid, logging them out",
 			"user":    j.UserID,
 			"job":     j.ID(),

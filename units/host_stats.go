@@ -112,7 +112,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 
 	count, err := host.CountVirtualWorkstationsByInstanceType(ctx)
 	j.AddError(err)
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "virtual workstations",
 		"stats":   count,
 	})

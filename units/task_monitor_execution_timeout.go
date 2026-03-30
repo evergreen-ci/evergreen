@@ -117,13 +117,13 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	// If the task has heartbeat since this job was queued, let it run.
 	if j.task.LastHeartbeat.Add(evergreen.HeartbeatTimeoutThreshold).After(time.Now()) {
 		msg["message"] = "refusing to clean up timed-out task because it has a recent heartbeat"
-		grip.Error(ctx, msg)
+		grip.Info(ctx, msg)
 		return
 	}
 	// If the task is already finished, don't try cleaning it up again.
 	if j.task.IsFinished() {
 		msg["message"] = "refusing to clean up timed-out task because it is already finished"
-		grip.Error(ctx, msg)
+		grip.Info(ctx, msg)
 		return
 	}
 
@@ -136,7 +136,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	}
 
 	msg["message"] = "successfully cleaned up timed-out task"
-	grip.Error(ctx, msg)
+	grip.Info(ctx, msg)
 }
 
 // cleanUpTimedOutTask cleans up a single stale task that has exceeded the task
@@ -260,7 +260,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		ts := utility.RoundPartOfHour(15)
 		j.AddError(amboy.EnqueueUniqueJob(ctx, queue, NewTaskExecutionMonitorJob(id, ts.Format(TSFormat))))
 	}
-	grip.Error(ctx, message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation": "task-execution-timeout-populate",
 		"num_tasks": len(tasks),
 		"errors":    j.HasErrors(),
