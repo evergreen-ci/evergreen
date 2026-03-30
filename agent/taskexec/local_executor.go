@@ -146,8 +146,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 
 // LoadProject loads and parses an Evergreen project configuration from a file
 func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
-	logCtx := context.Background()
-	e.logger.Infof(logCtx, "Loading project from: %s", configPath)
+	e.logger.Infof(context.Background(), "Loading project from: %s", configPath)
 
 	absPath, err := filepath.Abs(configPath)
 	if err != nil {
@@ -177,7 +176,7 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 		e.taskConfig.Project = *project
 	}
 
-	e.logger.Infof(logCtx, "Loaded project with %d tasks and %d build variants",
+	e.logger.Infof(context.Background(), "Loaded project with %d tasks and %d build variants",
 		len(project.Tasks), len(project.BuildVariants))
 
 	return project, nil
@@ -586,7 +585,6 @@ func (e *LocalExecutor) handleNoOpCommand(ctx context.Context, cmd command.Comma
 
 // PrepareTask prepares a task for execution by creating command blocks
 func (e *LocalExecutor) PrepareTask(taskName string) error {
-	logCtx := context.Background()
 	if e.project == nil {
 		return errors.New("project not loaded")
 	}
@@ -597,7 +595,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	}
 
 	e.debugState.SelectedTask = taskName
-	e.logger.Infof(logCtx, "Preparing task: %s", taskName)
+	e.logger.Infof(context.Background(), "Preparing task: %s", taskName)
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
@@ -646,7 +644,7 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 			e.commandBlocks[i].endIndex = currentIdx - 1
 		}
 	}
-	e.logger.Infof(logCtx, "Task prepared with %d commands in %d blocks",
+	e.logger.Infof(context.Background(), "Task prepared with %d commands in %d blocks",
 		len(e.debugState.CommandList), len(e.commandBlocks))
 
 	return nil
@@ -654,7 +652,6 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 
 // rebuildCommandList rebuilds the flattened command list from command blocks
 func (e *LocalExecutor) rebuildCommandList() error {
-	logCtx := context.Background()
 	e.debugState.CommandList = []CommandInfo{}
 	globalIndex := 0
 
@@ -670,7 +667,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 
 			renderedCmds, err := command.Render(cmd, e.project, blockInfo)
 			if err != nil {
-				e.logger.Warningf(logCtx, "Failed to render command '%s': %v", cmd.Command, err)
+				e.logger.Warningf(context.Background(), "Failed to render command '%s': %v", cmd.Command, err)
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
@@ -715,7 +712,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 		}
 	}
 
-	e.logger.Infof(logCtx, "Rebuilt command list with %d total commands", len(e.debugState.CommandList))
+	e.logger.Infof(context.Background(), "Rebuilt command list with %d total commands", len(e.debugState.CommandList))
 	return nil
 }
 
