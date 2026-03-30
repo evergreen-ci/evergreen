@@ -89,8 +89,7 @@ type statusResponse struct {
 // statusHandler is a function that produces the status handler.
 func (a *Agent) statusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		reqCtx := r.Context()
-		grip.Debug(reqCtx, "Preparing status response.")
+		grip.Debug(r.Context(), "Preparing status response.")
 		resp := buildResponse(a.opts)
 
 		// in the future we may want to use the same render
@@ -98,14 +97,14 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 		// manually is probably good enough for now.
 		out, err := json.MarshalIndent(resp, " ", " ")
 		if err != nil {
-			grip.Error(reqCtx, errors.Wrap(err, "marshalling JSON for status handler response"))
+			grip.Error(r.Context(), errors.Wrap(err, "marshalling JSON for status handler response"))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, err = w.Write(out)
-		grip.Error(reqCtx, errors.Wrap(err, "writing status handler response"))
+		grip.Error(r.Context(), errors.Wrap(err, "writing status handler response"))
 	}
 }
 
