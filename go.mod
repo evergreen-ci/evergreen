@@ -19,7 +19,7 @@ require (
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
 	github.com/evergreen-ci/gimlet v0.0.0-20260326192822-ba1f9242291b
 	github.com/evergreen-ci/pail v0.0.0-20260326185823-a670fac5e872
-	github.com/evergreen-ci/poplar v0.0.0-20260311151515-d99a1837f349
+	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
 	github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2
 	github.com/gonzojive/httpcache v0.0.0-20220509000156-e80a5e6a69fe
