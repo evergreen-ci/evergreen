@@ -468,7 +468,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		grip.Alert(ctx, errors.New("setup.initial command is not registered"))
 	}
 	if factory != nil {
-		tc.setCurrentCommand(factory())
+		tc.setCurrentCommand(ctx, factory())
 	}
 
 	a.comm.UpdateLastMessageTime()
@@ -539,7 +539,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 
 	// We are only calling this again to get the log for the current command after logging has been set up.
 	if factory != nil {
-		tc.setCurrentCommand(factory())
+		tc.setCurrentCommand(ctx, factory())
 	}
 
 	tc.logger.Task().Infof(ctx, "Task logger initialized (agent version '%s' from Evergreen build revision '%s').", evergreen.AgentVersion, evergreen.BuildRevision)

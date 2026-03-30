@@ -1,6 +1,7 @@
 package redactor
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -45,7 +46,7 @@ type RedactionOptions struct {
 	PreloadRedactions bool
 }
 
-func (r *redactingSender) Send(m message.Composer) {
+func (r *redactingSender) Send(ctx context.Context, m message.Composer) {
 	if !m.Loggable() {
 		return
 	}

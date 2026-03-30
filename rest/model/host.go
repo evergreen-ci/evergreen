@@ -115,8 +115,8 @@ type TaskInfo struct {
 
 // BuildFromService converts from service level structs to an APIHost. If a task is given,
 // we set that to the APIHost's running task.
-func (apiHost *APIHost) BuildFromService(h *host.Host, t *task.Task) {
-	apiHost.buildFromHostStruct(h)
+func (apiHost *APIHost) BuildFromService(ctx context.Context, h *host.Host, t *task.Task) {
+	apiHost.buildFromHostStruct(ctx, h)
 	if t != nil {
 		apiHost.RunningTask = TaskInfo{
 			Id:           utility.ToStringPtr(t.Id),
@@ -129,8 +129,7 @@ func (apiHost *APIHost) BuildFromService(h *host.Host, t *task.Task) {
 	}
 }
 
-func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
-	ctx := context.TODO()
+func (apiHost *APIHost) buildFromHostStruct(ctx context.Context, h *host.Host) {
 	if h == nil {
 		return
 	}

@@ -331,6 +331,8 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 
 		url := req.URL.String()
 
+		ctx := req.Context()
+
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 				grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -413,7 +415,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
 func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
-	grip.Info(message.Fields{
+	grip.Info(context.Background(), message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,

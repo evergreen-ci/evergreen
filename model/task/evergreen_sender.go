@@ -128,7 +128,7 @@ func newEvergreenSender(ctx context.Context, name string, opts EvergreenSenderOp
 // buffers the messages until the maximum allowed buffer size is reached, at
 // which point the messages in the buffer are written to persistent storage by
 // the backing log service. Send is thread safe.
-func (s *evergreenSender) Send(m message.Composer) {
+func (s *evergreenSender) Send(ctx context.Context, m message.Composer) {
 	ts := time.Now().UnixNano()
 
 	if !s.Level().ShouldLog(m) {
@@ -172,7 +172,7 @@ func (s *evergreenSender) Send(m message.Composer) {
 		s.bufferSize += len(line)
 		if s.bufferSize > s.opts.MaxBufferSize {
 			if err := s.flush(s.ctx); err != nil {
-				s.opts.Local.Send(ctx, message.NewErrorMessage(level.Error, err))
+				s.opts.Local.Send(s.ctx, message.NewErrorMessage(level.Error, err))
 				return
 			}
 		}
@@ -227,9 +227,9 @@ func (s *evergreenSender) timedFlush() {
 		case <-timer.C:
 			s.mu.Lock()
 			if len(s.buffer) > 0 && time.Since(s.lastFlush) >= s.opts.FlushInterval {
-				if err := s.flush(s.ctx); err != nil {
-					s.opts.Local.Send(ctx, message.NewErrorMessage(level.Error, err))
-				}
+			if err := s.flush(s.ctx); err != nil {
+				s.opts.Local.Send(s.ctx, message.NewErrorMessage(level.Error, err))
+			}
 			}
 			_ = timer.Reset(s.opts.FlushInterval)
 			s.mu.Unlock()

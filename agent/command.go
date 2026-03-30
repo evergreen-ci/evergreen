@@ -192,13 +192,13 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
 	}()
 
-	tc.setCurrentCommand(cmd)
+	tc.setCurrentCommand(ctx, cmd)
 	switch options.block {
 	case command.PreBlock, command.SetupGroupBlock, command.SetupTaskBlock, command.MainTaskBlock:
 		// Only set the idle timeout in cases where the idle timeout is actually
 		// respected. In all other blocks, setting the idle timeout should have
 		// no effect.
-		tc.setCurrentIdleTimeout(cmd)
+		tc.setCurrentIdleTimeout(ctx, cmd)
 	}
 	a.comm.UpdateLastMessageTime()
 	defer func() {

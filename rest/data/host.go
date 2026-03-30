@@ -359,7 +359,7 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, params host.Ho
 	}
 
 	var apiHost restmodel.APIHost
-	apiHost.BuildFromService(h, nil)
+	apiHost.BuildFromService(ctx, h, nil)
 	return &apiHost, nil
 }
 

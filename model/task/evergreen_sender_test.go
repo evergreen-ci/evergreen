@@ -393,7 +393,7 @@ type mockSender struct {
 	lastMessage string
 }
 
-func (ms *mockSender) Send(m message.Composer) {
+func (ms *mockSender) Send(_ context.Context, m message.Composer) {
 	if ms.Level().ShouldLog(m) {
 		ms.lastMessage = m.String()
 	}
