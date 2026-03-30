@@ -183,8 +183,8 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 }
 
 // ReloadProject reloads the project configuration from a file while preserving
-// the current debug session state (step index, custom vars, execution history).
-// If a task is currently selected, it re-prepares the task with the new config.
+// the current debug session state. If a task is currently selected, it
+// re-prepares the task with the new config.
 func (e *LocalExecutor) ReloadProject(ctx context.Context, configPath string) (*model.Project, error) {
 	savedIndex := e.debugState.CurrentStepIndex
 	savedVars := e.debugState.CustomVars
@@ -647,11 +647,6 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 		e.taskConfig.Expansions.Update(bv.Expansions)
 		e.logger.Infof(ctx, "Applied expansions from build variant: %s", variantName)
 	}
-
-	// Set built-in expansions that production sets via model.PopulateExpansions().
-	// task_name is critical for resolving ${task_name} in function vars like
-	// vars: { target: "${task_name}" }.
-	e.taskConfig.Expansions.Put("task_name", taskName)
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
