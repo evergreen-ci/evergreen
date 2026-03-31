@@ -17969,14 +17969,14 @@ func (ec *executionContext) fieldContext_AdminSettings_oktaServiceConfig(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "audience":
+				return ec.fieldContext_OktaServiceConfig_audience(ctx, field)
 			case "clientId":
 				return ec.fieldContext_OktaServiceConfig_clientId(ctx, field)
 			case "clientSecret":
 				return ec.fieldContext_OktaServiceConfig_clientSecret(ctx, field)
 			case "scopes":
 				return ec.fieldContext_OktaServiceConfig_scopes(ctx, field)
-			case "audience":
-				return ec.fieldContext_OktaServiceConfig_audience(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OktaServiceConfig", field.Name)
 		},
@@ -42319,6 +42319,35 @@ func (ec *executionContext) fieldContext_OktaConfig_expireAfterMinutes(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _OktaServiceConfig_audience(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_audience,
+		func(ctx context.Context) (any, error) {
+			return obj.Audience, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_audience(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OktaServiceConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42420,35 +42449,6 @@ func (ec *executionContext) _OktaServiceConfig_scopes(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_OktaServiceConfig_scopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "OktaServiceConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _OktaServiceConfig_audience(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_OktaServiceConfig_audience,
-		func(ctx context.Context) (any, error) {
-			return obj.Audience, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_OktaServiceConfig_audience(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "OktaServiceConfig",
 		Field:      field,
@@ -81744,13 +81744,20 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"clientId", "clientSecret", "scopes", "audience"}
+	fieldsInOrder := [...]string{"audience", "clientId", "clientSecret", "scopes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "audience":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("audience"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Audience = data
 		case "clientId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
 			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
@@ -81806,13 +81813,6 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 				return it, err
 			}
 			it.Scopes = data
-		case "audience":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("audience"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Audience = data
 		}
 	}
 
@@ -95468,17 +95468,17 @@ func (ec *executionContext) _OktaServiceConfig(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("OktaServiceConfig")
+		case "audience":
+			out.Values[i] = ec._OktaServiceConfig_audience(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "clientId":
 			out.Values[i] = ec._OktaServiceConfig_clientId(ctx, field, obj)
 		case "clientSecret":
 			out.Values[i] = ec._OktaServiceConfig_clientSecret(ctx, field, obj)
 		case "scopes":
 			out.Values[i] = ec._OktaServiceConfig_scopes(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "audience":
-			out.Values[i] = ec._OktaServiceConfig_audience(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
