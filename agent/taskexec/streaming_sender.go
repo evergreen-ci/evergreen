@@ -202,7 +202,9 @@ func (p *streamingLoggerProducer) StreamWriter() *streamWriter {
 	return p.sw
 }
 
-func (p *streamingLoggerProducer) Flush(_ context.Context) error { return nil }
+func (p *streamingLoggerProducer) Flush(ctx context.Context) error {
+	return p.sender.Flush(ctx)
+}
 
 func (p *streamingLoggerProducer) Close() error {
 	p.mu.Lock()

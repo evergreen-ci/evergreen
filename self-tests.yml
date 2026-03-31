@@ -14,7 +14,7 @@ post:
     display_name: Upload smoke test's app server logs to S3
     type: system
     params:
-      role_arn: ${assume_role_arn}
+      role_arn: ${assume_role_debug_test}
       local_file: evergreen/app_server.log
       remote_file: evergreen/${task_id}/app_server.log
       bucket: mciuploads
@@ -26,7 +26,7 @@ post:
     display_name: Upload smoke test agent logs to S3
     type: system
     params:
-      role_arn: ${assume_role_arn}
+      role_arn: ${assume_role_debug_test}
       local_files_include_filter: evergreen/smoke*.log
       remote_file: evergreen/${task_id}/
       bucket: mciuploads
@@ -138,7 +138,7 @@ variables:
       - command: s3.put
         type: system
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${assume_role_debug_test}
           local_file: evergreen/bin/generate-lint.json
           remote_file: evergreen/${build_id}-${build_variant}/bin/generate-lint.json
           bucket: mciuploads
@@ -159,7 +159,7 @@ variables:
         vars: { target: "${task_name}" }
       - command: s3.put
         params:
-          role_arn: ${client_assume_role_arn}
+          role_arn: ${client_assume_role_debug_test}
           local_files_include_filter_prefix: evergreen/clients
           local_files_include_filter: "*_*/evergreen*"
           remote_file: evergreen/clients/${version_id}/
@@ -204,7 +204,7 @@ functions:
     command: ec2.assume_role
     type: setup
     params:
-      role_arn: ${assume_role_arn}
+      role_arn: ${assume_role_debug_test}
 
   run-make:
     command: subprocess.exec
@@ -725,7 +725,7 @@ tasks:
             $GOPATH/bin/swag init -g service/service.go
       - command: s3.get
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${assume_role_debug_test}
           local_file: evergreen/docs/swagger.old.sum
           remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
@@ -744,7 +744,7 @@ tasks:
             environment-suffix: ${environment-suffix}
       - command: s3.put
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${assume_role_debug_test}
           local_file: evergreen/docs/swagger.json
           remote_file: evergreen/${task_id}/${execution}/swagger.json
           bucket: mciuploads
@@ -753,7 +753,7 @@ tasks:
           display_name: swagger.json
       - command: s3.put
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${assume_role_debug_test}
           local_file: evergreen/docs/swagger.json
           remote_file: evergreen/latest/swagger${environment-suffix}.json
           bucket: mciuploads
@@ -763,7 +763,7 @@ tasks:
           patchable: false
       - command: s3.put
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${assume_role_debug_test}
           local_file: evergreen/docs/swagger.sum
           remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
@@ -783,7 +783,7 @@ tasks:
             graphql/schema/*.graphql > docs/merged-schema.graphql
       - command: s3.put
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${assume_role_debug_test}
           local_file: evergreen/docs/merged-schema.graphql
           remote_file: evergreen/latest/merged-schema.graphql
           bucket: mciuploads

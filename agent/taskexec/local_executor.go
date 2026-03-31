@@ -474,6 +474,13 @@ func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
 // logger producer to write to.
 func (e *LocalExecutor) ClearStreamWriter() {
 	if e.streamWriter != nil {
+		// Jasper processes register a deferred WriterSender.Close() in
+		// their transition goroutine that flushes any buffered output
+		// (lines shorter than 80 bytes). This defer runs after
+		// proc.Wait() returns, so there is a brief window where the
+		// buffer has not yet been flushed. Sleep to allow the deferred
+		// flush to deliver remaining output before closing the stream.
+		time.Sleep(100 * time.Millisecond)
 		e.streamWriter.Close()
 	}
 	e.streamWriter = nil
@@ -517,12 +524,14 @@ func newStreamingLoggerProducerAdapter(producer *streamingLoggerProducer) *strea
 	}
 }
 
-func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler       { return a.logger }
-func (a *streamingLoggerProducerAdapter) Task() grip.Journaler            { return a.logger }
-func (a *streamingLoggerProducerAdapter) System() grip.Journaler          { return a.logger }
-func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error { return nil }
-func (a *streamingLoggerProducerAdapter) Close() error                    { return a.producer.Close() }
-func (a *streamingLoggerProducerAdapter) Closed() bool                    { return a.producer.Closed() }
+func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler { return a.logger }
+func (a *streamingLoggerProducerAdapter) Task() grip.Journaler      { return a.logger }
+func (a *streamingLoggerProducerAdapter) System() grip.Journaler    { return a.logger }
+func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error {
+	return a.producer.Flush(ctx)
+}
+func (a *streamingLoggerProducerAdapter) Close() error { return a.producer.Close() }
+func (a *streamingLoggerProducerAdapter) Closed() bool { return a.producer.Closed() }
 
 // createBlockDeps creates BlockExecutorDeps for use with RunCommandsInBlock
 func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
