@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv:*)",
+      "Bash(grep -rn 'prevTask\\\\|adjacentTask' /Users/sophstad/go/src/github.com/evergreen-ci/evergreen/graphql/*.go)",
+      "Bash(grep -rn 'TestAtomicGQLQueries\\\\|prevTask' /Users/sophstad/go/src/github.com/evergreen-ci/evergreen/graphql/*_test.go)",
+      "Bash(grep -rn 'prevTask\\\\|AtomicGQL\\\\|adjacentTask' /Users/sophstad/go/src/github.com/evergreen-ci/evergreen/graphql/*_test.go)",
+      "Bash(grep -rn 'TestAtomicGQL\\\\|prevTask' /Users/sophstad/go/src/github.com/evergreen-ci/evergreen/graphql/integration*test*.go)",
+      "Bash(SETTINGS_OVERRIDE=creds.yml RUN_TEST='TestAtomicGQLQueries/task/adjacentTasks' make test-service-graphql 2>&1)",
+      "Bash(find /Users/sophstad/go/src/github.com/evergreen-ci/evergreen -type d -name \"spruce\\\\|parsley\\\\|ui\\\\|frontend\")",
+      "Bash(grep:*)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:www.honeycomb.io)",
+      "Bash('CURSOR_STORAGE=$HOME/Library/Application Support/Cursor/User/workspaceStorage' 'CURSOR_GLOBAL=$HOME/Library/Application Support/Cursor/User/globalStorage' echo 'Workspace dirs:')",
+      "Read(//Users/sophstad/go/src/github.com/evergreen-ci/evergreen/$CURSOR_STORAGE/**)",
+      "Bash(find . -name \"*.go\" -type f -exec grep -l \"dataloadgen\\\\|NewLoader\" {})",
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(make test-graphql-loaders:*)",
+      "Bash(go vet:*)"
+    ]
+  }
+}

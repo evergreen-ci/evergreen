@@ -512,9 +512,10 @@ type ComplexityRoot struct {
 	}
 
 	DistroPermissions struct {
-		Admin func(childComplexity int) int
-		Edit  func(childComplexity int) int
-		View  func(childComplexity int) int
+		Admin    func(childComplexity int) int
+		DistroID func(childComplexity int) int
+		Edit     func(childComplexity int) int
+		View     func(childComplexity int) int
 	}
 
 	DockerConfig struct {
@@ -1400,8 +1401,9 @@ type ComplexityRoot struct {
 	}
 
 	ProjectPermissions struct {
-		Edit func(childComplexity int) int
-		View func(childComplexity int) int
+		Edit              func(childComplexity int) int
+		ProjectIdentifier func(childComplexity int) int
+		View              func(childComplexity int) int
 	}
 
 	ProjectSettings struct {
@@ -1501,8 +1503,9 @@ type ComplexityRoot struct {
 	}
 
 	RepoPermissions struct {
-		Edit func(childComplexity int) int
-		View func(childComplexity int) int
+		Edit   func(childComplexity int) int
+		RepoID func(childComplexity int) int
+		View   func(childComplexity int) int
 	}
 
 	RepoRef struct {
@@ -4481,6 +4484,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DistroPermissions.Admin(childComplexity), true
+	case "DistroPermissions.distroId":
+		if e.complexity.DistroPermissions.DistroID == nil {
+			break
+		}
+
+		return e.complexity.DistroPermissions.DistroID(childComplexity), true
 	case "DistroPermissions.edit":
 		if e.complexity.DistroPermissions.Edit == nil {
 			break
@@ -8348,6 +8357,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectPermissions.Edit(childComplexity), true
+	case "ProjectPermissions.projectIdentifier":
+		if e.complexity.ProjectPermissions.ProjectIdentifier == nil {
+			break
+		}
+
+		return e.complexity.ProjectPermissions.ProjectIdentifier(childComplexity), true
 	case "ProjectPermissions.view":
 		if e.complexity.ProjectPermissions.View == nil {
 			break
@@ -8944,6 +8959,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoPermissions.Edit(childComplexity), true
+	case "RepoPermissions.repoId":
+		if e.complexity.RepoPermissions.RepoID == nil {
+			break
+		}
+
+		return e.complexity.RepoPermissions.RepoID(childComplexity), true
 	case "RepoPermissions.view":
 		if e.complexity.RepoPermissions.View == nil {
 			break
@@ -25884,6 +25905,35 @@ func (ec *executionContext) _DistroInfo_workDir(ctx context.Context, field graph
 func (ec *executionContext) fieldContext_DistroInfo_workDir(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DistroInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroPermissions_distroId(ctx context.Context, field graphql.CollectedField, obj *DistroPermissions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DistroPermissions_distroId,
+		func(ctx context.Context) (any, error) {
+			return obj.DistroID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DistroPermissions_distroId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroPermissions",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -45287,6 +45337,8 @@ func (ec *executionContext) fieldContext_Permissions_distroPermissions(ctx conte
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "distroId":
+				return ec.fieldContext_DistroPermissions_distroId(ctx, field)
 			case "admin":
 				return ec.fieldContext_DistroPermissions_admin(ctx, field)
 			case "edit":
@@ -45336,6 +45388,8 @@ func (ec *executionContext) fieldContext_Permissions_projectPermissions(ctx cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "projectIdentifier":
+				return ec.fieldContext_ProjectPermissions_projectIdentifier(ctx, field)
 			case "edit":
 				return ec.fieldContext_ProjectPermissions_edit(ctx, field)
 			case "view":
@@ -45383,6 +45437,8 @@ func (ec *executionContext) fieldContext_Permissions_repoPermissions(ctx context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "repoId":
+				return ec.fieldContext_RepoPermissions_repoId(ctx, field)
 			case "edit":
 				return ec.fieldContext_RepoPermissions_edit(ctx, field)
 			case "view":
@@ -48606,6 +48662,35 @@ func (ec *executionContext) fieldContext_ProjectEvents_eventLogEntries(_ context
 				return ec.fieldContext_ProjectEventLogEntry_user(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectEventLogEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectPermissions_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *ProjectPermissions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectPermissions_projectIdentifier,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectIdentifier, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectPermissions_projectIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -52694,6 +52779,35 @@ func (ec *executionContext) _RepoCommitQueueParams_message(ctx context.Context, 
 func (ec *executionContext) fieldContext_RepoCommitQueueParams_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RepoCommitQueueParams",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoPermissions_repoId(ctx context.Context, field graphql.CollectedField, obj *RepoPermissions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoPermissions_repoId,
+		func(ctx context.Context) (any, error) {
+			return obj.RepoID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoPermissions_repoId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoPermissions",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -90315,6 +90429,11 @@ func (ec *executionContext) _DistroPermissions(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("DistroPermissions")
+		case "distroId":
+			out.Values[i] = ec._DistroPermissions_distroId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "admin":
 			out.Values[i] = ec._DistroPermissions_admin(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -97749,6 +97868,11 @@ func (ec *executionContext) _ProjectPermissions(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectPermissions")
+		case "projectIdentifier":
+			out.Values[i] = ec._ProjectPermissions_projectIdentifier(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "edit":
 			out.Values[i] = ec._ProjectPermissions_edit(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -99407,6 +99531,11 @@ func (ec *executionContext) _RepoPermissions(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RepoPermissions")
+		case "repoId":
+			out.Values[i] = ec._RepoPermissions_repoId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "edit":
 			out.Values[i] = ec._RepoPermissions_edit(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
