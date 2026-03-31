@@ -15,8 +15,8 @@ const loadersKey = ctxKey("dataloaders")
 
 // Loaders contains all dataloader instances for batching GraphQL queries.
 type Loaders struct {
-	UserLoader       *dataloadgen.Loader[string, *restModel.APIDBUser]
 	APIVersionLoader *dataloadgen.Loader[string, *restModel.APIVersion]
+	UserLoader       *dataloadgen.Loader[string, *restModel.APIDBUser]
 }
 
 // New instantiates data loaders for the middleware.

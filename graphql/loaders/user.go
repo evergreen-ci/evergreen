@@ -36,7 +36,7 @@ func (u *userReader) getUsers(ctx context.Context, userIDs []string) (map[string
 }
 
 // GetUser returns a single user by ID efficiently using the dataloader.
-// Returns nil if the user is not found (e.g., reaped users).
+// Returns nil if the user is not found (e.g. service users).
 func GetUser(ctx context.Context, userID string) (*restModel.APIDBUser, error) {
 	l := For(ctx)
 	result, err := l.UserLoader.Load(ctx, userID)

@@ -2,9 +2,6 @@ package loaders
 
 import "errors"
 
-// batchError wraps an error that has already been logged by a dataloader
-// fetch function. This prevents the GraphQL error presenter from logging
-// the same error once per key in the batch.
 type batchError struct {
 	err error
 }
