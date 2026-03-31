@@ -42329,9 +42329,9 @@ func (ec *executionContext) _OktaServiceConfig_audience(ctx context.Context, fie
 			return obj.Audience, nil
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -42442,9 +42442,9 @@ func (ec *executionContext) _OktaServiceConfig_scopes(ctx context.Context, field
 			return obj.Scopes, nil
 		},
 		nil,
-		ec.marshalNString2ᚕstringᚄ,
+		ec.marshalOString2ᚕstringᚄ,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -81753,7 +81753,7 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 		switch k {
 		case "audience":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("audience"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -81808,7 +81808,7 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 			}
 		case "scopes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
-			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -95470,18 +95470,12 @@ func (ec *executionContext) _OktaServiceConfig(ctx context.Context, sel ast.Sele
 			out.Values[i] = graphql.MarshalString("OktaServiceConfig")
 		case "audience":
 			out.Values[i] = ec._OktaServiceConfig_audience(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "clientId":
 			out.Values[i] = ec._OktaServiceConfig_clientId(ctx, field, obj)
 		case "clientSecret":
 			out.Values[i] = ec._OktaServiceConfig_clientSecret(ctx, field, obj)
 		case "scopes":
 			out.Values[i] = ec._OktaServiceConfig_scopes(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
