@@ -96,7 +96,6 @@ func Debug() cli.Command {
 								Value: 9090,
 							},
 						},
-						Before: checkDebugSpawnHostEnabled,
 						Action: startDebugDaemonCmd,
 					},
 					{
@@ -179,25 +178,10 @@ func Debug() cli.Command {
 	}
 }
 
-// checkDebugSpawnHostEnabled validates that the current environment is authorized
+// validateDebugSpawnHost validates that the current environment is authorized
 // to run debug spawn host commands. It checks service flags and that the host
 // was spawned by a task.
-func checkDebugSpawnHostEnabled(c *cli.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	// Walk up to the root context to find the config flag.
-	rootCtx := c
-	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
-		rootCtx = parentCtx
-	}
-
-	confPath := rootCtx.String(ConfFlagName)
-	conf, err := NewClientSettings(confPath)
-	if err != nil {
-		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
-	}
-
+func validateDebugSpawnHost(ctx context.Context, conf *ClientSettings) error {
 	if conf.SpawnHostID == "" {
 		return errors.New("could not find spawn host ID in configuration; this command must be run from a spawn host")
 	}
@@ -281,10 +265,6 @@ func runDaemonServer(c *cli.Context, port int) error {
 		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
 	}
 
-	if err := conf.SetOAuthToken(context.Background()); err != nil {
-		return errors.Wrap(err, "obtaining OAuth token")
-	}
-
 	grip.Infof("Starting daemon on port %d...", port)
 
 	daemon := newLocalDaemonREST(port, conf)
@@ -336,7 +316,7 @@ func forkDaemon(c *cli.Context, port int) error {
 	process, err := os.StartProcess(execPath, args, &os.ProcAttr{
 		Env:   append(os.Environ(), daemonEnvVar+"=1"),
 		Files: []*os.File{devNull, logFile, logFile},
-		Sys:   &syscall.SysProcAttr{Setsid: true},
+		Sys:   daemonSysProcAttr(),
 	})
 	devNull.Close()
 	logFile.Close()
@@ -466,15 +446,38 @@ func daemonStatusCmd(c *cli.Context) error {
 	return nil
 }
 
-// loadConfigCmd loads a configuration file
+// loadConfigCmd loads a configuration file. It handles OAuth authentication
+// and spawn host validation before sending the config to the daemon.
 func loadConfigCmd(c *cli.Context) error {
 	if c.NArg() < 1 {
 		return errors.New("config file path required")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	configPath, err := filepath.Abs(c.Args().Get(0))
 	if err != nil {
 		return errors.Wrap(err, "resolving config file path")
+	}
+
+	rootCtx := c
+	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+		rootCtx = parentCtx
+	}
+
+	confPath := rootCtx.String(ConfFlagName)
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
+	}
+
+	if err := validateDebugSpawnHost(ctx, conf); err != nil {
+		return err
+	}
+
+	if err := conf.SetOAuthToken(ctx); err != nil {
+		return errors.Wrap(err, "obtaining OAuth token")
 	}
 
 	url, err := getDaemonURL()
@@ -482,7 +485,10 @@ func loadConfigCmd(c *cli.Context) error {
 		return errors.Wrap(err, "connecting to daemon")
 	}
 
-	reqBody := map[string]string{"config_path": configPath}
+	reqBody := map[string]string{
+		"config_path": configPath,
+		"oauth_token": conf.OAuth.AccessToken,
+	}
 	resp, err := postJSON(url+"/config/load", reqBody)
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
