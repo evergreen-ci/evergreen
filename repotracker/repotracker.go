@@ -769,6 +769,10 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 }
 
 func resolveUserFromMetadata(ctx context.Context, versionId string, metadata model.VersionMetadata) *user.DBUser {
+	if metadata.User != nil {
+		return nil
+	}
+
 	var usr *user.DBUser
 	var err error
 	catcher := grip.NewBasicCatcher()
@@ -782,32 +786,51 @@ func resolveUserFromMetadata(ctx context.Context, versionId string, metadata mod
 		usr, err = user.FindByGithubUID(ctx, metadata.Revision.AuthorGithubUID)
 		catcher.Add(err)
 	}
-	derivedID := deriveUserID(metadata.Revision.Author)
+	derivedIDFromEmail := deriveUserIDFromEmail(metadata.Revision.AuthorEmail)
+	if usr == nil && derivedIDFromEmail != "" {
+		usr, err = user.FindOneById(ctx, derivedIDFromEmail)
+		catcher.Add(err)
+	}
+	derivedID := deriveUserIDFromName(metadata.Revision.Author)
 	if usr == nil && derivedID != "" {
 		usr, err = user.FindOneById(ctx, derivedID)
 		catcher.Add(err)
 	}
 	grip.DebugWhen(ctx, usr == nil, message.Fields{
-		"message":             "failed to resolve Evergreen user for version",
-		"version_id":          versionId,
-		"git_tag_pusher":      metadata.GitTag.Pusher,
-		"revision_author_uid": metadata.Revision.AuthorGithubUID,
-		"revision_author":     metadata.Revision.Author,
-		"derived_id":          derivedID,
-		"errors":              catcher.Resolve(),
+		"message":               "failed to resolve Evergreen user for version",
+		"version_id":            versionId,
+		"git_tag_pusher":        metadata.GitTag.Pusher,
+		"revision_author_uid":   metadata.Revision.AuthorGithubUID,
+		"revision_author":       metadata.Revision.Author,
+		"revision_author_email": metadata.Revision.AuthorEmail,
+		"derived_id":            derivedID,
+		"derived_id_from_email": derivedIDFromEmail,
+		"errors":                catcher.Resolve(),
 	})
 	return usr
 }
 
-// deriveUserID converts a display name to a likely Evergreen user ID by
+// deriveUserIDFromName converts a display name to a likely Evergreen user ID by
 // lowercasing and joining the first and last words with a dot
 // ("Hello My World" -> "hello.world", "Hello" -> "").
-func deriveUserID(name string) string {
+func deriveUserIDFromName(name string) string {
 	words := strings.Fields(name)
 	if len(words) < 2 {
 		return ""
 	}
 	return strings.ToLower(words[0] + "." + words[len(words)-1])
+}
+
+// deriveUserIDFromEmail converts an email address to a likely Evergreen user ID
+// by extracting the local part before the @ symbol
+// ("hello.world@example.com" -> "hello.world").
+func deriveUserIDFromEmail(email string) string {
+	lower := strings.ToLower(email)
+	local, _, found := strings.Cut(lower, "@")
+	if !found || local == "" {
+		return ""
+	}
+	return local
 }
 
 func makeVersionId(project, revision string) string {

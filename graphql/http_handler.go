@@ -9,6 +9,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -71,7 +72,7 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 			args = fieldCtx.Args
 		}
 		args = RedactFieldsInMap(args, redactedFields)
-		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) {
+		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) && !loaders.IsBatchError(err) {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",
 				"query":   queryPath,
@@ -83,5 +84,5 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	})
 
 	// Wrap with dataloader middleware to batch database queries
-	return DataloaderMiddleware(srv).ServeHTTP
+	return loaders.Middleware(srv).ServeHTTP
 }
