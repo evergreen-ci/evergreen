@@ -191,6 +191,7 @@ func MockConfig() *evergreen.Settings {
 			ClientSecret: "service_secret",
 			Scopes:       []string{"scope1", "scope2"},
 			Audience:     "audience",
+			Issuer:       "issuer",
 		},
 		AWSInstanceRole: "role",
 		Banner:          "banner",

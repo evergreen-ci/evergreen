@@ -134,6 +134,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.OktaServiceConfig.ClientSecret, settingsFromConnector.OktaServiceConfig.ClientSecret)
 	s.Equal(testSettings.OktaServiceConfig.Scopes, settingsFromConnector.OktaServiceConfig.Scopes)
 	s.Equal(testSettings.OktaServiceConfig.Audience, settingsFromConnector.OktaServiceConfig.Audience)
+	s.Equal(testSettings.OktaServiceConfig.Issuer, settingsFromConnector.OktaServiceConfig.Issuer)
 	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackMonths)
 	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settingsFromConnector.Buckets.RetryFailedLogMoveMaxJobsPerRun)
 	s.EqualValues(testSettings.Buckets.TestResultsBucket, settingsFromConnector.Buckets.TestResultsBucket)

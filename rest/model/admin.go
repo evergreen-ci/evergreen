@@ -697,6 +697,7 @@ type APIOktaServiceConfig struct {
 	ClientSecret *string  `json:"client_secret"`
 	Scopes       []string `json:"scopes"`
 	Audience     *string  `json:"audience"`
+	Issuer       *string  `json:"issuer"`
 }
 
 func (a *APIOktaServiceConfig) BuildFromService(h any) error {
@@ -706,6 +707,7 @@ func (a *APIOktaServiceConfig) BuildFromService(h any) error {
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
 		a.Scopes = v.Scopes
 		a.Audience = utility.ToStringPtr(v.Audience)
+		a.Issuer = utility.ToStringPtr(v.Issuer)
 	default:
 		return errors.Errorf("programmatic error: expected Okta service config but got type %T", h)
 	}
@@ -718,6 +720,7 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 		ClientSecret: utility.FromStringPtr(a.ClientSecret),
 		Scopes:       a.Scopes,
 		Audience:     utility.FromStringPtr(a.Audience),
+		Issuer:       utility.FromStringPtr(a.Issuer),
 	}, nil
 }
 
