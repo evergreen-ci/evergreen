@@ -31,7 +31,7 @@ func init() {
 		path := filepath.Join(evergreen.FindEvergreenHome(), testDir, testSettings)
 		env, err := evergreen.NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
 
-		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+		grip.EmergencyPanic(ctx, message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    path,
 		}))

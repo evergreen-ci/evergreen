@@ -54,7 +54,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	// Create container
 	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
 		err = errors.Wrapf(err, "creating container for host '%s'", h.Id)
-		grip.Info(message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message": "spawn container host failed",
 			"host_id": h.Id,
 		}))
@@ -78,14 +78,14 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		if err := m.client.RemoveContainer(ctx, parentHost, h.Id); err != nil {
 			catcher.Wrap(err, "removing container due to failure to start container")
 		}
-		grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+		grip.Info(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 			"message": "start container host failed",
 			"host_id": h.Id,
 		}))
 		return nil, catcher.Resolve()
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "created and started Docker container",
 		"host_id": h.Id,
 	})
@@ -149,7 +149,7 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 		return errors.Wrap(err, "removing container")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   "terminated Docker container",
 		"container": h.Id,
 	})
@@ -324,7 +324,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	if err != nil {
 		return errors.Wrapf(err, "ensuring that image '%s' is downloaded on host '%s'", options.Image, parent.Id)
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation": "EnsureImageDownloaded",
 		"details":   "total",
 		"host_id":   parent.Id,
@@ -338,7 +338,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	if err != nil {
 		return errors.Wrapf(err, "building image '%s' with agent on host '%s'", options.Image, parent.Id)
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation": "BuildImageWithAgent",
 		"host_id":   parent.Id,
 		"details":   "total",

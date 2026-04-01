@@ -139,7 +139,7 @@ func DetachVolume(ctx context.Context, volumeId string) (int, error) {
 	}
 	if h == nil {
 		if err = host.UnsetVolumeHost(ctx, vol.ID); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": fmt.Sprintf("can't clear host '%s' from volume '%s'", vol.Host, vol.ID),
 				"route":   "graphql/util",
 				"action":  "DetachVolume",

@@ -16,7 +16,7 @@ import (
 )
 
 func TestUnmarshalTraces(t *testing.T) {
-	resourceSpans, err := unmarshalTraces("./testdata/trace_data.json")
+	resourceSpans, err := unmarshalTraces(t.Context(), "./testdata/trace_data.json")
 	assert.NoError(t, err)
 
 	require.Len(t, resourceSpans, 7)

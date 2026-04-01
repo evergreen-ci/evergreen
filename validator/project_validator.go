@@ -181,6 +181,7 @@ var projectSettingsValidators = []projectSettingsValidator{
 	validateIncludeLimits,
 	validateTimeoutLimits,
 	validateReferentialIntegrity,
+	validateGitHubAppCheckRuns,
 }
 
 func (vr ValidationError) Error() string {
@@ -1069,6 +1070,21 @@ func validateReferentialIntegrity(ctx context.Context, settings *evergreen.Setti
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(p, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)...)
 	return validationErrs
+}
+
+func validateGitHubAppCheckRuns(ctx context.Context, settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	errs := ValidationErrors{}
+	if ref.HasGitHubAppAuth(ctx) {
+		return errs
+	}
+	if !p.HasCheckRuns() {
+		return errs
+	}
+	errs = append(errs, ValidationError{
+		Message: "project has check runs but no GitHub app is configured for the project",
+		Level:   Warning,
+	})
+	return errs
 }
 
 func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {

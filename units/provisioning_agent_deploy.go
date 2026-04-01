@@ -76,7 +76,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if flags.AgentStartDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"host_id":  j.HostID,
 			"job":      j.ID(),
@@ -97,7 +97,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 	}
 	if utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"host_id": j.host.Id,
 			"status":  j.host.Status,
 			"message": "host already down, not attempting to deploy agent",
@@ -188,7 +188,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		return errors.Wrap(err, "prepping remote host")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "prepping host finished successfully",
 		"host_id": j.host.Id,
 		"job":     j.ID(),
@@ -202,10 +202,10 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	}
 
 	// Start agent to listen for tasks
-	grip.Info(j.getHostMessage())
+	grip.Info(ctx, j.getHostMessage())
 	if logs, err := j.startAgentOnRemote(ctx, settings); err != nil {
 		event.LogHostAgentDeployFailed(ctx, j.host.Id, err)
-		grip.Info(message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message":  "error starting agent on remote",
 			"logs":     logs,
 			"host_id":  j.host.Id,
@@ -216,7 +216,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		}))
 		return errors.Wrap(err, "starting agent on remote")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "agent successfully started for host",
 		"host_id":  j.host.Id,
 		"host_tag": j.host.Tag,
@@ -252,7 +252,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
 		event.LogHostAgentDeployFailed(ctx, j.host.Id, err)
-		grip.Info(message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message":  "error prepping remote host",
 			"logs":     output,
 			"host_id":  j.host.Id,
@@ -273,7 +273,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 
 	if output, err = j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
 		event.LogHostProvisionFailed(ctx, j.host.Id, output)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "provisioning failed",
 			"operation": "running setup script",
 			"host_id":   j.host.Id,
@@ -295,7 +295,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(j.host.AgentCommand(settings, ""), " ")
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "starting agent on host",
 		"host_id": j.host.Id,
 		"command": remoteCmd,
@@ -312,7 +312,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	}
 
 	event.LogHostAgentDeployed(ctx, j.host.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":        "started the agent on a remote host",
 		"operation":      j.ID(),
 		"host_id":        j.host.Id,

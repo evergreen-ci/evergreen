@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"math"
 	"reflect"
 
@@ -37,7 +38,7 @@ func IsFieldUndefined(v reflect.Value) bool {
 		return true
 	default:
 		// this should never happen
-		grip.Error(message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"message":    "field has no valid type",
 			"value_type": v.Type(),
 			"value_kind": v.Kind(),

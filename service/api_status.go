@@ -20,9 +20,9 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 	}
 
 	if env.ShutdownSequenceStarted() {
-		gimlet.WriteJSONInternalError(w, &out)
+		gimlet.WriteJSONInternalError(r.Context(), w, &out)
 		return
 	}
 
-	gimlet.WriteJSON(w, &out)
+	gimlet.WriteJSON(r.Context(), w, &out)
 }

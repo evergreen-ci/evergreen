@@ -47,7 +47,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 		}
 
 		if flags.SchedulerDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "scheduler is disabled",
 				"impact":  "skipping batch time activation",
 				"mode":    "degraded",
@@ -66,7 +66,7 @@ func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.
 	}
 
 	if flags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "monitor is disabled",
 			"impact":  "not detecting externally terminated hosts",
 			"mode":    "degraded",
@@ -81,7 +81,7 @@ func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.
 		return nil, errors.Wrap(err, "finding hosts")
 	}
 
-	grip.InfoWhen(len(hosts) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(hosts) > 0, message.Fields{
 		"runner":    "monitor",
 		"operation": "host reachability monitor",
 		"num_hosts": len(hosts),
@@ -101,7 +101,7 @@ func sendNotificationJobs(ctx context.Context, _ evergreen.Environment, ts time.
 	}
 
 	if flags.EventProcessingDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "notifications disabled",
 			"impact":  "not sending notifications",
 			"mode":    "degraded",
@@ -123,7 +123,7 @@ func eventNotifierJobs(ctx context.Context, env evergreen.Environment, ts time.T
 	}
 
 	if flags.EventProcessingDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "event processing disabled",
 			"impact":  "not processing events",
 			"mode":    "degraded",
@@ -135,7 +135,7 @@ func eventNotifierJobs(ctx context.Context, env evergreen.Environment, ts time.T
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all unprocessed events")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "unprocessed event count",
 		"pending": len(events),
 		"source":  "events-processing",
@@ -156,7 +156,7 @@ func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 		}
 
 		if flags.MonitorDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "monitor is disabled",
 				"impact":  "not detecting task heartbeat/dispatching timeouts",
 				"mode":    "degraded",
@@ -175,7 +175,7 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 	}
 
 	if flags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "monitor is disabled",
 			"impact":  "not submitting termination jobs for dead/killable hosts",
 			"mode":    "degraded",
@@ -185,7 +185,7 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 
 	catcher := grip.NewBasicCatcher()
 	hosts, err := host.FindHostsToTerminate(ctx)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"operation": "populate host termination jobs",
 		"cron":      HostTerminationJobName,
 		"impact":    "hosts termination interrupted",
@@ -195,7 +195,7 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 	var jobs []amboy.Job
 	for _, h := range hosts {
 		if h.NoExpiration && h.UserHost && h.Status != evergreen.HostProvisionFailed && time.Now().After(h.ExpirationTime) {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "attempting to terminate an expired host marked as non-expiring",
 				"host":    h.Id,
 			})
@@ -208,7 +208,7 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 	}
 
 	hosts, err = host.AllHostsSpawnedByTasksToTerminate(ctx)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"operation": "populate hosts spawned by tasks termination jobs",
 		"cron":      HostTerminationJobName,
 		"impact":    "hosts termination interrupted",
@@ -278,7 +278,7 @@ func hostAllocatorJobs(ctx context.Context, env evergreen.Environment, ts time.T
 	}
 
 	if config.ServiceFlags.HostAllocatorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "host allocation is disabled",
 			"impact":  "new hosts cannot be allocated",
 			"mode":    "degraded",
@@ -307,7 +307,7 @@ func schedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) (
 	}
 
 	if config.ServiceFlags.SchedulerDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "scheduler is disabled",
 			"impact":  "new tasks are not enqueued",
 			"mode":    "degraded",
@@ -338,7 +338,7 @@ func aliasSchedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Ti
 	}
 
 	if config.ServiceFlags.SchedulerDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "scheduler is disabled",
 			"impact":  "new tasks are not enqueued",
 			"mode":    "degraded",
@@ -370,7 +370,7 @@ func idleHostJobs(ctx context.Context, env evergreen.Environment, ts time.Time) 
 	}
 
 	if flags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "monitor is disabled",
 			"impact":  "not submitting detecting idle hosts",
 			"mode":    "degraded",
@@ -388,7 +388,7 @@ func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 			return errors.Wrap(err, "getting service flags")
 		}
 		if flags.CheckBlockedTasksDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "CheckBlockedTasks job is disabled",
 				"impact":  "new tasks are not enqueued",
 				"mode":    "degraded",
@@ -438,7 +438,7 @@ func agentDeployJobs(ctx context.Context, env evergreen.Environment, ts time.Tim
 	}
 
 	if flags.AgentStartDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "agent start disabled",
 			"impact":  "agents are not deployed",
 			"mode":    "degraded",
@@ -454,7 +454,7 @@ func agentDeployJobs(ctx context.Context, env evergreen.Environment, ts time.Tim
 		host.NeedsNewAgentKey: true,
 	}})
 	if err != nil && !adb.ResultsNotFound(err) {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
 			"impact":    "agents cannot start",
@@ -464,7 +464,7 @@ func agentDeployJobs(ctx context.Context, env evergreen.Environment, ts time.Tim
 	}
 
 	hosts, err := host.Find(ctx, host.ShouldDeployAgent())
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"operation": "background task creation",
 		"cron":      agentDeployJobName,
 		"impact":    "agents cannot start",
@@ -493,7 +493,7 @@ func agentMonitorDeployJobs(ctx context.Context, env evergreen.Environment, ts t
 	}
 
 	if flags.AgentStartDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "agent start disabled",
 			"impact":  "agents are not deployed",
 			"mode":    "degraded",
@@ -507,7 +507,7 @@ func agentMonitorDeployJobs(ctx context.Context, env evergreen.Environment, ts t
 	if err = host.UpdateAll(ctx, host.NeedsAgentMonitorDeploy(time.Now()), bson.M{"$set": bson.M{
 		host.NeedsNewAgentMonitorKey: true,
 	}}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentMonitorDeployJobName,
 			"impact":    "agent monitors cannot start",
@@ -518,7 +518,7 @@ func agentMonitorDeployJobs(ctx context.Context, env evergreen.Environment, ts t
 
 	hosts, err := host.Find(ctx, host.ShouldDeployAgentMonitor())
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentMonitorDeployJobName,
 			"impact":    "agent monitors cannot start",
@@ -555,7 +555,7 @@ func hostCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Ti
 	}
 
 	if flags.HostInitDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "host init disabled",
 			"impact":  "new hosts are not created in cloud providers",
 			"mode":    "degraded",
@@ -567,7 +567,7 @@ func hostCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Ti
 	if err != nil {
 		return nil, errors.Wrap(err, "finding uninitialized hosts")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "uninitialized hosts",
 		"number":  len(hosts),
 		"runner":  "hostinit",
@@ -588,7 +588,7 @@ func enqueueHostSetupJobs(ctx context.Context, env evergreen.Environment, queue 
 	}
 
 	if flags.HostInitDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "host init disabled",
 			"impact":  "new hosts are not setup or provisioned",
 			"mode":    "degraded",
@@ -602,7 +602,7 @@ func enqueueHostSetupJobs(ctx context.Context, env evergreen.Environment, queue 
 	}
 
 	hosts, err := host.FindByProvisioning(ctx)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"operation": "background host provisioning",
 		"cron":      setupHostJobName,
 		"impact":    "hosts cannot provision",
@@ -643,7 +643,7 @@ func enqueueHostSetupJobs(ctx context.Context, env evergreen.Environment, queue 
 		jobsSubmitted++
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"provisioning_hosts": len(hosts),
 		"throttle":           hostInitSettings.ProvisioningThrottle,
 		"jobs_submitted":     jobsSubmitted,
@@ -661,7 +661,7 @@ func hostReadyJob(ctx context.Context, _ evergreen.Environment, ts time.Time) ([
 	}
 
 	if flags.HostInitDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "host init disabled",
 			"impact":  "new hosts are not setup or provisioned",
 			"mode":    "degraded",
@@ -682,7 +682,7 @@ func PopulateHostRestartJasperJobs(env evergreen.Environment) amboy.QueueOperati
 		}
 
 		if flags.HostInitDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host init disabled",
 				"impact":  "existing hosts are not provisioned with new Jasper services",
 				"mode":    "degraded",
@@ -692,7 +692,7 @@ func PopulateHostRestartJasperJobs(env evergreen.Environment) amboy.QueueOperati
 
 		hosts, err := host.FindByNeedsToRestartJasper(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"operation": "Jasper service restart",
 				"cron":      restartJasperJobName,
 				"impact":    "existing hosts will not have their Jasper services restarted",
@@ -719,7 +719,7 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 		}
 
 		if flags.HostInitDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host init disabled",
 				"impact":  "existing hosts that need to be converted to a different provisioning type are not being reprovisioned",
 				"mode":    "degraded",
@@ -729,7 +729,7 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 
 		hosts, err := host.FindByShouldConvertProvisioning(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"operation": "reprovisioning hosts",
 				"impact":    "existing hosts will not have their provisioning methods changed",
 			}))
@@ -748,7 +748,7 @@ func PopulateHostProvisioningConversionJobs(env evergreen.Environment) amboy.Que
 func backgroundStatsJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		grip.Alert(message.WrapError(err, message.Fields{
+		grip.Alert(ctx, message.WrapError(err, message.Fields{
 			"message":   "problem fetching service flags",
 			"operation": "background stats",
 		}))
@@ -756,7 +756,7 @@ func backgroundStatsJobs(ctx context.Context, env evergreen.Environment, ts time
 	}
 
 	if flags.BackgroundStatsDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "background stats collection disabled",
 			"impact":  "host, task, latency, amboy, and notification stats disabled",
 			"mode":    "degraded",
@@ -796,7 +796,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 			return errors.Wrap(err, "getting service flags")
 		}
 		if flags.CacheStatsJobDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "cache historical task data job is disabled",
 				"impact":  "pre-computed task stats are not updated",
 				"mode":    "degraded",
@@ -838,7 +838,7 @@ func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 			ts := utility.RoundPartOfHour(0).Format(TSFormat)
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewSpawnhostExpirationCheckJob(ts, &h)), "enqueueing spawn host expiration check job for host '%s'", h.Id)
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "extending spawn host expiration times",
 			"hosts":   hostIds,
 		})
@@ -927,7 +927,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		settings := env.Settings()
 		failedBucketCfg := settings.Buckets.LogBucketFailedTasks
 		if failedBucketCfg.Name == "" {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message": "retry failed log move jobs skipped: log_bucket_failed_tasks is not configured",
 			})
 			return nil
@@ -976,7 +976,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		}
 
 		if len(toRetry) == 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":                 "retry failed log move jobs",
 				"tasks_found":             0,
 				"task_ids_all_candidates": []string{},
@@ -1012,7 +1012,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerWeeklyRetry)), "enqueueing move logs job for task '%s'", t.Id)
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                 "retry failed log move jobs",
 			"tasks_found":             tasksFound,
 			"task_ids_all_candidates": taskIDsAllCandidates,
@@ -1038,7 +1038,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		if flags.BackgroundStatsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "system stats",
 				"impact":  "memory, cpu, runtime stats",
 				"mode":    "degraded",
@@ -1097,7 +1097,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 			return errors.Wrap(err, "getting service flags")
 		}
 		if flags.BackgroundReauthDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "background user reauth is disabled",
 				"impact":  "users will need to manually log in again once their login session expires",
 				"mode":    "degraded",

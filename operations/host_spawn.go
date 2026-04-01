@@ -197,7 +197,7 @@ func hostCreate() cli.Command {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
 
-			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", utility.FromStringPtr(host.Id))
+			grip.Infof(ctx, "Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status, or check `evergreen host list --mine", utility.FromStringPtr(host.Id))
 			return nil
 		},
 	}
@@ -388,7 +388,7 @@ func hostModify() cli.Command {
 				return err
 			}
 
-			grip.Infof("Successfully queued changes to spawn host with ID '%s'.", hostID)
+			grip.Infof(ctx, "Successfully queued changes to spawn host with ID '%s'.", hostID)
 			return nil
 		},
 	}
@@ -508,7 +508,7 @@ func hostConfigure() cli.Command {
 
 				if currentDistro.IsVirtualWorkstation {
 					if directory == cwd {
-						grip.Warning("overriding directory flag for workstation setup")
+						grip.Warning(ctx, "overriding directory flag for workstation setup")
 						directory = ""
 					}
 					var userHome string
@@ -530,7 +530,7 @@ func hostConfigure() cli.Command {
 				return errors.Wrapf(err, "getting project setup commands")
 			}
 
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":          "setup project",
 				"directory":          directory,
 				"commands":           len(cmds),
@@ -547,7 +547,7 @@ func hostConfigure() cli.Command {
 				}
 
 				if err := cmd.Run(ctx); err != nil {
-					grip.Infof("You may need to accept an email invite to receive access to repo '%s/%s'", projectRef.Owner, projectRef.Repo)
+					grip.Infof(ctx, "You may need to accept an email invite to receive access to repo '%s/%s'", projectRef.Owner, projectRef.Repo)
 					return errors.Wrapf(err, "running command %d of %d to provision project '%s'", idx+1, len(cmds), projectRef.Id)
 				}
 			}
@@ -609,7 +609,7 @@ func hostStop() cli.Command {
 			defer client.Close()
 
 			if wait {
-				grip.Infof("Stopping host '%s'. This may take a few minutes...", hostID)
+				grip.Infof(ctx, "Stopping host '%s'. This may take a few minutes...", hostID)
 			}
 
 			err = client.StopSpawnHost(ctx, hostID, subscriptionType, shouldKeepOff, wait)
@@ -618,9 +618,9 @@ func hostStop() cli.Command {
 			}
 
 			if wait {
-				grip.Infof("Stopped host '%s'", hostID)
+				grip.Infof(ctx, "Stopped host '%s'", hostID)
 			} else {
-				grip.Infof("Stopping host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+				grip.Infof(ctx, "Stopping host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
 			}
 			return nil
 		},
@@ -658,7 +658,7 @@ func hostStart() cli.Command {
 			defer client.Close()
 
 			if wait {
-				grip.Infof("Starting host '%s'. This may take a few minutes...", hostID)
+				grip.Infof(ctx, "Starting host '%s'. This may take a few minutes...", hostID)
 			}
 
 			err = client.StartSpawnHost(ctx, hostID, subscriptionType, wait)
@@ -667,9 +667,9 @@ func hostStart() cli.Command {
 			}
 
 			if wait {
-				grip.Infof("Started host '%s'", hostID)
+				grip.Infof(ctx, "Started host '%s'", hostID)
 			} else {
-				grip.Infof("Starting host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
+				grip.Infof(ctx, "Starting host '%s'. Visit the hosts page in Evergreen to check on its status.", hostID)
 			}
 
 			return nil
@@ -711,14 +711,14 @@ Examples:
 		),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
-			grip.Info("Note: User must be on the VPN to gain access to the host.")
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			grip.Info(ctx, "Note: User must be on the VPN to gain access to the host.")
 			confPath := c.Parent().Parent().String(ConfFlagName)
 			hostID := c.String(hostFlagName)
 			key := c.String(identityFlagName)
 			dryRun := c.Bool(dryRunFlagName)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -812,7 +812,7 @@ func hostAttach() cli.Command {
 				return err
 			}
 
-			grip.Infof("Attached volume '%s'.", volumeID)
+			grip.Infof(ctx, "Attached volume '%s'.", volumeID)
 
 			return nil
 		},
@@ -857,7 +857,7 @@ func hostDetach() cli.Command {
 				return err
 			}
 
-			grip.Infof("Detached volume '%s'.", volumeID)
+			grip.Infof(ctx, "Detached volume '%s'.", volumeID)
 
 			return nil
 		},
@@ -968,37 +968,37 @@ func hostListVolume() cli.Command {
 			if err != nil {
 				return err
 			}
-			printVolumes(volumes, conf.User)
+			printVolumes(ctx, volumes, conf.User)
 			return nil
 		},
 	}
 }
 
-func printVolumes(volumes []restModel.APIVolume, userID string) {
+func printVolumes(ctx context.Context, volumes []restModel.APIVolume, userID string) {
 	if len(volumes) == 0 {
-		grip.Infof("no volumes started by user '%s'", userID)
+		grip.Infof(ctx, "no volumes started by user '%s'", userID)
 		return
 	}
 	totalSize := 0
 	for _, v := range volumes {
 		totalSize += v.Size
 	}
-	grip.Infof("%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
+	grip.Infof(ctx, "%d volumes started by %s (total size %d):", len(volumes), userID, totalSize)
 	for _, v := range volumes {
-		grip.Infof("\n%-18s: %s\n", "ID", utility.FromStringPtr(v.ID))
+		grip.Infof(ctx, "\n%-18s: %s\n", "ID", utility.FromStringPtr(v.ID))
 		if utility.FromStringPtr(v.DisplayName) != "" {
-			grip.Infof("%-18s: %s\n", "Name", utility.FromStringPtr(v.DisplayName))
+			grip.Infof(ctx, "%-18s: %s\n", "Name", utility.FromStringPtr(v.DisplayName))
 		}
-		grip.Infof("%-18s: %d\n", "Size", v.Size)
-		grip.Infof("%-18s: %s\n", "Type", utility.FromStringPtr(v.Type))
-		grip.Infof("%-18s: %s\n", "Availability Zone", utility.FromStringPtr(v.AvailabilityZone))
+		grip.Infof(ctx, "%-18s: %d\n", "Size", v.Size)
+		grip.Infof(ctx, "%-18s: %s\n", "Type", utility.FromStringPtr(v.Type))
+		grip.Infof(ctx, "%-18s: %s\n", "Availability Zone", utility.FromStringPtr(v.AvailabilityZone))
 		if utility.FromStringPtr(v.HostID) != "" {
-			grip.Infof("%-18s: %s\n", "Device Name", utility.FromStringPtr(v.DeviceName))
-			grip.Infof("%-18s: %s\n", "Attached to Host", utility.FromStringPtr(v.HostID))
+			grip.Infof(ctx, "%-18s: %s\n", "Device Name", utility.FromStringPtr(v.DeviceName))
+			grip.Infof(ctx, "%-18s: %s\n", "Attached to Host", utility.FromStringPtr(v.HostID))
 		} else {
 			t, err := restModel.FromTimePtr(v.Expiration)
 			if err == nil && !utility.IsZeroTime(t) {
-				grip.Infof("%-18s: %s\n", "Expiration", t.Format(time.RFC3339))
+				grip.Infof(ctx, "%-18s: %s\n", "Expiration", t.Format(time.RFC3339))
 			}
 		}
 	}
@@ -1065,7 +1065,7 @@ func hostCreateVolume() cli.Command {
 				return err
 			}
 
-			grip.Infof("Created volume '%s'.", utility.FromStringPtr(volume.ID))
+			grip.Infof(ctx, "Created volume '%s'.", utility.FromStringPtr(volume.ID))
 
 			return nil
 		},
@@ -1118,7 +1118,7 @@ func hostDeleteVolume() cli.Command {
 				return err
 			}
 
-			grip.Infof("Deleted volume '%s'", volumeID)
+			grip.Infof(ctx, "Deleted volume '%s'", volumeID)
 
 			return nil
 		},
@@ -1178,9 +1178,9 @@ func hostList() cli.Command {
 			}
 
 			if showJSON {
-				printHostsJSON(hosts)
+				printHostsJSON(ctx, hosts)
 			} else {
-				printHosts(hosts)
+				printHosts(ctx, hosts)
 			}
 
 			return nil
@@ -1188,10 +1188,10 @@ func hostList() cli.Command {
 	}
 }
 
-func printHosts(hosts []*restModel.APIHost) {
+func printHosts(ctx context.Context, hosts []*restModel.APIHost) {
 	for _, h := range hosts {
 		hostname := getHostname(h)
-		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
+		grip.Infof(ctx, "ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
 			utility.FromStringPtr(h.Id),
 			utility.FromStringPtr(h.DisplayName),
 			utility.FromStringPtr(h.Distro.Id),
@@ -1202,7 +1202,7 @@ func printHosts(hosts []*restModel.APIHost) {
 	}
 }
 
-func printHostsJSON(hosts []*restModel.APIHost) {
+func printHostsJSON(ctx context.Context, hosts []*restModel.APIHost) {
 	type hostResult struct {
 		Id               string `json:"id"`
 		Name             string `json:"name"`
@@ -1229,7 +1229,7 @@ func printHostsJSON(hosts []*restModel.APIHost) {
 	if err != nil {
 		return
 	}
-	grip.Infof(string(h))
+	grip.Infof(ctx, string(h))
 }
 
 func hostTerminate() cli.Command {
@@ -1273,7 +1273,7 @@ func hostTerminate() cli.Command {
 				return errors.Wrap(err, "terminating spawn host")
 			}
 
-			grip.Infof("Terminated host '%s'", hostID)
+			grip.Infof(ctx, "Terminated host '%s'", hostID)
 
 			return nil
 		},
@@ -1388,7 +1388,7 @@ func hostRunCommand() cli.Command {
 					return errors.Wrapf(err, "getting matching hosts")
 				}
 				if len(hosts) == 0 {
-					grip.Info("no matching hosts")
+					grip.Info(ctx, "no matching hosts")
 					return nil
 				}
 				for _, host := range hosts {
@@ -1426,8 +1426,8 @@ func hostRunCommand() cli.Command {
 				runningProcesses := 0
 				for _, hostOutput := range hostsOutput {
 					if hostOutput.Complete {
-						grip.Infof("'%s' output: ", hostOutput.HostID)
-						grip.Info(hostOutput.Output)
+						grip.Infof(ctx, "'%s' output: ", hostOutput.HostID)
+						grip.Info(ctx, hostOutput.Output)
 					} else {
 						hostsOutput[runningProcesses] = hostOutput
 						runningProcesses++

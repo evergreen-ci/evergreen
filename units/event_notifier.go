@@ -75,7 +75,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 		return
 	}
 	if j.flags.EventProcessingDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job_type": j.Type().Name,
 			"message":  "events processing is disabled",
 		})
@@ -109,7 +109,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	if err = notification.InsertMany(ctx, n...); err != nil {
 		// Consider that duplicate key errors are expected.
 		shouldLogError := !db.IsDuplicateKey(err)
-		grip.ErrorWhen(shouldLogError, message.WrapError(err, message.Fields{
+		grip.ErrorWhen(ctx, shouldLogError, message.WrapError(err, message.Fields{
 			"job_id":        j.ID(),
 			"job_type":      j.Type().Name,
 			"source":        "events-processing",
@@ -127,7 +127,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"operation":     "events-processing",
@@ -153,7 +153,7 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 		if r := recover(); r != nil {
 			n = nil
 			err = errors.Errorf("panicked while processing event '%s'", e.ID)
-			grip.Alert(message.WrapError(err, message.Fields{
+			grip.Alert(ctx, message.WrapError(err, message.Fields{
 				"job_id":        j.ID(),
 				"job_type":      j.Type().Name,
 				"source":        "events-processing",
@@ -167,7 +167,7 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 
 	startDebug := time.Now()
 	n, err = trigger.NotificationsFromEvent(ctx, e)
-	grip.InfoWhen(len(n) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(n) > 0, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"source":        "events-processing",
@@ -181,7 +181,7 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 		"stat":          "notifications-from-event",
 	})
 
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"source":        "events-processing",
@@ -193,7 +193,7 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 	}))
 
 	v, err := trigger.EvalProjectTriggers(ctx, e, trigger.TriggerDownstreamVersion)
-	grip.InfoWhen(len(v) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(v) > 0, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"source":        "events-processing",
@@ -209,7 +209,7 @@ func (j *eventNotifierJob) processEventTriggers(ctx context.Context, e *event.Ev
 	for _, version := range v {
 		versions = append(versions, version.Id)
 	}
-	grip.InfoWhen(len(versions) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(versions) > 0, message.Fields{
 		"job_id":        j.ID(),
 		"job_type":      j.Type().Name,
 		"source":        "events-processing",
@@ -228,7 +228,7 @@ func notificationJobs(ctx context.Context, notifications []notification.Notifica
 	catcher := grip.NewBasicCatcher()
 	var jobs []amboy.Job
 	for i := range notifications {
-		if notificationIsEnabled(flags, &notifications[i]) {
+		if notificationIsEnabled(ctx, flags, &notifications[i]) {
 			jobs = append(jobs, NewEventSendJob(notifications[i].ID, ts.Format(TSFormat)))
 		} else {
 			catcher.Wrapf(notifications[i].MarkError(ctx, errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
@@ -237,7 +237,7 @@ func notificationJobs(ctx context.Context, notifications []notification.Notifica
 	return jobs, catcher.Resolve()
 }
 
-func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notification) bool {
+func notificationIsEnabled(ctx context.Context, flags *evergreen.ServiceFlags, n *notification.Notification) bool {
 	switch n.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		return !flags.GithubStatusAPIDisabled
@@ -255,7 +255,7 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 		return !flags.SlackNotificationsDisabled
 
 	default:
-		grip.Alert(message.Fields{
+		grip.Alert(ctx, message.Fields{
 			"message": "notificationIsEnabled saw unknown subscriber type",
 			"cause":   "programmer error",
 		})

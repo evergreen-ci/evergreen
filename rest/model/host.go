@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -163,7 +164,7 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 	imageId, err := h.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(context.Background(), message.WrapError(err, message.Fields{
 			"message": "could not get image ID",
 			"host":    h.Id,
 			"distro":  h.Distro.Id,

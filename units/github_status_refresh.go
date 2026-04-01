@@ -73,7 +73,7 @@ func (j *githubStatusRefreshJob) shouldUpdate(ctx context.Context) (bool, error)
 		return false, errors.Wrap(err, "error retrieving admin settings")
 	}
 	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     j.Name,
 			"message": "GitHub status updates are disabled, not updating status",
 		})
@@ -126,7 +126,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 	return nil
 }
 
-func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
+func (j *githubStatusRefreshJob) sendStatus(ctx context.Context, status *message.GithubStatus) {
 	c := message.MakeGithubStatusMessageWithRepo(*status)
 	if !c.Loggable() {
 		j.AddError(errors.Errorf("status message is invalid: %+v", status))
@@ -134,8 +134,8 @@ func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
 	}
 	j.AddError(c.SetPriority(level.Notice))
 
-	j.sender.Send(c)
-	grip.Info(message.Fields{
+	j.sender.Send(ctx, c)
+	grip.Info(ctx, message.Fields{
 		"ticket":   thirdparty.GithubInvestigation,
 		"message":  "called github status refresh",
 		"caller":   githubStatusRefreshJobName,
@@ -169,7 +169,7 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) err
 
 		status.URL = childPatch.GetURL(j.urlBase)
 		status.State, status.Description = getGithubStateAndDescriptionForPatch(&childPatch)
-		j.sendStatus(status)
+		j.sendStatus(ctx, status)
 	}
 	return nil
 }
@@ -218,7 +218,7 @@ func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 		}
 		status.Description = b.GetPRNotificationDescription(tasks)
 
-		j.sendStatus(status)
+		j.sendStatus(ctx, status)
 	}
 }
 
@@ -246,7 +246,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	status.State, status.Description = getGithubStateAndDescriptionForPatch(j.patch)
 
 	// Send patch status
-	j.sendStatus(status)
+	j.sendStatus(ctx, status)
 
 	// Send child patch statuses.
 	if err := j.sendChildPatchStatuses(ctx); err != nil {

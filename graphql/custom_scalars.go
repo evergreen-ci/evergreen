@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ func MarshalStringMap(val map[string]string) graphql.Marshaler {
 		if err != nil {
 			_, err = w.Write([]byte(fmt.Sprintf("Error marshaling StringMap %v: %v", val, err.Error())))
 			if err != nil {
-				grip.Error(err)
+				grip.Error(context.Background(), err)
 			}
 		}
 	})
@@ -47,7 +48,7 @@ func MarshalBooleanMap(val map[string]bool) graphql.Marshaler {
 		if err != nil {
 			_, err = w.Write([]byte(fmt.Sprintf("Error marshaling BooleanMap %v: %v", val, err.Error())))
 			if err != nil {
-				grip.Error(err)
+				grip.Error(context.Background(), err)
 			}
 		}
 	})

@@ -135,7 +135,7 @@ func (c *update) Execute(ctx context.Context,
 			return errors.Errorf("file '%s' does not exist", filename)
 		}
 
-		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
+		logger.Task().Infof(ctx, "Updating expansions with keys from file '%s'.", filename)
 		if c.RedactFileExpansions {
 			_, err = conf.NewExpansions.UpdateFromYamlAndRedact(filename)
 		} else {

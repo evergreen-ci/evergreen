@@ -57,7 +57,7 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 	defer func(traceClient otlptrace.Client, ctx context.Context) {
 		err := traceClient.Stop(ctx)
 		if err != nil {
-			o.logger.Task().Error(errors.Wrapf(err, "stopping trace client for '%s'", o.dir))
+			o.logger.Task().Error(ctx, errors.Wrapf(err, "stopping trace client for '%s'", o.dir))
 		}
 	}(o.traceClient, ctx)
 
@@ -71,7 +71,7 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 				return errors.Wrap(err, "context canceled before processing file")
 			}
 
-			resourceSpans, err := unmarshalTraces(fileName)
+			resourceSpans, err := unmarshalTraces(gCtx, fileName)
 			if err != nil {
 				return errors.Wrapf(err, "unmarshalling trace file '%s'", fileName)
 			}
@@ -118,12 +118,12 @@ func batchSpans(spans []*tracepb.ResourceSpans, batchSize int) [][]*tracepb.Reso
 	return append(batches, spans)
 }
 
-func unmarshalTraces(fileName string) ([]*tracepb.ResourceSpans, error) {
+func unmarshalTraces(ctx context.Context, fileName string) ([]*tracepb.ResourceSpans, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening trace file '%s'", fileName)
 	}
-	defer func() { grip.Error(errors.Wrapf(file.Close(), "closing trace file '%s'", fileName)) }()
+	defer func() { grip.Error(ctx, errors.Wrapf(file.Close(), "closing trace file '%s'", fileName)) }()
 
 	catcher := grip.NewBasicCatcher()
 

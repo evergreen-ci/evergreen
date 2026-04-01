@@ -26,8 +26,8 @@ func (u *GithubLoginUser) GetRefreshToken() string { return "" }
 func (u *GithubLoginUser) Roles() []string         { return []string{} }
 func (u *GithubLoginUser) IsAPIOnly() bool         { return false }
 
-func (u *GithubLoginUser) HasPermission(context.Context, gimlet.PermissionOpts) bool {
-	grip.Alert("HasPermission has not been implemented for GithubLoginUser")
+func (u *GithubLoginUser) HasPermission(ctx context.Context, _ gimlet.PermissionOpts) bool {
+	grip.Alert(ctx, "HasPermission has not been implemented for GithubLoginUser")
 	return false
 }
 

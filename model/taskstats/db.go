@@ -574,7 +574,7 @@ func aggregateIntoCollection(ctx context.Context, collection string, pipeline []
 		return errors.Wrap(err, "running aggregation")
 	}
 	defer func() {
-		grip.Error(cursor.Close(ctx))
+		grip.Error(ctx, cursor.Close(ctx))
 	}()
 
 	buf := make([]mongo.WriteModel, 0, bulkSize)

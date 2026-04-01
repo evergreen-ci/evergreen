@@ -206,7 +206,7 @@ func agentMonitor() cli.Command {
 				return errors.Wrap(err, "connecting to RPC service")
 			}
 			defer func() {
-				grip.Error(errors.Wrap(m.jasperClient.CloseConnection(), "closing RPC client connection"))
+				grip.Error(ctx, errors.Wrap(m.jasperClient.CloseConnection(), "closing RPC client connection"))
 			}()
 
 			m.run(ctx)
@@ -282,7 +282,7 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 	select {
 	case <-ctx.Done():
 	case <-sigChan:
-		grip.Info("monitor exiting after receiving signal")
+		grip.Info(ctx, "monitor exiting after receiving signal")
 	}
 }
 
@@ -481,7 +481,7 @@ func (m *monitor) run(ctx context.Context) {
 			}
 
 			if healthCheck.shouldExit {
-				grip.Info(message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":     "host status indicates it should exit, shutting down",
 					"host_id":     m.hostID,
 					"host_status": healthCheck.status,
@@ -491,7 +491,7 @@ func (m *monitor) run(ctx context.Context) {
 			}
 
 			if err := m.removeMacOSClient(); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":     "could not remove MacOS client",
 					"distro":      m.distroID,
 					"client_path": m.clientPath,
@@ -507,7 +507,7 @@ func (m *monitor) run(ctx context.Context) {
 			// The evergreen agent runs using a separate binary from the monitor
 			// to allow the agent to be updated.
 			if err := m.fetchClient(ctx, clientURLs, agentMonitorDefaultRetryOptions()); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":     "could not fetch client",
 					"distro":      m.distroID,
 					"client_path": m.clientPath,
@@ -516,7 +516,7 @@ func (m *monitor) run(ctx context.Context) {
 			}
 
 			if _, err := os.Stat(m.clientPath); os.IsNotExist(err) {
-				grip.Error(errors.Wrapf(err, "getting file stat for client '%s'", m.clientPath))
+				grip.Error(ctx, errors.Wrapf(err, "getting file stat for client '%s'", m.clientPath))
 				return true, err
 			}
 
@@ -524,9 +524,9 @@ func (m *monitor) run(ctx context.Context) {
 			// the agent the ability to set its nice. Controlling nice gives the
 			// agent a mechanism to tune CPU prioritization, but it's not a
 			// guarantee and is not required for the agent to run.
-			grip.Warning(errors.Wrap(m.allowAgentNice(ctx), "allowing agent to set nice"))
+			grip.Warning(ctx, errors.Wrap(m.allowAgentNice(ctx), "allowing agent to set nice"))
 
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":     "starting agent on host via Jasper",
 				"client_path": m.clientPath,
 				"distro":      m.distroID,
@@ -534,20 +534,20 @@ func (m *monitor) run(ctx context.Context) {
 			})
 
 			if err := m.runAgent(ctx, agentMonitorDefaultRetryOptions()); err != nil {
-				grip.Error(errors.Wrap(err, "running the agent"))
+				grip.Error(ctx, errors.Wrap(err, "running the agent"))
 				return true, err
 			}
 
 			return false, nil
 		}, agentMonitorDefaultRetryOptions()); err != nil {
 			if ctx.Err() != nil {
-				grip.Warning(errors.Wrap(err, "context cancelled while running monitor"))
+				grip.Warning(ctx, errors.Wrap(err, "context cancelled while running monitor"))
 				return
 			}
 			if errors.Is(err, errAgentMonitorShouldExit) {
 				return
 			}
-			grip.Error(errors.Wrapf(err, "managing agent"))
+			grip.Error(ctx, errors.Wrapf(err, "managing agent"))
 		}
 	}
 }

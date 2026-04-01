@@ -69,26 +69,26 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 		// Check that the client exists and is accessible.
 		req, err := http.NewRequestWithContext(ctx, http.MethodHead, clientBinary.URL, nil)
 		if err != nil {
-			grip.Notice(message.WrapError(err, checkFailedMsg))
+			grip.Notice(ctx, message.WrapError(err, checkFailedMsg))
 			continue
 		}
 		resp, err := client.Do(req)
 		if err != nil {
-			grip.Notice(message.WrapError(err, checkFailedMsg))
+			grip.Notice(ctx, message.WrapError(err, checkFailedMsg))
 			continue
 		}
 
 		_ = resp.Body.Close()
 		if resp.StatusCode >= 400 {
 			checkFailedMsg["status_code"] = resp.StatusCode
-			grip.Notice(checkFailedMsg)
+			grip.Notice(ctx, checkFailedMsg)
 			continue
 		}
 
 		c.ClientBinaries = append(c.ClientBinaries, clientBinary)
 	}
 
-	grip.AlertWhen(len(c.ClientBinaries) == 0, message.Fields{
+	grip.AlertWhen(ctx, len(c.ClientBinaries) == 0, message.Fields{
 		"message":       "could not find any valid Evergreen client binaries during app startup, the API server will not be able to distribute Evergreen clients",
 		"s3_url_prefix": s3URLPrefix,
 	})

@@ -86,7 +86,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 			// Only log an error if the final job attempt errors. Otherwise, it
 			// may retry and succeed on the next attempt.
 			event.LogHostStopError(ctx, j.HostID, string(j.Source), j.Error().Error())
-			grip.Error(message.WrapError(j.Error(), message.Fields{
+			grip.Error(ctx, message.WrapError(j.Error(), message.Fields{
 				"message": "no attempts remaining to stop spawn host",
 				"host_id": j.HostID,
 				"source":  j.Source,
@@ -101,7 +101,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		return
 	}
 	if j.Source == evergreen.ModifySpawnHostSleepSchedule && flags.SleepScheduleDisabled {
-		grip.Notice(message.Fields{
+		grip.Notice(ctx, message.Fields{
 			"message": "no-oping scheduled stop because sleep schedule service flag is disabled",
 			"host_id": j.HostID,
 			"user":    j.UserID,
@@ -112,7 +112,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 
 	stopCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule && !h.IsSleepScheduleEnabled() {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":             "no-oping scheduled stop because sleep schedule is not enabled for this host",
 				"host_id":             j.HostID,
 				"host_status":         h.Status,
@@ -123,7 +123,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 			return nil
 		}
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule && h.SleepSchedule.NextStopTime.After(time.Now()) {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":        "no-oping because host is not scheduled to stop yet",
 				"host_id":        h.Id,
 				"next_stop_time": h.SleepSchedule.NextStopTime,
@@ -137,7 +137,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		}
 
 		event.LogHostStopSucceeded(ctx, h.Id, string(j.Source))
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":    "stopped spawn host",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,
@@ -148,7 +148,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		})
 
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule {
-			grip.Warning(message.WrapError(j.setNextScheduledStop(ctx, h), message.Fields{
+			grip.Warning(ctx, message.WrapError(j.setNextScheduledStop(ctx, h), message.Fields{
 				"message":        "successfully stopped host for sleep schedule but could not set next scheduled stop time",
 				"host_id":        h.Id,
 				"started_by":     h.StartedBy,

@@ -42,7 +42,7 @@ func LogPatchStateChangeEvent(ctx context.Context, id, newStatus string) {
 	}
 
 	if err := event.Log(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypePatch,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
@@ -63,7 +63,7 @@ func LogPatchChildrenCompletionEvent(ctx context.Context, id, status, author str
 	}
 
 	if err := event.Log(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypePatch,
 			"message":       "error logging event",
 			"source":        "event-log-fail",

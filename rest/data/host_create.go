@@ -301,7 +301,7 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, pu
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
 	event.LogHostCreated(ctx, intent.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "intent host created",
 		"host_id":  intent.Id,
 		"host_tag": intent.Tag,

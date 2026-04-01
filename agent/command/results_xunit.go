@@ -86,7 +86,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 		case errChan <- err:
 			return
 		case <-ctx.Done():
-			logger.Task().Infof("Context canceled waiting to parse and upload results: %s.", ctx.Err())
+			logger.Task().Infof(ctx, "Context canceled waiting to parse and upload results: %s.", ctx.Err())
 			return
 		}
 	}()
@@ -95,7 +95,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 	case err := <-errChan:
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Infof("Canceled while parsing and uploading results for command '%s': %s.", c.Name(), ctx.Err())
+		logger.Execution().Infof(ctx, "Canceled while parsing and uploading results for command '%s': %s.", c.Name(), ctx.Err())
 		return nil
 	}
 }
@@ -221,11 +221,11 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 			}
 			if result.invalid {
 				numInvalid++
-				logger.Task().Infof("Result file '%s' does not exist or is a directory.", result.filePath)
+				logger.Task().Infof(ctx, "Result file '%s' does not exist or is a directory.", result.filePath)
 				continue
 			}
 			for idx, suite := range result.suites {
-				cumulative = addTestCasesForSuite(suite, idx, conf, cumulative, logger)
+				cumulative = addTestCasesForSuite(ctx, suite, idx, conf, cumulative, logger)
 			}
 		}
 	}
@@ -266,7 +266,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		return err
 	}
 
-	logger.Task().Infof("Posting test logs succeeded for %d of %d logs.", succeeded, len(cumulative.logs))
+	logger.Task().Infof(ctx, "Posting test logs succeeded for %d of %d logs.", succeeded, len(cumulative.logs))
 	if len(cumulative.tests) > 0 {
 		return sendTestResults(ctx, comm, logger, conf, cumulative.tests)
 	}
@@ -279,7 +279,7 @@ type testcaseAccumulator struct {
 	logIdxToTestIdx []int
 }
 
-func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, cumulative testcaseAccumulator, logger client.LoggerProducer) testcaseAccumulator {
+func addTestCasesForSuite(ctx context.Context, suite testSuite, idx int, conf *internal.TaskConfig, cumulative testcaseAccumulator, logger client.LoggerProducer) testcaseAccumulator {
 	if len(suite.TestCases) == 0 && suite.Error != nil {
 		// if no test cases but an error, generate a default test case
 		tc := testCase{
@@ -294,7 +294,7 @@ func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, c
 	}
 	for _, tc := range suite.TestCases {
 		// logs are only created when a test case does not succeed
-		test, log := tc.toModelTestResultAndLog(conf, logger)
+		test, log := tc.toModelTestResultAndLog(ctx, conf, logger)
 		if log != nil {
 			if systemLogs := constructSystemLogs(suite.SysOut, suite.SysErr); len(systemLogs) > 0 {
 				log.Lines = append(log.Lines, systemLogs...)
@@ -305,7 +305,7 @@ func addTestCasesForSuite(suite testSuite, idx int, conf *internal.TaskConfig, c
 		cumulative.tests = append(cumulative.tests, test)
 	}
 	if suite.NestedSuites != nil {
-		cumulative = addTestCasesForSuite(*suite.NestedSuites, idx, conf, cumulative, logger)
+		cumulative = addTestCasesForSuite(ctx, *suite.NestedSuites, idx, conf, cumulative, logger)
 	}
 	return cumulative
 }
