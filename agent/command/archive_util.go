@@ -369,6 +369,9 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 				fileInfo, err := os.Stat(fullPath)
 				if err == nil {
 					addUniqueFile(fullPath, fileInfo)
+				} else if os.IsNotExist(err) {
+					// It's ok if the file does not exist.
+					continue
 				}
 				catcher.Wrapf(err, "matching single file '%s' in path '%s'", includePattern, rootPath)
 			}
@@ -399,7 +402,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 			// We know there are no '**' wildcards since they would have been caught in the above, so no need to recurse
 			files, err := os.ReadDir(dir)
 			if err != nil {
-				catcher.Wrapf(err, "reading directory '%s' for with filter '%s'", dir, filematch)
+				catcher.Wrapf(err, "reading directory '%s' with filter '%s'", dir, filematch)
 				break
 			}
 
