@@ -19,7 +19,7 @@ func (u *userReader) getUsers(ctx context.Context, userIDs []string) (map[string
 	query := db.Query(bson.M{user.IdKey: bson.M{"$in": userIDs}})
 	users, err := user.Find(ctx, query)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error fetching users in dataloader",
 		}))
 		return nil, &batchError{err: err}

@@ -19,7 +19,7 @@ func (v *apiVersionReader) getAPIVersions(ctx context.Context, versionIDs []stri
 	query := db.Query(bson.M{model.VersionIdKey: bson.M{"$in": versionIDs}}).Project(bson.M{model.VersionBuildVariantsKey: 0})
 	versions, err := model.VersionFind(ctx, query)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error fetching versions in dataloader",
 		}))
 		return nil, &batchError{err: err}
