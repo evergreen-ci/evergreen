@@ -652,6 +652,19 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 		if err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding project '%s'", h.projectFilter))
 		}
+		isRepoRef := false
+		if ref == nil {
+			// FindBranchProjectRef doesn't search repo projects, so also check if the
+			// ID belongs to a repo ref, since it's valid to filter by a repo's ID.
+			repoRef, err := serviceModel.FindOneRepoRef(ctx, h.projectFilter)
+			if err != nil {
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding repo '%s'", h.projectFilter))
+			}
+			if repoRef != nil {
+				ref = &repoRef.ProjectRef
+				isRepoRef = true
+			}
+		}
 		if ref == nil {
 			return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
@@ -682,7 +695,7 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 			{
 				ProjectID:         ref.Id,
 				ProjectIdentifier: ref.Identifier,
-				IsRepo:            ref.UseRepoSettings(),
+				IsRepo:            isRepoRef || ref.UseRepoSettings(),
 				Permissions:       buildGrantedPermissions(mergedPerms, permissionKeys, true),
 			},
 		}

@@ -494,7 +494,7 @@ func TestGetUserPermissionDetails(t *testing.T) {
 func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
 	ctx := t.Context()
 	env := testutil.NewEnvironment(ctx, t)
-	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, model.ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, model.ProjectRefCollection, model.RepoRefCollection))
 	rm := env.RoleManager()
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
@@ -582,6 +582,28 @@ func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
 		handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "does-not-exist"}
 		resp := handler.Run(ctx)
 		assert.Equal(t, http.StatusNotFound, resp.Status())
+	})
+
+	t.Run("FilterByRepoRefID", func(t *testing.T) {
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-ref-id"}}
+		require.NoError(t, repoRef.Replace(ctx))
+		require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: "scope-repo", Resources: []string{"repo-ref-id"}, Type: evergreen.ProjectResourceType}))
+		require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: "role-repo", Scope: "scope-repo", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value}}))
+		u2 := user.DBUser{Id: "user2", SystemRoles: []string{"role-repo"}}
+		require.NoError(t, u2.Insert(ctx))
+
+		handler := userPermissionDetailsGetHandler{rm: rm, userID: u2.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "repo-ref-id"}
+		resp := handler.Run(ctx)
+		require.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+		require.True(t, ok)
+		require.NotNil(t, data)
+		require.NotNil(t, data.Projects)
+		require.Len(t, *data.Projects, 1)
+		assert.Equal(t, "repo-ref-id", (*data.Projects)[0].ProjectID)
+		assert.True(t, (*data.Projects)[0].IsRepo)
+		settingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
+		assert.Contains(t, (*data.Projects)[0].Permissions[settingsKey], evergreen.ProjectSettingsView.Description)
 	})
 }
 
