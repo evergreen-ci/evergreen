@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -27,7 +28,7 @@ func PatchFinalize() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			if err = ac.FinalizePatch(patchID); err != nil {
+			if err = ac.FinalizePatch(context.Background(), patchID); err != nil {
 				return err
 			}
 

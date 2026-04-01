@@ -117,7 +117,7 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 // FetchTask loads the task from the database and sends it to the requester.
 func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	gimlet.WriteJSON(w, t)
+	gimlet.WriteJSON(r.Context(), w, t)
 }
 
 // fetchLimitedProjectRef returns a limited project ref given the project identifier.
@@ -151,7 +151,7 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 		},
 	}
 
-	gimlet.WriteJSON(w, limitedRef)
+	gimlet.WriteJSON(r.Context(), w, limitedRef)
 }
 
 // listProjects returns the projects merged with the repo settings
@@ -161,7 +161,7 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	gimlet.WriteJSON(w, allProjs)
+	gimlet.WriteJSON(r.Context(), w, allProjs)
 }
 
 func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
@@ -174,12 +174,12 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 		project.Tasks[i].Commands = []model.PluginCommandConf{}
 
 	}
-	gimlet.WriteJSON(w, project.Tasks)
+	gimlet.WriteJSON(r.Context(), w, project.Tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 	project := MustHaveProject(r)
 
-	gimlet.WriteJSON(w, project.BuildVariants)
+	gimlet.WriteJSON(r.Context(), w, project.BuildVariants)
 }
 
 // validateProjectConfig returns a slice containing a list of any errors
@@ -192,7 +192,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
+		gimlet.WriteJSONError(r.Context(), w, fmt.Sprintf("Error reading request body: %v", err))
 		return
 	}
 
@@ -211,12 +211,12 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	validationErr := validator.ValidationError{}
 	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project); err != nil {
 		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
+		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})
 		return
 	}
 	if projectConfig, err = model.CreateProjectConfig(input.ProjectYaml, ""); err != nil {
 		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
+		gimlet.WriteJSONError(r.Context(), w, validator.ValidationErrors{validationErr})
 		return
 	}
 
@@ -227,10 +227,10 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		errs = errs.AtLevel(validator.Error)
 	}
 	if len(errs) > 0 {
-		gimlet.WriteJSONError(w, errs)
+		gimlet.WriteJSONError(r.Context(), w, errs)
 		return
 	}
-	gimlet.WriteJSON(w, validator.ValidationErrors{})
+	gimlet.WriteJSON(r.Context(), w, validator.ValidationErrors{})
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
@@ -240,7 +240,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		return
 	}
 
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(r.Context(), message.WrapError(err, message.Fields{
 		"method":     r.Method,
 		"url":        r.URL.String(),
 		"code":       code,
@@ -259,10 +259,10 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 
 	if err := resp.SetStatus(code); err != nil {
-		grip.Warning(errors.WithStack(resp.SetStatus(http.StatusInternalServerError)))
+		grip.Warning(r.Context(), errors.WithStack(resp.SetStatus(http.StatusInternalServerError)))
 	}
 
-	gimlet.WriteResponse(w, resp)
+	gimlet.WriteResponse(r.Context(), w, resp)
 }
 
 // GetSettings returns the global evergreen settings.

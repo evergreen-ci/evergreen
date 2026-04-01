@@ -26,7 +26,7 @@ import (
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]notification.Notification, error) {
-	h := registry.eventHandler(e.ResourceType, e.EventType)
+	h := registry.eventHandler(ctx, e.ResourceType, e.EventType)
 	if h == nil {
 		return nil, errors.Errorf("unknown event resource type '%s' or event type '%s'", e.ResourceType, e.EventType)
 	}
@@ -52,13 +52,13 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 	}
 	if err != nil {
 		err = errors.Wrapf(err, "fetching subscriptions for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
-		grip.Error(message.WrapError(err, msg))
+		grip.Error(ctx, message.WrapError(err, msg))
 		return nil, err
 	}
 	if len(subscriptions) == 0 {
 		return nil, nil
 	}
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 
 	notifications := make([]notification.Notification, 0, len(subscriptions))
 
@@ -78,11 +78,11 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 			msg["notification_id"] = n.ID
 		}
 		catcher.Add(err)
-		grip.Error(message.WrapError(err, msg))
+		grip.Error(ctx, message.WrapError(err, msg))
 		if n == nil {
 			continue
 		}
-		grip.Info(msg)
+		grip.Info(ctx, msg)
 
 		notifications = append(notifications, *n)
 	}
@@ -356,7 +356,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 		for _, commit := range event.Commits {
 			commits = append(triggeredDownstreamProjectIDs, utility.FromStringPtr(commit.ID))
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"source":                           "GitHub hook",
 			"message":                          "triggered downstream versions for project push event",
 			"upstream_commits":                 commits,

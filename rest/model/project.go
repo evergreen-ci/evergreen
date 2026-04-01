@@ -897,7 +897,7 @@ func recursivelyDefaultBooleans(structToSet reflect.Value) {
 	var err error
 	var i int
 	defer func() {
-		grip.Error(recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked while recursively defaulting booleans for field number %d", i)))
+		grip.Error(context.Background(), recovery.HandlePanicWithError(recover(), err, fmt.Sprintf("panicked while recursively defaulting booleans for field number %d", i)))
 	}()
 	falseType := reflect.TypeOf(false)
 	// Iterate through each field of the struct.

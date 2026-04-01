@@ -884,7 +884,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	}
 
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
-		grip.Critical(message.Fields{
+		grip.Critical(context.Background(), message.Fields{
 			"message":  "An unknown patch status was found",
 			"cause":    "Programmer error: new statuses should be added to GetCollectiveStatusFromPatchStatuses().",
 			"statuses": statuses,

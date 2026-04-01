@@ -134,7 +134,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
 	tasks := VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
 	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for patch",
 		"patch":   p.Id.Hex(),
 	}))
@@ -481,7 +481,7 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 		err = opts.PatchOpts.env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
 			Directory(workingDirectory).SetCombinedWriter(output).Run(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":       "error running patch command",
 				"patch_id":      p.Id.Hex(),
 				"output":        output.String(),
@@ -732,7 +732,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			return nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":      "skipping empty build for patch version",
 				"variant": vt.Variant,
 				"version": patchVersion.Id,
@@ -860,7 +860,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 				numTasksActivated++
 			}
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":             "version has large number of activated tasks",
 			"op":                  "finalize patch",
 			"num_tasks_activated": numTasksActivated,
@@ -946,7 +946,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 
 	autoUpdateRevisions, err := prefetchAutoUpdateModuleRevisions(ctx, p, projectRef, &opts)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":  "failed to pre-fetch auto-update module revisions",
 			"patch_id": p.Id.Hex(),
 			"project":  p.Project,
@@ -981,7 +981,7 @@ func prefetchAutoUpdateModuleRevisions(ctx context.Context, p *patch.Patch, proj
 		if module.AutoUpdate {
 			mfstModule, err := getManifestModule(ctx, projectRef, module, evergreen.PatchVersionRequester, p.Githash)
 			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"message":     "failed to get revision for module",
 					"module_name": module.Name,
 					"patch_id":    p.Id.Hex(),
@@ -1019,7 +1019,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 			return errors.Errorf("could not find child patch '%s'", childPatchId)
 		}
 		if _, err := FinalizePatch(ctx, childPatchDoc, requester); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
 				"source":        requester,
 				"patch_id":      childPatchId,
@@ -1074,7 +1074,7 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 	if err != nil {
 		return errors.Wrap(err, "fetching initial patch")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"source":         "github hook",
 		"created_before": createdBefore.String(),
 		"owner":          owner,
@@ -1101,7 +1101,7 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 			"project":        p.Project,
 			"version":        p.Version,
 		}
-		grip.Error(message.WrapError(err, msg))
+		grip.Error(ctx, message.WrapError(err, msg))
 		catcher.Add(err)
 	}
 

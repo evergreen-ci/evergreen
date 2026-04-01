@@ -61,6 +61,7 @@
       "audience": "audience",
       "client_id": "service-id",
       "client_secret": "service-secret",
+      "issuer": "issuer",
       "scopes": ["scope1", "scope2"]
     },
     {

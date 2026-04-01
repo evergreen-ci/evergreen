@@ -106,7 +106,7 @@ func (s *TaskReliability) calculateSuccessRate() {
 		low = math.Max(0, (c1-dist)/denominator)
 	}
 	s.SuccessRate = (math.Ceil(low*100) / 100)
-	grip.Info(message.Fields{
+	grip.Info(context.Background(), message.Fields{
 		"message":      "calculated task success rate",
 		"num_success":  s.NumSuccess,
 		"num_failed":   s.NumFailed,
@@ -148,7 +148,7 @@ func newTaskReliability(taskStat taskstats.TaskStats, z float64) TaskReliability
 // https://www.investopedia.com/terms/t/two-tailed-test.asp
 func significanceToZ(significance float64) float64 {
 	z := distuv.Normal{Mu: 0., Sigma: 1.}.Quantile(1. - significance/2.)
-	grip.Debugf("significanceToZ: significance=%.4f, z=%.4f\n", significance, z)
+	grip.Debugf(context.Background(), "significanceToZ: significance=%.4f, z=%.4f\n", significance, z)
 	return z
 }
 

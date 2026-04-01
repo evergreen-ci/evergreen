@@ -1968,7 +1968,7 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	// acquire a new token.
 	tokenLockFilePath := client.TokenFilePath() + ".lock"
 	if delErr := os.RemoveAll(tokenLockFilePath); delErr != nil {
-		grip.Warning(errors.Wrapf(delErr, "removing OAuth token lock file at '%s'", tokenLockFilePath))
+		grip.Warning(ctx, errors.Wrapf(delErr, "removing OAuth token lock file at '%s'", tokenLockFilePath))
 	}
 
 	// This attempt tries to get a token or refreshes using the refresh token.

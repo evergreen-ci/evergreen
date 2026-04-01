@@ -120,11 +120,11 @@ func keysList() cli.Command {
 			}
 
 			if len(keys) == 0 {
-				grip.Info("No keys found")
+				grip.Info(ctx, "No keys found")
 			} else {
-				grip.Info("Public keys stored in Evergreen:")
+				grip.Info(ctx, "Public keys stored in Evergreen:")
 				for _, key := range keys {
-					grip.Infof("Name: '%s', Key: '%s'\n", utility.FromStringPtr(key.Name), utility.FromStringPtr(key.Key))
+					grip.Infof(ctx, "Name: '%s', Key: '%s'\n", utility.FromStringPtr(key.Name), utility.FromStringPtr(key.Key))
 				}
 			}
 
@@ -171,7 +171,7 @@ func keysDelete() cli.Command {
 				return errors.Wrap(err, "deleting public key")
 			}
 
-			grip.Infof("Successfully deleted key: '%s'\n", keyName)
+			grip.Infof(ctx, "Successfully deleted key: '%s'\n", keyName)
 
 			return nil
 		},

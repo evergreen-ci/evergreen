@@ -352,7 +352,7 @@ func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials everg
 	}
 	defer func() {
 		err = r.Close()
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":        "closing test results bucket reader",
 			"test_result_id": t.ID,
 			"task_id":        t.Info.TaskID,

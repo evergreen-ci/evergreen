@@ -109,13 +109,13 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
 	)
 
-	logger.Task().Infof("Requesting a GitHub dynamic access token with owner:%s, repository:%s, permissions:%s", r.Owner, r.Repo, permissionsToString(r.Permissions))
+	logger.Task().Infof(ctx, "Requesting a GitHub dynamic access token with owner:%s, repository:%s, permissions:%s", r.Owner, r.Repo, permissionsToString(r.Permissions))
 	token, permissions, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
 	if err != nil {
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
 
-	logger.Task().Infof("Created a GitHub dynamic access token. The token has the following permissions: %s", permissionsToString(permissions))
+	logger.Task().Infof(ctx, "Created a GitHub dynamic access token. The token has the following permissions: %s", permissionsToString(permissions))
 
 	// We write or overwrite the expansion with the new token.
 	conf.NewExpansions.PutAndRedact(r.ExpansionName, token)

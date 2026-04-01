@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -31,13 +32,13 @@ type triggerRegistry struct {
 	lock                   sync.RWMutex
 }
 
-func (r *triggerRegistry) eventHandler(resourceType, eventDataType string) eventHandler {
+func (r *triggerRegistry) eventHandler(ctx context.Context, resourceType, eventDataType string) eventHandler {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
 	f, ok := r.handlers[registryKey{resourceType: resourceType, eventDataType: eventDataType}]
 	if !ok {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": "unknown event handler",
 			"r_type":  resourceType,
 			"cause":   "programmer error",

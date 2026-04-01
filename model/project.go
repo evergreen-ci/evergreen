@@ -1331,7 +1331,7 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 		env := evergreen.GetEnvironment()
 		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion, preGeneration)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "last known good version has malformed config",
 				"version": lastGoodVersion.Id,
 				"project": projectId,
@@ -1605,7 +1605,7 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 	bv := p.FindBuildVariant(bvTaskGroup.Variant)
 	if bv == nil {
-		grip.Alert(message.WrapStack(0, message.Fields{
+		grip.Alert(context.Background(), message.WrapStack(0, message.Fields{
 			"message":       "programmatic error: found a task group that has no associated build variant (this is not supposed to ever happen and is probably a bug)",
 			"task_group":    bvTaskGroup.Name,
 			"build_variant": bvTaskGroup.Variant,
@@ -1757,7 +1757,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		for _, bv := range patchDoc.RegexBuildVariants {
 			bvRegex, err := regexp.Compile(bv)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":   "compiling buildvariant regex",
 					"regex":     bv,
 					"project":   p.Identifier,
@@ -1780,7 +1780,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		for _, t := range patchDoc.RegexTasks {
 			tRegex, err := regexp.Compile(t)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":   "compiling task regex",
 					"regex":     t,
 					"project":   p.Identifier,
@@ -1815,7 +1815,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliases, requester)
 			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
-		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 			"message": "problem adding variants/tasks for alias",
 			"alias":   alias,
 			"project": p.Identifier,
@@ -1831,7 +1831,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 	if includeDeps {
 		var err error
 		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "error including dependencies",
 			"project": p.Identifier,
 		}))
@@ -2068,7 +2068,7 @@ func (p *Project) VariantTasksForSelectors(ctx context.Context, definitions []pa
 	}
 	pairs = p.extractDisplayTasks(pairs)
 	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": p.Identifier,
 	}))

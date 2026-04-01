@@ -57,14 +57,14 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	opCtx, err := model.LoadContext(r.Context(), taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "loading resources from context")))
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "loading resources from context")))
 		return
 	}
 
 	user := gimlet.GetUser(ctx)
 
 	if opCtx.HasProjectOrRepoRef() && user == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "project not found",
 		}))
@@ -72,7 +72,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	}
 
 	if opCtx.Patch != nil && user == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "user associated with patch not found",
 		}))
@@ -145,7 +145,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	user := MustHaveUser(ctx)
 
 	if opCtx == nil || !opCtx.HasProjectOrRepoRef() {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no project found",
 		}))
@@ -159,7 +159,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
 	})
 	if !isAdmin {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
 		}))
@@ -182,14 +182,14 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 
 	canCreate, err := user.HasProjectCreatePermission(ctx)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error checking permissions",
 		}))
 		return
 	}
 	if !canCreate {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
 		}))
@@ -212,7 +212,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	if !ok {
 		hostID = r.Header.Get(evergreen.HostHeader)
 		if hostID == "" {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "missing host ID",
 			}))
@@ -221,7 +221,7 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	}
 	h, statusCode, err := model.ValidateHost(hostID, r)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: statusCode,
 			Message:    errors.Wrapf(err, "invalid host '%s'", hostID).Error(),
 		}))
@@ -244,14 +244,14 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	// pair incoming from the request as we would Api-User / Api-Key header pairs to fetch a user document.
 	username, password, ok := r.BasicAuth()
 	if !ok {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
 		}))
 		return
 	}
 	if errResp := authenticateSpecialUser(r, alertmanagerUser, username, password); errResp != nil {
-		gimlet.WriteResponse(rw, errResp)
+		gimlet.WriteResponse(r.Context(), rw, errResp)
 		return
 	}
 	next(rw, r)
@@ -300,7 +300,7 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	if !ok {
 		taskID = r.Header.Get(evergreen.TaskHeader)
 		if taskID == "" {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized",
 			}))
@@ -309,14 +309,14 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	}
 	t, code, err := data.CheckTaskSecret(taskID, r)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    errors.Wrapf(err, "checking secret for task '%s'", taskID).Error(),
 		}))
 		return
 	}
 	if time.Since(t.FinishTime) > completedTaskValidityWindow && utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    fmt.Sprintf("task '%s' cannot make requests in a completed state", taskID),
 		}))
@@ -327,7 +327,7 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		hostID = r.Header.Get(evergreen.HostHeader)
 	}
 	if hostID == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "host ID must be set",
 		}))
@@ -335,7 +335,7 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	}
 
 	if _, code, err := model.ValidateHost(hostID, r); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    errors.Wrapf(err, "invalid host associated with task '%s'", taskID).Error(),
 		}))
@@ -349,17 +349,17 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 // or agent monitor if they are set.
 func updateHostAccessTime(ctx context.Context, h *host.Host) {
 	if err := h.UpdateLastCommunicated(ctx); err != nil {
-		grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
+		grip.Warningf(ctx, "Could not update host last communication time for %s: %+v", h.Id, err)
 	}
 	// Since the host has contacted the app server, we should prevent the
 	// app server from attempting to deploy agents or agent monitors.
 	// Deciding whether we should redeploy agents or agent monitors
 	// is handled within the REST route handler.
 	if h.NeedsNewAgent {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgent(ctx, false), "problem clearing host needs new agent"))
+		grip.Warning(ctx, message.WrapError(h.SetNeedsNewAgent(ctx, false), "problem clearing host needs new agent"))
 	}
 	if h.NeedsNewAgentMonitor {
-		grip.Warning(message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
+		grip.Warning(ctx, message.WrapError(h.SetNeedsNewAgentMonitor(ctx, false), "problem clearing host needs new agent monitor"))
 	}
 }
 
@@ -375,7 +375,7 @@ func (m *sageMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	apiUser := r.Header.Get(evergreen.APIUserHeader)
 	apiKey := r.Header.Get(evergreen.APIKeyHeader)
 	if errResp := authenticateSpecialUser(r, sageUser, apiUser, apiKey); errResp != nil {
-		gimlet.WriteResponse(rw, errResp)
+		gimlet.WriteResponse(r.Context(), rw, errResp)
 		return
 	}
 	next(rw, r)
@@ -393,7 +393,7 @@ func (m *backstageMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	apiUser := r.Header.Get(evergreen.APIUserHeader)
 	apiKey := r.Header.Get(evergreen.APIKeyHeader)
 	if errResp := authenticateSpecialUser(r, backstageUser, apiUser, apiKey); errResp != nil {
-		gimlet.WriteResponse(rw, errResp)
+		gimlet.WriteResponse(r.Context(), rw, errResp)
 		return
 	}
 	next(rw, r)
@@ -534,13 +534,13 @@ func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request
 
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(r.Context(), message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"message": "rejecting GitHub webhook",
 			"msg_id":  r.Header.Get("X-Github-Delivery"),
 			"event":   r.Header.Get("X-Github-Event"),
 		}))
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating GitHub payload")))
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating GitHub payload")))
 		return
 	}
 
@@ -572,22 +572,22 @@ func NewSNSAuthMiddleware() gimlet.Middleware {
 func (m *snsAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading body")))
 		return
 	}
 	var payload sns.Payload
 	if err = json.Unmarshal(body, &payload); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON payload")))
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, "unmarshalling JSON payload")))
 		return
 	}
 
 	if err = payload.VerifyPayload(); err != nil {
 		msg := "AWS SNS message failed validation"
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(r.Context(), message.WrapError(err, message.Fields{
 			"message": msg,
 			"payload": payload,
 		}))
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, msg)))
+		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(errors.Wrap(err, msg)))
 		return
 	}
 

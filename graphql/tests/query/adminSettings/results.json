@@ -157,6 +157,7 @@
               "audience": "audience",
               "clientId": "service-id",
               "clientSecret": "service-secret",
+              "issuer": "issuer",
               "scopes": ["scope1", "scope2"]
             }
           }

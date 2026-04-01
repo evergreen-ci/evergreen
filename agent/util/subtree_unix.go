@@ -29,7 +29,7 @@ const (
 
 // TrackProcess is a noop by default if we don't need to do any special
 // bookkeeping up-front.
-func TrackProcess(key string, pid int, logger grip.Journaler) {}
+func TrackProcess(ctx context.Context, key string, pid int, logger grip.Journaler) {}
 
 // KillSpawnedProcs kills processes that descend from the agent and waits
 // for them to terminate.
@@ -49,18 +49,18 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir, execUser string, log
 		p := os.Process{Pid: pid}
 		err := p.Kill()
 		if err != nil {
-			logger.Errorf("Cleanup got error killing process with PID %d: %s.", pid, err)
+			logger.Errorf(ctx, "Cleanup got error killing process with PID %d: %s.", pid, err)
 		} else {
-			logger.Infof("Cleanup killed process with PID %d.", pid)
+			logger.Infof(ctx, "Cleanup killed process with PID %d.", pid)
 		}
 	}
 
 	pidsStillRunning, err := waitForExit(ctx, pidsToKill)
 	if err != nil {
-		logger.Infof("Problem waiting for processes to exit: %s.", err)
+		logger.Infof(ctx, "Problem waiting for processes to exit: %s.", err)
 	}
 	for _, pid := range pidsStillRunning {
-		logger.Infof("Failed to clean up process with PID %d.", pid)
+		logger.Infof(ctx, "Failed to clean up process with PID %d.", pid)
 	}
 
 	return nil

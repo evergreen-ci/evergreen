@@ -309,6 +309,7 @@ func (s *AdminSuite) TestOktaServiceConfig() {
 		ClientSecret: "service_secret",
 		Scopes:       []string{"scope1", "scope2"},
 		Audience:     "audience",
+		Issuer:       "issuer",
 	}
 
 	err := config.Set(ctx)

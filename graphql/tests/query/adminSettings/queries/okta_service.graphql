@@ -4,6 +4,7 @@ query Auth {
       audience
       clientId
       clientSecret
+      issuer
       scopes
     }
   }

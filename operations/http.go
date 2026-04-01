@@ -2,6 +2,7 @@ package operations
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -129,7 +130,7 @@ func (ac *legacyClient) post2(path string, body io.Reader) (*http.Response, erro
 	return ac.doReq(http.MethodPost, path, 2, body)
 }
 
-func (ac *legacyClient) modifyExisting(patchId, action string) error {
+func (ac *legacyClient) modifyExisting(ctx context.Context, patchId, action string) error {
 	data := struct {
 		PatchId string `json:"patch_id"`
 		Action  string `json:"action"`
@@ -138,8 +139,8 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -161,12 +162,12 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	return nil
 }
 
-func (ac *legacyClient) CancelPatch(patchId string) error {
-	return ac.modifyExisting(patchId, "cancel")
+func (ac *legacyClient) CancelPatch(ctx context.Context, patchId string) error {
+	return ac.modifyExisting(ctx, patchId, "cancel")
 }
 
-func (ac *legacyClient) FinalizePatch(patchId string) error {
-	return ac.modifyExisting(patchId, "finalize")
+func (ac *legacyClient) FinalizePatch(ctx context.Context, patchId string) error {
+	return ac.modifyExisting(ctx, patchId, "finalize")
 }
 
 // GetPatches requests a list of the user's patches from the API and returns them as a list
@@ -406,7 +407,7 @@ type UpdatePatchModuleParams struct {
 }
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
-func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error {
+func (ac *legacyClient) UpdatePatchModule(ctx context.Context, params UpdatePatchModuleParams) error {
 	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
 	// when marshalled into JSON.
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
@@ -421,8 +422,8 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -512,7 +513,7 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
-func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
+func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmission) (*patch.Patch, error) {
 	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
 	// when marshalled into JSON.
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
@@ -572,8 +573,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 

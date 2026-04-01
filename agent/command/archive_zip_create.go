@@ -80,14 +80,14 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 	}
 
 	if len(files) == 0 {
-		logger.Task().Warning("No files to archive.")
+		logger.Task().Warning(ctx, "No files to archive.")
 	}
 
 	filenames := make([]string, len(files))
 	for idx := range files {
 		filenames[idx] = files[idx].path
 		if c.Verbose {
-			logger.Task().Infof("Adding to archive: %s", filenames[idx])
+			logger.Task().Infof(ctx, "Adding to archive: %s", filenames[idx])
 		}
 	}
 
@@ -95,7 +95,7 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 		return errors.Wrapf(err, "constructing zip archive '%s'", c.Target)
 	}
 
-	logger.Task().Info(message.Fields{
+	logger.Task().Info(ctx, message.Fields{
 		"target":    c.Target,
 		"num_files": len(filenames),
 		"message":   "successfully created archive",

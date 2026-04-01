@@ -41,7 +41,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := uis.env.UserManager().CreateUserToken(r.Context(), creds.Username, creds.Password)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(r.Context(), message.WrapError(err, message.Fields{
 			"message": "error creating user token",
 		}))
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
@@ -49,7 +49,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.umconf.AttachCookie(token, w)
-	gimlet.WriteJSON(w, map[string]string{})
+	gimlet.WriteJSON(r.Context(), w, map[string]string{})
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {

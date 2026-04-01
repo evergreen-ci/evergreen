@@ -24,11 +24,11 @@ func Cleanup(ctx context.Context, logger grip.Journaler) error {
 
 	info, err := dockerClient.Info(ctx)
 	if err != nil {
-		logger.Info("Can't connect to Docker. It's probably not running")
+		logger.Info(ctx, "Can't connect to Docker. It's probably not running")
 		return nil
 	}
 
-	logger.Info(message.Fields{
+	logger.Info(ctx, message.Fields{
 		"message":            "removing docker artifacts",
 		"containers_total":   info.Containers,
 		"containers_running": info.ContainersRunning,
@@ -52,7 +52,7 @@ func cleanContainers(ctx context.Context, dockerClient *client.Client, logger gr
 		return errors.Wrap(err, "getting containers list")
 	}
 
-	logger.Infof("Removing %d containers", len(containers))
+	logger.Infof(ctx, "Removing %d containers", len(containers))
 	catcher := grip.NewBasicCatcher()
 	for _, c := range containers {
 		catcher.Wrapf(dockerClient.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true}), "removing container '%s'", c.ID)
@@ -67,7 +67,7 @@ func cleanImages(ctx context.Context, dockerClient *client.Client, logger grip.J
 		return errors.Wrap(err, "getting image list")
 	}
 
-	logger.Infof("Removing %d images", len(images))
+	logger.Infof(ctx, "Removing %d images", len(images))
 	catcher := grip.NewBasicCatcher()
 	for _, img := range images {
 		_, err := dockerClient.ImageRemove(ctx, img.ID, image.RemoveOptions{Force: true})
@@ -83,7 +83,7 @@ func cleanVolumes(ctx context.Context, dockerClient *client.Client, logger grip.
 		return errors.Wrap(err, "getting volume list")
 	}
 
-	logger.Infof("Removing %d volumes", len(volumes.Volumes))
+	logger.Infof(ctx, "Removing %d volumes", len(volumes.Volumes))
 	catcher := grip.NewBasicCatcher()
 	for _, volume := range volumes.Volumes {
 		catcher.Wrapf(dockerClient.VolumeRemove(ctx, volume.Name, true), "removing volume '%s'", volume.Name)
@@ -105,7 +105,7 @@ func cleanNetworks(ctx context.Context, dockerClient *client.Client, logger grip
 		return errors.Wrap(err, "getting network list")
 	}
 
-	logger.Infof("Removing %d networks", len(networks))
+	logger.Infof(ctx, "Removing %d networks", len(networks))
 	catcher := grip.NewBasicCatcher()
 	for _, network := range networks {
 		catcher.Wrapf(dockerClient.NetworkRemove(ctx, network.ID), "removing network '%s'", network.ID)

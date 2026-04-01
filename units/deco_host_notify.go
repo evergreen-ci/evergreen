@@ -92,5 +92,5 @@ func (j *decoHostNotifyJob) Run(ctx context.Context) {
 		m["time_since_creation_str"] = uptime.String()
 	}
 
-	grip.Notice(m)
+	grip.Notice(ctx, m)
 }
