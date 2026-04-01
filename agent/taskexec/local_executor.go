@@ -184,6 +184,41 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 	return project, nil
 }
 
+// ReloadProject reloads the project configuration from a file while preserving
+// the current debug session state (step index, custom vars, execution history).
+// If a task is currently selected, it re-prepares the task with the new config.
+func (e *LocalExecutor) ReloadProject(configPath string) (*model.Project, error) {
+	savedIndex := e.debugState.CurrentStepIndex
+	savedVars := e.debugState.CustomVars
+	savedHistory := e.debugState.ExecutionHistory
+
+	project, err := e.LoadProject(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if e.debugState.SelectedTask != "" {
+		if err := e.PrepareTask(e.debugState.SelectedTask, e.debugState.SelectedVariant); err != nil {
+			return nil, errors.Wrap(err, "re-preparing task after reload")
+		}
+	}
+
+	e.debugState.CustomVars = savedVars
+	e.debugState.ExecutionHistory = savedHistory
+	if savedIndex > len(e.debugState.CommandList) {
+		savedIndex = len(e.debugState.CommandList)
+	}
+	e.debugState.CurrentStepIndex = savedIndex
+
+	for k, v := range savedVars {
+		e.expansions.Put(k, v)
+	}
+
+	e.logger.Infof("Reloaded project, preserved step index at %d", e.debugState.CurrentStepIndex)
+
+	return project, nil
+}
+
 // SetupWorkingDirectory prepares the working directory for task execution
 func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	if path == "" {

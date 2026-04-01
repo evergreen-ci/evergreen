@@ -531,3 +531,148 @@ func TestLogFile(t *testing.T) {
 		assert.Contains(t, content, "=== STEP 5 END success=true duration=1.2s ===")
 	})
 }
+
+func TestReloadProject(t *testing.T) {
+	makeYAML := func(t *testing.T, dir, content string) string {
+		t.Helper()
+		path := filepath.Join(dir, "test.yml")
+		require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+		return path
+	}
+
+	t.Run("PreservesStepIndexAndState", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "step1"
+      - command: shell.exec
+        params:
+          script: echo "step2"
+      - command: shell.exec
+        params:
+          script: echo "step3"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask("test-task", ""))
+
+		executor.debugState.CurrentStepIndex = 2
+		executor.debugState.CustomVars["myvar"] = "myval"
+		executor.debugState.ExecutionHistory = []executionRecord{
+			{stepIndex: 0, success: true},
+			{stepIndex: 1, success: true},
+		}
+
+		project, err := executor.ReloadProject(yamlFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+
+		assert.Equal(t, 2, executor.debugState.CurrentStepIndex)
+		assert.Equal(t, "myval", executor.debugState.CustomVars["myvar"])
+		assert.Len(t, executor.debugState.ExecutionHistory, 2)
+		assert.Equal(t, "test-task", executor.debugState.SelectedTask)
+	})
+
+	t.Run("ClampsStepIndexWhenFewerSteps", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "step1"
+      - command: shell.exec
+        params:
+          script: echo "step2"
+      - command: shell.exec
+        params:
+          script: echo "step3"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask("test-task", ""))
+
+		executor.debugState.CurrentStepIndex = 2
+
+		// Rewrite the file with fewer commands.
+		makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "only-step"
+`)
+
+		project, err := executor.ReloadProject(yamlFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+
+		assert.Equal(t, len(executor.debugState.CommandList), executor.debugState.CurrentStepIndex)
+		assert.False(t, executor.debugState.HasMoreSteps())
+	})
+
+	t.Run("ReloadsWithNoSelectedTask", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		project, err := executor.ReloadProject(yamlFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+		assert.Equal(t, 0, executor.debugState.CurrentStepIndex)
+		assert.Empty(t, executor.debugState.CommandList)
+	})
+
+	t.Run("RestoresCustomVarsToExpansions", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask("test-task", ""))
+
+		executor.SetVariable("custom_key", "custom_value")
+
+		_, err = executor.ReloadProject(yamlFile)
+		require.NoError(t, err)
+
+		assert.Equal(t, "custom_value", executor.expansions.Get("custom_key"))
+		assert.Equal(t, "custom_value", executor.debugState.CustomVars["custom_key"])
+	})
+}

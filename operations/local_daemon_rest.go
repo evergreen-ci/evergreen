@@ -83,6 +83,25 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	d.conf.OAuth.AccessToken = req.OAuthToken
 
+	// If an executor already exists with a selected task, hot reload the
+	// project so the debug session state (step index, custom vars, execution
+	// history) is preserved.
+	if d.executor != nil && d.executor.GetDebugState().SelectedTask != "" {
+		project, err := d.executor.ReloadProject(req.ConfigPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		d.configPath = req.ConfigPath
+
+		grip.Error(json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":       true,
+			"task_count":    len(project.Tasks),
+			"variant_count": len(project.BuildVariants),
+		}))
+		return
+	}
+
 	workDir := filepath.Dir(req.ConfigPath)
 
 	opts := taskexec.LocalExecutorOptions{
