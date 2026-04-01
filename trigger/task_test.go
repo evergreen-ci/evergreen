@@ -139,7 +139,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	}
 	n, err = NotificationsFromEvent(ctx, &e)
 	assert.NoError(err)
-	grip.Error(err)
+	grip.Error(ctx, err)
 	assert.Len(n, 1)
 	assert.EqualValues(user.PreferenceSlack, n[0].Subscriber.Type)
 }

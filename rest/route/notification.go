@@ -113,7 +113,7 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 	}
 
 	h.sender = s
-	h.sender.Send(h.composer)
+	h.sender.Send(ctx, h.composer)
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
@@ -162,7 +162,7 @@ func (h *emailNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting email sender"))
 	}
 
-	h.sender.Send(h.composer)
+	h.sender.Send(ctx, h.composer)
 
 	return gimlet.NewJSONResponse(struct{}{})
 }

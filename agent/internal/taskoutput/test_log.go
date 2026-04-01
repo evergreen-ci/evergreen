@@ -36,7 +36,7 @@ func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.R
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
 	sender = redactor.NewRedactingSender(sender, redactionOpts)
-	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
+	sender.Send(ctx, message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
 
 	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
 }
@@ -83,7 +83,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		h.sequenceSize = defaultTestLogSequenceSize
 	}
 
-	h.getSpecFile()
+	h.getSpecFile(ctx)
 
 	type fileChunk struct {
 		path     string
@@ -97,7 +97,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	filesOverTenMB := 0
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
-			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
+			h.logger.Execution().Warning(ctx, errors.Wrap(err, "walking test log directory"))
 			return nil
 		}
 		if ctx.Err() != nil {
@@ -114,7 +114,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 
 		fileInfo, err := info.Info()
 		if err != nil {
-			h.logger.Execution().Warning(errors.Wrap(err, "getting test log file info"))
+			h.logger.Execution().Warning(ctx, errors.Wrap(err, "getting test log file info"))
 			return nil
 		}
 
@@ -155,13 +155,13 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		wg.Add(1)
 		go func() {
 			defer func() {
-				h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log ingestion worker"))
+				h.logger.Task().Critical(ctx, recovery.HandlePanicWithError(recover(), nil, "test log ingestion worker"))
 				wg.Done()
 			}()
 
 			for chunk := range work {
 				if err := ctx.Err(); err != nil {
-					h.logger.Execution().Warning(errors.Wrap(err, "context error test log ingestion worker"))
+					h.logger.Execution().Warning(ctx, errors.Wrap(err, "context error test log ingestion worker"))
 					return
 				}
 
@@ -187,50 +187,50 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 // reason, an error is logged and the handler uses the default spec.
 //
 // Called once per task run before sweeping the directory for test log files.
-func (h *testLogDirectoryHandler) getSpecFile() {
+func (h *testLogDirectoryHandler) getSpecFile(ctx context.Context) {
 	data, err := os.ReadFile(filepath.Join(h.dir, testLogSpecFilename))
 	if err != nil {
-		h.logger.Task().Warning(errors.Wrap(err, "reading test log spec; falling back to default spec"))
+		h.logger.Task().Warning(ctx, errors.Wrap(err, "reading test log spec; falling back to default spec"))
 		return
 	}
 	if err = yaml.Unmarshal(data, &h.spec); err != nil {
-		h.logger.Task().Warning(errors.Wrap(err, "unmarshalling test log spec; falling back to default spec"))
+		h.logger.Task().Warning(ctx, errors.Wrap(err, "unmarshalling test log spec; falling back to default spec"))
 		return
 	}
 
 	if err = h.spec.Format.validate(); err != nil {
-		h.logger.Task().Warning(errors.Wrapf(err, "invalid test log format specified; falling back to default text format"))
+		h.logger.Task().Warning(ctx, errors.Wrapf(err, "invalid test log format specified; falling back to default text format"))
 	}
 }
 
 // ingest reads and ships a test log file.
 func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, sequence int, offset, limit int64) {
-	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
+	h.logger.Task().Infof(ctx, "new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
 	// and contain only slash ('/') separators.
 	logPath, err := filepath.Rel(h.dir, path)
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", path))
+		h.logger.Task().Error(ctx, errors.Wrapf(err, "getting relative path for test log file '%s'", path))
 		return
 	}
 	logPath = filepath.ToSlash(logPath)
-	h.logger.Task().Infof("storing test log file '%s' as '%s'", path, logPath)
+	h.logger.Task().Infof(ctx, "storing test log file '%s' as '%s'", path, logPath)
 
 	f, err := os.Open(path)
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "opening test log file '%s'", path))
+		h.logger.Task().Error(ctx, errors.Wrapf(err, "opening test log file '%s'", path))
 		return
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "closing test log file '%s'", path))
+			h.logger.Task().Error(ctx, errors.Wrapf(err, "closing test log file '%s'", path))
 		}
 	}()
 
 	sender, err := h.createSender(ctx, logPath, sequence)
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
+		h.logger.Task().Error(ctx, errors.Wrapf(err, "creating Sender for test log '%s'", path))
 		return
 	}
 
@@ -238,7 +238,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 	if offset > 0 {
 		_, err := f.Seek(offset-1, io.SeekStart)
 		if err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "seeking offset for test log '%s'", path))
+			h.logger.Task().Error(ctx, errors.Wrapf(err, "seeking offset for test log '%s'", path))
 			return
 		}
 	}
@@ -251,7 +251,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 		return
 	}
 	if err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "peeking first byte of test log '%s'", path))
+		h.logger.Task().Error(ctx, errors.Wrapf(err, "peeking first byte of test log '%s'", path))
 		return
 	}
 	currentPos := offset
@@ -261,7 +261,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 			return
 		}
 		if err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			h.logger.Task().Error(ctx, errors.Wrapf(err, "reading test log '%s'", path))
 			return
 		}
 		currentPos += int64(len(data)) - 1
@@ -275,17 +275,17 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 			break
 		}
 		if err != nil {
-			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			h.logger.Task().Error(ctx, errors.Wrapf(err, "reading test log '%s'", path))
 			return
 		}
 		currentPos += int64(len(data)) - 1
 
 		allData = append(allData, data...)
 	}
-	sender.Send(message.NewBytesMessage(level.Info, allData))
+	sender.Send(ctx, message.NewBytesMessage(level.Info, allData))
 
 	if err = sender.Close(); err != nil {
-		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
+		h.logger.Task().Error(ctx, errors.Wrapf(err, "closing Sender for test log '%s'", path))
 	}
 }
 

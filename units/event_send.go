@@ -92,7 +92,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.checkDegradedMode(n); err != nil {
+	if err = j.checkDegradedMode(ctx, n); err != nil {
 		j.AddError(errors.Wrapf(n.MarkError(ctx, errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
 		return
 	}
@@ -103,7 +103,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 
 	err = j.send(ctx, n)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"job_id":            j.ID(),
 		"notification_id":   n.ID,
 		"notification_type": n.Subscriber.Type,
@@ -147,38 +147,38 @@ func (j *eventSendJob) send(ctx context.Context, n *notification.Notification) e
 			return errors.Wrap(err, "getting global notification sender")
 		}
 	}
-	sender.Send(c)
+	sender.Send(ctx, c)
 	return nil
 }
 
-func (j *eventSendJob) checkDegradedMode(n *notification.Notification) error {
+func (j *eventSendJob) checkDegradedMode(ctx context.Context, n *notification.Notification) error {
 	switch n.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
-		return checkFlag(j.flags.GithubStatusAPIDisabled)
+		return checkFlag(ctx, j.flags.GithubStatusAPIDisabled)
 
 	case event.SlackSubscriberType:
-		return checkFlag(j.flags.SlackNotificationsDisabled)
+		return checkFlag(ctx, j.flags.SlackNotificationsDisabled)
 
 	case event.JIRAIssueSubscriberType:
-		return checkFlag(j.flags.JIRANotificationsDisabled)
+		return checkFlag(ctx, j.flags.JIRANotificationsDisabled)
 
 	case event.JIRACommentSubscriberType:
-		return checkFlag(j.flags.JIRANotificationsDisabled)
+		return checkFlag(ctx, j.flags.JIRANotificationsDisabled)
 
 	case event.EvergreenWebhookSubscriberType:
-		return checkFlag(j.flags.WebhookNotificationsDisabled)
+		return checkFlag(ctx, j.flags.WebhookNotificationsDisabled)
 
 	case event.EmailSubscriberType:
-		return checkFlag(j.flags.EmailNotificationsDisabled)
+		return checkFlag(ctx, j.flags.EmailNotificationsDisabled)
 
 	default:
 		return errors.Errorf("unknown subscriber type '%s'", n.Subscriber.Type)
 	}
 }
 
-func checkFlag(flag bool) error {
+func checkFlag(ctx context.Context, flag bool) error {
 	if flag {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventSendJobName,
 			"message": "sender is disabled, not sending notification",
 		})

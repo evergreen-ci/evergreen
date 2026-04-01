@@ -70,7 +70,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "counting inactive hosts by cloud provider"))
 		return
 	}
-	j.logger.Info(message.Fields{
+	j.logger.Info(ctx, message.Fields{
 		"message": "count of decommissioned/quarantined hosts",
 		"counts":  inactiveHosts,
 	})
@@ -90,14 +90,14 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 			Build:               h.SpawnOptions.BuildID,
 		})
 	}
-	j.logger.Info(message.Fields{
+	j.logger.Info(ctx, message.Fields{
 		"message": "hosts spawned by tasks",
 		"hosts":   hosts,
 	})
 
 	for _, h := range taskSpawned {
 		if !utility.IsZeroTime(h.StartTime) && h.StartTime.Add(longRunningHostThreshold).Before(time.Now()) {
-			j.logger.Warning(message.Fields{
+			j.logger.Warning(ctx, message.Fields{
 				"message":               "long running host spawned by task",
 				"id":                    h.Id,
 				"duration":              time.Since(h.StartTime).Seconds(),
@@ -112,7 +112,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 
 	count, err := host.CountVirtualWorkstationsByInstanceType(ctx)
 	j.AddError(err)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "virtual workstations",
 		"stats":   count,
 	})

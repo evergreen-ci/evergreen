@@ -33,6 +33,6 @@ func (*initialSetup) SetFailureMetadataTags([]string)         {}
 func (*initialSetup) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	logger.Task().Info("Performing initial task setup.")
+	logger.Task().Info(ctx, "Performing initial task setup.")
 	return nil
 }

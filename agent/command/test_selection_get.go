@@ -132,7 +132,7 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Bool(testSelectionEnabledAttribute, enabled))
 	trace.SpanFromContext(ctx).SetAttributes(attribute.Int(testSelectionInputNumTestsAttribute, len(c.Tests)))
 	if !enabled {
-		logger.Task().Info("Test selection is not allowed/enabled, writing empty test list")
+		logger.Task().Info(ctx, "Test selection is not allowed/enabled, writing empty test list")
 		return c.writeTestList([]string{})
 	}
 
@@ -144,13 +144,13 @@ func (c *testSelectionGet) Execute(ctx context.Context, comm client.Communicator
 		// Random float in [0.0, 1.0) will always have a
 		// usage_rate percentage chance of no-oping.
 		if rng.Float64() < c.rate {
-			logger.Task().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
+			logger.Task().Infof(ctx, "Skipping test selection based on usage rate '%s'", c.UsageRate)
 			return c.writeTestList([]string{})
 		}
 	} else if c.rate == 0 && c.UsageRate != "" {
 		// If the user explicitly set usage_rate to 0, always no-op.
 		trace.SpanFromContext(ctx).SetAttributes(attribute.Float64(testSelectionUsageRateAttribute, c.rate))
-		logger.Task().Infof("Skipping test selection based on usage rate '%s'", c.UsageRate)
+		logger.Task().Infof(ctx, "Skipping test selection based on usage rate '%s'", c.UsageRate)
 		return c.writeTestList([]string{})
 	}
 

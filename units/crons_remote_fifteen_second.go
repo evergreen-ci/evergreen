@@ -74,7 +74,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 	catcher.Add(populateQueueGroup(ctx, j.env, hostIPAssociationQueueGroup, hostIPAssociationJobs, ts))
 
 	j.ErrorCount = catcher.Len()
-	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 		"id":    j.ID(),
 		"type":  j.Type().Name,
 		"queue": "service",

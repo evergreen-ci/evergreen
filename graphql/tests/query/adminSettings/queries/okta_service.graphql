@@ -1,8 +1,11 @@
 query Auth {
   adminSettings {
     oktaServiceConfig {
+      audience
       clientId
       clientSecret
+      issuer
+      scopes
     }
   }
 }

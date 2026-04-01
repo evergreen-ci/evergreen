@@ -201,7 +201,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		b, err := io.ReadAll(resp.Body)
-		grip.Error(err)
+		grip.Error(ctx, err)
 		s.FailNow(fmt.Sprintf("received status code %d from OOM endpoint with body %s", resp.StatusCode, string(b)))
 	}
 

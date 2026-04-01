@@ -82,7 +82,7 @@ func (c *RuntimeEnvironmentsClient) DoRequest(ctx context.Context, route string,
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		apiErr := errors.New(string(msg))
-		grip.Debug(message.WrapError(apiErr, message.Fields{
+		grip.Debug(ctx, message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
 			"reason":      runtimeEnvironmentsAPIAlert,
 			"status_code": resp.StatusCode,
@@ -105,7 +105,7 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 
 	var images []string
 	if err = json.Unmarshal(body, &images); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -159,7 +159,7 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 
 	osInfo := &OSInfoResponse{}
 	if err = json.Unmarshal(body, &osInfo); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -212,7 +212,7 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 
 	packages := &APIPackageResponse{}
 	if err = json.Unmarshal(body, &packages); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -265,7 +265,7 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 
 	toolchains := &APIToolchainResponse{}
 	if err = json.Unmarshal(body, &toolchains); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -318,7 +318,7 @@ func (c *RuntimeEnvironmentsClient) GetFiles(ctx context.Context, opts FileFilte
 
 	files := &APIFileResponse{}
 	if err = json.Unmarshal(body, &files); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -363,7 +363,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 
 	changes := &APIDiffResponse{}
 	if err = json.Unmarshal(body, &changes); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -417,7 +417,7 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 
 	amiHistory := &APIHistoryResponse{}
 	if err = json.Unmarshal(body, &amiHistory); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -518,7 +518,7 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
 	}
 	if len(amiHistory) != 1 {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":  "expected exactly 1 history result for image",
 			"reason":   runtimeEnvironmentsAPIAlert,
 			"image_id": imageID,

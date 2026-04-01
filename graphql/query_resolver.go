@@ -416,7 +416,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			forbiddenHosts = append(forbiddenHosts, h.Id)
 		}
 		if len(forbiddenHosts) > 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":         "User does not have permission to view hosts",
 				"forbidden_hosts": forbiddenHosts,
 				"user":            usr.Username(),
@@ -925,7 +925,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message":    "Error getting most recent version",
 				"project_id": projectId,
 			}))

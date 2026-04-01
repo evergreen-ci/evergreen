@@ -108,7 +108,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		ids = append(ids, intentHost.Id)
 
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "host.create intent",
 			"host_id": intentHost.Id,
 			"task_id": h.taskID,

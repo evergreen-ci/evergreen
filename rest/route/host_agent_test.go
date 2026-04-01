@@ -1860,16 +1860,16 @@ func TestCheckHostHealth(t *testing.T) {
 			Status:        evergreen.HostRunning,
 			AgentRevision: currentRevision,
 		}
-		shouldExit := checkHostHealth(h)
+		shouldExit := checkHostHealth(t.Context(), h)
 		So(shouldExit, ShouldBeFalse)
 		h.Status = evergreen.HostDecommissioned
-		shouldExit = checkHostHealth(h)
+		shouldExit = checkHostHealth(t.Context(), h)
 		So(shouldExit, ShouldBeTrue)
 		h.Status = evergreen.HostQuarantined
-		shouldExit = checkHostHealth(h)
+		shouldExit = checkHostHealth(t.Context(), h)
 		So(shouldExit, ShouldBeTrue)
 		Convey("With a host that is running but has a different revision", func() {
-			shouldExit := agentRevisionIsOld(h)
+			shouldExit := agentRevisionIsOld(t.Context(), h)
 			So(shouldExit, ShouldBeTrue)
 		})
 	})

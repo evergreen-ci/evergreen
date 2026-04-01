@@ -7,15 +7,18 @@ query {
       canCreateProject
       canEditAdminSettings
       distroPermissions(options: { distroId: "rhel71-power8-large" }) {
+        distroId
         admin
         edit
         view
       }
       projectPermissions(options: { projectIdentifier: "sandbox_project_id" }) {
+        projectIdentifier
         edit
         view
       }
       repoPermissions(options: { repoId: "sandbox_repo_id" }) {
+        repoId
         edit
         view
       }

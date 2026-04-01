@@ -50,7 +50,7 @@ func TestStartLogging(t *testing.T) {
 	tc.taskConfig = config
 
 	require.NoError(t, agt.startLogging(ctx, tc))
-	tc.logger.Execution().Info("foo")
+	tc.logger.Execution().Info(ctx, "foo")
 	assert.NoError(t, tc.logger.Close())
 	lines := agt.comm.(*client.Mock).GetTaskLogs(tc.taskConfig.Task.Id)
 	require.Len(t, lines, 1)

@@ -347,7 +347,7 @@ func LogProjectEvent(ctx context.Context, eventType string, projectId string, ev
 	}
 
 	if err := projectEvent.Log(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": event.EventResourceTypeProject,
 			"message":       "error logging event",
 			"source":        "event-log-fail",

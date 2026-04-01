@@ -266,7 +266,7 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 	// but that should be a brief window.
 	// Passing 0 as the PID refers to the current thread.
 	if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
-		logger.Execution().Warningf("Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
 	}
 
 	proc, err := jpm.CreateProcess(ictx, opts)
@@ -282,23 +282,23 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 	// lower nice value to ensure that this agent thread will have its original
 	// CPU priority.
 	if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
-		logger.Execution().Warningf("Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
+		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
 	}
 
 	if cancel != nil {
-		grip.Warning(message.WrapError(proc.RegisterTrigger(ctx, func(info jasper.ProcessInfo) {
+		grip.Warning(ctx, message.WrapError(proc.RegisterTrigger(ctx, func(info jasper.ProcessInfo) {
 			cancel()
 		}), "registering canceller for process"))
 	}
 
 	pid := proc.Info(ctx).PID
 
-	agentutil.TrackProcess(taskID, pid, logger.System())
+	agentutil.TrackProcess(ctx, taskID, pid, logger.System())
 
 	if background {
-		logger.Execution().Debugf("Running process in the background with PID %d.", pid)
+		logger.Execution().Debugf(ctx, "Running process in the background with PID %d.", pid)
 	} else {
-		logger.Execution().Infof("Started process with PID %d.", pid)
+		logger.Execution().Infof(ctx, "Started process with PID %d.", pid)
 	}
 
 	return proc, nil
@@ -328,7 +328,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 		return c.Binary, nil
 	}
 
-	logger.Execution().Debug("could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
+	logger.Execution().Debug(context.Background(), "could not find executable binary in the default runtime environment PATH, falling back to trying the command's PATH")
 
 	originalPath := os.Getenv("PATH")
 	defer func() {
@@ -339,7 +339,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 		// (e.g. due to having insufficient memory to reset it) , it doesn't
 		// seem worth handling in a better way.
 		if resetErr := os.Setenv("PATH", originalPath); resetErr != nil {
-			logger.Execution().Error(errors.Wrap(resetErr, "resetting agent's PATH env var back to its original state").Error())
+			logger.Execution().Error(context.Background(), errors.Wrap(resetErr, "resetting agent's PATH env var back to its original state").Error())
 		}
 	}()
 
@@ -358,6 +358,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	}
 
 	logger.Execution().WarningWhen(
+		ctx,
 		filepath.IsAbs(c.WorkingDir) && !strings.HasPrefix(c.WorkingDir, conf.WorkDir),
 		message.Fields{
 			"message":         "the working directory is an absolute path without the required prefix",
@@ -371,7 +372,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 	taskTmpDir, err := getWorkingDirectoryLegacy(conf, "tmp")
 	if err != nil {
-		logger.Execution().Notice(errors.Wrap(err, "getting temporary directory"))
+		logger.Execution().Notice(ctx, errors.Wrap(err, "getting temporary directory"))
 	}
 
 	c.Env = defaultAndApplyExpansionsToEnv(c.Env, modifyEnvOptions{
@@ -397,7 +398,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		return errors.Wrap(err, "resolving executable path")
 	}
 	if err != nil {
-		logger.Execution().Debug(message.WrapError(err, message.Fields{
+		logger.Execution().Debug(ctx, message.WrapError(err, message.Fields{
 			"message":           "found an executable path, but encountered errors while doing so",
 			"working_directory": c.WorkingDir,
 			"background":        c.Background,
@@ -405,7 +406,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 			"binary_path":       execPath,
 		}))
 	} else {
-		logger.Execution().Debug(message.Fields{
+		logger.Execution().Debug(ctx, message.Fields{
 			"working_directory": c.WorkingDir,
 			"background":        c.Background,
 			"binary":            c.Binary,
@@ -416,9 +417,9 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	err = errors.WithStack(c.runCommand(ctx, c.getProc(ctx, execPath, conf, logger), logger))
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())
-		logger.System().Debug(message.CollectAllProcesses())
-		logger.Execution().Notice(err)
+		logger.System().Debugf(ctx, "Canceled command '%s', dumping running processes.", c.Name())
+		logger.System().Debug(ctx, message.CollectAllProcesses())
+		logger.Execution().Notice(ctx, err)
 
 		return errors.Wrapf(ctxErr, "canceled while running command '%s'", c.Name())
 	}
@@ -428,7 +429,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, logger client.LoggerProducer) error {
 	if c.Silent {
-		logger.Execution().Info("Executing command in silent mode.")
+		logger.Execution().Info(ctx, "Executing command in silent mode.")
 	}
 
 	err := cmd.Run(ctx)
@@ -439,7 +440,7 @@ func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, lo
 	}
 
 	if c.ContinueOnError && err != nil {
-		logger.Execution().Noticef("Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
+		logger.Execution().Noticef(ctx, "Script errored, but continue on error is set - continuing task execution. Error: %s.", err)
 		return nil
 	}
 
