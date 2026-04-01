@@ -12,15 +12,18 @@
               "canCreateProject": true,
               "canEditAdminSettings": true,
               "distroPermissions": {
+                "distroId": "rhel71-power8-large",
                 "admin": true,
                 "edit": true,
                 "view": true
               },
               "projectPermissions": {
+                "projectIdentifier": "sandbox_project_id",
                 "edit": true,
                 "view": true
               },
               "repoPermissions": {
+                "repoId": "sandbox_repo_id",
                 "edit": true,
                 "view": true
               }
@@ -39,15 +42,18 @@
             "permissions": {
               "canCreateDistro": false,
               "distroPermissions": {
+                "distroId": "rhel71-power8-large",
                 "admin": false,
                 "edit": false,
                 "view": false
               },
               "projectPermissions": {
+                "projectIdentifier": "sandbox_project_id",
                 "edit": false,
                 "view": false
               },
               "repoPermissions": {
+                "repoId": "sandbox_repo_id",
                 "edit": false,
                 "view": false
               }

@@ -82,7 +82,7 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 			alerted, err := tryAlertableInstanceTypeNotification(ctx, &h)
 			if err != nil {
 				j.AddError(errors.Wrap(err, "logging events for alertable instance type"))
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"runner":  "monitor",
 					"id":      j.ID(),
 					"message": "error queuing alert",
@@ -96,7 +96,7 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"job":             alertableInstanceTypeNotifyJobName,
 		"message":         "finished running alertable instance type notify job",
 		"num_hosts_found": len(hosts),

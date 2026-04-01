@@ -17,7 +17,7 @@ import (
 // AddPRPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
 func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queue) error {
 	if err := intent.Insert(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "couldn't insert patch intent",
 			"id":        intent.ID(),
 			"type":      intent.GetType(),
@@ -31,7 +31,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 
 	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
 	if err := queue.Put(context.Background(), job); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
 			"message":   "GitHub pull request not queued for processing",
 			"intent_id": intent.ID(),
@@ -43,7 +43,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":     "GitHub pull request queued",
 		"intent_type": intent.GetType(),
 		"intent_id":   intent.ID(),
@@ -54,7 +54,7 @@ func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queu
 
 func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.Queue) error {
 	if err := intent.Insert(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "couldn't insert GitHub merge group intent",
 			"id":        intent.ID(),
 			"type":      intent.GetType(),
@@ -68,7 +68,7 @@ func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.
 
 	job := units.NewPatchIntentProcessor(evergreen.GetEnvironment(), mgobson.NewObjectId(), intent)
 	if err := queue.Put(context.Background(), job); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":    "GitHub hook",
 			"message":   "GitHub merge group not queued for processing",
 			"intent_id": intent.ID(),
@@ -80,7 +80,7 @@ func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":     "GitHub merge group queued",
 		"intent_type": intent.GetType(),
 		"intent_id":   intent.ID(),

@@ -36,9 +36,9 @@ type TestServer struct {
 }
 
 func (s *TestServer) Close() {
-	grip.Noticeln("closing test server:", s.URL)
+	grip.Noticeln(context.Background(), "closing test server:", s.URL)
 
-	grip.Error(s.Listener.Close())
+	grip.Error(context.Background(), s.Listener.Close())
 	s.ts.CloseClientConnections()
 	s.ts.Close()
 }
@@ -115,7 +115,7 @@ func CreateTestServer(ctx context.Context, settings *evergreen.Settings, tlsConf
 		ts:        server,
 	}
 
-	grip.Infoln("started server:", ts.URL)
+	grip.Infoln(ctx, "started server:", ts.URL)
 
 	return ts, nil
 }

@@ -1,6 +1,7 @@
 package s3usage
 
 import (
+	"context"
 	"os"
 
 	"github.com/evergreen-ci/evergreen"
@@ -77,7 +78,7 @@ func CalculateUploadMetrics(
 	for i, file := range files {
 		fileInfo, err := os.Stat(file.LocalPath)
 		if err != nil {
-			logger.Warningf("Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
+			logger.Warningf(context.Background(), "Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
 			populatedFiles[i] = FileMetrics{
 				LocalPath:     file.LocalPath,
 				RemotePath:    file.RemotePath,
@@ -143,7 +144,7 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 // Returns 0 if cost cannot be calculated due to missing or invalid config.
 func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
 	if putRequests <= 0 {
-		grip.Warning(message.Fields{
+		grip.Warning(context.Background(), message.Fields{
 			"message":      "no put requests to calculate cost",
 			"put_requests": putRequests,
 		})
@@ -151,7 +152,7 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 	}
 
 	if costConfig == nil {
-		grip.Warning(message.Fields{
+		grip.Warning(context.Background(), message.Fields{
 			"message": "cost config is not available to calculate S3 PUT cost",
 		})
 		return 0.0
@@ -159,7 +160,7 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 
 	discount := costConfig.S3Cost.Upload.UploadCostDiscount
 	if discount < 0.0 || discount > 1.0 {
-		grip.Warning(message.Fields{
+		grip.Warning(context.Background(), message.Fields{
 			"message":  "invalid S3 upload cost discount",
 			"discount": discount,
 		})
@@ -173,20 +174,20 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 // using the bucket's Intelligent Tiering schedule. expirationDays must be positive; buckets without a
 // lifecycle expiration policy have no defined retention period and cannot have their cost calculated, so
 // this function returns 0 for them. Returns 0 if config is nil.
-func CalculateS3StorageCostWithConfig(uploadBytes int64, expirationDays int, costConfig *evergreen.CostConfig) float64 {
+func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, expirationDays int, costConfig *evergreen.CostConfig) float64 {
 	if uploadBytes <= 0 {
 		return 0.0
 	}
 	// TODO (DEVPROD-26465): callers must always supply a positive expirationDays. Use artifactExpirationDays
 	// as the minimum fallback so this guard is never reached.
 	if expirationDays <= 0 {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": "expiration days not configured, cannot calculate S3 storage cost",
 		})
 		return 0.0
 	}
 	if costConfig == nil {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": "cost config is not available to calculate S3 storage cost",
 		})
 		return 0.0

@@ -90,7 +90,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context, comm client.Communicator, l
 			Expiration: expiration,
 		}
 	} else {
-		logger.Task().Warningf("Error parsing expiration time '%s' to determine if credentials can be cached: '%s'. Future operations will re-call AssumeRole.", creds.Expiration, err.Error())
+		logger.Task().Warningf(ctx, "Error parsing expiration time '%s' to determine if credentials can be cached: '%s'. Future operations will re-call AssumeRole.", creds.Expiration, err.Error())
 	}
 
 	return nil

@@ -277,7 +277,7 @@ func FormatSlackTarget(ctx context.Context, target string) (string, error) {
 		trimmedTarget := strings.TrimPrefix(target, "@")
 		user, err := user.FindBySlackUsername(ctx, trimmedTarget)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "could not find user by Slack username, falling back to default target instead of using the member ID",
 				"target":  target,
 			}))
@@ -359,7 +359,7 @@ func CollectUnsentNotificationStats(ctx context.Context) (*NotificationStats, er
 			nStats.Slack = data.Count
 
 		default:
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": fmt.Sprintf("unknown subscriber '%s'", data.Key),
 			})
 		}

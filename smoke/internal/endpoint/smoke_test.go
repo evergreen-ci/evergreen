@@ -28,7 +28,7 @@ func TestSmokeEndpoints(t *testing.T) {
 	defer cancel()
 
 	params := getSmokeTestParamsFromEnv(t)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "got smoke test parameters",
 		"params":  fmt.Sprintf("%#v", params),
 	})
@@ -36,7 +36,7 @@ func TestSmokeEndpoints(t *testing.T) {
 	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
 		if appServerCmd != nil {
-			grip.Error(errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
+			grip.Error(ctx, errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
 		}
 	}()
 
@@ -53,12 +53,12 @@ func TestSmokeEndpoints(t *testing.T) {
 
 	internal.WaitForEvergreen(t, params.AppServerURL, client)
 
-	grip.Info("Testing UI Endpoints")
+	grip.Info(ctx, "Testing UI Endpoints")
 	for url, expected := range td.UI {
 		makeSmokeGetRequestAndCheck(ctx, t, params, client, url, expected)
 	}
 
-	grip.Info("Testing API Endpoints")
+	grip.Info(ctx, "Testing API Endpoints")
 	for url, expected := range td.API {
 		makeSmokeGetRequestAndCheck(ctx, t, params, client, "/api"+url, expected)
 	}
@@ -97,7 +97,7 @@ type smokeEndpointTestDefinitions struct {
 
 func makeSmokeGetRequestAndCheck(ctx context.Context, t *testing.T, params smokeTestParams, client *http.Client, url string, expected []string) {
 	body, err := internal.MakeSmokeRequest(ctx, params.APIParams, http.MethodGet, client, url)
-	grip.Error(errors.Wrap(err, "making smoke request"))
+	grip.Error(ctx, errors.Wrap(err, "making smoke request"))
 	page := string(body)
 	for _, text := range expected {
 		assert.Contains(t, page, text, "should have found expected text from endpoint response")

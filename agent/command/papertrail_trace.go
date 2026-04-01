@@ -72,7 +72,7 @@ func (t *papertrailTrace) Execute(ctx context.Context,
 			return errors.Wrap(err, "running trace")
 		}
 
-		logger.Task().Infof("Successfully traced '%s' (sha256://%s)", f.filename, f.sha256)
+		logger.Task().Infof(ctx, "Successfully traced '%s' (sha256://%s)", f.filename, f.sha256)
 	}
 
 	return nil

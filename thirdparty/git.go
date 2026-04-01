@@ -47,8 +47,9 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 		return nil, errors.Wrapf(err, "creating local patch file")
 	}
 	defer func() {
-		grip.Error(handle.Close())
-		grip.Error(os.Remove(handle.Name()))
+		bg := context.Background()
+		grip.Error(bg, handle.Close())
+		grip.Error(bg, os.Remove(handle.Name()))
 	}()
 	// convert the patch to bytes
 	buf := []byte(patch)
@@ -102,7 +103,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		// we expect to get the number of additions,
 		// the number of deletions, and the filename
 		if len(details) != 3 {
-			grip.Debug(message.Fields{
+			grip.Debug(context.Background(), message.Fields{
 				"message": "file stat details has unexpected length",
 				"details": details,
 				"length":  len(details),
@@ -113,7 +114,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		additions, err = strconv.Atoi(details[0])
 		if err != nil {
 			if details[0] == "-" {
-				grip.Warningf("Line addition count for %v is '%v' assuming "+
+				grip.Warningf(context.Background(), "Line addition count for %v is '%v' assuming "+
 					"binary data diff, using 0", details[2], details[0])
 				additions = 0
 			} else {
@@ -124,7 +125,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 		deletions, err = strconv.Atoi(details[1])
 		if err != nil {
 			if details[1] == "-" {
-				grip.Warningf("Line deletion count for %v is '%v' assuming "+
+				grip.Warningf(context.Background(), "Line deletion count for %v is '%v' assuming "+
 					"binary data diff, using 0", details[2], details[1])
 				deletions = 0
 			} else {
@@ -251,7 +252,7 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file, worktree 
 			return nil, errors.Wrap(err, "git cloning repository")
 		}
 		defer func() {
-			grip.Warning(message.WrapError(os.RemoveAll(dir), message.Fields{
+			grip.Warning(ctx, message.WrapError(os.RemoveAll(dir), message.Fields{
 				"message": "could not clean up git clone directory",
 				"owner":   owner,
 				"repo":    repo,
@@ -322,7 +323,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":          "minimal git clone failed",
 			"owner":            owner,
 			"repo":             repo,
@@ -370,7 +371,7 @@ func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
 		if ctx.Err() != nil {
 			return errors.Wrapf(ctx.Err(), "creating git worktree '%s'", worktreeDir)
 		}
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":          "git worktree add failed",
 			"worktree_dir":     worktreeDir,
 			"stdout":           stdout.String(),
@@ -427,7 +428,7 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 			// the file doesn't exist in the repo at the given revision.
 			return nil, FileNotFoundError{filepath: fileName}
 		}
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":          "git restore failed",
 			"owner":            owner,
 			"repo":             repo,

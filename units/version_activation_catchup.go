@@ -61,7 +61,7 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 	}
 
 	if flags.SchedulerDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message": "scheduler is disabled",
 			"impact":  "skipping batch time activation",
 			"mode":    "degraded",
@@ -99,7 +99,7 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 		count++
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                       "version activation catch up report",
 		"projects":                      len(projects),
 		"project_to_versions_activated": activations,

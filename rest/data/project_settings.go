@@ -511,7 +511,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
 		if err := amboy.EnqueueUniqueJob(ctx, queue, j); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "problem enqueueing repotracker job for enabled project",
 				"project": projectId,
 				"owner":   mergedSection.Owner,
@@ -538,7 +538,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 func terminateDebugHostsForProject(ctx context.Context, projectId, userId string) {
 	debugHosts, err := host.FindTerminatableDebugHostsForProject(ctx, projectId)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "problem finding debug hosts to terminate after disabling debug spawn hosts setting",
 			"project": projectId,
 		}))
@@ -560,14 +560,14 @@ func terminateDebugHostsForProject(ctx context.Context, projectId, userId string
 	}
 
 	if catcher.HasErrors() {
-		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 			"message":    "problem enqueueing debug host termination jobs after disabling debug spawn hosts setting",
 			"project":    projectId,
 			"num_hosts":  len(debugHosts),
 			"num_errors": catcher.Len(),
 		}))
 	} else {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "enqueued debug host termination jobs after disabling debug spawn hosts setting",
 			"project":   projectId,
 			"num_hosts": len(debugHosts),

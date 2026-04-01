@@ -168,7 +168,7 @@ func newStreamingSender(name string, channel StreamChannel, sw *streamWriter) *s
 	return s
 }
 
-func (s *streamingSender) Send(m message.Composer) {
+func (s *streamingSender) Send(_ context.Context, m message.Composer) {
 	if !m.Loggable() {
 		return
 	}

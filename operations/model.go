@@ -56,7 +56,7 @@ type ClientProjectConf struct {
 	LocalAliases   []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
 
-func findConfigFilePath(fn string) (string, error) {
+func findConfigFilePath(ctx context.Context, fn string) (string, error) {
 	currentBinPath, _ := osext.Executable()
 
 	userHome, _ := util.GetUserHome()
@@ -76,7 +76,7 @@ func findConfigFilePath(fn string) (string, error) {
 	}
 	for _, path := range defaultFiles {
 		if isValidPath(path) {
-			grip.WarningWhen(fn != "", "Couldn't find configuration file, falling back on default.")
+			grip.WarningWhen(ctx, fn != "", "Couldn't find configuration file, falling back on default.")
 			return path, nil
 		}
 	}
@@ -155,7 +155,7 @@ type ClientSettings struct {
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
-	path, err := findConfigFilePath(fn)
+	path, err := findConfigFilePath(context.Background(), fn)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding config file '%s'", fn)
 	}
@@ -233,7 +233,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// If there is no saved token file path,
 		// print the opt-out message as the OAuth flow starts.
 		if s.OAuth.TokenFilePath == "" && printMessages {
-			grip.Info(optOut)
+			grip.Info(ctx, optOut)
 		}
 		if err := s.SetOAuthToken(ctx); err != nil {
 			return c, errors.Wrap(err, "setting config OAuth token")
@@ -243,7 +243,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// To use OAuth tokens, we need to use the corp URL.
 		c.SetAPIServerHost(s.getApiServerHost(true))
 	} else if reason != "" && printMessages {
-		grip.Info(reason)
+		grip.Info(ctx, reason)
 	}
 
 	// Check CLI version AFTER authentication is set up
@@ -327,7 +327,7 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communicator) error {
 	clients, err := c.GetClientConfig(ctx)
 	if err != nil {
-		grip.Debug(errors.Wrap(err, "getting client config info"))
+		grip.Debug(ctx, errors.Wrap(err, "getting client config info"))
 	}
 	if clients == nil {
 		return nil
@@ -335,7 +335,7 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 	if clients.OldestAllowedCLIVersion != "" {
 		isCLIVersionTooOld, err := isFirstDateBefore(evergreen.ClientVersion, clients.OldestAllowedCLIVersion)
 		if err != nil {
-			grip.Warning(errors.Wrap(err, "checking if client is older than the latest version"))
+			grip.Warning(ctx, errors.Wrap(err, "checking if client is older than the latest version"))
 		}
 		if isCLIVersionTooOld {
 			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
@@ -350,7 +350,7 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 		// save the configuration file
 		if err := s.Write(""); err != nil {
 			// This shouldn't prevent users from using the CLI so just log a warning.
-			grip.Warning(errors.Wrap(err, "saving configuration file"))
+			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
 		}
 	}
 	return nil
@@ -360,15 +360,15 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdate bool) {
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
-		grip.Debug(errors.Wrap(err, "getting banner messages"))
+		grip.Debug(ctx, errors.Wrap(err, "getting banner messages"))
 	} else if len(banner) > 0 {
-		grip.Noticef("Banner: %s", banner)
+		grip.Noticef(ctx, "Banner: %s", banner)
 	}
 
 	if checkForUpdate {
-		update, err := checkUpdate(c, true, false)
+		update, err := checkUpdate(ctx, c, true, false)
 		if err != nil {
-			grip.Debug(err)
+			grip.Debug(ctx, err)
 		}
 		if update.needsUpdate {
 			if runtime.GOOS == "windows" {
@@ -631,7 +631,7 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 	})
 }
 
-func (s *ClientSettings) SetDefaultProject(cwd, project string) {
+func (s *ClientSettings) SetDefaultProject(ctx context.Context, cwd, project string) {
 	if s.DisableAutoDefaulting {
 		return
 	}
@@ -644,12 +644,12 @@ func (s *ClientSettings) SetDefaultProject(cwd, project string) {
 		s.ProjectsForDirectory = map[string]string{}
 	}
 	s.ProjectsForDirectory[cwd] = project
-	grip.Infof("Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
+	grip.Infof(ctx, "Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
 }
 
-func (s *ClientSettings) SetAutoUpgradeCLI() {
+func (s *ClientSettings) SetAutoUpgradeCLI(ctx context.Context) {
 	s.AutoUpgradeCLI = true
-	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
+	grip.Info(ctx, "Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }
 
 func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {
@@ -672,7 +672,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
 		// we need to remove the file to get a new token.
 		if path != "" {
 			if delErr := os.RemoveAll(path); delErr != nil {
-				grip.Warning(errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
+				grip.Warning(ctx, errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
 			}
 			token, path, err = s.getOAuthToken(ctx)
 			if err != nil {
@@ -691,7 +691,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
 		if err := s.Write(""); err != nil {
 			// This shouldn't prevent the current operation from succeeding
 			// so just log a warning.
-			grip.Warning(errors.Wrap(err, "saving configuration file"))
+			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
 		}
 	}
 

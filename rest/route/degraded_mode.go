@@ -50,7 +50,7 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = config.ServiceFlags.Set(ctx); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "CPU degraded mode has been triggered",
 			"route":   "/degraded_mode",
 		})

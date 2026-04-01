@@ -74,7 +74,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 			// Only log an error if the final job attempt errors. Otherwise, it
 			// may retry and succeed on the next attempt.
 			event.LogHostStartError(ctx, j.HostID, string(j.Source), j.Error().Error())
-			grip.Error(message.WrapError(j.Error(), message.Fields{
+			grip.Error(ctx, message.WrapError(j.Error(), message.Fields{
 				"message": "no attempts remaining to start spawn host",
 				"host_id": j.HostID,
 				"source":  j.Source,
@@ -85,7 +85,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 
 	startCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule && !h.IsSleepScheduleEnabled() {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":             "no-oping scheduled start because sleep schedule is not enabled for this host",
 				"host_id":             j.HostID,
 				"host_status":         h.Status,
@@ -96,7 +96,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 			return nil
 		}
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule && h.SleepSchedule.NextStartTime.After(time.Now().Add(host.PreStartThreshold)) {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":         "no-oping because host is not scheduled to start yet",
 				"host_id":         h.Id,
 				"next_start_time": h.SleepSchedule.NextStartTime,
@@ -110,7 +110,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		}
 
 		event.LogHostStartSucceeded(ctx, h.Id, string(j.Source))
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":    "started spawn host",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,
@@ -121,7 +121,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		})
 
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule {
-			grip.Warning(message.WrapError(j.setNextScheduledStart(ctx, h), message.Fields{
+			grip.Warning(ctx, message.WrapError(j.setNextScheduledStart(ctx, h), message.Fields{
 				"message":        "successfully started host for sleep schedule but could not set next scheduled start time",
 				"host_id":        h.Id,
 				"sleep_schedule": fmt.Sprintf("%#v", h.SleepSchedule),

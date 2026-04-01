@@ -60,7 +60,7 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.AlertsDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  "alerter",
 			"id":      j.ID(),
 			"message": "alerts are disabled, exiting",
@@ -84,7 +84,7 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 		}
 		if err = runVolumeWarningTriggers(ctx, v); err != nil {
 			j.AddError(err)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"runner":    "monitor",
 				"id":        j.ID(),
 				"message":   "error queueing volume expiration warning alert",
@@ -119,7 +119,7 @@ func tryVolumeNotification(ctx context.Context, v host.Volume, numHours int) (bo
 		return false, nil
 	}
 	event.LogVolumeExpirationWarningSent(ctx, v.ID)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "sent volume expiration warning",
 		"volume_id":  v.ID,
 		"host_id":    v.Host,

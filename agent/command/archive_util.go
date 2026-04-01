@@ -47,7 +47,7 @@ func buildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, p
 
 	numFilesArchived := 0
 	processed := map[string]bool{}
-	logger.Infof("Beginning to build archive.")
+	logger.Infof(ctx, "Beginning to build archive.")
 FileLoop:
 	for _, file := range pathsToAdd {
 		if err := ctx.Err(); err != nil {
@@ -61,13 +61,13 @@ FileLoop:
 		if file.info.Mode()&os.ModeSymlink > 0 {
 			symlinkPath, err := filepath.EvalSymlinks(file.path)
 			if err != nil {
-				logger.Warningf("Could not follow symlink '%s', ignoring.", file.path)
+				logger.Warningf(ctx, "Could not follow symlink '%s', ignoring.", file.path)
 				continue
 			} else {
-				logger.Infof("Following symlink '%s', got path '%s'.", file.path, symlinkPath)
+				logger.Infof(ctx, "Following symlink '%s', got path '%s'.", file.path, symlinkPath)
 				symlinkFileInfo, err := os.Stat(symlinkPath)
 				if err != nil {
-					logger.Warningf("Failed to get underlying file for symlink '%s', ignoring.", file.path)
+					logger.Warningf(ctx, "Failed to get underlying file for symlink '%s', ignoring.", file.path)
 					continue
 				}
 
@@ -92,7 +92,7 @@ FileLoop:
 		}
 
 		if verbose {
-			logger.Infof("Adding file to tarball: '%s'.", intarball)
+			logger.Infof(ctx, "Adding file to tarball: '%s'.", intarball)
 		}
 		if _, hasKey := processed[intarball]; hasKey {
 			continue
@@ -121,7 +121,7 @@ FileLoop:
 			if err := tarWriter.WriteHeader(hdr); err != nil {
 				return numFilesArchived, errors.Wrapf(err, "writing tarball header for directory '%s'", intarball)
 			}
-			logger.Warning(errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
+			logger.Warning(ctx, errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
 			continue
 		}
 
@@ -139,17 +139,17 @@ FileLoop:
 		}
 		amountWrote, err := io.Copy(tarWriter, in)
 		if err != nil {
-			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.path))
+			logger.Debug(ctx, errors.Wrapf(in.Close(), "closing file '%s'", file.path))
 			return numFilesArchived, errors.Wrapf(err, "copying file '%s' into tarball", file.path)
 		}
 
 		if amountWrote != hdr.Size {
-			logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.path))
+			logger.Debug(ctx, errors.Wrapf(in.Close(), "closing file '%s'", file.path))
 			return numFilesArchived, errors.Errorf("tarball header size is %d but actually wrote %d", hdr.Size, amountWrote)
 		}
 
-		logger.Debug(errors.Wrapf(in.Close(), "closing file '%s'", file.path))
-		logger.Warning(errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
+		logger.Debug(ctx, errors.Wrapf(in.Close(), "closing file '%s'", file.path))
+		logger.Warning(ctx, errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
 	}
 
 	return numFilesArchived, nil
@@ -239,7 +239,7 @@ tarReaderLoop:
 				return errors.WithStack(err)
 			}
 
-			err := writeFileWithContentsAndPermission(namePath, tarReader, os.FileMode(hdr.Mode))
+			err := writeFileWithContentsAndPermission(ctx, namePath, tarReader, os.FileMode(hdr.Mode))
 			if err != nil {
 				return err
 			}
@@ -249,13 +249,13 @@ tarReaderLoop:
 	}
 }
 
-func writeFileWithContentsAndPermission(path string, contents io.Reader, mode fs.FileMode) error {
+func writeFileWithContentsAndPermission(ctx context.Context, path string, contents io.Reader, mode fs.FileMode) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	defer func() {
-		grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", path))
+		grip.Error(ctx, errors.Wrapf(f.Close(), "closing file '%s'", path))
 	}()
 
 	if _, err = io.Copy(f, contents); err != nil {

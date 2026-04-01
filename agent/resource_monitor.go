@@ -66,16 +66,16 @@ func (rm *resourceMonitor) sample(ctx context.Context) {
 	// result because we pass percpu=false.
 	cpuPercents, err := cpu.PercentWithContext(ctx, 200*time.Millisecond, false)
 	if err != nil {
-		rm.logger.Debug(errors.Wrap(err, "sampling CPU usage"))
+		rm.logger.Debug(ctx, errors.Wrap(err, "sampling CPU usage"))
 	} else if len(cpuPercents) > 0 {
 		rm.recordCPU(cpuPercents[0])
 	} else {
-		rm.logger.Warning("CPU usage sampling returned empty result")
+		rm.logger.Warning(ctx, "CPU usage sampling returned empty result")
 	}
 
 	memStat, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
-		rm.logger.Warning(errors.Wrap(err, "sampling memory usage"))
+		rm.logger.Warning(ctx, errors.Wrap(err, "sampling memory usage"))
 	} else if memStat != nil {
 		rm.recordMemory(memStat.UsedPercent)
 	}

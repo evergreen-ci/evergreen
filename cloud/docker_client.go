@@ -182,7 +182,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 
 	// Check if image already exists on host
 	_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation":     "EnsureImageDownloaded",
 		"details":       "ImageInspectWithRaw",
 		"host_id":       h.Id,
@@ -194,7 +194,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 	} else if strings.Contains(err.Error(), "No such image") {
 		if options.Method == distro.DockerImageBuildTypeImport {
 			err = c.importImage(ctx, h, imageName, options.Image)
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "import image",
 				"options_image": options.Image,
@@ -238,7 +238,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, s3URLPrefix 
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to generate docker client")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation": "BuildImageWithAgent",
 		"details":   "generateclient",
 		"duration":  time.Since(start),
@@ -281,14 +281,14 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, s3URLPrefix 
 	if err != nil {
 		return "", errors.Wrapf(err, "Error building Docker image from base image %s", baseImage)
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation": "BuildImageWithAgent",
 		"details":   "ImageBuild",
 		"duration":  time.Since(start),
 		"host_id":   h.Id,
 		"span":      time.Since(start).String(),
 	})
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 
 	// wait for ImageBuild to complete -- success response otherwise returned
 	// before building from Dockerfile is over, and next ContainerCreate will fail
@@ -296,7 +296,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, s3URLPrefix 
 	if err != nil {
 		return "", errors.Wrap(err, "Error reading ImageBuild response")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation": "BuildImageWithAgent",
 		"details":   "ReadAll",
 		"duration":  time.Since(start),
@@ -351,11 +351,11 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	networkConf := &network.NetworkingConfig{}
 	hostConf := &container.HostConfig{}
 
-	grip.Info(makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
+	grip.Info(ctx, makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{"image": containerConf.Image}))
 
 	// Build container
 	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, nil, containerHost.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "Docker create API call failed",
 			"container": containerHost.Id,
 			"parent":    parentHost.Id,
