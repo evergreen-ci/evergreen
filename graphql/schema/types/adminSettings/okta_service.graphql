@@ -1,9 +1,13 @@
 type OktaServiceConfig {
+  audience: String
   clientId: String @requireAdmin
   clientSecret: String @requireAdmin
+  scopes: [String!]
 }
 
 input OktaServiceConfigInput {
+  audience: String
   clientId: String @redactSecrets
   clientSecret: String @redactSecrets
+  scopes: [String!]
 }

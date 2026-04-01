@@ -693,8 +693,10 @@ func (a *APIAuthConfig) ToService() (any, error) {
 }
 
 type APIOktaServiceConfig struct {
-	ClientID     *string `json:"client_id"`
-	ClientSecret *string `json:"client_secret"`
+	ClientID     *string  `json:"client_id"`
+	ClientSecret *string  `json:"client_secret"`
+	Scopes       []string `json:"scopes"`
+	Audience     *string  `json:"audience"`
 }
 
 func (a *APIOktaServiceConfig) BuildFromService(h any) error {
@@ -702,6 +704,8 @@ func (a *APIOktaServiceConfig) BuildFromService(h any) error {
 	case evergreen.OktaServiceConfig:
 		a.ClientID = utility.ToStringPtr(v.ClientID)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
+		a.Scopes = v.Scopes
+		a.Audience = utility.ToStringPtr(v.Audience)
 	default:
 		return errors.Errorf("programmatic error: expected Okta service config but got type %T", h)
 	}
@@ -712,6 +716,8 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 	return evergreen.OktaServiceConfig{
 		ClientID:     utility.FromStringPtr(a.ClientID),
 		ClientSecret: utility.FromStringPtr(a.ClientSecret),
+		Scopes:       a.Scopes,
+		Audience:     utility.FromStringPtr(a.Audience),
 	}, nil
 }
 

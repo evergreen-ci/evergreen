@@ -154,8 +154,10 @@
         "data": {
           "adminSettings": {
             "oktaServiceConfig": {
+              "audience": "audience",
               "clientId": "service-id",
-              "clientSecret": "service-secret"
+              "clientSecret": "service-secret",
+              "scopes": ["scope1", "scope2"]
             }
           }
         }
