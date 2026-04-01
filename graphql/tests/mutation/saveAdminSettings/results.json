@@ -279,7 +279,9 @@
         "data": {
           "saveAdminSettings": {
             "oktaServiceConfig": {
-              "clientId": "service-id"
+              "audience": "audience",
+              "clientId": "service-id",
+              "scopes": ["scope1", "scope2"]
             }
           }
         }
