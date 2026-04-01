@@ -432,7 +432,7 @@ func canRestartTask(ctx context.Context, t *task.Task) bool {
 	}
 	// It is possible to restart blocked display tasks. Later tasks in a display task could be blocked on
 	// earlier tasks in the display task, in which case restarting the entire display task may unblock them.
-	return (t.GetDisplayStatus() == evergreen.TaskStatusBlocked && t.DisplayOnly) ||
+	return (t.DisplayStatusCache == evergreen.TaskStatusBlocked && t.DisplayOnly) ||
 		!utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status)
 }
 
@@ -441,7 +441,7 @@ func canScheduleTask(ctx context.Context, t *task.Task) bool {
 	if t.IsPartOfDisplay(ctx) || t.Aborted {
 		return false
 	}
-	if t.GetDisplayStatus() != evergreen.TaskUnscheduled {
+	if t.DisplayStatusCache != evergreen.TaskUnscheduled {
 		return false
 	}
 	return true
