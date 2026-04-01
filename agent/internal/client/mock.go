@@ -244,7 +244,7 @@ func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Proje
 
 	data, err = os.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
-		grip.Error(err)
+		grip.Error(ctx, err)
 	}
 	proj := &serviceModel.Project{}
 	_, err = serviceModel.LoadProjectInto(ctx, data, nil, "", proj)
@@ -599,7 +599,7 @@ func newMockSender(name string, appendLine func(log.LogLine) error) *mockSender 
 	}
 }
 
-func (s *mockSender) Send(m message.Composer) {
+func (s *mockSender) Send(_ context.Context, m message.Composer) {
 	ts := time.Now().UnixNano()
 
 	if !s.Level().ShouldLog(m) {

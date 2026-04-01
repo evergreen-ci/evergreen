@@ -42,24 +42,24 @@ func spanForRootTest(ctx context.Context, t *testing.T) context.Context {
 	traceIDString := os.Getenv(otelTraceIDEnvVar)
 	spanIDString := os.Getenv(otelParentIDEnvVar)
 	if collectorEndpoint == "" || traceIDString == "" || spanIDString == "" {
-		grip.Debug("collector is not configured. Skipping trace initialization")
+		grip.Debug(ctx, "collector is not configured. Skipping trace initialization")
 		return ctx
 	}
 
 	tracerCloser, err := initTracer(ctx, collectorEndpoint)
 	if err != nil {
-		grip.Error(errors.Wrap(err, "initializing tracer provider"))
+		grip.Error(ctx, errors.Wrap(err, "initializing tracer provider"))
 		return ctx
 	}
 
 	traceID, err := trace.TraceIDFromHex(traceIDString)
 	if err != nil {
-		grip.Error(errors.Wrapf(err, "parsing trace ID '%s'", traceIDString))
+		grip.Error(ctx, errors.Wrapf(err, "parsing trace ID '%s'", traceIDString))
 		return ctx
 	}
 	spanID, err := trace.SpanIDFromHex(spanIDString)
 	if err != nil {
-		grip.Error(errors.Wrapf(err, "parsing parent span ID '%s'", spanIDString))
+		grip.Error(ctx, errors.Wrapf(err, "parsing parent span ID '%s'", spanIDString))
 		return ctx
 	}
 	parentCtx := trace.ContextWithSpanContext(
@@ -76,7 +76,7 @@ func spanForRootTest(ctx context.Context, t *testing.T) context.Context {
 
 	t.Cleanup(func() {
 		span.End()
-		grip.Error(errors.Wrap(tracerCloser(), "closing otel tracer"))
+		grip.Error(ctx, errors.Wrap(tracerCloser(), "closing otel tracer"))
 	})
 
 	return testCtx
@@ -113,7 +113,7 @@ func initTracer(ctx context.Context, collectorEndpoint string) (func() error, er
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		grip.Error(errors.Wrap(err, "otel error"))
+		grip.Error(ctx, errors.Wrap(err, "otel error"))
 	}))
 
 	return func() error {

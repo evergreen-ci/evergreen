@@ -1958,6 +1958,11 @@ func TestResolveUserFromMetadata(t *testing.T) {
 		DispName:     "Hello World",
 		EmailAddress: "hello@example.com",
 	}
+	emailUser := &user.DBUser{
+		Id:           "jane.doe",
+		DispName:     "Jane Doe",
+		EmailAddress: "jane.doe@mongodb.com",
+	}
 
 	for _, tc := range []struct {
 		name         string
@@ -1993,6 +1998,37 @@ func TestResolveUserFromMetadata(t *testing.T) {
 			expectedUser: derivedUser,
 		},
 		{
+			name: "DerivedIDFromEmail",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{AuthorEmail: "jane.doe@mongodb.com"},
+			},
+			expectedUser: emailUser,
+		},
+		{
+			name: "DerivedIDFromEmailCaseInsensitive",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{AuthorEmail: "Jane.Doe@Mongodb.com"},
+			},
+			expectedUser: emailUser,
+		},
+		{
+			name: "DerivedIDFromNonMongoDBEmail",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{AuthorEmail: "jane.doe@example.com"},
+			},
+			expectedUser: emailUser,
+		},
+		{
+			name: "EmailMatchPrecedesNameMatch",
+			metadata: model.VersionMetadata{
+				Revision: model.Revision{
+					Author:      "Jane Doe",
+					AuthorEmail: "jane.doe@mongodb.com",
+				},
+			},
+			expectedUser: emailUser,
+		},
+		{
 			name: "SingleWordAuthorNameNoMatch",
 			metadata: model.VersionMetadata{
 				Revision: model.Revision{Author: "Hello"},
@@ -2004,12 +2040,26 @@ func TestResolveUserFromMetadata(t *testing.T) {
 			metadata:     model.VersionMetadata{},
 			expectedUser: nil,
 		},
+		{
+			name: "PresetUserSkipsResolution",
+			metadata: model.VersionMetadata{
+				User: uidUser,
+				Revision: model.Revision{
+					// These would resolve to loginUser and emailUser respectively,
+					// but resolution should be skipped entirely.
+					AuthorGithubUID: 1001,
+					AuthorEmail:     "jane.doe@mongodb.com",
+				},
+			},
+			expectedUser: nil,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(user.Collection))
 			require.NoError(t, uidUser.Insert(ctx))
 			require.NoError(t, loginUser.Insert(ctx))
 			require.NoError(t, derivedUser.Insert(ctx))
+			require.NoError(t, emailUser.Insert(ctx))
 
 			usr := resolveUserFromMetadata(ctx, "version_id", tc.metadata)
 			if tc.expectedUser == nil {

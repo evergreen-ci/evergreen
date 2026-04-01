@@ -27,7 +27,7 @@ func ParallelWorkerExec[T any](ctx context.Context, name string, work []T, logge
 	for range runtime.GOMAXPROCS(0) {
 		eg.Go(func() error {
 			defer func() {
-				logger.Critical(recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("%s worker", name)))
+				logger.Critical(ctx, recovery.HandlePanicWithError(recover(), nil, fmt.Sprintf("%s worker", name)))
 			}()
 			for item := range wc {
 				if err := ctx.Err(); err != nil {
@@ -35,7 +35,7 @@ func ParallelWorkerExec[T any](ctx context.Context, name string, work []T, logge
 				}
 				if err := handler(item); err != nil {
 					// Continue on error to let the other items get processed.
-					logger.Error(errors.Wrap(err, name))
+					logger.Error(ctx, errors.Wrap(err, name))
 					continue
 				}
 				atomic.AddInt64(&succeeded, 1)

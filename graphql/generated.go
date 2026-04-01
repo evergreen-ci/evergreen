@@ -512,9 +512,10 @@ type ComplexityRoot struct {
 	}
 
 	DistroPermissions struct {
-		Admin func(childComplexity int) int
-		Edit  func(childComplexity int) int
-		View  func(childComplexity int) int
+		Admin    func(childComplexity int) int
+		DistroID func(childComplexity int) int
+		Edit     func(childComplexity int) int
+		View     func(childComplexity int) int
 	}
 
 	DockerConfig struct {
@@ -1131,8 +1132,11 @@ type ComplexityRoot struct {
 	}
 
 	OktaServiceConfig struct {
+		Audience     func(childComplexity int) int
 		ClientID     func(childComplexity int) int
 		ClientSecret func(childComplexity int) int
+		Issuer       func(childComplexity int) int
+		Scopes       func(childComplexity int) int
 	}
 
 	OomTrackerInfo struct {
@@ -1400,8 +1404,9 @@ type ComplexityRoot struct {
 	}
 
 	ProjectPermissions struct {
-		Edit func(childComplexity int) int
-		View func(childComplexity int) int
+		Edit              func(childComplexity int) int
+		ProjectIdentifier func(childComplexity int) int
+		View              func(childComplexity int) int
 	}
 
 	ProjectSettings struct {
@@ -1501,8 +1506,9 @@ type ComplexityRoot struct {
 	}
 
 	RepoPermissions struct {
-		Edit func(childComplexity int) int
-		View func(childComplexity int) int
+		Edit   func(childComplexity int) int
+		RepoID func(childComplexity int) int
+		View   func(childComplexity int) int
 	}
 
 	RepoRef struct {
@@ -1612,8 +1618,10 @@ type ComplexityRoot struct {
 	}
 
 	S3StorageCostConfig struct {
-		IAStorageCostDiscount       func(childComplexity int) int
-		StandardStorageCostDiscount func(childComplexity int) int
+		ArchiveStorageCostDiscount       func(childComplexity int) int
+		DefaultMaxArtifactExpirationDays func(childComplexity int) int
+		IAStorageCostDiscount            func(childComplexity int) int
+		StandardStorageCostDiscount      func(childComplexity int) int
 	}
 
 	S3UploadCostConfig struct {
@@ -4481,6 +4489,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DistroPermissions.Admin(childComplexity), true
+	case "DistroPermissions.distroId":
+		if e.complexity.DistroPermissions.DistroID == nil {
+			break
+		}
+
+		return e.complexity.DistroPermissions.DistroID(childComplexity), true
 	case "DistroPermissions.edit":
 		if e.complexity.DistroPermissions.Edit == nil {
 			break
@@ -7184,6 +7198,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.OktaConfig.UserGroup(childComplexity), true
 
+	case "OktaServiceConfig.audience":
+		if e.complexity.OktaServiceConfig.Audience == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.Audience(childComplexity), true
 	case "OktaServiceConfig.clientId":
 		if e.complexity.OktaServiceConfig.ClientID == nil {
 			break
@@ -7196,6 +7216,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OktaServiceConfig.ClientSecret(childComplexity), true
+	case "OktaServiceConfig.issuer":
+		if e.complexity.OktaServiceConfig.Issuer == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.Issuer(childComplexity), true
+	case "OktaServiceConfig.scopes":
+		if e.complexity.OktaServiceConfig.Scopes == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.Scopes(childComplexity), true
 
 	case "OomTrackerInfo.detected":
 		if e.complexity.OomTrackerInfo.Detected == nil {
@@ -8348,6 +8380,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectPermissions.Edit(childComplexity), true
+	case "ProjectPermissions.projectIdentifier":
+		if e.complexity.ProjectPermissions.ProjectIdentifier == nil {
+			break
+		}
+
+		return e.complexity.ProjectPermissions.ProjectIdentifier(childComplexity), true
 	case "ProjectPermissions.view":
 		if e.complexity.ProjectPermissions.View == nil {
 			break
@@ -8944,6 +8982,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoPermissions.Edit(childComplexity), true
+	case "RepoPermissions.repoId":
+		if e.complexity.RepoPermissions.RepoID == nil {
+			break
+		}
+
+		return e.complexity.RepoPermissions.RepoID(childComplexity), true
 	case "RepoPermissions.view":
 		if e.complexity.RepoPermissions.View == nil {
 			break
@@ -9400,6 +9444,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.S3Credentials.Secret(childComplexity), true
 
+	case "S3StorageCostConfig.archiveStorageCostDiscount":
+		if e.complexity.S3StorageCostConfig.ArchiveStorageCostDiscount == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.ArchiveStorageCostDiscount(childComplexity), true
+	case "S3StorageCostConfig.defaultMaxArtifactExpirationDays":
+		if e.complexity.S3StorageCostConfig.DefaultMaxArtifactExpirationDays == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.DefaultMaxArtifactExpirationDays(childComplexity), true
 	case "S3StorageCostConfig.iAStorageCostDiscount":
 		if e.complexity.S3StorageCostConfig.IAStorageCostDiscount == nil {
 			break
@@ -17941,10 +17997,16 @@ func (ec *executionContext) fieldContext_AdminSettings_oktaServiceConfig(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "audience":
+				return ec.fieldContext_OktaServiceConfig_audience(ctx, field)
 			case "clientId":
 				return ec.fieldContext_OktaServiceConfig_clientId(ctx, field)
 			case "clientSecret":
 				return ec.fieldContext_OktaServiceConfig_clientSecret(ctx, field)
+			case "issuer":
+				return ec.fieldContext_OktaServiceConfig_issuer(ctx, field)
+			case "scopes":
+				return ec.fieldContext_OktaServiceConfig_scopes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OktaServiceConfig", field.Name)
 		},
@@ -25884,6 +25946,35 @@ func (ec *executionContext) _DistroInfo_workDir(ctx context.Context, field graph
 func (ec *executionContext) fieldContext_DistroInfo_workDir(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DistroInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistroPermissions_distroId(ctx context.Context, field graphql.CollectedField, obj *DistroPermissions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DistroPermissions_distroId,
+		func(ctx context.Context) (any, error) {
+			return obj.DistroID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DistroPermissions_distroId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistroPermissions",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -42287,6 +42378,35 @@ func (ec *executionContext) fieldContext_OktaConfig_expireAfterMinutes(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _OktaServiceConfig_audience(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_audience,
+		func(ctx context.Context) (any, error) {
+			return obj.Audience, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_audience(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OktaServiceConfig_clientId(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42359,6 +42479,64 @@ func (ec *executionContext) _OktaServiceConfig_clientSecret(ctx context.Context,
 }
 
 func (ec *executionContext) fieldContext_OktaServiceConfig_clientSecret(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaServiceConfig_issuer(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_issuer,
+		func(ctx context.Context) (any, error) {
+			return obj.Issuer, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_issuer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaServiceConfig_scopes(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_scopes,
+		func(ctx context.Context) (any, error) {
+			return obj.Scopes, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_scopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "OktaServiceConfig",
 		Field:      field,
@@ -45287,6 +45465,8 @@ func (ec *executionContext) fieldContext_Permissions_distroPermissions(ctx conte
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "distroId":
+				return ec.fieldContext_DistroPermissions_distroId(ctx, field)
 			case "admin":
 				return ec.fieldContext_DistroPermissions_admin(ctx, field)
 			case "edit":
@@ -45336,6 +45516,8 @@ func (ec *executionContext) fieldContext_Permissions_projectPermissions(ctx cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "projectIdentifier":
+				return ec.fieldContext_ProjectPermissions_projectIdentifier(ctx, field)
 			case "edit":
 				return ec.fieldContext_ProjectPermissions_edit(ctx, field)
 			case "view":
@@ -45383,6 +45565,8 @@ func (ec *executionContext) fieldContext_Permissions_repoPermissions(ctx context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "repoId":
+				return ec.fieldContext_RepoPermissions_repoId(ctx, field)
 			case "edit":
 				return ec.fieldContext_RepoPermissions_edit(ctx, field)
 			case "view":
@@ -48606,6 +48790,35 @@ func (ec *executionContext) fieldContext_ProjectEvents_eventLogEntries(_ context
 				return ec.fieldContext_ProjectEventLogEntry_user(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectEventLogEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectPermissions_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *ProjectPermissions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectPermissions_projectIdentifier,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectIdentifier, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectPermissions_projectIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -52704,6 +52917,35 @@ func (ec *executionContext) fieldContext_RepoCommitQueueParams_message(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoPermissions_repoId(ctx context.Context, field graphql.CollectedField, obj *RepoPermissions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepoPermissions_repoId,
+		func(ctx context.Context) (any, error) {
+			return obj.RepoID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepoPermissions_repoId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoPermissions_edit(ctx context.Context, field graphql.CollectedField, obj *RepoPermissions) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55091,6 +55333,10 @@ func (ec *executionContext) fieldContext_S3CostConfig_storage(_ context.Context,
 				return ec.fieldContext_S3StorageCostConfig_standardStorageCostDiscount(ctx, field)
 			case "iAStorageCostDiscount":
 				return ec.fieldContext_S3StorageCostConfig_iAStorageCostDiscount(ctx, field)
+			case "archiveStorageCostDiscount":
+				return ec.fieldContext_S3StorageCostConfig_archiveStorageCostDiscount(ctx, field)
+			case "defaultMaxArtifactExpirationDays":
+				return ec.fieldContext_S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type S3StorageCostConfig", field.Name)
 		},
@@ -55251,6 +55497,64 @@ func (ec *executionContext) fieldContext_S3StorageCostConfig_iAStorageCostDiscou
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_archiveStorageCostDiscount(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_archiveStorageCostDiscount,
+		func(ctx context.Context) (any, error) {
+			return obj.ArchiveStorageCostDiscount, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_archiveStorageCostDiscount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_defaultMaxArtifactExpirationDays,
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultMaxArtifactExpirationDays, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_defaultMaxArtifactExpirationDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -81592,13 +81896,20 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"clientId", "clientSecret"}
+	fieldsInOrder := [...]string{"audience", "clientId", "clientSecret", "issuer", "scopes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "audience":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("audience"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Audience = data
 		case "clientId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientId"))
 			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
@@ -81647,6 +81958,20 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		case "issuer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issuer"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Issuer = data
+		case "scopes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scopes = data
 		}
 	}
 
@@ -84243,7 +84568,7 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount"}
+	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount", "archiveStorageCostDiscount", "defaultMaxArtifactExpirationDays"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84264,6 +84589,20 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 				return it, err
 			}
 			it.IAStorageCostDiscount = data
+		case "archiveStorageCostDiscount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("archiveStorageCostDiscount"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ArchiveStorageCostDiscount = data
+		case "defaultMaxArtifactExpirationDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultMaxArtifactExpirationDays"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultMaxArtifactExpirationDays = data
 		}
 	}
 
@@ -90315,6 +90654,11 @@ func (ec *executionContext) _DistroPermissions(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("DistroPermissions")
+		case "distroId":
+			out.Values[i] = ec._DistroPermissions_distroId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "admin":
 			out.Values[i] = ec._DistroPermissions_admin(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -95288,10 +95632,16 @@ func (ec *executionContext) _OktaServiceConfig(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("OktaServiceConfig")
+		case "audience":
+			out.Values[i] = ec._OktaServiceConfig_audience(ctx, field, obj)
 		case "clientId":
 			out.Values[i] = ec._OktaServiceConfig_clientId(ctx, field, obj)
 		case "clientSecret":
 			out.Values[i] = ec._OktaServiceConfig_clientSecret(ctx, field, obj)
+		case "issuer":
+			out.Values[i] = ec._OktaServiceConfig_issuer(ctx, field, obj)
+		case "scopes":
+			out.Values[i] = ec._OktaServiceConfig_scopes(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -97749,6 +98099,11 @@ func (ec *executionContext) _ProjectPermissions(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProjectPermissions")
+		case "projectIdentifier":
+			out.Values[i] = ec._ProjectPermissions_projectIdentifier(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "edit":
 			out.Values[i] = ec._ProjectPermissions_edit(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -99407,6 +99762,11 @@ func (ec *executionContext) _RepoPermissions(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RepoPermissions")
+		case "repoId":
+			out.Values[i] = ec._RepoPermissions_repoId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "edit":
 			out.Values[i] = ec._RepoPermissions_edit(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -100271,6 +100631,10 @@ func (ec *executionContext) _S3StorageCostConfig(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._S3StorageCostConfig_standardStorageCostDiscount(ctx, field, obj)
 		case "iAStorageCostDiscount":
 			out.Values[i] = ec._S3StorageCostConfig_iAStorageCostDiscount(ctx, field, obj)
+		case "archiveStorageCostDiscount":
+			out.Values[i] = ec._S3StorageCostConfig_archiveStorageCostDiscount(ctx, field, obj)
+		case "defaultMaxArtifactExpirationDays":
+			out.Values[i] = ec._S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

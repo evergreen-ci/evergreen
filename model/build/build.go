@@ -358,7 +358,7 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 		}
 	}
 
-	grip.ErrorWhen(other > 0, message.Fields{
+	grip.ErrorWhen(context.Background(), other > 0, message.Fields{
 		"source":   "status updates",
 		"message":  "unknown task status",
 		"build_id": b.Id,

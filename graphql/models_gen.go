@@ -160,9 +160,10 @@ type DistroEventsPayload struct {
 }
 
 type DistroPermissions struct {
-	Admin bool `json:"admin"`
-	Edit  bool `json:"edit"`
-	View  bool `json:"view"`
+	DistroID string `json:"distroId"`
+	Admin    bool   `json:"admin"`
+	Edit     bool   `json:"edit"`
+	View     bool   `json:"view"`
 }
 
 type DistroPermissionsOptions struct {
@@ -406,8 +407,9 @@ type ProjectEvents struct {
 }
 
 type ProjectPermissions struct {
-	Edit bool `json:"edit"`
-	View bool `json:"view"`
+	ProjectIdentifier string `json:"projectIdentifier"`
+	Edit              bool   `json:"edit"`
+	View              bool   `json:"view"`
 }
 
 type ProjectPermissionsOptions struct {
@@ -451,8 +453,9 @@ type RemoveFavoriteProjectInput struct {
 }
 
 type RepoPermissions struct {
-	Edit bool `json:"edit"`
-	View bool `json:"view"`
+	RepoID string `json:"repoId"`
+	Edit   bool   `json:"edit"`
+	View   bool   `json:"view"`
 }
 
 type RepoPermissionsOptions struct {

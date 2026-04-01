@@ -36,12 +36,12 @@ func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, i
 	}
 }
 
-func (sc *StatsCollector) expandCommands(exp util.Expansions) {
+func (sc *StatsCollector) expandCommands(ctx context.Context, exp util.Expansions) {
 	expandedCmds := []string{}
 	for _, cmd := range sc.Cmds {
 		expanded, err := exp.ExpandString(cmd)
 		if err != nil {
-			sc.logger.System().Warning(errors.Wrapf(err, "expanding stats command '%s'", cmd))
+			sc.logger.System().Warning(ctx, errors.Wrapf(err, "expanding stats command '%s'", cmd))
 			continue
 		}
 		if strings.TrimSpace(expanded) == "" {
@@ -59,7 +59,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp util.Expansions) {
 	if sc.Interval == 0 {
 		sc.Interval = 60 * time.Second
 	}
-	sc.expandCommands(exp)
+	sc.expandCommands(ctx, exp)
 
 	go func() {
 		timer := time.NewTimer(0)
@@ -69,7 +69,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp util.Expansions) {
 		defer cancel()
 		defer recovery.LogStackTraceAndContinue("encountered issue in stats collector")
 
-		sc.logger.System().Infof("Starting stats collector with %d commands at interval %s: %s", len(sc.Cmds), sc.Interval, strings.Join(sc.Cmds, ", "))
+		sc.logger.System().Infof(ctx, "Starting stats collector with %d commands at interval %s: %s", len(sc.Cmds), sc.Interval, strings.Join(sc.Cmds, ", "))
 
 		iters := 0
 		startedAt := time.Now()
@@ -77,7 +77,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp util.Expansions) {
 			iters++
 			select {
 			case <-ctx.Done():
-				sc.logger.System().Info("StatsCollector ticker stopping.")
+				sc.logger.System().Info(ctx, "StatsCollector ticker stopping.")
 				return
 			case <-timer.C:
 				runStartedAt := time.Now()
@@ -87,7 +87,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp util.Expansions) {
 					SetErrorSender(level.Error, sc.logger.System().GetSender()).
 					Run(ctx)
 
-				sc.logger.System().Error(message.WrapError(err, message.Fields{
+				sc.logger.System().Error(ctx, message.WrapError(err, message.Fields{
 					"message":           "error running stats collector",
 					"iterations":        iters,
 					"iter_runtime_secs": time.Since(runStartedAt).Seconds(),

@@ -622,7 +622,7 @@ func (d *Distro) GetRegionsList(allowedRegions []string) []string {
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {
-			grip.Debug(message.Fields{
+			grip.Debug(context.Background(), message.Fields{
 				"message":  "provider settings list missing region",
 				"distro":   d.Id,
 				"settings": doc,
