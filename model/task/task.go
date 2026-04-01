@@ -4307,27 +4307,15 @@ func loadCostConfigForTask(ctx context.Context, taskID, purpose string) (*evergr
 	return costConfig, true
 }
 
-// resolveArtifactExpirationDays returns the expiration days for an artifact at bucket/fileKey.
-// It tries the lookup for the most specific lifecycle rule; if not found, falls back to
-// DefaultMaxArtifactExpirationDays from the cost config and logs a warning.
-func resolveArtifactExpirationDays(ctx context.Context, taskID, bucket, fileKey string, lookup BucketExpirationLookup, costConfig *evergreen.CostConfig) int {
+// resolveArtifactExpirationDays returns the expiration days for the given bucket/fileKey.
+// Returns (days, true) if a matching lifecycle rule was found, or (default days, false) if not.
+func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey string, lookup BucketExpirationLookup, costConfig *evergreen.CostConfig) (int, bool) {
 	if lookup != nil {
 		if days, ok := lookup(ctx, bucket, fileKey); ok {
-			return days
+			return days, true
 		}
-		grip.Warning(message.Fields{
-			"message": "no lifecycle expiration found for bucket, falling back to default",
-			"bucket":  bucket,
-			"task_id": taskID,
-		})
 	}
-	days := costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays
-	grip.Warning(message.Fields{
-		"message":      "using default max artifact expiration days",
-		"task_id":      taskID,
-		"default_days": days,
-	})
-	return days
+	return costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, false
 }
 
 // calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
@@ -4350,8 +4338,8 @@ func (t *Task) calculateS3PutCosts(ctx context.Context) {
 
 // calculateS3StorageCosts calculates S3 storage costs for artifact bytes, grouped by bucket and file key.
 // For each file, lookup is called to resolve the most specific lifecycle expiration days for that file's
-// bucket+key. Falls back to DefaultMaxArtifactExpirationDays from the cost config if lookup is nil or
-// returns no result, and logs a warning so DevProd can fix the misconfigured bucket.
+// bucket+key. Falls back to DefaultMaxArtifactExpirationDays from the cost config if no rule is found,
+// and logs one warning per misconfigured bucket so DevProd can fix the broken configuration.
 func (t *Task) calculateS3StorageCosts(ctx context.Context, lookup BucketExpirationLookup) {
 	if t.S3Usage.Artifacts.UploadBytes <= 0 {
 		return
@@ -4362,11 +4350,23 @@ func (t *Task) calculateS3StorageCosts(ctx context.Context, lookup BucketExpirat
 		return
 	}
 
+	noRuleBuckets := map[string]struct{}{}
 	for bucket, filesByKey := range t.S3Usage.Artifacts.BytesByBucketAndKey {
 		for fileKey, bytes := range filesByKey {
-			days := resolveArtifactExpirationDays(ctx, t.Id, bucket, fileKey, lookup, costConfig)
+			days, found := resolveArtifactExpirationDays(ctx, bucket, fileKey, lookup, costConfig)
+			if !found {
+				noRuleBuckets[bucket] = struct{}{}
+			}
 			t.TaskCost.S3ArtifactStorageCost += s3usage.CalculateS3StorageCostWithConfig(bytes, days, costConfig)
 		}
+	}
+	for bucket := range noRuleBuckets {
+		grip.Warning(message.Fields{
+			"message":      "no lifecycle expiration rule found for bucket, used default expiration days for storage cost",
+			"bucket":       bucket,
+			"task_id":      t.Id,
+			"default_days": costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+		})
 	}
 }
 
