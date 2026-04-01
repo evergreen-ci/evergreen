@@ -613,7 +613,7 @@ func (h *userPermissionDetailsGetHandler) Parse(ctx context.Context, r *http.Req
 func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	u, err := user.FindOneById(ctx, h.userID)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error finding user",
 			"route":   "userPermissionDetailsGetHandler",
 		}))
