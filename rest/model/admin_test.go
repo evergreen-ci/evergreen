@@ -110,6 +110,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
 	assert.Equal(testSettings.OktaServiceConfig.ClientID, utility.FromStringPtr(apiSettings.OktaServiceConfig.ClientID))
 	assert.Equal(testSettings.OktaServiceConfig.ClientSecret, utility.FromStringPtr(apiSettings.OktaServiceConfig.ClientSecret))
+	assert.Equal(testSettings.OktaServiceConfig.Scopes, apiSettings.OktaServiceConfig.Scopes)
+	assert.Equal(testSettings.OktaServiceConfig.Audience, utility.FromStringPtr(apiSettings.OktaServiceConfig.Audience))
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))

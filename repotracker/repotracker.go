@@ -692,10 +692,6 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var err error
 
-	if usr := resolveUserFromMetadata(ctx, metadata); usr != nil {
-		metadata.User = usr
-	}
-
 	number, err := model.GetNewRevisionOrderNumber(ctx, ref.Id)
 	if err != nil {
 		return nil, err
@@ -760,6 +756,10 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 	} else {
 		v.Id = makeVersionId(ref.Identifier, metadata.Revision.Revision)
 	}
+
+	if usr := resolveUserFromMetadata(ctx, v.Id, metadata); usr != nil {
+		metadata.User = usr
+	}
 	if metadata.User != nil {
 		v.AuthorID = metadata.User.Id
 		v.Author = metadata.User.DisplayName()
@@ -768,7 +768,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 	return v, nil
 }
 
-func resolveUserFromMetadata(ctx context.Context, metadata model.VersionMetadata) *user.DBUser {
+func resolveUserFromMetadata(ctx context.Context, versionId string, metadata model.VersionMetadata) *user.DBUser {
 	var usr *user.DBUser
 	var err error
 	catcher := grip.NewBasicCatcher()
@@ -789,6 +789,7 @@ func resolveUserFromMetadata(ctx context.Context, metadata model.VersionMetadata
 	}
 	grip.DebugWhen(usr == nil, message.Fields{
 		"message":             "failed to resolve Evergreen user for version",
+		"version_id":          versionId,
 		"git_tag_pusher":      metadata.GitTag.Pusher,
 		"revision_author_uid": metadata.Revision.AuthorGithubUID,
 		"revision_author":     metadata.Revision.Author,

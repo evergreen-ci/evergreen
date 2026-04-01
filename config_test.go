@@ -307,6 +307,8 @@ func (s *AdminSuite) TestOktaServiceConfig() {
 	config := OktaServiceConfig{
 		ClientID:     "service_id",
 		ClientSecret: "service_secret",
+		Scopes:       []string{"scope1", "scope2"},
+		Audience:     "audience",
 	}
 
 	err := config.Set(ctx)

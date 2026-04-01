@@ -189,6 +189,8 @@ func MockConfig() *evergreen.Settings {
 		OktaServiceConfig: evergreen.OktaServiceConfig{
 			ClientID:     "service_id",
 			ClientSecret: "service_secret",
+			Scopes:       []string{"scope1", "scope2"},
+			Audience:     "audience",
 		},
 		AWSInstanceRole: "role",
 		Banner:          "banner",
