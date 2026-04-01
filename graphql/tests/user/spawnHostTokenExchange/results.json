@@ -1,0 +1,40 @@
+{
+  "tests": [
+    {
+      "query_file": "spawn_host_token_pending.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "userId": "spawn_host_gql_pending",
+            "hasSpawnHostTokenExchangeState": true,
+            "spawnHostAccessTokenExpiresAt": null
+          }
+        }
+      }
+    },
+    {
+      "query_file": "spawn_host_token_with_expiry.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "userId": "spawn_host_gql_token_expires",
+            "hasSpawnHostTokenExchangeState": false,
+            "spawnHostAccessTokenExpiresAt": "2030-06-15T12:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "spawn_host_token_no_expiry.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "userId": "spawn_host_gql_token_no_expiry",
+            "hasSpawnHostTokenExchangeState": false,
+            "spawnHostAccessTokenExpiresAt": null
+          }
+        }
+      }
+    }
+  ]
+}

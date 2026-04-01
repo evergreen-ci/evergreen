@@ -102,11 +102,21 @@ type User {
   betaFeatures: BetaFeatures
   displayName: String
   emailAddress: String
+  """
+  True if this user has an in-progress spawn-host Okta token exchange (authorize
+  started, callback not completed). Does not expose the OAuth state value.
+  """
+  hasSpawnHostTokenExchangeState: Boolean!
   parsleyFilters: [ParsleyFilter!]
   parsleySettings: ParsleySettings
   patches(patchesInput: PatchesInput!): Patches # user patches
   permissions: Permissions
   settings: UserSettings
+  """
+  Expiry time of the stored spawn-host access token, when the token includes one.
+  Null if there is no token or the token has no expiry.
+  """
+  spawnHostAccessTokenExpiresAt: Time
   subscriptions: [GeneralSubscription!]
   userId: String!
 }

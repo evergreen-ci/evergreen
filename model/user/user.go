@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/oauth2"
 )
 
 type DBUser struct {
@@ -40,10 +41,24 @@ type DBUser struct {
 	NumScheduledPatchTasks int                    `bson:"num_scheduled_patch_tasks"`
 	LastScheduledTasksAt   time.Time              `bson:"last_scheduled_tasks_at"`
 	BetaFeatures           evergreen.BetaFeatures `bson:"beta_features"`
+
+	// TokenExchangeState holds the information needed to complete an OAuth token exchange flow.
+	TokenExchangeState *TokenExchangeState `bson:"token_exchange_state,omitempty"`
+
+	// TokenExchangeToken is the token received from the OAuth token exchange flow.
+	TokenExchangeToken *oauth2.Token `bson:"token_exchange_token,omitempty"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
 func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
+
+type TokenExchangeState struct {
+	// CodeVerifier is the verification code used to verify the authorization code.
+	// This guarantees that the authorization code is only used once.
+	CodeVerifier string `bson:"code_verifier"`
+	// State is the state value used to identify the authorization flow.
+	State string `bson:"state"`
+}
 
 type LoginCache struct {
 	Token        string    `bson:"token,omitempty"`
@@ -143,6 +158,36 @@ func (u *DBUser) UpdateAPIKey(ctx context.Context, newKey string) error {
 		return errors.Wrapf(err, "setting API key for user '%s'", u.Id)
 	}
 	u.APIKey = newKey
+	return nil
+}
+
+// UpdateTokenExchangeState updates the token exchange state for the user.
+func (u *DBUser) UpdateTokenExchangeState(ctx context.Context, state, codeVerifier string) error {
+	update := bson.M{"$set": bson.M{TokenExchangeStateKey: TokenExchangeState{CodeVerifier: codeVerifier, State: state}}}
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "setting token exchange state for user '%s'", u.Id)
+	}
+	u.TokenExchangeState = &TokenExchangeState{CodeVerifier: codeVerifier, State: state}
+	return nil
+}
+
+// RemoveTokenExchangeState removes the token exchange state for the user.
+func (u *DBUser) RemoveTokenExchangeState(ctx context.Context) error {
+	update := bson.M{"$unset": bson.M{TokenExchangeStateKey: 1}}
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "removing token exchange state for user '%s'", u.Id)
+	}
+	u.TokenExchangeState = nil
+	return nil
+}
+
+// UpdateTokenExchangeToken updates the token exchange token for the user.
+func (u *DBUser) UpdateTokenExchangeToken(ctx context.Context, newToken *oauth2.Token) error {
+	update := bson.M{"$set": bson.M{TokenExchangeTokenKey: newToken}}
+	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "setting token exchange token for user '%s'", u.Id)
+	}
+	u.TokenExchangeToken = newToken
 	return nil
 }
 
