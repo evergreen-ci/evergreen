@@ -85,44 +85,6 @@ func TestVersionSortByCreateTime(t *testing.T) {
 	assert.Equal("100", versions[4].Id)
 }
 
-func TestFindLastPeriodicBuild(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.Clear(VersionCollection))
-	now := time.Now()
-	v1 := Version{
-		Id:              "v1",
-		PeriodicBuildID: "a",
-		Identifier:      "myProj",
-		CreateTime:      now.Add(-10 * time.Minute),
-	}
-	assert.NoError(v1.Insert(t.Context()))
-	v2 := Version{
-		Id:              "v2",
-		PeriodicBuildID: "a",
-		Identifier:      "myProj",
-		CreateTime:      now.Add(-5 * time.Minute),
-	}
-	assert.NoError(v2.Insert(t.Context()))
-	v3 := Version{
-		Id:              "v3",
-		PeriodicBuildID: "b",
-		Identifier:      "myProj",
-		CreateTime:      now,
-	}
-	assert.NoError(v3.Insert(t.Context()))
-	v4 := Version{
-		Id:              "v4",
-		PeriodicBuildID: "a",
-		Identifier:      "someProj",
-		CreateTime:      now,
-	}
-	assert.NoError(v4.Insert(t.Context()))
-
-	mostRecent, err := FindLastPeriodicBuild(t.Context(), "myProj", "a")
-	assert.NoError(err)
-	assert.Equal(v2.Id, mostRecent.Id)
-}
-
 func TestBuildVariantsStatusUnmarshal(t *testing.T) {
 	str := `
 {

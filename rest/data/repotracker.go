@@ -30,7 +30,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 
 	branch, err := validatePushEvent(event)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source": "GitHub hook",
 			"msg_id": msgID,
 			"event":  "push",
@@ -46,7 +46,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return errors.Wrap(err, "retrieving admin settings")
 	}
 	if settings.ServiceFlags.RepotrackerDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
@@ -58,7 +58,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return errors.New("repotracker is disabled")
 	}
 	if len(settings.GithubOrgs) > 0 && !utility.StringSliceContains(settings.GithubOrgs, *event.Repo.Owner.Name) {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
@@ -72,7 +72,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 
 	refs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, *event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
@@ -85,7 +85,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return err
 	}
 	if len(refs) == 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"source":  "GitHub hook",
 			"msg_id":  msgID,
 			"event":   "push",
@@ -122,7 +122,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		}
 	}
 
-	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 		"source":  "GitHub hook",
 		"msg_id":  msgID,
 		"event":   "push",
@@ -137,7 +137,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		},
 	}))
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"source":  "GitHub hook",
 		"msg_id":  msgID,
 		"event":   "push",

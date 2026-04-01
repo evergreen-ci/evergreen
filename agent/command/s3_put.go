@@ -2,7 +2,9 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -130,6 +132,13 @@ type s3put struct {
 	// UploadChecksumSHA256, when set to 'true', it will upload the base64 of the SHA256 checksum
 	// of the file to S3 as well.
 	UploadChecksumSHA256 string `mapstructure:"upload_checksum_sha256" plugin:"expand"`
+
+	// AssociatedLinksFile is a the name of a file containing associated links to be attached to the artifact.
+	// This file should be in JSON format and contain an array of objects with "name" and "url" fields.
+	AssociatedLinksFile string `mapstructure:"associated_links_file" plugin:"expand"`
+
+	// associatedLinks stores the actual associated links after they are read from the AssociatedLinksFile.
+	associatedLinks []artifact.AssociatedLink
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
@@ -314,17 +323,30 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	if err := s3pc.expandParams(conf); err != nil {
 		return errors.WithStack(err)
 	}
+
 	// re-validate command here, in case an expansion is not defined
 	if err := s3pc.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded parameters")
 	}
 	if conf.Task.IsPatchRequest() && !s3pc.isPatchable {
-		logger.Task().Infof("Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
+		logger.Task().Infof(ctx, "Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
 		return nil
 	}
 	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
-		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
+		logger.Task().Infof(ctx, "Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
 		return nil
+	}
+
+	if s3pc.AssociatedLinksFile != "" {
+		associatedLinks, err := readAssociatedLinksFile(s3pc.AssociatedLinksFile, conf)
+		if err != nil {
+			return errors.Wrap(err, "reading associated links file")
+		}
+		s3pc.associatedLinks = associatedLinks
+
+		if s3pc.isMulti() && len(associatedLinks) > 0 {
+			logger.Task().Warningf(ctx, "Using associated_links_file with local_files_include_filter will attach the same links to all %d matched file(s). Consider using separate s3.put commands for files that need different associated links.", len(s3pc.LocalFilesIncludeFilter))
+		}
 	}
 
 	if expiration, found := getAssumedRoleExpiration(conf, s3pc.AwsSessionToken); found {
@@ -365,22 +387,22 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 
 	if !shouldRunForVariant(s3pc.BuildVariants, conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 put of local file '%s' for variant '%s'.",
+		logger.Task().Infof(ctx, "Skipping S3 put of local file '%s' for variant '%s'.",
 			s3pc.LocalFile, conf.BuildVariant.Name)
 		return nil
 	}
 
 	if s3pc.isPrivate(s3pc.Visibility) {
-		logger.Task().Infof("Putting private files into S3.")
+		logger.Task().Infof(ctx, "Putting private files into S3.")
 
 	} else {
 		if s3pc.isMulti() {
-			logger.Task().Infof("Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
+			logger.Task().Infof(ctx, "Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
 				s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
 		} else if s3pc.isPublic() {
-			logger.Task().Infof("Putting local file '%s' into path '%s/%s' (%s).", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
+			logger.Task().Infof(ctx, "Putting local file '%s' into path '%s/%s' (%s).", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile, agentutil.S3DefaultURL(s3pc.Bucket, s3pc.RemoteFile))
 		} else {
-			logger.Task().Infof("Putting local file '%s' into '%s/%s'.", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
+			logger.Task().Infof(ctx, "Putting local file '%s' into '%s/%s'.", s3pc.LocalFile, s3pc.Bucket, s3pc.RemoteFile)
 		}
 	}
 
@@ -391,7 +413,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		case errChan <- err:
 			return
 		case <-ctx.Done():
-			logger.Task().Infof("Context canceled waiting for s3 put: %s.", ctx.Err())
+			logger.Task().Infof(ctx, "Context canceled waiting for s3 put: %s.", ctx.Err())
 			return
 		}
 	}()
@@ -400,7 +422,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		logger.Execution().Infof("Canceled while running command '%s': %s.", s3pc.Name(), ctx.Err())
+		logger.Execution().Infof(ctx, "Canceled while running command '%s': %s.", s3pc.Name(), ctx.Err())
 		return nil
 	}
 
@@ -423,9 +445,9 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
 		if s3pc.isPrivate(s3pc.Visibility) {
-			logger.Task().Infof("Performing S3 put of a private file.")
+			logger.Task().Infof(ctx, "Performing S3 put of a private file.")
 		} else {
-			logger.Task().Infof("Performing S3 put to file '%s' in bucket '%s' (attempt %d of %d).",
+			logger.Task().Infof(ctx, "Performing S3 put to file '%s' in bucket '%s' (attempt %d of %d).",
 				s3pc.RemoteFile, s3pc.Bucket,
 				i, maxS3OpAttempts)
 		}
@@ -447,7 +469,7 @@ retryLoop:
 				if err != nil {
 					// Skip erroring since local files include filter should treat files as optional.
 					if strings.Contains(err.Error(), utility.WalkThroughError) {
-						logger.Task().Warningf("Error while building file list: %s", err.Error())
+						logger.Task().Warningf(ctx, "Error while building file list: %s", err.Error())
 						return nil
 					}
 
@@ -455,7 +477,7 @@ retryLoop:
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 				if len(filesList) == 0 {
-					logger.Task().Warningf("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					logger.Task().Warningf(ctx, "File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					return nil
 				}
 			}
@@ -491,11 +513,11 @@ retryLoop:
 						if s3pc.isMulti() {
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.
-							logger.Task().Infof("File '%s' not found, but continuing to upload other files.", fpath)
+							logger.Task().Infof(ctx, "File '%s' not found, but continuing to upload other files.", fpath)
 							continue uploadLoop
 						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
-							logger.Task().Infof("File '%s' not found and skip missing is true, exiting without error.", fpath)
+							logger.Task().Infof(ctx, "File '%s' not found and skip missing is true, exiting without error.", fpath)
 							return nil
 						}
 
@@ -513,14 +535,14 @@ retryLoop:
 							if ae.ErrorCode() == "PreconditionFailed" {
 								skippedFilesCount++
 
-								logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
+								logger.Task().Infof(ctx, "Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
 								continue uploadLoop
 							}
 						}
 					}
 
 					// in all other cases, log an error and retry after an interval.
-					logger.Task().Error(errors.WithMessage(err, "putting S3 file"))
+					logger.Task().Error(ctx, errors.WithMessage(err, "putting S3 file"))
 					timer.Reset(backoffCounter.Duration())
 					continue retryLoop
 				}
@@ -542,7 +564,7 @@ retryLoop:
 	}
 
 	if len(uploadedFiles) == 0 && s3pc.skipMissing {
-		logger.Task().Info("S3 put uploaded no files")
+		logger.Task().Info(ctx, "S3 put uploaded no files")
 		return nil
 	}
 
@@ -561,12 +583,12 @@ retryLoop:
 		return err
 	}
 
-	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
+	logger.Task().WarningWhen(ctx, strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
 	processedCount := skippedFilesCount + len(uploadedFiles)
 
 	if processedCount != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
+		logger.Task().Infof(ctx, "Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
 		return errors.Errorf("uploaded %d files of %d requested", processedCount, len(filesList))
 	}
 
@@ -617,18 +639,19 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 		}
 
 		files = append(files, &artifact.File{
-			Name:        displayName,
-			Link:        fileLink,
-			Visibility:  s3pc.Visibility,
-			AWSKey:      key,
-			AWSSecret:   secret,
-			AWSRoleARN:  s3pc.getRoleARN(),
-			ExternalID:  s3pc.externalID,
-			Bucket:      bucket,
-			FileKey:     fileKey,
-			ContentType: s3pc.ContentType,
-			FileSize:    uploadInfo.FileSizeBytes,
-			PutRequests: uploadInfo.PutRequests,
+			Name:            displayName,
+			Link:            fileLink,
+			Visibility:      s3pc.Visibility,
+			AWSKey:          key,
+			AWSSecret:       secret,
+			AWSRoleARN:      s3pc.getRoleARN(),
+			ExternalID:      s3pc.externalID,
+			Bucket:          bucket,
+			FileKey:         fileKey,
+			ContentType:     s3pc.ContentType,
+			FileSize:        uploadInfo.FileSizeBytes,
+			PutRequests:     uploadInfo.PutRequests,
+			AssociatedLinks: s3pc.associatedLinks,
 		})
 	}
 
@@ -690,4 +713,42 @@ func (s3pc *s3put) getRoleARN() string {
 		return s3pc.assumedRoleARN
 	}
 	return s3pc.RoleARN
+}
+
+func readAssociatedLinksFile(fn string, conf *internal.TaskConfig) ([]artifact.AssociatedLink, error) {
+	fileLoc := GetWorkingDirectory(conf, fn)
+	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
+		return nil, errors.Wrapf(err, "getting information for file '%s'", fn)
+	}
+	jsonFile, err := os.Open(fileLoc)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening file '%s'", fn)
+	}
+	defer jsonFile.Close()
+
+	var data []byte
+	data, err = io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading from file '%s'", fn)
+	}
+
+	var associatedLinks []artifact.AssociatedLink
+	if err := json.Unmarshal(data, &associatedLinks); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling JSON from file")
+	}
+
+	// Expansions may be present in the name or link fields.
+	for i := range associatedLinks {
+		expandedName, err := conf.Expansions.ExpandString(associatedLinks[i].Name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to associated link name '%s'", associatedLinks[i].Name)
+		}
+		expandedLink, err := conf.Expansions.ExpandString(associatedLinks[i].Link)
+		if err != nil {
+			return nil, errors.Wrapf(err, "applying expansions to associated link URL '%s'", associatedLinks[i].Link)
+		}
+		associatedLinks[i].Name = expandedName
+		associatedLinks[i].Link = expandedLink
+	}
+	return associatedLinks, nil
 }

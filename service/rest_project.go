@@ -13,10 +13,10 @@ func (restapi restAPI) getProjectRef(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	ref := projCtx.ProjectRef
 	if ref == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding project"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error finding project"})
 		return
 	}
-	gimlet.WriteJSON(w, ref)
+	gimlet.WriteJSON(r.Context(), w, ref)
 }
 
 // getProjectsIds returns a JSON response of an array of active project Ids.
@@ -24,7 +24,7 @@ func (restapi restAPI) getProjectRef(w http.ResponseWriter, r *http.Request) {
 func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
 	refs, err := model.FindAllMergedProjectRefs(r.Context())
 	if err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{
 			Message: fmt.Sprintf("error finding projects: %v", err),
 		})
 		return
@@ -40,7 +40,7 @@ func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	gimlet.WriteJSON(w, struct {
+	gimlet.WriteJSON(r.Context(), w, struct {
 		Projects []string `json:"projects"`
 	}{projects})
 }

@@ -286,7 +286,7 @@ func (i hostIdleInfo) getTerminationReason() string {
 // and returns true if some exemption applies.
 func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen.Environment, jobType string, jid string) (bool, error) {
 	if !h.IsEphemeral() {
-		grip.Notice(message.Fields{
+		grip.Notice(ctx, message.Fields{
 			"job":      jid,
 			"host_id":  h.Id,
 			"job_type": jobType,
@@ -305,7 +305,7 @@ func checkTerminationExemptions(ctx context.Context, h *host.Host, env evergreen
 	communicationTime := h.GetElapsedCommunicationTime()
 
 	if h.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
-		grip.Notice(message.Fields{
+		grip.Notice(ctx, message.Fields{
 			"op":                jobType,
 			"id":                jid,
 			"message":           "not flagging idle host, waiting for an agent",

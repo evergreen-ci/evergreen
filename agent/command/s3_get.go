@@ -225,7 +225,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 	}
 
 	if !shouldRunForVariant(c.BuildVariants, conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
+		logger.Task().Infof(ctx, "Skipping S3 get of remote file '%s' for variant '%s'.",
 			c.RemoteFile, conf.BuildVariant.Name)
 		return nil
 	}
@@ -259,7 +259,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		case errChan <- err:
 			return
 		case <-ctx.Done():
-			logger.Task().Infof("Context canceled waiting for s3 get: %s.", ctx.Err())
+			logger.Task().Infof(ctx, "Context canceled waiting for s3 get: %s.", ctx.Err())
 			return
 		}
 	}()
@@ -267,12 +267,12 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 	select {
 	case err := <-errChan:
 		if err != nil && c.skipMissing {
-			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
+			logger.Task().Infof(ctx, "Problem getting file but optional is true, exiting without error (%s).", err.Error())
 			return nil
 		}
 		return errors.WithStack(err)
 	case <-ctx.Done():
-		logger.Execution().Infof("Canceled while running command '%s': %s", c.Name(), ctx.Err())
+		logger.Execution().Infof(ctx, "Canceled while running command '%s': %s", c.Name(), ctx.Err())
 		return nil
 	}
 
@@ -285,7 +285,7 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 	defer timer.Stop()
 
 	for i := 1; i <= maxS3OpAttempts; i++ {
-		logger.Task().Infof("Fetching remote file '%s' from S3 bucket '%s' (attempt %d of %d).",
+		logger.Task().Infof(ctx, "Fetching remote file '%s' from S3 bucket '%s' (attempt %d of %d).",
 			c.RemoteFile, c.Bucket, i, maxS3OpAttempts)
 
 		select {
@@ -297,7 +297,7 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 				return nil
 			}
 
-			logger.Task().Errorf("Problem getting remote file '%s' from S3 bucket, retrying: %s",
+			logger.Task().Errorf(ctx, "Problem getting remote file '%s' from S3 bucket, retrying: %s",
 				c.RemoteFile, err)
 			timer.Reset(backoffCounter.Duration())
 		}

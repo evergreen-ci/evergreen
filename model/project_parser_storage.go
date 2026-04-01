@@ -91,7 +91,7 @@ func ParserProjectUpsertOneWithS3Fallback(ctx context.Context, settings *evergre
 		return method, errors.Wrap(err, "falling back to upserting parser project into S3")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully upserted parser project into S3 as fallback due to document size limitation",
 		"parser_project":     pp.Id,
 		"old_storage_method": method,

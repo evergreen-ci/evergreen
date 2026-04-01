@@ -73,7 +73,7 @@ func LogAdminEvent(ctx context.Context, section string, before, after evergreen.
 	}
 
 	if err := event.Log(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeAdmin,
 			"message":       "error logging event",
 			"source":        "event-log-fail",

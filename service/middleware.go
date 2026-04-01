@@ -111,7 +111,7 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 		userId := r.Header.Get(evergreen.SageUserHeader)
 		if userId == "" {
 			// Throw an error
-			grip.Error(message.Fields{
+			grip.Error(r.Context(), message.Fields{
 				"message": "No user id found in request header",
 				"request": r,
 			})
@@ -120,7 +120,7 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 		}
 		user, err := user.FindOneById(r.Context(), userId)
 		if err != nil {
-			grip.Error(message.Fields{
+			grip.Error(r.Context(), message.Fields{
 				"message": "Error finding user in request",
 				"request": r,
 				"error":   err,
@@ -130,7 +130,7 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if user == nil {
-			grip.Error(message.Fields{
+			grip.Error(r.Context(), message.Fields{
 				"message": "User not found in request",
 				"request": r,
 				"userId":  userId,
@@ -364,7 +364,7 @@ func (uis *UIServer) loadProjectContext(rw http.ResponseWriter, r *http.Request)
 // ForbiddenHandler logs a rejected request befure returning a 403 to the client
 func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	reason := csrf.FailureReason(r)
-	grip.Warning(message.Fields{
+	grip.Warning(r.Context(), message.Fields{
 		"action": "forbidden",
 		"method": r.Method,
 		"remote": r.RemoteAddr,

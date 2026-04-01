@@ -192,7 +192,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	if len(d.ProviderSettingsList) > 1 {
 		if evergreen.IsEc2Provider(d.Provider) {
 			// this shouldn't ever happen, but if it does we want to continue so we don't inadvertently block task queues
-			grip.Error(message.Fields{
+			grip.Error(context.Background(), message.Fields{
 				"message":           "distro should be modified to have only one provider settings",
 				"provider_settings": d.ProviderSettingsList,
 				"distro":            d.Id,

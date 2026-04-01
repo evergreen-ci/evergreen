@@ -1221,7 +1221,7 @@ func (p *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Reque
 func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	proj, err := dbModel.FindProjectFromVersionID(ctx, p.version)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error getting project for version",
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting project for version '%s'", p.version))
@@ -1259,7 +1259,7 @@ func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request
 func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
 	proj, err := dbModel.FindMergedProjectRef(ctx, p.projectID, "", true)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error getting project",
 			"project": p.projectID,
 		}))

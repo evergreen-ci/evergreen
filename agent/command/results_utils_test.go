@@ -18,9 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
 	"github.com/mongodb/grip/sometimes"
+	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -194,9 +193,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
 
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
-	require.NoError(t, pw.Write(savedParquet))
-	require.NoError(t, pw.Close())
+	require.NoError(t, parquet.Write(w, []testresult.ParquetTestResults{savedParquet}))
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults

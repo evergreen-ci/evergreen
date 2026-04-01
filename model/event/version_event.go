@@ -66,7 +66,7 @@ func logEventWithRetry(event EventLogEntry, logFields message.Fields) {
 	for k, v := range logFields {
 		fields[k] = v
 	}
-	grip.Error(message.WrapError(err, fields))
+	grip.Error(context.Background(), message.WrapError(err, fields))
 }
 
 func LogVersionStateChangeEvent(ctx context.Context, id, newStatus string) {

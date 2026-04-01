@@ -19,11 +19,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -104,7 +103,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 		return errors.Wrapf(err, "scanning documents from file '%s'", fn)
 	}
 
-	grip.Infof("imported %d documents into %s", count, collName)
+	grip.Infof(ctx, "imported %d documents into %s", count, collName)
 
 	return nil
 }
@@ -119,7 +118,7 @@ func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 		return errors.Wrap(err, "writing GridFS file")
 	}
 
-	grip.Infof("wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
+	grip.Infof(ctx, "wrote %s.%s to gridFS", patch.GridFSPrefix, gridFSFileID)
 
 	return nil
 }
@@ -144,9 +143,9 @@ func writeDummyTestResultToLocalBucket(ctx context.Context) error {
 		CreatedAt: tr.CreatedAt,
 		Results:   make([]testresult.ParquetTestResult, 1),
 	}
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
-	pw.Write(savedParquet)
-	pw.Close()
+	if err := parquet.Write(w, []testresult.ParquetTestResults{savedParquet}); err != nil {
+		return errors.Wrap(err, "writing dummy Parquet test results")
+	}
 	return nil
 }
 
@@ -201,7 +200,7 @@ func buildAmboyIndexes(ctx context.Context, dbURI string, db *mongo.Database) er
 		return errors.Wrap(err, "closing queue group")
 	}
 
-	grip.Info("successfully built required Amboy indexes")
+	grip.Info(ctx, "successfully built required Amboy indexes")
 
 	return nil
 }
@@ -225,7 +224,7 @@ func getAmboyQueueOptions(dbURI string, db *mongo.Database) queue.MongoDBQueueOp
 
 func main() {
 	wd, err := os.Getwd()
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(context.Background(), err)
 	var (
 		path        string
 		dbName      string
@@ -244,13 +243,13 @@ func main() {
 
 	clientOptions := options.Client().ApplyURI(dbURI).SetConnectTimeout(5 * time.Second)
 	client, err := mongo.Connect(ctx, clientOptions)
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(ctx, err)
 
 	db := client.Database(dbName)
-	grip.EmergencyFatal(db.Drop(ctx))
+	grip.EmergencyFatal(ctx, db.Drop(ctx))
 
 	amboyDB := client.Database(amboyDBName)
-	grip.EmergencyFatal(amboyDB.Drop(ctx))
+	grip.EmergencyFatal(ctx, amboyDB.Drop(ctx))
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(buildAmboyIndexes(ctx, dbURI, amboyDB), "building Amboy indexes")
@@ -258,5 +257,5 @@ func main() {
 	catcher.Wrap(writeDummyGridFSFile(ctx, db), "writing dummy file to GridFS")
 	catcher.Wrap(writeDummyTestResultToLocalBucket(ctx), "writing dummy test result to local bucket")
 	catcher.Add(client.Disconnect(ctx))
-	grip.EmergencyFatal(catcher.Resolve())
+	grip.EmergencyFatal(ctx, catcher.Resolve())
 }

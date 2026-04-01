@@ -106,7 +106,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 		case errChan <- errors.WithStack(err):
 			return
 		case <-ctx.Done():
-			logger.Task().Infof("Context canceled waiting for archive creation: %s.", ctx.Err())
+			logger.Task().Infof(ctx, "Context canceled waiting for archive creation: %s.", ctx.Err())
 			return
 		}
 	}()
@@ -118,7 +118,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			if c.Attempt < maxRetries {
 				if strings.Contains(err.Error(), retryError) {
 					c.Attempt += 1
-					logger.Execution().Infof("Retrying command '%s' due to error: %s.", c.Name(), err.Error())
+					logger.Execution().Infof(ctx, "Retrying command '%s' due to error: %s.", c.Name(), err.Error())
 					return c.Execute(ctx, client, logger, conf)
 				}
 
@@ -126,13 +126,13 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			return errors.WithStack(err)
 		}
 		if filesArchived == 0 {
-			logger.Task().Warning("No files were archived.")
+			logger.Task().Warning(ctx, "No files were archived.")
 			deleteErr := os.Remove(c.Target)
 			if deleteErr != nil {
-				logger.Execution().Infof("Problem deleting empty archive: %s.", deleteErr.Error())
+				logger.Execution().Infof(ctx, "Problem deleting empty archive: %s.", deleteErr.Error())
 			}
 		} else {
-			logger.Task().Info(message.Fields{
+			logger.Task().Info(ctx, message.Fields{
 				"target":    c.Target,
 				"num_files": filesArchived,
 				"message":   "successfully created archive",
@@ -140,7 +140,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 		}
 		return nil
 	case <-ctx.Done():
-		logger.Execution().Info(message.Fields{
+		logger.Execution().Info(ctx, message.Fields{
 			"message": fmt.Sprintf("received signal to terminate execution of command '%s'", c.Name()),
 			"task_id": conf.Task.Id,
 		})
@@ -168,9 +168,9 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler, 
 		return -1, errors.Wrapf(err, "opening target archive file '%s'", c.Target)
 	}
 	defer func() {
-		logger.Error(tarWriter.Close())
-		logger.Error(gz.Close())
-		logger.Error(f.Close())
+		logger.Error(ctx, tarWriter.Close())
+		logger.Error(ctx, gz.Close())
+		logger.Error(ctx, f.Close())
 	}()
 
 	// Build the archive

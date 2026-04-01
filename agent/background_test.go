@@ -370,7 +370,7 @@ func (s *BackgroundSuite) TestIdleTimeoutIsSetForCommand() {
 	cmd := cmdFactory()
 	cmd.SetIdleTimeout(time.Second)
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd)
+	s.tc.setCurrentIdleTimeout(s.ctx, cmd)
 	s.Equal(time.Second, s.tc.getCurrentIdleTimeout())
 }
 
@@ -380,7 +380,7 @@ func (s *BackgroundSuite) TestIdleTimeoutIsSetForProject() {
 	s.True(exists)
 	cmd := cmdFactory()
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentIdleTimeout(cmd)
+	s.tc.setCurrentIdleTimeout(s.ctx, cmd)
 	s.Equal(180*time.Second, s.tc.getCurrentIdleTimeout())
 }
 

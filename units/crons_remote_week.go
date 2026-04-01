@@ -47,6 +47,7 @@ func (j *cronsRemoteWeekJob) Run(ctx context.Context) {
 
 	ops := []amboy.QueueOperation{
 		PopulateS3LifecycleSyncProjectBucketsJob(),
+		PopulateRetryFailedLogMoveJobs(j.env),
 	}
 
 	queue := j.env.RemoteQueue()
@@ -61,7 +62,7 @@ func (j *cronsRemoteWeekJob) Run(ctx context.Context) {
 
 	j.ErrorCount = catcher.Len()
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"queue": "service",
 		"id":    j.ID(),
 		"type":  j.Type().Name,

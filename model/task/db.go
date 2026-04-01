@@ -546,18 +546,6 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 	}
 }
 
-func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
-	return bson.M{
-		VersionKey: bson.M{
-			"$in": versions,
-		},
-		DisplayNameKey: bson.M{
-			"$in": displayNames,
-		},
-		BuildVariantKey: buildVariant,
-	}
-}
-
 func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
 	return bson.M{
 		BuildVariantKey: buildVariant,
@@ -643,18 +631,6 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 		}
 	}
 	return query
-}
-
-func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		StatusKey: bson.M{
-			"$in": statuses,
-		},
-		ProjectKey: project,
-	}
 }
 
 func ByExecutionTask(taskId string) bson.M {
@@ -1278,11 +1254,27 @@ func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOneId returns a single task with the given ID.
+// FindOneId returns a single task with the given ID, excluding the
+// GeneratedJSONAsString field which can be very large. Use
+// FindOneIdWithGeneratedJSON if the generated JSON is needed.
 func FindOneId(ctx context.Context, id string) (*Task, error) {
-	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
+	task := &Task{}
+	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
+	err := db.FindOneQ(ctx, Collection, query, task)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding task by ID")
+	}
+	return task, nil
+}
 
-	return task, errors.Wrap(err, "finding task by ID")
+// FindOneIdWithGeneratedJSON returns a single task with the given ID,
+// including the GeneratedJSONAsString field.
+func FindOneIdWithGeneratedJSON(ctx context.Context, id string) (*Task, error) {
+	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
+	return task, errors.Wrap(err, "finding task by ID with generated JSON")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
@@ -1426,24 +1418,6 @@ func FindOneIdWithFields(ctx context.Context, id string, projected ...string) (*
 	return task, nil
 }
 
-// FindOneIdWithoutGeneratedJSON returns a single task with the given ID,
-// excluding the GeneratedJSONAsString field which can be very large.
-func FindOneIdWithoutGeneratedJSON(ctx context.Context, id string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
-
-	err := db.FindOneQ(ctx, Collection, query, task)
-
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task by ID without generated JSON")
-	}
-
-	return task, nil
-}
-
 // findAllTaskIDs returns a list of task IDs associated with the given query.
 func findAllTaskIDs(ctx context.Context, q db.Q) ([]string, error) {
 	tasks := []Task{}
@@ -1487,17 +1461,6 @@ func FindAllTaskIDsFromVersion(ctx context.Context, versionId string) ([]string,
 func FindAllTaskIDsFromBuild(ctx context.Context, buildId string) ([]string, error) {
 	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
 	return findAllTaskIDs(ctx, q)
-}
-
-// FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
-func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId string) ([]Task, error) {
-	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
-	tasks := []Task{}
-	err := db.FindAllQ(ctx, Collection, q, &tasks)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
-	}
-	return tasks, nil
 }
 
 // FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
@@ -1593,7 +1556,7 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
-	query := db.Query(filter)
+	query := db.Query(filter).Project(bson.M{GeneratedJSONAsStringKey: 0})
 	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
@@ -2896,7 +2859,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	predictions := make(map[string]CostPredictionResult)
 	for result := range resultChan {
 		if result.err != nil {
-			grip.Warning(message.WrapError(result.err, message.Fields{
+			grip.Warning(ctx, message.WrapError(result.err, message.Fields{
 				"message": "error computing cost prediction for task, using zero prediction",
 				"task_id": result.taskID,
 			}))
