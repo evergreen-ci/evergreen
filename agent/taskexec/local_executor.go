@@ -31,6 +31,7 @@ var noOpCommands = map[string]string{
 	"downstream_expansions.set":             "downstream expansions are not available in local execution",
 	evergreen.AttachXUnitResultsCommandName: "test result attachment is not supported in local execution",
 	evergreen.AttachResultsCommandName:      "result attachment is not supported in local execution",
+	"gotest.parse_files":                    "result attachment is not supported in local execution",
 	evergreen.AttachArtifactsCommandName:    "artifact attachment is not supported in local execution",
 	"papertrail.trace":                      "papertrail tracing is not available in local execution",
 	"keyval.inc":                            "key-value increment operations are not supported in local execution",
@@ -115,6 +116,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 
 	taskConfig := &internal.TaskConfig{
 		Expansions:            expansions,
+		NewExpansions:         agentutil.NewDynamicExpansions(expansions),
 		WorkDir:               opts.WorkingDir,
 		AssumeRoleInformation: map[string]internal.AssumeRoleInformation{},
 	}
@@ -598,8 +600,10 @@ func (e *LocalExecutor) handleNoOpCommand(cmd command.Command) {
 	e.logger.Infof(e.getNoOpMessage(cmd.Name()))
 }
 
-// PrepareTask prepares a task for execution by creating command blocks
-func (e *LocalExecutor) PrepareTask(taskName string) error {
+// PrepareTask prepares a task for execution by creating command blocks.
+// If variantName is provided, it validates the task exists on that variant
+// and applies the variant's expansions.
+func (e *LocalExecutor) PrepareTask(taskName, variantName string) error {
 	if e.project == nil {
 		return errors.New("project not loaded")
 	}
@@ -612,13 +616,24 @@ func (e *LocalExecutor) PrepareTask(taskName string) error {
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof("Preparing task: %s", taskName)
 
+	if variantName != "" {
+		bv := e.project.FindBuildVariant(variantName)
+		if bv == nil {
+			return errors.Errorf("build variant '%s' not found in project", variantName)
+		}
+		if _, err := bv.Get(taskName); err != nil {
+			return errors.Wrapf(err, "task '%s' is not defined on build variant '%s'", taskName, variantName)
+		}
+		e.debugState.SelectedVariant = variantName
+		e.taskConfig.Expansions.Put("build_variant", variantName)
+		e.taskConfig.Expansions.Update(bv.Expansions)
+		e.logger.Infof("Applied expansions from build variant: %s", variantName)
+	}
+
 	// Set built-in expansions that production sets via model.PopulateExpansions().
 	// task_name is critical for resolving ${task_name} in function vars like
 	// vars: { target: "${task_name}" }.
 	e.taskConfig.Expansions.Put("task_name", taskName)
-	if e.taskConfig.NewExpansions != nil {
-		e.taskConfig.NewExpansions.Put("task_name", taskName)
-	}
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
@@ -794,15 +809,6 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	for k, v := range expansionsAndVars.Vars {
 		e.taskConfig.Expansions.Put(k, v)
 	}
-
-	allExpansions := make(util.Expansions, len(expansionsAndVars.Expansions)+len(expansionsAndVars.Vars))
-	for k, v := range expansionsAndVars.Expansions {
-		allExpansions[k] = v
-	}
-	for k, v := range expansionsAndVars.Vars {
-		allExpansions[k] = v
-	}
-	e.taskConfig.NewExpansions = agentutil.NewDynamicExpansions(allExpansions)
 
 	if expansionsAndVars.PrivateVars == nil {
 		expansionsAndVars.PrivateVars = map[string]bool{}

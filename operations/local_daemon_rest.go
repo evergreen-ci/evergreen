@@ -123,7 +123,8 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 // handleSelectTask selects a task for debugging
 func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		TaskName string `json:"task_name"`
+		TaskName    string `json:"task_name"`
+		VariantName string `json:"variant_name"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -139,7 +140,7 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := d.executor.PrepareTask(req.TaskName); err != nil {
+	if err := d.executor.PrepareTask(req.TaskName, req.VariantName); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

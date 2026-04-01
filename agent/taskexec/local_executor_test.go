@@ -269,7 +269,7 @@ tasks:
 		_, err = executor.LoadProject(yamlFile)
 		require.NoError(t, err)
 
-		err = executor.PrepareTask("test-task")
+		err = executor.PrepareTask("test-task", "")
 		require.NoError(t, err)
 		assert.Equal(t, "test-task", executor.debugState.SelectedTask)
 		assert.Greater(t, len(executor.debugState.CommandList), 0)
@@ -294,7 +294,7 @@ tasks:
 		_, err = executor.LoadProject(yamlFile)
 		require.NoError(t, err)
 
-		err = executor.PrepareTask("nonexistent-task")
+		err = executor.PrepareTask("nonexistent-task", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "task 'nonexistent-task' not found")
 	})
@@ -303,9 +303,109 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		err = executor.PrepareTask("any-task")
+		err = executor.PrepareTask("any-task", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "project not loaded")
+	})
+
+	t.Run("PreparesTaskWithVariantExpansions", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    expansions:
+      distro_id: ubuntu2204
+      edition: enterprise
+    tasks:
+      - name: test-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask("test-task", "ubuntu2204")
+		require.NoError(t, err)
+		assert.Equal(t, "test-task", executor.debugState.SelectedTask)
+		assert.Equal(t, "ubuntu2204", executor.debugState.SelectedVariant)
+		assert.Equal(t, "ubuntu2204", executor.taskConfig.Expansions.Get("build_variant"))
+		assert.Equal(t, "ubuntu2204", executor.taskConfig.Expansions.Get("distro_id"))
+		assert.Equal(t, "enterprise", executor.taskConfig.Expansions.Get("edition"))
+	})
+
+	t.Run("ReturnsErrorForNonexistentVariant", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+buildvariants:
+  - name: ubuntu2204
+    tasks:
+      - name: test-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask("test-task", "nonexistent-variant")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found in project")
+	})
+
+	t.Run("ReturnsErrorForTaskNotOnVariant", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+  - name: other-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "other"
+buildvariants:
+  - name: ubuntu2204
+    tasks:
+      - name: other-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask("test-task", "ubuntu2204")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not defined on build variant")
 	})
 }
 
