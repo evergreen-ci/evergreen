@@ -63,7 +63,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.S3LifecycleSyncDisabled {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "S3 lifecycle sync is disabled, skipping admin buckets sync",
 			"job_id":  j.ID(),
 		})
@@ -78,7 +78,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.InfoWhen(len(adminBuckets) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(adminBuckets) > 0, message.Fields{
 		"message":     "starting S3 lifecycle sync for admin buckets",
 		"num_buckets": len(adminBuckets),
 		"job_id":      j.ID(),
@@ -89,7 +89,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 	successCount := 0
 
 	for bucketName, bucketInfo := range adminBuckets {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "syncing lifecycle rules for admin bucket",
 			"bucket":  bucketName,
 			"region":  bucketInfo.Region,
@@ -98,7 +98,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 
 		rules, err := client.GetBucketLifecycleConfiguration(ctx, bucketInfo.Name, bucketInfo.Region, bucketInfo.RoleARN, bucketInfo.ExternalID)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to get lifecycle configuration for admin bucket",
 				"bucket":  bucketName,
 				"region":  bucketInfo.Region,
@@ -107,7 +107,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 			bucketField := getBucketFieldForName(bucketsConfig, bucketName)
 			if bucketField != "" {
 				if updateErr := evergreen.UpdateBucketLifecycleError(ctx, bucketField, err.Error()); updateErr != nil {
-					grip.Error(message.WrapError(updateErr, message.Fields{
+					grip.Error(ctx, message.WrapError(updateErr, message.Fields{
 						"message":      "failed to update bucket lifecycle error",
 						"bucket":       bucketName,
 						"bucket_field": bucketField,
@@ -140,7 +140,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		bucketField := getBucketFieldForName(bucketsConfig, bucketName)
 		if bucketField == "" {
 			err := errors.Errorf("no bucket field found for bucket '%s'", bucketName)
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "failed to find bucket field for admin bucket",
 				"bucket":  bucketName,
 				"job_id":  j.ID(),
@@ -150,7 +150,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		}
 
 		if err := evergreen.UpdateBucketLifecycle(ctx, bucketField, expirationDays, transitionToIADays, transitionToGlacierDays); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":      "failed to update bucket lifecycle configuration",
 				"bucket":       bucketName,
 				"bucket_field": bucketField,
@@ -161,7 +161,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		}
 
 		successCount++
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                    "successfully synced lifecycle rules for admin bucket",
 			"bucket":                     bucketName,
 			"expiration_days":            expirationDays,
@@ -172,7 +172,7 @@ func (j *s3LifecycleSyncAdminBucketsJob) Run(ctx context.Context) {
 		})
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "completed S3 lifecycle sync for admin buckets",
 		"success_count": successCount,
 		"failure_count": len(adminBuckets) - successCount,

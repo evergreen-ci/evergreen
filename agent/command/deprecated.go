@@ -16,7 +16,7 @@ func (*gitApplyPatch) ParseParams(params map[string]any) error { return nil }
 func (*gitApplyPatch) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	logger.Task().Warning("git.apply_patch is deprecated. Patches are applied in git.get_project.")
+	logger.Task().Warning(ctx, "git.apply_patch is deprecated. Patches are applied in git.get_project.")
 	return nil
 }
 
@@ -28,6 +28,6 @@ func (c *manifestLoad) ParseParams(params map[string]any) error { return nil }
 func (c *manifestLoad) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 
-	logger.Execution().Warningf("manifest.load is deprecated. Manifest load is now called automatically in git.get_project.")
+	logger.Execution().Warningf(ctx, "manifest.load is deprecated. Manifest load is now called automatically in git.get_project.")
 	return nil
 }

@@ -87,7 +87,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return mongo.ErrNoDocuments
 	}
 	if t.Status != evergreen.TaskStarted {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "task is not running, not generating tasks",
 			"task":    t.Id,
 			"version": t.Version,
@@ -122,7 +122,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return errors.Errorf("task '%s' not found", taskId)
 	}
 	if t.GeneratedTasks {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "attempted to generate tasks after getting config, but generator already ran for this task",
 			"task":    t.Id,
 			"version": t.Version,
@@ -201,7 +201,7 @@ func (j *generateTasksJob) handleError(ctx context.Context, handledError error) 
 		return errors.Errorf("task '%s' not found", j.TaskID)
 	}
 	if t.GeneratedTasks {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "handleError encountered task that is already generating, nooping",
 			"task":    t.Id,
 			"version": t.Version,
@@ -243,7 +243,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		err = errors.New(err.Error()[:maxGenerateTasksErrMsgLength] + "(truncated due to excessively long errors)")
 	}
 
-	grip.InfoWhen(err == nil, message.Fields{
+	grip.InfoWhen(ctx, err == nil, message.Fields{
 		"message":       "generate.tasks finished",
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
@@ -251,7 +251,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"job":           j.ID(),
 		"version":       t.Version,
 	})
-	grip.DebugWhen(shouldNoop, message.WrapError(err, message.Fields{
+	grip.DebugWhen(ctx, shouldNoop, message.WrapError(err, message.Fields{
 		"message":       "generate.tasks noop",
 		"operation":     "generate.tasks",
 		"duration_secs": time.Since(start).Seconds(),
@@ -260,7 +260,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		"version":       t.Version,
 	}))
 	if err != nil && !shouldNoop {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message":       "generate.tasks finished with errors",
 			"operation":     "generate.tasks",
 			"duration_secs": time.Since(start).Seconds(),
@@ -285,7 +285,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 				return
 			}
 			if activatedTasks > evergreen.NumTasksForLargePatch {
-				grip.Info(message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":             "patch has large number of activated tasks",
 					"op":                  "generate.tasks",
 					"num_tasks_activated": activatedTasks,

@@ -36,6 +36,9 @@ func Validate() cli.Command {
 		}),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			confPath := c.Parent().String(ConfFlagName)
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
@@ -54,9 +57,9 @@ func Validate() cli.Command {
 
 			if projectID == "" {
 				cwd, err := os.Getwd()
-				grip.Error(errors.Wrap(err, "getting current working directory"))
+				grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
 				cwd, err = filepath.EvalSymlinks(cwd)
-				grip.Error(errors.Wrapf(err, "resolving symlinks for current working directory '%s'", cwd))
+				grip.Error(ctx, errors.Wrapf(err, "resolving symlinks for current working directory '%s'", cwd))
 				projectID = conf.FindDefaultProject(cwd, false)
 			}
 
@@ -120,7 +123,7 @@ func loadProjectYAML(path string, quiet, errorOnWarnings bool, localModuleMap ma
 		opts.UnmarshalStrict = true
 	}
 	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project, projectID)
-	grip.Info(validationErrs)
+	grip.Info(ctx, validationErrs)
 	if validationErrs.Has(validator.Error) {
 		return nil, errors.Errorf("%s is an invalid configuration", path)
 	}
@@ -156,13 +159,13 @@ func validateProjectRemotely(conf *ClientSettings, projectYaml []byte, path stri
 		return errors.Wrapf(err, "validating project '%s'", projectID)
 	}
 
-	grip.Info(projErrors)
+	grip.Info(ctx, projErrors)
 	if projErrors.Has(validator.Error) || (errorOnWarnings && projErrors.Has(validator.Warning)) {
 		return errors.Errorf("%s is an invalid configuration", path)
 	} else if projErrors.Has(validator.Warning) {
-		grip.Infof("%s is valid with warnings", path)
+		grip.Infof(ctx, "%s is valid with warnings", path)
 	} else {
-		grip.Infof("%s is valid", path)
+		grip.Infof(ctx, "%s is valid", path)
 	}
 
 	return nil

@@ -248,7 +248,7 @@ func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified 
 		v.FinishTime = time.Now()
 		if modified {
 			if aggErr := v.UpdateAggregateTaskCosts(ctx); aggErr != nil {
-				grip.Error(errors.Wrapf(aggErr, "aggregating task costs for finished version '%s'", v.Id))
+				grip.Error(ctx, errors.Wrapf(aggErr, "aggregating task costs for finished version '%s'", v.Id))
 			}
 		}
 	}

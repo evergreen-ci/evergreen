@@ -36,7 +36,7 @@ func init() {
 	testutil.Setup()
 	config := evergreen.NaiveAuthConfig{}
 	um, err := auth.NewNaiveUserManager(&config)
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(context.Background(), err)
 	evergreen.GetEnvironment().SetUserManager(um)
 }
 

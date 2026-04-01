@@ -105,7 +105,7 @@ func badHostTaskRelationship(ctx context.Context, h *host.Host, t *task.Task) bo
 		}
 		nextTask, err := task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":        "problem finding task",
 				"task":           h.RunningTask,
 				"task_execution": h.RunningTaskExecution,

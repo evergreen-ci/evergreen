@@ -37,7 +37,7 @@ func (h *panicReport) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *panicReport) Run(ctx context.Context) gimlet.Responder {
-	grip.Error(message.Fields{
+	grip.Error(ctx, message.Fields{
 		"message": "CLI panic report",
 		"report":  h.report,
 	})

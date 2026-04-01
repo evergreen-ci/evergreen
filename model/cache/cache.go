@@ -39,7 +39,7 @@ func (c *DBCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	)
 	if err != nil {
 		if !adb.ResultsNotFound(err) {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":   "getting cached value",
 				"key":       key,
 				"operation": "Get",
@@ -66,7 +66,7 @@ func (c *DBCache) Set(ctx context.Context, key string, valueBytes []byte) error 
 		},
 	)
 
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message":   "setting cached value",
 		"key":       key,
 		"operation": "Set",
@@ -79,7 +79,7 @@ func (c *DBCache) Set(ctx context.Context, key string, valueBytes []byte) error 
 // Delete removes the value associated with the key.
 func (c *DBCache) Delete(ctx context.Context, key string) error {
 	err := db.Remove(ctx, collection, bson.M{IDKey: key})
-	grip.Error(message.WrapError(err,
+	grip.Error(ctx, message.WrapError(err,
 		message.Fields{
 			"message":   "deleting cached value",
 			"key":       key,

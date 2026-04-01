@@ -70,12 +70,12 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 		logger, err := comm.GetLoggerProducer(ctx, task, nil)
 		require.NoError(t, err)
 
-		logger.Task().Alert("Fluff 1")
-		logger.Task().Alert("More fluff")
+		logger.Task().Alert(ctx, "Fluff 1")
+		logger.Task().Alert(ctx, "More fluff")
 		require.NoError(t, err)
 
-		logger.Task().Info(secret)
-		logger.Task().Alert("Even more fluff")
+		logger.Task().Info(ctx, secret)
+		logger.Task().Alert(ctx, "Even more fluff")
 		require.NoError(t, logger.Close())
 
 		data := readLogs(t, task)
@@ -100,13 +100,13 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 				Expansions: e,
 			},
 		})
-		logger.Task().Alert("Fluff 1")
+		logger.Task().Alert(ctx, "Fluff 1")
 		e.PutAndRedact(secretKey, secret)
-		logger.Task().Alert("More fluff")
+		logger.Task().Alert(ctx, "More fluff")
 		require.NoError(t, err)
 
-		logger.Task().Info(secret)
-		logger.Task().Alert("Even more fluff")
+		logger.Task().Info(ctx, secret)
+		logger.Task().Alert(ctx, "Even more fluff")
 		require.NoError(t, logger.Close())
 
 		data := readLogs(t, task)

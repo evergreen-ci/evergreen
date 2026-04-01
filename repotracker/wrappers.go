@@ -38,7 +38,7 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 
 	tracker, err := getTracker(conf, project)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"project":            project.Id,
 			"project_identifier": project.Identifier,
 			"message":            "problem fetching repotracker",
@@ -48,7 +48,7 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 	}
 
 	if err = tracker.FetchRevisions(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"project":            project.Id,
 			"project_identifier": project.Identifier,
 			"message":            "problem fetching revisions",
@@ -67,7 +67,7 @@ func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts 
 	}
 	versions, err := model.DoProjectActivation(ctx, &project, ts)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
 			"runner":             RunnerName,
 			"mode":               "catch up",
@@ -87,14 +87,14 @@ func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts 
 func CheckGithubAPIResources(ctx context.Context) bool {
 	remaining, err := thirdparty.CheckGithubResource(ctx)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"runner":  RunnerName,
 			"message": "problem checking github api limit",
 		}))
 		return false
 	}
 	if remaining < githubAPILimitCeiling {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"runner":   RunnerName,
 			"message":  "too few github API requests remaining",
 			"requests": remaining,

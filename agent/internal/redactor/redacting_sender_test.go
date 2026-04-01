@@ -1,6 +1,7 @@
 package redactor
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -99,7 +100,7 @@ func TestRedactingSender(t *testing.T) {
 				InternalRedactions: util.NewDynamicExpansions(test.internalRedactions),
 			}
 			s := NewRedactingSender(wrappedSender, opts)
-			s.Send(message.NewDefaultMessage(level.Info, test.inputString))
+			s.Send(context.Background(), message.NewDefaultMessage(level.Info, test.inputString))
 			assert.Equal(t, test.expected, wrappedSender.GetMessage().Message.String())
 		})
 	}

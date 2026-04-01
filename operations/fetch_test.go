@@ -68,10 +68,10 @@ func TestClone(t *testing.T) {
 func runCloneTest(t *testing.T, opts cloneOptions, pass bool) {
 	opts.rootDir = t.TempDir()
 	if !pass {
-		assert.Error(t, clone(opts))
+		assert.Error(t, clone(t.Context(), opts))
 		return
 	}
-	assert.NoError(t, clone(opts))
+	assert.NoError(t, clone(t.Context(), opts))
 }
 
 func TestTruncateName(t *testing.T) {
@@ -138,7 +138,7 @@ func TestResetGitRemoteToSSH(t *testing.T) {
 		isAppToken: true,
 	}
 
-	require.NoError(t, clone(opts))
+	require.NoError(t, clone(t.Context(), opts))
 
 	// check that the remote is reset to SSH
 	cmd := exec.Command("git", "-C", opts.rootDir, "remote", "-v")

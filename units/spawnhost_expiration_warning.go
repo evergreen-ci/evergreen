@@ -61,7 +61,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.AlertsDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  "alerter",
 			"id":      j.ID(),
 			"message": "alerts are disabled, exiting",
@@ -87,7 +87,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 		}
 		if err = runSpawnHostExpirationWarningTriggers(ctx, &h); err != nil {
 			j.AddError(errors.Wrap(err, "logging events for spawn host expiration"))
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"runner":  "monitor",
 				"id":      j.ID(),
 				"message": "error queuing alert",
@@ -154,7 +154,7 @@ func trySpawnHostExpirationNotification(ctx context.Context, h *host.Host, numHo
 	}
 	if shouldExec {
 		event.LogSpawnhostExpirationWarningSent(ctx, h.Id)
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":    "sent host expiration warning",
 			"host_id":    h.Id,
 			"owner":      h.StartedBy,
@@ -174,7 +174,7 @@ func tryHostTemporaryExemptionExpirationNotification(ctx context.Context, h *hos
 	}
 	if shouldExec {
 		event.LogHostTemporaryExemptionExpirationWarningSent(ctx, h.Id)
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "sent temporary exemption expiration warning",
 			"host_id": h.Id,
 			"owner":   h.StartedBy,

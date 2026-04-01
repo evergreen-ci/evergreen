@@ -103,7 +103,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if flags.HostInitDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"host_id":  j.HostID,
 			"job":      j.ID(),
@@ -126,7 +126,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 		if j.host == nil {
 			//host intent document has been removed by another evergreen process
-			grip.Warning(message.Fields{
+			grip.Warning(ctx, message.Fields{
 				"host_id": j.HostID,
 				"attempt": j.RetryInfo().CurrentAttempt,
 				"job":     j.ID(),
@@ -137,7 +137,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if j.host.Status != evergreen.HostUninitialized && j.host.Status != evergreen.HostBuilding {
-		grip.Notice(message.Fields{
+		grip.Notice(ctx, message.Fields{
 			"message": "host has already been started",
 			"status":  j.host.Status,
 			"host_id": j.host.Id,
@@ -154,7 +154,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 		removeHostIntent := false
 		if distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"host_id":            j.HostID,
 				"attempt":            j.RetryInfo().CurrentAttempt,
 				"distro":             j.host.Distro.Id,
@@ -177,7 +177,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		if allActiveDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"host_id":                 j.HostID,
 				"attempt":                 j.RetryInfo().CurrentAttempt,
 				"distro":                  j.host.Distro.Id,
@@ -194,7 +194,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			err = errors.Wrap(j.host.Remove(ctx), "removing host intent to respect max distro hosts")
 
 			j.AddError(err)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.RetryInfo().CurrentAttempt,
 				"distro":   j.host.Distro.Id,
@@ -208,7 +208,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 
 		if j.selfThrottle(ctx, hostInit) {
-			grip.Debug(message.Fields{
+			grip.Debug(ctx, message.Fields{
 				"host_id":  j.HostID,
 				"attempt":  j.RetryInfo().CurrentAttempt,
 				"distro":   j.host.Distro.Id,
@@ -223,7 +223,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.IsLastAttempt() && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) {
-			grip.Error(message.WrapError(j.Error(), message.Fields{
+			grip.Error(ctx, message.WrapError(j.Error(), message.Fields{
 				"message":      "no attempts remaining to create host",
 				"outcome":      "giving up on creating this host",
 				"host_id":      j.HostID,
@@ -288,7 +288,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if err = ctx.Err(); err != nil {
 		return errors.Wrap(err, "creating host")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "attempting to start host",
 		"host_id":            j.host.Id,
 		"single_task_distro": j.host.Distro.SingleTaskDistro,
@@ -311,7 +311,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 	cloudManager, err = cloud.GetManager(ctx, j.env, mgrOpts)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",
 			"host_id": j.host.Id,
 			"job":     j.ID(),
@@ -329,7 +329,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// SpawnHost returns, but NOT as initializing hosts that could still be
 	// spawned by Evergreen.
 	if err = j.host.SetStatusAtomically(ctx, evergreen.HostBuilding, evergreen.User, ""); err != nil {
-		grip.Info(message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"message": "host could not be transitioned from initializing to building, so it may already be building",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -373,7 +373,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		event.LogHostStartSucceeded(ctx, j.host.Id, evergreen.User)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully started host",
 		"host_id":            j.host.Id,
 		"host_tag":           j.host.Tag,
@@ -400,7 +400,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	}
 
 	if parent.Status != evergreen.HostRunning {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":       "parent for host not running",
 			"host_id":       j.host.Id,
 			"parent_status": parent.Status,
@@ -408,7 +408,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "image already exists, will start container",
 			"host_id":  j.host.Id,
 			"image":    j.host.DockerOptions.Image,
@@ -420,7 +420,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 
 	//  If the image is not already present on the parent, run job to build the new image
 	if !j.BuildImageStarted {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "image not on host, will import image",
 			"host_id":  j.host.Id,
 			"image":    j.host.DockerOptions.Image,
@@ -430,7 +430,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		j.BuildImageStarted = true
 		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
 		err = j.env.RemoteQueue().Put(ctx, buildingContainerJob)
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "Duplicate key being added to job to block building containers",
 		}))
 	}
@@ -472,7 +472,7 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 		hostIPAssociationQueueGroup, _ := j.env.RemoteQueueGroup().Get(appCtx, hostIPAssociationQueueGroup)
 		if hostIPAssociationQueueGroup != nil {
 			if err := amboy.EnqueueUniqueJob(ctx, hostIPAssociationQueueGroup, NewHostIPAssociationJob(j.env, j.host, time.Now().Format(TSFormat))); err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"message": "could not enqueue host IP association job for host",
 					"host_id": j.host.Id,
 					"distro":  j.host.Distro.Id,
@@ -482,7 +482,7 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 	}
 
 	if j.host.HasContainers {
-		grip.Error(message.WrapError(j.host.UpdateParentIDs(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(j.host.UpdateParentIDs(ctx), message.Fields{
 			"message": "unable to update parent ID of containers",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -501,7 +501,7 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 		return true, nil
 	}
 
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message":        "could not perform unsafe host replacement",
 		"job":            j.ID(),
 		"intent_host_id": j.HostID,
@@ -529,7 +529,7 @@ func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.M
 
 	terminateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	grip.Error(message.WrapError(cloudMgr.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
+	grip.Error(ctx, message.WrapError(cloudMgr.TerminateInstance(terminateCtx, j.host, evergreen.User, "hit database error trying to update host"), message.Fields{
 		"message":        "could not terminate host after failed unsafe host replacement",
 		"host_id":        j.host.Id,
 		"intent_host_id": j.HostID,

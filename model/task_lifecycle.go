@@ -109,7 +109,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 
 		if len(tasksToUpdate) > 0 {
 			if err := task.BulkUpdateNumDependents(ctx, tasksToUpdate); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":   "error updating number of dependents",
 					"num_tasks": len(tasksToUpdate),
 				}))
@@ -261,7 +261,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 				}
 				return errors.WithStack(MarkEnd(ctx, settings, t, origin, time.Now(), detail))
 			} else {
-				grip.Critical(message.Fields{
+				grip.Critical(ctx, message.Fields{
 					"message":     "TryResetTask called with nil TaskEndDetail",
 					"origin":      origin,
 					"task_id":     taskId,
@@ -286,7 +286,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 					}
 					execTasks[execTask.Id] = execTask.Status
 				}
-				grip.Error(message.Fields{
+				grip.Error(ctx, message.Fields{
 					"message":    "attempt to restart unfinished display task",
 					"task":       t.Id,
 					"status":     t.Status,
@@ -524,7 +524,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		s = task.StepbackInfo{
 			LastPassingStepbackTaskId: lastPassing.Id,
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                       "starting bisect stepback",
 			"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
 			"task_id":                       t.Id,
@@ -542,7 +542,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	} else if t.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = t.Id
 	} else {
-		grip.Warningf("stopping task '%s' stepback due to status '%s'", t.Id, t.Status)
+		grip.Warningf(ctx, "stopping task '%s' stepback due to status '%s'", t.Id, t.Status)
 		return nil
 	}
 
@@ -572,7 +572,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                       "bisect stepback",
 		"last_failing_stepback_task_id": s.LastFailingStepbackTaskId,
 		"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
@@ -621,7 +621,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 			BuildVariant:              generated.BuildVariant,
 			LastPassingStepbackTaskId: lastPassingGenerated.GeneratedBy,
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                       "starting bisect stepback on generator task",
 			"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
 			"generator_task_id":             generator.Id,
@@ -643,7 +643,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	} else if generated.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = generator.Id
 	} else {
-		grip.Warningf("stopping task '%s' stepback due to status '%s'", generated.Id, generated.Status)
+		grip.Warningf(ctx, "stopping task '%s' stepback due to status '%s'", generated.Id, generated.Status)
 		return nil
 	}
 
@@ -680,7 +680,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                         "bisect stepback on generator task",
 		"last_failing_stepback_task_id":   s.LastFailingStepbackTaskId,
 		"last_passing_stepback_task_id":   s.LastPassingStepbackTaskId,
@@ -719,7 +719,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	detailsCopy := *detail
 	if t.Status == detailsCopy.Status {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": "tried to mark task as finished twice",
 			"task":    t.Id,
 		})
@@ -729,7 +729,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	t.Details = detailsCopy
 
 	if utility.IsZeroTime(t.StartTime) {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":      "task is missing start time",
 			"task_id":      t.Id,
 			"execution":    t.Execution,
@@ -741,7 +741,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	startPhaseAt := time.Now()
 	err := t.MarkEnd(ctx, finishTime, &detailsCopy)
 
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
+	grip.NoticeWhen(ctx, time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
 		"function":      "MarkEnd",
 		"step":          "t.MarkEnd",
@@ -779,7 +779,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		event.LogTaskFinished(ctx, t.Id, t.Execution, status)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "marking task finished",
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
@@ -856,7 +856,7 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 		catcher.Wrapf(err, "finding project for task '%s'", t.Id)
 	}
 	if catcher.HasErrors() {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "unable to perform stepback/deactivate previous",
 			"project": t.Project,
 			"task_id": t.Id,
@@ -876,7 +876,7 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 		} else {
 			err = evalStepback(ctx, t, status, pRef, project)
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "problem evaluating stepback",
 			"project": t.Project,
 			"task_id": t.Id,
@@ -887,7 +887,7 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 	if t.Status == evergreen.TaskSucceeded && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
 		shouldDeactivatePrevious := getDeactivatePrevious(t, pRef, project)
 		if shouldDeactivatePrevious {
-			grip.Error(message.WrapError(DeactivatePreviousTasks(ctx, t, caller), message.Fields{
+			grip.Error(ctx, message.WrapError(DeactivatePreviousTasks(ctx, t, caller), message.Fields{
 				"message": "problem evaluating deactivate previous",
 				"project": t.Project,
 				"task_id": t.Id,
@@ -957,7 +957,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 		msg["dependencies_met_time"] = t.DependenciesMetTime
 	}
 
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 	return nil
 }
 
@@ -1689,7 +1689,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 
-			grip.Error(message.WrapError(emitMergeQueueCompletionMetrics(ctx, rootPatch, taskVersion, psu.patchFamilyFinishedCollectiveStatus), message.Fields{
+			grip.Error(ctx, message.WrapError(emitMergeQueueCompletionMetrics(ctx, rootPatch, taskVersion, psu.patchFamilyFinishedCollectiveStatus), message.Fields{
 				"message":           "error emitting merge queue completion metrics",
 				"version_id":        taskVersion.Id,
 				"patch_id":          rootPatch.Id.Hex(),
@@ -1821,7 +1821,7 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	for _, versionID := range versionIDs {
 		startTime, err := task.GetFirstTaskStartTimeForVersion(ctx, versionID)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":    "error getting first task start time for merge queue version",
 				"version_id": versionID,
 				"patch_id":   p.Id.Hex(),
@@ -2069,7 +2069,7 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 
-		grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, t, execTaskIdsToRestart, caller), message.Fields{
+		grip.Error(ctx, message.WrapError(logExecutionTasksRestarted(ctx, t, execTaskIdsToRestart, caller), message.Fields{
 			"message":                      "could not log task restart events for some execution tasks",
 			"display_task_id":              t.Id,
 			"restarted_execution_task_ids": execTaskIdsToRestart,
@@ -2231,7 +2231,7 @@ func doRestartFailedTasks(ctx context.Context, tasks []string, user string, resu
 	for _, id := range tasks {
 		if err := TryResetTask(ctx, evergreen.GetEnvironment().Settings(), id, user, evergreen.RESTV2Package, nil); err != nil {
 			tasksErrored = append(tasksErrored, id)
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"task":    id,
 				"status":  "failed",
 				"message": "error restarting task",
@@ -2270,7 +2270,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully fixed stranded host task",
 		"task":               t.Id,
 		"execution":          t.Execution,
@@ -2310,7 +2310,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully fixed stale task",
 		"task":               t.Id,
 		"execution":          t.Execution,
@@ -2435,7 +2435,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 			return errors.Wrap(err, "getting display task for task")
 		}
 		if originalDisplayTask == nil {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":         "task may hold a display task that doesn't exist",
 				"task_id":         t.Id,
 				"display_task_id": t.DisplayTaskId,
@@ -2460,7 +2460,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 
 	if !originalDisplayTask.IsFinished() && updatedDisplayTask.IsFinished() {
 		event.LogTaskFinished(ctx, originalDisplayTask.Id, originalDisplayTask.Execution, updatedDisplayTask.GetDisplayStatus())
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "display task finished",
 			"task_id":   originalDisplayTask.Id,
 			"status":    originalDisplayTask.Status,
@@ -2699,7 +2699,7 @@ func UpdateOtelMetadata(ctx context.Context, t *task.Task, diskDevices []string,
 			task.ById(t.Id),
 			bson.M{"$set": update},
 		)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "problem updating otel metadata",
 			"task_id": t.Id,
 			"update":  update,

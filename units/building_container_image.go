@@ -93,7 +93,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"host_id":      j.parent.Id,
 			"job_id":       j.ID(),
 			"runner":       "taskrunner",
@@ -103,7 +103,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		})
 		if err = j.parent.IncContainerBuildAttempt(ctx); err != nil {
 			j.AddError(err)
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"host_id":      j.parent.Id,
 				"job_id":       j.ID(),
 				"runner":       "taskrunner",
@@ -121,7 +121,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "setting parent '%s' to decommissioned", j.parent.Id))
 		err = errors.Errorf("failed %d times to build and download image '%s' on parent '%s'", containerBuildRetries, j.DockerOptions.Image, j.parent.Id)
 		j.AddError(err)
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "building container image job failed",
 			"job_id":    j.ID(),
 			"host_id":   j.parent.Id,
@@ -167,7 +167,7 @@ func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
 			WaitUntil: time.Now().Add(time.Second * 10),
 		})
 		err := j.env.RemoteQueue().Put(ctx, job)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "failed to requeue setup job",
 			"operation": "container build",
 			"host_id":   j.ParentID,

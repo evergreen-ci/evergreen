@@ -124,7 +124,7 @@ func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, d
 	var err error
 	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
 		err = errors.New("no task secret provided")
-		grip.Error(err)
+		grip.Error(ctx, err)
 		return nil, err
 	}
 
@@ -159,7 +159,7 @@ func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, d
 			start = string(out[0:100])
 			end = string(out[len(out)-100:])
 		}
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":          "error sending request",
 			"method":           info.method,
 			"path":             info.path,

@@ -174,7 +174,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 
 	flags := evergreen.ServiceFlags{}
 	for i := range s.n {
-		s.True(notificationIsEnabled(&flags, &s.n[i]))
+		s.True(notificationIsEnabled(ctx, &flags, &s.n[i]))
 	}
 
 	// Reset to original flags after the test finishes.
@@ -195,7 +195,7 @@ func (s *cronsEventSuite) TestNotificationIsEnabled() {
 	s.Require().NoError(flags.Set(ctx))
 
 	for i := range s.n {
-		s.False(notificationIsEnabled(&flags, &s.n[i]))
+		s.False(notificationIsEnabled(ctx, &flags, &s.n[i]))
 	}
 }
 
@@ -285,7 +285,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		secret: []byte("darkmagic"),
 	}
 
-	go httpServer(ln, handler)
+	go httpServer(s.ctx, ln, handler)
 
 	q := s.env.RemoteQueue()
 	jobs, err := eventNotifierJobs(s.ctx, s.env, time.Time{})
@@ -313,9 +313,9 @@ func (s *cronsEventSuite) TestSendNotificationJobs() {
 	s.Len(jobs, 6)
 }
 
-func httpServer(ln net.Listener, handler *mockWebhookHandler) {
+func httpServer(ctx context.Context, ln net.Listener, handler *mockWebhookHandler) {
 	err := http.Serve(ln, handler)
-	grip.Error(err)
+	grip.Error(ctx, err)
 	if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 		panic(err)
 	}
@@ -328,14 +328,14 @@ type mockWebhookHandler struct {
 	err  error
 }
 
-func (m *mockWebhookHandler) error(outErr error, w http.ResponseWriter) {
+func (m *mockWebhookHandler) error(ctx context.Context, outErr error, w http.ResponseWriter) {
 	if outErr == nil {
 		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
 
 	_, err := w.Write([]byte(outErr.Error()))
-	grip.Error(err)
+	grip.Error(ctx, err)
 	m.err = outErr
 }
 
@@ -347,40 +347,40 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	defer req.Body.Close()
 
 	if req.Method != http.MethodPost {
-		m.error(errors.Errorf("expected method POST, got %s", req.Method), w)
+		m.error(req.Context(), errors.Errorf("expected method POST, got %s", req.Method), w)
 		return
 	}
 
 	mid := req.Header.Get(evergreenNotificationIDHeader)
 	if len(mid) == 0 {
-		m.error(errors.New("no message id"), w)
+		m.error(req.Context(), errors.New("no message id"), w)
 		return
 	}
 	sig := []byte(req.Header.Get(evergreenHMACHeader))
 	if len(sig) == 0 {
-		m.error(errors.New("no signature"), w)
+		m.error(req.Context(), errors.New("no signature"), w)
 		return
 	}
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		m.error(err, w)
+		m.error(req.Context(), err, w)
 		return
 	}
 	hash, err := util.CalculateHMACHash(m.secret, body)
 	if err != nil {
-		m.error(err, w)
+		m.error(req.Context(), err, w)
 		return
 	}
 
 	if !hmac.Equal([]byte(hash), sig) {
-		m.error(errors.Errorf("expected signature: %s, got %s", sig, hash), w)
+		m.error(req.Context(), errors.Errorf("expected signature: %s, got %s", sig, hash), w)
 		return
 	}
 	m.body = body
 
 	w.WriteHeader(http.StatusNoContent)
-	grip.Info(message.Fields{
+	grip.Info(req.Context(), message.Fields{
 		"message":   fmt.Sprintf("received %s", mid),
 		"signature": string(sig),
 		"body":      string(body),

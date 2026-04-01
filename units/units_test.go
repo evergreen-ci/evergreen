@@ -26,7 +26,7 @@ func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
 		if utility.StringSliceContains(disabled, id) {
 			continue
 		}
-		grip.Infoln("testing job is remote ready:", id)
+		grip.Infoln(ctx, "testing job is remote ready:", id)
 		factory, err := registry.GetJobFactory(id)
 		assert.NoError(err)
 		assert.NotNil(factory)

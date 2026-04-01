@@ -24,7 +24,7 @@ func TestSmokeAgentMonitor(t *testing.T) {
 	defer cancel()
 
 	params := getSmokeTestParamsFromEnv(t)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "got smoke test parameters",
 		"params":  fmt.Sprintf("%#v", params),
 	})
@@ -32,14 +32,14 @@ func TestSmokeAgentMonitor(t *testing.T) {
 	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
 		if appServerCmd != nil {
-			grip.Error(errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
+			grip.Error(ctx, errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
 		}
 	}()
 
 	agentMonitorCmd := startAgentMonitor(ctx, t, params)
 	defer func() {
 		if agentMonitorCmd != nil {
-			grip.Error(errors.Wrap(agentMonitorCmd.Signal(ctx, syscall.SIGTERM), "stopping agent monitor after test completion"))
+			grip.Error(ctx, errors.Wrap(agentMonitorCmd.Signal(ctx, syscall.SIGTERM), "stopping agent monitor after test completion"))
 		}
 	}()
 
@@ -68,7 +68,7 @@ func getSmokeTestParamsFromEnv(t *testing.T) smokeTestParams {
 
 // startAgentMonitor starts the smoke test agent monitor.
 func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams) jasper.Process {
-	grip.Info("Starting smoke test agent monitor.")
+	grip.Info(ctx, "Starting smoke test agent monitor.")
 
 	agentCmd, err := internal.SmokeRunBinary(ctx,
 		"smoke-agent-monitor",
@@ -86,7 +86,7 @@ func startAgentMonitor(ctx context.Context, t *testing.T, params smokeTestParams
 	)
 	require.NoError(t, err, "should have started Evergreen smoke test agent monitor")
 
-	grip.Info("Successfully started smoke test agent monitor.")
+	grip.Info(ctx, "Successfully started smoke test agent monitor.")
 
 	return agentCmd
 }

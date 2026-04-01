@@ -551,11 +551,11 @@ func TestCustomFields(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(issue)
 
-	assert.Empty(j.makeCustomFields(config.CustomFields[0].Fields))
+	assert.Empty(j.makeCustomFields(ctx, config.CustomFields[0].Fields))
 
 	j.project = "BFG"
 	j.data.FailedTestNames = []string{}
-	customFields := j.makeCustomFields(config.CustomFields[1].Fields)
+	customFields := j.makeCustomFields(ctx, config.CustomFields[1].Fields)
 	assert.Len(customFields, 6)
 	assert.Equal([]string{projectId}, customFields[jiraEvergreenProjectField])
 	assert.Equal([]string{taskName}, customFields[jiraFailingTasksField])
