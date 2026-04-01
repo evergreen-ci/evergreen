@@ -13,7 +13,7 @@ import (
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID string, jsonFiles []json.RawMessage) error {
-	t, err := task.FindOneId(ctx, taskID)
+	t, err := task.FindOneIdWithGeneratedJSON(ctx, taskID)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", taskID)
 	}

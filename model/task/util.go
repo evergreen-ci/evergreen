@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -15,12 +16,13 @@ func newBucket(ctx context.Context, config evergreen.BucketConfig, creds aws.Cre
 	switch config.Type {
 	case evergreen.BucketTypeS3:
 		return pail.NewS3Bucket(ctx, pail.S3Options{
-			Name:        config.Name,
-			Credentials: creds,
-			Region:      evergreen.DefaultEC2Region,
-			Permissions: pail.S3PermissionsPrivate,
-			MaxRetries:  utility.ToIntPtr(10),
-			Compress:    true,
+			Name:         config.Name,
+			Credentials:  creds,
+			Region:       evergreen.DefaultEC2Region,
+			Permissions:  pail.S3PermissionsPrivate,
+			MaxRetries:   utility.ToIntPtr(10),
+			Compress:     true,
+			StorageClass: s3Types.StorageClassIntelligentTiering,
 		})
 	case evergreen.BucketTypeGridFS:
 		client, err := mongo.Connect(ctx)

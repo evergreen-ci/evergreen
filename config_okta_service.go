@@ -11,8 +11,10 @@ import (
 // This is used exclusively for machine to machine authentication,
 // e.g. the token exchange grant used in our spawn host workflow.
 type OktaServiceConfig struct {
-	ClientID     string `bson:"client_id" json:"client_id" yaml:"client_id"`
-	ClientSecret string `bson:"client_secret" json:"client_secret" yaml:"client_secret" secret:"true"`
+	ClientID     string   `bson:"client_id" json:"client_id" yaml:"client_id"`
+	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret" secret:"true"`
+	Scopes       []string `bson:"scopes" json:"scopes" yaml:"scopes"`
+	Audience     string   `bson:"audience" json:"audience" yaml:"audience"`
 }
 
 func (c *OktaServiceConfig) SectionId() string { return "okta_service" }
@@ -26,6 +28,8 @@ func (c *OktaServiceConfig) Set(ctx context.Context) error {
 		"$set": bson.M{
 			oktaServiceClientIDKey:     c.ClientID,
 			oktaServiceClientSecretKey: c.ClientSecret,
+			oktaServiceScopesKey:       c.Scopes,
+			oktaServiceAudienceKey:     c.Audience,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

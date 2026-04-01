@@ -58,8 +58,10 @@
     },
     {
       "_id": "okta_service",
+      "audience": "audience",
       "client_id": "service-id",
-      "client_secret": "service-secret"
+      "client_secret": "service-secret",
+      "scopes": ["scope1", "scope2"]
     },
     {
       "_id": "global",
