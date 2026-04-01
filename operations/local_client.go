@@ -704,6 +704,11 @@ func postAndStreamResponse(url string, body interface{}) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNoContent {
+		fmt.Fprintln(os.Stdout, "No more steps to execute. You've reached the end of the task commands.")
+		return nil
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		bodyData, _ := io.ReadAll(resp.Body)
 		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))

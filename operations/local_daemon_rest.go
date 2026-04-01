@@ -295,6 +295,12 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !d.executor.GetDebugState().HasMoreSteps() {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	d.withStreaming(r.Context(), w, func(ctx context.Context) error {
 		return d.executor.RunAll(ctx)
 	})
@@ -370,6 +376,12 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 
 	if d.executor == nil {
 		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	if !d.executor.GetDebugState().HasMoreSteps() {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
