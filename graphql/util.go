@@ -82,7 +82,7 @@ func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, err
 			foundTaskIds = append(foundTaskIds, ft.Id)
 		}
 		missingTaskIds, _ := utility.StringSliceSymmetricDifference(taskIDs, foundTaskIds)
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":       "could not find all tasks",
 			"function":      "findAllTasksByIds",
 			"missing_tasks": missingTaskIds,
@@ -565,14 +565,14 @@ func getAPIVolumeList(volumes []host.Volume) ([]*restModel.APIVolume, error) {
 func mustHaveUser(ctx context.Context) *user.DBUser {
 	u := gimlet.GetUser(ctx)
 	if u == nil {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": "no user attached to request expecting user",
 		})
 		return &user.DBUser{}
 	}
 	usr, valid := u.(*user.DBUser)
 	if !valid {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": "invalid user attached to request expecting user",
 		})
 		return &user.DBUser{}
@@ -743,7 +743,7 @@ func groupProjects(ctx context.Context, projects []model.ProjectRef, onlyDefault
 			}
 
 			if repoRef == nil {
-				grip.Error(message.Fields{
+				grip.Error(ctx, message.Fields{
 					"message":     "repoRef not found",
 					"repo_ref_id": repoRefId,
 					"project":     project,

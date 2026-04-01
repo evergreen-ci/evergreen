@@ -267,7 +267,7 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.Wrap(err, "obtaining OAuth token")
 	}
 
-	grip.Infof("Starting daemon on port %d...", port)
+	grip.Infof(context.Background(), "Starting daemon on port %d...", port)
 
 	daemon := newLocalDaemonREST(port, conf)
 	return daemon.Start()
@@ -285,17 +285,17 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 
 	defer func() {
 		if err := os.Remove(pidFile); err != nil && !os.IsNotExist(err) {
-			grip.Warning(errors.Wrapf(err, "removing PID file %s", pidFile))
+			grip.Warning(context.Background(), errors.Wrapf(err, "removing PID file %s", pidFile))
 		}
 		if err := os.Remove(portFile); err != nil && !os.IsNotExist(err) {
-			grip.Warning(errors.Wrapf(err, "removing port file %s", portFile))
+			grip.Warning(context.Background(), errors.Wrapf(err, "removing port file %s", portFile))
 		}
 	}()
 
 	data, err := os.ReadFile(pidFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			grip.Info("Daemon is not running")
+			grip.Info(context.Background(), "Daemon is not running")
 			return nil
 		}
 		return errors.Wrap(err, "reading PID file")
@@ -313,9 +313,9 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 
 	if err := process.Signal(syscall.SIGTERM); err != nil {
 		// Process might already be dead
-		grip.Info("Daemon process not found (may have already stopped)")
+		grip.Info(context.Background(), "Daemon process not found (may have already stopped)")
 	} else {
-		grip.Info("Daemon stopped")
+		grip.Info(context.Background(), "Daemon stopped")
 	}
 	return nil
 }
@@ -333,13 +333,13 @@ type daemonStatusResponse struct {
 func daemonStatusCmd(c *cli.Context) error {
 	url, err := getDaemonURL()
 	if err != nil {
-		grip.Info("Daemon is not running")
+		grip.Info(context.Background(), "Daemon is not running")
 		return nil
 	}
 
 	resp, err := http.Get(url + "/status")
 	if err != nil {
-		grip.Info("Daemon is running but not responding to status check")
+		grip.Info(context.Background(), "Daemon is running but not responding to status check")
 		return nil
 	}
 	defer resp.Body.Close()
@@ -349,10 +349,10 @@ func daemonStatusCmd(c *cli.Context) error {
 		return errors.Wrap(err, "decoding daemon status response")
 	}
 
-	grip.Info("Daemon is running")
+	grip.Info(context.Background(), "Daemon is running")
 
 	if status.TaskSelected {
-		grip.Infof("Task: %s (step %d/%d)", status.SelectedTask, status.CurrentStep, status.TotalSteps)
+		grip.Infof(context.Background(), "Task: %s (step %d/%d)", status.SelectedTask, status.CurrentStep, status.TotalSteps)
 	}
 
 	return nil
@@ -380,8 +380,8 @@ func loadConfigCmd(c *cli.Context) error {
 		return errors.Wrap(err, "loading configuration")
 	}
 
-	grip.Infof("Loaded configuration: %s", configPath)
-	grip.Infof("Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
+	grip.Infof(context.Background(), "Loaded configuration: %s", configPath)
+	grip.Infof(context.Background(), "Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
 
 	return nil
 }
@@ -398,7 +398,7 @@ func selectTaskCmd(c *cli.Context) error {
 
 	// Clear previous session logs when selecting a new task.
 	if err := taskexec.ClearSessionLogs(); err != nil {
-		grip.Warning(errors.Wrap(err, "clearing previous session logs"))
+		grip.Warning(context.Background(), errors.Wrap(err, "clearing previous session logs"))
 	}
 
 	url, err := getDaemonURL()
@@ -416,11 +416,11 @@ func selectTaskCmd(c *cli.Context) error {
 		return err
 	}
 
-	grip.Infof("Selected task: %s\n", taskName)
+	grip.Infof(context.Background(), "Selected task: %s\n", taskName)
 	if variantName != "" {
-		grip.Infof("Variant: %s\n", variantName)
+		grip.Infof(context.Background(), "Variant: %s\n", variantName)
 	}
-	grip.Infof("Total steps: %v\n", resp["step_count"])
+	grip.Infof(context.Background(), "Total steps: %v\n", resp["step_count"])
 
 	return nil
 }
@@ -479,7 +479,7 @@ func jumpToCmd(c *cli.Context) error {
 		return err
 	}
 
-	grip.Infof("Jumped to step %v\n", resp["current_step"])
+	grip.Infof(context.Background(), "Jumped to step %v\n", resp["current_step"])
 	return nil
 }
 
@@ -622,7 +622,7 @@ func viewLogsCmd(c *cli.Context) error {
 	}
 
 	if len(lines) == 0 {
-		grip.Info("No logs found.")
+		grip.Info(context.Background(), "No logs found.")
 		return nil
 	}
 

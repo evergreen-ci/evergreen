@@ -585,7 +585,7 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if d.TaskId == t.Id {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "task is attempting to add a dependency on itself, skipping this dependency",
 				"task_id": t.Id,
 				"stack":   string(debug.Stack()),
@@ -655,7 +655,7 @@ func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (
 				DependenciesMetTimeKey: t.DependenciesMetTime,
 			},
 		})
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message": "task.DependenciesMet() failed to update task",
 		"task_id": t.Id}))
 
@@ -1292,7 +1292,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	}
 	if task.RevisionOrderNumber >= upperBoundTask.RevisionOrderNumber ||
 		task.RevisionOrderNumber <= lowerBoundTask.RevisionOrderNumber {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                 "found midway task is out of bounds",
 			"t1_id":                   t1Id,
 			"t1_order_number":         t1.RevisionOrderNumber,
@@ -1397,7 +1397,7 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 	default:
 		event.LogTaskFinished(ctx, t.Id, t.Execution, evergreen.TaskSystemFailed)
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "marking task system failed",
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
@@ -1626,7 +1626,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		if t.Archived {
 			execTasks, err := FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "getting execution tasks for archived display task",
 				}))
 			}
@@ -1637,7 +1637,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 			query["$or"] = hasResults
 			execTasksWithResults, err := Count(ctx, db.Query(query))
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "getting count of execution tasks with results for display task",
 				}))
 			}
@@ -1689,7 +1689,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -1912,7 +1912,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDsToActivate,
 		"caller":   caller,
@@ -1929,7 +1929,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 			taskIds = append(taskIds, t.Id)
 		}
 		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
-		grip.Error(message.WrapError(panicErr, message.Fields{
+		grip.Error(context.Background(), message.WrapError(panicErr, message.Fields{
 			"function":       "topologicalSort",
 			"from_task":      fromTask,
 			"to_task":        toTask,
@@ -2030,7 +2030,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -2090,7 +2090,7 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 	for _, t := range tasksToUpdate {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDsToUpdate,
 		"caller":   caller,
@@ -2124,7 +2124,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":   "marking task finished",
 		"task_id":   t.Id,
 		"execution": t.Execution,
@@ -2132,7 +2132,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		"details":   t.Details,
 	})
 	if detail.IsEmpty() {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":   "detail status was empty, setting to failed",
 			"task_id":   t.Id,
 			"execution": t.Execution,
@@ -2146,7 +2146,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	// Calculate EC2 runtime costs now that we have the actual runtime.
 	if err := t.UpdateTaskCost(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "failed to calculate task cost",
 			"task_id":   t.Id,
 			"execution": t.Execution,
@@ -2661,7 +2661,7 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
-	grip.ErrorWhen(len(updatedTasks) != len(tasks), message.Fields{
+	grip.ErrorWhen(ctx, len(updatedTasks) != len(tasks), message.Fields{
 		"message":            "successfully updated dependencies for tasks but the subsequent query for updated tasks returned a different number of tasks than expected (which may cause bugs blocking other tasks)",
 		"expected_num_tasks": len(tasks),
 		"actual_num_tasks":   len(updatedTasks),
@@ -2968,7 +2968,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
 			for _, et := range execTasks {
 				if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, et.Status) {
-					grip.Debug(message.Fields{
+					grip.Debug(ctx, message.Fields{
 						"message":   "execution task is in incomplete state, skipping archiving",
 						"task_id":   et.Id,
 						"execution": et.Execution,
@@ -3396,7 +3396,7 @@ func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
 	if t.DisplayTaskId == nil {
 		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":        "unable to get display task",
 				"execution_task": t.Id,
 			}))
@@ -3443,7 +3443,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	}
 
 	if t.DisplayTaskId == nil {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "missing display task ID",
 			"task_id": t.Id,
 			"dt_id":   dtId,
@@ -3451,7 +3451,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 		})
 		// Cache display task ID for future use. If we couldn't find the display task,
 		// we cache the empty string to show that it doesn't exist.
-		grip.Error(message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
+		grip.Error(ctx, message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
 			"message":         "failed to cache display task ID for task",
 			"task_id":         t.Id,
 			"display_task_id": dtId,
@@ -3521,7 +3521,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
 
 		if err := t.cacheExpectedDuration(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"task":    t.Id,
 				"message": "caching expected duration",
 			}))
@@ -3534,7 +3534,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
 			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
-		grip.Notice(message.WrapError(err, message.Fields{
+		grip.Notice(ctx, message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
 			"id":        t.Id,
 			"project":   t.Project,
@@ -3561,7 +3561,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		return util.DurationStats{Average: avg, StdDev: stdDev}, true
 	}
 
-	grip.Error(message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
+	grip.Error(ctx, message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
 		"message": "problem setting cached value refresher",
 		"cause":   "programmer error",
 	}))
@@ -3569,7 +3569,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 	stats, ok := t.DurationPrediction.Get()
 	if ok {
 		if err := t.cacheExpectedDuration(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"task":    t.Id,
 				"message": "caching expected duration",
 			}))
@@ -3811,7 +3811,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
 		if depID == t.Id {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "task is attempting to add a dependency on itself, skipping this dependency",
 				"task_id": t.Id,
 				"stack":   string(debug.Stack()),
@@ -4178,7 +4178,7 @@ func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig eve
 	}
 	mountPoints, err := ec2settings.MountPointsForDistro(d, getHostRegionForTask(ctx, t))
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "failed to extract mount points from distro",
 			"task_id":   t.Id,
 			"distro_id": t.DistroId,
@@ -4293,7 +4293,7 @@ func (t *Task) calculateS3PutCosts(ctx context.Context) {
 
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "could not get cost config to calculate S3 PUT costs",
 			"task_id": t.Id,
 		}))
@@ -4429,14 +4429,14 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		// Verify whether the objects actually exist in the failed bucket before updating the DB.
 		// If they do, update the DB to fix the inconsistency. If not, return the error for retry.
 		if isContextError(moveErr) {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "failed_bucket_move: move timed out or canceled, verifying objects in destination",
 				"task_id":   t.Id,
 				"execution": t.Execution,
 				"key_count": len(allKeys),
 			})
 			if allObjectsExistInBucket(ctx, failedBucket, allKeys) {
-				grip.Info(message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":   "failed_bucket_move: all objects found in failed bucket, updating DB to fix inconsistency",
 					"task_id":   t.Id,
 					"execution": t.Execution,
@@ -4452,7 +4452,7 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 				}
 				return nil
 			}
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "failed_bucket_move: not all objects in failed bucket, returning error for retry",
 				"task_id":   t.Id,
 				"execution": t.Execution,

@@ -938,10 +938,10 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 		},
 	}
 	for _, hostToAdd := range hosts {
-		grip.Error(hostToAdd.Insert(ctx))
+		grip.Error(ctx, hostToAdd.Insert(ctx))
 	}
 	for _, userToAdd := range users {
-		grip.Error(userToAdd.Insert(t.Context()))
+		grip.Error(ctx, userToAdd.Insert(t.Context()))
 	}
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	rm := env.RoleManager()

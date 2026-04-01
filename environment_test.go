@@ -27,7 +27,7 @@ func init() {
 
 		path := testConfigFile()
 		env, err := NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
-		grip.EmergencyFatal(message.WrapError(err, message.Fields{
+		grip.EmergencyFatal(ctx, message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    path,
 		}))

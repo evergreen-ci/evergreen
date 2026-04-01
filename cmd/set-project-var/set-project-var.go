@@ -35,7 +35,7 @@ func main() {
 	defer cancel()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5*time.Second))
-	grip.EmergencyFatal(errors.Wrap(err, "connecting to DB"))
+	grip.EmergencyFatal(ctx, errors.Wrap(err, "connecting to DB"))
 	defer client.Disconnect(ctx)
 
 	paramName := fmt.Sprintf("/evg-test/vars/%s/%s", project, key)
@@ -52,9 +52,9 @@ func main() {
 				"_id": project,
 			},
 		}, options.Update().SetUpsert(true))
-	grip.EmergencyFatal(errors.Wrap(err, "updating project var parameter"))
+	grip.EmergencyFatal(ctx, errors.Wrap(err, "updating project var parameter"))
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no project var documents updated: %+v", res)
+		grip.Warningf(ctx, "no project var documents updated: %+v", res)
 		os.Exit(2)
 	}
 	now := time.Now()
@@ -67,9 +67,9 @@ func main() {
 	res, err = db.Collection(fakeparameter.Collection).ReplaceOne(ctx, bson.M{
 		"_id": paramName,
 	}, fp, options.Replace().SetUpsert(true))
-	grip.EmergencyFatal(errors.Wrap(err, "updating fake parameter"))
+	grip.EmergencyFatal(ctx, errors.Wrap(err, "updating fake parameter"))
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no fake parameter documents updated: %+v", res)
+		grip.Warningf(ctx, "no fake parameter documents updated: %+v", res)
 		os.Exit(3)
 	}
 
@@ -80,16 +80,16 @@ func main() {
 	res, err = client.Database(dbName).Collection(parameterstore.Collection).ReplaceOne(ctx, bson.M{
 		"_id": paramName,
 	}, rec, options.Replace().SetUpsert(true))
-	grip.EmergencyFatal(errors.Wrap(err, "updating parameter record"))
+	grip.EmergencyFatal(ctx, errors.Wrap(err, "updating parameter record"))
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no parameter record documents updated: %+v", res)
+		grip.Warningf(ctx, "no parameter record documents updated: %+v", res)
 		os.Exit(4)
 	}
 
-	grip.EmergencyFatal(err)
+	grip.EmergencyFatal(ctx, err)
 	if res.ModifiedCount+res.UpsertedCount == 0 {
-		grip.Warningf("no documents updated: %+v", res)
+		grip.Warningf(ctx, "no documents updated: %+v", res)
 		os.Exit(5)
 	}
-	grip.Infof("set the value of '%s' for project '%s'", key, project)
+	grip.Infof(ctx, "set the value of '%s' for project '%s'", key, project)
 }

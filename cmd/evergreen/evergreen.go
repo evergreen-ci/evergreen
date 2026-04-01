@@ -39,7 +39,7 @@ func main() {
 	app := buildApp()
 	defer recoverFromPanic()
 
-	grip.EmergencyFatal(app.Run(args))
+	grip.EmergencyFatal(context.Background(), app.Run(args))
 }
 
 func buildApp() *cli.App {

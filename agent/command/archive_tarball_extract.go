@@ -58,7 +58,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 		return errors.Wrapf(err, "reading file '%s'", archivePath)
 	}
 	defer func() {
-		logger.Task().Notice(errors.Wrapf(archive.Close(), "closing file '%s'", archivePath))
+		logger.Task().Notice(ctx, errors.Wrapf(archive.Close(), "closing file '%s'", archivePath))
 	}()
 
 	if err := extractTarball(ctx, archive, destinationPath, e.ExcludeFiles); err != nil {

@@ -61,7 +61,7 @@ func (j *taskStatsCollector) Run(ctx context.Context) {
 	}
 
 	if flags.BackgroundStatsDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"job":      j.ID(),
 			"job_type": j.Type().Name,
@@ -79,5 +79,5 @@ func (j *taskStatsCollector) Run(ctx context.Context) {
 		return
 	}
 
-	j.logger.Info(task.GetResultCounts(tasks))
+	j.logger.Info(ctx, task.GetResultCounts(tasks))
 }

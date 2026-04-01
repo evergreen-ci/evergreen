@@ -95,7 +95,7 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 			break
 		}
 		err = j.checkAndDecommission(ctx, &idleHost, taskQueue, &drawdownTarget)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"id":        j.ID(),
 			"distro_id": j.DrawdownInfo.DistroID,
 			"host":      idleHost.Id,
@@ -103,7 +103,7 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		}))
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"id":                       j.ID(),
 		"job_type":                 hostDrawdownJobName,
 		"distro_id":                j.DrawdownInfo.DistroID,

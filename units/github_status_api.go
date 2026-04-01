@@ -153,7 +153,7 @@ func (j *githubStatusUpdateJob) preamble(ctx context.Context) error {
 		return errors.Wrap(err, "getting service flags")
 	}
 	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     githubStatusUpdateJobName,
 			"message": "GitHub status updates are disabled, not updating status",
 		})
@@ -243,8 +243,8 @@ func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 	}
 	j.AddError(c.SetPriority(level.Notice))
 
-	j.sender.Send(c)
-	grip.Info(message.Fields{
+	j.sender.Send(ctx, c)
+	grip.Info(ctx, message.Fields{
 		"ticket":  thirdparty.GithubInvestigation,
 		"message": "called github status send",
 		"caller":  githubStatusUpdateJobName,

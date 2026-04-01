@@ -26,14 +26,14 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 		return errors.New("cannot send nil results")
 	}
 
-	logger.Task().Info("Attaching test results...")
+	logger.Task().Info(ctx, "Attaching test results...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	if err := attachTestResults(ctx, conf, td, comm, results); err != nil {
 		return errors.Wrap(err, "sending test results")
 	}
 
-	logger.Task().Info("Successfully attached results.")
+	logger.Task().Info(ctx, "Successfully attached results.")
 
 	return nil
 }
@@ -46,7 +46,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		return sendTestResults(ctx, comm, logger, conf, results)
 	}
 
-	logger.Task().Info("Posting test logs...")
+	logger.Task().Info(ctx, "Posting test logs...")
 
 	opts := redactor.RedactionOptions{
 		Expansions:         conf.NewExpansions,
@@ -63,7 +63,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		return err
 	}
 
-	logger.Task().Infof("Finished posting test logs (%d of %d succeeded).", succeeded, len(logs))
+	logger.Task().Infof(ctx, "Finished posting test logs (%d of %d succeeded).", succeeded, len(logs))
 
 	return sendTestResults(ctx, comm, logger, conf, results)
 }

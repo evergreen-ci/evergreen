@@ -63,15 +63,15 @@ func (c *timeout) Execute(ctx context.Context, _ client.Communicator, logger cli
 
 	if c.TimeoutSecs != 0 {
 		conf.SetIdleTimeout(c.TimeoutSecs)
-		logger.Execution().Infof("Set idle timeout to %d seconds.", c.TimeoutSecs)
+		logger.Execution().Infof(ctx, "Set idle timeout to %d seconds.", c.TimeoutSecs)
 	}
 	if c.ExecTimeoutSecs != 0 {
 		if conf.MaxExecTimeoutSecs > 0 && c.ExecTimeoutSecs > conf.MaxExecTimeoutSecs {
 			conf.SetExecTimeout(conf.MaxExecTimeoutSecs)
-			logger.Task().Warningf("Exec timeout %d seconds exceeds the limit of %d seconds. Set exec timeout to %d seconds.", c.ExecTimeoutSecs, conf.MaxExecTimeoutSecs, conf.MaxExecTimeoutSecs)
+			logger.Task().Warningf(ctx, "Exec timeout %d seconds exceeds the limit of %d seconds. Set exec timeout to %d seconds.", c.ExecTimeoutSecs, conf.MaxExecTimeoutSecs, conf.MaxExecTimeoutSecs)
 		} else {
 			conf.SetExecTimeout(c.ExecTimeoutSecs)
-			logger.Execution().Infof("Set exec timeout to %d seconds.", c.ExecTimeoutSecs)
+			logger.Execution().Infof(ctx, "Set exec timeout to %d seconds.", c.ExecTimeoutSecs)
 		}
 	}
 	return nil

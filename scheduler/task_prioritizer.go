@@ -123,7 +123,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(ctx context.Context,
 		HighPriorityTasks: prioritizedTaskLists[2],
 	}
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":                 "finished prioritizing task queues",
 		"instance":                prioritizer.runtimeID,
 		"distro":                  distroId,
@@ -229,7 +229,7 @@ func (cbtc *CmpBasedTaskComparator) splitTasksByRequester(
 		case task.Requester == evergreen.AdHocRequester:
 			patchTasks = append(patchTasks, task)
 		default:
-			grip.Error(message.Fields{
+			grip.Error(context.Background(), message.Fields{
 				"task":      task.Id,
 				"requester": task.Requester,
 				"runner":    RunnerName,

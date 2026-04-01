@@ -30,7 +30,7 @@ func activateMostRecentNonIgnoredCommitForProject(ctx context.Context, projectRe
 		return nil, errors.WithStack(err)
 	}
 	if activateVersion == nil {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "no version to activate for repository",
 			"project":   projectRef.Id,
 			"operation": "project-activation",
@@ -74,7 +74,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 	}
 
 	if len(activateVersions) == 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "no versions to activate for repository",
 			"project":   projectRef.Id,
 			"operation": "project-activation-every-commit",
@@ -87,7 +87,7 @@ func activateEveryRecentMainlineCommitForProject(ctx context.Context, projectRef
 	for _, version := range activateVersions {
 		activated, err := ActivateElapsedBuildsAndTasks(ctx, &version)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":              "error activating version",
 				"project":              projectRef.Id,
 				"version":              version.Id,
@@ -139,7 +139,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		if !isElapsedBuild && len(readyTasks) == 0 {
 			continue
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "activating revision",
 			"operation": "project-activation",
 			"variant":   bv.BuildVariant,
@@ -149,7 +149,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 
 		// we only get this far if something in the build is being updated
 		if !bv.Activated {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":       "activating build",
 				"operation":     "project-activation",
 				"variant":       bv.BuildVariant,
@@ -163,7 +163,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		// If it's an elapsed build, update all tasks for the build, minus batch time tasks that aren't ready.
 		// If it's elapsed tasks, update only those tasks.
 		if isElapsedBuild {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":      "activating tasks for build",
 				"operation":    "project-activation",
 				"variant":      bv.BuildVariant,
@@ -179,7 +179,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 			elapsedBuildIds = append(elapsedBuildIds, bv.BuildId)
 			allIgnoreTaskIds = append(allIgnoreTaskIds, ignoreTasks...)
 		} else {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":           "activating batchtime tasks",
 				"operation":         "project-activation",
 				"variant":           bv.BuildVariant,
@@ -198,7 +198,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 	if len(buildIdsToActivate) > 0 {
 		// Don't need to set the version in here since we do it ourselves in a single update
 		if err := build.UpdateActivation(ctx, buildIdsToActivate, true, evergreen.BuildActivator); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating builds",
 				"build_ids": buildIdsToActivate,
@@ -209,7 +209,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 
 	if len(elapsedBuildIds) > 0 {
 		if err := setTaskActivationForBuilds(ctx, elapsedBuildIds, true, true, allIgnoreTaskIds, evergreen.ElapsedBuildActivator); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating tasks for builds",
 				"builds":    elapsedBuildIds,
@@ -219,7 +219,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 	}
 	if len(allReadyTaskIds) > 0 {
 		if err := task.ActivateTasksByIdsWithDependencies(ctx, allReadyTaskIds, evergreen.ElapsedTaskActivator); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating batchtime tasks",
 				"tasks":     allReadyTaskIds,
@@ -228,7 +228,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		}
 	}
 	if err := v.UpdateAggregateTaskCosts(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to update version expected costs after task activation",
 			"version": v.Id,
 		}))

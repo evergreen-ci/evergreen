@@ -1430,7 +1430,7 @@ func teardownJasperService(ctx context.Context, closeService jutil.CloseFunc) er
 func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *Host, fn func()) error {
 	closeService, err := setupJasperService(ctx, env, manager, h)
 	if err != nil {
-		grip.Error(errors.Wrap(teardownJasperService(ctx, closeService), "problem tearing down test"))
+		grip.Error(ctx, errors.Wrap(teardownJasperService(ctx, closeService), "problem tearing down test"))
 		return err
 	}
 

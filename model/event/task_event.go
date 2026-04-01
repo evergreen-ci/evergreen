@@ -52,7 +52,7 @@ type TaskEventData struct {
 
 func logTaskEvent(ctx context.Context, taskId string, eventType string, eventData TaskEventData) {
 	event := getTaskEvent(taskId, eventType, eventData)
-	grip.Error(message.WrapError(event.Log(ctx), message.Fields{
+	grip.Error(ctx, message.WrapError(event.Log(ctx), message.Fields{
 		"resource_type": ResourceTypeTask,
 		"message":       "error logging event",
 		"source":        "event-log-fail",
@@ -71,7 +71,7 @@ func getTaskEvent(taskId string, eventType string, eventData TaskEventData) Even
 
 func logManyTaskEvents(ctx context.Context, taskIds []string, eventType string, eventData TaskEventData) {
 	if len(taskIds) == 0 {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":    "logManyTaskEvents cannot be called with no task IDs",
 			"task_ids":   taskIds,
 			"event_data": eventData,
@@ -92,7 +92,7 @@ func logManyTaskEvents(ctx context.Context, taskIds []string, eventType string, 
 		events = append(events, event)
 	}
 	if err := LogManyEvents(ctx, events); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging events",
 			"source":        "event-log-fail",
@@ -175,7 +175,7 @@ func LogManyTasksBlocked(ctx context.Context, data []TaskBlockedData) {
 		events = append(events, e)
 	}
 	if err := LogManyUnorderedEventsWithContext(ctx, events); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"event_type":    TaskBlocked,
 			"message":       "error logging events",

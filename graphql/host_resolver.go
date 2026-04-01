@@ -87,7 +87,7 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", volumeID, err.Error()))
 		}
 		if volume == nil {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":   "could not find the volume associated with this host",
 				"host_id":   obj.Id,
 				"volume_id": volumeID,
