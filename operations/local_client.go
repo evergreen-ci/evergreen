@@ -24,6 +24,9 @@ const (
 	daemonDir      = ".evergreen-local"
 	daemonPortFile = "daemon.port"
 	daemonPIDFile  = "daemon.pid"
+	daemonLogFile  = "daemon.log"
+
+	daemonEnvVar = "_EVERGREEN_DAEMON_CHILD"
 
 	stepFlagName  = "step"
 	setupFlagName = "setup"
@@ -93,7 +96,6 @@ func Debug() cli.Command {
 								Value: 9090,
 							},
 						},
-						Before: checkDebugSpawnHostEnabled,
 						Action: startDebugDaemonCmd,
 					},
 					{
@@ -176,25 +178,10 @@ func Debug() cli.Command {
 	}
 }
 
-// checkDebugSpawnHostEnabled validates that the current environment is authorized
+// validateDebugSpawnHost validates that the current environment is authorized
 // to run debug spawn host commands. It checks service flags and that the host
 // was spawned by a task.
-func checkDebugSpawnHostEnabled(c *cli.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	// Walk up to the root context to find the config flag.
-	rootCtx := c
-	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
-		rootCtx = parentCtx
-	}
-
-	confPath := rootCtx.String(ConfFlagName)
-	conf, err := NewClientSettings(confPath)
-	if err != nil {
-		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
-	}
-
+func validateDebugSpawnHost(ctx context.Context, conf *ClientSettings) error {
 	if conf.SpawnHostID == "" {
 		return errors.New("could not find spawn host ID in configuration; this command must be run from a spawn host")
 	}
@@ -244,7 +231,10 @@ func checkDebugSpawnHostEnabled(c *cli.Context) error {
 	return nil
 }
 
-// startDebugDaemonCmd starts the debug daemon
+// startDebugDaemonCmd starts the debug daemon. If invoked as a child process
+// (via the sentinel environment variable), it runs the server directly.
+// Otherwise, it forks itself into the background and waits for the daemon to
+// become healthy before returning.
 func startDebugDaemonCmd(c *cli.Context) error {
 	port := c.Int("port")
 
@@ -252,6 +242,18 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.New("daemon is already running")
 	}
 
+	// If we're the re-exec'd child, run the server directly.
+	if os.Getenv(daemonEnvVar) == "1" {
+		return runDaemonServer(c, port)
+	}
+
+	return forkDaemon(c, port)
+}
+
+// runDaemonServer runs the debug daemon server in the current process. This is
+// called either by the child process after a fork or directly when the sentinel
+// environment variable is set.
+func runDaemonServer(c *cli.Context, port int) error {
 	rootCtx := c
 	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
 		rootCtx = parentCtx
@@ -263,14 +265,100 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
 	}
 
-	if err := conf.SetOAuthToken(context.Background()); err != nil {
-		return errors.Wrap(err, "obtaining OAuth token")
-	}
-
 	grip.Infof(context.Background(), "Starting daemon on port %d...", port)
 
 	daemon := newLocalDaemonREST(port, conf)
 	return daemon.Start()
+}
+
+// forkDaemon re-execs the current binary as a background process with the
+// sentinel environment variable set. It redirects the child's stdout/stderr to
+// a log file and waits for the daemon's /health endpoint to respond before
+// returning.
+func forkDaemon(c *cli.Context, port int) error {
+	execPath, err := os.Executable()
+	if err != nil {
+		return errors.Wrap(err, "resolving executable path")
+	}
+
+	dir, err := getDaemonDir()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return errors.Wrap(err, "creating daemon directory")
+	}
+
+	logPath := filepath.Join(dir, daemonLogFile)
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return errors.Wrap(err, "opening daemon log file")
+	}
+
+	// Build child command arguments, forwarding global flags.
+	rootCtx := c
+	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+		rootCtx = parentCtx
+	}
+
+	args := []string{execPath}
+	if confPath := rootCtx.String(ConfFlagName); confPath != "" {
+		args = append(args, "--"+ConfFlagName, confPath)
+	}
+	args = append(args, "debug", "daemon", "start", "--port", fmt.Sprintf("%d", port))
+
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		logFile.Close()
+		return errors.Wrap(err, "opening null device")
+	}
+
+	process, err := os.StartProcess(execPath, args, &os.ProcAttr{
+		Env:   append(os.Environ(), daemonEnvVar+"=1"),
+		Files: []*os.File{devNull, logFile, logFile},
+		Sys:   daemonSysProcAttr(),
+	})
+	devNull.Close()
+	logFile.Close()
+	if err != nil {
+		return errors.Wrap(err, "starting daemon process")
+	}
+
+	// Release so the parent doesn't wait on the child.
+	if err := process.Release(); err != nil {
+		return errors.Wrap(err, "releasing daemon process")
+	}
+
+	if err := waitForDaemon(port); err != nil {
+		return errors.Wrapf(err, "daemon failed to start (check logs at %s)", logPath)
+	}
+
+	grip.Infof(context.Background(), "Daemon started (PID %d, port %d)", process.Pid, port)
+	grip.Infof(context.Background(), "Logs: %s", logPath)
+	return nil
+}
+
+// waitForDaemon polls the daemon's /health endpoint until it responds
+// successfully or the timeout is reached.
+func waitForDaemon(port int) error {
+	healthURL := fmt.Sprintf("http://localhost:%d/health", port)
+	client := &http.Client{Timeout: time.Second}
+
+	const maxAttempts = 30
+	const pollInterval = 200 * time.Millisecond
+
+	for i := 0; i < maxAttempts; i++ {
+		resp, err := client.Get(healthURL)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+		}
+		time.Sleep(pollInterval)
+	}
+
+	return errors.Errorf("daemon did not become healthy within %s", time.Duration(maxAttempts)*pollInterval)
 }
 
 // stopDebugDaemonCmd stops the debug daemon
@@ -358,15 +446,38 @@ func daemonStatusCmd(c *cli.Context) error {
 	return nil
 }
 
-// loadConfigCmd loads a configuration file
+// loadConfigCmd loads a configuration file. It handles OAuth authentication
+// and spawn host validation before sending the config to the daemon.
 func loadConfigCmd(c *cli.Context) error {
 	if c.NArg() < 1 {
 		return errors.New("config file path required")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	configPath, err := filepath.Abs(c.Args().Get(0))
 	if err != nil {
 		return errors.Wrap(err, "resolving config file path")
+	}
+
+	rootCtx := c
+	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
+		rootCtx = parentCtx
+	}
+
+	confPath := rootCtx.String(ConfFlagName)
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
+	}
+
+	if err := validateDebugSpawnHost(ctx, conf); err != nil {
+		return err
+	}
+
+	if err := conf.SetOAuthToken(ctx); err != nil {
+		return errors.Wrap(err, "obtaining OAuth token")
 	}
 
 	url, err := getDaemonURL()
@@ -374,7 +485,10 @@ func loadConfigCmd(c *cli.Context) error {
 		return errors.Wrap(err, "connecting to daemon")
 	}
 
-	reqBody := map[string]string{"config_path": configPath}
+	reqBody := map[string]string{
+		"config_path": configPath,
+		"oauth_token": conf.OAuth.AccessToken,
+	}
 	resp, err := postJSON(url+"/config/load", reqBody)
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
@@ -584,6 +698,11 @@ func postAndStreamResponse(url string, body interface{}) error {
 		return errors.Wrap(err, "sending POST request")
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNoContent {
+		fmt.Fprintln(os.Stdout, "No more steps to execute. You've reached the end of the task commands.")
+		return nil
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		bodyData, _ := io.ReadAll(resp.Body)
