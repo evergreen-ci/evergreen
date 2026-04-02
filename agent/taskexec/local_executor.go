@@ -519,12 +519,14 @@ func newStreamingLoggerProducerAdapter(producer *streamingLoggerProducer) *strea
 	}
 }
 
-func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler       { return a.logger }
-func (a *streamingLoggerProducerAdapter) Task() grip.Journaler            { return a.logger }
-func (a *streamingLoggerProducerAdapter) System() grip.Journaler          { return a.logger }
-func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error { return nil }
-func (a *streamingLoggerProducerAdapter) Close() error                    { return a.producer.Close() }
-func (a *streamingLoggerProducerAdapter) Closed() bool                    { return a.producer.Closed() }
+func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler { return a.logger }
+func (a *streamingLoggerProducerAdapter) Task() grip.Journaler      { return a.logger }
+func (a *streamingLoggerProducerAdapter) System() grip.Journaler    { return a.logger }
+func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error {
+	return a.producer.Flush(ctx)
+}
+func (a *streamingLoggerProducerAdapter) Close() error { return a.producer.Close() }
+func (a *streamingLoggerProducerAdapter) Closed() bool { return a.producer.Closed() }
 
 // createBlockDeps creates BlockExecutorDeps for use with RunCommandsInBlock
 func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
