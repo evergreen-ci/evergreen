@@ -106,7 +106,7 @@ type User {
   True if this user has an in-progress spawn-host Okta token exchange (authorize
   started, callback not completed). Does not expose the OAuth state value.
   """
-  hasSpawnHostTokenExchangeState: Boolean!
+  hasTokenExchangePending: Boolean!
   parsleyFilters: [ParsleyFilter!]
   parsleySettings: ParsleySettings
   patches(patchesInput: PatchesInput!): Patches # user patches

@@ -6,7 +6,7 @@
         "data": {
           "user": {
             "userId": "spawn_host_gql_pending",
-            "hasSpawnHostTokenExchangeState": true,
+            "hasTokenExchangePending": true,
             "spawnHostAccessTokenExpiresAt": null
           }
         }
@@ -18,7 +18,7 @@
         "data": {
           "user": {
             "userId": "spawn_host_gql_token_expires",
-            "hasSpawnHostTokenExchangeState": false,
+            "hasTokenExchangePending": false,
             "spawnHostAccessTokenExpiresAt": "2030-06-15T12:00:00Z"
           }
         }
@@ -30,7 +30,7 @@
         "data": {
           "user": {
             "userId": "spawn_host_gql_token_no_expiry",
-            "hasSpawnHostTokenExchangeState": false,
+            "hasTokenExchangePending": false,
             "spawnHostAccessTokenExpiresAt": null
           }
         }
