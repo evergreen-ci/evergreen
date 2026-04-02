@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -32,6 +33,16 @@ const (
 	setupFlagName = "setup"
 	tailFlagName  = "tail"
 )
+
+// getRootContext walks up the cli.Context chain to find the root context,
+// which holds global flags like the config file path.
+func getRootContext(c *cli.Context) *cli.Context {
+	root := c
+	for p := root.Parent(); p != nil && p != root; p = root.Parent() {
+		root = p
+	}
+	return root
+}
 
 // getDaemonDir returns the full path to the daemon directory
 func getDaemonDir() (string, error) {
@@ -231,10 +242,7 @@ func validateDebugSpawnHost(ctx context.Context, conf *ClientSettings) error {
 	return nil
 }
 
-// startDebugDaemonCmd starts the debug daemon. If invoked as a child process
-// (via the sentinel environment variable), it runs the server directly.
-// Otherwise, it forks itself into the background and waits for the daemon to
-// become healthy before returning.
+// startDebugDaemonCmd starts the debug daemon
 func startDebugDaemonCmd(c *cli.Context) error {
 	port := c.Int("port")
 
@@ -242,7 +250,6 @@ func startDebugDaemonCmd(c *cli.Context) error {
 		return errors.New("daemon is already running")
 	}
 
-	// If we're the re-exec'd child, run the server directly.
 	if os.Getenv(daemonEnvVar) == "1" {
 		return runDaemonServer(c, port)
 	}
@@ -250,16 +257,8 @@ func startDebugDaemonCmd(c *cli.Context) error {
 	return forkDaemon(c, port)
 }
 
-// runDaemonServer runs the debug daemon server in the current process. This is
-// called either by the child process after a fork or directly when the sentinel
-// environment variable is set.
 func runDaemonServer(c *cli.Context, port int) error {
-	rootCtx := c
-	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
-		rootCtx = parentCtx
-	}
-
-	confPath := rootCtx.String(ConfFlagName)
+	confPath := getRootContext(c).String(ConfFlagName)
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
@@ -296,53 +295,32 @@ func forkDaemon(c *cli.Context, port int) error {
 	}
 
 	// Build child command arguments, forwarding global flags.
-	rootCtx := c
-	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
-		rootCtx = parentCtx
+	args := []string{"debug", "daemon", "start", "--port", fmt.Sprintf("%d", port)}
+	if confPath := getRootContext(c).String(ConfFlagName); confPath != "" {
+		args = append([]string{"--" + ConfFlagName, confPath}, args...)
 	}
 
-	args := []string{execPath}
-	if confPath := rootCtx.String(ConfFlagName); confPath != "" {
-		args = append(args, "--"+ConfFlagName, confPath)
-	}
-	args = append(args, "debug", "daemon", "start", "--port", fmt.Sprintf("%d", port))
+	cmd := exec.Command(execPath, args...)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	cmd.Env = append(os.Environ(), daemonEnvVar+"=1")
+	cmd.SysProcAttr = daemonSysProcAttr()
 
-	devNull, err := os.Open(os.DevNull)
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		return errors.Wrap(err, "opening null device")
-	}
-
-	process, err := os.StartProcess(execPath, args, &os.ProcAttr{
-		Env:   append(os.Environ(), daemonEnvVar+"=1"),
-		Files: []*os.File{devNull, logFile, logFile},
-		Sys:   daemonSysProcAttr(),
-	})
-	devNull.Close()
-	logFile.Close()
-	if err != nil {
 		return errors.Wrap(err, "starting daemon process")
 	}
+	logFile.Close()
 
-	pidFile := filepath.Join(dir, daemonPIDFile)
-	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", process.Pid)), 0644); err != nil {
-		grip.Warning(context.Background(), errors.Wrap(err, "writing PID file from parent"))
-	}
-
-	// Release so the parent doesn't wait on the child.
-	if err := process.Release(); err != nil {
-		return errors.Wrap(err, "releasing daemon process")
-	}
+	pid := cmd.Process.Pid
 
 	if err := waitForDaemon(port); err != nil {
-		if killProc, findErr := os.FindProcess(process.Pid); findErr == nil {
-			_ = killProc.Signal(syscall.SIGTERM)
-		}
-		_ = os.Remove(pidFile)
+		// Attempt to kill the orphaned child process.
+		_ = cmd.Process.Signal(syscall.SIGTERM)
 		return errors.Wrapf(err, "daemon failed to start (check logs at %s)", logPath)
 	}
 
-	grip.Infof(context.Background(), "Daemon started (PID %d, port %d)", process.Pid, port)
+	grip.Infof(context.Background(), "Daemon started (PID %d, port %d)", pid, port)
 	grip.Infof(context.Background(), "Logs: %s", logPath)
 	return nil
 }
@@ -471,12 +449,7 @@ func loadConfigCmd(c *cli.Context) error {
 		return errors.Wrap(err, "resolving config file path")
 	}
 
-	rootCtx := c
-	for parentCtx := rootCtx.Parent(); parentCtx != nil && parentCtx != rootCtx; parentCtx = rootCtx.Parent() {
-		rootCtx = parentCtx
-	}
-
-	confPath := rootCtx.String(ConfFlagName)
+	confPath := getRootContext(c).String(ConfFlagName)
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
