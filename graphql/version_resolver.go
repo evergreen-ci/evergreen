@@ -537,12 +537,12 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 		return apiUser, nil
 	}
 
-	apiUser, err := loaders.GetUser(ctx, authorId)
+	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
 	// This is most likely a reaped user, so just return their info from version
-	if apiUser == nil {
+	if dbUser == nil {
 		return &restModel.APIDBUser{
 			UserID:       obj.AuthorID,
 			DisplayName:  obj.Author,
@@ -550,6 +550,8 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 		}, nil
 	}
 
+	apiUser := &restModel.APIDBUser{}
+	apiUser.BuildFromService(*dbUser)
 	return apiUser, nil
 }
 

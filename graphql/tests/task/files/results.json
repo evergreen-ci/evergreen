@@ -16,10 +16,21 @@
                   "execution": 1,
                   "files": [
                     {
-                      "name": "File 1"
+                      "name": "File 1",
+                      "associatedLinks": [
+                        {
+                          "name": "Documentation",
+                          "link": "https://docs.example.com/guide"
+                        },
+                        {
+                          "name": "Test Results",
+                          "link": "https://results.example.com/test-run-123"
+                        }
+                      ]
                     },
                     {
-                      "name": "File 2"
+                      "name": "File 2",
+                      "associatedLinks": []
                     }
                   ]
                 }

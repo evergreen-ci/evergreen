@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,9 +50,9 @@ func TestGetUser(t *testing.T) {
 		result, err := GetUser(ctx, "user1")
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Equal(t, "user1", *result.UserID)
-		assert.Equal(t, "User One", *result.DisplayName)
-		assert.Equal(t, "user1@example.com", *result.EmailAddress)
+		assert.Equal(t, "user1", result.Id)
+		assert.Equal(t, "User One", result.DispName)
+		assert.Equal(t, "user1@example.com", result.EmailAddress)
 	})
 
 	t.Run("UserNotFound", func(t *testing.T) {
@@ -137,7 +136,7 @@ func TestGetUser(t *testing.T) {
 	})
 }
 
-func TestGetAPIVersion(t *testing.T) {
+func TestGetVersion(t *testing.T) {
 	require.NoError(t, db.Clear(model.VersionCollection))
 
 	testVersions := []model.Version{
@@ -179,19 +178,19 @@ func TestGetAPIVersion(t *testing.T) {
 	t.Run("SingleVersionLookup", func(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
-		result, err := GetAPIVersion(ctx, "version1")
+		result, err := GetVersion(ctx, "version1")
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Equal(t, "version1", utility.FromStringPtr(result.Id))
-		assert.Equal(t, "abc123", utility.FromStringPtr(result.Revision))
-		assert.Equal(t, "user1", utility.FromStringPtr(result.Author))
-		assert.Equal(t, "First commit", utility.FromStringPtr(result.Message))
+		assert.Equal(t, "version1", result.Id)
+		assert.Equal(t, "abc123", result.Revision)
+		assert.Equal(t, "user1", result.Author)
+		assert.Equal(t, "First commit", result.Message)
 	})
 
 	t.Run("VersionNotFound", func(t *testing.T) {
 		ctx := setupLoaderContext(t.Context())
 
-		result, err := GetAPIVersion(ctx, "nonexistent")
+		result, err := GetVersion(ctx, "nonexistent")
 		require.NoError(t, err)
 		assert.Nil(t, result, "should return nil for non-existent version")
 	})
@@ -213,7 +212,7 @@ func TestGetAPIVersion(t *testing.T) {
 			wg.Add(1)
 			go func(versionID string) {
 				defer wg.Done()
-				result, err := GetAPIVersion(ctx, versionID)
+				result, err := GetVersion(ctx, versionID)
 				resultsChan <- getVersionResult{versionID: versionID, found: result != nil, err: err}
 
 			}(id)
@@ -249,7 +248,7 @@ func TestGetAPIVersion(t *testing.T) {
 			wg.Add(1)
 			go func(versionID string) {
 				defer wg.Done()
-				result, err := GetAPIVersion(ctx, versionID)
+				result, err := GetVersion(ctx, versionID)
 				if err != nil {
 					resultsChan <- getVersionResult{versionID: versionID, found: false, err: err}
 				} else if result == nil {
@@ -297,7 +296,7 @@ func TestMiddleware(t *testing.T) {
 		l := For(capturedCtx)
 		require.NotNil(t, l)
 		require.NotNil(t, l.UserLoader)
-		require.NotNil(t, l.APIVersionLoader)
+		require.NotNil(t, l.VersionLoader)
 	})
 }
 
@@ -305,7 +304,7 @@ func TestNew(t *testing.T) {
 	l := New()
 	require.NotNil(t, l)
 	require.NotNil(t, l.UserLoader)
-	require.NotNil(t, l.APIVersionLoader)
+	require.NotNil(t, l.VersionLoader)
 }
 
 func TestIsBatchError(t *testing.T) {

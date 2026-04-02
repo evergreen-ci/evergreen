@@ -266,6 +266,11 @@ type ComplexityRoot struct {
 		WebhookConfigured func(childComplexity int) int
 	}
 
+	AssociatedLink struct {
+		Link func(childComplexity int) int
+		Name func(childComplexity int) int
+	}
+
 	AuthConfig struct {
 		AllowServiceUsers       func(childComplexity int) int
 		BackgroundReauthMinutes func(childComplexity int) int
@@ -563,10 +568,11 @@ type ComplexityRoot struct {
 	}
 
 	File struct {
-		Link       func(childComplexity int) int
-		Name       func(childComplexity int) int
-		URLParsley func(childComplexity int) int
-		Visibility func(childComplexity int) int
+		AssociatedLinks func(childComplexity int) int
+		Link            func(childComplexity int) int
+		Name            func(childComplexity int) int
+		URLParsley      func(childComplexity int) int
+		Visibility      func(childComplexity int) int
 	}
 
 	FileDiff struct {
@@ -3557,6 +3563,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Annotation.WebhookConfigured(childComplexity), true
 
+	case "AssociatedLink.link":
+		if e.complexity.AssociatedLink.Link == nil {
+			break
+		}
+
+		return e.complexity.AssociatedLink.Link(childComplexity), true
+	case "AssociatedLink.name":
+		if e.complexity.AssociatedLink.Name == nil {
+			break
+		}
+
+		return e.complexity.AssociatedLink.Name(childComplexity), true
+
 	case "AuthConfig.allowServiceUsers":
 		if e.complexity.AuthConfig.AllowServiceUsers == nil {
 			break
@@ -4619,6 +4638,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FailingCommand.FullDisplayName(childComplexity), true
 
+	case "File.associatedLinks":
+		if e.complexity.File.AssociatedLinks == nil {
+			break
+		}
+
+		return e.complexity.File.AssociatedLinks(childComplexity), true
 	case "File.link":
 		if e.complexity.File.Link == nil {
 			break
@@ -21187,6 +21212,64 @@ func (ec *executionContext) fieldContext_Annotation_webhookConfigured(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _AssociatedLink_name(ctx context.Context, field graphql.CollectedField, obj *model.APIAssociatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AssociatedLink_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AssociatedLink_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssociatedLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssociatedLink_link(ctx context.Context, field graphql.CollectedField, obj *model.APIAssociatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AssociatedLink_link,
+		func(ctx context.Context) (any, error) {
+			return obj.Link, nil
+		},
+		nil,
+		ec.marshalNString2ᚖstring,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AssociatedLink_link(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssociatedLink",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AuthConfig_okta(ctx context.Context, field graphql.CollectedField, obj *model.APIAuthConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -26694,6 +26777,41 @@ func (ec *executionContext) fieldContext_File_visibility(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _File_associatedLinks(ctx context.Context, field graphql.CollectedField, obj *model.APIFile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_File_associatedLinks,
+		func(ctx context.Context) (any, error) {
+			return obj.AssociatedLinks, nil
+		},
+		nil,
+		ec.marshalNAssociatedLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAssociatedLinkᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_File_associatedLinks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "File",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_AssociatedLink_name(ctx, field)
+			case "link":
+				return ec.fieldContext_AssociatedLink_link(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AssociatedLink", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FileDiff_additions(ctx context.Context, field graphql.CollectedField, obj *model.FileDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -28666,6 +28784,8 @@ func (ec *executionContext) fieldContext_GroupedFiles_files(_ context.Context, f
 				return ec.fieldContext_File_urlParsley(ctx, field)
 			case "visibility":
 				return ec.fieldContext_File_visibility(ctx, field)
+			case "associatedLinks":
+				return ec.fieldContext_File_associatedLinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type File", field.Name)
 		},
@@ -88918,6 +89038,50 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var associatedLinkImplementors = []string{"AssociatedLink"}
+
+func (ec *executionContext) _AssociatedLink(ctx context.Context, sel ast.SelectionSet, obj *model.APIAssociatedLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, associatedLinkImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssociatedLink")
+		case "name":
+			out.Values[i] = ec._AssociatedLink_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "link":
+			out.Values[i] = ec._AssociatedLink_link(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var authConfigImplementors = []string{"AuthConfig"}
 
 func (ec *executionContext) _AuthConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIAuthConfig) graphql.Marshaler {
@@ -91107,6 +91271,11 @@ func (ec *executionContext) _File(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._File_urlParsley(ctx, field, obj)
 		case "visibility":
 			out.Values[i] = ec._File_visibility(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "associatedLinks":
+			out.Values[i] = ec._File_associatedLinks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -108403,6 +108572,54 @@ var (
 		evergreen.ArchWindowsAmd64: "WINDOWS_64_BIT",
 	}
 )
+
+func (ec *executionContext) marshalNAssociatedLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAssociatedLink(ctx context.Context, sel ast.SelectionSet, v model.APIAssociatedLink) graphql.Marshaler {
+	return ec._AssociatedLink(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAssociatedLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAssociatedLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIAssociatedLink) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAssociatedLink2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAssociatedLink(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
 
 func (ec *executionContext) marshalNAuthUser2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAuthUser(ctx context.Context, sel ast.SelectionSet, v model.APIAuthUser) graphql.Marshaler {
 	return ec._AuthUser(ctx, sel, &v)

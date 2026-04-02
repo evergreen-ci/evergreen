@@ -132,11 +132,13 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	// Add each promoted variable to existing repo vars
 	apiRepoVars := &restModel.APIProjectVars{}
 	apiRepoVars.BuildFromService(*repoVars)
+	hasPromotedVars := false
 	for _, varName := range varNames {
 		// Ignore nonexistent variables
 		if _, contains := projectVars.Vars[varName]; !contains {
 			continue
 		}
+		hasPromotedVars = true
 		// Variables promoted from projects will overwrite matching repo variables
 		apiRepoVars.Vars[varName] = projectVars.Vars[varName]
 		if _, contains := projectVars.PrivateVars[varName]; contains {
@@ -145,13 +147,19 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		if _, contains := projectVars.AdminOnlyVars[varName]; contains {
 			apiRepoVars.AdminOnlyVars[varName] = true
 		}
+		if desc, contains := projectVars.VarsDescriptions[varName]; contains {
+			apiRepoVars.VarsDescriptions[varName] = desc
+		}
+	}
+
+	// If no variables were promoted, we can skip all operations below as there's nothing to update.
+	if !hasPromotedVars {
+		return nil
 	}
 
 	if err = UpdateProjectVars(ctx, repoId, apiRepoVars, true); err != nil {
 		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
-
-	// Log repo update
 	repoAfter, err := model.GetProjectSettingsById(ctx, repoId, true)
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for repo '%s' after adding promoted variables", repoId)
@@ -160,11 +168,12 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		return errors.Wrapf(err, "logging repo '%s' modified", repoId)
 	}
 
-	// Remove promoted variables from project
+	// Remove promoted variables from project.
 	apiProjectVars := &restModel.APIProjectVars{
-		Vars:          map[string]string{},
-		PrivateVars:   map[string]bool{},
-		AdminOnlyVars: map[string]bool{},
+		Vars:             map[string]string{},
+		PrivateVars:      map[string]bool{},
+		AdminOnlyVars:    map[string]bool{},
+		VarsDescriptions: map[string]string{},
 	}
 	for key, value := range projectVars.Vars {
 		if !utility.StringSliceContains(varNames, key) {
@@ -184,10 +193,15 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
+	for key, desc := range projectVars.VarsDescriptions {
+		if _, ok := apiProjectVars.Vars[key]; ok {
+			apiProjectVars.VarsDescriptions[key] = desc
+		}
+	}
+
 	if err := UpdateProjectVars(ctx, projectId, apiProjectVars, true); err != nil {
 		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
-
 	projectAfter, err := model.GetProjectSettingsById(ctx, projectId, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectIdentifier)
