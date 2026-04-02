@@ -2237,6 +2237,7 @@ type ComplexityRoot struct {
 	UserServiceFlags struct {
 		DebugSpawnHostDisabled func(childComplexity int) int
 		JWTTokenForCLIDisabled func(childComplexity int) int
+		StaticAPIKeysDisabled  func(childComplexity int) int
 	}
 
 	UserSettings struct {
@@ -12048,6 +12049,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
+	case "UserServiceFlags.staticAPIKeysDisabled":
+		if e.complexity.UserServiceFlags.StaticAPIKeysDisabled == nil {
+			break
+		}
+
+		return e.complexity.UserServiceFlags.StaticAPIKeysDisabled(childComplexity), true
 
 	case "UserSettings.dateFormat":
 		if e.complexity.UserSettings.DateFormat == nil {
@@ -59114,6 +59121,8 @@ func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Con
 				return ec.fieldContext_UserServiceFlags_debugSpawnHostDisabled(ctx, field)
 			case "jwtTokenForCLIDisabled":
 				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
+			case "staticAPIKeysDisabled":
+				return ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
 		},
@@ -71310,6 +71319,35 @@ func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context
 }
 
 func (ec *executionContext) fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserServiceFlags_staticAPIKeysDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.StaticAPIKeysDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserServiceFlags_staticAPIKeysDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UserServiceFlags",
 		Field:      field,
@@ -106191,6 +106229,8 @@ func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._UserServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
 		case "jwtTokenForCLIDisabled":
 			out.Values[i] = ec._UserServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
+		case "staticAPIKeysDisabled":
+			out.Values[i] = ec._UserServiceFlags_staticAPIKeysDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
