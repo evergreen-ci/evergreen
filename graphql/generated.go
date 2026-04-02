@@ -2210,18 +2210,18 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		BetaFeatures                  func(childComplexity int) int
-		DisplayName                   func(childComplexity int) int
-		EmailAddress                  func(childComplexity int) int
-		HasTokenExchangePending       func(childComplexity int) int
-		ParsleyFilters                func(childComplexity int) int
-		ParsleySettings               func(childComplexity int) int
-		Patches                       func(childComplexity int, patchesInput PatchesInput) int
-		Permissions                   func(childComplexity int) int
-		Settings                      func(childComplexity int) int
-		SpawnHostAccessTokenExpiresAt func(childComplexity int) int
-		Subscriptions                 func(childComplexity int) int
-		UserID                        func(childComplexity int) int
+		BetaFeatures              func(childComplexity int) int
+		DisplayName               func(childComplexity int) int
+		EmailAddress              func(childComplexity int) int
+		HasTokenExchangePending   func(childComplexity int) int
+		ParsleyFilters            func(childComplexity int) int
+		ParsleySettings           func(childComplexity int) int
+		Patches                   func(childComplexity int, patchesInput PatchesInput) int
+		Permissions               func(childComplexity int) int
+		Settings                  func(childComplexity int) int
+		Subscriptions             func(childComplexity int) int
+		TokenAccessTokenExpiresAt func(childComplexity int) int
+		UserID                    func(childComplexity int) int
 	}
 
 	UserConfig struct {
@@ -11975,18 +11975,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.Settings(childComplexity), true
-	case "User.spawnHostAccessTokenExpiresAt":
-		if e.complexity.User.SpawnHostAccessTokenExpiresAt == nil {
-			break
-		}
-
-		return e.complexity.User.SpawnHostAccessTokenExpiresAt(childComplexity), true
 	case "User.subscriptions":
 		if e.complexity.User.Subscriptions == nil {
 			break
 		}
 
 		return e.complexity.User.Subscriptions(childComplexity), true
+	case "User.tokenAccessTokenExpiresAt":
+		if e.complexity.User.TokenAccessTokenExpiresAt == nil {
+			break
+		}
+
+		return e.complexity.User.TokenAccessTokenExpiresAt(childComplexity), true
 	case "User.userId":
 		if e.complexity.User.UserID == nil {
 			break
@@ -44388,8 +44388,8 @@ func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field gra
 				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
 				return ec.fieldContext_User_settings(ctx, field)
-			case "spawnHostAccessTokenExpiresAt":
-				return ec.fieldContext_User_spawnHostAccessTokenExpiresAt(ctx, field)
+			case "tokenAccessTokenExpiresAt":
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "userId":
@@ -52073,8 +52073,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
 				return ec.fieldContext_User_settings(ctx, field)
-			case "spawnHostAccessTokenExpiresAt":
-				return ec.fieldContext_User_spawnHostAccessTokenExpiresAt(ctx, field)
+			case "tokenAccessTokenExpiresAt":
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "userId":
@@ -70965,14 +70965,14 @@ func (ec *executionContext) fieldContext_User_settings(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _User_spawnHostAccessTokenExpiresAt(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_tokenAccessTokenExpiresAt(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_User_spawnHostAccessTokenExpiresAt,
+		ec.fieldContext_User_tokenAccessTokenExpiresAt,
 		func(ctx context.Context) (any, error) {
-			return obj.SpawnHostAccessTokenExpiresAt, nil
+			return obj.TokenAccessTokenExpiresAt, nil
 		},
 		nil,
 		ec.marshalOTime2ᚖtimeᚐTime,
@@ -70981,7 +70981,7 @@ func (ec *executionContext) _User_spawnHostAccessTokenExpiresAt(ctx context.Cont
 	)
 }
 
-func (ec *executionContext) fieldContext_User_spawnHostAccessTokenExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_User_tokenAccessTokenExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
@@ -73498,8 +73498,8 @@ func (ec *executionContext) fieldContext_Version_user(_ context.Context, field g
 				return ec.fieldContext_User_permissions(ctx, field)
 			case "settings":
 				return ec.fieldContext_User_settings(ctx, field)
-			case "spawnHostAccessTokenExpiresAt":
-				return ec.fieldContext_User_spawnHostAccessTokenExpiresAt(ctx, field)
+			case "tokenAccessTokenExpiresAt":
+				return ec.fieldContext_User_tokenAccessTokenExpiresAt(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "userId":
@@ -106082,8 +106082,8 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "settings":
 			out.Values[i] = ec._User_settings(ctx, field, obj)
-		case "spawnHostAccessTokenExpiresAt":
-			out.Values[i] = ec._User_spawnHostAccessTokenExpiresAt(ctx, field, obj)
+		case "tokenAccessTokenExpiresAt":
+			out.Values[i] = ec._User_tokenAccessTokenExpiresAt(ctx, field, obj)
 		case "subscriptions":
 			field := field
 

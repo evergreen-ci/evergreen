@@ -20,14 +20,14 @@ type APIDBUser struct {
 	DisplayName  *string         `json:"display_name"`
 	EmailAddress *string         `json:"email_address"`
 	// will be set to true if the user represents a service user
-	OnlyApi                       bool               `json:"only_api"`
-	Roles                         []string           `json:"roles"`
-	HasTokenExchangePending       bool               `json:"has_token_exchange_pending"`
-	ParsleyFilters                []APIParsleyFilter `json:"parsley_filters"`
-	ParsleySettings               APIParsleySettings `json:"parsley_settings"`
-	Settings                      APIUserSettings    `json:"settings"`
-	SpawnHostAccessTokenExpiresAt *time.Time         `json:"spawn_host_access_token_expires_at,omitempty"`
-	UserID                        *string            `json:"user_id"`
+	OnlyApi                   bool               `json:"only_api"`
+	Roles                     []string           `json:"roles"`
+	HasTokenExchangePending   bool               `json:"has_token_exchange_pending"`
+	TokenAccessTokenExpiresAt *time.Time         `json:"token_access_token_expires_at"`
+	ParsleyFilters            []APIParsleyFilter `json:"parsley_filters"`
+	ParsleySettings           APIParsleySettings `json:"parsley_settings"`
+	Settings                  APIUserSettings    `json:"settings"`
+	UserID                    *string            `json:"user_id"`
 }
 
 // BuildFromService converts a service layer user.DBUser to an APIDBUser.
@@ -61,9 +61,9 @@ func (s *APIDBUser) BuildFromService(usr user.DBUser) {
 	s.HasTokenExchangePending = usr.TokenExchangeState != nil
 	if tok := usr.TokenExchangeToken; tok != nil && !tok.Expiry.IsZero() {
 		// Use UTC so GraphQL Time marshaling is stable across server local TZ (RFC3339 Z).
-		s.SpawnHostAccessTokenExpiresAt = ToTimePtr(tok.Expiry.UTC())
+		s.TokenAccessTokenExpiresAt = ToTimePtr(tok.Expiry.UTC())
 	} else {
-		s.SpawnHostAccessTokenExpiresAt = nil
+		s.TokenAccessTokenExpiresAt = nil
 	}
 }
 
