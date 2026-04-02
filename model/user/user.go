@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	stderrors "errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -18,6 +19,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/oauth2"
 )
 
@@ -171,14 +174,38 @@ func (u *DBUser) UpdateTokenExchangeState(ctx context.Context, state, codeVerifi
 	return nil
 }
 
-// RemoveTokenExchangeState removes the token exchange state for the user.
-func (u *DBUser) RemoveTokenExchangeState(ctx context.Context) error {
+// RemoveTokenExchangeStateIfMatches atomically removes token exchange state only when
+// its state value matches expectedState, so two concurrent OAuth callbacks cannot
+// both consume the same pending authorization. On success it returns the code
+// verifier from the matched document. If no document matched, removed is false and
+// err is nil.
+func (u *DBUser) RemoveTokenExchangeStateIfMatches(ctx context.Context, expectedState string) (codeVerifier string, removed bool, err error) {
+	filter := bson.M{
+		IdKey: u.Id,
+		bsonutil.GetDottedKeyName(TokenExchangeStateKey, bsonutil.MustHaveTag(TokenExchangeState{}, "State")): expectedState,
+	}
 	update := bson.M{"$unset": bson.M{TokenExchangeStateKey: 1}}
-	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
-		return errors.Wrapf(err, "removing token exchange state for user '%s'", u.Id)
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndUpdate(
+		ctx,
+		filter,
+		update,
+		options.FindOneAndUpdate().SetReturnDocument(options.Before),
+	)
+	if resErr := res.Err(); resErr != nil {
+		if stderrors.Is(resErr, mongo.ErrNoDocuments) {
+			return "", false, nil
+		}
+		return "", false, errors.Wrapf(resErr, "atomically removing token exchange state for user '%s'", u.Id)
+	}
+	var prior DBUser
+	if decErr := res.Decode(&prior); decErr != nil {
+		return "", false, errors.Wrap(decErr, "decoding user after token exchange state update")
+	}
+	if prior.TokenExchangeState == nil {
+		return "", false, nil
 	}
 	u.TokenExchangeState = nil
-	return nil
+	return prior.TokenExchangeState.CodeVerifier, true, nil
 }
 
 // UpdateTokenExchangeToken updates the token exchange token for the user.

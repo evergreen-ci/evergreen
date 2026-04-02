@@ -132,20 +132,16 @@ func (h *tokenExchangeCallbackHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "validating Okta service config"))
 	}
 
-	user := MustHaveUser(ctx)
-	state := user.TokenExchangeState
-	if state == nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("user is not in an OAuth authorization flow"))
-	}
-	// Verify that the state matches. This prevents CSRF attacks.
-	if h.state != state.State {
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("OAuth 'state' does not match the authorization request"))
-	}
-	codeVerifier := state.CodeVerifier
+	u := MustHaveUser(ctx)
 
-	// Remove the token exchange state so it can't be used again.
-	if err := user.RemoveTokenExchangeState(ctx); err != nil {
+	// Check if the state matches and remove the token exchange state if it does.
+	// Checking if the state is the same prevents CSRF attacks.
+	codeVerifier, removed, err := u.RemoveTokenExchangeStateIfMatches(ctx, h.state)
+	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "removing token exchange state"))
+	}
+	if !removed {
+		return gimlet.MakeJSONInternalErrorResponder(errors.New("OAuth 'state' does not match the authorization request"))
 	}
 
 	// The Okta web app config is used to exchange the authorization code for a user access token.
@@ -176,7 +172,7 @@ func (h *tokenExchangeCallbackHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "performing token exchange"))
 	}
 
-	if err := user.UpdateTokenExchangeToken(ctx, exchangedToken); err != nil {
+	if err := u.UpdateTokenExchangeToken(ctx, exchangedToken); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "updating token exchange token"))
 	}
 

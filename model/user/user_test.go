@@ -1089,15 +1089,15 @@ func (s *UserTestSuite) TestClearUser() {
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 }
 
-func setupSpawnHostUser(t *testing.T) *DBUser {
+func setupTokenExchangeUser(t *testing.T) *DBUser {
 	require.NoError(t, db.ClearCollections(Collection))
-	u := &DBUser{Id: "spawn-host-test-user"}
+	u := &DBUser{Id: "token-exchange-test-user"}
 	require.NoError(t, u.Insert(t.Context()))
 	return u
 }
 
-func TestUpdateSpawnHostAuthCode(t *testing.T) {
-	u := setupSpawnHostUser(t)
+func TestUpdateTokenExchangeState(t *testing.T) {
+	u := setupTokenExchangeUser(t)
 
 	require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "state-1", "verifier-1"))
 
@@ -1119,23 +1119,63 @@ func TestUpdateSpawnHostAuthCode(t *testing.T) {
 	assert.Equal(t, "verifier-2", dbUser.TokenExchangeState.CodeVerifier)
 }
 
-func TestRemoveSpawnHostAuthCode(t *testing.T) {
-	u := setupSpawnHostUser(t)
+func TestRemoveTokenExchangeStateIfMatches(t *testing.T) {
+	t.Run("RemovesWhenStateMatchesAndReturnsVerifier", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+		require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "state-x", "verifier-x"))
 
-	require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "state-a", "verifier-a"))
-	require.NotNil(t, u.TokenExchangeState)
+		verifier, removed, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "state-x")
+		require.NoError(t, err)
+		assert.True(t, removed)
+		assert.Equal(t, "verifier-x", verifier)
 
-	require.NoError(t, u.RemoveTokenExchangeState(t.Context()))
+		dbUser, err := FindOneById(t.Context(), u.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbUser)
+		assert.Nil(t, dbUser.TokenExchangeState)
+	})
 
-	dbUser, err := FindOneById(t.Context(), u.Id)
-	require.NoError(t, err)
-	require.NotNil(t, dbUser)
-	assert.Nil(t, dbUser.TokenExchangeState)
-	assert.Nil(t, u.TokenExchangeState)
+	t.Run("DoesNotRemoveWhenStateMismatches", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+		require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "expected", "verifier"))
+
+		verifier, removed, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "other")
+		require.NoError(t, err)
+		assert.False(t, removed)
+		assert.Empty(t, verifier)
+
+		dbUser, err := FindOneById(t.Context(), u.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbUser)
+		require.NotNil(t, dbUser.TokenExchangeState)
+		assert.Equal(t, "expected", dbUser.TokenExchangeState.State)
+	})
+
+	t.Run("DoesNotRemoveWhenNoPendingState", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+
+		verifier, removed, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "any")
+		require.NoError(t, err)
+		assert.False(t, removed)
+		assert.Empty(t, verifier)
+	})
+
+	t.Run("SecondCallDoesNotMatchAfterFirstConsumes", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+		require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "once", "v"))
+
+		_, removed1, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "once")
+		require.NoError(t, err)
+		assert.True(t, removed1)
+
+		_, removed2, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "once")
+		require.NoError(t, err)
+		assert.False(t, removed2)
+	})
 }
 
-func TestUpdateSpawnHostAccessToken(t *testing.T) {
-	u := setupSpawnHostUser(t)
+func TestUpdateTokenExchangeToken(t *testing.T) {
+	u := setupTokenExchangeUser(t)
 
 	token := &oauth2.Token{
 		AccessToken: "my-access-token",
@@ -1164,8 +1204,8 @@ func TestUpdateSpawnHostAccessToken(t *testing.T) {
 	assert.Equal(t, "another-token", dbUser.TokenExchangeToken.AccessToken)
 }
 
-func TestRemoveSpawnHostAccessToken(t *testing.T) {
-	u := setupSpawnHostUser(t)
+func TestUpdateTokenExchangeTokenNilClears(t *testing.T) {
+	u := setupTokenExchangeUser(t)
 
 	require.NoError(t, u.UpdateTokenExchangeToken(t.Context(), &oauth2.Token{AccessToken: "tok-x"}))
 	require.NotNil(t, u.TokenExchangeToken)
