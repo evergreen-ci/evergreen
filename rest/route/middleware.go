@@ -271,8 +271,6 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	// Store the host in context so downstream handlers can use it
-	// without re-querying the database.
 	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 
 	updateHostAccessTime(r.Context(), h)
@@ -370,8 +368,6 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	// Store the task in context so downstream handlers and ValidateHost
-	// can use it without re-querying the database.
 	r = r.WithContext(context.WithValue(r.Context(), model.ApiTaskKey, t))
 
 	hostID, ok := gimlet.GetVars(r)["host_id"]
@@ -395,8 +391,6 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// Store the host in context so downstream handlers can use it
-	// without re-querying the database.
 	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 
 	next(rw, r)
