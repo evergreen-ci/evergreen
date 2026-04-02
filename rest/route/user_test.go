@@ -451,7 +451,7 @@ func TestGetUserPermissionDetails(t *testing.T) {
 	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{ID: "role2", Scope: "scope2", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
 	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{ID: "role3", Scope: "scope3", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
 
-	handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType}
+	handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, verbose: true}
 	resp := handler.Run(ctx)
 	require.Equal(t, http.StatusOK, resp.Status())
 	data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
@@ -465,14 +465,15 @@ func TestGetUserPermissionDetails(t *testing.T) {
 	settingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
 	tasksKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionTasks)
 
-	require.NotEmpty(t, data.AvailablePermissions, "available_permissions should always be populated")
-	assert.Len(t, data.AvailablePermissions, len(evergreen.ProjectPermissions), "available_permissions should have one entry per permission category")
-	require.Contains(t, data.AvailablePermissions, settingsKey)
-	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[settingsKey]), evergreen.ProjectSettingsEdit.Description)
-	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[settingsKey]), evergreen.ProjectSettingsView.Description)
-	require.Contains(t, data.AvailablePermissions, tasksKey)
-	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[tasksKey]), evergreen.TasksBasic.Description)
-	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[tasksKey]), evergreen.TasksAdmin.Description)
+	require.NotNil(t, data.AvailablePermissions, "available_permissions should be populated when verbose is true")
+	assert.NotEmpty(t, data.AvailablePermissions.Note)
+	assert.Len(t, data.AvailablePermissions.Permissions, len(evergreen.ProjectPermissions), "available_permissions should have one entry per permission category")
+	require.Contains(t, data.AvailablePermissions.Permissions, settingsKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[settingsKey]), evergreen.ProjectSettingsEdit.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[settingsKey]), evergreen.ProjectSettingsView.Description)
+	require.Contains(t, data.AvailablePermissions.Permissions, tasksKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[tasksKey]), evergreen.TasksBasic.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[tasksKey]), evergreen.TasksAdmin.Description)
 
 	byID := map[string]restModel.APIProjectPermissionSummary{}
 	for _, p := range *data.Projects {
@@ -500,7 +501,7 @@ func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
 
 	u := user.DBUser{
 		Id:          "user",
-		SystemRoles: []string{"role-a", "role-b"},
+		SystemRoles: []string{"role-a", "role-b", evergreen.BasicProjectAccessRole},
 	}
 	require.NoError(t, u.Insert(ctx))
 
@@ -623,7 +624,7 @@ func TestGetUserPermissionDetailsTypeFilter(t *testing.T) {
 	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: "distro-scope", Resources: []string{"rhel80"}, Type: evergreen.DistroResourceType}))
 	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: "distro-role", Scope: "distro-scope", Permissions: gimlet.Permissions{evergreen.PermissionDistroSettings: evergreen.DistroSettingsEdit.Value}}))
 
-	handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.DistroResourceType}
+	handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.DistroResourceType, verbose: true}
 	resp := handler.Run(ctx)
 	require.Equal(t, http.StatusOK, resp.Status())
 	data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
@@ -632,12 +633,13 @@ func TestGetUserPermissionDetailsTypeFilter(t *testing.T) {
 	distroSettingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionDistroSettings)
 	projectSettingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
 
-	require.NotEmpty(t, data.AvailablePermissions, "available_permissions should always be populated")
-	assert.Len(t, data.AvailablePermissions, len(evergreen.DistroPermissions), "distro available_permissions should have one entry per distro permission category")
-	require.Contains(t, data.AvailablePermissions, distroSettingsKey)
-	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[distroSettingsKey]), evergreen.DistroSettingsEdit.Description)
-	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions[distroSettingsKey]), evergreen.DistroSettingsAdmin.Description)
-	assert.NotContains(t, data.AvailablePermissions, projectSettingsKey, "distro available_permissions should not include project permission categories")
+	require.NotNil(t, data.AvailablePermissions, "available_permissions should be populated when verbose is true")
+	assert.NotEmpty(t, data.AvailablePermissions.Note)
+	assert.Len(t, data.AvailablePermissions.Permissions, len(evergreen.DistroPermissions), "distro available_permissions should have one entry per distro permission category")
+	require.Contains(t, data.AvailablePermissions.Permissions, distroSettingsKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[distroSettingsKey]), evergreen.DistroSettingsEdit.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[distroSettingsKey]), evergreen.DistroSettingsAdmin.Description)
+	assert.NotContains(t, data.AvailablePermissions.Permissions, projectSettingsKey, "distro available_permissions should not include project permission categories")
 
 	assert.Nil(t, data.Projects, "distro response should not populate the projects field")
 	require.NotNil(t, data.Distros)

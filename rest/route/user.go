@@ -575,6 +575,7 @@ type userPermissionDetailsGetHandler struct {
 	userID        string
 	projectFilter string
 	resourceType  string
+	verbose       bool
 }
 
 func makeGetUserPermissionDetails(rm gimlet.RoleManager) gimlet.RouteHandler {
@@ -591,6 +592,7 @@ func makeGetUserPermissionDetails(rm gimlet.RoleManager) gimlet.RouteHandler {
 //	@Param			user_id	path		string	true	"the user's ID"
 //	@Param			project	query		string	false	"If included, only returns permissions for the specified project (identifier or internal ID)"
 //	@Param			type	query		string	false	"Resource type: 'project' (default) or 'distro'"
+//	@Param			verbose	query		bool	false	"If true, includes all available permission levels in the response"
 //	@Success		200		{object}	model.APIUserProjectPermissions
 func (h *userPermissionDetailsGetHandler) Factory() gimlet.RouteHandler {
 	return &userPermissionDetailsGetHandler{rm: h.rm}
@@ -607,6 +609,7 @@ func (h *userPermissionDetailsGetHandler) Parse(ctx context.Context, r *http.Req
 	if h.resourceType == "" {
 		h.resourceType = evergreen.ProjectResourceType
 	}
+	h.verbose = r.URL.Query().Get("verbose") == "true"
 	return nil
 }
 
@@ -672,17 +675,20 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 			})
 		}
 
-		// Fetch baseline permissions granted to all users and merge with any
-		// explicit permissions the user has for this project, so the filtered
-		// response shows the user's complete access.
-		baselineRoles, err := h.rm.GetRoles(ctx, []string{evergreen.BasicProjectAccessRole})
-		if err != nil {
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding baseline role '%s'", evergreen.BasicProjectAccessRole))
-		}
+		// Merge the user's explicit permissions for this project with baseline
+		// permissions if the user actually holds the basic project access role.
+		// Service users or users who only have explicit permissions may not have
+		// this role, so we must check their original roles first.
 		mergedPerms := gimlet.Permissions{}
-		if len(baselineRoles) > 0 {
-			for k, v := range baselineRoles[0].Permissions {
-				mergedPerms[k] = v
+		if utility.StringSliceContains(u.SystemRoles, evergreen.BasicProjectAccessRole) {
+			baselineRoles, err := h.rm.GetRoles(ctx, []string{evergreen.BasicProjectAccessRole})
+			if err != nil {
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding baseline role '%s'", evergreen.BasicProjectAccessRole))
+			}
+			if len(baselineRoles) > 0 {
+				for k, v := range baselineRoles[0].Permissions {
+					mergedPerms[k] = v
+				}
 			}
 		}
 		for k, v := range resourcePermissions[ref.Id] {
@@ -695,14 +701,22 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 			{
 				ProjectID:         ref.Id,
 				ProjectIdentifier: ref.Identifier,
-				IsRepo:            isRepoRef || ref.UseRepoSettings(),
+				IsRepo:            isRepoRef,
 				Permissions:       buildGrantedPermissions(mergedPerms, permissionKeys, true),
 			},
 		}
-		return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
+		resp := &model.APIUserProjectPermissions{
 			UserID:   h.userID,
 			Projects: &projects,
-		})
+		}
+		if h.verbose {
+			availablePermissions, err := buildAvailablePermissions(ctx, h.resourceType, permissionKeys, h.rm)
+			if err != nil {
+				return gimlet.NewJSONInternalErrorResponse(err)
+			}
+			resp.AvailablePermissions = availablePermissions
+		}
+		return gimlet.NewJSONResponse(resp)
 	}
 
 	if h.resourceType == evergreen.DistroResourceType {
@@ -710,15 +724,18 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 		if err != nil {
 			return gimlet.NewJSONInternalErrorResponse(err)
 		}
-		availablePermissions, err := buildAvailablePermissions(ctx, h.resourceType, permissionKeys, h.rm)
-		if err != nil {
-			return gimlet.NewJSONInternalErrorResponse(err)
+		resp := &model.APIUserProjectPermissions{
+			UserID:  h.userID,
+			Distros: &distros,
 		}
-		return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
-			UserID:               h.userID,
-			AvailablePermissions: availablePermissions,
-			Distros:              &distros,
-		})
+		if h.verbose {
+			availablePermissions, err := buildAvailablePermissions(ctx, h.resourceType, permissionKeys, h.rm)
+			if err != nil {
+				return gimlet.NewJSONInternalErrorResponse(err)
+			}
+			resp.AvailablePermissions = availablePermissions
+		}
+		return gimlet.NewJSONResponse(resp)
 	}
 
 	projects, err := buildProjectPermissionSummaries(ctx, resourcePermissions, permissionKeys)
@@ -726,22 +743,18 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
-	if h.projectFilter != "" {
-		return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
-			UserID:   h.userID,
-			Projects: &projects,
-		})
+	resp := &model.APIUserProjectPermissions{
+		UserID:   h.userID,
+		Projects: &projects,
 	}
-
-	availablePermissions, err := buildAvailablePermissions(ctx, h.resourceType, permissionKeys, h.rm)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(err)
+	if h.verbose {
+		availablePermissions, err := buildAvailablePermissions(ctx, h.resourceType, permissionKeys, h.rm)
+		if err != nil {
+			return gimlet.NewJSONInternalErrorResponse(err)
+		}
+		resp.AvailablePermissions = availablePermissions
 	}
-	return gimlet.NewJSONResponse(&model.APIUserProjectPermissions{
-		UserID:               h.userID,
-		AvailablePermissions: availablePermissions,
-		Projects:             &projects,
-	})
+	return gimlet.NewJSONResponse(resp)
 }
 
 // buildProjectPermissionSummaries returns granted permission summaries for each project.
@@ -763,7 +776,6 @@ func buildProjectPermissionSummaries(ctx context.Context, resourcePermissions ro
 		summaries = append(summaries, model.APIProjectPermissionSummary{
 			ProjectID:         ref.Id,
 			ProjectIdentifier: ref.Identifier,
-			IsRepo:            ref.UseRepoSettings(),
 			Permissions:       buildGrantedPermissions(resourcePermissions[ref.Id], permissionKeys, false),
 		})
 	}
@@ -810,7 +822,9 @@ func buildGrantedPermissions(userPerms gimlet.Permissions, permissionKeys []stri
 
 // buildAvailablePermissions returns all possible permission levels for each category,
 // with granted_to_all_users set for levels that every logged-in user receives by default.
-func buildAvailablePermissions(ctx context.Context, resourceType string, permissionKeys []string, rm gimlet.RoleManager) (map[string][]model.APIPermissionLevel, error) {
+// The returned struct includes a note clarifying that these levels are system-wide and
+// may not apply to every project or distro.
+func buildAvailablePermissions(ctx context.Context, resourceType string, permissionKeys []string, rm gimlet.RoleManager) (*model.APIAvailablePermissions, error) {
 	baselineRoleID := evergreen.BasicProjectAccessRole
 	if resourceType == evergreen.DistroResourceType {
 		baselineRoleID = evergreen.BasicDistroAccessRole
@@ -824,20 +838,23 @@ func buildAvailablePermissions(ctx context.Context, resourceType string, permiss
 		baselinePerms = roles[0].Permissions
 	}
 
-	available := map[string][]model.APIPermissionLevel{}
+	permissions := map[string][]model.APIPermissionLevel{}
 	for _, key := range permissionKeys {
 		category := evergreen.GetDisplayNameForPermissionKey(key)
 		for _, level := range evergreen.GetPermissionLevelsForPermissionKey(key) {
 			if level.Value == 0 {
 				continue
 			}
-			available[category] = append(available[category], model.APIPermissionLevel{
+			permissions[category] = append(permissions[category], model.APIPermissionLevel{
 				Description:       level.Description,
 				GrantedToAllUsers: baselinePerms[key] >= level.Value,
 			})
 		}
 	}
-	return available, nil
+	return &model.APIAvailablePermissions{
+		Note:        "These permission levels are system-wide and may not apply to every project or distro.",
+		Permissions: permissions,
+	}, nil
 }
 
 type rolesPostRequest struct {
@@ -917,12 +934,11 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating new user '%s'", h.userID))
 			}
 			return gimlet.NewJSONResponse(struct{}{})
-		} else {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("user '%s' not found", h.userID),
-				StatusCode: http.StatusNotFound,
-			})
 		}
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("user '%s' not found", h.userID),
+			StatusCode: http.StatusNotFound,
+		})
 	}
 	dbRoles, err := h.rm.GetRoles(ctx, h.rolesToAdd)
 	if err != nil {

@@ -21,12 +21,18 @@ type APIPermissionLevel struct {
 	GrantedToAllUsers bool   `json:"granted_to_all_users"`
 }
 
+// APIAvailablePermissions wraps the system-wide permission levels with a note clarifying their scope.
+type APIAvailablePermissions struct {
+	Note        string                          `json:"note"`
+	Permissions map[string][]APIPermissionLevel `json:"permissions"`
+}
+
 // APIUserProjectPermissions is the response for GET /users/{user_id}/permission-details.
 type APIUserProjectPermissions struct {
-	UserID               string                          `json:"user_id"`
-	AvailablePermissions map[string][]APIPermissionLevel `json:"available_permissions,omitempty"`
-	Projects             *[]APIProjectPermissionSummary  `json:"projects,omitempty"`
-	Distros              *[]APIDistroPermissionSummary   `json:"distros,omitempty"`
+	UserID               string                         `json:"user_id"`
+	AvailablePermissions *APIAvailablePermissions       `json:"available_permissions,omitempty"`
+	Projects             *[]APIProjectPermissionSummary `json:"projects,omitempty"`
+	Distros              *[]APIDistroPermissionSummary  `json:"distros,omitempty"`
 }
 
 // APIProjectPermissionSummary lists the granted permissions for one project, grouped by category.
