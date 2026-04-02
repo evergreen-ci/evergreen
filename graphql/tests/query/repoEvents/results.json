@@ -17,6 +17,9 @@
                   "vars": {
                     "vars": {
                       "hello": "{REDACTED_BEFORE}"
+                    },
+                    "varsDescriptions": {
+                      "hello": "Old repo variable description"
                     }
                   }
                 },
@@ -28,6 +31,9 @@
                   "vars": {
                     "vars": {
                       "hello": "{REDACTED_AFTER}"
+                    },
+                    "varsDescriptions": {
+                      "hello": "New repo variable description"
                     }
                   }
                 }

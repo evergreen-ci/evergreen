@@ -49,7 +49,10 @@
               "vars": {
                 "goodbye": ""
               },
-              "privateVars": ["goodbye"]
+              "privateVars": ["goodbye"],
+              "varsDescriptions": {
+                "goodbye": "goodbye description"
+              }
             }
           }
         }
