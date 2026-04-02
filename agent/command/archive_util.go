@@ -315,6 +315,15 @@ func findContentsToArchive(ctx context.Context, rootPath string, includes, exclu
 	return out, totalSize, nil
 }
 
+func anyExcludesMatch(path string, excludes []string) bool {
+	for _, exclude := range excludes {
+		if match, _ := filepath.Match(exclude, path); match {
+			return true
+		}
+	}
+	return false
+}
+
 // findArchiveContents returns files to be archived starting at the rootPath. It
 // matches all files that match any of the include filters and are not excluded
 // by one of the exclude filters. At least one include filter must be given for
@@ -349,47 +358,39 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 			return nil, 0, errors.Wrapf(err, "canceled while streaming archive for include pattern '%s'", includePattern)
 		}
 
-		var walk fs.WalkDirFunc
+		switch {
+		case filematch == "":
+			// If the pattern ends in "/", it will never include anything
+		case !strings.ContainsAny(includePattern, "*?[]"):
+			// If there's no glob pattern, no need to walk any directories
+			fullPath := filepath.Join(rootPath, includePattern)
 
-		if filematch == "**" {
-			walk = func(path string, di fs.DirEntry, err error) error {
-				if err != nil {
-					return err
+			if !anyExcludesMatch(fullPath, excludes) {
+				fileInfo, err := os.Stat(fullPath)
+				if err == nil {
+					addUniqueFile(fullPath, fileInfo)
+				} else if os.IsNotExist(err) {
+					// It's ok if the file does not exist.
+					continue
 				}
-
-				for _, ignore := range excludes {
-					if match, _ := filepath.Match(ignore, path); match {
-						return nil
-					}
-				}
-
-				info, err := di.Info()
-				if err != nil {
-					return errors.WithStack(errors.Wrap(err, "getting file info while walking glob path"))
-				}
-
-				addUniqueFile(path, info)
-
-				return nil
+				catcher.Wrapf(err, "matching single file '%s' in path '%s'", includePattern, rootPath)
 			}
-			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
-		} else if strings.Contains(filematch, "**") {
+		case strings.Contains(filematch, "**"):
+			// Note, this may be empty, in which case HasSuffix will always be true.
 			globSuffix := filematch[2:]
-			walk = func(path string, di fs.DirEntry, err error) error {
+			var walk fs.WalkDirFunc = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
 
 				if strings.HasSuffix(filepath.Base(path), globSuffix) {
-					for _, ignore := range excludes {
-						if match, _ := filepath.Match(ignore, path); match {
-							return nil
-						}
+					if anyExcludesMatch(path, excludes) {
+						return nil
 					}
 
 					info, err := di.Info()
 					if err != nil {
-						return errors.WithStack(errors.Wrap(err, "getting file info while walking partial glob path"))
+						return errors.WithStack(errors.Wrapf(err, "getting file info while walking glob path for filter %s and path %s", filematch, path))
 					}
 
 					addUniqueFile(path, info)
@@ -397,36 +398,32 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 				return nil
 			}
 			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
-		} else {
-			walk = func(path string, di fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-
-				a, b := filepath.Split(path)
-				if filepath.Clean(a) == filepath.Clean(dir) {
-					match, err := filepath.Match(filematch, b)
-					if err != nil {
-						archiveContents = append(archiveContents, archiveContentFile{err: err})
-					}
-					if match {
-						for _, ignore := range excludes {
-							if exmatch, _ := filepath.Match(ignore, path); exmatch {
-								return nil
-							}
-						}
-
-						info, err := di.Info()
-						if err != nil {
-							return errors.WithStack(errors.Wrap(err, "getting file info while walking strict path"))
-						}
-
-						addUniqueFile(path, info)
-					}
-				}
-				return nil
+		default:
+			// We know there are no '**' wildcards since they would have been caught in the above, so no need to recurse
+			files, err := os.ReadDir(dir)
+			if err != nil {
+				catcher.Wrapf(err, "reading directory '%s' with filter '%s'", dir, filematch)
+				break
 			}
-			catcher.Wrapf(filepath.WalkDir(rootPath, walk), "matching files included in filter '%s' for path '%s'", filematch, rootPath)
+
+			for _, file := range files {
+				match, err := filepath.Match(filematch, file.Name())
+				if err != nil {
+					archiveContents = append(archiveContents, archiveContentFile{err: err})
+				}
+				path := filepath.Join(dir, file.Name())
+				if match {
+					if anyExcludesMatch(path, excludes) {
+						continue
+					}
+					fileInfo, err := file.Info()
+					if err != nil {
+						catcher.Wrapf(err, "getting file info for '%s' while reading directory '%s' with filter '%s'", path, dir, filematch)
+					} else {
+						addUniqueFile(path, fileInfo)
+					}
+				}
+			}
 		}
 	}
 
