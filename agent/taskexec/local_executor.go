@@ -31,6 +31,7 @@ var noOpCommands = map[string]string{
 	"downstream_expansions.set":             "downstream expansions are not available in local execution",
 	evergreen.AttachXUnitResultsCommandName: "test result attachment is not supported in local execution",
 	evergreen.AttachResultsCommandName:      "result attachment is not supported in local execution",
+	"gotest.parse_files":                    "result attachment is not supported in local execution",
 	evergreen.AttachArtifactsCommandName:    "artifact attachment is not supported in local execution",
 	"papertrail.trace":                      "papertrail tracing is not available in local execution",
 	"keyval.inc":                            "key-value increment operations are not supported in local execution",
@@ -115,6 +116,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 
 	taskConfig := &internal.TaskConfig{
 		Expansions:            expansions,
+		NewExpansions:         agentutil.NewDynamicExpansions(expansions),
 		WorkDir:               opts.WorkingDir,
 		AssumeRoleInformation: map[string]internal.AssumeRoleInformation{},
 	}
@@ -367,7 +369,13 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			cmd := cmds[targetIndexWithinExpanded]
 			cmd.SetJasperManager(e.jasperManager)
 
-			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
+			cleanup, err := e.taskConfig.ApplyFunctionVars(commandInfo.Vars, cmd.Name())
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+
+			err = cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
 				e.logger.Errorf(ctx, "Step %s failed: %v", targetCmd.FullStepNumber(), err)
 				if canFailTask {
@@ -771,15 +779,6 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	for k, v := range expansionsAndVars.Vars {
 		e.taskConfig.Expansions.Put(k, v)
 	}
-
-	allExpansions := make(util.Expansions, len(expansionsAndVars.Expansions)+len(expansionsAndVars.Vars))
-	for k, v := range expansionsAndVars.Expansions {
-		allExpansions[k] = v
-	}
-	for k, v := range expansionsAndVars.Vars {
-		allExpansions[k] = v
-	}
-	e.taskConfig.NewExpansions = agentutil.NewDynamicExpansions(allExpansions)
 
 	if expansionsAndVars.PrivateVars == nil {
 		expansionsAndVars.PrivateVars = map[string]bool{}
