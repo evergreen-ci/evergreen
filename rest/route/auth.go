@@ -141,7 +141,7 @@ func (h *tokenExchangeCallbackHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "removing token exchange state"))
 	}
 	if !removed {
-		return gimlet.MakeJSONInternalErrorResponder(errors.New("OAuth 'state' does not match the authorization request"))
+		return gimlet.MakeJSONErrorResponder(errors.New("OAuth 'state' does not match the authorization request"))
 	}
 
 	// The Okta web app config is used to exchange the authorization code for a user access token.
