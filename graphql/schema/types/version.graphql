@@ -173,11 +173,11 @@ type VersionLite {
   ignored: Boolean!
   message: String!
   order: Int!
-  project: Project
+  project: ProjectLite
   repo: String!
   requester: String!
   revision: String!
   startTime: Time
-  user: User!
+  user: UserLite!
   warnings: [String!]!
 }

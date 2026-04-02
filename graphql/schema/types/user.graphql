@@ -214,3 +214,12 @@ DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
 type DeleteCursorAPIKeyPayload {
   success: Boolean!
 }
+
+"""
+UserLite replaces User by sidestepping the APIUser field. It does not contain all fields at this time.
+"""
+type UserLite {
+  displayName: String
+  emailAddress: String
+  id: String!
+}

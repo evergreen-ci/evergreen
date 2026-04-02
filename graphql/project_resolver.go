@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -26,7 +25,11 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 
 // IsFavorite is the resolver for the isFavorite field.
 func (r *projectLiteResolver) IsFavorite(ctx context.Context, obj *model.ProjectRef) (bool, error) {
-	panic(fmt.Errorf("not implemented: IsFavorite - isFavorite"))
+	usr := mustHaveUser(ctx)
+	if utility.StringSliceContains(usr.FavoriteProjects, obj.Identifier) {
+		return true, nil
+	}
+	return false, nil
 }
 
 // Project returns ProjectResolver implementation.

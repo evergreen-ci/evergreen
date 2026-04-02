@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/plank"
@@ -2276,6 +2277,12 @@ type ComplexityRoot struct {
 		User             func(childComplexity int) int
 	}
 
+	UserLite struct {
+		DispName     func(childComplexity int) int
+		EmailAddress func(childComplexity int) int
+		Id           func(childComplexity int) int
+	}
+
 	UserServiceFlags struct {
 		DebugSpawnHostDisabled func(childComplexity int) int
 		JWTTokenForCLIDisabled func(childComplexity int) int
@@ -2820,9 +2827,9 @@ type VersionResolver interface {
 	WaterfallBuilds(ctx context.Context, obj *model.APIVersion) ([]*model1.WaterfallBuild, error)
 }
 type VersionLiteResolver interface {
-	Project(ctx context.Context, obj *model1.Version) (*model.APIProjectRef, error)
+	Project(ctx context.Context, obj *model1.Version) (*model1.ProjectRef, error)
 
-	User(ctx context.Context, obj *model1.Version) (*model.APIDBUser, error)
+	User(ctx context.Context, obj *model1.Version) (*user.DBUser, error)
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
@@ -12329,6 +12336,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserConfig.User(childComplexity), true
+
+	case "UserLite.displayName":
+		if e.complexity.UserLite.DispName == nil {
+			break
+		}
+
+		return e.complexity.UserLite.DispName(childComplexity), true
+	case "UserLite.emailAddress":
+		if e.complexity.UserLite.EmailAddress == nil {
+			break
+		}
+
+		return e.complexity.UserLite.EmailAddress(childComplexity), true
+	case "UserLite.id":
+		if e.complexity.UserLite.Id == nil {
+			break
+		}
+
+		return e.complexity.UserLite.Id(childComplexity), true
 
 	case "UserServiceFlags.debugSpawnHostDisabled":
 		if e.complexity.UserServiceFlags.DebugSpawnHostDisabled == nil {
@@ -72818,6 +72844,93 @@ func (ec *executionContext) fieldContext_UserConfig_oauth_connector_id(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _UserLite_displayName(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserLite_displayName,
+		func(ctx context.Context) (any, error) {
+			return obj.DispName, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserLite_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserLite",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserLite_emailAddress(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserLite_emailAddress,
+		func(ctx context.Context) (any, error) {
+			return obj.EmailAddress, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserLite_emailAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserLite",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserLite_id(ctx context.Context, field graphql.CollectedField, obj *user.DBUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserLite_id,
+		func(ctx context.Context) (any, error) {
+			return obj.Id, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserLite_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserLite",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserServiceFlags_debugSpawnHostDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -75440,7 +75553,7 @@ func (ec *executionContext) _VersionLite_project(ctx context.Context, field grap
 			return ec.resolvers.VersionLite().Project(ctx, obj)
 		},
 		nil,
-		ec.marshalOProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef,
+		ec.marshalOProjectLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectRef,
 		true,
 		false,
 	)
@@ -75455,113 +75568,83 @@ func (ec *executionContext) fieldContext_VersionLite_project(_ context.Context, 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_Project_id(ctx, field)
+				return ec.fieldContext_ProjectLite_id(ctx, field)
 			case "admins":
-				return ec.fieldContext_Project_admins(ctx, field)
-			case "banner":
-				return ec.fieldContext_Project_banner(ctx, field)
+				return ec.fieldContext_ProjectLite_admins(ctx, field)
 			case "batchTime":
-				return ec.fieldContext_Project_batchTime(ctx, field)
+				return ec.fieldContext_ProjectLite_batchTime(ctx, field)
 			case "branch":
-				return ec.fieldContext_Project_branch(ctx, field)
-			case "buildBaronSettings":
-				return ec.fieldContext_Project_buildBaronSettings(ctx, field)
-			case "commitQueue":
-				return ec.fieldContext_Project_commitQueue(ctx, field)
+				return ec.fieldContext_ProjectLite_branch(ctx, field)
 			case "deactivatePrevious":
-				return ec.fieldContext_Project_deactivatePrevious(ctx, field)
+				return ec.fieldContext_ProjectLite_deactivatePrevious(ctx, field)
 			case "debugSpawnHostsDisabled":
-				return ec.fieldContext_Project_debugSpawnHostsDisabled(ctx, field)
+				return ec.fieldContext_ProjectLite_debugSpawnHostsDisabled(ctx, field)
 			case "disabledStatsCache":
-				return ec.fieldContext_Project_disabledStatsCache(ctx, field)
+				return ec.fieldContext_ProjectLite_disabledStatsCache(ctx, field)
 			case "dispatchingDisabled":
-				return ec.fieldContext_Project_dispatchingDisabled(ctx, field)
+				return ec.fieldContext_ProjectLite_dispatchingDisabled(ctx, field)
 			case "displayName":
-				return ec.fieldContext_Project_displayName(ctx, field)
+				return ec.fieldContext_ProjectLite_displayName(ctx, field)
 			case "enabled":
-				return ec.fieldContext_Project_enabled(ctx, field)
-			case "externalLinks":
-				return ec.fieldContext_Project_externalLinks(ctx, field)
+				return ec.fieldContext_ProjectLite_enabled(ctx, field)
 			case "githubChecksEnabled":
-				return ec.fieldContext_Project_githubChecksEnabled(ctx, field)
-			case "githubDynamicTokenPermissionGroups":
-				return ec.fieldContext_Project_githubDynamicTokenPermissionGroups(ctx, field)
-			case "githubPermissionGroupByRequester":
-				return ec.fieldContext_Project_githubPermissionGroupByRequester(ctx, field)
+				return ec.fieldContext_ProjectLite_githubChecksEnabled(ctx, field)
 			case "githubPRTriggerAliases":
-				return ec.fieldContext_Project_githubPRTriggerAliases(ctx, field)
+				return ec.fieldContext_ProjectLite_githubPRTriggerAliases(ctx, field)
 			case "githubMQTriggerAliases":
-				return ec.fieldContext_Project_githubMQTriggerAliases(ctx, field)
+				return ec.fieldContext_ProjectLite_githubMQTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
-				return ec.fieldContext_Project_gitTagAuthorizedTeams(ctx, field)
+				return ec.fieldContext_ProjectLite_gitTagAuthorizedTeams(ctx, field)
 			case "gitTagAuthorizedUsers":
-				return ec.fieldContext_Project_gitTagAuthorizedUsers(ctx, field)
+				return ec.fieldContext_ProjectLite_gitTagAuthorizedUsers(ctx, field)
 			case "gitTagVersionsEnabled":
-				return ec.fieldContext_Project_gitTagVersionsEnabled(ctx, field)
+				return ec.fieldContext_ProjectLite_gitTagVersionsEnabled(ctx, field)
 			case "hidden":
-				return ec.fieldContext_Project_hidden(ctx, field)
+				return ec.fieldContext_ProjectLite_hidden(ctx, field)
 			case "identifier":
-				return ec.fieldContext_Project_identifier(ctx, field)
+				return ec.fieldContext_ProjectLite_identifier(ctx, field)
 			case "isFavorite":
-				return ec.fieldContext_Project_isFavorite(ctx, field)
+				return ec.fieldContext_ProjectLite_isFavorite(ctx, field)
 			case "manualPrTestingEnabled":
-				return ec.fieldContext_Project_manualPrTestingEnabled(ctx, field)
+				return ec.fieldContext_ProjectLite_manualPrTestingEnabled(ctx, field)
 			case "notifyOnBuildFailure":
-				return ec.fieldContext_Project_notifyOnBuildFailure(ctx, field)
+				return ec.fieldContext_ProjectLite_notifyOnBuildFailure(ctx, field)
 			case "oldestAllowedMergeBase":
-				return ec.fieldContext_Project_oldestAllowedMergeBase(ctx, field)
+				return ec.fieldContext_ProjectLite_oldestAllowedMergeBase(ctx, field)
 			case "owner":
-				return ec.fieldContext_Project_owner(ctx, field)
-			case "parsleyFilters":
-				return ec.fieldContext_Project_parsleyFilters(ctx, field)
-			case "patches":
-				return ec.fieldContext_Project_patches(ctx, field)
+				return ec.fieldContext_ProjectLite_owner(ctx, field)
 			case "patchingDisabled":
-				return ec.fieldContext_Project_patchingDisabled(ctx, field)
-			case "patchTriggerAliases":
-				return ec.fieldContext_Project_patchTriggerAliases(ctx, field)
+				return ec.fieldContext_ProjectLite_patchingDisabled(ctx, field)
 			case "perfEnabled":
-				return ec.fieldContext_Project_perfEnabled(ctx, field)
-			case "periodicBuilds":
-				return ec.fieldContext_Project_periodicBuilds(ctx, field)
+				return ec.fieldContext_ProjectLite_perfEnabled(ctx, field)
 			case "projectHealthView":
-				return ec.fieldContext_Project_projectHealthView(ctx, field)
+				return ec.fieldContext_ProjectLite_projectHealthView(ctx, field)
 			case "prTestingEnabled":
-				return ec.fieldContext_Project_prTestingEnabled(ctx, field)
+				return ec.fieldContext_ProjectLite_prTestingEnabled(ctx, field)
 			case "remotePath":
-				return ec.fieldContext_Project_remotePath(ctx, field)
+				return ec.fieldContext_ProjectLite_remotePath(ctx, field)
 			case "repo":
-				return ec.fieldContext_Project_repo(ctx, field)
+				return ec.fieldContext_ProjectLite_repo(ctx, field)
 			case "repoRefId":
-				return ec.fieldContext_Project_repoRefId(ctx, field)
+				return ec.fieldContext_ProjectLite_repoRefId(ctx, field)
 			case "repotrackerDisabled":
-				return ec.fieldContext_Project_repotrackerDisabled(ctx, field)
-			case "repotrackerError":
-				return ec.fieldContext_Project_repotrackerError(ctx, field)
+				return ec.fieldContext_ProjectLite_repotrackerDisabled(ctx, field)
 			case "restricted":
-				return ec.fieldContext_Project_restricted(ctx, field)
+				return ec.fieldContext_ProjectLite_restricted(ctx, field)
 			case "runEveryMainlineCommit":
-				return ec.fieldContext_Project_runEveryMainlineCommit(ctx, field)
+				return ec.fieldContext_ProjectLite_runEveryMainlineCommit(ctx, field)
 			case "spawnHostScriptPath":
-				return ec.fieldContext_Project_spawnHostScriptPath(ctx, field)
+				return ec.fieldContext_ProjectLite_spawnHostScriptPath(ctx, field)
 			case "stepbackDisabled":
-				return ec.fieldContext_Project_stepbackDisabled(ctx, field)
+				return ec.fieldContext_ProjectLite_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
-				return ec.fieldContext_Project_stepbackBisect(ctx, field)
-			case "taskAnnotationSettings":
-				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "testSelection":
-				return ec.fieldContext_Project_testSelection(ctx, field)
+				return ec.fieldContext_ProjectLite_stepbackBisect(ctx, field)
 			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
-			case "triggers":
-				return ec.fieldContext_Project_triggers(ctx, field)
+				return ec.fieldContext_ProjectLite_tracksPushEvents(ctx, field)
 			case "versionControlEnabled":
-				return ec.fieldContext_Project_versionControlEnabled(ctx, field)
-			case "workstationConfig":
-				return ec.fieldContext_Project_workstationConfig(ctx, field)
+				return ec.fieldContext_ProjectLite_versionControlEnabled(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ProjectLite", field.Name)
 		},
 	}
 	return fc, nil
@@ -75693,7 +75776,7 @@ func (ec *executionContext) _VersionLite_user(ctx context.Context, field graphql
 			return ec.resolvers.VersionLite().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDBUser,
+		ec.marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser,
 		true,
 		true,
 	)
@@ -75707,28 +75790,14 @@ func (ec *executionContext) fieldContext_VersionLite_user(_ context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "betaFeatures":
-				return ec.fieldContext_User_betaFeatures(ctx, field)
 			case "displayName":
-				return ec.fieldContext_User_displayName(ctx, field)
+				return ec.fieldContext_UserLite_displayName(ctx, field)
 			case "emailAddress":
-				return ec.fieldContext_User_emailAddress(ctx, field)
-			case "parsleyFilters":
-				return ec.fieldContext_User_parsleyFilters(ctx, field)
-			case "parsleySettings":
-				return ec.fieldContext_User_parsleySettings(ctx, field)
-			case "patches":
-				return ec.fieldContext_User_patches(ctx, field)
-			case "permissions":
-				return ec.fieldContext_User_permissions(ctx, field)
-			case "settings":
-				return ec.fieldContext_User_settings(ctx, field)
-			case "subscriptions":
-				return ec.fieldContext_User_subscriptions(ctx, field)
-			case "userId":
-				return ec.fieldContext_User_userId(ctx, field)
+				return ec.fieldContext_UserLite_emailAddress(ctx, field)
+			case "id":
+				return ec.fieldContext_UserLite_id(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type UserLite", field.Name)
 		},
 	}
 	return fc, nil
@@ -108570,6 +108639,49 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var userLiteImplementors = []string{"UserLite"}
+
+func (ec *executionContext) _UserLite(ctx context.Context, sel ast.SelectionSet, obj *user.DBUser) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userLiteImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserLite")
+		case "displayName":
+			out.Values[i] = ec._UserLite_displayName(ctx, field, obj)
+		case "emailAddress":
+			out.Values[i] = ec._UserLite_emailAddress(ctx, field, obj)
+		case "id":
+			out.Values[i] = ec._UserLite_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var userServiceFlagsImplementors = []string{"UserServiceFlags"}
 
 func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.SelectionSet, obj *model.APIServiceFlags) graphql.Marshaler {
@@ -116362,6 +116474,20 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._User(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNUserLite2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser(ctx context.Context, sel ast.SelectionSet, v user.DBUser) graphql.Marshaler {
+	return ec._UserLite(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋuserᚐDBUser(ctx context.Context, sel ast.SelectionSet, v *user.DBUser) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UserLite(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -119556,6 +119682,13 @@ func (ec *executionContext) marshalOProjectHealthView2githubᚗcomᚋevergreen�
 func (ec *executionContext) unmarshalOProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v any) (model.APIProjectRef, error) {
 	res, err := ec.unmarshalInputProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOProjectLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectRef(ctx context.Context, sel ast.SelectionSet, v *model1.ProjectRef) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ProjectLite(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx context.Context, v any) (*model.APIProjectSettings, error) {

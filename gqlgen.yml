@@ -978,6 +978,11 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  UserLite:
+    model: github.com/evergreen-ci/evergreen/model/user.DBUser
+    fields:
+      displayName:
+        fieldName: "DispName"
   UserServiceFlags:
     model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:
