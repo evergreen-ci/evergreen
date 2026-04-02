@@ -290,7 +290,7 @@ func forkDaemon(c *cli.Context, port int) error {
 	}
 
 	logPath := filepath.Join(dir, daemonLogFile)
-	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return errors.Wrap(err, "opening daemon log file")
 	}
@@ -324,12 +324,21 @@ func forkDaemon(c *cli.Context, port int) error {
 		return errors.Wrap(err, "starting daemon process")
 	}
 
+	pidFile := filepath.Join(dir, daemonPIDFile)
+	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", process.Pid)), 0644); err != nil {
+		grip.Warning(context.Background(), errors.Wrap(err, "writing PID file from parent"))
+	}
+
 	// Release so the parent doesn't wait on the child.
 	if err := process.Release(); err != nil {
 		return errors.Wrap(err, "releasing daemon process")
 	}
 
 	if err := waitForDaemon(port); err != nil {
+		if killProc, findErr := os.FindProcess(process.Pid); findErr == nil {
+			_ = killProc.Signal(syscall.SIGTERM)
+		}
+		_ = os.Remove(pidFile)
 		return errors.Wrapf(err, "daemon failed to start (check logs at %s)", logPath)
 	}
 
@@ -358,7 +367,8 @@ func waitForDaemon(port int) error {
 		time.Sleep(pollInterval)
 	}
 
-	return errors.Errorf("daemon did not become healthy within %s", time.Duration(maxAttempts)*pollInterval)
+	timeout := time.Duration(maxAttempts) * pollInterval
+	return errors.Errorf("daemon did not become healthy within %s", timeout)
 }
 
 // stopDebugDaemonCmd stops the debug daemon
@@ -370,13 +380,13 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 
 	pidFile := filepath.Join(dir, daemonPIDFile)
 	portFile := filepath.Join(dir, daemonPortFile)
+	logFile := filepath.Join(dir, daemonLogFile)
 
 	defer func() {
-		if err := os.Remove(pidFile); err != nil && !os.IsNotExist(err) {
-			grip.Warning(context.Background(), errors.Wrapf(err, "removing PID file %s", pidFile))
-		}
-		if err := os.Remove(portFile); err != nil && !os.IsNotExist(err) {
-			grip.Warning(context.Background(), errors.Wrapf(err, "removing port file %s", portFile))
+		for _, f := range []string{pidFile, portFile, logFile} {
+			if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+				grip.Warning(context.Background(), errors.Wrapf(err, "removing %s", f))
+			}
 		}
 	}()
 
@@ -546,7 +556,7 @@ func stepNextCmd(c *cli.Context) error {
 		return err
 	}
 
-	return postAndStreamResponse(url+"/step/next", nil)
+	return postAndStreamStepResponse(url + "/step/next")
 }
 
 // runAllCmd runs all remaining steps with streaming output.
@@ -556,7 +566,24 @@ func runAllCmd(c *cli.Context) error {
 		return err
 	}
 
-	return postAndStreamResponse(url+"/step/run-all", nil)
+	return postAndStreamStepResponse(url + "/step/run-all")
+}
+
+const noMoreStepsMessage = "No more steps to execute. You've reached the end of the task commands."
+
+func postAndStreamStepResponse(url string) error {
+	resp, err := http.Post(url, "application/json", nil)
+	if err != nil {
+		return errors.Wrap(err, "sending POST request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNoContent {
+		fmt.Fprintln(os.Stdout, noMoreStepsMessage)
+		return nil
+	}
+
+	return handleStreamResponse(resp)
 }
 
 // runUntilCmd runs until a specific step with streaming output.
@@ -699,11 +726,10 @@ func postAndStreamResponse(url string, body interface{}) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNoContent {
-		fmt.Fprintln(os.Stdout, "No more steps to execute. You've reached the end of the task commands.")
-		return nil
-	}
+	return handleStreamResponse(resp)
+}
 
+func handleStreamResponse(resp *http.Response) error {
 	if resp.StatusCode != http.StatusOK {
 		bodyData, _ := io.ReadAll(resp.Body)
 		return errors.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyData))

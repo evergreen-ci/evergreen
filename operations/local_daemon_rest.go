@@ -265,6 +265,15 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func (d *localDaemonREST) noMoreSteps(w http.ResponseWriter) bool {
+	if !d.executor.GetDebugState().HasMoreSteps() {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusNoContent)
+		return true
+	}
+	return false
+}
+
 // handleRunAll runs all remaining steps with streaming output.
 func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
@@ -275,9 +284,7 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !d.executor.GetDebugState().HasMoreSteps() {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusNoContent)
+	if d.noMoreSteps(w) {
 		return
 	}
 
@@ -359,9 +366,7 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if !d.executor.GetDebugState().HasMoreSteps() {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusNoContent)
+	if d.noMoreSteps(w) {
 		return
 	}
 
