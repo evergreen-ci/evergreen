@@ -635,7 +635,22 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	return versionBuilds, nil
 }
 
+// Project is the resolver for the project field.
+func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*restModel.APIProjectRef, error) {
+	apiProjectRef, err := getProjectMetadata(ctx, utility.ToStringPtr(obj.Identifier), utility.ToStringPtr(obj.Id))
+	return apiProjectRef, err
+}
+
+// User is the resolver for the user field.
+func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*restModel.APIDBUser, error) {
+	panic(fmt.Errorf("not implemented: User - user"))
+}
+
 // Version returns VersionResolver implementation.
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
 
+// VersionLite returns VersionLiteResolver implementation.
+func (r *Resolver) VersionLite() VersionLiteResolver { return &versionLiteResolver{r} }
+
 type versionResolver struct{ *Resolver }
+type versionLiteResolver struct{ *Resolver }

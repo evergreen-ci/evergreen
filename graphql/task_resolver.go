@@ -823,6 +823,11 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 	return stats.TotalCount, nil
 }
 
+// Version is the resolver for the version field.
+func (r *taskResolver) Version(ctx context.Context, obj *restModel.APITask) (*model.Version, error) {
+	panic(fmt.Errorf("not implemented: Version - version"))
+}
+
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)
