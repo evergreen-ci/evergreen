@@ -179,7 +179,6 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 
 func TestNotificationSendMiddleware(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
-	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	adminRole := gimlet.Role{
@@ -193,8 +192,8 @@ func TestNotificationSendMiddleware(t *testing.T) {
 		Type:      evergreen.SuperUserResourceType,
 		Resources: []string{evergreen.SuperUserPermissionsID},
 	}
-	assert.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(ctx, adminRole))
-	assert.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(ctx, superUserScope))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(t.Context(), adminRole))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(t.Context(), superUserScope))
 
 	// Create a middleware that requires the notifications send permission.
 	permission := RequiresSuperUserPermission(evergreen.PermissionNotificationsSend, evergreen.NotificationsSend)
@@ -213,14 +212,14 @@ func TestNotificationSendMiddleware(t *testing.T) {
 	r, err := http.NewRequest(http.MethodPut, "/notifications/email", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
-	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "regular.user"})
+	ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "regular.user"})
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	rw := httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, r, checkPermission)
 	assert.Equal(t, http.StatusUnauthorized, rw.Code)
 
 	// Check that an authenticated user can use the route.
-	ctx = gimlet.AttachUser(context.Background(), &user.DBUser{Id: "notification.user", SystemRoles: []string{"notification_send"}})
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "notification.user", SystemRoles: []string{"notification_send"}})
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, r, checkPermission)
