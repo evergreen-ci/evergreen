@@ -621,7 +621,8 @@ tasks:
 		require.NoError(t, err)
 		assert.NotNil(t, project)
 
-		assert.Equal(t, len(executor.debugState.CommandList), executor.debugState.CurrentStepIndex)
+		expectedSteps := len(executor.debugState.CommandList)
+		assert.Equal(t, expectedSteps, executor.debugState.CurrentStepIndex)
 		assert.False(t, executor.debugState.HasMoreSteps())
 	})
 

@@ -77,7 +77,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	// If an executor already exists with a selected task, hot reload the
 	// project so the debug session state is preserved.
-	if d.executor != nil && d.executor.GetDebugState().SelectedTask != "" {
+	if d.executor != nil {
 		project, err := d.executor.ReloadProject(r.Context(), req.ConfigPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

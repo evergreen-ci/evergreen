@@ -187,8 +187,12 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 // re-prepares the task with the new config.
 func (e *LocalExecutor) ReloadProject(ctx context.Context, configPath string) (*model.Project, error) {
 	savedIndex := e.debugState.CurrentStepIndex
-	savedVars := e.debugState.CustomVars
-	savedHistory := e.debugState.ExecutionHistory
+	savedVars := make(map[string]string, len(e.debugState.CustomVars))
+	for k, v := range e.debugState.CustomVars {
+		savedVars[k] = v
+	}
+	savedHistory := make([]executionRecord, len(e.debugState.ExecutionHistory))
+	copy(savedHistory, e.debugState.ExecutionHistory)
 
 	project, err := e.LoadProject(configPath)
 	if err != nil {
