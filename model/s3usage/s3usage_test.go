@@ -214,7 +214,7 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 
 	t.Run("DefaultArtifacts365Days", func(t *testing.T) {
 		// ExpirationDays=365: Standard=30, IA=60, Archive=275
-		cost := CalculateS3StorageCostWithConfig(GB, 365, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, validConfig)
 		assert.Greater(t, cost, 0.0)
 		// Verify tier breakdown manually:
 		// Standard: 30 * (0.023/GB/30) * (1-0.37) = 0.023 * 0.63
@@ -229,7 +229,7 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 
 	t.Run("MongoDBMongoArtifacts90Days", func(t *testing.T) {
 		// ExpirationDays=90: Standard=30, IA=60, Archive=0
-		cost := CalculateS3StorageCostWithConfig(GB, 90, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 90, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		expected := float64(GB) * (standard + ia)
@@ -238,7 +238,7 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 
 	t.Run("MongoSyncArtifacts180Days", func(t *testing.T) {
 		// ExpirationDays=180: Standard=30, IA=60, Archive=90
-		cost := CalculateS3StorageCostWithConfig(GB, 180, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 180, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		archive := 90.0 * (0.004 / float64(GB) / 30.0) * (1 - 0.265)
@@ -248,7 +248,7 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 
 	t.Run("DefaultLog60Days", func(t *testing.T) {
 		// ExpirationDays=60: Standard=30, IA=30, Archive=0
-		cost := CalculateS3StorageCostWithConfig(GB, 60, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 60, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 30.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		expected := float64(GB) * (standard + ia)
@@ -257,28 +257,28 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 
 	t.Run("FailedLog180Days", func(t *testing.T) {
 		// ExpirationDays=180: Standard=30, IA=60, Archive=90
-		cost := CalculateS3StorageCostWithConfig(GB, 180, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 180, validConfig)
 		assert.Greater(t, cost, 0.0)
 	})
 
 	t.Run("LongRetentionLog365Days", func(t *testing.T) {
 		// ExpirationDays=365: Standard=30, IA=60, Archive=275
-		cost := CalculateS3StorageCostWithConfig(GB, 365, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, validConfig)
 		assert.Greater(t, cost, 0.0)
 	})
 
 	t.Run("ZeroBytes", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(0, 365, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), 0, 365, validConfig)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("ZeroExpirationDays", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(GB, 0, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 0, validConfig)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("NilConfig", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(GB, 365, nil)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, nil)
 		assert.Equal(t, 0.0, cost)
 	})
 

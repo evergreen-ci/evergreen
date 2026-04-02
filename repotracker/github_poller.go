@@ -206,7 +206,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 		}
 		revisions = append(revisions, githubCommitToRevision(commit))
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":            "updating last repo revision for project",
 			"source":             "github poller",
 			"old_revision":       revision,
@@ -224,7 +224,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 		for i := range commits {
 			commitSHAs = append(commitSHAs, commits[i].GetSHA())
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"source":             "github poller",
 			"message":            "no new revisions",
 			"last_revision":      revision,

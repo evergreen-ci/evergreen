@@ -155,10 +155,10 @@ func retrySSMClientOp[Input any, Output any](ctx context.Context, client *ssm.Cl
 		msg := makeAWSLogMessage(opName, fmt.Sprintf("%T", client), input)
 		output, err = clientOp(ctx, client, input)
 		if err != nil {
-			grip.Debug(message.WrapError(err, msg))
+			grip.Debug(ctx, message.WrapError(err, msg))
 			return true, err
 		}
-		grip.Info(msg)
+		grip.Info(ctx, msg)
 		return false, nil
 	}, ssmDefaultRetryOptions())
 	if err != nil {

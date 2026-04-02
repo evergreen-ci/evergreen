@@ -866,7 +866,7 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 
 	for _, id := range ids {
 		event.LogHostCreatedError(ctx, id, "stale building host took too long to start")
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "stale building host took too long to start",
 			"host_id": id,
 			"distro":  distroID,
@@ -1224,7 +1224,7 @@ func (h *Host) AddVolumeToHost(ctx context.Context, newVolume *VolumeAttachment)
 		return errors.Wrap(err, "decoding host")
 	}
 
-	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(ctx, h.Id),
+	grip.Error(ctx, message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(ctx, h.Id),
 		message.Fields{
 			"host_id":   h.Id,
 			"volume_id": newVolume.VolumeID,
@@ -1252,7 +1252,7 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 		return errors.Wrap(err, "decoding host")
 	}
 
-	grip.Error(message.WrapError(UnsetVolumeHost(ctx, volumeId),
+	grip.Error(ctx, message.WrapError(UnsetVolumeHost(ctx, volumeId),
 		message.Fields{
 			"host_id":   h.Id,
 			"volume_id": volumeId,
@@ -1446,7 +1446,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		if err := toInsert.InsertWithEnv(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "inserted host to replace intent host",
 			"host_id":  toInsert.Id,
 			"host_tag": toInsert.Tag,
@@ -1460,7 +1460,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                   "successfully replaced host document",
 		"host_id":                   toInsert.Id,
 		"host_tag":                  toInsert.Tag,
@@ -1696,7 +1696,7 @@ func ClearExpiredTemporaryExemptions(ctx context.Context) error {
 		return err
 	}
 
-	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
+	grip.InfoWhen(ctx, res.ModifiedCount > 0, message.Fields{
 		"message":   "cleared expired temporary exemptions from hosts",
 		"num_hosts": res.ModifiedCount,
 	})
@@ -1738,7 +1738,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 		})
 		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
 		if res != nil && res.ModifiedCount > 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "marked newly-added hosts as permanently exempt",
 				"num_hosts": res.ModifiedCount,
 			})
@@ -1756,7 +1756,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	})
 	catcher.Wrap(err, "marking newly-removed hosts as no longer permanently exempt")
 	if res != nil && res.ModifiedCount > 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "marked newly-removed hosts as no longer permanently exempt",
 			"num_hosts": res.ModifiedCount,
 		})

@@ -49,7 +49,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	if err := os.WriteFile(fn, out, 0600); err != nil {
 		return errors.Wrapf(err, "writing expansions to file '%s'", fn)
 	}
-	logger.Task().Infof("Expansions written to file '%s'.", fn)
+	logger.Task().Infof(ctx, "Expansions written to file '%s'.", fn)
 	return nil
 }
 

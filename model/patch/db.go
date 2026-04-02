@@ -119,7 +119,7 @@ func ByStringIds(ids []string) db.Q {
 		if IsValidId(id) {
 			objectIds = append(objectIds, NewId(id))
 		} else {
-			grip.Debug(message.Fields{
+			grip.Debug(context.Background(), message.Fields{
 				"message": "patch id is not valid",
 				"id":      id,
 			})

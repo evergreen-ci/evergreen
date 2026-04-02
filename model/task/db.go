@@ -2859,7 +2859,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	predictions := make(map[string]CostPredictionResult)
 	for result := range resultChan {
 		if result.err != nil {
-			grip.Warning(message.WrapError(result.err, message.Fields{
+			grip.Warning(ctx, message.WrapError(result.err, message.Fields{
 				"message": "error computing cost prediction for task, using zero prediction",
 				"task_id": result.taskID,
 			}))

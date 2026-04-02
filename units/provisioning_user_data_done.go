@@ -74,7 +74,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	defer func() {
 		if j.HasErrors() && j.IsLastAttempt() {
 			event.LogHostProvisionFailed(ctx, j.HostID, j.Error().Error())
-			grip.Error(message.WrapError(j.Error(), message.Fields{
+			grip.Error(ctx, message.WrapError(j.Error(), message.Fields{
 				"message":         "provisioning failed",
 				"operation":       "user-data-done",
 				"current_attempt": j.RetryInfo().CurrentAttempt,
@@ -107,7 +107,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 			j.host.Distro.ShellBinary(),
 			"-l", "-c",
 			fmt.Sprintf("ls %s", path)}}); err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message": "host was checked but is not yet ready",
 			"output":  output,
 			"host_id": j.host.Id,
@@ -120,7 +120,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 
 	if j.host.IsVirtualWorkstation {
 		if err := attachVolume(ctx, j.env, j.host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "can't attach volume",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
@@ -139,7 +139,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 			return
 		}
 		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "can't write icecream config file",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
@@ -159,7 +159,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 
 func (j *userDataDoneJob) finishJob(ctx context.Context) {
 	if err := j.host.SetUserDataHostProvisioned(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "could not mark host that has finished running user data as done provisioning",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,

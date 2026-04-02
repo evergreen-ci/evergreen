@@ -62,7 +62,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		gimlet.WriteJSON(w, loggedEvents)
+		gimlet.WriteJSON(r.Context(), w, loggedEvents)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(w, struct {
+	gimlet.WriteJSON(r.Context(), w, struct {
 		LogMessages []*apimodels.LogMessage
 	}{LogMessages: lines})
 }
@@ -122,7 +122,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.FormValue("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+		gimlet.WriteText(r.Context(), w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
 			PrintTime:     r.FormValue("time") != "false",
 			TimeZone:      getUserTimeZone(MustHaveUser(r)),
 			PrintPriority: r.FormValue("priority") == "true",
@@ -277,7 +277,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if vals.Get("text") == "true" || r.Header.Get("Content-Type") == "text/plain" {
-		gimlet.WriteText(w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
+		gimlet.WriteText(r.Context(), w, log.NewLogIteratorReader(it, log.LogIteratorReaderOptions{
 			PrintTime:     true,
 			PrintPriority: r.FormValue("priority") == "true",
 			TimeZone:      getUserTimeZone(MustHaveUser(r)),
@@ -299,7 +299,7 @@ var blockedCIDRs = []*net.IPNet{
 func mustParseCIDR(c string) *net.IPNet {
 	_, n, err := net.ParseCIDR(c)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(context.Background(), message.WrapError(err, message.Fields{
 			"message": "failed to parse CIDR",
 			"target":  c,
 		}))

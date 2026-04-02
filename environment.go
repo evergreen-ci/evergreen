@@ -731,7 +731,7 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 		ctx, cancel = context.WithTimeout(ctx, queueShutdownWaitTimeout)
 		defer cancel()
 		if !amboy.WaitInterval(ctx, e.notificationsQueue, queueShutdownWaitInterval) {
-			grip.Critical(message.Fields{
+			grip.Critical(ctx, message.Fields{
 				"message": "pending jobs failed to finish",
 				"queue":   "notifications",
 				"status":  e.notificationsQueue.Stats(ctx),
@@ -741,7 +741,7 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 
 		e.notificationsQueue.Close(ctx)
 
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":     "closed notification queue",
 			"num_senders": len(rootSenders),
 			"errors":      catcher.HasErrors(),
@@ -750,7 +750,7 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 		for _, s := range rootSenders {
 			catcher.Add(s.Close())
 		}
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":     "closed all root senders",
 			"num_senders": len(rootSenders),
 			"errors":      catcher.HasErrors(),
@@ -885,12 +885,12 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 		if err != nil {
 			// Don't return error when so we can continue to initialize environment
 			// during Slack outages.
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "setting up Slack logger",
 			}))
 		}
 		if sender == nil {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "failed to create Slack logger",
 			})
 		} else {
@@ -922,11 +922,11 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 // for the error handler to work, the global application logging must already be
 // set up (see (*Settings).GetSender).
 func (e *envState) setSenderErrorHandler(s send.Sender, name string) error {
-	return s.SetErrorHandler(func(err error, m message.Composer) {
+	return s.SetErrorHandler(func(ctx context.Context, err error, m message.Composer) {
 		if err == nil {
 			return
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"notification":        m.String(),
 			"message_type":        fmt.Sprintf("%T", m),
 			"notification_target": name,
@@ -1068,7 +1068,7 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		grip.Error(errors.Wrap(err, "otel error"))
+		grip.Error(ctx, errors.Wrap(err, "otel error"))
 	}))
 
 	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
@@ -1308,7 +1308,7 @@ func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken C
 	// Just log and continue if the GitHub sender fails to set the error
 	// handler. While having the error log is useful for monitoring, it's not
 	// essential for the sender to work.
-	grip.Error(message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
+	grip.Error(e.ctx, message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
 		"message": "could not set fallback error handler for GitHub status sender",
 		"owner":   owner,
 		"repo":    repo,
@@ -1375,7 +1375,7 @@ func (e *envState) Close(ctx context.Context) error {
 		wg.Add(1)
 		go func(idx int, name string, clfn func(context.Context) error) {
 			defer wg.Done()
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":      "calling closer",
 				"index":        idx,
 				"closer":       name,
@@ -1395,7 +1395,7 @@ func (e *envState) Close(ctx context.Context) error {
 			continue
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":      "calling closer",
 			"index":        idx,
 			"closer":       closer.name,

@@ -135,7 +135,7 @@ func (h *updatePushStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	err = errors.Wrapf(h.pushLog.UpdateStatus(ctx, h.pushLog.Status),
 		"updating pushlog status failed for task %s", t.Id)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"task":      t.Id,
 			"project":   t.Project,
 			"version":   t.Version,
@@ -208,7 +208,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if newestPushLog != nil {
 		// the error is not being returned in order to avoid a retry
-		grip.Warningln("conflict with existing pushed file:", copyToLocation)
+		grip.Warningln(ctx, "conflict with existing pushed file:", copyToLocation)
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
@@ -654,7 +654,7 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 	err := utility.ReadJSON(r.Body, &h.files)
 	if err != nil {
 		message := fmt.Sprintf("reading file definitions for task  %s: %v", h.taskID, err)
-		grip.Error(message)
+		grip.Error(ctx, message)
 		return errors.Wrap(err, message)
 	}
 	return nil
@@ -686,7 +686,7 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if err = entry.Upsert(ctx); err != nil {
 		message := fmt.Sprintf("updating artifact file info for task %s: %v", t.Id, err)
-		grip.Error(message)
+		grip.Error(ctx, message)
 		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))
 	}
 	return gimlet.NewJSONResponse(fmt.Sprintf("Artifact files for task %s successfully attached", t.Id))
@@ -729,7 +729,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 	}
 
 	if len(cachedBuckets) > 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":    "successfully cached bucket lifecycle rules",
 			"buckets":    cachedBuckets,
 			"task_id":    t.Id,
@@ -780,7 +780,7 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	t.S3Usage = h.s3Usage
 	if err := t.SaveS3Usage(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "saving S3 usage",
 			"task_id": h.taskID,
 		}))
@@ -909,7 +909,7 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 	h.log.Task = t.Id
 	h.log.TaskExecution = t.Execution
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":      "received test log",
 		"task":         t.Id,
 		"project":      t.Project,
@@ -1030,12 +1030,12 @@ func (h *heartbeatHandler) Run(ctx context.Context) gimlet.Responder {
 
 	heartbeatResponse := apimodels.HeartbeatResponse{}
 	if t.Aborted {
-		grip.Noticef("sending abort signal for task %s", t.Id)
+		grip.Noticef(ctx, "sending abort signal for task %s", t.Id)
 		heartbeatResponse.Abort = true
 	}
 
 	if err := t.UpdateHeartbeat(ctx); err != nil {
-		grip.Warningf("updating heartbeat for task %s: %+v", t.Id, err)
+		grip.Warningf(ctx, "updating heartbeat for task %s: %+v", t.Id, err)
 	}
 	return gimlet.NewJSONResponse(heartbeatResponse)
 }
@@ -1136,7 +1136,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	if t.DependenciesMetTime.After(dependenciesMetTime) {
 		dependenciesMetTime = t.DependenciesMetTime
 	}
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":                        "marking task started",
 		"task_id":                        t.Id,
 		"details":                        t.Details,
@@ -1186,14 +1186,14 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			if err = foundHost.IncIdleTime(ctx, foundHost.WastedComputeTime()); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", foundHost.Id))
 			}
-			grip.Info(foundHost.TaskStartMessage())
+			grip.Info(ctx, foundHost.TaskStartMessage())
 		}
 	}
-	logTaskStartMessage(foundHost, t)
+	logTaskStartMessage(ctx, foundHost, t)
 	return gimlet.NewJSONResponse(msg)
 }
 
-func logTaskStartMessage(h *host.Host, t *task.Task) {
+func logTaskStartMessage(ctx context.Context, h *host.Host, t *task.Task) {
 	msg := message.Fields{
 		"stat":                   "task-start-stats",
 		"task_id":                t.Id,
@@ -1239,7 +1239,7 @@ func logTaskStartMessage(h *host.Host, t *task.Task) {
 			}
 		}
 	}
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 }
 
 // GET /task/{task_id}/git/patchfile/{patchfile_id}
@@ -1507,7 +1507,7 @@ func (h *setDownstreamParamsHandler) Parse(ctx context.Context, r *http.Request)
 	err := utility.ReadJSON(r.Body, &h.downstreamParams)
 	if err != nil {
 		errorMessage := fmt.Sprintf("reading downstream expansions for task %s", h.taskID)
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
@@ -1528,13 +1528,13 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	grip.Infoln("Setting downstream expansions for task:", t.Id)
+	grip.Infoln(ctx, "Setting downstream expansions for task:", t.Id)
 
 	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("loading patch: %s: ", err.Error())
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"task_id": t.Id,
 		})
@@ -1543,7 +1543,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if p == nil {
 		errorMessage := "patch not found"
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"task_id": t.Id,
 		})
@@ -1555,7 +1555,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if err = p.SetDownstreamParameters(ctx, h.downstreamParams); err != nil {
 		errorMessage := fmt.Sprintf("setting patch parameters: %s", err.Error())
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"task_id": t.Id,
 		})
@@ -1648,7 +1648,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 	err := utility.ReadJSON(r.Body, &output)
 	if err != nil {
 		errorMessage := fmt.Sprintf("reading checkRun for task '%s'", h.taskID)
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
@@ -1664,7 +1664,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 	err = thirdparty.ValidateCheckRunOutput(h.checkRunOutput)
 	if err != nil {
 		errorMessage := fmt.Sprintf("validating checkRun for task '%s'", h.taskID)
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"task_id": h.taskID,
 			"error":   err.Error(),
@@ -1714,7 +1714,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput, ghAppAuth)
 		if err != nil {
 			errorMessage := fmt.Sprintf("updating checkRun for task: '%s'", t.Id)
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":      errorMessage,
 				"error":        err.Error(),
 				"task_id":      t.Id,
@@ -1729,7 +1729,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("creating checkRun for task: '%s'", t.Id)
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"error":   err.Error(),
 			"task_id": t.Id,
@@ -1739,7 +1739,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if checkRun == nil {
 		errorMessage := fmt.Sprintf("created checkRun not return for task: '%s'", t.Id)
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": errorMessage,
 			"task_id": t.Id,
 		})
@@ -1749,7 +1749,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	checkRunInt := utility.FromInt64Ptr(checkRun.ID)
 	if err = t.SetCheckRunId(ctx, checkRunInt); err != nil {
 		err = errors.Wrap(err, "setting check run ID on task")
-		grip.Error(message.WrapError(err,
+		grip.Error(ctx, message.WrapError(err,
 			message.Fields{
 				"task_id":      t.Id,
 				"check_run_id": checkRunInt,
@@ -1810,7 +1810,7 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	err = json.Unmarshal(body, &h.permissions)
 
 	errorMessage := fmt.Sprintf("reading permissions body for task '%s'", h.taskID)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message": errorMessage,
 		"task_id": h.taskID,
 	}))

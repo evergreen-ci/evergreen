@@ -69,13 +69,14 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 		comm := newBaseCommunicator("whatever", map[string]string{})
 		logger, err := comm.GetLoggerProducer(ctx, task, nil)
 		require.NoError(t, err)
+		require.NotNil(t, logger)
 
-		logger.Task().Alert("Fluff 1")
-		logger.Task().Alert("More fluff")
+		logger.Task().Alert(ctx, "Fluff 1")
+		logger.Task().Alert(ctx, "More fluff")
 		require.NoError(t, err)
 
-		logger.Task().Info(secret)
-		logger.Task().Alert("Even more fluff")
+		logger.Task().Info(ctx, secret)
+		logger.Task().Alert(ctx, "Even more fluff")
 		require.NoError(t, logger.Close())
 
 		data := readLogs(t, task)
@@ -100,13 +101,14 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 				Expansions: e,
 			},
 		})
-		logger.Task().Alert("Fluff 1")
-		e.PutAndRedact(secretKey, secret)
-		logger.Task().Alert("More fluff")
 		require.NoError(t, err)
+		require.NotNil(t, logger)
+		logger.Task().Alert(ctx, "Fluff 1")
+		e.PutAndRedact(secretKey, secret)
+		logger.Task().Alert(ctx, "More fluff")
 
-		logger.Task().Info(secret)
-		logger.Task().Alert("Even more fluff")
+		logger.Task().Info(ctx, secret)
+		logger.Task().Alert(ctx, "Even more fluff")
 		require.NoError(t, logger.Close())
 
 		data := readLogs(t, task)
@@ -137,8 +139,8 @@ func TestLoggerClose(t *testing.T) {
 
 	comm := NewHostCommunicator("host", "host", "host_secret")
 	logger, err := comm.GetLoggerProducer(context.Background(), tsk, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, logger)
+	require.NoError(t, err)
+	require.NotNil(t, logger)
 	assert.NoError(t, logger.Close())
 	assert.NotPanics(t, func() {
 		assert.NoError(t, logger.Close())

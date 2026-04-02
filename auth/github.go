@@ -117,12 +117,12 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.FormValue("code")
 		if code == "" {
-			grip.Error("Error getting code from github for authentication")
+			grip.Error(r.Context(), "Error getting code from github for authentication")
 			return
 		}
 		githubState := r.FormValue("state")
 		if githubState == "" {
-			grip.Error("Error getting state from github for authentication")
+			grip.Error(r.Context(), "Error getting state from github for authentication")
 			return
 		}
 		// if there is an internal redirect page, redirect the user back to that page
@@ -143,7 +143,7 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 
 		// if the state doesn't match, log the error and redirect back to the login page
 		if githubState != state {
-			grip.Errorf("Error unmatching states when authenticating with GitHub: ours: %vb, theirs %v",
+			grip.Errorf(r.Context(), "Error unmatching states when authenticating with GitHub: ours: %vb, theirs %v",
 				state, githubState)
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
@@ -154,7 +154,7 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 
 		githubResponse, err := thirdparty.GithubAuthenticate(ctx, code, gum.ClientId, gum.ClientSecret)
 		if err != nil {
-			grip.Errorf("Error sending code and authentication info to GitHub: %+v", err)
+			grip.Errorf(ctx, "Error sending code and authentication info to GitHub: %+v", err)
 			return
 		}
 		SetLoginToken(githubResponse.AccessToken, gum.LoginDomain, w)

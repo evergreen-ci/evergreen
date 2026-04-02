@@ -20,10 +20,17 @@ func TestArtifactModels(t *testing.T) {
 			{
 				Name: "file1",
 				Link: "l1",
+				AssociatedLinks: []artifact.AssociatedLink{
+					{
+						Name: "hello_world",
+						Link: "https://hello_world.example.com",
+					},
+				},
 			},
 			{
-				Name: "file2",
-				Link: "l2",
+				Name:            "file2",
+				Link:            "l2",
+				AssociatedLinks: []artifact.AssociatedLink{},
 			},
 		},
 	}
@@ -42,6 +49,12 @@ func TestAPIFileBuildFromService(t *testing.T) {
 		Visibility:     "public",
 		IgnoreForFetch: true,
 		ContentType:    "text/plain",
+		AssociatedLinks: []artifact.AssociatedLink{
+			{
+				Name: "hello_world",
+				Link: "https://hello_world.example.com",
+			},
+		},
 	}
 	apiFile := APIFile{}
 	apiFile.BuildFromService(file)

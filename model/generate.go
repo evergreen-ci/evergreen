@@ -166,7 +166,7 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 	g.Task = t
 
 	if g.Task.GeneratedTasks {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "skipping attempting to update parser project because another generator marked the task complete",
 			"task":    g.Task.Id,
 			"version": g.Task.Version,
@@ -505,7 +505,7 @@ func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *V
 
 	var err error
 	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
 	}))

@@ -80,7 +80,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 		},
 		HandlePanic: func(panicErr error, originalErr error, op string) error {
-			return a.logPanic(tc, panicErr, originalErr, op)
+			return a.logPanic(ctx, tc, panicErr, originalErr, op)
 		},
 		RunCommandOrFunc: func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error {
 			opts := runCommandsOptions{
@@ -123,11 +123,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		}
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
-			tc.logger.Task().Infof("Skipping command %s on variant %s.", cmd.FullDisplayName(), tc.taskConfig.BuildVariant.Name)
+			tc.logger.Task().Infof(ctx, "Skipping command %s on variant %s.", cmd.FullDisplayName(), tc.taskConfig.BuildVariant.Name)
 			continue
 		}
 
-		tc.logger.Task().Infof("Running command %s.", cmd.FullDisplayName())
+		tc.logger.Task().Infof(ctx, "Running command %s.", cmd.FullDisplayName())
 
 		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
@@ -149,9 +149,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			commandSpan.End()
 			// Only retry on failure for non-merge queue tasks.
 			if cmd.RetryOnFailure() && !evergreen.IsGithubMergeQueueRequester(tc.taskConfig.Task.Requester) {
-				tc.logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
+				tc.logger.Task().Infof(ctx, "Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
 				if restartErr := a.comm.MarkFailedTaskToRestart(ctx, tc.task); restartErr != nil {
-					tc.logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
+					tc.logger.Task().Errorf(ctx, "Encountered error marking task to restart upon completion: %s", restartErr)
 				}
 			}
 			return errors.Wrap(err, "running command")
@@ -198,7 +198,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		// Only set the idle timeout in cases where the idle timeout is actually
 		// respected. In all other blocks, setting the idle timeout should have
 		// no effect.
-		tc.setCurrentIdleTimeout(cmd)
+		tc.setCurrentIdleTimeout(ctx, cmd)
 	}
 	a.comm.UpdateLastMessageTime()
 	defer func() {
@@ -216,7 +216,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 
 	start := time.Now()
 	defer func() {
-		tc.logger.Task().Infof("Finished command %s in %s.", cmd.FullDisplayName(), time.Since(start).String())
+		tc.logger.Task().Infof(ctx, "Finished command %s in %s.", cmd.FullDisplayName(), time.Since(start).String())
 	}()
 
 	// This method must return soon after the context errors (e.g. due to
@@ -234,7 +234,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 			if pErr == nil {
 				return
 			}
-			_ = a.logPanic(tc, pErr, nil, op)
+			_ = a.logPanic(ctx, tc, pErr, nil, op)
 
 			cmdChan <- pErr
 		}()
@@ -245,7 +245,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 	select {
 	case err := <-cmdChan:
 		if err != nil {
-			tc.logger.Task().Errorf("Command %s failed: %s.", cmd.FullDisplayName(), err)
+			tc.logger.Task().Errorf(ctx, "Command %s failed: %s.", cmd.FullDisplayName(), err)
 			tc.addFailingCommand(cmd)
 			if options.block == command.PostBlock {
 				tc.setPostErrored(true)
@@ -270,7 +270,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 			tc.setPostErrored(true)
 		}
 
-		tc.logger.Task().Errorf("Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
+		tc.logger.Task().Errorf(ctx, "Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
 

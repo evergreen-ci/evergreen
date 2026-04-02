@@ -75,7 +75,7 @@ func GeneratedJSONInsertWithS3Fallback(ctx context.Context, settings *evergreen.
 		return method, errors.Wrap(err, "falling back to generated JSON files into S3")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully inserted generated JSON files into S3 as fallback due to document size limitation",
 		"task_id":            t.Id,
 		"old_storage_method": method,

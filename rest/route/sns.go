@@ -60,19 +60,19 @@ func (bsns *baseSNS) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (bsns *baseSNS) handleSNSConfirmation() (handled bool) {
+func (bsns *baseSNS) handleSNSConfirmation(ctx context.Context) (handled bool) {
 	// Subscription/Unsubscription is a rare action that we will handle manually
 	// and will be logged to splunk given the logging level.
 	switch bsns.messageType {
 	case messageTypeSubscriptionConfirmation:
-		grip.Alert(message.Fields{
+		grip.Alert(ctx, message.Fields{
 			"message":       "got AWS SNS subscription confirmation. Visit subscribe_url to confirm",
 			"subscribe_url": bsns.payload.SubscribeURL,
 			"topic_arn":     bsns.payload.TopicArn,
 		})
 		return true
 	case messageTypeUnsubscribeConfirmation:
-		grip.Alert(message.Fields{
+		grip.Alert(ctx, message.Fields{
 			"message":         "got AWS SNS unsubscription confirmation. Visit unsubscribe_url to confirm",
 			"unsubscribe_url": bsns.payload.UnsubscribeURL,
 			"topic_arn":       bsns.payload.TopicArn,
@@ -100,14 +100,14 @@ func (sns *ec2SNS) Factory() gimlet.RouteHandler {
 }
 
 func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
-	if sns.handleSNSConfirmation() {
+	if sns.handleSNSConfirmation(ctx) {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
 	switch sns.messageType {
 	case messageTypeNotification:
 		if err := sns.handleNotification(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":      "handling SNS notification",
 				"notification": sns.payload.Message,
 			}))
@@ -115,7 +115,7 @@ func (sns *ec2SNS) Run(ctx context.Context) gimlet.Responder {
 		}
 		return gimlet.NewJSONResponse(struct{}{})
 	default:
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":         "got an unknown message type",
 			"type":            sns.messageType,
 			"payload_subject": sns.payload.Subject,
@@ -220,7 +220,7 @@ func (sns *ec2SNS) handleInstanceRunning(ctx context.Context, instanceID, eventT
 
 	runningTime, err := time.Parse(time.RFC3339, eventTimestamp)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "got malformed timestamp",
 			"timestamp": eventTimestamp,
 			"operation": "handleInstanceRunning",
@@ -251,7 +251,7 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 	}
 
 	if utility.StringSliceContains([]string{evergreen.HostStopped, evergreen.HostStopping, evergreen.HostTerminated}, h.Status) {
-		grip.WarningWhen(utility.StringSliceContains([]string{evergreen.HostStopped, evergreen.HostStopping}, h.Status), message.Fields{
+		grip.WarningWhen(ctx, utility.StringSliceContains([]string{evergreen.HostStopped, evergreen.HostStopping}, h.Status), message.Fields{
 			"message":     "cannot handle unexpected host state: a host running tasks should never be stopped by Evergreen",
 			"host_id":     h.Id,
 			"host_status": h.Status,

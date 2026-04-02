@@ -102,7 +102,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 		}
 	}
 	if j.host.Status != evergreen.HostProvisioning || j.host.Provisioned {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"job":     j.ID(),
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -122,7 +122,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	defer func() {
 		if j.host.Status != evergreen.HostRunning && j.IsLastAttempt() {
 			event.LogHostProvisionFailed(ctx, j.host.Id, "host has used up all attempts to provision")
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":         "provisioning failed",
 				"reason":          "host has used up all attempts to provision",
 				"current_attempt": j.RetryInfo().CurrentAttempt,
@@ -132,7 +132,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 				"host_tag":        j.host.Tag,
 			})
 
-			grip.Error(message.WrapError(j.host.SetUnprovisioned(ctx), message.Fields{
+			grip.Error(ctx, message.WrapError(j.host.SetUnprovisioned(ctx), message.Fields{
 				"operation":       "setting host unprovisioned",
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 				"distro":          j.host.Distro.Id,
@@ -142,7 +142,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		}
 	}()
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "attempting to setup host",
 		"distro":  j.host.Distro.Id,
 		"host_id": j.host.Id,
@@ -155,7 +155,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	}
 
 	setupStartTime := time.Now()
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "provisioning host",
 		"job":     j.ID(),
 		"distro":  j.host.Distro.Id,
@@ -170,7 +170,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		}
 
 		if j.canRetryProvisioning() {
-			grip.Info(message.WrapError(err, message.Fields{
+			grip.Info(ctx, message.WrapError(err, message.Fields{
 				"current_attempt": j.RetryInfo().CurrentAttempt,
 				"host_id":         j.host.Id,
 				"host_tag":        j.host.Tag,
@@ -181,7 +181,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 			}))
 			j.AddRetryableError(err)
 		} else {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":         "provisioning host encountered error",
 				"job":             j.ID(),
 				"distro":          j.host.Distro.Id,
@@ -195,7 +195,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 		return nil
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":         "successfully finished provisioning host",
 		"host_id":         j.host.Id,
 		"DNS":             j.host.Host,
@@ -270,7 +270,7 @@ func putJasperCredentials(ctx context.Context, env evergreen.Environment, h *hos
 		return errors.Wrap(err, "getting command to write Jasper credentials file")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "putting Jasper credentials on host",
 		"host_id": h.Id,
 		"distro":  h.Distro.Id,
@@ -352,9 +352,9 @@ func copyScript(ctx context.Context, env evergreen.Environment, settings *evergr
 			"host_id":            h.Id,
 			"remote_destination": dstPath,
 		}
-		grip.Error(message.WrapError(file.Close(), errCtx))
-		grip.Error(message.WrapError(os.Remove(file.Name()), errCtx))
-		grip.Debug(message.Fields{
+		grip.Error(ctx, message.WrapError(file.Close(), errCtx))
+		grip.Error(ctx, message.WrapError(os.Remove(file.Name()), errCtx))
+		grip.Debug(ctx, message.Fields{
 			"operation":          "copy script",
 			"local_source":       file.Name(),
 			"distro":             h.Distro.Id,
@@ -412,7 +412,7 @@ func expandScript(s string, settings *evergreen.Settings) (string, error) {
 
 // Provision the host, and update the database accordingly.
 func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Settings) error {
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"job":     j.ID(),
 		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,
@@ -421,7 +421,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 
 	if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
 		if err := setupJasper(ctx, j.env, settings, j.host); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "could not set up Jasper",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
@@ -429,7 +429,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			}))
 			return errors.Wrapf(err, "putting Jasper on host '%s'", j.host.Id)
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "successfully fetched Jasper binary and started service",
 			"host_id": j.host.Id,
 			"job":     j.ID(),
@@ -451,7 +451,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return catcher.Resolve()
 		}
 		if err := writeIcecreamConfig(ctx, j.env, j.host); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "could not write icecream config file",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
@@ -469,7 +469,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			return catcher.Resolve()
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "running setup script for spawn host",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -480,7 +480,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			catcher.Wrapf(err, "running distro setup script on remote host: %s", logs)
 			catcher.Wrap(j.host.SetUnprovisioned(ctx), "setting host unprovisioned after distro setup script failed")
 			event.LogHostProvisionFailed(ctx, j.host.Id, logs)
-			grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 				"message":         "provisioning failed",
 				"operation":       "running setup script on spawn host",
 				"current_attempt": j.RetryInfo().CurrentAttempt,
@@ -494,7 +494,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 
 		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message": "fetching data for task on host",
 				"task":    j.host.ProvisionOptions.TaskId,
 				"distro":  j.host.Distro.Id,
@@ -502,7 +502,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"job":     j.ID(),
 			})
 
-			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx), message.Fields{
+			grip.Error(ctx, message.WrapError(j.fetchRemoteTaskData(ctx), message.Fields{
 				"message": "failed to fetch data onto host",
 				"task":    j.host.ProvisionOptions.TaskId,
 				"host_id": j.host.Id,
@@ -516,7 +516,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "setup complete for host",
 		"host_id":  j.host.Id,
 		"host_tag": j.host.Tag,
@@ -529,7 +529,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		return errors.Wrapf(err, "marking host '%s' as provisioned", j.host.Id)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"host_id":                 j.host.Id,
 		"host_tag":                j.host.Tag,
 		"distro":                  j.host.Distro.Id,
@@ -581,7 +581,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	// Do not error when trying to populate github tokens because if the repo is not private, cloning the repo will still work.
 	// Additionally, we should still spin up the host even if we can't fetch the data
 	githubAppToken, moduleTokens, err := GetGithubTokensForTask(ctx, j.host.ProvisionOptions.TaskId)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error getting GitHub tokens for fetching data for task",
 		"task":    j.host.ProvisionOptions.TaskId,
 	}))
@@ -604,7 +604,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 		output = strings.Join(logs, " ")
 	}
 
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message": "problem fetching task data",
 		"task_id": j.host.ProvisionOptions.TaskId,
 		"host_id": j.host.Id,
@@ -687,7 +687,7 @@ func mountLinuxVolume(ctx context.Context, env evergreen.Environment, h *host.Ho
 		return errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
