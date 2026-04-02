@@ -79,7 +79,7 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 	if t == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("task '%s' not found", h.taskID))
 	}
-	grip.Warning(message.WrapError(units.CreateAndEnqueueGenerateTasks(ctx, h.env, []task.Task{*t}, utility.RoundPartOfMinute(1).Format(units.TSFormat)), message.Fields{
+	grip.Warning(ctx, message.WrapError(units.CreateAndEnqueueGenerateTasks(ctx, h.env, []task.Task{*t}, utility.RoundPartOfMinute(1).Format(units.TSFormat)), message.Fields{
 		"message": "could not enqueue generate tasks job",
 		"version": t.Version,
 		"task_id": t.Id,
@@ -111,7 +111,7 @@ func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error 
 func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 	finished, jobErr, err := data.GeneratePoll(ctx, h.taskID)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error polling for generated tasks",
 			"task_id": h.taskID,
 		}))

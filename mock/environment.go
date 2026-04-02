@@ -344,7 +344,7 @@ func (e *Environment) Close(ctx context.Context) error {
 			continue
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":      "calling closer",
 			"closer":       name,
 			"timeout_secs": time.Since(deadline),

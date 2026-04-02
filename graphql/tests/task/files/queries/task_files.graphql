@@ -10,6 +10,10 @@
         execution
         files {
           name
+          associatedLinks {
+            name
+            link
+          }
         }
       }
     }

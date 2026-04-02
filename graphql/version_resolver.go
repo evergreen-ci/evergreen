@@ -9,6 +9,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -258,9 +259,9 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 		apiVersion := restModel.APIVersion{}
 		apiVersion.BuildFromService(ctx, *previousVersion)
 		return &apiVersion, nil
-	} else {
-		return nil, nil
 	}
+
+	return nil, nil
 }
 
 // ProjectMetadata is the resolver for the projectMetadata field.
@@ -536,12 +537,12 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 		return apiUser, nil
 	}
 
-	apiUser, err := GetUser(ctx, authorId)
+	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
 	// This is most likely a reaped user, so just return their info from version
-	if apiUser == nil {
+	if dbUser == nil {
 		return &restModel.APIDBUser{
 			UserID:       obj.AuthorID,
 			DisplayName:  obj.Author,
@@ -549,6 +550,8 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 		}, nil
 	}
 
+	apiUser := &restModel.APIDBUser{}
+	apiUser.BuildFromService(*dbUser)
 	return apiUser, nil
 }
 
@@ -616,14 +619,13 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 		}
 	}
 
-	buildIds := make([]string, 0, len(obj.BuildVariantStatus))
-	for _, bvs := range obj.BuildVariantStatus {
-		if bvs.BuildId != nil {
-			buildIds = append(buildIds, *bvs.BuildId)
-		}
+	// TODO DEVPROD-29422: this is only necessary because APIVersion doesn't include BuildIds, and GetAllWaterfallVersions projects out Version.BuildVariants for performance
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
 
-	builds, err := model.GetVersionBuilds(ctx, versionID, buildIds)
+	builds, err := model.GetVersionBuilds(ctx, versionID, v.BuildIds)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}

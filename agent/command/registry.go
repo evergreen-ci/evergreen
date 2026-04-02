@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -53,7 +54,7 @@ func init() {
 	}
 
 	for name, factory := range cmds {
-		grip.EmergencyPanic(RegisterCommand(name, factory))
+		grip.EmergencyPanic(context.Background(), RegisterCommand(name, factory))
 	}
 }
 

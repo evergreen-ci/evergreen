@@ -46,7 +46,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				timeoutOpts := tc.getHeartbeatTimeout()
 				timeout := timeoutOpts.getTimeout()
 				msg := fmt.Sprintf("Heartbeat has hit maximum allowed '%s' timeout of %s; task is at risk of timing out if it runs for much longer.", timeoutOpts.kind, timeout.String())
-				tc.logger.Task().Errorf(msg)
+				tc.logger.Task().Errorf(ctx, msg)
 				if !hasSentAbort {
 					preAndMainCancel()
 				}
@@ -66,18 +66,18 @@ func (a *Agent) startHeartbeat(ctx context.Context, preAndMainCancel context.Can
 				// This is a best-effort attempt, since there's no graceful way
 				// to handle heartbeat failures when abort was already sent.
 				if numRepeatedFailures == globals.MaxHeartbeats {
-					tc.logger.Task().Error("Hit max heartbeat attempts when task is already aborted; task is at risk of timing out if it runs for much longer.")
+					tc.logger.Task().Error(ctx, "Hit max heartbeat attempts when task is already aborted; task is at risk of timing out if it runs for much longer.")
 				}
 				continue
 			}
 			if signalBeat == evergreen.TaskFailed {
-				tc.logger.Task().Error("Heartbeat received signal to abort task.")
+				tc.logger.Task().Error(ctx, "Heartbeat received signal to abort task.")
 				preAndMainCancel()
 				hasSentAbort = true
 				continue
 			}
 			if numRepeatedFailures == globals.MaxHeartbeats {
-				tc.logger.Task().Error("Hit max heartbeat attempts, aborting task.")
+				tc.logger.Task().Error(ctx, "Hit max heartbeat attempts, aborting task.")
 				preAndMainCancel()
 				hasSentAbort = true
 			}
@@ -108,19 +108,19 @@ func (a *Agent) startIdleTimeoutWatcher(ctx context.Context, cancel context.Canc
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	tc.logger.Execution().Info("Starting idle timeout watcher.")
+	tc.logger.Execution().Info(ctx, "Starting idle timeout watcher.")
 
 	for {
 		select {
 		case <-ctx.Done():
-			tc.logger.Execution().Info("Idle timeout watcher canceled.")
+			tc.logger.Execution().Info(ctx, "Idle timeout watcher canceled.")
 			return
 		case <-ticker.C:
 			timeout := tc.getCurrentIdleTimeout()
 			timeSinceLastMessage := time.Since(a.comm.LastMessageAt())
 
 			if timeSinceLastMessage > timeout {
-				tc.logger.Task().Errorf("Hit idle timeout (no message on stdout/stderr for more than %s).", timeout)
+				tc.logger.Task().Errorf(ctx, "Hit idle timeout (no message on stdout/stderr for more than %s).", timeout)
 				tc.reachTimeOut(globals.IdleTimeout, timeout)
 				return
 			}
@@ -152,19 +152,19 @@ func (a *Agent) startTimeoutWatcher(ctx context.Context, operationCancel context
 	timeTickerStarted := time.Now()
 	defer ticker.Stop()
 
-	opts.tc.logger.Execution().Infof("Starting %s timeout watcher.", opts.kind)
+	opts.tc.logger.Execution().Infof(ctx, "Starting %s timeout watcher.", opts.kind)
 
 	for {
 		select {
 		case <-ctx.Done():
-			opts.tc.logger.Execution().Infof("Stopped %s timeout watcher.", opts.kind)
+			opts.tc.logger.Execution().Infof(ctx, "Stopped %s timeout watcher.", opts.kind)
 			return
 		case <-ticker.C:
 			timeout := opts.getTimeout()
 			timeSinceTickerStarted := time.Since(timeTickerStarted)
 
 			if timeSinceTickerStarted > timeout {
-				opts.tc.logger.Task().Errorf("Hit %s timeout (%s).", opts.kind, timeout)
+				opts.tc.logger.Task().Errorf(ctx, "Hit %s timeout (%s).", opts.kind, timeout)
 				if opts.canMarkTimeoutFailure {
 					opts.tc.reachTimeOut(opts.kind, timeout)
 				}

@@ -39,7 +39,7 @@ func LogBuildStateChangeEvent(ctx context.Context, id, status string) {
 	}
 
 	if err := event.Log(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildStateChange,
 			"message":       "error logging event",
@@ -59,7 +59,7 @@ func LogBuildGithubCheckFinishedEvent(ctx context.Context, id, status string) {
 		ResourceType: ResourceTypeBuild,
 	}
 	if err := event.Log(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildGithubCheckFinished,
 			"message":       "error logging event",

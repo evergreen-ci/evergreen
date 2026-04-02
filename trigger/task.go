@@ -383,7 +383,7 @@ func (t *taskTriggers) generateWithAlertRecord(ctx context.Context, sub *event.S
 	}
 
 	newRec := newAlertRecord(sub.ID, t.task, alertType)
-	grip.Error(message.WrapError(newRec.Insert(ctx), message.Fields{
+	grip.Error(ctx, message.WrapError(newRec.Insert(ctx), message.Fields{
 		"source":  "alert-record",
 		"type":    alertType,
 		"task_id": t.task.Id,
@@ -608,7 +608,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			errMessage["error"] = err.Error()
-			grip.Error(errMessage)
+			grip.Error(ctx, errMessage)
 			return false, err
 		}
 
@@ -619,7 +619,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage["outcome"] = "sending alert"
 			errMessage[message.FieldsMsgName] = "identified transition to failure!"
-			grip.Info(errMessage)
+			grip.Info(ctx, errMessage)
 
 			return true, nil
 		}
@@ -634,7 +634,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage["error"] = err.Error()
 			errMessage["lastAlert"] = lastAlerted
 			errMessage["outcome"] = "not sending alert"
-			grip.Error(errMessage)
+			grip.Error(ctx, errMessage)
 			return false, err
 		}
 		if lastAlerted == nil {
@@ -652,7 +652,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 				errMessage["outcome"] = "not sending alert (75%)"
 
 			}
-			grip.Warning(errMessage)
+			grip.Warning(ctx, errMessage)
 
 			return maybeSend, nil
 		}
@@ -852,7 +852,7 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 		var match bool
 		match, err = testMatchesRegex(test.GetDisplayTestName(), sub)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
 				"message": "bad regex in db",
 				"task":    t.task.Id,

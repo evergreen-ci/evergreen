@@ -2,13 +2,19 @@ mutation {
   saveAdminSettings(
     adminSettings: {
       oktaServiceConfig: {
+        audience: "audience"
         clientId: "service-id"
         clientSecret: "service-secret"
+        issuer: "issuer"
+        scopes: ["scope1", "scope2"]
       }
     }
   ) {
     oktaServiceConfig {
+      audience
       clientId
+      issuer
+      scopes
     }
   }
 }

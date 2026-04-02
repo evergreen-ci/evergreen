@@ -178,7 +178,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFindPatchesByIdentifier() {
 // Tests for fetch patch by id route
 
 type PatchConnectorFetchByIdSuite struct {
-	obj_ids  []string
+	objIds   []string
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -203,10 +203,10 @@ func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 		}
 		s.NoError(version.Insert(s.T().Context()))
 
-		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
+		s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
-			{Id: patch.NewId(s.obj_ids[0]), Project: projectRef.Id},
-			{Id: patch.NewId(s.obj_ids[1]), Project: projectRef.Id},
+			{Id: patch.NewId(s.objIds[0]), Project: projectRef.Id},
+			{Id: patch.NewId(s.objIds[1]), Project: projectRef.Id},
 		}
 
 		for _, p := range patches {
@@ -230,18 +230,18 @@ func (s *PatchConnectorFetchByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
-	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.objIds[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
-	s.Equal(s.obj_ids[0], *p.Id)
+	s.Equal(s.objIds[0], *p.Id)
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
-	new_id := mgobson.NewObjectId()
-	for _, i := range s.obj_ids {
-		s.NotEqual(new_id, i)
+	newId := mgobson.NewObjectId()
+	for _, i := range s.objIds {
+		s.NotEqual(newId, i)
 	}
-	p, err := FindPatchById(s.T().Context(), new_id.Hex())
+	p, err := FindPatchById(s.T().Context(), newId.Hex())
 	s.Error(err)
 	s.Nil(p)
 }
@@ -251,7 +251,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 // Tests for abort patch by id route
 
 type PatchConnectorAbortByIdSuite struct {
-	obj_ids  []string
+	objIds   []string
 	setup    func() error
 	teardown func() error
 	prBody   []byte
@@ -277,10 +277,10 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 			Id: "version1",
 		}
 		s.NoError(version.Insert(s.T().Context()))
-		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
+		s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
-			{Id: patch.NewId(s.obj_ids[0]), Version: version.Id, Project: projectRef.Id},
-			{Id: patch.NewId(s.obj_ids[1]), Project: projectRef.Id},
+			{Id: patch.NewId(s.objIds[0]), Version: version.Id, Project: projectRef.Id},
+			{Id: patch.NewId(s.objIds[1]), Project: projectRef.Id},
 		}
 		for _, p := range patches {
 			s.NoError(p.Insert(s.T().Context()))
@@ -303,31 +303,31 @@ func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbort() {
-	err := AbortPatch(context.Background(), s.obj_ids[0], "user1")
+	err := AbortPatch(context.Background(), s.objIds[0], "user1")
 	s.NoError(err)
-	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.objIds[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
-	s.Equal(s.obj_ids[0], *p.Id)
-	abortedPatch, err := FindPatchById(s.T().Context(), s.obj_ids[0])
+	s.Equal(s.objIds[0], *p.Id)
+	abortedPatch, err := FindPatchById(s.T().Context(), s.objIds[0])
 	s.NoError(err)
 	s.Equal(evergreen.PatchVersionRequester, *abortedPatch.Requester)
 
-	err = AbortPatch(context.Background(), s.obj_ids[1], "user1")
+	err = AbortPatch(context.Background(), s.objIds[1], "user1")
 	s.NoError(err)
 
-	p, err = FindPatchById(s.T().Context(), s.obj_ids[1])
+	p, err = FindPatchById(s.T().Context(), s.objIds[1])
 
 	s.Error(err)
 	s.Nil(p)
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
-	new_id := mgobson.NewObjectId()
-	for _, i := range s.obj_ids {
-		s.NotEqual(new_id, i)
+	newId := mgobson.NewObjectId()
+	for _, i := range s.objIds {
+		s.NotEqual(newId, i)
 	}
-	err := AbortPatch(context.Background(), new_id.Hex(), "user")
+	err := AbortPatch(context.Background(), newId.Hex(), "user")
 	s.Error(err)
 }
 
@@ -381,7 +381,7 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 // Tests for change patch status route
 
 type PatchConnectorChangeStatusSuite struct {
-	obj_ids  []string
+	objIds   []string
 	DB       bool
 	setup    func() error
 	teardown func() error
@@ -396,7 +396,7 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, dbModel.ProjectRefCollection, task.Collection, dbModel.VersionCollection, model.ProjectRefCollection))
 	s.setup = func() error {
-		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
+		s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 
 		projectRef := model.ProjectRef{
 			Id:         "project_id",
@@ -405,18 +405,18 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 		s.NoError(projectRef.Insert(s.T().Context()))
 
 		patches := []*patch.Patch{
-			{Id: patch.NewId(s.obj_ids[0]), Version: s.obj_ids[0], Project: projectRef.Id},
-			{Id: patch.NewId(s.obj_ids[1]), Version: s.obj_ids[1], Project: projectRef.Id},
+			{Id: patch.NewId(s.objIds[0]), Version: s.objIds[0], Project: projectRef.Id},
+			{Id: patch.NewId(s.objIds[1]), Version: s.objIds[1], Project: projectRef.Id},
 		}
 		task := task.Task{
 			Id:      "t1",
-			Version: s.obj_ids[0],
+			Version: s.objIds[0],
 		}
 		s.NoError(task.Insert(s.T().Context()))
 		for _, p := range patches {
 			s.NoError(p.Insert(s.T().Context()))
 		}
-		for _, id := range s.obj_ids {
+		for _, id := range s.objIds {
 			version := dbModel.Version{
 				Id: id,
 			}
@@ -438,16 +438,16 @@ func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
-	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true)
+	err := SetPatchActivated(context.Background(), s.objIds[0], "user1", true)
 	s.NoError(err)
-	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.objIds[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
-	err = SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false)
+	err = SetPatchActivated(context.Background(), s.objIds[0], "user1", false)
 	s.NoError(err)
-	p, err = FindPatchById(s.T().Context(), s.obj_ids[0])
+	p, err = FindPatchById(s.T().Context(), s.objIds[0])
 	s.NoError(err)
 	s.False(p.Activated)
 

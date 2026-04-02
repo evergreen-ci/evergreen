@@ -173,7 +173,7 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		// Set up a test patch that contains module changes
-		newPatch, err := ac.PutPatch(patchSub)
+		newPatch, err := ac.PutPatch(t.Context(), patchSub)
 		So(err, ShouldBeNil)
 		_, err = ac.GetPatches(0)
 		So(err, ShouldBeNil)
@@ -183,9 +183,9 @@ func TestCLIFetchSource(t *testing.T) {
 			patch:   testModulePatch,
 			base:    "1e5232709595db427893826ce19289461cba3f75",
 		}
-		So(ac.UpdatePatchModule(params),
+		So(ac.UpdatePatchModule(t.Context(), params),
 			ShouldBeNil)
-		So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
+		So(ac.FinalizePatch(t.Context(), newPatch.Id.Hex()), ShouldBeNil)
 
 		patches, err := ac.GetPatches(0)
 		So(err, ShouldBeNil)
@@ -467,7 +467,7 @@ func TestCLIFunctions(t *testing.T) {
 					finalize:    false,
 				}
 
-				newPatch, err := ac.PutPatch(patchSub)
+				newPatch, err := ac.PutPatch(t.Context(), patchSub)
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {
@@ -483,7 +483,7 @@ func TestCLIFunctions(t *testing.T) {
 						patch:   testPatch,
 						base:    "1e5232709595db427893826ce19289461cba3f75",
 					}
-					err = ac.UpdatePatchModule(params)
+					err = ac.UpdatePatchModule(t.Context(), params)
 					So(err, ShouldBeNil)
 					patches, err = ac.GetPatches(0)
 					So(err, ShouldBeNil)
@@ -497,13 +497,13 @@ func TestCLIFunctions(t *testing.T) {
 						Convey("Finalizing the patch should work", func() {
 							// First double check that the patch starts with no "version" field
 							So(patches[0].Version, ShouldEqual, "")
-							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
+							So(ac.FinalizePatch(t.Context(), newPatch.Id.Hex()), ShouldBeNil)
 							patches, err = ac.GetPatches(0)
 							So(err, ShouldBeNil)
 							// After finalizing, the patch should now have a version populated
 							So(patches[0].Version, ShouldNotEqual, "")
 							Convey("Canceling the patch should work", func() {
-								So(ac.CancelPatch(newPatch.Id.Hex()), ShouldBeNil)
+								So(ac.CancelPatch(t.Context(), newPatch.Id.Hex()), ShouldBeNil)
 								patches, err = ac.GetPatches(0)
 								So(err, ShouldBeNil)
 								// After canceling, tasks in the version should be deactivated
@@ -528,7 +528,7 @@ func TestCLIFunctions(t *testing.T) {
 					tasks:       []string{},
 					finalize:    false,
 				}
-				_, err := ac.PutPatch(patchSub)
+				_, err := ac.PutPatch(t.Context(), patchSub)
 				So(err, ShouldBeNil)
 			})
 
@@ -543,7 +543,7 @@ func TestCLIFunctions(t *testing.T) {
 					finalize:    false,
 				}
 
-				_, err := ac.PutPatch(patchSub)
+				_, err := ac.PutPatch(t.Context(), patchSub)
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {
@@ -559,7 +559,7 @@ func TestCLIFunctions(t *testing.T) {
 					})
 
 					Convey("putting the patch again", func() {
-						_, err := ac.PutPatch(patchSub)
+						_, err := ac.PutPatch(t.Context(), patchSub)
 						So(err, ShouldBeNil)
 						Convey("GetPatches where n=1 should return 1 patch", func() {
 							patches, err = ac.GetPatches(1)
@@ -585,7 +585,7 @@ func TestCLIFunctions(t *testing.T) {
 					tasks:       []string{"all"},
 					finalize:    false}
 
-				newPatch, err := ac.PutPatch(patchSub)
+				newPatch, err := ac.PutPatch(t.Context(), patchSub)
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {
@@ -601,7 +601,7 @@ func TestCLIFunctions(t *testing.T) {
 						patch:   emptyPatch,
 						base:    "1e5232709595db427893826ce19289461cba3f75",
 					}
-					err = ac.UpdatePatchModule(params)
+					err = ac.UpdatePatchModule(t.Context(), params)
 					So(err, ShouldBeNil)
 					patches, err := ac.GetPatches(0)
 					So(err, ShouldBeNil)
@@ -613,12 +613,12 @@ func TestCLIFunctions(t *testing.T) {
 						So(len(patches[0].Patches), ShouldEqual, 0)
 						Convey("Finalizing the patch should start with no version field and then be populated", func() {
 							So(patches[0].Version, ShouldEqual, "")
-							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
+							So(ac.FinalizePatch(t.Context(), newPatch.Id.Hex()), ShouldBeNil)
 							patches, err := ac.GetPatches(0)
 							So(err, ShouldBeNil)
 							So(patches[0].Version, ShouldNotEqual, "")
 							Convey("Canceling the patch should work and the version should be deactivated", func() {
-								So(ac.CancelPatch(newPatch.Id.Hex()), ShouldBeNil)
+								So(ac.CancelPatch(t.Context(), newPatch.Id.Hex()), ShouldBeNil)
 								patches, err := ac.GetPatches(0)
 								So(err, ShouldBeNil)
 								tasks, err := task.Find(ctx, task.ByVersion(patches[0].Version))
@@ -655,7 +655,7 @@ func TestCLIFunctions(t *testing.T) {
 					finalize:    false,
 				}
 
-				_, err := ac.PutPatch(patchSub)
+				_, err := ac.PutPatch(t.Context(), patchSub)
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {
@@ -684,7 +684,7 @@ func TestCLIFunctions(t *testing.T) {
 					finalize:    false,
 				}
 
-				_, err := ac.PutPatch(patchSub)
+				_, err := ac.PutPatch(t.Context(), patchSub)
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {

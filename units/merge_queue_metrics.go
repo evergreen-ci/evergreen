@@ -54,7 +54,7 @@ func (j *mergeQueueMetricsJob) Run(ctx context.Context) {
 
 	projectRefs, err := model.FindProjectRefsWithMergeQueueEnabled(ctx)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error finding projects with merge queue enabled",
 			"job_id":  j.ID(),
 		}))
@@ -64,7 +64,7 @@ func (j *mergeQueueMetricsJob) Run(ctx context.Context) {
 
 	for _, projectRef := range projectRefs {
 		if err := j.emitMetricsForProject(ctx, &projectRef); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":    "error emitting merge queue metrics for project",
 				"project_id": projectRef.Id,
 				"job":        j.ID(),
@@ -107,7 +107,7 @@ func (j *mergeQueueMetricsJob) emitMetricsForProject(ctx context.Context, projec
 
 	for key, queuePatchList := range queuePatches {
 		if err := j.emitMetricsForQueue(ctx, projectRef.Id, key.org, key.repo, key.baseBranch, queuePatchList); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":     "error emitting metrics for queue",
 				"project_id":  projectRef.Id,
 				"org":         key.org,
@@ -171,7 +171,7 @@ func (j *mergeQueueMetricsJob) emitMetricsForQueue(ctx context.Context, projectI
 
 	runningTasksCount, err := task.CountRunningTasksForVersions(ctx, versionIDs)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":     "error counting running tasks in merge queue",
 			"project_id":  projectID,
 			"org":         org,

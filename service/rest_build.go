@@ -48,14 +48,14 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	b := projCtx.Build
 	if b == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding build"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return
 	}
 
 	query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey)
 	tasks, err := task.FindAll(r.Context(), query)
 	if err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return
 	}
 	taskMap := task.TaskSliceToMap(tasks)
@@ -91,7 +91,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 		destBuild.Tasks[t.DisplayName] = status
 	}
 
-	gimlet.WriteJSON(w, destBuild)
+	gimlet.WriteJSON(r.Context(), w, destBuild)
 }
 
 // Returns a JSON response with the status of the specified build.
@@ -100,14 +100,14 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	b := projCtx.Build
 	if b == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding build"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return
 	}
 
 	query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey)
 	tasks, err := task.FindAll(r.Context(), query)
 	if err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusInternalServerError, responseError{Message: "error finding tasks in build"})
 		return
 	}
 	taskMap := task.TaskSliceToMap(tasks)
@@ -131,5 +131,5 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 		result.Tasks[t.DisplayName] = status
 	}
 
-	gimlet.WriteJSON(w, result)
+	gimlet.WriteJSON(r.Context(), w, result)
 }

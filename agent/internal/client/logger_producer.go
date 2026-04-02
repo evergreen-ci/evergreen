@@ -126,6 +126,7 @@ func (l *singleChannelLogHarness) Close() error {
 
 	catcher := grip.NewBasicCatcher()
 
+	catcher.Add(l.logger.GetSender().Flush(context.Background()))
 	catcher.Add(l.logger.GetSender().Close())
 
 	return errors.Wrap(catcher.Resolve(), "closing log harness")

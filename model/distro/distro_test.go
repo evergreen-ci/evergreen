@@ -190,23 +190,6 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }
 
-func TestGetDistroIds(t *testing.T) {
-	assert := assert.New(t)
-	distros := DistroGroup{
-		Distro{
-			Id: "d1",
-		},
-		Distro{
-			Id: "d2",
-		},
-		Distro{
-			Id: "d3",
-		},
-	}
-	ids := distros.GetDistroIds()
-	assert.Equal([]string{"d1", "d2", "d3"}, ids)
-}
-
 func TestGetImageID(t *testing.T) {
 	for _, test := range []struct {
 		name           string

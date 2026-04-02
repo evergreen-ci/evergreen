@@ -322,7 +322,7 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 	}
 
 	if err := setSlackInformation(ctx, env, u); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "could not set Slack information for user",
 			"user_id":       u.Id,
 			"email_address": u.EmailAddress,
@@ -353,7 +353,7 @@ func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUs
 		return errors.Wrapf(err, "getting Slack user with email address '%s'", u.EmailAddress)
 	}
 	if slackUser == nil {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":       "Couldn't find slack user by email address",
 			"user_id":       u.Id,
 			"email_address": u.EmailAddress,

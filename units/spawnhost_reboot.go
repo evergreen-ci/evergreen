@@ -73,7 +73,7 @@ func (j *spawnhostRebootJob) Run(ctx context.Context) {
 			// Only log an error if the final job attempt errors. Otherwise, it
 			// may retry and succeed on the next attempt.
 			event.LogHostRebootError(ctx, j.HostID, string(j.Source), j.Error().Error())
-			grip.Error(message.WrapError(j.Error(), message.Fields{
+			grip.Error(ctx, message.WrapError(j.Error(), message.Fields{
 				"message": "no attempts remaining to reboot spawn host",
 				"host_id": j.HostID,
 				"source":  j.Source,
@@ -87,7 +87,7 @@ func (j *spawnhostRebootJob) Run(ctx context.Context) {
 			return errors.Wrapf(err, "rebooting spawn host '%s'", j.HostID)
 		}
 		event.LogHostRebootSucceeded(ctx, h.Id, string(j.Source))
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":    "rebooted spawn host",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,

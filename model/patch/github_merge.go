@@ -133,7 +133,7 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 		trace.WithAttributes(baseAttrs...))
 	defer span.End()
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "creating new merge intent for GitHub merge queue",
 		"DocumentID": msgDeliveryID,
 		"MsgID":      msgDeliveryID,
@@ -165,7 +165,7 @@ func NewGithubMergeIntent(ctx context.Context, msgDeliveryID string, caller stri
 				intent.HeadCommitDate = date.Time
 			} else {
 				commit, err := thirdparty.GetCommitEvent(ctx, mg.GetOrg().GetLogin(), mg.GetRepo().GetName(), mg.GetMergeGroup().GetHeadSHA())
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"message": "failed to fetch commit from GitHub API",
 					"msg_id":  msgDeliveryID,
 					"sha":     mg.GetMergeGroup().GetHeadSHA(),

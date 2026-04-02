@@ -1,6 +1,7 @@
 package redactor
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -45,7 +46,7 @@ type RedactionOptions struct {
 	PreloadRedactions bool
 }
 
-func (r *redactingSender) Send(m message.Composer) {
+func (r *redactingSender) Send(ctx context.Context, m message.Composer) {
 	if !m.Loggable() {
 		return
 	}
@@ -63,7 +64,7 @@ func (r *redactingSender) Send(m message.Composer) {
 		msg = strings.ReplaceAll(msg, info.Value, fmt.Sprintf(redactedVariableTemplate, info.Key))
 	}
 
-	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
+	r.Sender.Send(ctx, message.NewDefaultMessage(m.Priority(), msg))
 }
 
 // NewRedactingSender wraps the provided sender with a sender that redacts

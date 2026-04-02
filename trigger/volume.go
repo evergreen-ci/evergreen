@@ -99,7 +99,7 @@ func (t *volumeTriggers) volumeExpiration(ctx context.Context, sub *event.Subscr
 	if sub.OwnerType == event.OwnerTypePerson {
 		userTimeZone, err := getUserTimeZone(ctx, sub.Owner)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "problem getting time zone",
 				"user":    sub.Owner,
 				"trigger": "volumeExpiration",

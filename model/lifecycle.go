@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -419,7 +418,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			event.LogTaskRestarted(ctx, t.Id, t.Execution, caller)
 		}
 		if t.DisplayOnly {
-			grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
+			grip.Error(ctx, message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
 				"message":                      "could not log task restart events for some execution tasks",
 				"display_task_id":              t.Id,
 				"restarted_execution_task_ids": t.ExecutionTasks,
@@ -504,7 +503,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	var githubCheckAliases ProjectAliases
 	if creationInfo.Version.Requester == evergreen.RepotrackerVersionRequester && creationInfo.ProjectRef.IsGithubChecksEnabled() {
 		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(ctx, creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "error getting github check aliases when adding tasks to build",
 			"project":            creationInfo.Version.Identifier,
 			"project_identifier": creationInfo.ProjectRef.Identifier,
@@ -573,7 +572,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		}
 		creationInfo.Version.BuildVariants[i].BatchTimeTasks = append(creationInfo.Version.BuildVariants[i].BatchTimeTasks, batchTimeTaskStatuses...)
 	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get activation time for tasks",
 		"variant": creationInfo.Build.BuildVariant,
 		"runner":  "addTasksToBuild",
@@ -794,7 +793,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			execTaskId := execTable.GetId(creationInfo.Build.BuildVariant, et)
 			if execTaskId == "" {
 				if !loggedExecutionTaskNotFound {
-					grip.Debug(message.Fields{
+					grip.Debug(ctx, message.Fields{
 						"message":                     "execution task not found",
 						"variant":                     creationInfo.Build.BuildVariant,
 						"exec_task":                   et,
@@ -819,7 +818,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		}
 
 		// update existing exec tasks
-		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
+		grip.Error(ctx, message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
 			"message":              "problem adding display task ID to exec tasks",
 			"exec_tasks_to_update": execTasksThatNeedParentId,
 			"display_task_id":      id,
@@ -829,7 +828,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 		// existing display task may need to be updated
 		if displayTaskAlreadyExists {
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
+			grip.Error(ctx, message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
 				"exec_tasks":   execTaskIds,
 				"display_task": dt.Name,
@@ -994,104 +993,6 @@ func setNumDependentsRec(t *task.Task, idToTasks map[string]*task.Task, seen map
 	}
 }
 
-func RecomputeNumDependents(ctx context.Context, t task.Task) error {
-	pipelineDown := getAllNodesInDepGraph(t.Id, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), task.IdKey)
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipelineDown)
-	if err != nil {
-		return err
-	}
-	depTasks := []task.Task{}
-	err = cursor.All(ctx, &depTasks)
-	if err != nil {
-		return err
-	}
-	taskPtrs := []*task.Task{}
-	for i := range depTasks {
-		taskPtrs = append(taskPtrs, &depTasks[i])
-	}
-
-	pipelineUp := getAllNodesInDepGraph(t.Id, task.IdKey, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey))
-	cursor, err = env.DB().Collection(task.Collection).Aggregate(ctx, pipelineUp)
-	if err != nil {
-		return errors.Wrap(err, "getting upstream dependencies of node")
-	}
-	depTasks = []task.Task{}
-	err = cursor.All(ctx, &depTasks)
-	if err != nil {
-		return err
-	}
-	for i := range depTasks {
-		taskPtrs = append(taskPtrs, &depTasks[i])
-	}
-	query := task.ByVersion(t.Version)
-	_, err = task.UpdateAll(ctx, query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
-	if err != nil {
-		return errors.Wrap(err, "resetting num dependents")
-	}
-	versionTasks, err := task.FindAll(ctx, db.Query(query))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks in version")
-	}
-	for i := range versionTasks {
-		taskPtrs = append(taskPtrs, &versionTasks[i])
-	}
-
-	SetNumDependents(taskPtrs)
-	catcher := grip.NewBasicCatcher()
-	for _, t := range taskPtrs {
-		catcher.Add(t.SetNumDependents(ctx))
-	}
-
-	return errors.Wrap(catcher.Resolve(), "setting num dependents")
-}
-
-func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
-	return []bson.M{
-		{
-			"$match": bson.M{
-				task.IdKey: startTaskId,
-			},
-		},
-		{
-			"$graphLookup": bson.M{
-				"from":             task.Collection,
-				"startWith":        "$" + startKey,
-				"connectFromField": startKey,
-				"connectToField":   linkKey,
-				"as":               "dep_graph",
-			},
-		},
-		{
-			"$addFields": bson.M{
-				"dep_graph": bson.M{
-					"$concatArrays": []any{"$dep_graph", []string{"$$ROOT"}},
-				},
-			},
-		},
-		{
-			"$project": bson.M{
-				"_id":     0,
-				"results": "$dep_graph",
-			},
-		},
-		{
-			"$unwind": "$results",
-		},
-		{
-			"$replaceRoot": bson.M{
-				"newRoot": "$results",
-			},
-		},
-		{
-			"$project": bson.M{
-				task.IdKey:        1,
-				task.DependsOnKey: 1,
-			},
-		},
-	}
-}
-
 func getTaskCreateTime(ctx context.Context, creationInfo TaskCreationInfo) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(creationInfo.Version.Requester) {
@@ -1138,7 +1039,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		name, tags, ok := creationInfo.Project.GetTaskNameAndTags(buildVarTask)
 		if ok {
 			isGithubCheck, err = creationInfo.GithubChecksAliases.HasMatchingTask(name, tags)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "error checking if task matches aliases",
 				"version": creationInfo.Version.Id,
 				"task":    buildVarTask.Name,
@@ -1579,7 +1480,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			TestSelectionParams:                 tsParams,
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"op":        "creating build for version",
 			"variant":   pair.Variant,
 			"activated": activateVariant,
@@ -1590,7 +1491,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			return nil, nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":        "skipping empty build for version",
 				"variant":   pair.Variant,
 				"activated": activateVariant,
@@ -1657,7 +1558,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
 	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
 		"runner":  "addNewBuilds",
 		"version": creationInfo.Version.Id,

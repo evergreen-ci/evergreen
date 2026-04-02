@@ -66,9 +66,10 @@ func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permis
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	return &DistroPermissions{
-		Admin: userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
-		Edit:  userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
-		View:  userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsView.Value),
+		DistroID: options.DistroID,
+		Admin:    userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
+		Edit:     userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsEdit.Value),
+		View:     userHasDistroPermission(ctx, usr, options.DistroID, evergreen.DistroSettingsView.Value),
 	}, nil
 }
 
@@ -89,8 +90,9 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", options.ProjectIdentifier))
 	}
 	return &ProjectPermissions{
-		Edit: userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsEdit.Value),
-		View: userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsView.Value),
+		ProjectIdentifier: options.ProjectIdentifier,
+		Edit:              userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsEdit.Value),
+		View:              userHasProjectSettingsPermission(ctx, usr, project.Id, evergreen.ProjectSettingsView.Value),
 	}, nil
 }
 
@@ -117,8 +119,9 @@ func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissi
 	}
 
 	return &RepoPermissions{
-		Edit: userHasProjectSettingsPermission(ctx, usr, repo.Id, evergreen.ProjectSettingsEdit.Value),
-		View: hasRepoViewPermission,
+		RepoID: options.RepoID,
+		Edit:   userHasProjectSettingsPermission(ctx, usr, repo.Id, evergreen.ProjectSettingsEdit.Value),
+		View:   hasRepoViewPermission,
 	}, nil
 }
 

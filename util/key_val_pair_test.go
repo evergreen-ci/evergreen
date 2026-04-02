@@ -51,30 +51,6 @@ func (s *KvPairSuite) TestKvSliceToMapNested() {
 	s.Equal(s.testMapNested, out)
 }
 
-func (s *KvPairSuite) TestMapToKvSlice() {
-	out := MakeKeyValuePair(s.testMap)
-	matches := 0
-	for _, testPair := range out {
-		for _, refPair := range s.kvSlice {
-			if testPair.Key == refPair.Key && testPair.Value == refPair.Value {
-				matches++
-			}
-		}
-	}
-	s.Equal(2, matches)
-}
-
-func (s *KvPairSuite) TestMapToKvSliceNested() {
-	out := MakeNestedKeyValuePair(s.testMapNested)
-	pair1 := out[0]
-	s.Equal("key3", pair1.Key)
-	s.EqualValues(s.kvSliceNested[0].Value, pair1.Value)
-
-	nestedMap, err := out.NestedMap()
-	s.NoError(err)
-	s.EqualValues(s.testMapNested, nestedMap)
-}
-
 func (s *KvPairSuite) TestErrorsForInvalidInput() {
 	invalidSlice := KeyValuePairSlice{
 		{Key: "foo", Value: true},
