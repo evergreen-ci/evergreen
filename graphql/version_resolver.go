@@ -652,12 +652,12 @@ func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (
 
 // User is the resolver for the user field.
 func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
-	// userId, displayName, and emailAddress are always returned from the version document.
+	// id, displayName, and emailAddress are always returned from the version document.
 	// Other fields require a database call.
 	requestedFields := graphql.CollectAllFields(ctx)
 	needsDBFetch := false
 	for _, field := range requestedFields {
-		if field != "userId" && field != "displayName" && field != "emailAddress" {
+		if field != "id" && field != "displayName" && field != "emailAddress" {
 			needsDBFetch = true
 			break
 		}
@@ -689,7 +689,7 @@ func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*us
 		}, nil
 	}
 
-	return currentUser, nil
+	return dbUser, nil
 }
 
 // Version returns VersionResolver implementation.
