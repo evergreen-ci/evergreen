@@ -983,7 +983,8 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	}
 	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, count, "Should return all three tasks matching 'example'")
+	require.Equal(t, 3, count, "Should return all three tasks matching 'example'")
+	require.Len(t, tasks, 3)
 	assert.Equal(t, "example-a", tasks[0].DisplayName)
 	assert.Equal(t, "example-b", tasks[1].DisplayName)
 	assert.Equal(t, "example-c", tasks[2].DisplayName)
@@ -995,6 +996,7 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count, "Should return only example-a")
+	require.Len(t, tasks, 1)
 	assert.Equal(t, "example-a", tasks[0].DisplayName)
 
 	// Test 3: Filter by "grouped" should return only the display task
@@ -1004,6 +1006,7 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count, "Should return only the grouped display task")
+	require.Len(t, tasks, 1)
 	assert.Equal(t, "grouped", tasks[0].DisplayName)
 	assert.True(t, tasks[0].DisplayOnly)
 
@@ -1016,6 +1019,7 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count, "Should return only display task and standalone task")
+	require.Len(t, tasks, 2)
 	assert.Equal(t, "example-c", tasks[0].DisplayName)
 	assert.Equal(t, "grouped", tasks[1].DisplayName)
 }
