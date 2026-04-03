@@ -293,7 +293,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	upstreamVersion := model.Version{
 		Id:         "upstreamVersion",
 		Author:     "me",
-		CreateTime: time.Now(),
+		CreateTime: time.Date(2023, 12, 13, 18, 13, 31, 0, time.UTC),
 		Revision:   "abc",
 		Identifier: "upstream",
 	}
@@ -426,7 +426,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	upstreamVersion := model.Version{
 		Id:         "upstreamVersion",
 		Author:     "me",
-		CreateTime: time.Now(),
+		CreateTime: time.Date(2023, 12, 13, 18, 13, 31, 0, time.UTC),
 		Revision:   "abc",
 		Identifier: "upstream",
 	}
@@ -575,7 +575,6 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
 
-	now := time.Now()
 	pushEvent := &github.PushEvent{
 		Commits: []*github.HeadCommit{
 			{
@@ -585,7 +584,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 					Email: utility.ToStringPtr("hello@example.com"),
 					Name:  utility.ToStringPtr("test"),
 				},
-				Timestamp: &github.Timestamp{Time: now.Add(-time.Minute)},
+				Timestamp: &github.Timestamp{Time: time.Date(2014, 7, 17, 0, 45, 5, 0, time.UTC)},
 			},
 			{
 				ID:      utility.ToStringPtr("b27779f856b211ffaf97cbc124b7082a20ea8bc0"),
@@ -594,7 +593,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 					Email: utility.ToStringPtr("hello@example.com"),
 					Name:  utility.ToStringPtr("test"),
 				},
-				Timestamp: &github.Timestamp{Time: now},
+				Timestamp: &github.Timestamp{Time: time.Date(2015, 5, 30, 21, 42, 35, 0, time.UTC)},
 			},
 		},
 	}
