@@ -23,22 +23,16 @@ import (
 
 const podDiagnosticsJobName = "pod-diagnostics"
 
-// Memory usage thresholds and durations that mirror the Prometheus alerting
-// rules: trigger if memory exceeds 70% of the container limit for over a
-// minute, or 90% for over 5 seconds.
 const (
-	memHighPct          = 0.70
-	memCriticalPct      = 0.90
-	memHighDuration     = 60 * time.Second
-	memCriticalDuration = 5 * time.Second
-
-	// collectionCooldown prevents repeated collections during a sustained spike.
-	collectionCooldown = 10 * time.Minute
+	highMemoryThreshold     = 0.70
+	highMemoryDuration      = 60 * time.Second
+	criticalMemoryThreshold = 0.90
+	criticalMemoryDuration  = 5 * time.Second
 )
 
 // podDiagnosticsState tracks threshold crossing durations across job runs.
-// Package-level state is safe here because this job runs on the local queue
-// (single process), so all invocations share the same process memory.
+// kim: TODO: see if this can be not a global variable, or otherwise named
+// better.
 var (
 	podDiagnosticsStateMu sync.Mutex
 	above70PctSince       time.Time
@@ -74,7 +68,9 @@ func makePodDiagnosticsJob() *podDiagnosticsJob {
 func NewPodDiagnosticsJob(ts string) amboy.Job {
 	j := makePodDiagnosticsJob()
 	j.SetID(fmt.Sprintf("%s.%s", podDiagnosticsJobName, ts))
-	// Scoped so only one instance runs at a time on this pod's local queue.
+	// kim: TODO: check if scopes works in a local queue. It may also be
+	// sufficient to just have this run once per minute, but need to confirm
+	// that the memory check is sufficiently fast.
 	j.SetScopes([]string{podDiagnosticsJobName})
 	j.SetEnqueueAllScopes(true)
 	return j
@@ -91,7 +87,7 @@ func (j *podDiagnosticsJob) Run(ctx context.Context) {
 	if err != nil {
 		// Cgroup files won't exist outside container environments; warn but
 		// don't surface this as a job error.
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "reading cgroup memory stats for pod diagnostics",
 			"job":     j.ID(),
 		}))
@@ -109,14 +105,14 @@ func (j *podDiagnosticsJob) Run(ctx context.Context) {
 	now := time.Now()
 
 	// Update duration-tracking state based on current usage.
-	if usagePct >= memCriticalPct {
+	if usagePct >= criticalMemoryThreshold {
 		if above90PctSince.IsZero() {
 			above90PctSince = now
 		}
 		if above70PctSince.IsZero() {
 			above70PctSince = now
 		}
-	} else if usagePct >= memHighPct {
+	} else if usagePct >= highMemoryThreshold {
 		above90PctSince = time.Time{} // dropped below critical, reset that timer
 		if above70PctSince.IsZero() {
 			above70PctSince = now
@@ -129,18 +125,18 @@ func (j *podDiagnosticsJob) Run(ctx context.Context) {
 
 	// Enforce cooldown to avoid uploading profiles on every job tick during a
 	// prolonged spike.
-	if !lastCollectionAt.IsZero() && now.Sub(lastCollectionAt) < collectionCooldown {
+	if !lastCollectionAt.IsZero() {
 		return
 	}
 
 	// Check whether either threshold condition has been met.
 	var triggerReason string
 	switch {
-	case !above90PctSince.IsZero() && now.Sub(above90PctSince) >= memCriticalDuration:
+	case !above90PctSince.IsZero() && now.Sub(above90PctSince) >= criticalMemoryDuration:
 		triggerReason = fmt.Sprintf(
 			"memory at %.1f%% of container limit for %.0fs (threshold: >90%% for >5s)",
 			usagePct*100, now.Sub(above90PctSince).Seconds())
-	case !above70PctSince.IsZero() && now.Sub(above70PctSince) >= memHighDuration:
+	case !above70PctSince.IsZero() && now.Sub(above70PctSince) >= highMemoryDuration:
 		triggerReason = fmt.Sprintf(
 			"memory at %.1f%% of container limit for %.0fs (threshold: >70%% for >60s)",
 			usagePct*100, now.Sub(above70PctSince).Seconds())
@@ -155,46 +151,36 @@ func (j *podDiagnosticsJob) Run(ctx context.Context) {
 	lastCollectionAt = now
 
 	// Collect and upload outside the lock (state is already reset above).
-	j.collectAndUpload(ctx, usageBytes, limitBytes, usagePct, triggerReason, now)
+	j.collectAndUpload(ctx, usageBytes, limitBytes, usagePct, triggerReason)
 }
 
-func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, limitBytes int64, usagePct float64, triggerReason string, ts time.Time) {
+func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, limitBytes int64, usagePct float64, triggerReason string, ts time.Time) error {
 	settings := j.env.Settings()
-	tsStr := ts.UTC().Format("2006-01-02T15-04-05Z")
 
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
 	}
-	// S3 key structure: <prefix>/<hostname>/<timestamp>-{heap,goroutine}
-	keyBase := fmt.Sprintf("%s/%s", hostname, tsStr)
+	s3Prefix := fmt.Sprintf("%s/%s", hostname, time.Now().Format(TSFormat))
 
 	heapBuf := &bytes.Buffer{}
 	if err := pprof.WriteHeapProfile(heapBuf); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "capturing heap profile for pod diagnostics",
-			"job":     j.ID(),
-		}))
-		heapBuf = nil
+		return errors.Wrap(err, "collecting heap profile")
 	}
 
 	goroutineBuf := &bytes.Buffer{}
 	if profile := pprof.Lookup("goroutine"); profile != nil {
 		if err := profile.WriteTo(goroutineBuf, 0); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "capturing goroutine profile for pod diagnostics",
-				"job":     j.ID(),
-			}))
-			goroutineBuf = nil
+			return errors.Wrap(err, "collecting goroutine profile")
 		}
 	}
 
 	cfg := settings.Diagnostics
 	s3Uploaded := false
 	if cfg.S3BucketName != "" {
-		if uploadErr := uploadPprofProfiles(ctx, cfg, keyBase, heapBuf, goroutineBuf); uploadErr != nil {
-			grip.Warning(message.WrapError(uploadErr, message.Fields{
-				"message": "uploading pprof profiles to S3",
+		if uploadErr := uploadPprofProfiles(ctx, cfg, s3Prefix, heapBuf, goroutineBuf); uploadErr != nil {
+			grip.Warning(ctx, message.WrapError(uploadErr, message.Fields{
+				"message": "could not upload pprof profiles to S3",
 				"job":     j.ID(),
 				"bucket":  cfg.S3BucketName,
 			}))
@@ -203,7 +189,7 @@ func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, li
 		}
 	}
 
-	grip.Notice(message.Fields{
+	grip.Notice(ctx, message.Fields{
 		"message":          "pod diagnostics triggered",
 		"trigger_reason":   triggerReason,
 		"memory_usage_pct": fmt.Sprintf("%.1f%%", usagePct*100),
@@ -211,15 +197,17 @@ func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, li
 		"memory_limit_gb":  fmt.Sprintf("%.2f", float64(limitBytes)/(1<<30)),
 		"hostname":         hostname,
 		"s3_bucket":        cfg.S3BucketName,
-		"s3_key_base":      keyBase,
+		"s3_key_base":      s3Prefix,
 		"s3_uploaded":      s3Uploaded,
 		"job":              j.ID(),
 	})
+
+	return nil
 }
 
 // uploadPprofProfiles uploads heap and goroutine profiles to S3. nil buffers
 // are skipped.
-func uploadPprofProfiles(ctx context.Context, cfg evergreen.DiagnosticsConfig, keyBase string, heapBuf, goroutineBuf *bytes.Buffer) error {
+func uploadPprofProfiles(ctx context.Context, cfg evergreen.DiagnosticsConfig, s3Prefix string, heapBuf, goroutineBuf *bytes.Buffer) error {
 	prefix := cfg.S3Prefix
 	if prefix == "" {
 		prefix = "pprof"
@@ -234,10 +222,10 @@ func uploadPprofProfiles(ctx context.Context, cfg evergreen.DiagnosticsConfig, k
 
 	catcher := grip.NewBasicCatcher()
 	if heapBuf != nil && heapBuf.Len() > 0 {
-		catcher.Wrap(bucket.Put(ctx, keyBase+"-heap", heapBuf), "uploading heap profile")
+		catcher.Wrap(bucket.Put(ctx, s3Prefix+"-heap", heapBuf), "uploading heap profile")
 	}
 	if goroutineBuf != nil && goroutineBuf.Len() > 0 {
-		catcher.Wrap(bucket.Put(ctx, keyBase+"-goroutine", goroutineBuf), "uploading goroutine profile")
+		catcher.Wrap(bucket.Put(ctx, s3Prefix+"-goroutine", goroutineBuf), "uploading goroutine profile")
 	}
 	return catcher.Resolve()
 }
