@@ -196,7 +196,7 @@ func (e *LocalExecutor) ReloadProject(ctx context.Context, configPath string) (*
 
 	project, err := e.LoadProject(configPath)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "loading project")
 	}
 
 	if e.debugState.SelectedTask != "" {
