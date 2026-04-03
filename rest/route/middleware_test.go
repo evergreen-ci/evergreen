@@ -20,6 +20,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mongobson "go.mongodb.org/mongo-driver/bson"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -242,8 +243,9 @@ func TestTaskAuthMiddleware(t *testing.T) {
 		Status: evergreen.TaskSucceeded,
 	}
 	host1 := &host.Host{
-		Id:     "host1",
-		Secret: "abcdef",
+		Id:          "host1",
+		Secret:      "abcdef",
+		RunningTask: "task1",
 	}
 	assert.NoError(task1.Insert(t.Context()))
 	assert.NoError(completedTask.Insert(t.Context()))
@@ -285,6 +287,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	assert.NotEqual(http.StatusOK, rw.Code)
 
 	assert.NoError(task.UpdateOne(ctx, bson.M{task.IdKey: "completedTask"}, bson.M{"$set": bson.M{task.FinishTimeKey: time.Now().Add(-30 * time.Minute)}}))
+	assert.NoError(host.UpdateOne(ctx, mongobson.M{host.IdKey: "host1"}, mongobson.M{"$set": mongobson.M{host.RunningTaskKey: "completedTask"}}))
 	r.Header.Set(evergreen.TaskHeader, "completedTask")
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
