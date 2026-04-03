@@ -114,7 +114,7 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 	// parameter was changed in case caching gets enabled or a different
 	// ParameterManager instance has caching enabled.
 	if err := BumpParameterRecord(ctx, pm.DB, fullName, time.Now()); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "could not bump parameter update timestamp, possibly because it is being concurrently updated",
 			"name":    fullName,
 		}))
@@ -256,7 +256,7 @@ func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 		// the parameter was changed in case caching gets enabled or a different
 		// ParameterManager instance has caching enabled.
 		if err := BumpParameterRecord(ctx, pm.DB, fullName, time.Now()); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "could not bump parameter record last updated timestamp, possibly because it is being concurrently updated",
 				"name":    fullName,
 			}))

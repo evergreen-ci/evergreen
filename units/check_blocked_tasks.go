@@ -85,7 +85,7 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck(ctx context.Context) []task
 	}
 
 	if len(taskIds) == 0 {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":             "no task IDs found for distro",
 			"len_queue":           len(queue.Queue),
 			"len_secondary_queue": len(secondaryQueue.Queue),
@@ -113,7 +113,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 
 	dependenciesMet, err := t.DependenciesMet(ctx, dependencyCaches)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message":      "could not check if dependencies met for task",
 			"task_id":      t.Id,
 			"activated_by": t.ActivatedBy,
@@ -153,7 +153,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	}
 
 	numModified := len(finishedBlockingTasks) + len(deactivatedBlockingTasks)
-	grip.DebugWhen(numModified > 0, message.Fields{
+	grip.DebugWhen(ctx, numModified > 0, message.Fields{
 		"message":                            "checked unmarked blocking tasks",
 		"blocking_finished_tasks_updated":    len(finishedBlockingTasks),
 		"blocking_deactivated_tasks_updated": len(deactivatedBlockingTasks),

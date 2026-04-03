@@ -9,6 +9,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -51,7 +52,7 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	srv.SetRecoverFunc(func(ctx context.Context, err any) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
 
-		grip.Critical(message.Fields{
+		grip.Critical(ctx, message.Fields{
 			"path":    "/graphql/query",
 			"message": "unhandled panic",
 			"error":   err,
@@ -71,8 +72,8 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 			args = fieldCtx.Args
 		}
 		args = RedactFieldsInMap(args, redactedFields)
-		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) {
-			grip.Error(message.WrapError(err, message.Fields{
+		if err != nil && !strings.HasSuffix(err.Error(), context.Canceled.Error()) && !loaders.IsBatchError(err) {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"path":    "/graphql/query",
 				"query":   queryPath,
 				"args":    args,
@@ -83,5 +84,5 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	})
 
 	// Wrap with dataloader middleware to batch database queries
-	return DataloaderMiddleware(srv).ServeHTTP
+	return loaders.Middleware(srv).ServeHTTP
 }

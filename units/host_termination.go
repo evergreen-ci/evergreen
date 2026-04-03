@@ -101,7 +101,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if !j.host.IsEphemeral() {
-		grip.Notice(message.Fields{
+		grip.Notice(ctx, message.Fields{
 			"job":      j.ID(),
 			"host_id":  j.HostID,
 			"job_type": j.Type().Name,
@@ -119,14 +119,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		var idle bool
 		idle, err = j.host.IsIdleParent(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "checking if host is an idle parent",
 				"host_id": j.host.Id,
 				"job":     j.ID(),
 			}))
 		}
 		if !idle {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"job":      j.ID(),
 				"host_id":  j.HostID,
 				"job_type": j.Type().Name,
@@ -146,7 +146,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// we may be running these jobs on hosts that are already
 	// terminated.
-	grip.InfoWhen(j.host.Status == evergreen.HostTerminated, message.Fields{
+	grip.InfoWhen(ctx, j.host.Status == evergreen.HostTerminated, message.Fields{
 		"host_id":  j.host.Id,
 		"provider": j.host.Distro.Provider,
 		"job_type": j.Type().Name,
@@ -172,7 +172,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			return
 		}
 	default:
-		grip.WarningWhen(host.IsIntentHostId(j.host.Id), message.Fields{
+		grip.WarningWhen(ctx, host.IsIntentHostId(j.host.Id), message.Fields{
 			"message":     "Intent host has a status that should not be possible when preparing to terminate it. This is potentially a host lifecycle logical error.",
 			"host_id":     j.host.Id,
 			"host_status": j.host.Status,
@@ -185,7 +185,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// clear the running task of the host in case one has been assigned.
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
-			grip.Warning(message.Fields{
+			grip.Warning(ctx, message.Fields{
 				"message":        "Host has running task; clearing before terminating",
 				"job":            j.ID(),
 				"job_type":       j.Type().Name,
@@ -241,7 +241,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	prevStatus := j.host.Status
 	if prevStatus != evergreen.HostTerminated {
 		if err = j.host.SetDecommissioned(ctx, evergreen.User, j.TerminateIfBusy, "host will be terminated shortly, preventing task dispatch"); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"job_type": j.Type().Name,
@@ -264,7 +264,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// check if running task has been assigned since status changed
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
-			grip.Warning(message.Fields{
+			grip.Warning(ctx, message.Fields{
 				"message":        "Host has running task; clearing before terminating",
 				"job":            j.ID(),
 				"job_type":       j.Type().Name,
@@ -335,7 +335,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			terminationMessage["instance_type"] = instanceType
 		}
 	}
-	grip.Info(terminationMessage)
+	grip.Info(ctx, terminationMessage)
 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(
@@ -357,7 +357,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if j.host.StartedBy == evergreen.User && j.host.TaskCount == 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":          "task host ran no tasks before it was terminated",
 			"status":           prevStatus,
 			"host_id":          j.HostID,
@@ -400,7 +400,7 @@ func (j *hostTerminationJob) cleanupIntentHost(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "getting cloud host for intent host")
 		}
-		grip.Error(message.WrapError(cloudHost.CleanupIP(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(cloudHost.CleanupIP(ctx), message.Fields{
 			"message":        "could not clean up IP resources for intent host",
 			"host_id":        j.host.Id,
 			"allocation_id":  j.host.IPAllocationID,
@@ -443,7 +443,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) err
 	}
 
 	if cloudInfo.Status == cloud.StatusTerminated {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":             "host is already terminated in the cloud, setting the host status to terminated",
 			"cloud_status":        cloudInfo.Status,
 			"cloud_status_reason": cloudInfo.StateReason,

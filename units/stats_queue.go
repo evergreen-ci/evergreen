@@ -68,7 +68,7 @@ func (j *queueStatsCollector) Run(ctx context.Context) {
 		totalDur += q.DistroQueueInfo.ExpectedDuration
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"total_queue_length": total,
 		"total_dur_secs":     totalDur.Seconds(),
 		"total_dur_mins":     totalDur.Minutes(),

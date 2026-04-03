@@ -69,7 +69,7 @@ func (j *githubAPILimitJob) logInternalAppRateLimit(ctx context.Context) {
 	}
 
 	rateLimitInfo := getRateLimitInfo(limit)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":           "GitHub API rate limit",
 		"remaining":         rateLimitInfo.remaining,
 		"limit":             rateLimitInfo.limit,
@@ -135,7 +135,7 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 		}
 
 		rateLimitInfo := getRateLimitInfo(limit)
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":           "project GitHub app API rate limit",
 			"app_id":            projectAppAuth.appAuth.AppID,
 			"project_ids":       projectAppAuth.projectIDs,

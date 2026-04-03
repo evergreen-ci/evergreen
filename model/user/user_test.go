@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/oauth2"
 )
 
 func init() {
@@ -1086,4 +1087,134 @@ func (s *UserTestSuite) TestClearUser() {
 	u, err = FindOneById(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
+}
+
+func setupTokenExchangeUser(t *testing.T) *DBUser {
+	require.NoError(t, db.ClearCollections(Collection))
+	u := &DBUser{Id: "token-exchange-test-user"}
+	require.NoError(t, u.Insert(t.Context()))
+	return u
+}
+
+func TestUpdateTokenExchangeState(t *testing.T) {
+	u := setupTokenExchangeUser(t)
+
+	require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "state-1", "verifier-1"))
+
+	dbUser, err := FindOneById(t.Context(), u.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	require.NotNil(t, dbUser.TokenExchangeState)
+	assert.Equal(t, "state-1", dbUser.TokenExchangeState.State)
+	assert.Equal(t, "verifier-1", dbUser.TokenExchangeState.CodeVerifier)
+
+	// Updating replaces the previous entry.
+	require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "state-2", "verifier-2"))
+
+	dbUser, err = FindOneById(t.Context(), u.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	require.NotNil(t, dbUser.TokenExchangeState)
+	assert.Equal(t, "state-2", dbUser.TokenExchangeState.State)
+	assert.Equal(t, "verifier-2", dbUser.TokenExchangeState.CodeVerifier)
+}
+
+func TestRemoveTokenExchangeStateIfMatches(t *testing.T) {
+	t.Run("RemovesWhenStateMatchesAndReturnsVerifier", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+		require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "state-x", "verifier-x"))
+
+		verifier, removed, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "state-x")
+		require.NoError(t, err)
+		assert.True(t, removed)
+		assert.Equal(t, "verifier-x", verifier)
+
+		dbUser, err := FindOneById(t.Context(), u.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbUser)
+		assert.Nil(t, dbUser.TokenExchangeState)
+	})
+
+	t.Run("DoesNotRemoveWhenStateMismatches", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+		require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "expected", "verifier"))
+
+		verifier, removed, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "other")
+		require.NoError(t, err)
+		assert.False(t, removed)
+		assert.Empty(t, verifier)
+
+		dbUser, err := FindOneById(t.Context(), u.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbUser)
+		require.NotNil(t, dbUser.TokenExchangeState)
+		assert.Equal(t, "expected", dbUser.TokenExchangeState.State)
+	})
+
+	t.Run("DoesNotRemoveWhenNoPendingState", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+
+		verifier, removed, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "any")
+		require.NoError(t, err)
+		assert.False(t, removed)
+		assert.Empty(t, verifier)
+	})
+
+	t.Run("SecondCallDoesNotMatchAfterFirstConsumes", func(t *testing.T) {
+		u := setupTokenExchangeUser(t)
+		require.NoError(t, u.UpdateTokenExchangeState(t.Context(), "once", "v"))
+
+		_, removed1, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "once")
+		require.NoError(t, err)
+		assert.True(t, removed1)
+
+		_, removed2, err := u.RemoveTokenExchangeStateIfMatches(t.Context(), "once")
+		require.NoError(t, err)
+		assert.False(t, removed2)
+	})
+}
+
+func TestUpdateTokenExchangeToken(t *testing.T) {
+	u := setupTokenExchangeUser(t)
+
+	token := &oauth2.Token{
+		AccessToken: "my-access-token",
+		TokenType:   "Bearer",
+	}
+	require.NoError(t, u.UpdateTokenExchangeToken(t.Context(), token))
+
+	dbUser, err := FindOneById(t.Context(), u.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	require.NotNil(t, dbUser.TokenExchangeToken)
+	assert.Equal(t, "my-access-token", dbUser.TokenExchangeToken.AccessToken)
+	assert.Equal(t, "Bearer", dbUser.TokenExchangeToken.TokenType)
+
+	// Updating replaces the previous token.
+	token2 := &oauth2.Token{
+		AccessToken: "another-token",
+		TokenType:   "Bearer",
+	}
+	require.NoError(t, u.UpdateTokenExchangeToken(t.Context(), token2))
+
+	dbUser, err = FindOneById(t.Context(), u.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	require.NotNil(t, dbUser.TokenExchangeToken)
+	assert.Equal(t, "another-token", dbUser.TokenExchangeToken.AccessToken)
+}
+
+func TestUpdateTokenExchangeTokenNilClears(t *testing.T) {
+	u := setupTokenExchangeUser(t)
+
+	require.NoError(t, u.UpdateTokenExchangeToken(t.Context(), &oauth2.Token{AccessToken: "tok-x"}))
+	require.NotNil(t, u.TokenExchangeToken)
+
+	require.NoError(t, u.UpdateTokenExchangeToken(t.Context(), nil))
+
+	dbUser, err := FindOneById(t.Context(), u.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	assert.Nil(t, dbUser.TokenExchangeToken)
+	assert.Nil(t, u.TokenExchangeToken)
 }

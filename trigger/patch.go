@@ -175,7 +175,7 @@ func finalizeChildPatch(ctx context.Context, sub *event.Subscription) error {
 	defer cancel()
 
 	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "Failed to finalize patch document",
 			"source":        target.Requester,
 			"patch_id":      childPatch.Id,
@@ -228,7 +228,7 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 		}
 	}
 
-	grip.NoticeWhen(collectiveStatus != t.data.Status, message.Fields{
+	grip.NoticeWhen(ctx, collectiveStatus != t.data.Status, message.Fields{
 		"message":                 "patch's current collective status does not match the patch event data's status",
 		"patch_collective_status": collectiveStatus,
 		"patch_status":            t.patch.Status,

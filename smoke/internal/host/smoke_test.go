@@ -19,7 +19,7 @@ func TestSmokeHostTask(t *testing.T) {
 	defer cancel()
 
 	params := GetSmokeTestParamsFromEnv(t)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "got smoke test parameters",
 		"params":  fmt.Sprintf("%#v", params),
 	})
@@ -27,14 +27,14 @@ func TestSmokeHostTask(t *testing.T) {
 	appServerCmd := internal.StartAppServer(ctx, t, params.APIParams)
 	defer func() {
 		if appServerCmd != nil {
-			grip.Error(errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
+			grip.Error(ctx, errors.Wrap(appServerCmd.Signal(ctx, syscall.SIGTERM), "stopping app server after test completion"))
 		}
 	}()
 
 	agentCmd := internal.StartAgent(ctx, t, params.APIParams, globals.HostMode, params.ExecModeID, params.ExecModeSecret)
 	defer func() {
 		if agentCmd != nil {
-			grip.Error(errors.Wrap(agentCmd.Signal(ctx, syscall.SIGTERM), "stopping agent after test completion"))
+			grip.Error(ctx, errors.Wrap(agentCmd.Signal(ctx, syscall.SIGTERM), "stopping agent after test completion"))
 		}
 	}()
 

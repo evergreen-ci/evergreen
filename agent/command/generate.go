@@ -58,7 +58,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 
 	if len(c.Files) == 0 {
 		if c.Optional {
-			logger.Task().Infof("No files found and optional is true, skipping command '%s'.", c.Name())
+			logger.Task().Infof(ctx, "No files found and optional is true, skipping command '%s'.", c.Name())
 			return nil
 		}
 		return errors.Errorf("no files found for command '%s'", c.Name())
@@ -91,7 +91,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	}
 	if err = comm.GenerateTasks(ctx, td, post); err != nil {
 		if strings.Contains(err.Error(), evergreen.TasksAlreadyGeneratedError) {
-			logger.Task().Info("Tasks have already been generated, nooping.")
+			logger.Task().Info(ctx, "Tasks have already been generated, nooping.")
 			return nil
 		}
 		return errors.Wrap(err, "posting task data")

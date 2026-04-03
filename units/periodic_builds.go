@@ -86,7 +86,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 	defer func() {
 		err = model.UpdateNextPeriodicBuild(ctx, j.ProjectID, definition)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":    "unable to set next periodic build job time",
 			"project":    j.ProjectID,
 			"definition": j.DefinitionID,
@@ -100,7 +100,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 	usr, err := user.GetPeriodicBuildUser(ctx, authorID)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "problem getting periodic build user",
 			"project": j.ProjectID,
 		}))
@@ -125,7 +125,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		metadata.Activate = false
 		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
 		if dbErr != nil {
-			grip.Error(message.WrapError(dbErr, message.Fields{
+			grip.Error(ctx, message.WrapError(dbErr, message.Fields{
 				"message":            "error creating stub version for periodic build",
 				"runner":             periodicBuildJobName,
 				"project":            j.project,
@@ -140,7 +140,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		stubVersion.Errors = []string{versionErr.Error()}
 		insertError := stubVersion.Insert(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(insertError, message.Fields{
+			grip.Error(ctx, message.WrapError(insertError, message.Fields{
 				"message":            "error inserting stub version for periodic build",
 				"runner":             periodicBuildJobName,
 				"project":            j.project,
@@ -157,7 +157,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 
 func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.VersionMetadata, configFilePath string) error {
 	ghAppAuth, err := j.project.GetGitHubAppAuthForAPI(ctx)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message":    "errored while attempting to get GitHub app for API, will fall back to using Evergreen-internal app",
 		"project_id": j.project.Id,
 	}))
@@ -199,7 +199,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 
 	_, err = model.CreateManifest(ctx, v, projectInfo.Project.Modules, projectInfo.Ref)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":               "error creating manifest",
 			"runner":                periodicBuildJobName,
 			"project":               j.project.Id,

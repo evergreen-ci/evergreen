@@ -264,7 +264,7 @@ func RemoveAllQ(ctx context.Context, collection string, q Q) error {
 func FindAndModify(ctx context.Context, collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
+		grip.Errorf(ctx, "error establishing db connection: %+v", err)
 
 		return nil, err
 	}
@@ -309,7 +309,7 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
-		grip.Error(err)
+		grip.Error(ctx, err)
 		return err
 	}
 	defer session.Close()

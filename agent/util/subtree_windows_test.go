@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -12,7 +13,7 @@ import (
 
 func init() {
 	err := grip.SetSender(send.MakeNative())
-	grip.Error(err)
+	grip.Error(context.Background(), err)
 }
 
 func TestWindowsProcessRegistry(t *testing.T) {
@@ -80,7 +81,7 @@ func TestWindowsProcessRegistry(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(reg.jobs), ShouldEqual, 1)
 
-			grip.Error(reg.removeJob(id))
+			grip.Error(t.Context(), reg.removeJob(id))
 			So(len(reg.jobs), ShouldEqual, 0)
 		})
 	})

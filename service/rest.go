@@ -39,7 +39,7 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
-		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
+		gimlet.WriteTextResponse(r.Context(), rw, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 

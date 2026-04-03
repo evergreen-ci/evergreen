@@ -168,7 +168,7 @@ func Agent() cli.Command {
 				return errors.Wrapf(err, "creating working directory '%s'", opts.WorkingDirectory)
 			}
 
-			grip.Info(message.Fields{
+			grip.Info(context.Background(), message.Fields{
 				"message":            "starting agent",
 				"commands":           command.RegisteredCommandNames(),
 				"dir":                opts.WorkingDirectory,
@@ -197,9 +197,9 @@ func Agent() cli.Command {
 				return errors.Wrap(err, "setting up global logger")
 			}
 			agt.SetDefaultLogger(sender)
-			agt.SetHomeDirectory()
+			agt.SetHomeDirectory(ctx)
 
-			grip.Warning(message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
+			grip.Warning(ctx, message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
 				"message": "could not set nice on agent process and all of its threads, some threads may proceed with default nice",
 			}))
 
@@ -212,7 +212,7 @@ func Agent() cli.Command {
 				// Although we still want to return an error, it's an acceptable state for an agent to be unauthorized
 				// as ec2 doesn't immediately shut down hosts, so avoid logging it as an emergency.
 				isUnauthorizedErr := strings.Contains(err.Error(), "401 (Unauthorized)")
-				grip.EmergencyWhen(!isUnauthorizedErr, message.WrapError(err, msg))
+				grip.EmergencyWhen(ctx, !isUnauthorizedErr, message.WrapError(err, msg))
 				return err
 			}
 
@@ -270,7 +270,7 @@ func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelF
 	select {
 	case <-ctx.Done():
 	case <-sigChan:
-		grip.Info("service exiting after receiving signal")
+		grip.Info(ctx, "service exiting after receiving signal")
 	}
 
 	// Close may not succeed if the context is cancelled, but this is a

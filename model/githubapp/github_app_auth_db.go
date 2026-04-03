@@ -83,6 +83,15 @@ func findOneGitHubAppAuthDB(ctx context.Context, id string) (*GithubAppAuth, err
 	return appAuth, err
 }
 
+// HasGitHubAppAuth returns true if the project has a GitHub app auth in the database.
+func HasGitHubAppAuth(ctx context.Context, id string) (bool, error) {
+	appAuth, err := findOneGitHubAppAuthDB(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return appAuth != nil, nil
+}
+
 // findPrivateKeyParameterStore finds the GitHub app private key in Parameter
 // Store.
 func findPrivateKeyParameterStore(ctx context.Context, appAuth *GithubAppAuth) error {

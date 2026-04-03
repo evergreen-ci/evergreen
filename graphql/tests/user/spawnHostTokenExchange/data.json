@@ -1,0 +1,32 @@
+{
+  "users": [
+    {
+      "_id": "spawn_host_gql_pending",
+      "display_name": "Spawn Host Token Pending",
+      "email": "spawn.pending@example.com",
+      "token_exchange_state": {
+        "state": "sensitive-state",
+        "code_verifier": "sensitive-verifier"
+      }
+    },
+    {
+      "_id": "spawn_host_gql_token_expires",
+      "display_name": "Spawn Host Token With Expiry",
+      "email": "spawn.expires@example.com",
+      "token_exchange_token": {
+        "accesstoken": "sensitive-access-token",
+        "tokentype": "Bearer",
+        "expiry": { "$date": "2030-06-15T12:00:00.000Z" }
+      }
+    },
+    {
+      "_id": "spawn_host_gql_token_no_expiry",
+      "display_name": "Spawn Host Token No Expiry",
+      "email": "spawn.noexp@example.com",
+      "token_exchange_token": {
+        "accesstoken": "sensitive-access-token",
+        "tokentype": "Bearer"
+      }
+    }
+  ]
+}

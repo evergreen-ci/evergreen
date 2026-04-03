@@ -102,11 +102,13 @@ type User {
   betaFeatures: BetaFeatures
   displayName: String
   emailAddress: String
+  hasTokenExchangePending: Boolean!
   parsleyFilters: [ParsleyFilter!]
   parsleySettings: ParsleySettings
   patches(patchesInput: PatchesInput!): Patches # user patches
   permissions: Permissions
   settings: UserSettings
+  tokenAccessTokenExpiresAt: Time
   subscriptions: [GeneralSubscription!]
   userId: String!
 }

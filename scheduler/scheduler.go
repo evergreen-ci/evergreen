@@ -194,7 +194,7 @@ func CreateIntentHosts(ctx context.Context, d distro.Distro, newHostsNeeded int,
 		}
 		hostsSpawned = append(hostsSpawned, newContainers...)
 		hostsSpawned = append(hostsSpawned, newParents...)
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"runner":             RunnerName,
 			"distro":             d.Id,
 			"pool":               pool.Id,
@@ -221,7 +221,7 @@ func CreateIntentHosts(ctx context.Context, d distro.Distro, newHostsNeeded int,
 	}
 	event.LogManyHostsCreated(ctx, hostIDs)
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":        RunnerName,
 		"distro":        d.Id,
 		"operation":     "spawning instances",
@@ -277,7 +277,7 @@ func underwaterUnschedule(ctx context.Context, distroID string) error {
 				}
 			}
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "unscheduled stale tasks",
 			"distro":   distroID,
 			"runner":   RunnerName,

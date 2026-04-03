@@ -62,7 +62,7 @@ func (j *volumeUnstickJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "unsetting terminated host for volume '%s'", j.VolumeID))
 		return
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   "unset terminated host for volume",
 		"volume_id": j.VolumeID,
 		"job_id":    j.ID(),

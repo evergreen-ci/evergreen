@@ -84,7 +84,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	}
 
 	if flags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message":   "monitor is disabled",
 			"operation": j.Type().Name,
 			"impact":    "skipping task heartbeat cleanup job",
@@ -117,26 +117,26 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	// If the task has heartbeat since this job was queued, let it run.
 	if j.task.LastHeartbeat.Add(evergreen.HeartbeatTimeoutThreshold).After(time.Now()) {
 		msg["message"] = "refusing to clean up timed-out task because it has a recent heartbeat"
-		grip.Info(msg)
+		grip.Info(ctx, msg)
 		return
 	}
 	// If the task is already finished, don't try cleaning it up again.
 	if j.task.IsFinished() {
 		msg["message"] = "refusing to clean up timed-out task because it is already finished"
-		grip.Info(msg)
+		grip.Info(ctx, msg)
 		return
 	}
 
 	err = j.cleanUpTimedOutTask(ctx)
 	if err != nil {
 		msg["message"] = "failed to clean up timed-out task"
-		grip.Warning(message.WrapError(err, msg))
+		grip.Warning(ctx, message.WrapError(err, msg))
 		j.AddRetryableError(err)
 		return
 	}
 
 	msg["message"] = "successfully cleaned up timed-out task"
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 }
 
 // cleanUpTimedOutTask cleans up a single stale task that has exceeded the task
@@ -149,7 +149,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 
 	// if there's no relevant host and the task is not a display task, something went wrong
 	if host == nil {
-		grip.ErrorWhen(!j.task.DisplayOnly, message.Fields{
+		grip.ErrorWhen(ctx, !j.task.DisplayOnly, message.Fields{
 			"message":   "no entry found for host",
 			"task":      j.task.Id,
 			"host_id":   j.task.HostId,
@@ -226,7 +226,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"message":   "monitor is disabled",
 			"operation": j.Type().Name,
 			"impact":    "skipping task heartbeat cleanup job",
@@ -249,7 +249,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	grip.InfoWhen(len(taskIDs) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(taskIDs) > 0, message.Fields{
 		"message":   "found stale tasks",
 		"tasks":     taskIDs,
 		"operation": j.Type().Name,
@@ -260,7 +260,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 		ts := utility.RoundPartOfHour(15)
 		j.AddError(amboy.EnqueueUniqueJob(ctx, queue, NewTaskExecutionMonitorJob(id, ts.Format(TSFormat))))
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"operation": "task-execution-timeout-populate",
 		"num_tasks": len(tasks),
 		"errors":    j.HasErrors(),

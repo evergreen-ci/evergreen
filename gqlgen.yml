@@ -241,6 +241,8 @@ models:
         value: github.com/evergreen-ci/evergreen.HostAllocatorNoFeedback
       DEFAULT:
         value: github.com/evergreen-ci/evergreen.HostAllocatorUseDefaultFeedback
+  AssociatedLink:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAssociatedLink
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:

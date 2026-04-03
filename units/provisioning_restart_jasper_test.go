@@ -109,13 +109,13 @@ func teardownHostCredentials() error {
 // Jasper RPC service, executes the given test function, and cleans up.
 func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jmock.Manager, h *host.Host, fn func(evergreen.Environment)) error {
 	if err := setupHostCredentials(ctx, env); err != nil {
-		grip.Error(errors.Wrap(teardownHostCredentials(), "tearing down test"))
+		grip.Error(ctx, errors.Wrap(teardownHostCredentials(), "tearing down test"))
 		return errors.Wrap(err, "setting up credentials collection")
 	}
 
 	closeService, err := setupJasperService(ctx, env, manager, h)
 	if err != nil {
-		grip.Error(errors.Wrap(teardownJasperService(closeService), "tearing down test"))
+		grip.Error(ctx, errors.Wrap(teardownJasperService(closeService), "tearing down test"))
 		return errors.Wrap(err, "setting up Jasper service")
 	}
 
