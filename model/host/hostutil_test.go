@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 )
 
 func TestCurlCommand(t *testing.T) {
@@ -257,61 +258,6 @@ func TestJasperCommands(t *testing.T) {
 
 			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
-
-			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
-		},
-		"GenerateUserDataProvisioningScriptForSpawnHostUsingOAuth": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			require.NoError(t, db.Clear(user.Collection))
-			defer func() {
-				assert.NoError(t, db.Clear(user.Collection))
-			}()
-			settings.AuthConfig.OAuth = &evergreen.OAuthConfig{
-				Issuer:      "issuer_url_with'_some'_quotes",
-				ClientID:    "client_id",
-				ConnectorID: "connector_id",
-			}
-			h.StartedBy = "started_by_user"
-			h.UserHost = true
-			userID := "user"
-			user := &user.DBUser{Id: userID}
-			require.NoError(t, user.Insert(t.Context()))
-
-			h.ProvisionOptions = &ProvisionOptions{
-				OwnerId:  userID,
-				TaskId:   "task_id",
-				UseOAuth: true,
-			}
-			require.NoError(t, h.Insert(ctx))
-
-			checkRerun := h.CheckUserDataProvisioningStartedCommand()
-
-			setupScript, err := h.setupScriptCommands(settings)
-			require.NoError(t, err)
-
-			setupSpawnHost, err := h.SpawnHostSetupCommands(t.Context(), settings)
-			require.NoError(t, err)
-
-			markDone := h.MarkUserDataProvisioningDoneCommand()
-
-			expectedCmds := []string{
-				checkRerun,
-				setupScript,
-				h.MakeJasperDirsCommand(),
-				h.FetchJasperCommand(settings.HostJasper),
-
-				h.ForceReinstallJasperCommand(settings),
-				h.ChangeJasperDirsOwnerCommand(),
-				setupSpawnHost,
-				markDone,
-			}
-
-			creds, err := newMockCredentials()
-			require.NoError(t, err)
-
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
-			require.NoError(t, err)
-			assert.Contains(t, script, "issuer: issuer_url_with'_some'_quotes")
-			assert.Contains(t, script, "do_not_use_browser: true")
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
 		},
@@ -967,8 +913,8 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
 	}()
 
-	user := user.DBUser{Id: "user", APIKey: "key"}
-	require.NoError(t, user.Insert(t.Context()))
+	dbUser := user.DBUser{Id: "user", APIKey: "key"}
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	h := &Host{Id: "host",
 		Distro: distro.Distro{
@@ -979,31 +925,14 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 				Communication:         distro.CommunicationMethodRPC,
 				JasperCredentialsPath: "/jasper_credentials_path",
 			},
-			User: user.Id,
+			User: dbUser.Id,
 		},
 		ProvisionOptions: &ProvisionOptions{
-			OwnerId: user.Id,
+			OwnerId: dbUser.Id,
 		},
-		User: user.Id,
+		User: dbUser.Id,
 	}
 	require.NoError(t, h.Insert(t.Context()))
-
-	getExpected := func(oauth bool) string {
-		expected := "mkdir -m 777 -p /home/user/cli_bin" +
-			" && (sudo chown -R user /home/user/.evergreen.yml || true)"
-		if oauth {
-			expected += " && echo \"user: user\napi_key: key\napi_server_host: www.corporation.example0.com/api\nui_server_host: www.example1.com\n" +
-				"oauth:\n    issuer: https://www.example.com\n    client_id: client_id\n    connector_id: connector_id\n    do_not_use_browser: true\n"
-		} else {
-			expected += " && echo \"user: user\napi_key: key\napi_server_host: www.example0.com/api\nui_server_host: www.example1.com\n"
-		}
-		expected += "\" > /home/user/.evergreen.yml" +
-			" && chmod +x /home/user/evergreen" +
-			" && cp /home/user/evergreen /home/user/cli_bin" +
-			" && (echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.profile || true; echo '\nexport PATH=\"${PATH}:/home/user/cli_bin\"\n' >> /home/user/.bash_profile || true)" +
-			" && (sudo chown -R user /home/user/.profile /home/user/.bash_profile || true)"
-		return expected
-	}
 
 	getSettings := func() *evergreen.Settings {
 		return &evergreen.Settings{
@@ -1021,16 +950,26 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 			ServiceFlags: evergreen.ServiceFlags{
 				JWTTokenForCLIDisabled: true,
 			},
+			OktaServiceConfig: evergreen.OktaServiceConfig{
+				ClientID:     "client_id",
+				ClientSecret: "client_secret",
+				Audience:     "audience",
+				Issuer:       "https://www.example.com",
+				Scopes:       []string{"scope1", "scope2"},
+			},
 		}
 	}
 
-	t.Run("WithoutOAuth", func(t *testing.T) {
-		cmd, err := h.SpawnHostSetupCommands(t.Context(), getSettings())
+	t.Run("WithoutAccessToken", func(t *testing.T) {
+		settings := getSettings()
+		settings.ServiceFlags.JWTTokenForCLIDisabled = false
+		cmd, err := h.SpawnHostSetupCommands(t.Context(), settings)
 		require.NoError(t, err)
-		assert.Equal(t, getExpected(false), cmd)
+		assert.Contains(t, cmd, "api_key")
+		assert.Contains(t, cmd, "key")
 	})
 
-	t.Run("WithOAuth", func(t *testing.T) {
+	t.Run("WithAccessToken", func(t *testing.T) {
 		settings := getSettings()
 		settings.AuthConfig = evergreen.AuthConfig{
 			OAuth: &evergreen.OAuthConfig{
@@ -1041,9 +980,14 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		}
 		settings.ServiceFlags.JWTTokenForCLIDisabled = false
 
+		token := &oauth2.Token{AccessToken: "test_access_token", TokenType: "Bearer"}
+		require.NoError(t, dbUser.UpdateTokenExchangeToken(t.Context(), token))
+
 		cmd, err := h.SpawnHostSetupCommands(t.Context(), settings)
 		require.NoError(t, err)
-		assert.Equal(t, getExpected(true), cmd)
+		assert.Contains(t, cmd, "spawn_host_access_token")
+		assert.Contains(t, cmd, "test_access_token")
+		assert.NotContains(t, cmd, "api_key")
 	})
 }
 

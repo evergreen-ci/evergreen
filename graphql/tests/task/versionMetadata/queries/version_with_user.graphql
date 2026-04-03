@@ -1,0 +1,13 @@
+{
+  task(taskId: "taskity_task_2") {
+    id
+    version {
+      id
+      user {
+        id
+        displayName
+        emailAddress
+      }
+    }
+  }
+}

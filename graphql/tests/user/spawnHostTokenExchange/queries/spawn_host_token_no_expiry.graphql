@@ -1,0 +1,7 @@
+query {
+  user(userId: "spawn_host_gql_token_no_expiry") {
+    userId
+    hasTokenExchangePending
+    tokenAccessTokenExpiresAt
+  }
+}

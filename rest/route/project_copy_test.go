@@ -60,9 +60,10 @@ func (s *ProjectCopySuite) SetupSuite() {
 		s.NoError(pRef.Insert(s.T().Context()))
 	}
 	projectVar := &model.ProjectVars{
-		Id:          "12345",
-		Vars:        map[string]string{"a": "1", "b": "2"},
-		PrivateVars: map[string]bool{"b": true},
+		Id:               "12345",
+		Vars:             map[string]string{"a": "1", "b": "2"},
+		PrivateVars:      map[string]bool{"b": true},
+		VarsDescriptions: map[string]string{"a": "description for a", "b": "description for b"},
 	}
 	s.NoError(projectVar.Insert(s.T().Context()))
 }
@@ -135,6 +136,11 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.NoError(err)
 	s.Require().NotNil(vars)
 	s.Len(vars.Vars, 2)
+
+	s.Require().NotNil(vars.VarsDescriptions)
+	s.Len(vars.VarsDescriptions, 2)
+	s.Equal("description for a", vars.VarsDescriptions["a"])
+	s.Equal("description for b", vars.VarsDescriptions["b"])
 }
 
 type copyVariablesSuite struct {
@@ -178,20 +184,23 @@ func (s *copyVariablesSuite) SetupTest() {
 	}}
 	s.NoError(repoRef.Replace(s.ctx))
 	projectVar1 := &model.ProjectVars{
-		Id:            "projectA",
-		Vars:          map[string]string{"apple": "red", "hello": "world"},
-		PrivateVars:   map[string]bool{"hello": true},
-		AdminOnlyVars: map[string]bool{"hello": true},
+		Id:               "projectA",
+		Vars:             map[string]string{"apple": "red", "hello": "world"},
+		PrivateVars:      map[string]bool{"hello": true},
+		AdminOnlyVars:    map[string]bool{"hello": true},
+		VarsDescriptions: map[string]string{"apple": "apple description", "hello": "hello description"},
 	}
 	projectVar2 := &model.ProjectVars{
-		Id:          "projectB",
-		Vars:        map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
-		PrivateVars: map[string]bool{},
+		Id:               "projectB",
+		Vars:             map[string]string{"banana": "yellow", "apple": "green", "hello": "its me"},
+		PrivateVars:      map[string]bool{},
+		VarsDescriptions: map[string]string{"banana": "banana description"},
 	}
 	projectVar3 := model.ProjectVars{
-		Id:          "repoRef",
-		Vars:        map[string]string{"chicago": "cubs"},
-		PrivateVars: map[string]bool{},
+		Id:               "repoRef",
+		Vars:             map[string]string{"chicago": "cubs"},
+		PrivateVars:      map[string]bool{},
+		VarsDescriptions: map[string]string{"chicago": "chicago description"},
 	}
 
 	s.NoError(projectVar1.Insert(s.T().Context()))
@@ -256,9 +265,17 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 	projectVars, err = model.FindOneProjectVars(s.ctx, "projectB")
 	s.NoError(err)
 	s.Len(projectVars.Vars, 3)
+	s.Equal("yellow", projectVars.Vars["banana"])
 	s.Equal("world", projectVars.Vars["hello"])
 	s.Equal("red", projectVars.Vars["apple"])
 	s.True(projectVars.PrivateVars["hello"])
+
+	s.Require().NotNil(projectVars.VarsDescriptions)
+	s.Len(projectVars.VarsDescriptions, 2)
+	s.Equal("", projectVars.VarsDescriptions["banana"]) // No description since it was added without one.
+	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
+	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
+
 	events, err = model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
 	s.Len(events, 1)
@@ -288,12 +305,19 @@ func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars(s.ctx, "projectB")
 	s.NoError(err)
+
 	s.Len(projectVars.Vars, 3)
 	s.Equal("world", projectVars.Vars["hello"]) // overwrites old variable
 	s.True(projectVars.PrivateVars["hello"])
 	s.Equal("red", projectVars.Vars["apple"])
 	s.False(projectVars.PrivateVars["apple"])
 	s.Equal("yellow", projectVars.Vars["banana"]) // unchanged
+
+	s.Require().NotNil(projectVars.VarsDescriptions)
+	s.Len(projectVars.VarsDescriptions, 3)
+	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
+	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
+	s.Equal("banana description", projectVars.VarsDescriptions["banana"]) // Unchanged from original projectB.
 	events, err = model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
 	s.Len(events, 1)
@@ -325,6 +349,7 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars(s.ctx, "projectB")
 	s.NoError(err)
+
 	s.Len(projectVars.Vars, 2)
 	s.Equal("world", projectVars.Vars["hello"]) // overwrites old variable
 	s.True(projectVars.PrivateVars["hello"])
@@ -332,6 +357,13 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 	s.False(projectVars.PrivateVars["apple"])
 	_, ok := projectVars.Vars["banana"] // no longer exists
 	s.False(ok)
+
+	s.Require().NotNil(projectVars.VarsDescriptions)
+	s.Len(projectVars.VarsDescriptions, 2)
+	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
+	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
+	s.Equal("", projectVars.VarsDescriptions["banana"]) // No description, as the variable should have been deleted.
+
 	events, err = model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
 	s.Len(events, 1)
@@ -348,11 +380,19 @@ func (s *copyVariablesSuite) TestCopyToRepo() {
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars(s.ctx, "repoRef")
 	s.NoError(err)
+
 	s.Len(projectVars.Vars, 3)
 	s.Equal("world", projectVars.Vars["hello"])
 	s.Equal("red", projectVars.Vars["apple"])
 	s.Equal("cubs", projectVars.Vars["chicago"])
 	s.True(projectVars.PrivateVars["hello"])
+
+	s.Require().NotNil(projectVars.VarsDescriptions)
+	s.Len(projectVars.VarsDescriptions, 3)
+	s.Equal("apple description", projectVars.VarsDescriptions["apple"])
+	s.Equal("hello description", projectVars.VarsDescriptions["hello"])
+	s.Equal("chicago description", projectVars.VarsDescriptions["chicago"]) // Unchanged from original repoRef.
+
 	events, err := model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
 	s.Len(events, 1)
@@ -369,11 +409,19 @@ func (s *copyVariablesSuite) TestCopyFromRepo() {
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars(s.ctx, "projectA")
 	s.NoError(err)
+
 	s.Len(projectVars.Vars, 3)
 	s.Equal("world", projectVars.Vars["hello"])
 	s.Equal("red", projectVars.Vars["apple"])
 	s.Equal("cubs", projectVars.Vars["chicago"])
 	s.True(projectVars.PrivateVars["hello"])
+
+	s.Require().NotNil(projectVars.VarsDescriptions)
+	s.Len(projectVars.VarsDescriptions, 3)
+	s.Equal("apple description", projectVars.VarsDescriptions["apple"])     // unchanged from original projectA
+	s.Equal("hello description", projectVars.VarsDescriptions["hello"])     // unchanged from original projectA
+	s.Equal("chicago description", projectVars.VarsDescriptions["chicago"]) // copied from repoRef
+
 	events, err := model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
 	s.Len(events, 1)
