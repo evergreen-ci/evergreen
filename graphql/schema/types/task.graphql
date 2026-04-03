@@ -154,6 +154,7 @@ type Task {
   testSelectionEnabled: Boolean!
   timeTaken: Duration
   totalTestCount: Int!
+  version: VersionLite!
   versionMetadata: Version!
 }
 

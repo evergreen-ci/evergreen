@@ -836,7 +836,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		HomeVolumeSize:       utility.FromIntPtr(spawnHostInput.HomeVolumeSize),
 		HomeVolumeID:         utility.FromStringPtr(spawnHostInput.VolumeID),
 		Expiration:           spawnHostInput.Expiration,
-		UseOAuth:             utility.FromBoolPtr(spawnHostInput.UseOAuth),
 	}
 	if spawnHostInput.SleepSchedule != nil {
 		options.SleepScheduleOptions = host.SleepScheduleOptions{
