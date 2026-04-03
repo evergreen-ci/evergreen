@@ -121,18 +121,11 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
 	}
-	repo, err := model.FindRepository(ctx, args.DownstreamProject.Id)
-	if err != nil {
-		return metadata, errors.Wrapf(err, "finding most recent revision for '%s'", args.DownstreamProject.Id)
-	}
-	if repo == nil {
-		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
-	}
 
 	// Fetch the latest commit from the downstream project's branch
-	// until the source version's creation time. This ensures that the
-	// downstream version is created with the latest commit on the branch
-	// before the source version was created.
+	// until the event's creation time. This ensures that the commit
+	// used for the downstream version is the latest commit up to the
+	// event's creation time.
 	opts := &github.CommitsListOptions{
 		SHA:   args.DownstreamProject.Branch,
 		Until: metadata.Revision.CreateTime,
