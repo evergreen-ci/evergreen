@@ -29,6 +29,7 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -432,28 +433,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if err != nil {
 				return "", errors.Wrap(err, "constructing Jasper command to fetch task data")
 			}
-			if !h.ProvisionOptions.UseOAuth {
-				// The legacy approach is to run `evergreen fetch` directly here with
-				// static credentials.
-				postFetchClient += " && " + getTaskDataCmd
-			} else {
-				// Escape single quotes in the command.
-				// This is done by closing the single quoted string, starting a
-				// double quoted string, having it's content be a single quote, then
-				// closing the double quoted string, and reopening the original
-				// single quoted string.
-				getTaskDataCmd := strings.ReplaceAll(getTaskDataCmd, "'", `'"'"'`)
-				// We write the command to a script because the user hasn't authenticated on this host yet.
-				// When the user SSH's in later, they have to run the script by running `evergreen host fetch`.
-				scriptPath := filepath.Join(h.Distro.HomeDir(), evergreen.SpawnhostFetchScriptName)
-				postFetchClient += " && " + fmt.Sprintf("echo '%s' > %s && chmod +x %s", getTaskDataCmd, scriptPath, scriptPath)
-
-				// Users might forget to run `evergreen host fetch`, so we add a note to
-				// where it usually is to remind them.
-				dataMissingFile := filepath.Join(h.Distro.WorkDir, evergreen.WhyIsMyDataMissingName)
-				postFetchClient += fmt.Sprintf(" && mkdir -p %s && chmod 777 %s ", h.Distro.WorkDir, h.Distro.WorkDir)
-				postFetchClient += fmt.Sprintf(" && echo '%s' >> %s && chmod 777 %s", whyIsMyDataMissingText, dataMissingFile, dataMissingFile)
-			}
+			postFetchClient += " && " + getTaskDataCmd
 		}
 	}
 
@@ -1147,10 +1127,11 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		TaskID        string `yaml:"task_id,omitempty"`
 		ProjectID     string `yaml:"project_id,omitempty"`
 		OAuth         struct {
-			Issuer          string `yaml:"issuer"`
-			ClientID        string `yaml:"client_id"`
-			ConnectorID     string `yaml:"connector_id"`
-			DoNotUseBrowser bool   `yaml:"do_not_use_browser"`
+			Issuer               string        `yaml:"issuer"`
+			ClientID             string        `yaml:"client_id"`
+			ConnectorID          string        `yaml:"connector_id"`
+			DoNotUseBrowser      bool          `yaml:"do_not_use_browser"`
+			SpawnHostAccessToken *oauth2.Token `yaml:"spawn_host_access_token,omitempty"`
 		} `yaml:"oauth,omitempty"`
 	}{
 		User: owner.Id,
@@ -1186,11 +1167,12 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 			conf.OAuth.DoNotUseBrowser = true
 		}
 	}
-
-	if h.ProvisionOptions != nil && !h.ProvisionOptions.UseOAuth {
-		// If the host is not using OAuth, set the API key for the owner.
-		// We always set the 'user' field since it helps scripts identify
-		// which user is associated with the host.
+	if accessToken := owner.TokenExchangeToken; accessToken != nil {
+		conf.OAuth.SpawnHostAccessToken = accessToken
+		// We do not need to remove the access token from the user's document because
+		// it automatically expires and other hosts may need to use it.
+	} else {
+		// If there is no access token, default to using the user's API key.
 		conf.APIKey = owner.APIKey
 	}
 

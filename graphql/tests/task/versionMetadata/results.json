@@ -12,6 +12,53 @@
           }
         }
       }
+    },
+    {
+      "query_file": "version.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task",
+            "version": {
+              "id": "5e4ff3abe3c3317e352062e4",
+              "message": "'evergreen-ci/evergreen' pull request #3186 by bsamek: EVG-7425 Don't send ShouldExit to unprovisioned hosts (https://github.com/evergreen-ci/evergreen/pull/3186)",
+              "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
+              "order": 2567,
+              "branch": "main",
+              "requester": "github_pull_request",
+              "ignored": false,
+              "errors": [],
+              "warnings": [],
+              "repo": "",
+              "project": {
+                "id": "spruce",
+                "identifier": "spruce",
+                "displayName": "Spruce",
+                "owner": "evergreen-ci",
+                "repo": "spruce"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "version_with_user.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task_2",
+            "version": {
+              "id": "version_admin_user",
+              "user": {
+                "id": "admin_user",
+                "displayName": "Admin User",
+                "emailAddress": "admin_user@mongodb.com"
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

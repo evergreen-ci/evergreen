@@ -182,6 +182,45 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 	return project, nil
 }
 
+// ReloadProject reloads the project configuration from a file while preserving
+// the current debug session state. If a task is currently selected, it
+// re-prepares the task with the new config.
+func (e *LocalExecutor) ReloadProject(ctx context.Context, configPath string) (*model.Project, error) {
+	savedIndex := e.debugState.CurrentStepIndex
+	savedVars := make(map[string]string, len(e.debugState.CustomVars))
+	for k, v := range e.debugState.CustomVars {
+		savedVars[k] = v
+	}
+	savedHistory := make([]executionRecord, len(e.debugState.ExecutionHistory))
+	copy(savedHistory, e.debugState.ExecutionHistory)
+
+	project, err := e.LoadProject(configPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading project")
+	}
+
+	if e.debugState.SelectedTask != "" {
+		if err := e.PrepareTask(ctx, e.debugState.SelectedTask, e.debugState.SelectedVariant); err != nil {
+			return nil, errors.Wrap(err, "re-preparing task after reload")
+		}
+	}
+
+	e.debugState.CustomVars = savedVars
+	e.debugState.ExecutionHistory = savedHistory
+	if savedIndex > len(e.debugState.CommandList) {
+		savedIndex = len(e.debugState.CommandList)
+	}
+	e.debugState.CurrentStepIndex = savedIndex
+
+	for k, v := range savedVars {
+		e.expansions.Put(k, v)
+	}
+
+	e.logger.Infof(ctx, "Reloaded project, preserved step index at %d", e.debugState.CurrentStepIndex)
+
+	return project, nil
+}
+
 // SetupWorkingDirectory prepares the working directory for task execution
 func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	if path == "" {
@@ -583,8 +622,10 @@ func (e *LocalExecutor) handleNoOpCommand(ctx context.Context, cmd command.Comma
 	e.logger.Infof(ctx, e.getNoOpMessage(cmd.Name()))
 }
 
-// PrepareTask prepares a task for execution by creating command blocks
-func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName string) error {
+// PrepareTask prepares a task for execution by creating command blocks.
+// If variantName is provided, it validates the task exists on that variant
+// and applies the variant's expansions.
+func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName string) error {
 	if e.project == nil {
 		return errors.New("project not loaded")
 	}
@@ -596,6 +637,20 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName string) error 
 
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof(ctx, "Preparing task: %s", taskName)
+
+	if variantName != "" {
+		bv := e.project.FindBuildVariant(variantName)
+		if bv == nil {
+			return errors.Errorf("build variant '%s' not found in project", variantName)
+		}
+		if _, err := bv.Get(taskName); err != nil {
+			return errors.Wrapf(err, "task '%s' is not defined on build variant '%s'", taskName, variantName)
+		}
+		e.debugState.SelectedVariant = variantName
+		e.taskConfig.Expansions.Put("build_variant", variantName)
+		e.taskConfig.Expansions.Update(bv.Expansions)
+		e.logger.Infof(ctx, "Applied expansions from build variant: %s", variantName)
+	}
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock

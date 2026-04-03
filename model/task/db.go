@@ -189,12 +189,6 @@ var (
 		},
 	}
 
-	addDisplayStatus = bson.M{
-		"$addFields": bson.M{
-			DisplayStatusKey: DisplayStatusExpression,
-		},
-	}
-
 	addDisplayStatusCache = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusCacheKey: DisplayStatusExpression,
@@ -1305,58 +1299,6 @@ func FindOneIdAndExecution(ctx context.Context, id string, execution int) (*Task
 	return task, nil
 }
 
-// FindOneIdAndExecutionWithDisplayStatus returns a single task with the given
-// ID and execution, with display statuses added.
-func FindOneIdAndExecutionWithDisplayStatus(ctx context.Context, id string, execution *int) (*Task, error) {
-	tasks := []Task{}
-	match := bson.M{
-		IdKey: id,
-	}
-	if execution != nil {
-		match[ExecutionKey] = *execution
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-		addDisplayStatus,
-	}
-	if err := Aggregate(ctx, pipeline, &tasks); err != nil {
-		return nil, errors.Wrap(err, "finding task")
-	}
-	if len(tasks) != 0 {
-		t := tasks[0]
-		return &t, nil
-	}
-
-	return findOneOldByIdAndExecutionWithDisplayStatus(ctx, id, execution)
-}
-
-// findOneOldByIdAndExecutionWithDisplayStatus returns a single task with the
-// given ID and execution from the old tasks collection, with display statuses
-// added.
-func findOneOldByIdAndExecutionWithDisplayStatus(ctx context.Context, id string, execution *int) (*Task, error) {
-	tasks := []Task{}
-	match := bson.M{
-		OldTaskIdKey: id,
-	}
-	if execution != nil {
-		match[ExecutionKey] = *execution
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-		addDisplayStatus,
-	}
-
-	if err := db.Aggregate(ctx, OldCollection, pipeline, &tasks); err != nil {
-		return nil, errors.Wrap(err, "finding task")
-	}
-	if len(tasks) != 0 {
-		t := tasks[0]
-		return &t, nil
-	}
-
-	return nil, errors.New("task not found")
-}
-
 // FindOneOld returns a single task from the old tasks collection that
 // satifisfies the given query.
 func FindOneOld(ctx context.Context, filter bson.M) (*Task, error) {
@@ -2275,79 +2217,6 @@ func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts Ge
 	}
 	return result, nil
 
-}
-
-// GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
-func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, baseVersionID string) ([]string, error) {
-	pipeline := []bson.M{}
-	taskField := "tasks"
-
-	// Fetch all activated tasks from version, and all tasks from base version
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{
-			"$or": []bson.M{
-				{VersionKey: baseVersionID},
-				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
-			},
-		}})
-	// Alias the persisted display_status_cache as display_status.
-	pipeline = append(pipeline, bson.M{
-		"$addFields": bson.M{
-			DisplayStatusKey: "$" + DisplayStatusCacheKey,
-		},
-	})
-	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
-			taskField: bson.M{"$push": bson.M{
-				DisplayStatusKey: "$" + DisplayStatusKey,
-				VersionKey:       "$" + VersionKey,
-			}},
-		},
-	})
-	// Only keep records that exist both on the version & base version (i.e. there are 2 copies)
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{taskField: bson.M{"$size": 2}},
-	})
-	// Unwind to put tasks into a state where it's easier to filter
-	pipeline = append(pipeline, bson.M{
-		"$unwind": bson.M{
-			"path": "$" + taskField,
-		},
-	})
-	// Filter out tasks that aren't from base version
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{bsonutil.GetDottedKeyName(taskField, VersionKey): baseVersionID},
-	})
-	// Group to Get rid of duplicate statuses
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),
-		},
-	})
-	// Sort to guarantee order
-	pipeline = append(pipeline, bson.M{
-		"$sort": bson.D{
-			bson.E{Key: "_id", Value: 1},
-		},
-	})
-
-	res := []map[string]string{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, err
-	}
-	err = cursor.All(ctx, &res)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating base task statuses")
-	}
-	statuses := []string{}
-	for _, r := range res {
-		statuses = append(statuses, r["_id"])
-	}
-	return statuses, nil
 }
 
 type HasMatchingTasksOptions struct {

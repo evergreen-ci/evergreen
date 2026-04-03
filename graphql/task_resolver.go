@@ -823,6 +823,19 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 	return stats.TotalCount, nil
 }
 
+// Version is the resolver for the version field.
+func (r *taskResolver) Version(ctx context.Context, obj *restModel.APITask) (*model.Version, error) {
+	versionID := utility.FromStringPtr(obj.Version)
+	v, err := loaders.GetVersion(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
+	}
+	return v, nil
+}
+
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)

@@ -309,7 +309,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 
 // getTask returns the task with the given id and execution number
 func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, execution)
+	dbTask, err := task.FindByIdExecution(ctx, taskID, execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
@@ -432,7 +432,7 @@ func canRestartTask(ctx context.Context, t *task.Task) bool {
 	}
 	// It is possible to restart blocked display tasks. Later tasks in a display task could be blocked on
 	// earlier tasks in the display task, in which case restarting the entire display task may unblock them.
-	return (t.DisplayStatus == evergreen.TaskStatusBlocked && t.DisplayOnly) ||
+	return (t.GetDisplayStatus() == evergreen.TaskStatusBlocked && t.DisplayOnly) ||
 		!utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status)
 }
 
@@ -441,7 +441,7 @@ func canScheduleTask(ctx context.Context, t *task.Task) bool {
 	if t.IsPartOfDisplay(ctx) || t.Aborted {
 		return false
 	}
-	if t.DisplayStatus != evergreen.TaskUnscheduled {
+	if t.GetDisplayStatus() != evergreen.TaskUnscheduled {
 		return false
 	}
 	return true
@@ -836,7 +836,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		HomeVolumeSize:       utility.FromIntPtr(spawnHostInput.HomeVolumeSize),
 		HomeVolumeID:         utility.FromStringPtr(spawnHostInput.VolumeID),
 		Expiration:           spawnHostInput.Expiration,
-		UseOAuth:             utility.FromBoolPtr(spawnHostInput.UseOAuth),
 	}
 	if spawnHostInput.SleepSchedule != nil {
 		options.SleepScheduleOptions = host.SleepScheduleOptions{
