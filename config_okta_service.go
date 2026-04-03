@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -36,6 +37,29 @@ func (c *OktaServiceConfig) Set(ctx context.Context) error {
 	)
 }
 
+// ValidateAndDefault implements the ConfigSection interface; Okta service
+// fields are optional at general settings load time and validated via Validate
+// when the token exchange flow runs.
 func (c *OktaServiceConfig) ValidateAndDefault() error {
 	return nil
+}
+
+func (c *OktaServiceConfig) Validate() error {
+	catcher := grip.NewSimpleCatcher()
+	if c.ClientID == "" {
+		catcher.Add(errors.New("client ID is required"))
+	}
+	if c.ClientSecret == "" {
+		catcher.Add(errors.New("client secret is required"))
+	}
+	if c.Audience == "" {
+		catcher.Add(errors.New("audience is required"))
+	}
+	if len(c.Scopes) == 0 {
+		catcher.Add(errors.New("scopes are required"))
+	}
+	if c.Issuer == "" {
+		catcher.Add(errors.New("issuer is required"))
+	}
+	return catcher.Resolve()
 }
