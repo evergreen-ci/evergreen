@@ -282,12 +282,11 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	return taskConfig, nil
 }
 
-// ApplyFunctionVars expands the given function vars and puts them into
+// ApplyFunctionVarsToExpansions expands the given function vars and puts them into
 // NewExpansions so they're available during command execution. It returns
-// a cleanup function that restores the previous expansion values. The
-// caller must defer the cleanup. If cmdName is "expansions.update", the
-// cleanup will preserve any keys that were dynamically updated.
-func (tc *TaskConfig) ApplyFunctionVars(vars map[string]string, cmdName string) (cleanup func(), err error) {
+// a cleanup function that restores the previous expansion values. The caller
+// is expected to call cleanup when the function ends because the function variables go out of scope.
+func (tc *TaskConfig) ApplyFunctionVarsToExpansions(vars map[string]string, cmdName string) (cleanup func(), err error) {
 	prevExp := map[string]string{}
 	for key, val := range vars {
 		prevExp[key] = tc.Expansions.Get(key)

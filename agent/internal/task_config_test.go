@@ -90,7 +90,7 @@ func TestApplyFunctionVars(t *testing.T) {
 	t.Run("CleanupRestoresPreviousValues", func(t *testing.T) {
 		tc := makeTaskConfig()
 
-		cleanup, err := tc.ApplyFunctionVars(map[string]string{
+		cleanup, err := tc.ApplyFunctionVarsToExpansions(map[string]string{
 			"existing_key": "new_value",
 		}, "shell.exec")
 		require.NoError(t, err)
@@ -104,7 +104,7 @@ func TestApplyFunctionVars(t *testing.T) {
 	t.Run("VarsWithExpansionReferencesAreExpanded", func(t *testing.T) {
 		tc := makeTaskConfig()
 
-		cleanup, err := tc.ApplyFunctionVars(map[string]string{
+		cleanup, err := tc.ApplyFunctionVarsToExpansions(map[string]string{
 			"derived": "${ref}_suffix",
 		}, "shell.exec")
 		require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestApplyFunctionVars(t *testing.T) {
 
 		tc.DynamicExpansions.Put("existing_key", "dynamic_value")
 
-		cleanup, err := tc.ApplyFunctionVars(map[string]string{
+		cleanup, err := tc.ApplyFunctionVarsToExpansions(map[string]string{
 			"existing_key": "func_value",
 		}, "expansions.update")
 		require.NoError(t, err)
@@ -133,7 +133,7 @@ func TestApplyFunctionVars(t *testing.T) {
 		tc := makeTaskConfig()
 		tc.DynamicExpansions.Put("some_key", "some_val")
 
-		cleanup, err := tc.ApplyFunctionVars(map[string]string{
+		cleanup, err := tc.ApplyFunctionVarsToExpansions(map[string]string{
 			"existing_key": "temp",
 		}, "shell.exec")
 		require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestApplyFunctionVars(t *testing.T) {
 	t.Run("EmptyVarsMapProducesSafeCleanup", func(t *testing.T) {
 		tc := makeTaskConfig()
 
-		cleanup, err := tc.ApplyFunctionVars(map[string]string{}, "shell.exec")
+		cleanup, err := tc.ApplyFunctionVarsToExpansions(map[string]string{}, "shell.exec")
 		require.NoError(t, err)
 
 		assert.Equal(t, "original_value", tc.NewExpansions.Get("existing_key"))

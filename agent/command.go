@@ -164,7 +164,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmd command.Command, options runCommandsOptions) error {
-	cleanup, err := tc.taskConfig.ApplyFunctionVars(commandInfo.Vars, cmd.Name())
+	cleanup, err := tc.taskConfig.ApplyFunctionVarsToExpansions(commandInfo.Vars, cmd.Name())
 	if err != nil {
 		return err
 	}

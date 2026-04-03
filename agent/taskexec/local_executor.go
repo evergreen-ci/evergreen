@@ -408,7 +408,7 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			cmd := cmds[targetIndexWithinExpanded]
 			cmd.SetJasperManager(e.jasperManager)
 
-			cleanup, err := e.taskConfig.ApplyFunctionVars(commandInfo.Vars, cmd.Name())
+			cleanup, err := e.taskConfig.ApplyFunctionVarsToExpansions(commandInfo.Vars, cmd.Name())
 			if err != nil {
 				return err
 			}
