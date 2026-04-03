@@ -123,7 +123,7 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	}
 
 	// Fetch the latest commit from the downstream project's branch
-	// until the event's creation time. This ensures that the commit
+	// until the commit's creation time. This ensures that the commit
 	// used for the downstream version is the latest commit up to the
 	// event's creation time.
 	opts := &github.CommitsListOptions{
