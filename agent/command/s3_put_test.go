@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -306,6 +308,22 @@ func TestS3PutValidateParams(t *testing.T) {
 	})
 }
 
+func TestS3PutOptionsStorageClass(t *testing.T) {
+	cmd := &s3put{
+		Region:      "us-east-1",
+		Bucket:      "test-bucket",
+		Permissions: string(s3Types.BucketCannedACLPrivate),
+		ContentType: "application/x-tar",
+	}
+
+	opts := cmd.s3PutOptions()
+	assert.Equal(t, s3Types.StorageClassIntelligentTiering, opts.StorageClass)
+	assert.Equal(t, "us-east-1", opts.Region)
+	assert.Equal(t, "test-bucket", opts.Name)
+	assert.Equal(t, pail.S3Permissions("private"), opts.Permissions)
+	assert.Equal(t, "application/x-tar", opts.ContentType)
+}
+
 func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {
@@ -414,10 +432,6 @@ func TestSignedUrlVisibility(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 
-		conf := &internal.TaskConfig{
-			Task: task.Task{Id: "task_id"},
-		}
-
 		remoteFile := "remote file"
 
 		file1Info, err := os.Stat(file1)
@@ -425,22 +439,22 @@ func TestSignedUrlVisibility(t *testing.T) {
 		file2Info, err := os.Stat(file2)
 		require.NoError(t, err)
 
-		uploadedFiles := []task.FileMetrics{
+		uploadedFiles := []s3usage.FileMetrics{
 			{
-				LocalPath:   file1,
-				RemotePath:  remoteFile,
-				FileSize:    file1Info.Size(),
-				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
+				LocalPath:     file1,
+				RemotePath:    remoteFile,
+				FileSizeBytes: file1Info.Size(),
+				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
 			},
 			{
-				LocalPath:   file2,
-				RemotePath:  remoteFile,
-				FileSize:    file2Info.Size(),
-				PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
+				LocalPath:     file2,
+				RemotePath:    remoteFile,
+				FileSizeBytes: file2Info.Size(),
+				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
 			},
 		}
 
-		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
+		require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
 
 		attachedFiles := comm.AttachedFiles
 		if v, found := attachedFiles[""]; found {
@@ -496,22 +510,22 @@ func TestContentTypeSaved(t *testing.T) {
 	file2Info, err := os.Stat(file2)
 	require.NoError(t, err)
 
-	uploadedFiles := []task.FileMetrics{
+	uploadedFiles := []s3usage.FileMetrics{
 		{
-			LocalPath:   file1,
-			RemotePath:  remoteFile,
-			FileSize:    file1Info.Size(),
-			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file1Info.Size()),
+			LocalPath:     file1,
+			RemotePath:    remoteFile,
+			FileSizeBytes: file1Info.Size(),
+			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
 		},
 		{
-			LocalPath:   file2,
-			RemotePath:  remoteFile,
-			FileSize:    file2Info.Size(),
-			PutRequests: task.CalculatePutRequestsWithContext(task.S3BucketTypeLarge, task.S3UploadMethodPut, file2Info.Size()),
+			LocalPath:     file2,
+			RemotePath:    remoteFile,
+			FileSizeBytes: file2Info.Size(),
+			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
 		},
 	}
 
-	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles, remoteFile, conf))
+	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
 
 	attachedFiles := comm.AttachedFiles
 	files, ok := attachedFiles[conf.Task.Id]
@@ -570,6 +584,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				Project:      model.Project{},
 				WorkDir:      dir,
 				BuildVariant: model.BuildVariant{},
+				S3Usage:      &s3usage.S3Usage{},
 			}
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
@@ -631,6 +646,7 @@ func TestFileUploadNaming(t *testing.T) {
 		Project:      model.Project{},
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -711,6 +727,7 @@ func TestPreservePath(t *testing.T) {
 		Project:      model.Project{},
 		WorkDir:      dir,
 		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -801,6 +818,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 			},
 		},
 		WorkDir: temproot,
+		S3Usage: &s3usage.S3Usage{},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -848,4 +866,184 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	_, err = apimodels.ReadLogToSlice(it)
 	require.NoError(t, err)
+}
+
+func TestComputePerFileExtremes(t *testing.T) {
+	t.Run("EmptyInput", func(t *testing.T) {
+		maxPuts, minPuts := computePerFileExtremes(nil)
+		assert.Zero(t, maxPuts)
+		assert.Zero(t, minPuts)
+	})
+	t.Run("SingleFile", func(t *testing.T) {
+		files := []s3usage.FileMetrics{
+			{PutRequests: 5},
+		}
+		maxPuts, minPuts := computePerFileExtremes(files)
+		assert.Equal(t, 5, maxPuts)
+		assert.Equal(t, 5, minPuts)
+	})
+	t.Run("MultipleFiles", func(t *testing.T) {
+		files := []s3usage.FileMetrics{
+			{PutRequests: 3},
+			{PutRequests: 10},
+			{PutRequests: 1},
+			{PutRequests: 7},
+		}
+		maxPuts, minPuts := computePerFileExtremes(files)
+		assert.Equal(t, 10, maxPuts)
+		assert.Equal(t, 1, minPuts)
+	})
+	t.Run("AllSameValue", func(t *testing.T) {
+		files := []s3usage.FileMetrics{
+			{PutRequests: 4},
+			{PutRequests: 4},
+			{PutRequests: 4},
+		}
+		maxPuts, minPuts := computePerFileExtremes(files)
+		assert.Equal(t, 4, maxPuts)
+		assert.Equal(t, 4, minPuts)
+	})
+}
+
+func TestReadAssociatedLinksFile(t *testing.T) {
+	t.Run("ValidJSONFile", func(t *testing.T) {
+		tempDir := t.TempDir()
+		linksFile := filepath.Join(tempDir, "links.json")
+
+		links := []artifact.AssociatedLink{
+			{Name: "Documentation", Link: "https://example.com/docs"},
+			{Name: "Coverage Report", Link: "https://example.com/coverage"},
+		}
+		data, err := json.Marshal(links)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(linksFile, data, 0644))
+
+		conf := &internal.TaskConfig{
+			WorkDir:    tempDir,
+			Expansions: *util.NewExpansions(map[string]string{}),
+		}
+
+		result, err := readAssociatedLinksFile(linksFile, conf)
+		require.NoError(t, err)
+		assert.Len(t, result, 2)
+		assert.Equal(t, "Documentation", result[0].Name)
+		assert.Equal(t, "https://example.com/docs", result[0].Link)
+		assert.Equal(t, "Coverage Report", result[1].Name)
+		assert.Equal(t, "https://example.com/coverage", result[1].Link)
+	})
+
+	t.Run("FileDoesNotExist", func(t *testing.T) {
+		tempDir := t.TempDir()
+		linksFile := filepath.Join(tempDir, "nonexistent.json")
+
+		conf := &internal.TaskConfig{
+			WorkDir:    tempDir,
+			Expansions: *util.NewExpansions(map[string]string{}),
+		}
+
+		_, err := readAssociatedLinksFile(linksFile, conf)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "getting information for file")
+	})
+
+	t.Run("InvalidJSON", func(t *testing.T) {
+		tempDir := t.TempDir()
+		linksFile := filepath.Join(tempDir, "invalid.json")
+
+		require.NoError(t, os.WriteFile(linksFile, []byte("not valid json"), 0644))
+
+		conf := &internal.TaskConfig{
+			WorkDir:    tempDir,
+			Expansions: *util.NewExpansions(map[string]string{}),
+		}
+
+		_, err := readAssociatedLinksFile(linksFile, conf)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unmarshalling JSON")
+	})
+
+	t.Run("WithExpansions", func(t *testing.T) {
+		tempDir := t.TempDir()
+		linksFile := filepath.Join(tempDir, "links.json")
+
+		links := []artifact.AssociatedLink{
+			{Name: "Build ${build_id}", Link: "https://example.com/${task_id}/report"},
+		}
+		data, err := json.Marshal(links)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(linksFile, data, 0644))
+
+		conf := &internal.TaskConfig{
+			WorkDir: tempDir,
+			Expansions: *util.NewExpansions(map[string]string{
+				"build_id": "build123",
+				"task_id":  "task456",
+			}),
+		}
+
+		result, err := readAssociatedLinksFile(linksFile, conf)
+		require.NoError(t, err)
+		assert.Len(t, result, 1)
+		assert.Equal(t, "Build build123", result[0].Name)
+		assert.Equal(t, "https://example.com/task456/report", result[0].Link)
+	})
+}
+
+func TestS3PutWithAssociatedLinks(t *testing.T) {
+	ctx := t.Context()
+
+	tempDir := t.TempDir()
+	s3PutFile := filepath.Join(tempDir, "file1")
+	require.NoError(t, os.WriteFile(s3PutFile, []byte("content1"), 0644))
+
+	associatedLinks := []artifact.AssociatedLink{
+		{Name: "Documentation", Link: "https://example.com/docs"},
+		{Name: "Coverage", Link: "https://example.com/coverage"},
+	}
+
+	s := s3put{
+		AwsKey:          "key",
+		AwsSecret:       "secret",
+		Bucket:          "bucket",
+		BuildVariants:   []string{},
+		ContentType:     "content-type",
+		Permissions:     string(s3Types.BucketCannedACLPublicRead),
+		RemoteFile:      "remote",
+		Visibility:      "",
+		associatedLinks: associatedLinks,
+	}
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret", Execution: 0},
+		Project:      model.Project{},
+		BuildVariant: model.BuildVariant{},
+	}
+	s.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+
+	remoteFile := "remote file"
+	s3PutFileInfo, err := os.Stat(s3PutFile)
+	require.NoError(t, err)
+
+	uploadedFiles := []s3usage.FileMetrics{
+		{
+			LocalPath:     s3PutFile,
+			RemotePath:    remoteFile,
+			FileSizeBytes: s3PutFileInfo.Size(),
+			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, s3PutFileInfo.Size()),
+		},
+	}
+
+	require.NoError(t, s.attachFiles(ctx, comm, uploadedFiles))
+
+	attachedFiles := comm.AttachedFiles
+	files, ok := attachedFiles[conf.Task.Id]
+	require.True(t, ok)
+	assert.Len(t, files, 1)
+	assert.Len(t, files[0].AssociatedLinks, 2)
+	assert.Equal(t, "Documentation", files[0].AssociatedLinks[0].Name)
+	assert.Equal(t, "https://example.com/docs", files[0].AssociatedLinks[0].Link)
+	assert.Equal(t, "Coverage", files[0].AssociatedLinks[1].Name)
+	assert.Equal(t, "https://example.com/coverage", files[0].AssociatedLinks[1].Link)
 }

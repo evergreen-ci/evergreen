@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -38,410 +37,11 @@ var (
 	oneMs = time.Millisecond
 )
 
-// checkDisabled checks that the given task is disabled and logs the expected
-// events.
-func checkDisabled(t *testing.T, dbTask *task.Task) {
-	assert.Equal(t, evergreen.DisabledTaskPriority, dbTask.Priority, "task '%s' should have disabled priority", dbTask.Id)
-	assert.False(t, dbTask.Activated, "task '%s' should be deactivated", dbTask.Id)
-
-	events, err := event.FindAllByResourceID(t.Context(), dbTask.Id)
-	require.NoError(t, err)
-
-	var loggedDeactivationEvent bool
-	var loggedPriorityChangedEvent bool
-	for _, e := range events {
-		switch e.EventType {
-		case event.TaskPriorityChanged:
-			loggedPriorityChangedEvent = true
-		case event.TaskDeactivated:
-			loggedDeactivationEvent = true
-		}
-	}
-
-	assert.True(t, loggedPriorityChangedEvent, "task '%s' did not log an event indicating its priority was set", dbTask.Id)
-	assert.True(t, loggedDeactivationEvent, "task '%s' did not log an event indicating it was deactivated", dbTask.Id)
-}
-
 func requireTaskFromDB(ctx context.Context, t *testing.T, id string) *task.Task {
 	dbTask, err := task.FindOneId(ctx, id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
 	return dbTask
-}
-
-func TestDisableStaleContainerTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-	}()
-	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task){
-		"DisablesStaleUnallocatedContainerTask": func(t *testing.T, tsk task.Task) {
-			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			checkDisabled(t, dbTask)
-		},
-		"DisablesStaleAllocatedContainerTask": func(t *testing.T, tsk task.Task) {
-			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
-			tsk.ContainerAllocated = true
-			tsk.ContainerAllocatedTime = time.Now().Add(-5000 * 24 * time.Hour)
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			checkDisabled(t, dbTask)
-		},
-		"IgnoresFreshContainerTask": func(t *testing.T, tsk task.Task) {
-			tsk.ActivatedTime = time.Now()
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.True(t, dbTask.Activated)
-			assert.Zero(t, dbTask.Priority)
-		},
-		"IgnoresContainerTaskWithStatusOtherThanUndispatched": func(t *testing.T, tsk task.Task) {
-			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
-			tsk.Status = evergreen.TaskSucceeded
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.True(t, dbTask.Activated)
-			assert.Zero(t, dbTask.Priority)
-		},
-		"IgnoresHostTasks": func(t *testing.T, tsk task.Task) {
-			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
-			tsk.ExecutionPlatform = task.ExecutionPlatformHost
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.True(t, dbTask.Activated)
-			assert.Zero(t, dbTask.Priority)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-			versionId := primitive.NewObjectID()
-			v := &Version{
-				Id: versionId.Hex(),
-			}
-			require.NoError(t, v.Insert(t.Context()))
-			b := &build.Build{
-				Id:      "build-id",
-				Version: v.Id,
-			}
-			require.NoError(t, b.Insert(t.Context()))
-			task := task.Task{
-				Id:                "task-id",
-				BuildId:           b.Id,
-				Version:           v.Id,
-				Status:            evergreen.TaskUndispatched,
-				Activated:         true,
-				ExecutionPlatform: task.ExecutionPlatformContainer,
-			}
-			tCase(t, task)
-		})
-	}
-}
-
-func TestDisableOneTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-	}()
-
-	type disableFunc func(t *testing.T, tsk task.Task) error
-
-	for funcName, disable := range map[string]disableFunc{
-		"DisableTasks": func(t *testing.T, tsk task.Task) error {
-			return DisableTasks(ctx, t.Name(), tsk)
-		},
-	} {
-		t.Run(funcName, func(t *testing.T) {
-			for tName, tCase := range map[string]func(t *testing.T, tasks [5]task.Task){
-				"DisablesNormalTask": func(t *testing.T, tasks [5]task.Task) {
-					require.NoError(t, disable(t, tasks[3]))
-
-					dbTask, err := task.FindOneId(ctx, tasks[3].Id)
-					require.NoError(t, err)
-					require.NotZero(t, dbTask)
-
-					checkDisabled(t, dbTask)
-				},
-				"DisablesTaskAndDeactivatesItsDependents": func(t *testing.T, tasks [5]task.Task) {
-					require.NoError(t, disable(t, tasks[4]))
-
-					dbTask, err := task.FindOneId(ctx, tasks[4].Id)
-					require.NoError(t, err)
-					require.NotZero(t, dbTask)
-
-					checkDisabled(t, dbTask)
-
-					dbDependentTask, err := task.FindOneId(ctx, tasks[3].Id)
-					require.NoError(t, err)
-					require.NotZero(t, dbDependentTask)
-
-					assert.Zero(t, dbDependentTask.Priority, "dependent task should not have been disabled")
-					assert.False(t, dbDependentTask.Activated, "dependent task should have been deactivated")
-				},
-				"DisablesDisplayTaskAndItsExecutionTasks": func(t *testing.T, tasks [5]task.Task) {
-					require.NoError(t, disable(t, tasks[0]))
-
-					dbDisplayTask, err := task.FindOneId(ctx, tasks[0].Id)
-					require.NoError(t, err)
-					require.NotZero(t, dbDisplayTask)
-					checkDisabled(t, dbDisplayTask)
-
-					dbExecTasks, err := task.FindAll(ctx, db.Query(task.ByIds([]string{tasks[1].Id, tasks[2].Id})))
-					require.NoError(t, err)
-					assert.Len(t, dbExecTasks, 2)
-
-					for _, task := range dbExecTasks {
-						checkDisabled(t, &task)
-					}
-				},
-				"DoesNotDisableParentDisplayTask": func(t *testing.T, tasks [5]task.Task) {
-					require.NoError(t, disable(t, tasks[1]))
-
-					dbExecTask, err := task.FindOneId(ctx, tasks[1].Id)
-					require.NoError(t, err)
-					require.NotZero(t, dbExecTask)
-
-					checkDisabled(t, dbExecTask)
-
-					dbDisplayTask, err := task.FindOneId(ctx, tasks[0].Id)
-					require.NoError(t, err)
-					require.NotZero(t, dbDisplayTask)
-
-					assert.Zero(t, dbDisplayTask.Priority, "display task is not modified when its execution task is disabled")
-					assert.True(t, dbDisplayTask.Activated, "display task is not modified when its execution task is disabled")
-				},
-			} {
-				t.Run(tName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-					versionId := primitive.NewObjectID()
-					v := &Version{
-						Id: versionId.Hex(),
-					}
-					require.NoError(t, v.Insert(t.Context()))
-					b := &build.Build{
-						Id:      "build-id",
-						Version: v.Id,
-					}
-					require.NoError(t, b.Insert(t.Context()))
-					tasks := [5]task.Task{
-						{Id: "display-task0", DisplayOnly: true, ExecutionTasks: []string{"exec-task1", "exec-task2"}, Activated: true, BuildId: b.Id, Version: v.Id},
-						{Id: "exec-task1", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true, BuildId: b.Id, Version: v.Id},
-						{Id: "exec-task2", DisplayTaskId: utility.ToStringPtr("display-task0"), Activated: true, BuildId: b.Id, Version: v.Id},
-						{Id: "task3", Activated: true, DependsOn: []task.Dependency{{TaskId: "task4"}}, BuildId: b.Id, Version: v.Id},
-						{Id: "task4", Activated: true, BuildId: b.Id, Version: v.Id},
-					}
-					for _, task := range tasks {
-						require.NoError(t, task.Insert(t.Context()))
-					}
-					tCase(t, tasks)
-				})
-			}
-		})
-	}
-}
-
-func TestDisableManyTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-	}()
-
-	for tName, tCase := range map[string]func(t *testing.T){
-		"DisablesIndividualExecutionTasksWithinADisplayTaskAndDoesNotUpdateDisplayTask": func(t *testing.T) {
-			dt := task.Task{
-				Id:             "display-task",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec-task1", "exec-task2", "exec-task3"},
-				Activated:      true,
-				BuildId:        "build-id",
-				Version:        "abcdefghijk",
-			}
-			et1 := task.Task{
-				Id:            "exec-task1",
-				DisplayTaskId: utility.ToStringPtr(dt.Id),
-				Activated:     true,
-				BuildId:       "build-id",
-				Version:       "abcdefghijk",
-			}
-			et2 := task.Task{
-				Id:            "exec-task2",
-				DisplayTaskId: utility.ToStringPtr(dt.Id),
-				Activated:     true,
-				BuildId:       "build-id",
-				Version:       "abcdefghijk",
-			}
-			et3 := task.Task{
-				Id:            "exec-task3",
-				DisplayTaskId: utility.ToStringPtr(dt.Id),
-				Activated:     true,
-				BuildId:       "build-id",
-				Version:       "abcdefghijk",
-			}
-			require.NoError(t, dt.Insert(t.Context()))
-			require.NoError(t, et1.Insert(t.Context()))
-			require.NoError(t, et2.Insert(t.Context()))
-			require.NoError(t, et3.Insert(t.Context()))
-
-			require.NoError(t, DisableTasks(ctx, t.Name(), et1, et2))
-
-			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbDisplayTask)
-
-			assert.Zero(t, dbDisplayTask.Priority, "parent display task priority should not be modified when execution tasks are disabled")
-			assert.True(t, dbDisplayTask.Activated, "parent display task should not be deactivated when execution tasks are disabled")
-
-			dbExecTask1, err := task.FindOneId(ctx, et1.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbExecTask1)
-			checkDisabled(t, dbExecTask1)
-
-			dbExecTask2, err := task.FindOneId(ctx, et2.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbExecTask2)
-			checkDisabled(t, dbExecTask1)
-
-			dbExecTask3, err := task.FindOneId(ctx, et3.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbExecTask3)
-			assert.Zero(t, dbExecTask3.Priority, "priority of execution task under same parent display task as disabled execution tasks should not be modified")
-			assert.True(t, dbExecTask3.Activated, "execution task under same parent display task as disabled execution tasks should not be deactivated")
-		},
-		"DisablesMixOfExecutionTasksAndDisplayTasks": func(t *testing.T) {
-			dt1 := task.Task{
-				Id:             "display-task1",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec-task1", "exec-task2"},
-				Activated:      true,
-				BuildId:        "build-id",
-				Version:        "abcdefghijk",
-			}
-			dt2 := task.Task{
-				Id:             "display-task2",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{"exec-task3", "exec-task4"},
-				Activated:      true,
-				BuildId:        "build-id",
-				Version:        "abcdefghijk",
-			}
-			et1 := task.Task{
-				Id:            "exec-task1",
-				DisplayTaskId: utility.ToStringPtr(dt1.Id),
-				Activated:     true,
-				BuildId:       "build-id",
-				Version:       "abcdefghijk",
-			}
-			et2 := task.Task{
-				Id:            "exec-task2",
-				DisplayTaskId: utility.ToStringPtr(dt1.Id),
-				Activated:     true,
-				BuildId:       "build-id",
-				Version:       "abcdefghijk",
-			}
-			et3 := task.Task{
-				Id:            "exec-task3",
-				DisplayTaskId: utility.ToStringPtr(dt2.Id),
-				Activated:     true,
-				BuildId:       "build-id",
-				Version:       "abcdefghijk",
-			}
-			et4 := task.Task{
-				Id:            "exec-task4",
-				DisplayTaskId: utility.ToStringPtr(dt2.Id),
-				Activated:     true,
-				BuildId:       "build-id",
-				Version:       "abcdefghijk",
-			}
-			require.NoError(t, dt1.Insert(t.Context()))
-			require.NoError(t, dt2.Insert(t.Context()))
-			require.NoError(t, et1.Insert(t.Context()))
-			require.NoError(t, et2.Insert(t.Context()))
-			require.NoError(t, et3.Insert(t.Context()))
-			require.NoError(t, et4.Insert(t.Context()))
-
-			require.NoError(t, DisableTasks(ctx, t.Name(), et1, et3, dt2))
-
-			dbDisplayTask1, err := task.FindOneId(ctx, dt1.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbDisplayTask1)
-
-			assert.Zero(t, dbDisplayTask1.Priority, "parent display task priority should not be modified when execution tasks are disabled")
-			assert.True(t, dbDisplayTask1.Activated, "parent display task should not be deactivated when execution tasks are disabled")
-
-			dbDisplayTask2, err := task.FindOneId(ctx, dt2.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbDisplayTask2)
-
-			checkDisabled(t, dbDisplayTask2)
-
-			dbExecTask1, err := task.FindOneId(ctx, et1.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbExecTask1)
-			checkDisabled(t, dbExecTask1)
-
-			dbExecTask2, err := task.FindOneId(ctx, et2.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbExecTask2)
-			assert.Zero(t, dbExecTask2.Priority, "priority of execution task under same parent display task as disabled execution tasks should not be modified")
-			assert.True(t, dbExecTask2.Activated, "execution task under same parent display task as disabled execution tasks should not be deactivated")
-
-			dbExecTask3, err := task.FindOneId(ctx, et3.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbExecTask3)
-			checkDisabled(t, dbExecTask3)
-
-			dbExecTask4, err := task.FindOneId(ctx, et4.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbExecTask4)
-			checkDisabled(t, dbExecTask4)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-			versionId := "abcdefghijk"
-			v := &Version{
-				Id: versionId,
-			}
-			require.NoError(t, v.Insert(t.Context()))
-			b := &build.Build{
-				Id:      "build-id",
-				Version: v.Id,
-			}
-			require.NoError(t, b.Insert(t.Context()))
-			tCase(t)
-		})
-	}
 }
 
 func TestSetActiveState(t *testing.T) {
@@ -731,6 +331,43 @@ func TestSetActiveState(t *testing.T) {
 			depTask, err = task.FindOne(ctx, db.Query(task.ById(dep2.Id)))
 			So(err, ShouldBeNil)
 			So(depTask.Activated, ShouldBeFalse)
+		})
+
+		Convey("activating tasks should recompute NumDependents for all tasks in the version", func() {
+			// Create another task that also depends on dep1
+			anotherTask := &task.Task{
+				Id:          "t4",
+				DisplayName: "anotherTask",
+				Activated:   false,
+				DistroId:    distroId,
+				BuildId:     buildId,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: dep1.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+				Version: "version",
+			}
+			So(anotherTask.Insert(t.Context()), ShouldBeNil)
+
+			// Initially, NumDependents should be 0
+			depTask, err := task.FindOne(ctx, db.Query(task.ById(dep1.Id)))
+			So(err, ShouldBeNil)
+			So(depTask.NumDependents, ShouldEqual, 0)
+
+			// Activate both tasks that depend on dep1
+			So(SetActiveState(ctx, userName, true, testTask, *anotherTask), ShouldBeNil)
+
+			// After activation, dep1's NumDependents should be recomputed to 2
+			depTask, err = task.FindOne(ctx, db.Query(task.ById(dep1.Id)))
+			So(err, ShouldBeNil)
+			So(depTask.NumDependents, ShouldEqual, 2)
+
+			// dep2 should have NumDependents of 1 (only testTask depends on it)
+			depTask2, err := task.FindOne(ctx, db.Query(task.ById(dep2.Id)))
+			So(err, ShouldBeNil)
+			So(depTask2.NumDependents, ShouldEqual, 1)
 		})
 	})
 
@@ -2864,43 +2501,6 @@ func TestTryResetTask(t *testing.T) {
 				So(dbDependentTask.DependsOn[0].TaskId, ShouldEqual, testTask.Id)
 				So(dbDependentTask.DependsOn[0].Finished, ShouldBeFalse)
 			})
-			Convey("with a container task", func() {
-				containerTask := &task.Task{
-					Id:                          "container_task",
-					DisplayName:                 displayName,
-					Activated:                   false,
-					BuildId:                     b.Id,
-					Execution:                   1,
-					Project:                     "sample",
-					Status:                      evergreen.TaskSucceeded,
-					Version:                     b.Version,
-					ExecutionPlatform:           task.ExecutionPlatformContainer,
-					PodID:                       "pod_id",
-					ContainerAllocationAttempts: 2,
-				}
-				So(containerTask.Insert(t.Context()), ShouldBeNil)
-
-				Convey("should reset task state specific to containers", func() {
-					So(TryResetTask(ctx, settings, containerTask.Id, userName, "source", detail), ShouldBeNil)
-
-					dbTask, err := task.FindOneId(ctx, containerTask.Id)
-					So(err, ShouldBeNil)
-					So(dbTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
-					So(dbTask.Status, ShouldEqual, evergreen.TaskUndispatched)
-					So(dbTask.FinishTime, ShouldResemble, utility.ZeroTime)
-					So(dbTask.Activated, ShouldBeTrue)
-					So(dbTask.ContainerAllocationAttempts, ShouldEqual, 0)
-					So(dbTask.PodID, ShouldBeZeroValue)
-					oldTask, err := task.FindOneOldByIdAndExecution(ctx, dbTask.Id, 1)
-					So(err, ShouldBeNil)
-					So(oldTask, ShouldNotBeNil)
-					So(oldTask.Execution, ShouldEqual, 1)
-					So(oldTask.Details, ShouldResemble, *detail)
-					So(oldTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
-					So(oldTask.ContainerAllocationAttempts, ShouldEqual, 2)
-					So(oldTask.PodID, ShouldEqual, containerTask.PodID)
-				})
-			})
 		})
 		Convey("resetting a task with a max number of executions", func() {
 			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
@@ -4835,130 +4435,6 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.Equal(t, 0, oldRestartedExecutionTask.Execution)
 }
 
-func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	settings := testutil.TestConfig()
-	defer func() {
-		assert.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
-	}()
-	for tName, tCase := range map[string]func(t *testing.T, tsk task.Task, b build.Build, v Version){
-		"SystemFailsTaskWithNoRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
-			require.NoError(t, tsk.Insert(t.Context()))
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(ctx, settings, []string{tsk.Id}))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.True(t, dbTask.IsFinished(), "task that has used up its container allocation attempts should be finished")
-
-			dbBuild, err := build.FindOneId(t.Context(), b.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbBuild)
-			assert.True(t, dbBuild.IsFinished(), "build with finished task should have updated status")
-
-			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbVersion)
-			assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version with finished task should have updated status")
-		},
-		"NoopsWithTaskThatHasRemainingAllocationAttempts": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
-			tsk.ContainerAllocationAttempts = 0
-			require.NoError(t, tsk.Insert(t.Context()))
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(ctx, settings, []string{tsk.Id}))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.False(t, dbTask.IsFinished(), "task with remaining container allocation attempts should not be finished")
-
-			dbBuild, err := build.FindOneId(t.Context(), b.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbBuild)
-			assert.Equal(t, b.Status, dbBuild.Status, "build status should not be changed because task should not be finished")
-
-			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbVersion)
-			assert.Equal(t, v.Status, dbVersion.Status, "version status should not be changed because task should not be finished")
-		},
-		"SystemFailsSubsetOfTasksWithNoRemainingAllocationAttempts": func(t *testing.T, tsk0 task.Task, b build.Build, v Version) {
-			require.NoError(t, tsk0.Insert(t.Context()))
-			tsk1 := tsk0
-			tsk1.Id = "other_task_id"
-			tsk1.ContainerAllocationAttempts = 0
-			require.NoError(t, tsk1.Insert(t.Context()))
-
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(ctx, settings, []string{tsk0.Id, tsk1.Id}))
-
-			dbTask0, err := task.FindOneId(ctx, tsk0.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask0)
-			assert.True(t, dbTask0.IsFinished())
-
-			dbTask1, err := task.FindOneId(ctx, tsk1.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask1)
-			assert.False(t, dbTask1.IsFinished())
-		},
-		"NoopsWithHostTask": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
-			tsk.ExecutionPlatform = task.ExecutionPlatformHost
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(ctx, settings, []string{tsk.Id}))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.False(t, dbTask.IsFinished())
-		},
-		"NoopsWithNonexistentTasks": func(t *testing.T, tsk task.Task, b build.Build, v Version) {
-			require.NoError(t, MarkUnallocatableContainerTasksSystemFailed(ctx, settings, []string{tsk.Id}))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			assert.NoError(t, err)
-			assert.Zero(t, dbTask)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, pod.Collection, VersionCollection, event.EventCollection, ParserProjectCollection))
-			v := Version{
-				Id:     "version_id",
-				Status: evergreen.VersionStarted,
-			}
-			require.NoError(t, v.Insert(t.Context()))
-			pp := ParserProject{
-				Id: v.Id,
-			}
-			require.NoError(t, pp.Insert(t.Context()))
-			b := build.Build{
-				Id:      "build_id",
-				Version: v.Id,
-				Status:  evergreen.BuildStarted,
-			}
-			require.NoError(t, b.Insert(t.Context()))
-			taskPod := pod.Pod{
-				ID: "myPod",
-			}
-			require.NoError(t, taskPod.Insert(t.Context()))
-			tsk := task.Task{
-				Id:                          "task_id",
-				Execution:                   1,
-				BuildId:                     b.Id,
-				Version:                     v.Id,
-				Status:                      evergreen.TaskUndispatched,
-				ExecutionPlatform:           task.ExecutionPlatformContainer,
-				Activated:                   true,
-				ContainerAllocated:          true,
-				ContainerAllocationAttempts: 100,
-				PodID:                       taskPod.ID,
-			}
-			tCase(t, tsk, b, v)
-		})
-	}
-}
-
 func TestClearAndResetExecTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -5014,254 +4490,6 @@ func TestClearAndResetExecTask(t *testing.T) {
 	assert.Equal(t, evergreen.TaskUndispatched, restartedExecutionTask.Status)
 }
 
-func TestClearAndResetStrandedContainerTask(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	settings := testutil.TestConfig()
-	defer func() {
-		assert.NoError(t, db.ClearCollections(pod.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
-	}()
-
-	for tName, tCase := range map[string]func(t *testing.T, p pod.Pod, tsk task.Task){
-		"SuccessfullyUpdatesPodAndRestartsTask": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			require.NoError(t, p.Insert(t.Context()))
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-
-			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
-
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
-			require.NoError(t, err)
-			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
-			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
-			assert.Equal(t, evergreen.CommandTypeSystem, dbArchivedTask.Details.Type)
-			assert.Equal(t, evergreen.TaskDescriptionStranded, dbArchivedTask.Details.Description)
-			assert.False(t, utility.IsZeroTime(dbArchivedTask.FinishTime))
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask, "should have created a new task execution")
-			assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
-			assert.True(t, dbTask.Activated)
-			assert.False(t, dbTask.ContainerAllocated)
-			assert.Zero(t, dbTask.ContainerAllocatedTime)
-
-			dbBuild, err := build.FindOneId(t.Context(), tsk.BuildId)
-			require.NoError(t, err)
-			require.NotZero(t, dbBuild)
-			assert.Equal(t, evergreen.BuildCreated, dbBuild.Status, "build status should be updated for restarted task")
-
-			dbVersion, err := VersionFindOneId(t.Context(), tsk.Version)
-			require.NoError(t, err)
-			require.NotZero(t, dbVersion)
-			assert.Equal(t, evergreen.VersionCreated, dbVersion.Status, "version status should be updated for restarted task")
-		},
-		"ResetsParentDisplayTaskForStrandedExecutionTask": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			otherExecTask := task.Task{
-				Id:        "execution_task_id",
-				Status:    evergreen.TaskStarted,
-				Activated: true,
-			}
-			require.NoError(t, otherExecTask.Insert(t.Context()))
-			dt := task.Task{
-				Id:             "display_task_id",
-				DisplayOnly:    true,
-				ExecutionTasks: []string{tsk.Id, otherExecTask.Id},
-				Status:         evergreen.TaskStarted,
-				BuildId:        tsk.BuildId,
-				Version:        tsk.Version,
-			}
-			require.NoError(t, dt.Insert(t.Context()))
-			tsk.DisplayTaskId = utility.ToStringPtr(dt.Id)
-			require.NoError(t, tsk.Insert(t.Context()))
-			require.NoError(t, p.Insert(t.Context()))
-
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-
-			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbDisplayTask)
-			assert.True(t, dbDisplayTask.ResetFailedWhenFinished, "display task should reset failed when other exec task finishes running")
-
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 1)
-			assert.NoError(t, err)
-			assert.Zero(t, dbArchivedTask, "execution task should not be archived until display task can reset")
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
-			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
-			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
-			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
-			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			dbOtherExecTask, err := task.FindOneId(ctx, otherExecTask.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbOtherExecTask)
-			assert.Equal(t, evergreen.TaskStarted, dbOtherExecTask.Status, "other execution task should still be running")
-		},
-		"ClearsAlreadyFinishedTaskFromPod": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			const status = evergreen.TaskSucceeded
-			tsk.Status = status
-			require.NoError(t, tsk.Insert(t.Context()))
-			require.NoError(t, p.Insert(t.Context()))
-
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-
-			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbTask)
-			assert.Equal(t, status, dbTask.Status)
-		},
-		"FailsWithConflictingDBAndInMemoryRunningTasks": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			const runningTask = "some_other_task"
-			p.TaskRuntimeInfo.RunningTaskID = runningTask
-			require.NoError(t, p.Insert(t.Context()))
-			p.TaskRuntimeInfo.RunningTaskID = tsk.Id
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			assert.Error(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-		},
-		"ClearsNonexistentTaskFromPod": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			p.TaskRuntimeInfo.RunningTaskID = "nonexistent_task"
-			require.NoError(t, p.Insert(t.Context()))
-
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-
-			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
-		},
-		"NoopsForPodNotRunningAnyTask": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			p.TaskRuntimeInfo.RunningTaskID = ""
-			p.TaskRuntimeInfo.RunningTaskExecution = 0
-			require.NoError(t, p.Insert(t.Context()))
-
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
-		},
-		"FailsTaskThatHitsUnschedulableThresholdWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			require.NoError(t, p.Insert(t.Context()))
-			tsk.ActivatedTime = time.Now().Add(-10 * task.UnschedulableThreshold)
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-
-			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			assert.Equal(t, 0, dbTask.Execution, "current task execution should still be the stranded one")
-			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
-			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
-			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
-			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-		},
-		"FailsTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
-			const execNum = 1 // we only restart stranded tasks automatically once
-			tsk.Execution = execNum
-			p.TaskRuntimeInfo.RunningTaskExecution = execNum
-			require.NoError(t, p.Insert(t.Context()))
-			require.NoError(t, tsk.Insert(t.Context()))
-
-			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-
-			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
-			require.NoError(t, err)
-			require.NotZero(t, dbPod)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
-			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
-
-			dbTask, err := task.FindOneId(ctx, tsk.Id)
-			require.NoError(t, err)
-			assert.Equal(t, execNum, dbTask.Execution, "current task execution should still be the stranded one")
-			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
-			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
-			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
-			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(host.Collection, VersionCollection, patch.Collection, ParserProjectCollection, ProjectRefCollection, task.Collection, task.OldCollection, build.Collection, pod.Collection))
-
-			projectRef := ProjectRef{
-				Identifier: "project-ref",
-			}
-			require.NoError(t, projectRef.Insert(t.Context()))
-			version := Version{
-				Id:         "version",
-				Identifier: "mci",
-			}
-			require.NoError(t, version.Insert(t.Context()))
-			build := build.Build{
-				Id: version.Id,
-			}
-			require.NoError(t, build.Insert(t.Context()))
-			parserProject := ParserProject{
-				Id: version.Id,
-			}
-			require.NoError(t, parserProject.Insert(t.Context()))
-			patch := patch.Patch{
-				Id:      mgobson.NewObjectId(),
-				Version: version.Id,
-			}
-			require.NoError(t, patch.Insert(t.Context()))
-			host := &host.Host{
-				Id:          "h1",
-				RunningTask: "t",
-			}
-			require.NoError(t, host.Insert(ctx))
-
-			tsk := task.Task{
-				Id:                     "task_id",
-				Execution:              0,
-				ExecutionPlatform:      task.ExecutionPlatformContainer,
-				ContainerAllocated:     true,
-				ContainerAllocatedTime: time.Now(),
-				Status:                 evergreen.TaskStarted,
-				Activated:              true,
-				ActivatedTime:          time.Now(),
-				BuildId:                build.Id,
-				Version:                version.Id,
-				Project:                projectRef.Id,
-				HostId:                 host.Id,
-				PodID:                  "pod_id",
-			}
-			p := pod.Pod{
-				ID: "pod_id",
-				TaskRuntimeInfo: pod.TaskRuntimeInfo{
-					RunningTaskID:        tsk.Id,
-					RunningTaskExecution: tsk.Execution,
-				},
-			}
-			tCase(t, p, tsk)
-		})
-	}
-}
-
 func TestResetStaleTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -5291,8 +4519,6 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotZero(t, dbTask, "should have created a new task execution")
 			assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
 			assert.True(t, dbTask.Activated)
-			assert.False(t, dbTask.ContainerAllocated)
-			assert.Zero(t, dbTask.ContainerAllocatedTime)
 
 			dbBuild, err := build.FindOneId(t.Context(), tsk.BuildId)
 			require.NoError(t, err)
@@ -5325,8 +4551,6 @@ func TestResetStaleTask(t *testing.T) {
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionAborted, dbTask.Details.Description)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-			assert.False(t, dbTask.ContainerAllocated)
-			assert.Zero(t, dbTask.ContainerAllocatedTime)
 
 			dependencyTask, err := task.FindOneId(ctx, "dependencyTask")
 			require.NotNil(t, dependencyTask)
@@ -5412,7 +4636,7 @@ func TestResetStaleTask(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(host.Collection, VersionCollection, patch.Collection, ParserProjectCollection, ProjectRefCollection, task.Collection, task.OldCollection, build.Collection, pod.Collection))
+			require.NoError(t, db.ClearCollections(host.Collection, VersionCollection, patch.Collection, ParserProjectCollection, ProjectRefCollection, task.Collection, task.OldCollection, build.Collection))
 			projectRef := ProjectRef{
 				Identifier: "project-ref",
 			}
@@ -5441,25 +4665,18 @@ func TestResetStaleTask(t *testing.T) {
 				RunningTask: "t",
 			}
 			require.NoError(t, host.Insert(ctx))
-			taskPod := pod.Pod{
-				ID: "pod_id",
-			}
-			require.NoError(t, taskPod.Insert(t.Context()))
 			tsk := task.Task{
-				Id:                     "task_id",
-				Execution:              0,
-				ExecutionPlatform:      task.ExecutionPlatformContainer,
-				ContainerAllocated:     true,
-				ContainerAllocatedTime: time.Now(),
-				Status:                 evergreen.TaskStarted,
-				Activated:              true,
-				ActivatedTime:          time.Now(),
-				LastHeartbeat:          time.Now().Add(-30 * time.Hour),
-				BuildId:                build.Id,
-				Version:                version.Id,
-				Project:                projectRef.Identifier,
-				PodID:                  taskPod.ID,
-				HostId:                 host.Id,
+				Id:                "task_id",
+				Execution:         0,
+				ExecutionPlatform: task.ExecutionPlatformHost,
+				Status:            evergreen.TaskStarted,
+				Activated:         true,
+				ActivatedTime:     time.Now(),
+				LastHeartbeat:     time.Now().Add(-30 * time.Hour),
+				BuildId:           build.Id,
+				Version:           version.Id,
+				Project:           projectRef.Identifier,
+				HostId:            host.Id,
 			}
 			depTask := task.Task{
 				Id:            "dependencyTask",

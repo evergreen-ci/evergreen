@@ -62,7 +62,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	}
 
 	if flags.SchedulerDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"distro":   j.DistroID,
 			"job":      j.ID(),
@@ -83,6 +83,18 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	if d == nil {
 		return
 	}
+
+	// Resolve planner settings with global defaults. This mutates the distro to fill in missing settings before passing it to the scheduler.
+	s, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "getting evergreen config"))
+		return
+	}
+	if _, err = d.GetResolvedPlannerSettings(s); err != nil {
+		j.AddError(errors.Wrap(err, "resolving planner settings"))
+		return
+	}
+
 	plan, err := scheduler.PrioritizeTasks(ctx, d, tasks, scheduler.TaskPlannerOptions{
 		StartedAt:        startAt,
 		ID:               j.ID(),
@@ -93,7 +105,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":        scheduler.RunnerName,
 		"distro":        j.DistroID,
 		"alias":         true,

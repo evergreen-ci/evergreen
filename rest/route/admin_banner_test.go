@@ -114,11 +114,7 @@ func TestFetchBanner(t *testing.T) {
 			DefaultProject: utility.ToStringPtr("test"),
 		},
 		Providers: &model.APICloudProviders{
-			AWS: &model.APIAWSConfig{
-				Pod: &model.APIAWSPodConfig{
-					ECS: &model.APIECSConfig{},
-				},
-			},
+			AWS: &model.APIAWSConfig{},
 			Docker: &model.APIDockerConfig{
 				APIVersion: utility.ToStringPtr(""),
 			},

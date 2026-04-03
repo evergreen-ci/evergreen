@@ -37,7 +37,6 @@ type RestTask struct {
 	Activated           bool                  `json:"activated"`
 	BuildId             string                `json:"build_id"`
 	DistroId            string                `json:"distro"`
-	Container           string                `json:"container,omitempty"`
 	BuildVariant        string                `json:"build_variant"`
 	DependsOn           []task.Dependency     `json:"depends_on"`
 	DisplayName         string                `json:"display_name"`
@@ -92,7 +91,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	srcTask := projCtx.Task
 	if srcTask == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding task"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
 	}
 
@@ -111,7 +110,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.Activated = srcTask.Activated
 	destTask.BuildId = srcTask.BuildId
 	destTask.DistroId = srcTask.DistroId
-	destTask.Container = srcTask.Container
 	destTask.BuildVariant = srcTask.BuildVariant
 	destTask.DependsOn = srcTask.DependsOn
 	destTask.DisplayName = srcTask.DisplayName
@@ -130,8 +128,8 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(r.Context(), destTask.Id)
 	if err != nil {
 		msg := fmt.Sprintf("Error calculating task queue position for '%v'", srcTask.Id)
-		grip.Errorf("%v: %+v", msg, err)
-		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+		grip.Errorf(r.Context(), "%v: %+v", msg, err)
+		gimlet.WriteJSONInternalError(r.Context(), w, responseError{Message: msg})
 		return
 	}
 
@@ -146,8 +144,8 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	// Copy over the test results.
 	if err := srcTask.PopulateTestResults(r.Context()); err != nil {
 		err = errors.Wrapf(err, "Error finding test results for task '%s'", srcTask.Id)
-		grip.Error(err)
-		gimlet.WriteJSONInternalError(w, responseError{Message: err.Error()})
+		grip.Error(r.Context(), err)
+		gimlet.WriteJSONInternalError(r.Context(), w, responseError{Message: err.Error()})
 		return
 	}
 	destTask.LocalTestResults = make(taskTestResultsByName, len(srcTask.LocalTestResults))
@@ -164,8 +162,8 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	entries, err := artifact.FindAll(r.Context(), artifact.ByTaskId(srcTask.Id))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%s'", srcTask.Id)
-		grip.Errorf("%v: %+v", msg, err)
-		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+		grip.Errorf(r.Context(), "%v: %+v", msg, err)
+		gimlet.WriteJSONInternalError(r.Context(), w, responseError{Message: msg})
 		return
 
 	}
@@ -173,11 +171,11 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		strippedFiles, err := artifact.StripHiddenFiles(r.Context(), entry.Files, true)
 		if err != nil {
 			msg := fmt.Sprintf("Error getting artifact files for task '%s'", srcTask.Id)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(r.Context(), message.WrapError(err, message.Fields{
 				"message": msg,
 				"task":    srcTask.Id,
 			}))
-			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+			gimlet.WriteJSONInternalError(r.Context(), w, responseError{Message: msg})
 			return
 		}
 
@@ -195,7 +193,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		destTask.PatchNumber = projCtx.Patch.PatchNumber
 		destTask.PatchId = projCtx.Patch.Id.Hex()
 	}
-	gimlet.WriteJSON(w, destTask)
+	gimlet.WriteJSON(r.Context(), w, destTask)
 }
 
 // getTaskStatus returns a JSON response with the status of the specified task.
@@ -204,11 +202,11 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	task := projCtx.Task
 	if task == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding task"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
 	}
 	if err := task.PopulateTestResults(r.Context()); err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error populating test results"})
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "error populating test results"})
 		return
 	}
 
@@ -238,5 +236,5 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 		result.Tests[_testResult.TestName] = testResult
 	}
 
-	gimlet.WriteJSON(w, result)
+	gimlet.WriteJSON(r.Context(), w, result)
 }

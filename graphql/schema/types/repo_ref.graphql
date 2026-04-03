@@ -44,7 +44,6 @@ input RepoRefInput {
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
-  containerSizeDefinitions: [ContainerResourcesInput!]
 }
 
 ###### TYPES ######
@@ -59,7 +58,6 @@ type RepoRef {
   batchTime: Int!
   buildBaronSettings: BuildBaronSettings!
   commitQueue: RepoCommitQueueParams!
-  containerSizeDefinitions: [ContainerResources!]
   deactivatePrevious: Boolean!
   disabledStatsCache: Boolean!
   dispatchingDisabled: Boolean!

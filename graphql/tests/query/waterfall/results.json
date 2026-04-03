@@ -910,6 +910,28 @@
           }
         }
       }
+    },
+    {
+      "query_file": "version_waterfall_builds.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "evergreen_version1",
+            "waterfallBuilds": [
+              {
+                "id": "evergreen_version1_build",
+                "buildVariant": "enterprise-ubuntu1604-64",
+                "displayName": "01 Ubuntu 16.04",
+                "version": "evergreen_version1",
+                "tasks": [
+                  { "id": "task_1", "displayName": "Task A" },
+                  { "id": "task_2", "displayName": "Task B" }
+                ]
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

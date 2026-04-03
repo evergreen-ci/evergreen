@@ -44,75 +44,71 @@ var (
 
 var (
 	// BSON fields for the task struct
-	IdKey                          = bsonutil.MustHaveTag(Task{}, "Id")
-	SecretKey                      = bsonutil.MustHaveTag(Task{}, "Secret")
-	CreateTimeKey                  = bsonutil.MustHaveTag(Task{}, "CreateTime")
-	DispatchTimeKey                = bsonutil.MustHaveTag(Task{}, "DispatchTime")
-	ScheduledTimeKey               = bsonutil.MustHaveTag(Task{}, "ScheduledTime")
-	ContainerAllocatedTimeKey      = bsonutil.MustHaveTag(Task{}, "ContainerAllocatedTime")
-	StartTimeKey                   = bsonutil.MustHaveTag(Task{}, "StartTime")
-	FinishTimeKey                  = bsonutil.MustHaveTag(Task{}, "FinishTime")
-	ActivatedTimeKey               = bsonutil.MustHaveTag(Task{}, "ActivatedTime")
-	DependenciesMetTimeKey         = bsonutil.MustHaveTag(Task{}, "DependenciesMetTime")
-	VersionKey                     = bsonutil.MustHaveTag(Task{}, "Version")
-	ProjectKey                     = bsonutil.MustHaveTag(Task{}, "Project")
-	RevisionKey                    = bsonutil.MustHaveTag(Task{}, "Revision")
-	LastHeartbeatKey               = bsonutil.MustHaveTag(Task{}, "LastHeartbeat")
-	ActivatedKey                   = bsonutil.MustHaveTag(Task{}, "Activated")
-	ContainerAllocatedKey          = bsonutil.MustHaveTag(Task{}, "ContainerAllocated")
-	ContainerAllocationAttemptsKey = bsonutil.MustHaveTag(Task{}, "ContainerAllocationAttempts")
-	DeactivatedForDependencyKey    = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
-	BuildIdKey                     = bsonutil.MustHaveTag(Task{}, "BuildId")
-	DistroIdKey                    = bsonutil.MustHaveTag(Task{}, "DistroId")
-	SecondaryDistrosKey            = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
-	BuildVariantKey                = bsonutil.MustHaveTag(Task{}, "BuildVariant")
-	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
-	UnattainableDependencyKey      = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
-	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
-	NumDependentsKey               = bsonutil.MustHaveTag(Task{}, "NumDependents")
-	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
-	ExecutionPlatformKey           = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
-	HostIdKey                      = bsonutil.MustHaveTag(Task{}, "HostId")
-	PodIDKey                       = bsonutil.MustHaveTag(Task{}, "PodID")
-	AgentVersionKey                = bsonutil.MustHaveTag(Task{}, "AgentVersion")
-	ExecutionKey                   = bsonutil.MustHaveTag(Task{}, "Execution")
-	LatestParentExecutionKey       = bsonutil.MustHaveTag(Task{}, "LatestParentExecution")
-	OldTaskIdKey                   = bsonutil.MustHaveTag(Task{}, "OldTaskId")
-	ArchivedKey                    = bsonutil.MustHaveTag(Task{}, "Archived")
-	CanResetKey                    = bsonutil.MustHaveTag(Task{}, "CanReset")
-	CheckRunIdKey                  = bsonutil.MustHaveTag(Task{}, "CheckRunId")
-	RevisionOrderNumberKey         = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
-	RequesterKey                   = bsonutil.MustHaveTag(Task{}, "Requester")
-	StatusKey                      = bsonutil.MustHaveTag(Task{}, "Status")
-	DetailsKey                     = bsonutil.MustHaveTag(Task{}, "Details")
-	AbortedKey                     = bsonutil.MustHaveTag(Task{}, "Aborted")
-	AbortInfoKey                   = bsonutil.MustHaveTag(Task{}, "AbortInfo")
-	TimeTakenKey                   = bsonutil.MustHaveTag(Task{}, "TimeTaken")
-	TaskCostKey                    = bsonutil.MustHaveTag(Task{}, "TaskCost")
-	PredictedTaskCostKey           = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
-	S3UsageKey                     = bsonutil.MustHaveTag(Task{}, "S3Usage")
-	ExpectedDurationKey            = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
-	ExpectedDurationStddevKey      = bsonutil.MustHaveTag(Task{}, "ExpectedDurationStdDev")
-	DurationPredictionKey          = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
-	PriorityKey                    = bsonutil.MustHaveTag(Task{}, "Priority")
-	ActivatedByKey                 = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
-	StepbackInfoKey                = bsonutil.MustHaveTag(Task{}, "StepbackInfo")
-	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
-	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
-	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
-	ParentPatchIDKey               = bsonutil.MustHaveTag(Task{}, "ParentPatchID")
-	TaskGroupKey                   = bsonutil.MustHaveTag(Task{}, "TaskGroup")
-	TaskGroupMaxHostsKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
-	TaskGroupOrderKey              = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
-	GenerateTaskKey                = bsonutil.MustHaveTag(Task{}, "GenerateTask")
-	GeneratedTasksKey              = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
-	GeneratedByKey                 = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
-	TaskOutputInfoKey              = bsonutil.MustHaveTag(Task{}, "TaskOutputInfo")
-	ResultsServiceKey              = bsonutil.MustHaveTag(Task{}, "ResultsService")
-	HasTestResultsKey              = bsonutil.MustHaveTag(Task{}, "HasTestResults")
-	ResultsFailedKey               = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
-	IsGithubCheckKey               = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
-	HostCreateDetailsKey           = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
+	IdKey                       = bsonutil.MustHaveTag(Task{}, "Id")
+	SecretKey                   = bsonutil.MustHaveTag(Task{}, "Secret")
+	CreateTimeKey               = bsonutil.MustHaveTag(Task{}, "CreateTime")
+	DispatchTimeKey             = bsonutil.MustHaveTag(Task{}, "DispatchTime")
+	ScheduledTimeKey            = bsonutil.MustHaveTag(Task{}, "ScheduledTime")
+	StartTimeKey                = bsonutil.MustHaveTag(Task{}, "StartTime")
+	FinishTimeKey               = bsonutil.MustHaveTag(Task{}, "FinishTime")
+	ActivatedTimeKey            = bsonutil.MustHaveTag(Task{}, "ActivatedTime")
+	DependenciesMetTimeKey      = bsonutil.MustHaveTag(Task{}, "DependenciesMetTime")
+	VersionKey                  = bsonutil.MustHaveTag(Task{}, "Version")
+	ProjectKey                  = bsonutil.MustHaveTag(Task{}, "Project")
+	RevisionKey                 = bsonutil.MustHaveTag(Task{}, "Revision")
+	LastHeartbeatKey            = bsonutil.MustHaveTag(Task{}, "LastHeartbeat")
+	ActivatedKey                = bsonutil.MustHaveTag(Task{}, "Activated")
+	DeactivatedForDependencyKey = bsonutil.MustHaveTag(Task{}, "DeactivatedForDependency")
+	BuildIdKey                  = bsonutil.MustHaveTag(Task{}, "BuildId")
+	DistroIdKey                 = bsonutil.MustHaveTag(Task{}, "DistroId")
+	SecondaryDistrosKey         = bsonutil.MustHaveTag(Task{}, "SecondaryDistros")
+	BuildVariantKey             = bsonutil.MustHaveTag(Task{}, "BuildVariant")
+	DependsOnKey                = bsonutil.MustHaveTag(Task{}, "DependsOn")
+	UnattainableDependencyKey   = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
+	OverrideDependenciesKey     = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
+	NumDependentsKey            = bsonutil.MustHaveTag(Task{}, "NumDependents")
+	DisplayNameKey              = bsonutil.MustHaveTag(Task{}, "DisplayName")
+	ExecutionPlatformKey        = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
+	HostIdKey                   = bsonutil.MustHaveTag(Task{}, "HostId")
+	AgentVersionKey             = bsonutil.MustHaveTag(Task{}, "AgentVersion")
+	ExecutionKey                = bsonutil.MustHaveTag(Task{}, "Execution")
+	LatestParentExecutionKey    = bsonutil.MustHaveTag(Task{}, "LatestParentExecution")
+	OldTaskIdKey                = bsonutil.MustHaveTag(Task{}, "OldTaskId")
+	ArchivedKey                 = bsonutil.MustHaveTag(Task{}, "Archived")
+	CanResetKey                 = bsonutil.MustHaveTag(Task{}, "CanReset")
+	CheckRunIdKey               = bsonutil.MustHaveTag(Task{}, "CheckRunId")
+	RevisionOrderNumberKey      = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
+	RequesterKey                = bsonutil.MustHaveTag(Task{}, "Requester")
+	StatusKey                   = bsonutil.MustHaveTag(Task{}, "Status")
+	DetailsKey                  = bsonutil.MustHaveTag(Task{}, "Details")
+	AbortedKey                  = bsonutil.MustHaveTag(Task{}, "Aborted")
+	AbortInfoKey                = bsonutil.MustHaveTag(Task{}, "AbortInfo")
+	TimeTakenKey                = bsonutil.MustHaveTag(Task{}, "TimeTaken")
+	TaskCostKey                 = bsonutil.MustHaveTag(Task{}, "TaskCost")
+	PredictedTaskCostKey        = bsonutil.MustHaveTag(Task{}, "PredictedTaskCost")
+	S3UsageKey                  = bsonutil.MustHaveTag(Task{}, "S3Usage")
+	ExpectedDurationKey         = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
+	ExpectedDurationStddevKey   = bsonutil.MustHaveTag(Task{}, "ExpectedDurationStdDev")
+	DurationPredictionKey       = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
+	PriorityKey                 = bsonutil.MustHaveTag(Task{}, "Priority")
+	ActivatedByKey              = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
+	StepbackInfoKey             = bsonutil.MustHaveTag(Task{}, "StepbackInfo")
+	ExecutionTasksKey           = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
+	DisplayOnlyKey              = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
+	DisplayTaskIdKey            = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
+	ParentPatchIDKey            = bsonutil.MustHaveTag(Task{}, "ParentPatchID")
+	TaskGroupKey                = bsonutil.MustHaveTag(Task{}, "TaskGroup")
+	TaskGroupMaxHostsKey        = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
+	TaskGroupOrderKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
+	GenerateTaskKey             = bsonutil.MustHaveTag(Task{}, "GenerateTask")
+	GeneratedTasksKey           = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
+	GeneratedByKey              = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	TaskOutputInfoKey           = bsonutil.MustHaveTag(Task{}, "TaskOutputInfo")
+	ResultsServiceKey           = bsonutil.MustHaveTag(Task{}, "ResultsService")
+	HasTestResultsKey           = bsonutil.MustHaveTag(Task{}, "HasTestResults")
+	ResultsFailedKey            = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
+	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
+	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
 	GeneratedJSONAsStringKey      = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
 	GeneratedJSONStorageMethodKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONStorageMethod")
@@ -550,18 +546,6 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 	}
 }
 
-func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
-	return bson.M{
-		VersionKey: bson.M{
-			"$in": versions,
-		},
-		DisplayNameKey: bson.M{
-			"$in": displayNames,
-		},
-		BuildVariantKey: buildVariant,
-	}
-}
-
 func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
 	return bson.M{
 		BuildVariantKey: buildVariant,
@@ -609,6 +593,23 @@ func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []str
 	}
 }
 
+func ByAfterRevisionWithStatusesAndRequesters(revisionOrder int, statuses []string, buildVariant, displayName, project string, requesters []string) bson.M {
+	return bson.M{
+		BuildVariantKey: buildVariant,
+		DisplayNameKey:  displayName,
+		RequesterKey: bson.M{
+			"$in": requesters,
+		},
+		RevisionOrderNumberKey: bson.M{
+			"$gt": revisionOrder,
+		},
+		StatusKey: bson.M{
+			"$in": statuses,
+		},
+		ProjectKey: project,
+	}
+}
+
 // ByTimeStartedAndFailed returns all failed tasks that started or finished between 2 given times
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) bson.M {
 	query := bson.M{
@@ -630,18 +631,6 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 		}
 	}
 	return query
-}
-
-func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		StatusKey: bson.M{
-			"$in": statuses,
-		},
-		ProjectKey: project,
-	}
 }
 
 func ByExecutionTask(taskId string) bson.M {
@@ -703,58 +692,6 @@ func schedulableHostTasksQuery() bson.M {
 	}
 
 	return q
-}
-
-// FindNeedsContainerAllocation returns all container tasks that are waiting for
-// a container to be allocated to them sorted by activation time.
-func FindNeedsContainerAllocation(ctx context.Context) ([]Task, error) {
-	return FindAll(ctx, db.Query(needsContainerAllocation()).Sort([]string{ActivatedTimeKey}))
-}
-
-// needsContainerAllocation returns the query that filters for a task that
-// currently needs a container to be allocated to run it.
-func needsContainerAllocation() bson.M {
-	q := ScheduledContainerTasksQuery()
-	q[ContainerAllocatedKey] = false
-	return q
-}
-
-// ScheduledContainerTasksQuery returns a query indicating if the container is
-// in a state where it is scheduled to run and is logically equivalent to
-// (Task).isContainerScheduled. This encompasses two potential states:
-//  1. A container is not yet allocated to the task but it's ready to be
-//     allocated one. Note that this is a subset of all tasks that could
-//     eventually run (i.e. evergreen.TaskWillRun from (Task).GetDisplayStatus),
-//     because a container task is not scheduled until all of its dependencies
-//     have been met.
-//  2. The container is allocated but the agent has not picked up the task yet.
-func ScheduledContainerTasksQuery() bson.M {
-	query := UndispatchedContainerTasksQuery()
-	query["$or"] = []bson.M{
-		{
-			DependsOnKey: bson.M{"$size": 0},
-		},
-		{
-			// Containers can only be allocated for tasks whose dependencies
-			// are all met. All dependencies are met if they're all finished
-			// running and are still attainable (i.e. the dependency's
-			// required status matched the task's actual ending status).
-			bsonutil.GetDottedKeyName(DependsOnKey, DependencyFinishedKey):     true,
-			bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
-		},
-		{OverrideDependenciesKey: true},
-	}
-	return query
-}
-
-// UndispatchedContainerTasksQuery returns a query retrieving all undispatched container tasks.
-func UndispatchedContainerTasksQuery() bson.M {
-	return bson.M{
-		StatusKey:            evergreen.TaskUndispatched,
-		ActivatedKey:         true,
-		ExecutionPlatformKey: ExecutionPlatformContainer,
-		PriorityKey:          bson.M{"$gt": evergreen.DisabledTaskPriority},
-	}
 }
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all mainline commit tasks
@@ -1317,11 +1254,27 @@ func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOneId returns a single task with the given ID.
+// FindOneId returns a single task with the given ID, excluding the
+// GeneratedJSONAsString field which can be very large. Use
+// FindOneIdWithGeneratedJSON if the generated JSON is needed.
 func FindOneId(ctx context.Context, id string) (*Task, error) {
-	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
+	task := &Task{}
+	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
+	err := db.FindOneQ(ctx, Collection, query, task)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding task by ID")
+	}
+	return task, nil
+}
 
-	return task, errors.Wrap(err, "finding task by ID")
+// FindOneIdWithGeneratedJSON returns a single task with the given ID,
+// including the GeneratedJSONAsString field.
+func FindOneIdWithGeneratedJSON(ctx context.Context, id string) (*Task, error) {
+	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
+	return task, errors.Wrap(err, "finding task by ID with generated JSON")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
@@ -1510,17 +1463,6 @@ func FindAllTaskIDsFromBuild(ctx context.Context, buildId string) ([]string, err
 	return findAllTaskIDs(ctx, q)
 }
 
-// FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
-func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId string) ([]Task, error) {
-	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
-	tasks := []Task{}
-	err := db.FindAllQ(ctx, Collection, q, &tasks)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
-	}
-	return tasks, nil
-}
-
 // FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
 func FindTasksFromVersions(ctx context.Context, versionIds []string) ([]Task, error) {
 	return FindWithFields(ctx, ByVersions(versionIds),
@@ -1614,7 +1556,7 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
-	query := db.Query(filter)
+	query := db.Query(filter).Project(bson.M{GeneratedJSONAsStringKey: 0})
 	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
@@ -1712,6 +1654,36 @@ func UpdateAllWithHint(ctx context.Context, query any, update any, hint any) (*a
 	}
 
 	return &adb.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
+}
+
+// BulkUpdateNumDependents updates NumDependents for multiple tasks in a single bulk operation.
+func BulkUpdateNumDependents(ctx context.Context, tasks map[string]*Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	var writes []mongo.WriteModel
+	for _, t := range tasks {
+		update := bson.M{
+			"$set": bson.M{
+				NumDependentsKey: t.NumDependents,
+			},
+		}
+		if t.NumDependents == 0 {
+			update = bson.M{
+				"$unset": bson.M{
+					NumDependentsKey: "",
+				},
+			}
+		}
+
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{IdKey: t.Id}).
+			SetUpdate(update))
+	}
+
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).BulkWrite(ctx, writes)
+	return errors.Wrap(err, "bulk updating NumDependents")
 }
 
 // Remove deletes the task of the given id from the database
@@ -2165,6 +2137,13 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 			"count":  1,
 		}},
 	}
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			DisplayStatusKey:    1,
+			ExpectedDurationKey: 1,
+			StartTimeKey:        1,
+		},
+	})
 	facet := bson.M{"$facet": bson.M{
 		"counts": groupPipeline,
 		"eta":    maxEtaPipeline,
@@ -2311,8 +2290,12 @@ func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, bas
 				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
 			},
 		}})
-	// Add display status
-	pipeline = append(pipeline, addDisplayStatus)
+	// Alias the persisted display_status_cache as display_status.
+	pipeline = append(pipeline, bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: "$" + DisplayStatusCacheKey,
+		},
+	})
 	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
@@ -2499,10 +2482,13 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, bson.M{"$match": match})
 	}
 
-	// Add a field for the display status of each task
-	pipeline = append(pipeline,
-		addDisplayStatus,
-	)
+	// Alias the persisted display_status_cache as display_status so downstream
+	// stages can reference DisplayStatusKey without recomputing via $switch.
+	pipeline = append(pipeline, bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: "$" + DisplayStatusCacheKey,
+		},
+	})
 
 	if shouldPopulateBaseTask {
 		// First group by variant and task name to group all tasks and their base tasks together
@@ -2788,7 +2774,7 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 
 	activatedTasks := make([]Task, 0, len(tasks))
 	for _, t := range tasks {
-		if t.Activated {
+		if t.Activated && !t.DisplayOnly {
 			activatedTasks = append(activatedTasks, *t)
 		}
 	}
@@ -2891,7 +2877,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	predictions := make(map[string]CostPredictionResult)
 	for result := range resultChan {
 		if result.err != nil {
-			grip.Warning(message.WrapError(result.err, message.Fields{
+			grip.Warning(ctx, message.WrapError(result.err, message.Fields{
 				"message": "error computing cost prediction for task, using zero prediction",
 				"task_id": result.taskID,
 			}))

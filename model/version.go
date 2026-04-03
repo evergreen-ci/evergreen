@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -23,14 +24,23 @@ import (
 )
 
 const (
-	taskCollection       = "tasks"
-	oldTaskCollection    = "old_tasks"
-	taskVersionKey       = "version"
-	taskDisplayOnlyKey   = "display_only"
-	taskCostKey          = "cost"
-	taskPredictedCostKey = "predicted_cost"
-	taskOnDemandCostKey  = "on_demand_ec2_cost"
-	taskAdjustedCostKey  = "adjusted_ec2_cost"
+	taskCollection           = "tasks"
+	oldTaskCollection        = "old_tasks"
+	taskVersionKey           = "version"
+	taskDisplayOnlyKey       = "display_only"
+	taskCostKey              = "cost"
+	taskPredictedCostKey     = "predicted_cost"
+	taskOnDemandCostKey      = "on_demand_ec2_cost"
+	taskAdjustedCostKey      = "adjusted_ec2_cost"
+	taskS3ArtifactPutCostKey = "s3_artifact_put_cost"
+	taskS3LogPutCostKey      = "s3_log_put_cost"
+
+	taskS3UsageKey         = "s3_usage"
+	taskS3ArtifactsKey     = "artifacts"
+	taskS3LogsKey          = "logs"
+	taskS3PutRequestsKey   = "put_requests"
+	taskS3UploadBytesKey   = "upload_bytes"
+	taskS3ArtifactCountKey = "count"
 )
 
 type Version struct {
@@ -122,6 +132,8 @@ type Version struct {
 	Cost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
 	// PredictedCost stores the aggregated predicted cost derived from tasks' predicted_cost.
 	PredictedCost cost.Cost `bson:"predicted_cost,omitempty" json:"predicted_cost,omitempty"`
+	// S3Usage stores the aggregated S3 usage metrics from all execution tasks in the version.
+	S3Usage s3usage.S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
@@ -236,7 +248,7 @@ func (v *Version) UpdateStatus(ctx context.Context, newStatus string) (modified 
 		v.FinishTime = time.Now()
 		if modified {
 			if aggErr := v.UpdateAggregateTaskCosts(ctx); aggErr != nil {
-				grip.Error(errors.Wrapf(aggErr, "aggregating task costs for finished version '%s'", v.Id))
+				grip.Error(ctx, errors.Wrapf(aggErr, "aggregating task costs for finished version '%s'", v.Id))
 			}
 		}
 	}
@@ -359,11 +371,18 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			},
 		}},
 		{"$group": bson.M{
-			"_id":                nil,
-			"total_on_demand":    bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
-			"total_adjusted":     bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
-			"expected_on_demand": bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
-			"expected_adjusted":  bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
+			"_id":                         nil,
+			"total_on_demand":             bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
+			"total_adjusted":              bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
+			"expected_on_demand":          bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
+			"expected_adjusted":           bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
+			"total_s3_artifact_put_cost":  bson.M{"$sum": "$" + taskCostKey + "." + taskS3ArtifactPutCostKey},
+			"total_s3_log_put_cost":       bson.M{"$sum": "$" + taskCostKey + "." + taskS3LogPutCostKey},
+			"total_artifact_put_requests": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3PutRequestsKey},
+			"total_artifact_upload_bytes": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3UploadBytesKey},
+			"total_artifact_count":        bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactCountKey},
+			"total_log_put_requests":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3PutRequestsKey},
+			"total_log_upload_bytes":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3UploadBytesKey},
 		}},
 	}
 
@@ -373,27 +392,43 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	}
 
 	var results []struct {
-		TotalOnDemand     float64 `bson:"total_on_demand"`
-		TotalAdjusted     float64 `bson:"total_adjusted"`
-		PredictedOnDemand float64 `bson:"expected_on_demand"`
-		PredictedAdjusted float64 `bson:"expected_adjusted"`
+		TotalOnDemand            float64 `bson:"total_on_demand"`
+		TotalAdjusted            float64 `bson:"total_adjusted"`
+		PredictedOnDemand        float64 `bson:"expected_on_demand"`
+		PredictedAdjusted        float64 `bson:"expected_adjusted"`
+		TotalS3ArtifactPutCost   float64 `bson:"total_s3_artifact_put_cost"`
+		TotalS3LogPutCost        float64 `bson:"total_s3_log_put_cost"`
+		TotalArtifactPutRequests int     `bson:"total_artifact_put_requests"`
+		TotalArtifactUploadBytes int64   `bson:"total_artifact_upload_bytes"`
+		TotalArtifactCount       int     `bson:"total_artifact_count"`
+		TotalLogPutRequests      int     `bson:"total_log_put_requests"`
+		TotalLogUploadBytes      int64   `bson:"total_log_upload_bytes"`
 	}
 	if err = cursor.All(ctx, &results); err != nil {
 		return errors.Wrap(err, "reading aggregated task cost results")
 	}
 
 	var total, predicted cost.Cost
+	var s3Total s3usage.S3Usage
 	if len(results) > 0 {
 		total.OnDemandEC2Cost = results[0].TotalOnDemand
 		total.AdjustedEC2Cost = results[0].TotalAdjusted
+		total.S3ArtifactPutCost = results[0].TotalS3ArtifactPutCost
+		total.S3LogPutCost = results[0].TotalS3LogPutCost
 		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
 		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
+		s3Total.Artifacts.PutRequests = results[0].TotalArtifactPutRequests
+		s3Total.Artifacts.UploadBytes = results[0].TotalArtifactUploadBytes
+		s3Total.Artifacts.Count = results[0].TotalArtifactCount
+		s3Total.Logs.PutRequests = results[0].TotalLogPutRequests
+		s3Total.Logs.UploadBytes = results[0].TotalLogUploadBytes
 	}
 
 	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{
 			VersionCostKey:          total,
 			VersionPredictedCostKey: predicted,
+			VersionS3UsageKey:       s3Total,
 		},
 	}); err != nil {
 		return errors.Wrap(err, "updating version aggregated task costs")
@@ -401,6 +436,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 
 	v.Cost = total
 	v.PredictedCost = predicted
+	v.S3Usage = s3Total
 	return nil
 }
 
@@ -849,10 +885,10 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 
 		revisionTime := time.Unix(0, 0)
 
-		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+		// If this is a mainline commit or a trigger version, retrieve the module's commit from the time of the mainline commit.
 		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
 		// Otherwise, retrieve the module's commit from the time of the patch creation.
-		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester {
+		if !evergreen.IsPatchRequester(requester) && requester != evergreen.AdHocRequester && requester != evergreen.TriggerRequester {
 			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, revision)
 			if err != nil {
 				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", revision, projectRef.Owner, projectRef.Repo)

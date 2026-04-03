@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -240,12 +239,17 @@ func (s *githubSuite) TestGetTaggedCommitFromGithub() {
 	})
 }
 
-func (s *githubSuite) TestGetBranchEvent() {
-	branch, err := GetBranchEvent(s.ctx, "evergreen-ci", "evergreen", "main")
-	s.NoError(err)
-	s.NotPanics(func() {
-		s.Equal("main", *branch.Name)
-		s.NotNil(*branch.Commit)
+func (s *githubSuite) TestMergeQueueRefExists() {
+	s.Run("RefDoesNotExist", func() {
+		exists, err := MergeQueueRefExists(s.ctx, "evergreen-ci", "evergreen", "heads/gh-readonly-queue/main/pr-999999999-nonexistent", "")
+		s.NoError(err)
+		s.False(exists)
+	})
+
+	s.Run("RefExists", func() {
+		exists, err := MergeQueueRefExists(s.ctx, "evergreen-ci", "evergreen", "heads/main", "")
+		s.NoError(err)
+		s.True(exists)
 	})
 }
 
@@ -329,6 +333,10 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 				},
 				Name: utility.ToStringPtr("evergreen"),
 			},
+			SHA: utility.ToStringPtr("61d770097ca0515e46d29add8f9b69e9d9272b94"),
+		},
+		Head: &github.PullRequestBranch{
+			SHA: utility.ToStringPtr("8e153d2b8781fa46ffd5e9dffb0a646bfbd12b1c"),
 		},
 		Number: utility.ToIntPtr(666),
 	}
@@ -463,25 +471,6 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 	}
 
 	return rem, nil
-}
-
-func TestValidatePR(t *testing.T) {
-	assert := assert.New(t)
-
-	prBody, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
-	assert.NoError(err)
-	assert.Len(prBody, 32977)
-	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
-	assert.NoError(err)
-	prEvent, ok := webhookInterface.(*github.PullRequestEvent)
-	assert.True(ok)
-	pr := prEvent.GetPullRequest()
-	require.NotNil(t, pr)
-
-	assert.NoError(ValidatePR(pr))
-
-	pr.Base = nil
-	assert.Error(ValidatePR(pr))
 }
 
 func TestParseGithubErrorResponse(t *testing.T) {

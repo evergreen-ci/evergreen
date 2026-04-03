@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/pod"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -26,7 +26,7 @@ import (
 // DescriptionTemplateString defines the content of the alert ticket.
 const descriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
-{{if isHostTask .}}Host: {{host .}}{{end}}{{if isContainerTask .}}Pod: {{pod .}}{{end}}
+Host: {{host .}}
 Project: [{{.Project.DisplayName}}|{{.UIv2Url}}/project/{{.Project.Id}}/waterfall]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
@@ -47,8 +47,6 @@ var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.Func
 	"formatAsTimestamp": formatAsTimestamp,
 	"host":              getHostMetadata,
 	"isHostTask":        getIsHostTask,
-	"pod":               getPodMetadata,
-	"isContainerTask":   getIsContainerTask,
 	"taskLogURLs":       getTaskLogURLs,
 }).Parse(descriptionTemplateString))
 
@@ -62,23 +60,6 @@ func getHostMetadata(data *jiraTemplateData) string {
 	}
 
 	return fmt.Sprintf("[%s|%s/host/%s]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
-}
-
-func getPodMetadata(data *jiraTemplateData) string {
-	if data.Pod == nil {
-		return "N/A"
-	}
-
-	return fmt.Sprintf("[%s|%s/pod/%s]", data.Pod.ID, data.UIRoot, url.PathEscape(data.Pod.ID))
-}
-
-// getIsContainerTask returns a non-empty string if it is a container task and
-// returns an empty string if it's not a container task.
-func getIsContainerTask(data *jiraTemplateData) string {
-	if data.Task.IsContainerTask() {
-		return strconv.FormatBool(true)
-	}
-	return ""
 }
 
 // getIsHostTask returns a non-empty string it is a host task and returns an
@@ -190,7 +171,6 @@ type jiraTemplateData struct {
 	Task               *task.Task
 	Build              *build.Build
 	Host               *host.Host
-	Pod                *pod.Pod
 	Project            *model.ProjectRef
 	Version            *model.Version
 	FailedTests        []testresult.TestResult
@@ -244,7 +224,7 @@ func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
 	labels := []string{}
 	for _, project := range j.mappings.CustomFields {
 		if project.Project == j.project {
-			fields = j.makeCustomFields(project.Fields)
+			fields = j.makeCustomFields(ctx, project.Fields)
 			components = project.Components
 			labels = project.Labels
 		}
@@ -260,7 +240,7 @@ func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
 		Labels:      labels,
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":      "creating Jira ticket for failure",
 		"type":         j.issueType,
 		"jira_project": j.project,
@@ -334,7 +314,7 @@ func (j *jiraBuilder) getSummary() (string, error) {
 	return subj.String(), catcher.Resolve()
 }
 
-func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotificationsCustomField) map[string]any {
+func (j *jiraBuilder) makeCustomFields(ctx context.Context, customFields []evergreen.JIRANotificationsCustomField) map[string]any {
 	fields := map[string]any{}
 	for i := range j.data.Task.LocalTestResults {
 		if j.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
@@ -353,7 +333,7 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 		if err != nil {
 			// Admins should be notified of misconfiguration, but we shouldn't block
 			// ticket generation
-			grip.Alert(message.WrapError(err, message.Fields{
+			grip.Alert(ctx, message.WrapError(err, message.Fields{
 				"message":      "invalid custom field template",
 				"jira_project": j.project,
 				"jira_field":   field.Field,
@@ -364,7 +344,7 @@ func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotification
 
 		buf := &bytes.Buffer{}
 		if err = tmpl.Execute(buf, &j.data); err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
+			grip.Alert(ctx, message.WrapError(err, message.Fields{
 				"message":      "template execution failed",
 				"jira_project": j.project,
 				"jira_field":   field.Field,

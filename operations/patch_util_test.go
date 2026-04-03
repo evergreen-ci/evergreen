@@ -50,9 +50,9 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
 	s.Require().NoError(err)
 
 	pp := patchParams{Project: "mci"}
-	s.Require().NoError(pp.loadAlias(conf))
-	s.Require().NoError(pp.loadVariants(conf))
-	s.Require().NoError(pp.loadTasks(conf))
+	s.Require().NoError(pp.loadAlias(s.T().Context(), conf))
+	s.Require().NoError(pp.loadVariants(s.T().Context(), conf))
+	s.Require().NoError(pp.loadTasks(s.T().Context(), conf))
 
 	s.Equal("testing", pp.Alias)
 	s.Nil(pp.Variants)
@@ -60,9 +60,9 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
 
 	// If tasks/variants are specified, then we should not set the alias or task/variant defaults.
 	pp = patchParams{Project: "mci", RegexTasks: []string{".*"}, RegexVariants: []string{".*"}}
-	s.Require().NoError(pp.loadAlias(conf))
-	s.Require().NoError(pp.loadVariants(conf))
-	s.Require().NoError(pp.loadTasks(conf))
+	s.Require().NoError(pp.loadAlias(s.T().Context(), conf))
+	s.Require().NoError(pp.loadVariants(s.T().Context(), conf))
+	s.Require().NoError(pp.loadTasks(s.T().Context(), conf))
 
 	s.Empty(pp.Alias)
 	s.Empty(pp.Tasks)
@@ -88,9 +88,9 @@ func (s *PatchUtilTestSuite) TestLoadVariantsTasksFromFile() {
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
-	s.Require().NoError(pp.loadAlias(conf))
-	s.Require().NoError(pp.loadVariants(conf))
-	s.Require().NoError(pp.loadTasks(conf))
+	s.Require().NoError(pp.loadAlias(s.T().Context(), conf))
+	s.Require().NoError(pp.loadVariants(s.T().Context(), conf))
+	s.Require().NoError(pp.loadTasks(s.T().Context(), conf))
 
 	s.Zero(pp.Alias)
 	s.Contains(pp.Variants, "myvariant1")
@@ -122,9 +122,9 @@ func (s *PatchUtilTestSuite) TestAliasFromCLI() {
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
-	s.Require().NoError(pp.loadAlias(conf))
-	s.Require().NoError(pp.loadVariants(conf))
-	s.Require().NoError(pp.loadTasks(conf))
+	s.Require().NoError(pp.loadAlias(s.T().Context(), conf))
+	s.Require().NoError(pp.loadVariants(s.T().Context(), conf))
+	s.Require().NoError(pp.loadTasks(s.T().Context(), conf))
 
 	s.Equal("testing", pp.Alias)
 	s.Nil(pp.Variants)
@@ -150,9 +150,9 @@ func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
-	s.Require().NoError(pp.loadAlias(conf))
-	s.Require().NoError(pp.loadVariants(conf))
-	s.Require().NoError(pp.loadTasks(conf))
+	s.Require().NoError(pp.loadAlias(s.T().Context(), conf))
+	s.Require().NoError(pp.loadVariants(s.T().Context(), conf))
+	s.Require().NoError(pp.loadTasks(s.T().Context(), conf))
 
 	s.Zero(pp.Alias)
 	s.Contains(pp.Variants, "myvariant1")
@@ -176,7 +176,7 @@ func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsExplicitAlias() {
 		},
 	}
 
-	pp.setNonRepeatedDefaults(conf)
+	pp.setNonRepeatedDefaults(s.T().Context(), conf)
 
 	s.Equal("duck", pp.Alias, "alias should not be defaulted")
 	s.Empty(pp.Variants, "variants should not be defaulted for explicit alias")
@@ -204,7 +204,7 @@ func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsWithLocalAliasOverridesOther
 		},
 	}
 
-	pp.setNonRepeatedDefaults(conf)
+	pp.setNonRepeatedDefaults(s.T().Context(), conf)
 
 	s.Equal("duck", pp.Alias, "should use local alias instead of default project alias")
 	s.Empty(pp.Variants, "variants should not be defaulted for explicit local alias")
@@ -226,7 +226,7 @@ func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsDefaultAlias() {
 		},
 	}
 
-	pp.setNonRepeatedDefaults(conf)
+	pp.setNonRepeatedDefaults(s.T().Context(), conf)
 
 	s.Equal("orange", pp.Alias, "alias should be defaulted if none is specified")
 	s.Empty(pp.Variants, "variants should not be defaulted when using default alias")
@@ -247,7 +247,7 @@ func (s *PatchUtilTestSuite) TestNonRepeatedDefaultsLoadsDefaultVariantsAndTasks
 		},
 	}
 
-	pp.setNonRepeatedDefaults(conf)
+	pp.setNonRepeatedDefaults(s.T().Context(), conf)
 
 	s.Empty(pp.Alias, "should not set an alias when there is no default")
 	s.ElementsMatch([]string{"default-bv0", "default-bv1"}, pp.Variants, "variants should be defaulted")
@@ -326,7 +326,7 @@ func (s *PatchUtilTestSuite) TestLoadProject() {
 
 	// Test that loadProject sets the default project when none is specified
 	defaultProject := patchParams{}
-	err = defaultProject.loadProject(conf)
+	err = defaultProject.loadProject(s.T().Context(), conf)
 	s.NoError(err, "loadProject should not error")
 	s.Equal("evergreen", defaultProject.Project, "loadProject should set project to default")
 
@@ -336,7 +336,7 @@ func (s *PatchUtilTestSuite) TestLoadProject() {
 	}
 
 	emptyProject := patchParams{}
-	err = emptyProject.loadProject(conf)
+	err = emptyProject.loadProject(s.T().Context(), conf)
 	s.Error(err, "loadProject should error when no default exists")
 	s.Contains(err.Error(), "Need to specify a project", "error message should indicate project is required")
 	s.Empty(emptyProject.Project, "loadProject should leave project empty when no default exists")
@@ -345,7 +345,7 @@ func (s *PatchUtilTestSuite) TestLoadProject() {
 	validProject := patchParams{
 		Project: "mci",
 	}
-	err = validProject.loadProject(conf)
+	err = validProject.loadProject(s.T().Context(), conf)
 	s.NoError(err, "loadProject should not error when valid project is specified")
 	s.Equal("mci", validProject.Project, "loadProject should preserve the specified project")
 }
@@ -402,7 +402,7 @@ include:
 			"mymodule": moduleDir,
 		}
 
-		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(t.Context(), params, conf, projectFile, "", modulePathCache)
 		require.NoError(t, err)
 
 		assert.Len(t, includes, 5)
@@ -436,7 +436,7 @@ include:
 		conf := &ClientSettings{}
 		modulePathCache := map[string]string{}
 
-		includes, err := getLocalModuleIncludes(params, conf, projectFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(t.Context(), params, conf, projectFile, "", modulePathCache)
 
 		require.NoError(t, err)
 		assert.Len(t, includes, 0)
@@ -492,7 +492,7 @@ include:
 			"module2": module2Dir,
 		}
 
-		includes, err := getLocalModuleIncludes(params, conf, multiModuleFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(t.Context(), params, conf, multiModuleFile, "", modulePathCache)
 		require.NoError(t, err)
 
 		assert.Len(t, includes, 5)
@@ -557,7 +557,7 @@ include:
 			"module1": module1Dir,
 		}
 
-		includes, err := getLocalModuleIncludes(params, conf, partialModuleFile, "", modulePathCache)
+		includes, err := getLocalModuleIncludes(t.Context(), params, conf, partialModuleFile, "", modulePathCache)
 
 		require.NoError(t, err)
 

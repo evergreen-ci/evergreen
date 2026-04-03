@@ -182,7 +182,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				return true
 			}
 
-			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+			grip.Error(req.Context(), message.WrapError(err, makeLogMsg(map[string]any{
 				"message": "GitHub endpoint encountered unretryable error",
 			})))
 
@@ -192,7 +192,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		if resp == nil {
 			errMsg := "GitHub app endpoint returned nil response"
 			span.SetAttributes(attribute.String(githubAppErrorAttribute, errMsg))
-			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+			grip.Error(req.Context(), message.WrapError(err, makeLogMsg(map[string]any{
 				"message": errMsg,
 			})))
 			return true
@@ -206,7 +206,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			}
 		}
 
-		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
+		grip.ErrorWhen(req.Context(), resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
 			"message":     "GitHub app endpoint returned response but is not retryable",
 			"status_code": resp.StatusCode,
 		}))

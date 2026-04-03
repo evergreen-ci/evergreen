@@ -11,11 +11,10 @@ type APICreateHost struct {
 	IPv4       *string `json:"ipv4_address,omitempty"`
 	InstanceID *string `json:"instance_id,omitempty"`
 
-	HostID       *string      `json:"host_id,omitempty"`
-	ParentID     *string      `json:"parent_id,omitempty"`
-	Image        *string      `json:"image,omitempty"`
-	Command      *string      `json:"command,omitempty"`
-	PortBindings host.PortMap `json:"port_bindings,omitempty"`
+	HostID   *string `json:"host_id,omitempty"`
+	ParentID *string `json:"parent_id,omitempty"`
+	Image    *string `json:"image,omitempty"`
+	Command  *string `json:"command,omitempty"`
 }
 
 func (createHost *APICreateHost) BuildFromService(h host.Host) {
@@ -29,7 +28,6 @@ func (createHost *APICreateHost) BuildFromService(h host.Host) {
 		createHost.ParentID = utility.ToStringPtr(h.ParentID)
 		createHost.Image = utility.ToStringPtr(h.DockerOptions.Image)
 		createHost.Command = utility.ToStringPtr(h.DockerOptions.Command)
-		createHost.PortBindings = h.PortBindings
 		return
 	}
 	createHost.InstanceID = utility.ToStringPtr(h.Id)

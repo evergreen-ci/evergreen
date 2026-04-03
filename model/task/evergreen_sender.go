@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -21,7 +22,8 @@ var defaultLogLineParser = func(rawLine string) (log.LogLine, error) {
 }
 
 // logLineAppender appends a chunk of lines to the underlying log store.
-type logLineAppender func(context.Context, []log.LogLine) error
+// Returns the number of bytes written to storage.
+type logLineAppender func(context.Context, []log.LogLine) (int64, error)
 
 // EvergreenSenderOptions support the use and creation of an Evergreen sender.
 type EvergreenSenderOptions struct {
@@ -42,6 +44,10 @@ type EvergreenSenderOptions struct {
 	// agnostic to the raw log line formats it ingests. Defaults to a basic
 	// line parser that adds the raw string as the log line data field.
 	Parse log.LineParser
+
+	// S3Usage tracks S3 API usage for log uploads. If set, flush() will
+	// increment log file metrics after each successful write.
+	S3Usage *s3usage.S3Usage
 
 	appendLines logLineAppender
 }
@@ -122,7 +128,7 @@ func newEvergreenSender(ctx context.Context, name string, opts EvergreenSenderOp
 // buffers the messages until the maximum allowed buffer size is reached, at
 // which point the messages in the buffer are written to persistent storage by
 // the backing log service. Send is thread safe.
-func (s *evergreenSender) Send(m message.Composer) {
+func (s *evergreenSender) Send(ctx context.Context, m message.Composer) {
 	ts := time.Now().UnixNano()
 
 	if !s.Level().ShouldLog(m) {
@@ -133,7 +139,7 @@ func (s *evergreenSender) Send(m message.Composer) {
 	defer s.mu.Unlock()
 
 	if s.closed {
-		s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.New("cannot call Send on a closed sender")))
+		s.opts.Local.Send(ctx, message.NewErrorMessage(level.Error, errors.New("cannot call Send on a closed sender")))
 		return
 	}
 
@@ -144,29 +150,29 @@ func (s *evergreenSender) Send(m message.Composer) {
 
 		logLine, err := s.opts.Parse(line)
 		if err != nil {
-			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Wrap(err, "parsing log line")))
+			s.opts.Local.Send(ctx, message.NewErrorMessage(level.Error, errors.Wrap(err, "parsing log line")))
 			return
 		}
 		if logLine.Priority == 0 {
 			logLine.Priority = m.Priority()
 		}
 		if !logLine.Priority.IsValid() {
-			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Errorf("invalid log line priority %d", logLine.Priority)))
+			s.opts.Local.Send(ctx, message.NewErrorMessage(level.Error, errors.Errorf("invalid log line priority %d", logLine.Priority)))
 			return
 		}
 		if logLine.Timestamp == 0 {
 			logLine.Timestamp = ts
 		}
 		if logLine.Timestamp < 0 {
-			s.opts.Local.Send(message.NewErrorMessage(level.Error, errors.Errorf("invalid log line timestamp %d", logLine.Timestamp)))
+			s.opts.Local.Send(ctx, message.NewErrorMessage(level.Error, errors.Errorf("invalid log line timestamp %d", logLine.Timestamp)))
 			return
 		}
 
 		s.buffer = append(s.buffer, logLine)
 		s.bufferSize += len(line)
 		if s.bufferSize > s.opts.MaxBufferSize {
-			if err := s.flush(s.ctx); err != nil {
-				s.opts.Local.Send(message.NewErrorMessage(level.Error, err))
+			if err := s.flush(ctx); err != nil {
+				s.opts.Local.Send(ctx, message.NewErrorMessage(level.Error, err))
 				return
 			}
 		}
@@ -222,7 +228,7 @@ func (s *evergreenSender) timedFlush() {
 			s.mu.Lock()
 			if len(s.buffer) > 0 && time.Since(s.lastFlush) >= s.opts.FlushInterval {
 				if err := s.flush(s.ctx); err != nil {
-					s.opts.Local.Send(message.NewErrorMessage(level.Error, err))
+					s.opts.Local.Send(s.ctx, message.NewErrorMessage(level.Error, err))
 				}
 			}
 			_ = timer.Reset(s.opts.FlushInterval)
@@ -233,8 +239,13 @@ func (s *evergreenSender) timedFlush() {
 }
 
 func (s *evergreenSender) flush(ctx context.Context) error {
-	if err := s.opts.appendLines(ctx, s.buffer); err != nil {
+	uploadBytes, err := s.opts.appendLines(ctx, s.buffer)
+	if err != nil {
 		return errors.Wrap(err, "appending lines to log")
+	}
+
+	if s.opts.S3Usage != nil && uploadBytes > 0 {
+		s.opts.S3Usage.IncrementLogs(1, uploadBytes)
 	}
 
 	s.buffer = []log.LogLine{}

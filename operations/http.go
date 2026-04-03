@@ -2,6 +2,7 @@ package operations
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -130,7 +130,7 @@ func (ac *legacyClient) post2(path string, body io.Reader) (*http.Response, erro
 	return ac.doReq(http.MethodPost, path, 2, body)
 }
 
-func (ac *legacyClient) modifyExisting(patchId, action string) error {
+func (ac *legacyClient) modifyExisting(ctx context.Context, patchId, action string) error {
 	data := struct {
 		PatchId string `json:"patch_id"`
 		Action  string `json:"action"`
@@ -139,8 +139,8 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -162,51 +162,12 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 	return nil
 }
 
-// ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
-	input := validator.ValidationInput{
-		ProjectYaml: data,
-		Quiet:       quiet,
-		ProjectID:   projectID,
-	}
-	rPipe, wPipe := io.Pipe()
-	encoder := json.NewEncoder(wPipe)
-	go func() {
-		grip.Warning(encoder.Encode(input))
-		grip.Warning(wPipe.Close())
-	}()
-	resp, err := ac.post("validate", rPipe)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusBadRequest {
-		errors := validator.ValidationErrors{}
-		err = utility.ReadJSON(resp.Body, &errors)
-		if err != nil {
-			return nil, NewAPIError(resp)
-		}
-		return errors, nil
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, newAuthError(resp)
-	}
-	if resp.StatusCode == http.StatusForbidden {
-		return nil, newVPNError(resp)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-	return nil, nil
+func (ac *legacyClient) CancelPatch(ctx context.Context, patchId string) error {
+	return ac.modifyExisting(ctx, patchId, "cancel")
 }
 
-func (ac *legacyClient) CancelPatch(patchId string) error {
-	return ac.modifyExisting(patchId, "cancel")
-}
-
-func (ac *legacyClient) FinalizePatch(patchId string) error {
-	return ac.modifyExisting(patchId, "finalize")
+func (ac *legacyClient) FinalizePatch(ctx context.Context, patchId string) error {
+	return ac.modifyExisting(ctx, patchId, "finalize")
 }
 
 // GetPatches requests a list of the user's patches from the API and returns them as a list
@@ -446,7 +407,7 @@ type UpdatePatchModuleParams struct {
 }
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
-func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error {
+func (ac *legacyClient) UpdatePatchModule(ctx context.Context, params UpdatePatchModuleParams) error {
 	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
 	// when marshalled into JSON.
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
@@ -461,8 +422,8 @@ func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -552,7 +513,7 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
-func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
+func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmission) (*patch.Patch, error) {
 	// Characters in a string without a utf-8 representation are shoehorned into the � replacement character
 	// when marshalled into JSON.
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
@@ -612,8 +573,8 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
+		grip.Warning(ctx, encoder.Encode(data))
+		grip.Warning(ctx, wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -643,6 +604,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	return reply.Patch, nil
 }
 
+// GetTask returns a task using the legacy V1 API.
 func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 	resp, err := ac.get("tasks/"+taskId, nil)
 	if err != nil {
@@ -668,6 +630,39 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 		return nil, err
 	}
 	return &reply, nil
+}
+
+// GetTaskV2 returns a task using the V2 API. We return an APITask because it contains additional fields (namely patch number and artifacts)
+// that aren't available on the service Task.
+func (ac *legacyClient) GetTaskV2(taskId string, execution *int) (*restModel.APITask, error) {
+	urlToFetch := fmt.Sprintf("tasks/%s", taskId)
+	if execution != nil {
+		urlToFetch = fmt.Sprintf("%s?execution=%d", urlToFetch, utility.FromIntPtr(execution))
+	}
+
+	resp, err := ac.get2(urlToFetch, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, newAuthError(resp)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, newVPNError(resp)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	apiModel := &restModel.APITask{}
+	if err = utility.ReadJSON(resp.Body, apiModel); err != nil {
+		return nil, err
+	}
+	return apiModel, nil
 }
 
 // GetRecentVersions retrieves a list of recent versions for a project,

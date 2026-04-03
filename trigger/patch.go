@@ -175,7 +175,7 @@ func finalizeChildPatch(ctx context.Context, sub *event.Subscription) error {
 	defer cancel()
 
 	if _, err := model.FinalizePatch(ctx, childPatch, target.Requester); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "Failed to finalize patch document",
 			"source":        target.Requester,
 			"patch_id":      childPatch.Id,
@@ -228,7 +228,7 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 		}
 	}
 
-	grip.NoticeWhen(collectiveStatus != t.data.Status, message.Fields{
+	grip.NoticeWhen(ctx, collectiveStatus != t.data.Status, message.Fields{
 		"message":                 "patch's current collective status does not match the patch event data's status",
 		"patch_collective_status": collectiveStatus,
 		"patch_status":            t.patch.Status,
@@ -278,7 +278,15 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	}
 
 	slackColor := evergreenFailColor
+	startTime := t.patch.StartTime
 	finishTime := t.patch.FinishTime
+	if t.patch.IsParent() {
+		var err error
+		startTime, finishTime, err = t.patch.GetCollectiveTimes(ctx)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getting collective times for patch '%s'", t.patch.Id)
+		}
+	}
 	if utility.IsZeroTime(finishTime) {
 		finishTime = time.Now()
 	}
@@ -287,10 +295,10 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
-		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
+		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
 	} else if collectiveStatus == evergreen.VersionFailed {
 		data.githubState = message.GithubStateFailure
-		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())
+		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(startTime).String())
 	}
 
 	if t.patch.IsGithubPRPatch() {

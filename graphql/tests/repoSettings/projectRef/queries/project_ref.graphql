@@ -50,12 +50,6 @@
           secret
         }
       }
-
-      containerSizeDefinitions {
-        name
-        cpu
-        memoryMb
-      }
     }
   }
 }

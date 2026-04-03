@@ -237,7 +237,7 @@ func TestXMLToModelConversion(t *testing.T) {
 			numNan := 0
 			numInf := 0
 			for _, testCase := range res[0].TestCases {
-				test, log := testCase.toModelTestResultAndLog(conf, logger)
+				test, log := testCase.toModelTestResultAndLog(ctx, conf, logger)
 				if log != nil {
 					logs = append(logs, log)
 				}

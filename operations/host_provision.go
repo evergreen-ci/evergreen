@@ -104,7 +104,7 @@ func hostProvision() cli.Command {
 				return errors.Wrap(err, "writing host provisioning script file")
 			}
 			defer func() {
-				grip.Error(errors.Wrap(os.RemoveAll(scriptPath), "removing host provisioning file"))
+				grip.Error(ctx, errors.Wrap(os.RemoveAll(scriptPath), "removing host provisioning file"))
 			}()
 
 			if err := runHostProvisioningScript(ctx, c.String(shellPathFlagName), scriptPath, workingDir); err != nil {
@@ -124,7 +124,7 @@ func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudPr
 	// that allows the host to skip the cloud host ready job if successful here. Otherwise,
 	// we fall back to polling the instance data from EC2 in the cloud host ready job.
 	ec2Metadata, err := agentutil.GetEC2Metadata(fetchEC2InfoCtx)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message":        "could not fetch EC2 metadata dynamically",
 		"host_id":        hostID,
 		"cloud_provider": cloudProvider,

@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -152,14 +151,9 @@ func (h *Host) GetSSHPort() int {
 }
 
 // GetSSHOptions returns the options to SSH into this host from an application
-// server.
-func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	// TODO (DEVPROD-15898): stop providing this key.
-	if _, err := os.Stat(settings.KanopySSHKeyPath); err != nil {
-		return nil, errors.New("Kanopy SSH identity file does not exist")
-	}
-	opts := []string{"-i", settings.KanopySSHKeyPath}
-
+// server. It relies on the SSH key already being loaded in ssh-agent.
+func (h *Host) GetSSHOptions() ([]string, error) {
+	var opts []string
 	var hasKnownHostsFile bool
 	var distroPortOption string
 
@@ -235,7 +229,7 @@ func (h *Host) RunSSHShellScriptWithTimeout(ctx context.Context, script string, 
 
 func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*jasper.Command) *jasper.Command, timeout time.Duration) (string, error) {
 	env := evergreen.GetEnvironment()
-	sshOpts, err := h.GetSSHOptions(env.Settings())
+	sshOpts, err := h.GetSSHOptions()
 	if err != nil {
 		return "", errors.Wrap(err, "getting host's SSH options")
 	}
@@ -699,7 +693,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return nil, errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -714,9 +708,9 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		}
 	}
 	if !inMemoryLoggerExists {
-		logger, loggerErr := jasper.NewInMemoryLogger(OutputBufferSize)
+		logger, err := jasper.NewInMemoryLogger(OutputBufferSize)
 		if err != nil {
-			return nil, errors.Wrap(loggerErr, "creating new in-memory logger")
+			return nil, errors.Wrap(err, "creating new in-memory logger")
 		}
 		opts.Output.Loggers = append(opts.Output.Loggers, logger)
 	}
@@ -747,7 +741,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 		return "", errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -770,7 +764,7 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return false, "", errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -809,13 +803,13 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 		return nil, errors.New("hosts without any provisioning method cannot use Jasper")
 	}
 
-	settings := env.Settings()
 	if h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.NeedsReprovision == ReprovisionToLegacy {
-		sshOpts, err := h.GetSSHOptions(settings)
+		sshOpts, err := h.GetSSHOptions()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting host's SSH options")
 		}
 
+		settings := env.Settings()
 		var remoteOpts options.Remote
 		remoteOpts.Host = h.Host
 		remoteOpts.User = h.User
@@ -844,6 +838,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (rem
 			return nil, errors.New("cannot resolve Jasper service address if neither host name nor IP is set")
 		}
 
+		settings := env.Settings()
 		addrStr := fmt.Sprintf("%s:%d", hostName, settings.HostJasper.Port)
 
 		serviceAddr, err := net.ResolveTCPAddr("tcp", addrStr)
@@ -901,7 +896,7 @@ func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, t
 	}
 
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -927,7 +922,7 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 	)
 
 	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
-		grip.WarningWhen(len(procs) > 1, message.Fields{
+		grip.WarningWhen(ctx, len(procs) > 1, message.Fields{
 			"message":   "host is attempting to fetch task data multiple times",
 			"num_procs": len(procs),
 			"host_id":   h.Id,
@@ -989,7 +984,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 				catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "signalling agent monitor process with ID '%s'", proc.ID())
 			}
 		}
-		grip.WarningWhen(numRunning > 1, message.Fields{
+		grip.WarningWhen(ctx, numRunning > 1, message.Fields{
 			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -1278,7 +1273,7 @@ func (h *Host) SetUserDataHostProvisioned(ctx context.Context) error {
 		return errors.Wrap(err, "marking host as done provisioning itself and now running")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":              "host successfully provisioned",
 		"host_id":              h.Id,
 		"distro":               h.Distro.Id,

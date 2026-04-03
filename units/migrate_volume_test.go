@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/pod/dispatcher"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -242,7 +241,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.EventCollection, distro.Collection, dispatcher.Collection))
+			assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.EventCollection, distro.Collection))
 			tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 			tctx = testutil.TestSpan(tctx, t)

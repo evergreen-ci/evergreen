@@ -558,12 +558,13 @@ Parameters:
 You can customize the points at which the "timeout" conditions are
 triggered. To cause a task to stop (and fail) if it doesn't complete
 within an allotted time, set the key `exec_timeout_secs` on the overall project,
-on a specific task, or on a specific task within a build variant to set the maximum allowed length of execution time. Exec timeout only
+on a build variant, on a specific task, or on a specific task within a build variant to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
 `teardown_group` blocks. This timeout defaults to 6 hours, and cannot be set above 24 hours.
-`exec_timeout_secs` can be set on the project, on a task, or on a task within a build variant as seen in below example.
-It cannot be set on functions.
+`exec_timeout_secs` can be set on the project, on a build variant, on a task, or on a task within a build variant as
+seen in below example. The precedence order is: build variant task `>` project task `>` build variant `>` project. It
+cannot be set on functions.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).
 
@@ -595,7 +596,14 @@ buildvariants:
     tasks:
       - name: compile
       - name: test
-        exec_timeout_secs: 30 ## override the project and task level exec_timeout_secs for this variant's test task
+        exec_timeout_secs: 30 ## override the project, task, and build variant level exec_timeout_secs for this variant's test task
+  - name: linux
+    display_name: Linux
+    exec_timeout_secs: 120 ## override the project exec_timeout_secs for all tasks in this variant.
+    run_on:
+      - localtestdistro2
+    tasks:
+      - name: compile
 
 tasks:
   - name: compile
@@ -750,8 +758,9 @@ from running if a specified file has not changed. However, this does _not_ mean 
 be scheduled if a file in a specified path is changed. The tasks must still be manually selected to run through
 manual selection, alias, etc.
 
-_Merge queue behavior_: Build variant path filtering is supported for the merge queue. If testing multiple PRs
-in one merge queue patch, we will consider the full set of changed files to determine what tasks to run, but will
+_Merge queue behavior_: Build variant path filtering applies to the merge queue unless
+[explicitly disabled](#disabling-merge-queue-path-filtering). If testing multiple PRs in one merge queue patch,
+we will consider the full set of changed files to determine what tasks to run, but will
 not consider the changed files from other PRs in the merge group (i.e. paths changed in PRs that are ahead in the queue are not included).
 For PR patches and the merge queue, we will still send a successful check for ignored variants, to avoid blocking requirements.
 
@@ -789,6 +798,21 @@ When a build variant has `paths` defined:
 **Note: build variant path filtering is ignored on extremely large GitHub PRs with 3000+ files changed.** If a PR
 contains 3000+ changed files, `paths` will have no effect on the GitHub PR patch. The build variant will run its tasks
 even if `paths` doesn't match any of the changed files.
+
+###### Disabling Merge Queue Path Filtering
+
+If you want to disable path filtering specifically for merge queue versions while keeping it enabled for PR patches,
+you can set the `disable_merge_queue_path_filtering` top-level setting to `true`. When enabled, all build variants
+will run for merge queue versions regardless of their `paths` configuration, but path filtering will still apply
+to PR patches.
+
+This can be useful when you want more selective testing for PR patches but want to ensure comprehensive testing
+before merging to your main branch.
+
+```yaml
+disable_merge_queue_path_filtering: true
+buildvariants: ...
+```
 
 ### Expansions
 
@@ -934,6 +958,9 @@ Every task has some expansions available by default:
   if the task has timed out. It is only available in the `timeout` task block.
 - `${timed_out_pids}` is a comma separated list of all PIDs that were running when the task's
   timeout limit exceeded. It is only available in the `timeout` task block.
+- `${timed_out_child_pids}` is a comma separated list of descendant PIDs (child processes) of
+  the processes that were running when the task's timeout limit exceeded.
+  It is only available in the `timeout` task block.
 - `${triggered_by_git_tag}` is the name of the tag that triggered this
   version, if applicable
 - `${version_id}` is the id of the task's version
@@ -1169,6 +1196,17 @@ To disable the OOM tracker, add the following to the top-level of your yaml.
 ```yaml
 oom_tracker: false
 ```
+
+### CPU and Memory Constraint Tracker
+
+If the CPU or Memory on a running task host sustains above 90% for a 5 minute period, it will be flagged
+as a (potentially) resource constrained task, which may be relevant when diagnosing its failures.
+
+If this occurs, tasks returned from the REST API will have a `resource_constraints`
+field available indicating that CPU and/or memory was constrained during execution.
+
+There will also be a log in the Agent logs that looks similar to the following:
+`Resource constraint detected: CPU constrained=true (peak 99.0%), memory constrained=true (peak 99.0%).`
 
 ### Process Diagnostics: ps
 
@@ -1918,6 +1956,49 @@ tasks:
     commands:
       - func: my_function
 ```
+
+### Update Distros with Run On
+
+Test owners and Product teams should be confident and empowered to modify their distros as they see fit.
+DevProd cannot scale to adjust individual distros for individual teams; we do own the framework that gives you the ability to modify the distros.
+
+#### Adjust Distro Size
+
+Larger distros increase costs, and should only be increased when necessary.
+It is best to try to understand the underlying root cause of the issue to avoid altogether.
+Specifying larger distros should be a last resort.
+
+##### Example in a variant
+
+Specify that all tasks in the build variant should use a different sized distro.
+
+```yaml
+buildvariants:
+  - name: your-build-variant-name
+    display_name: "~ Your Variant"
+    run_on:
+      - rhel8.8-xlarge
+```
+
+Read more about the run_on field [here](Project-Configuration-Files#build-variants).
+
+##### Example in a task
+
+```yaml
+buildvariants:
+  - name: your-build-variant-name
+    display_name: "~ Your Variant"
+    run_on:
+      - rhel8.8-small
+    tasks:
+      - name: .tests_that_need_xlarge_distros
+        distros:
+          - rhel8.8-xlarge
+```
+
+There may be further changes you can do within your team using **variables or expansions**. It's good
+to reach out to your team for further advice here. For example, server's resmoke test configurations are
+documented [here](https://github.com/mongodb/mongo-task-generator/blob/master/docs/generating_tasks.md#runtime-based-sub-tasks).
 
 ### The Power of YAML
 

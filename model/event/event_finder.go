@@ -340,21 +340,3 @@ func FindLatestAdminEvents(ctx context.Context, n int, before time.Time) ([]Even
 func FindAllByResourceID(ctx context.Context, resourceID string) ([]EventLogEntry, error) {
 	return Find(ctx, db.Query(bson.M{ResourceIdKey: resourceID}))
 }
-
-// Pod events
-
-// MostRecentPodEvents creates a query to find the n most recent pod events for
-// the given pod ID.
-func MostRecentPodEvents(id string, n int) db.Q {
-	filter := ResourceTypeKeyIs(ResourceTypePod)
-	filter[ResourceIdKey] = id
-
-	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
-}
-
-// MostRecentPaginatedPodEvents returns a limited and paginated list of pod events for the
-// given pod ID sorted in descending order by timestamp as well as the total number of events.
-func MostRecentPaginatedPodEvents(ctx context.Context, id string, limit, page int) ([]EventLogEntry, int, error) {
-	recentPodsQuery := MostRecentPodEvents(id, limit)
-	return FindPaginatedWithTotalCount(ctx, recentPodsQuery, limit, page)
-}

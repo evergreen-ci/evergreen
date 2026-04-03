@@ -416,7 +416,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			forbiddenHosts = append(forbiddenHosts, h.Id)
 		}
 		if len(forbiddenHosts) > 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":         "User does not have permission to view hosts",
 				"forbidden_hosts": forbiddenHosts,
 				"user":            usr.Username(),
@@ -462,15 +462,6 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	})
 
 	return distros, nil
-}
-
-// Pod is the resolver for the pod field.
-func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPod, error) {
-	pod, err := data.FindAPIPodByID(ctx, podID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod '%s': %s", podID, err.Error()))
-	}
-	return pod, nil
 }
 
 // Patch is the resolver for the patch field.
@@ -934,7 +925,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message":    "Error getting most recent version",
 				"project_id": projectId,
 			}))

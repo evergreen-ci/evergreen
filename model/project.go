@@ -57,7 +57,6 @@ type Project struct {
 	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	Containers         []Container                `yaml:"containers,omitempty" bson:"containers"`
 	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
@@ -65,8 +64,23 @@ type Project struct {
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
+	// DisableMergeQueuePathFiltering, if true, skips path filtering for merge queue versions.
+	DisableMergeQueuePathFiltering bool `yaml:"disable_merge_queue_path_filtering,omitempty" bson:"disable_merge_queue_path_filtering,omitempty"`
+
 	// Number of includes in the project cached for validation
 	NumIncludes int `yaml:"-" bson:"-"`
+
+	// tasksByName is an in-memory cache for O(1) task lookups.
+	tasksByName map[string]*ProjectTask `yaml:"-" bson:"-"`
+}
+
+// buildTaskCache creates the tasksByName map for O(1) task lookups.
+// This should be called once after the Project is fully constructed.
+func (p *Project) buildTaskCache() {
+	p.tasksByName = make(map[string]*ProjectTask, len(p.Tasks))
+	for i := range p.Tasks {
+		p.tasksByName[p.Tasks[i].Name] = &p.Tasks[i]
+	}
 }
 
 type ProjectInfo struct {
@@ -123,6 +137,7 @@ type BuildVariantTaskUnit struct {
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 	Priority          int64                     `yaml:"priority,omitempty" bson:"priority"`
 	DependsOn         []TaskUnitDependency      `yaml:"depends_on,omitempty" bson:"depends_on"`
+	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
 	// the distros that the task can be run on
 	RunOn    []string `yaml:"run_on,omitempty" bson:"run_on"`
@@ -214,6 +229,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = pt.AllowedRequesters
 	}
+	if bvt.ExecTimeoutSecs == 0 {
+		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
+	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
 	}
@@ -237,6 +255,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask, bv BuildVariant) {
 	}
 	if len(bvt.AllowedRequesters) == 0 {
 		bvt.AllowedRequesters = bv.AllowedRequesters
+	}
+	if bvt.ExecTimeoutSecs == 0 {
+		bvt.ExecTimeoutSecs = bv.ExecTimeoutSecs
 	}
 	if bvt.Disable == nil {
 		bvt.Disable = bv.Disable
@@ -396,6 +417,9 @@ type BuildVariant struct {
 	// and GitTagOnly. By default, all requesters are allowed to run the task.
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
 
+	// ExecTimeoutSecs determines how long a task can run before timing out.
+	ExecTimeoutSecs int `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
@@ -434,25 +458,6 @@ type CheckRun struct {
 type ParameterInfo struct {
 	patch.Parameter `yaml:",inline" bson:",inline"`
 	Description     string `yaml:"description" bson:"description"`
-}
-
-// Container holds all properties that are configurable when defining a container
-// for tasks and build variants to run on in a project YAML file.
-type Container struct {
-	Name       string              `yaml:"name" bson:"name"`
-	WorkingDir string              `yaml:"working_dir,omitempty" bson:"working_dir"`
-	Image      string              `yaml:"image" bson:"image" plugin:"expand"`
-	Size       string              `yaml:"size,omitempty" bson:"size"`
-	Credential string              `yaml:"credential,omitempty" bson:"credential"`
-	Resources  *ContainerResources `yaml:"resources,omitempty" bson:"resources"`
-	System     ContainerSystem     `yaml:"system,omitempty" bson:"system"`
-}
-
-// ContainerSystem specifies the architecture and OS for the running container to use.
-type ContainerSystem struct {
-	CPUArchitecture evergreen.ContainerArch  `yaml:"cpu_architecture,omitempty" bson:"cpu_architecture"`
-	OperatingSystem evergreen.ContainerOS    `yaml:"operating_system,omitempty" bson:"operating_system"`
-	WindowsVersion  evergreen.WindowsVersion `yaml:"windows_version,omitempty" bson:"windows_version"`
 }
 
 // Module specifies the git details of another git project to be included within a
@@ -1326,7 +1331,7 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 		env := evergreen.GetEnvironment()
 		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion, preGeneration)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "last known good version has malformed config",
 				"version": lastGoodVersion.Id,
 				"project": projectId,
@@ -1446,22 +1451,13 @@ func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string
 }
 
 func (p *Project) FindProjectTask(name string) *ProjectTask {
+	if p.tasksByName != nil {
+		return p.tasksByName[name]
+	}
+
+	// Fallback to linear search for backwards compatibility or edge cases
 	for _, t := range p.Tasks {
 		if t.Name == name {
-			return &t
-		}
-	}
-	return nil
-}
-
-// FindBuildVariantTaskUnit finds the bvtu given the bv and task name.
-func (p *Project) FindBuildVariantTaskUnit(bv, task string) *BuildVariantTaskUnit {
-	bvUnit := p.FindBuildVariant(bv)
-	if bvUnit == nil {
-		return nil
-	}
-	for _, t := range bvUnit.Tasks {
-		if t.Name == task {
 			return &t
 		}
 	}
@@ -1504,6 +1500,18 @@ func (p *Project) GetNumCheckRunsFromTaskVariantPairs(variantTasks *TaskVariantP
 		numCheckRuns += p.getNumCheckRuns(variant.TaskName, variant.Variant)
 	}
 	return numCheckRuns
+}
+
+// HasCheckRuns returns true if the project has any check runs.
+func (p *Project) HasCheckRuns() bool {
+	for _, b := range p.BuildVariants {
+		for _, t := range b.Tasks {
+			if t.HasCheckRun() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (p *Project) getNumCheckRuns(taskName, variantName string) int {
@@ -1609,7 +1617,7 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 	}
 	bv := p.FindBuildVariant(bvTaskGroup.Variant)
 	if bv == nil {
-		grip.Alert(message.WrapStack(0, message.Fields{
+		grip.Alert(context.Background(), message.WrapStack(0, message.Fields{
 			"message":       "programmatic error: found a task group that has no associated build variant (this is not supposed to ever happen and is probably a bug)",
 			"task_group":    bvTaskGroup.Name,
 			"build_variant": bvTaskGroup.Variant,
@@ -1761,7 +1769,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		for _, bv := range patchDoc.RegexBuildVariants {
 			bvRegex, err := regexp.Compile(bv)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":   "compiling buildvariant regex",
 					"regex":     bv,
 					"project":   p.Identifier,
@@ -1784,7 +1792,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		for _, t := range patchDoc.RegexTasks {
 			tRegex, err := regexp.Compile(t)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":   "compiling task regex",
 					"regex":     t,
 					"project":   p.Identifier,
@@ -1819,7 +1827,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliases, requester)
 			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
-		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 			"message": "problem adding variants/tasks for alias",
 			"alias":   alias,
 			"project": p.Identifier,
@@ -1835,7 +1843,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 	if includeDeps {
 		var err error
 		pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "error including dependencies",
 			"project": p.Identifier,
 		}))
@@ -2072,7 +2080,7 @@ func (p *Project) VariantTasksForSelectors(ctx context.Context, definitions []pa
 	}
 	pairs = p.extractDisplayTasks(pairs)
 	pairs.ExecTasks, err = IncludeDependencies(p, pairs.ExecTasks, requester, nil)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": p.Identifier,
 	}))

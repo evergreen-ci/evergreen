@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 )
 
 func TestGetSenderLocal(t *testing.T) {
@@ -32,7 +33,8 @@ func TestStartLogging(t *testing.T) {
 			WorkingDirectory: tmpDirName,
 			HomeDirectory:    tmpDirName,
 		},
-		comm: client.NewMock("url"),
+		comm:   client.NewMock("url"),
+		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
 	}
 	tc := &taskContext{
 		task: client.TaskData{
@@ -48,7 +50,7 @@ func TestStartLogging(t *testing.T) {
 	tc.taskConfig = config
 
 	require.NoError(t, agt.startLogging(ctx, tc))
-	tc.logger.Execution().Info("foo")
+	tc.logger.Execution().Info(ctx, "foo")
 	assert.NoError(t, tc.logger.Close())
 	lines := agt.comm.(*client.Mock).GetTaskLogs(tc.taskConfig.Task.Id)
 	require.Len(t, lines, 1)

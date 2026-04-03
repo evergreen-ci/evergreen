@@ -64,7 +64,8 @@
         {
           "activated": true,
           "build_id": "evergreen_version2_build",
-          "build_variant": "enterprise-ubuntu1604-64"
+          "build_variant": "enterprise-ubuntu1604-64",
+          "display_name": "02 Ubuntu 16.04"
         }
       ],
       "builds": ["evergreen_version2_build"]
@@ -125,7 +126,8 @@
       "build_variants_status": [
         {
           "build_variant": "lint",
-          "build_id": "evergreen_version3_build"
+          "build_id": "evergreen_version3_build",
+          "display_name": "03 Linter"
         }
       ]
     },

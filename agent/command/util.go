@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,12 +49,12 @@ func createEnclosingDirectoryIfNeeded(path string) error {
 	return nil
 }
 
-func expandModulePrefix(conf *internal.TaskConfig, module, prefix string, logger client.LoggerProducer) {
+func expandModulePrefix(ctx context.Context, conf *internal.TaskConfig, module, prefix string, logger client.LoggerProducer) {
 	modulePrefix, err := conf.Expansions.ExpandString(prefix)
 	if err != nil {
-		logger.Task().Error(errors.Wrapf(err, "expanding module prefix '%s'", modulePrefix))
+		logger.Task().Error(ctx, errors.Wrapf(err, "expanding module prefix '%s'", modulePrefix))
 		modulePrefix = prefix
-		logger.Task().Warningf("Will attempt to check out into the module prefix '%s' verbatim.", prefix)
+		logger.Task().Warningf(ctx, "Will attempt to check out into the module prefix '%s' verbatim.", prefix)
 	}
 	if conf.ModulePaths == nil {
 		conf.ModulePaths = map[string]string{}

@@ -26,8 +26,6 @@ const (
 	HostUpdateError                = "Error updating host"
 	HostTerminationQueueingSuccess = "Host %v successfully queued for termination"
 	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
-	HostStatusWriteConfirm         = "Successfully updated host status"
-	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
 	HostReprovisionConfirm         = "Successfully marked host as needing to reprovision"
 )
 
@@ -158,7 +156,7 @@ func GetRestartJasperCallback(ctx context.Context, env evergreen.Environment, us
 
 		// Enqueue the job immediately, if possible.
 		if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message":           "could not enqueue job to reprovision host",
 				"host_id":           h.Id,
 				"needs_reprovision": h.NeedsReprovision,
@@ -182,7 +180,7 @@ func GetReprovisionToNewCallback(ctx context.Context, env evergreen.Environment,
 
 		// Enqueue the job immediately, if possible.
 		if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message":           "could not enqueue job to reprovision host",
 				"host_id":           h.Id,
 				"needs_reprovision": h.NeedsReprovision,

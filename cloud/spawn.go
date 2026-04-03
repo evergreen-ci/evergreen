@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -21,6 +23,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 // Options holds the required parameters for spawning a host.
@@ -152,19 +155,19 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		so.ProvisionOptions.SetupScript, err = model.GetSetupScriptForTask(ctx, so.ProvisionOptions.TaskId)
 		if err != nil {
 			// still spawn the host if the setup script is buggy
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to get setup script for host",
 				"task_id": so.ProvisionOptions.TaskId,
 				"user_id": so.UserName,
 			}))
 		}
 	}
-	if so.IsDebug && settings.DebugSpawnHosts.SetupScript != "" {
-		if so.ProvisionOptions.SetupScript != "" {
-			so.ProvisionOptions.SetupScript = fmt.Sprintf("%s\n%s", so.ProvisionOptions.SetupScript, settings.DebugSpawnHosts.SetupScript)
-		} else {
-			so.ProvisionOptions.SetupScript = settings.DebugSpawnHosts.SetupScript
+	if so.IsDebug {
+		debugScript, err := getDebugSetupScript(ctx, so, settings, d.HomeDir())
+		if err != nil {
+			return nil, errors.Wrap(err, "generating debug setup script")
 		}
+		so.ProvisionOptions.SetupScript = appendSetupScript(so.ProvisionOptions.SetupScript, debugScript)
 	}
 
 	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(ctx, *d, settings, so.Region, so.HomeVolumeID)
@@ -229,7 +232,145 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	return intentHost, nil
 }
 
-// assumes distro already modified to have one region
+// getDebugSetupScript returns the debug setup script to use. The
+// admin-configured debug script always runs. If a step number is also
+// specified, the debug setup-phase script is appended after it.
+func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, homeDir string) (string, error) {
+	script := settings.DebugSpawnHosts.SetupScript
+	configScript, configPath, err := generateConfigScript(ctx, so.ProvisionOptions.TaskId, settings, homeDir)
+	if err != nil {
+		return "", errors.Wrap(err, "generating config YAML script")
+	}
+	script = appendSetupScript(script, configScript)
+
+	if so.ProvisionOptions.SetupStepNumber != "" {
+		stepScript, err := generateDebugSetupScript(ctx, so, configPath)
+		if err != nil {
+			return "", err
+		}
+		script = appendSetupScript(script, stepScript)
+	}
+	return script, nil
+}
+
+// appendSetupScript appends additional to the existing setup script. If either
+// is empty, it returns the other.
+func appendSetupScript(existing, additional string) string {
+	if additional == "" {
+		return existing
+	}
+	if existing == "" {
+		return additional
+	}
+	return fmt.Sprintf("%s\n%s", existing, additional)
+}
+
+func generateConfigScript(ctx context.Context, taskID string, settings *evergreen.Settings, homeDir string) (string, string, error) {
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding task '%s'", taskID)
+	}
+	if t == nil {
+		return "", "", errors.Errorf("task '%s' not found", taskID)
+	}
+
+	pRef, err := model.GetProjectRefForTask(ctx, taskID)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding project ref for task '%s'", taskID)
+	}
+	if pRef == nil {
+		return "", "", errors.Errorf("project ref not found for task '%s'", taskID)
+	}
+
+	configPath := filepath.Join(homeDir, pRef.RemotePath)
+
+	v, err := model.VersionFindOneId(ctx, t.Version)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding version '%s'", t.Version)
+	}
+	if v == nil {
+		return "", "", errors.Errorf("version '%s' not found", t.Version)
+	}
+	pp, err := model.ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "finding parser project for version '%s'", v.Id)
+	}
+	if pp == nil {
+		return "", "", errors.Errorf("parser project not found for version '%s'", v.Id)
+	}
+	yamlBytes, err := yaml.Marshal(pp)
+	if err != nil {
+		return "", "", errors.Wrap(err, "marshalling parser project to YAML")
+	}
+
+	configDir := filepath.Dir(configPath)
+
+	script := fmt.Sprintf(`# Write the project config YAML to disk.
+mkdir -p "%s"
+cat > "%s" << 'EVGEOF'
+%s
+EVGEOF
+`, configDir, configPath, string(yamlBytes))
+
+	return script, configPath, nil
+}
+
+// generateDebugSetupScript builds a shell script that starts the debug daemon
+// in the background, loads the project config, selects the task, and runs
+// commands up to the specified step number.
+func generateDebugSetupScript(ctx context.Context, so SpawnOptions, configPath string) (string, error) {
+	t, err := task.FindOneId(ctx, so.ProvisionOptions.TaskId)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding task '%s'", so.ProvisionOptions.TaskId)
+	}
+	if t == nil {
+		return "", errors.Errorf("task '%s' not found", so.ProvisionOptions.TaskId)
+	}
+
+	pRef, err := model.GetProjectRefForTask(ctx, so.ProvisionOptions.TaskId)
+	if err != nil {
+		return "", errors.Wrapf(err, "finding project ref for task '%s'", so.ProvisionOptions.TaskId)
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project ref not found for task '%s'", so.ProvisionOptions.TaskId)
+	}
+
+	stepNum := so.ProvisionOptions.SetupStepNumber
+
+	return fmt.Sprintf(`# Redirect all setup script output to a log file.
+DEBUG_SETUP_LOG="/tmp/debug-setup.log"
+exec > "$DEBUG_SETUP_LOG" 2>&1
+
+# Start debug daemon in the background.
+nohup evergreen debug daemon start > /tmp/debug-daemon.log 2>&1 &
+
+# Wait for daemon to be ready (up to 30 seconds).
+for i in $(seq 1 30); do
+  if evergreen debug daemon status > /dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+if ! evergreen debug daemon status > /dev/null 2>&1; then
+  echo "ERROR: Debug daemon failed to start after 30 seconds. Check /tmp/debug-daemon.log for details."
+  exit 1
+fi
+
+echo "Debug daemon started successfully."
+
+evergreen debug load "%s"
+evergreen debug select "%s"
+evergreen debug run-until %s
+
+if [ $? -eq 0 ]; then
+  echo "Debug setup script completed successfully (ran until step %s)."
+else
+  echo "ERROR: Debug setup script failed during execution."
+fi
+`, configPath, t.DisplayName, stepNum, stepNum), nil
+}
+
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
 	if !utility.StringSliceContains(allowedTypes, requestedType) {
 		// if it's not in the settings list, check the distro
@@ -285,7 +426,7 @@ func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *hos
 
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"stdout":    stdout.String(),
 			"stderr":    stderr.String(),
 			"operation": "set host RDP password",
@@ -296,7 +437,7 @@ func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *hos
 		return errors.Wrap(err, "updating host RDP password")
 	}
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"stdout":    stdout.String(),
 		"stderr":    stderr.String(),
 		"operation": "set host RDP password",
@@ -309,7 +450,7 @@ func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *hos
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
 func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h *host.Host, password string) (*jasper.Command, error) {
-	sshOpts, err := h.GetSSHOptions(env.Settings())
+	sshOpts, err := h.GetSSHOptions()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

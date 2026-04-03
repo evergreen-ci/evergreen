@@ -209,10 +209,15 @@ In GitHub, you can now add a new branch protection rule for the "evergreen/<vari
 **Q:** Can I reduce what variants are run in the merge queue based on what's being tested?
 
 **A:** Yes, by using [Build Variant Path Filtering](Project-Configuration-Files.md#build-variant-path-filtering)
-_(This is currently disabled, but will be rolled out by the end of 2/2026.)_
 Note that this will only run tasks that match the paths for the CURRENT merge group. For example, if the first patch in the merge queue
 modifies only the `src` directory, and the second patch modifies the `test` directory, the second patch will only run variants
 that match the `test` directory.
+
+**Q:** Can I disable path filtering for the merge queue while keeping it for PR patches?
+
+**A:** Yes, you can set `disable_merge_queue_path_filtering: true` at the [top level of your project YAML](Project-Configuration-Files.md#disabling-merge-queue-path-filtering).
+This will skip path filtering for merge queue versions while still applying it to PR patches.
+This is useful when you want selective testing for PRs but comprehensive testing before merging.
 
 **Q:** How can I turn off the merge queue to block users from merging?
 
@@ -259,7 +264,8 @@ Evergreen version, for two reasons:
 set "Only merge non-failing pull requests" to **No**. When this setting is disabled,
 if one PR in a merge group fails but another succeeds, GitHub will still merge the
 successful group. This is useful when you have flaky tasks that occasionally fail
-but don't indicate a real problem with the code. Note that this setting only affects
+but don't indicate a real problem with the code. However, this may result in slowdown as GitHub
+will not be able to merge the group until all PRs in the group have finished. Note that this setting only affects
 behavior within the merge queue (i.e. all PRs must still pass branch protection rules
 before they can be added to the queue).
 
@@ -282,7 +288,8 @@ Evergreen samples merge queue depth metrics every 5 minutes and emits them to Ho
 - `evergreen.merge_queue.running_count` - Patches currently running
 - `evergreen.merge_queue.running_tasks_count` - Count of running tasks across all patches in queue
 - `evergreen.merge_queue.has_running_tasks` - Whether any queue patches have running tasks
-- `evergreen.merge_queue.oldest_patch_age_ms` - Age of oldest pending patch
+- `evergreen.merge_queue.oldest_patch_age_ms` - Age of oldest pending patch. Queue entry time uses the head commit timestamp (when GitHub creates the merge group commit) when available; it falls back to patch creation time if unavailable, which can under-report due to webhook processing delays.
+- `evergreen.merge_queue.queue_entry_source` - Indicates which timestamp was used for `oldest_patch_age_ms`. Values are `"head_commit_date"` (preferred) or `"create_time"` (fallback). Use to filter depth samples for consistent methodology.
 - `evergreen.merge_queue.top_of_queue_patch_id` - Patch ID at the top of the queue
 - `evergreen.merge_queue.top_of_queue_status` - Status of the patch at the top of the queue
 - `evergreen.merge_queue.top_of_queue_sha` - SHA of the patch at the top of the queue
@@ -296,12 +303,14 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 - `merge_queue.intent_created` - When a merge queue patch is created
 - `merge_queue.patch_processing` - When patch processing begins
 - `merge_queue.patch_completed` - When a merge queue version completes. Status is determined from removal reason if the patch was removed from the queue by GitHub, otherwise from the final version status.
+- `merge_queue.destroyed` - When GitHub sends a "destroyed" MergeGroupEvent webhook. Emitted for all removal reasons (merged, invalidated, dequeued).
 
-**Latency Metrics:**
+**Latency Metrics (Patch-Level):**
 
-- `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to completion
-- `evergreen.merge_queue.time_to_first_task_ms` - The time from merge queue entry to first task start
-- `evergreen.merge_queue.slowest_task_duration_ms` - The duration of the slowest task in the patch
+- `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to patch completion (when all tasks finish). Queue entry time is the head commit timestamp (when GitHub creates the merge group commit), which closely approximates when the PR entered the queue. If the head commit timestamp is unavailable, it falls back to patch creation time.
+- `evergreen.merge_queue.time_to_first_task_ms` - The time from merge queue entry to when the first task in the patch starts. Queue entry time is determined the same way as `time_in_queue_ms`.
+- `evergreen.merge_queue.slowest_task_duration_ms` - The duration of the slowest task in the patch.
+- `evergreen.merge_queue.queue_entry_source` - Indicates which timestamp was used for queue entry time calculations (e.g., `time_in_queue_ms`, `time_to_first_task_ms`, `oldest_patch_age_ms`). Values are `"head_commit_date"` (preferred, when the GitHub commit timestamp is available) or `"create_time"` (fallback, when the head commit timestamp is unavailable). Use this attribute to filter metrics for consistent measurement methodology.
 
 **Health & Failure Metrics:**
 
@@ -309,7 +318,7 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
   - `"success"` - Merged successfully (reason: "merged") or version succeeded
   - `"failed"` - Failed status checks (reason: "invalidated") or version failed
   - `"removed"` - Manually dequeued or other removal (reason: "dequeued")
-- `evergreen.merge_queue.removal_reason` - The reason GitHub removed the patch from the queue ("invalidated", "merged", or "dequeued"). Present in `merge_queue.patch_completed` spans when the patch was removed from the queue.
+- `evergreen.merge_queue.removal_reason` - The reason GitHub removed the patch from the queue ("invalidated", "merged", or "dequeued"). Present in `merge_queue.patch_completed` spans when the patch was removed from the queue before completion, and always present in `merge_queue.destroyed` spans when the webhook arrives.
 - `evergreen.merge_queue.has_test_failure` - Whether the version contains any tasks that failed due to test failures
 - `evergreen.merge_queue.has_system_failure` - Whether the version contains any tasks that failed due to system failures
 - `evergreen.merge_queue.has_setup_failure` - Whether the version contains any tasks that failed due to setup failures

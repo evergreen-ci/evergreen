@@ -50,10 +50,5 @@ query Runners {
       maxRepoRevisionsToSearch
       maxConcurrentRequests
     }
-    podLifecycle {
-      maxParallelPodRequests
-      maxPodDefinitionCleanupRate
-      maxSecretCleanupRate
-    }
   }
 }

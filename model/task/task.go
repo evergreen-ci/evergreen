@@ -17,11 +17,15 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
+	"github.com/evergreen-ci/evergreen/model/ec2settings"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -36,6 +40,10 @@ import (
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 )
+
+// hostCollectionName is the MongoDB hosts collection name (must match host.Collection).
+// We use a local constant instead of host.Collection to avoid an import cycle: model/host imports model/task.
+const hostCollectionName = "hosts"
 
 const (
 	dependencyKey = "dependencies"
@@ -57,7 +65,14 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
+
+	// dependencyResolutionTimeout is the maximum time allowed for recursive
+	// dependency resolution.
+	dependencyResolutionTimeout = 10 * time.Minute
 )
+
+// maxDependencyDepth is the maximum recursion depth for dependency traversal.
+var maxDependencyDepth = 500
 
 var (
 	// A regex that matches either / or \ for splitting directory paths
@@ -76,16 +91,14 @@ type Task struct {
 	// FinishTime - the time the task was completed on the remote host.
 	// ActivatedTime - the time the task was marked as available to be scheduled, automatically or by a developer.
 	// DependenciesMet - for tasks that have dependencies, the time all dependencies are met.
-	// ContainerAllocated - for tasks that run on containers, the time the container was allocated.
-	CreateTime             time.Time `bson:"create_time" json:"create_time"`
-	IngestTime             time.Time `bson:"injest_time" json:"ingest_time"`
-	DispatchTime           time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	ScheduledTime          time.Time `bson:"scheduled_time" json:"scheduled_time"`
-	StartTime              time.Time `bson:"start_time" json:"start_time"`
-	FinishTime             time.Time `bson:"finish_time" json:"finish_time"`
-	ActivatedTime          time.Time `bson:"activated_time" json:"activated_time"`
-	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
-	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
+	CreateTime          time.Time `bson:"create_time" json:"create_time"`
+	IngestTime          time.Time `bson:"injest_time" json:"ingest_time"`
+	DispatchTime        time.Time `bson:"dispatch_time" json:"dispatch_time"`
+	ScheduledTime       time.Time `bson:"scheduled_time" json:"scheduled_time"`
+	StartTime           time.Time `bson:"start_time" json:"start_time"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime       time.Time `bson:"activated_time" json:"activated_time"`
+	DependenciesMetTime time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 
 	Version string `bson:"version" json:"version,omitempty"`
 	// Project is the project id of the task.
@@ -113,24 +126,11 @@ type Task struct {
 	ActivatedBy              string `bson:"activated_by" json:"activated_by"`
 	DeactivatedForDependency bool   `bson:"deactivated_for_dependency" json:"deactivated_for_dependency"`
 
-	// ContainerAllocated indicates whether this task has been allocated a
-	// container to run it. It only applies to tasks running in containers.
-	ContainerAllocated bool `bson:"container_allocated" json:"container_allocated"`
-	// ContainerAllocationAttempts is the number of times this task has
-	// been allocated a container to run it (for a single execution).
-	ContainerAllocationAttempts int `bson:"container_allocation_attempts" json:"container_allocation_attempts"`
-
-	BuildId  string `bson:"build_id" json:"build_id"`
-	DistroId string `bson:"distro" json:"distro"`
-	// Container is the name of the container configuration for running a
-	// container task.
-	Container string `bson:"container,omitempty" json:"container,omitempty"`
-	// ContainerOpts contains the options to configure the container that will
-	// run the task.
-	ContainerOpts           ContainerOptions `bson:"container_options,omitempty" json:"container_options"`
-	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
-	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
-	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
+	BuildId                 string       `bson:"build_id" json:"build_id"`
+	DistroId                string       `bson:"distro" json:"distro"`
+	BuildVariant            string       `bson:"build_variant" json:"build_variant"`
+	BuildVariantDisplayName string       `bson:"build_variant_display_name" json:"-"`
+	DependsOn               []Dependency `bson:"depends_on" json:"depends_on"`
 	// UnattainableDependency caches the contents of DependsOn for more
 	// efficient querying. It is true if any of its dependencies is unattainable
 	// and is false if all of its dependencies are attainable.
@@ -155,10 +155,6 @@ type Task struct {
 
 	// The host the task was run on. This value is only set for host tasks.
 	HostId string `bson:"host_id,omitempty" json:"host_id"`
-
-	// PodID is the pod that was assigned to run the task. This value is only
-	// set for container tasks.
-	PodID string `bson:"pod_id,omitempty" json:"pod_id"`
 
 	// ExecutionPlatform determines the execution environment that the task runs
 	// in.
@@ -247,7 +243,7 @@ type Task struct {
 	// TaskCost is the actual cost of the task based on runtime and distro cost rates
 	TaskCost cost.Cost `bson:"cost,omitempty" json:"cost,omitempty"`
 	// S3Usage tracks S3 API usage for cost calculation
-	S3Usage S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
+	S3Usage s3usage.S3Usage `bson:"s3_usage,omitempty" json:"s3_usage,omitempty"`
 	// WaitSinceDependenciesMet is populated in GetDistroQueueInfo, used for host allocation
 	WaitSinceDependenciesMet time.Duration `bson:"wait_since_dependencies_met,omitempty" json:"wait_since_dependencies_met,omitempty"`
 
@@ -412,26 +408,6 @@ const (
 	ExecutionPlatformContainer ExecutionPlatform = "container"
 )
 
-// ContainerOptions represent options to create the container to run a task.
-type ContainerOptions struct {
-	CPU        int    `bson:"cpu,omitempty" json:"cpu"`
-	MemoryMB   int    `bson:"memory_mb,omitempty" json:"memory_mb"`
-	WorkingDir string `bson:"working_dir,omitempty" json:"working_dir"`
-	Image      string `bson:"image,omitempty" json:"image"`
-	// RepoCredsName is the name of the project container secret containing the
-	// repository credentials.
-	RepoCredsName  string                   `bson:"repo_creds_name,omitempty" json:"repo_creds_name"`
-	OS             evergreen.ContainerOS    `bson:"os,omitempty" json:"os"`
-	Arch           evergreen.ContainerArch  `bson:"arch,omitempty" json:"arch"`
-	WindowsVersion evergreen.WindowsVersion `bson:"windows_version,omitempty" json:"windows_version"`
-}
-
-// IsZero implements the bsoncodec.Zeroer interface for the sake of defining the
-// zero value for BSON marshalling.
-func (o ContainerOptions) IsZero() bool {
-	return o == ContainerOptions{}
-}
-
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
 func (t *Task) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
 
@@ -523,12 +499,6 @@ func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
-// IsDispatchable returns true if the task should make progress towards
-// dispatching to run.
-func (t *Task) IsDispatchable() bool {
-	return t.IsHostDispatchable() || t.ShouldAllocateContainer() || t.IsContainerDispatchable()
-}
-
 // IsHostDispatchable returns true if the task should run on a host and can be
 // dispatched.
 func (t *Task) IsHostDispatchable() bool {
@@ -545,78 +515,9 @@ func (t *Task) IsStuckTask() bool {
 	return t.NumNextTaskDispatches >= evergreen.MaxTaskDispatchAttempts
 }
 
-// IsContainerTask returns true if it's a task that runs on containers.
-func (t *Task) IsContainerTask() bool {
-	return t.ExecutionPlatform == ExecutionPlatformContainer
-}
-
 // IsRestartFailedOnly returns true if the task should only restart failed tests.
 func (t *Task) IsRestartFailedOnly() bool {
 	return t.ResetFailedWhenFinished && !t.ResetWhenFinished
-}
-
-// ShouldAllocateContainer indicates whether a task should be allocated a
-// container or not.
-func (t *Task) ShouldAllocateContainer() bool {
-	if t.ContainerAllocated {
-		return false
-	}
-	if t.RemainingContainerAllocationAttempts() == 0 {
-		return false
-	}
-
-	return t.isContainerScheduled()
-}
-
-// RemainingContainerAllocationAttempts returns the number of times this task
-// execution is allowed to try allocating a container.
-func (t *Task) RemainingContainerAllocationAttempts() int {
-	return maxContainerAllocationAttempts - t.ContainerAllocationAttempts
-}
-
-// IsContainerDispatchable returns true if the task should run in a container
-// and can be dispatched.
-func (t *Task) IsContainerDispatchable() bool {
-	if !t.ContainerAllocated {
-		return false
-	}
-	return t.isContainerScheduled()
-}
-
-// isContainerTaskScheduled returns whether the task is in a state where it
-// should eventually dispatch to run on a container and is logically equivalent
-// to ScheduledContainerTasksQuery. This encompasses two potential states:
-//  1. A container is not yet allocated to the task but it's ready to be
-//     allocated one. Note that this is a subset of all container tasks that
-//     could eventually run (i.e. evergreen.TaskWillRun from
-//     (Task).GetDisplayStatus), because a container task is not scheduled until
-//     all of its dependencies have been met.
-//  2. The container is allocated but the agent has not picked up the task yet.
-func (t *Task) isContainerScheduled() bool {
-	if !t.IsContainerTask() {
-		return false
-	}
-	if t.Status != evergreen.TaskUndispatched {
-		return false
-	}
-	if !t.Activated {
-		return false
-	}
-	if t.Priority <= evergreen.DisabledTaskPriority {
-		return false
-	}
-	if !t.OverrideDependencies {
-		for _, dep := range t.DependsOn {
-			if dep.Unattainable {
-				return false
-			}
-			if !dep.Finished {
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 // SatisfiesDependency checks a task the receiver task depends on
@@ -684,7 +585,7 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if d.TaskId == t.Id {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "task is attempting to add a dependency on itself, skipping this dependency",
 				"task_id": t.Id,
 				"stack":   string(debug.Stack()),
@@ -754,7 +655,7 @@ func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (
 				DependenciesMetTimeKey: t.DependenciesMetTime,
 			},
 		})
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message": "task.DependenciesMet() failed to update task",
 		"task_id": t.Id}))
 
@@ -968,6 +869,18 @@ func (t *Task) PreviousCompletedTask(ctx context.Context, project string, status
 	return FindOne(ctx, query)
 }
 
+// NextCompletedTask finds the next completed task for the same project +
+// build variant + display name combination as the specified task.
+// It defaults to completed statuses if the array is empty.
+func (t *Task) NextCompletedTask(ctx context.Context, project string, statuses []string) (*Task, error) {
+	if len(statuses) == 0 {
+		statuses = evergreen.TaskCompletedStatuses
+	}
+	query := db.Query(ByAfterRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{RevisionOrderNumberKey})
+	return FindOne(ctx, query)
+}
+
 func (t *Task) cacheExpectedDuration(ctx context.Context) error {
 	return UpdateOne(
 		ctx,
@@ -982,50 +895,6 @@ func (t *Task) cacheExpectedDuration(ctx context.Context) error {
 			},
 		},
 	)
-}
-
-// MarkAsContainerDispatched marks that the container task has been dispatched
-// to a pod.
-func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Environment, podID, agentVersion string) error {
-	dispatchedAt := time.Now()
-
-	query := ScheduledContainerTasksQuery()
-	query[IdKey] = t.Id
-	query[StatusKey] = evergreen.TaskUndispatched
-	query[ContainerAllocatedKey] = true
-	set := bson.M{
-		StatusKey:        evergreen.TaskDispatched,
-		DispatchTimeKey:  dispatchedAt,
-		LastHeartbeatKey: dispatchedAt,
-		PodIDKey:         podID,
-		AgentVersionKey:  agentVersion,
-	}
-	output, ok := t.initializeTaskOutputInfo(env)
-	if ok {
-		set[TaskOutputInfoKey] = output
-	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, []bson.M{
-		{
-			"$set": set,
-		},
-		addDisplayStatusCache,
-	})
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.Status = evergreen.TaskDispatched
-	t.DispatchTime = dispatchedAt
-	t.LastHeartbeat = dispatchedAt
-	t.PodID = podID
-	t.AgentVersion = agentVersion
-	t.TaskOutputInfo = output
-	t.DisplayStatusCache = t.DetermineDisplayStatus()
-
-	return nil
 }
 
 // MarkAsHostDispatched marks that the task has been dispatched onto a
@@ -1151,100 +1020,6 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) err
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
-
-	return nil
-}
-
-// maxContainerAllocationAttempts is the maximum number of times a container
-// task is allowed to try to allocate a container for a single execution.
-const maxContainerAllocationAttempts = 5
-
-// MarkAsContainerAllocated marks a container task as allocated a container.
-// This will fail if the task is not in a state where it needs a container to be
-// allocated to it.
-func (t *Task) MarkAsContainerAllocated(ctx context.Context, env evergreen.Environment) error {
-	if t.ContainerAllocated {
-		return errors.New("cannot allocate a container task if it's currently allocated")
-	}
-	if t.RemainingContainerAllocationAttempts() == 0 {
-		return errors.Errorf("task execution has hit the max allowed allocation attempts (%d)", maxContainerAllocationAttempts)
-	}
-	q := needsContainerAllocation()
-	q[IdKey] = t.Id
-	q[ContainerAllocationAttemptsKey] = bson.M{"$lt": maxContainerAllocationAttempts}
-
-	allocatedAt := time.Now()
-	update, err := env.DB().Collection(Collection).UpdateOne(ctx, q, bson.M{
-		"$set": bson.M{
-			ContainerAllocatedKey:     true,
-			ContainerAllocatedTimeKey: allocatedAt,
-		},
-		"$inc": bson.M{
-			ContainerAllocationAttemptsKey: 1,
-		},
-	})
-	if err != nil {
-		return err
-	}
-	if update.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.ContainerAllocated = true
-	t.ContainerAllocatedTime = allocatedAt
-
-	return nil
-}
-
-func containerDeallocatedUpdate() bson.M {
-	return bson.M{
-		"$set": bson.M{
-			ContainerAllocatedKey: false,
-		},
-		"$unset": bson.M{
-			ContainerAllocatedTimeKey: 1,
-		},
-	}
-}
-
-// MarkAsContainerDeallocated marks a container task that was allocated as no
-// longer allocated a container.
-func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Environment) error {
-	if !t.ContainerAllocated {
-		return errors.New("cannot deallocate a container task if it's not currently allocated")
-	}
-
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{
-		IdKey:                 t.Id,
-		ExecutionPlatformKey:  ExecutionPlatformContainer,
-		ContainerAllocatedKey: true,
-	}, containerDeallocatedUpdate())
-	if err != nil {
-		return errors.Wrap(err, "updating task")
-	}
-	if res.ModifiedCount == 0 {
-		return errors.New("task was not updated")
-	}
-
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
-
-	return nil
-}
-
-// MarkTasksAsContainerDeallocated marks multiple container tasks as no longer
-// allocated containers.
-func MarkTasksAsContainerDeallocated(ctx context.Context, taskIDs []string) error {
-	if len(taskIDs) == 0 {
-		return nil
-	}
-
-	if _, err := UpdateAll(ctx, bson.M{
-		IdKey:                bson.M{"$in": taskIDs},
-		ExecutionPlatformKey: ExecutionPlatformContainer,
-	}, containerDeallocatedUpdate()); err != nil {
-		return errors.Wrap(err, "updating tasks")
-	}
 
 	return nil
 }
@@ -1517,7 +1292,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	}
 	if task.RevisionOrderNumber >= upperBoundTask.RevisionOrderNumber ||
 		task.RevisionOrderNumber <= lowerBoundTask.RevisionOrderNumber {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                 "found midway task is out of bounds",
 			"t1_id":                   t1Id,
 			"t1_order_number":         t1.RevisionOrderNumber,
@@ -1619,19 +1394,16 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
 		event.LogHostTaskFinished(ctx, t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
-	case ExecutionPlatformContainer:
-		event.LogContainerTaskFinished(ctx, t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
 	default:
 		event.LogTaskFinished(ctx, t.Id, t.Execution, evergreen.TaskSystemFailed)
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "marking task system failed",
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
 		"execution":          t.Execution,
 		"status":             t.Status,
 		"host_id":            t.HostId,
-		"pod_id":             t.PodID,
 		"description":        description,
 		"execution_platform": t.ExecutionPlatform,
 	})
@@ -1854,7 +1626,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		if t.Archived {
 			execTasks, err := FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "getting execution tasks for archived display task",
 				}))
 			}
@@ -1865,7 +1637,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 			query["$or"] = hasResults
 			execTasksWithResults, err := Count(ctx, db.Query(query))
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "getting count of execution tasks with results for display task",
 				}))
 			}
@@ -1917,7 +1689,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -2140,7 +1912,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDsToActivate,
 		"caller":   caller,
@@ -2157,7 +1929,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 			taskIds = append(taskIds, t.Id)
 		}
 		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
-		grip.Error(message.WrapError(panicErr, message.Fields{
+		grip.Error(context.Background(), message.WrapError(panicErr, message.Fields{
 			"function":       "topologicalSort",
 			"from_task":      fromTask,
 			"to_task":        toTask,
@@ -2258,7 +2030,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -2318,7 +2090,7 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 	for _, t := range tasksToUpdate {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDsToUpdate,
 		"caller":   caller,
@@ -2352,17 +2124,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 
-	// Calculate task cost now that we have the actual runtime
-	if err := t.UpdateTaskCost(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":   "failed to calculate task cost",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-		}))
-		// Don't fail the task finishing if cost calculation fails
-	}
-
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":   "marking task finished",
 		"task_id":   t.Id,
 		"execution": t.Execution,
@@ -2370,7 +2132,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		"details":   t.Details,
 	})
 	if detail.IsEmpty() {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":   "detail status was empty, setting to failed",
 			"task_id":   t.Id,
 			"execution": t.Execution,
@@ -2382,12 +2144,19 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		}
 	}
 
+	// Calculate EC2 runtime costs now that we have the actual runtime.
+	if err := t.UpdateTaskCost(ctx); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":   "failed to calculate task cost",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+		}))
+	}
+
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
-	t.ContainerAllocated = false
-	t.ContainerAllocatedTime = time.Time{}
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		ctx,
@@ -2400,15 +2169,10 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 				StatusKey:             detail.Status,
 				TimeTakenKey:          t.TimeTaken,
 				TaskCostKey:           t.TaskCost,
-				S3UsageKey:            t.S3Usage,
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
-				ContainerAllocatedKey: false,
 				DisplayStatusCacheKey: t.DisplayStatusCache,
 				TaskOutputInfoKey:     t.TaskOutputInfo,
-			},
-			"$unset": bson.M{
-				ContainerAllocatedTimeKey: 1,
 			},
 		})
 }
@@ -2585,7 +2349,6 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.ActivatedBy = caller
 		t.Secret = newSecret
 		t.HostId = ""
-		t.PodID = ""
 		t.Status = evergreen.TaskUndispatched
 		t.DispatchTime = utility.ZeroTime
 		t.StartTime = utility.ZeroTime
@@ -2604,7 +2367,6 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.AgentVersion = ""
 		t.HostCreateDetails = []HostCreateDetail{}
 		t.OverrideDependencies = false
-		t.ContainerAllocationAttempts = 0
 		t.NumNextTaskDispatches = 0
 		t.CanReset = false
 		t.IsAutomaticRestart = false
@@ -2616,20 +2378,19 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 	}
 
 	setFields := bson.M{
-		ActivatedKey:                   true,
-		ActivatedTimeKey:               now,
-		ActivatedByKey:                 caller,
-		SecretKey:                      newSecret,
-		StatusKey:                      evergreen.TaskUndispatched,
-		DispatchTimeKey:                utility.ZeroTime,
-		StartTimeKey:                   utility.ZeroTime,
-		ScheduledTimeKey:               utility.ZeroTime,
-		FinishTimeKey:                  utility.ZeroTime,
-		DependenciesMetTimeKey:         utility.ZeroTime,
-		TimeTakenKey:                   0,
-		LastHeartbeatKey:               utility.ZeroTime,
-		ContainerAllocationAttemptsKey: 0,
-		NumNextTaskDispatchesKey:       0,
+		ActivatedKey:             true,
+		ActivatedTimeKey:         now,
+		ActivatedByKey:           caller,
+		SecretKey:                newSecret,
+		StatusKey:                evergreen.TaskUndispatched,
+		DispatchTimeKey:          utility.ZeroTime,
+		StartTimeKey:             utility.ZeroTime,
+		ScheduledTimeKey:         utility.ZeroTime,
+		FinishTimeKey:            utility.ZeroTime,
+		DependenciesMetTimeKey:   utility.ZeroTime,
+		TimeTakenKey:             0,
+		LastHeartbeatKey:         utility.ZeroTime,
+		NumNextTaskDispatchesKey: 0,
 	}
 
 	if prediction != nil {
@@ -2649,7 +2410,6 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				ResetFailedWhenFinishedKey,
 				AgentVersionKey,
 				HostIdKey,
-				PodIDKey,
 				HostCreateDetailsKey,
 				OverrideDependenciesKey,
 				CanResetKey,
@@ -2711,9 +2471,24 @@ func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGe
 // that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
 // depCache should originally be nil. We assume there are no dependency cycles.
 func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[string]Task) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if depCache == nil {
 		depCache = make(map[string]Task)
 	}
+
+	return getRecursiveDependenciesUpHelper(ctx, tasks, depCache, 0)
+}
+
+func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCache map[string]Task, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
 	for _, t := range tasks {
 		depCache[t.Id] = t
 	}
@@ -2750,7 +2525,7 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
 
-	recursiveDeps, err := GetRecursiveDependenciesUp(ctx, deps, depCache)
+	recursiveDeps, err := getRecursiveDependenciesUpHelper(ctx, deps, depCache, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2762,9 +2537,24 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 // taskMap should originally be nil.
 // We assume there are no dependency cycles.
 func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap map[string]bool) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if taskMap == nil {
 		taskMap = make(map[string]bool)
 	}
+
+	return getRecursiveDependenciesDownHelper(ctx, tasks, taskMap, 0)
+}
+
+func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, taskMap map[string]bool, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
 	for _, t := range tasks {
 		taskMap[t] = true
 	}
@@ -2786,7 +2576,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 		}
 	}
 
-	// everything is aleady in the map or nothing depends on tasks
+	// everything is already in the map or nothing depends on tasks
 	if len(newDeps) == 0 {
 		return nil, nil
 	}
@@ -2795,7 +2585,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	for _, t := range newDeps {
 		newDepIDs = append(newDepIDs, t.Id)
 	}
-	recurseTasks, err := getRecursiveDependenciesDown(ctx, newDepIDs, taskMap)
+	recurseTasks, err := getRecursiveDependenciesDownHelper(ctx, newDepIDs, taskMap, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2871,7 +2661,7 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
-	grip.ErrorWhen(len(updatedTasks) != len(tasks), message.Fields{
+	grip.ErrorWhen(ctx, len(updatedTasks) != len(tasks), message.Fields{
 		"message":            "successfully updated dependencies for tasks but the subsequent query for updated tasks returned a different number of tasks than expected (which may cause bugs blocking other tasks)",
 		"expected_num_tasks": len(tasks),
 		"actual_num_tasks":   len(updatedTasks),
@@ -3071,7 +2861,6 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Display Status: %v\n", t.DisplayStatusCache)
 	taskStruct += fmt.Sprintf("Host: %v\n", t.HostId)
 	taskStruct += fmt.Sprintf("ScheduledTime: %v\n", t.ScheduledTime)
-	taskStruct += fmt.Sprintf("ContainerAllocatedTime: %v\n", t.ContainerAllocatedTime)
 	taskStruct += fmt.Sprintf("DispatchTime: %v\n", t.DispatchTime)
 	taskStruct += fmt.Sprintf("StartTime: %v\n", t.StartTime)
 	taskStruct += fmt.Sprintf("FinishTime: %v\n", t.FinishTime)
@@ -3179,7 +2968,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
 			for _, et := range execTasks {
 				if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, et.Status) {
-					grip.Debug(message.Fields{
+					grip.Debug(ctx, message.Fields{
 						"message":   "execution task is in incomplete state, skipping archiving",
 						"task_id":   et.Id,
 						"execution": et.Execution,
@@ -3607,7 +3396,7 @@ func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
 	if t.DisplayTaskId == nil {
 		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":        "unable to get display task",
 				"execution_task": t.Id,
 			}))
@@ -3654,7 +3443,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	}
 
 	if t.DisplayTaskId == nil {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "missing display task ID",
 			"task_id": t.Id,
 			"dt_id":   dtId,
@@ -3662,7 +3451,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 		})
 		// Cache display task ID for future use. If we couldn't find the display task,
 		// we cache the empty string to show that it doesn't exist.
-		grip.Error(message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
+		grip.Error(ctx, message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
 			"message":         "failed to cache display task ID for task",
 			"task_id":         t.Id,
 			"display_task_id": dtId,
@@ -3732,7 +3521,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
 
 		if err := t.cacheExpectedDuration(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"task":    t.Id,
 				"message": "caching expected duration",
 			}))
@@ -3745,7 +3534,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
 			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
-		grip.Notice(message.WrapError(err, message.Fields{
+		grip.Notice(ctx, message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
 			"id":        t.Id,
 			"project":   t.Project,
@@ -3772,7 +3561,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		return util.DurationStats{Average: avg, StdDev: stdDev}, true
 	}
 
-	grip.Error(message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
+	grip.Error(ctx, message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
 		"message": "problem setting cached value refresher",
 		"cause":   "programmer error",
 	}))
@@ -3780,7 +3569,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 	stats, ok := t.DurationPrediction.Get()
 	if ok {
 		if err := t.cacheExpectedDuration(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"task":    t.Id,
 				"message": "caching expected duration",
 			}))
@@ -4022,7 +3811,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
 		if depID == t.Id {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "task is attempting to add a dependency on itself, skipping this dependency",
 				"task_id": t.Id,
 				"stack":   string(debug.Stack()),
@@ -4323,29 +4112,136 @@ func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, f
 	}
 }
 
-func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, error) {
+// EBS GP3 throughput pricing constants (us-east-1 rates).
+// Pricing is standardized to us-east-1 and does not account for regional variations.
+const (
+	// GP3FreeThroughputMBps is the free throughput tier for GP3 volumes (125 MB/s).
+	GP3FreeThroughputMBps = 125
+	// GP3ThroughputPricePerMBpsMonth is the price per MB/s-month above the free tier.
+	GP3ThroughputPricePerMBpsMonth = 0.04
+	// SecondsPerMonth is 2,592,000 (60 * 60 * 24 * 30) and is used to convert monthly pricing to per-second pricing.
+	SecondsPerMonth = 60 * 60 * 24 * 30
+)
+
+// calculateTotalGP3Throughput sums the throughput of all GP3 volumes in mount points.
+func calculateTotalGP3Throughput(mountPoints []ec2mount.MountPoint) int32 {
+	var totalThroughput int32
+	for _, mp := range mountPoints {
+		if mp.VolumeType == evergreen.VolumeTypeGp3 && mp.Throughput > 0 {
+			totalThroughput += mp.Throughput
+		}
+	}
+	return totalThroughput
+}
+
+// calculateBillableThroughput returns the throughput amount that should be billed.
+// Returns 0 if total throughput is at or below the free tier (125 MB/s).
+func calculateBillableThroughput(totalThroughput int32) int32 {
+	if totalThroughput <= GP3FreeThroughputMBps {
+		return 0
+	}
+	return totalThroughput - GP3FreeThroughputMBps
+}
+
+// CalculateEBSThroughputOnDemandCost calculates the raw on-demand cost for EBS GP3 throughput.
+// Pricing based on us-east-1 rates: $0.04 per MB/s-month above 125 MB/s baseline.
+// Does not apply discount; use CalculateEBSThroughputAdjustedCost for discounted cost.
+func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
+	if runtimeSeconds <= 0 {
+		return 0
+	}
+
+	totalThroughput := calculateTotalGP3Throughput(mountPoints)
+	billableThroughput := calculateBillableThroughput(totalThroughput)
+
+	if billableThroughput == 0 {
+		return 0
+	}
+
+	// Convert from per-month to per-second pricing (raw cost, no discount)
+	costPerSecond := (float64(billableThroughput) * GP3ThroughputPricePerMBpsMonth) / SecondsPerMonth
+
+	return costPerSecond * runtimeSeconds
+}
+
+// CalculateEBSThroughputAdjustedCost calculates the adjusted cost for EBS GP3 throughput.
+// Applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
+	onDemandCost := CalculateEBSThroughputOnDemandCost(runtimeSeconds, mountPoints)
+	return onDemandCost * (1 - ebsConfig.EBSDiscount)
+}
+
+// calculateEBSThroughputCost sets the EBS GP3 throughput cost on TaskCost based on the distro's mount points.
+func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig evergreen.CostConfig, d *distro.Distro) {
+	if d == nil {
+		return
+	}
+	mountPoints, err := ec2settings.MountPointsForDistro(d, getHostRegionForTask(ctx, t))
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":   "failed to extract mount points from distro",
+			"task_id":   t.Id,
+			"distro_id": t.DistroId,
+		}))
+		return
+	}
+	if len(mountPoints) == 0 {
+		return
+	}
+	runtimeSeconds := t.TimeTaken.Seconds()
+	t.TaskCost.OnDemandEBSThroughputCost = CalculateEBSThroughputOnDemandCost(
+		runtimeSeconds,
+		mountPoints,
+	)
+	t.TaskCost.AdjustedEBSThroughputCost = CalculateEBSThroughputAdjustedCost(
+		runtimeSeconds,
+		mountPoints,
+		financeConfig.EBSCost,
+	)
+}
+
+func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, *distro.Distro, error) {
 	financeConfig := evergreen.CostConfig{}
 	if err := financeConfig.Get(ctx); err != nil {
-		return financeConfig, distro.CostData{}, errors.Wrap(err, "getting finance configuration")
+		return financeConfig, distro.CostData{}, nil, errors.Wrap(err, "getting finance configuration")
 	}
 
 	if !financeConfig.IsConfigured() {
-		return financeConfig, distro.CostData{}, errors.New("finance configuration not set up")
+		return financeConfig, distro.CostData{}, nil, errors.New("finance configuration not set up")
 	}
 
 	d, err := distro.FindOneId(ctx, t.DistroId)
 	if err != nil {
-		return financeConfig, distro.CostData{}, errors.Wrapf(err, "finding distro '%s'", t.DistroId)
+		return financeConfig, distro.CostData{}, nil, errors.Wrapf(err, "finding distro '%s'", t.DistroId)
 	}
 	if d == nil {
-		return financeConfig, distro.CostData{}, errors.Errorf("distro '%s' not found", t.DistroId)
+		return financeConfig, distro.CostData{}, nil, errors.Errorf("distro '%s' not found", t.DistroId)
 	}
 
 	if !d.CostData.IsConfigured() {
-		return financeConfig, distro.CostData{}, errors.New("distro cost data not configured")
+		return financeConfig, distro.CostData{}, nil, errors.New("distro cost data not configured")
 	}
 
-	return financeConfig, d.CostData, nil
+	return financeConfig, d.CostData, d, nil
+}
+
+// getHostRegionForTask returns the AWS region where the task's host is running, derived from the host's zone.
+// Returns empty string if the host is not found, has no zone, or the task has no host.
+func getHostRegionForTask(ctx context.Context, t *Task) string {
+	if t.HostId == "" {
+		return ""
+	}
+	var result struct {
+		Zone string `bson:"zone"`
+	}
+	err := evergreen.GetEnvironment().DB().Collection(hostCollectionName).FindOne(ctx,
+		bson.M{"_id": t.HostId},
+		options.FindOne().SetProjection(bson.M{"zone": 1}),
+	).Decode(&result)
+	if err != nil {
+		return ""
+	}
+	return util.AZToRegion(result.Zone)
 }
 
 func (t *Task) UpdateTaskCost(ctx context.Context) error {
@@ -4353,19 +4249,62 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		return nil
 	}
 
-	financeConfig, costData, err := t.getFinanceConfigAndDistro(ctx)
-	if err != nil {
+	financeConfig, costData, d, err := t.getFinanceConfigAndDistro(ctx)
+	if err == nil {
+		t.calculateRuntimeCost(financeConfig, costData)
+		t.calculateEBSThroughputCost(ctx, financeConfig, d)
+	}
+	t.calculateS3PutCosts(ctx)
+
+	if t.TaskCost.IsZero() {
 		return nil
 	}
-
-	runtimeSeconds := t.TimeTaken.Seconds()
-	t.TaskCost = CalculateTaskCost(runtimeSeconds, costData, financeConfig)
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{
 		"$set": bson.M{
 			TaskCostKey: t.TaskCost,
 		},
 	})
+}
+
+// calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
+func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData distro.CostData) {
+	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
+}
+
+// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
+func (t *Task) SaveS3Usage(ctx context.Context) error {
+	t.calculateS3PutCosts(ctx)
+
+	setFields := bson.M{
+		S3UsageKey: t.S3Usage,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"): t.TaskCost.S3ArtifactPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, "s3_log_put_cost"):      t.TaskCost.S3LogPutCost,
+	}
+
+	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
+}
+
+// calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
+func (t *Task) calculateS3PutCosts(ctx context.Context) {
+	if t.S3Usage.Artifacts.PutRequests <= 0 && t.S3Usage.Logs.PutRequests <= 0 {
+		return
+	}
+
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "could not get cost config to calculate S3 PUT costs",
+			"task_id": t.Id,
+		}))
+		return
+	}
+	if t.S3Usage.Artifacts.PutRequests > 0 {
+		t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
+	}
+	if t.S3Usage.Logs.PutRequests > 0 {
+		t.TaskCost.S3LogPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Logs.PutRequests, costConfig)
+	}
 }
 
 type CostPredictionResult struct {
@@ -4420,6 +4359,30 @@ func addPredictedCostToUpdate(setFields bson.M, predictedCost cost.Cost) {
 	}
 }
 
+// isContextError returns true if the error is due to context timeout or cancellation.
+// The AWS SDK may wrap these errors, so we also check the error message.
+func isContextError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return true
+	}
+	s := err.Error()
+	return strings.Contains(s, "context deadline exceeded") || strings.Contains(s, "canceled")
+}
+
+// allObjectsExistInBucket returns true if all keys exist in the bucket.
+func allObjectsExistInBucket(ctx context.Context, bucket pail.Bucket, keys []string) bool {
+	for _, key := range keys {
+		exists, err := bucket.Exists(ctx, key)
+		if err != nil || !exists {
+			return false
+		}
+	}
+	return true
+}
+
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket.
 func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
 	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
@@ -4460,8 +4423,43 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		return errors.Wrap(err, "getting failed bucket")
 	}
 
-	if err = logService.MoveObjectsToBucket(ctx, allKeys, failedBucket); err != nil {
-		return errors.Wrap(err, "moving logs to failed bucket")
+	moveErr := logService.MoveObjectsToBucket(ctx, allKeys, failedBucket)
+	if moveErr != nil {
+		// When the client times out, S3 CopyObject may have already completed server-side.
+		// Verify whether the objects actually exist in the failed bucket before updating the DB.
+		// If they do, update the DB to fix the inconsistency. If not, return the error for retry.
+		if isContextError(moveErr) {
+			grip.Info(ctx, message.Fields{
+				"message":   "failed_bucket_move: move timed out or canceled, verifying objects in destination",
+				"task_id":   t.Id,
+				"execution": t.Execution,
+				"key_count": len(allKeys),
+			})
+			if allObjectsExistInBucket(ctx, failedBucket, allKeys) {
+				grip.Info(ctx, message.Fields{
+					"message":   "failed_bucket_move: all objects found in failed bucket, updating DB to fix inconsistency",
+					"task_id":   t.Id,
+					"execution": t.Execution,
+				})
+				t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
+				t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
+				if updateErr := UpdateOne(
+					ctx,
+					bson.M{IdKey: t.Id},
+					bson.M{"$set": bson.M{TaskOutputInfoKey: t.TaskOutputInfo}},
+				); updateErr != nil {
+					return errors.Wrap(moveErr, "moving logs to failed bucket")
+				}
+				return nil
+			}
+			grip.Info(ctx, message.Fields{
+				"message":   "failed_bucket_move: not all objects in failed bucket, returning error for retry",
+				"task_id":   t.Id,
+				"execution": t.Execution,
+				"key_count": len(allKeys),
+			})
+		}
+		return errors.Wrap(moveErr, "moving logs to failed bucket")
 	}
 
 	// Update the task output info with the new bucket config.
@@ -4504,6 +4502,10 @@ func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 
 // HasValidDistro determines if the task has a valid distro.
 func (t *Task) HasValidDistro(ctx context.Context) bool {
+	// Display tasks do not have distros.
+	if t.DisplayOnly {
+		return true
+	}
 	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
 	if err == nil {
 		return true

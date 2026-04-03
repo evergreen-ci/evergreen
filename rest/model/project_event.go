@@ -53,6 +53,8 @@ type APIProjectVars struct {
 	PrivateVars map[string]bool `json:"private_vars"`
 	// Admin-only variable names.
 	AdminOnlyVars map[string]bool `json:"admin_only_vars"`
+	// Descriptions for project variables.
+	VarsDescriptions map[string]string `json:"vars_descriptions,omitempty"`
 	// Names of project variables to delete.
 	VarsToDelete []string `json:"vars_to_delete,omitempty"`
 
@@ -144,6 +146,7 @@ func (p *APIProjectVars) ToService() *model.ProjectVars {
 	privateVars := map[string]bool{}
 	adminOnlyVars := map[string]bool{}
 	vars := map[string]string{}
+	varsDescriptions := map[string]string{}
 	// ignore false inputs
 	for key, val := range p.PrivateVars {
 		if val {
@@ -158,6 +161,9 @@ func (p *APIProjectVars) ToService() *model.ProjectVars {
 	for key, val := range p.Vars {
 		vars[key] = val
 	}
+	for key, val := range p.VarsDescriptions {
+		varsDescriptions[key] = val
+	}
 
 	// handle UI list
 	for _, each := range p.PrivateVarsList {
@@ -167,9 +173,10 @@ func (p *APIProjectVars) ToService() *model.ProjectVars {
 		adminOnlyVars[each] = true
 	}
 	return &model.ProjectVars{
-		Vars:          vars,
-		AdminOnlyVars: adminOnlyVars,
-		PrivateVars:   privateVars,
+		Vars:             vars,
+		AdminOnlyVars:    adminOnlyVars,
+		PrivateVars:      privateVars,
+		VarsDescriptions: varsDescriptions,
 	}
 }
 
@@ -177,6 +184,13 @@ func (p *APIProjectVars) BuildFromService(v model.ProjectVars) {
 	p.PrivateVars = v.PrivateVars
 	p.Vars = v.Vars
 	p.AdminOnlyVars = v.AdminOnlyVars
+
+	p.VarsDescriptions = v.VarsDescriptions
+	// We need to initialize VarsDescriptions if nil for backwards compatibility with existing data. We can run into issues if we try
+	// to insert values into nonexistent maps.
+	if p.VarsDescriptions == nil {
+		p.VarsDescriptions = map[string]string{}
+	}
 }
 
 func (a *APIProjectAlias) ToService() model.ProjectAlias {

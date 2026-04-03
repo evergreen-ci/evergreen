@@ -21,7 +21,7 @@
       "result": {
         "data": {
           "adminEvents": {
-            "count": 3,
+            "count": 2,
             "eventLogEntries": [
               {
                 "after": {
@@ -85,48 +85,6 @@
                 },
                 "section": "scheduler",
                 "timestamp": "2025-07-09T13:46:47.303-04:00",
-                "user": "admin"
-              },
-              {
-                "after": {
-                  "max_parallel_pod_requests": 2000,
-                  "max_pod_definition_cleanup_rate": 0,
-                  "max_secret_cleanup_rate": 0
-                },
-                "before": {
-                  "max_parallel_pod_requests": 100,
-                  "max_pod_definition_cleanup_rate": 0,
-                  "max_secret_cleanup_rate": 0
-                },
-                "section": "pod_lifecycle",
-                "timestamp": "2025-07-09T13:40:47.296-04:00",
-                "user": "admin"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "admin_events_before.graphql",
-      "result": {
-        "data": {
-          "adminEvents": {
-            "count": 1,
-            "eventLogEntries": [
-              {
-                "after": {
-                  "max_parallel_pod_requests": 2000,
-                  "max_pod_definition_cleanup_rate": 0,
-                  "max_secret_cleanup_rate": 0
-                },
-                "before": {
-                  "max_parallel_pod_requests": 100,
-                  "max_pod_definition_cleanup_rate": 0,
-                  "max_secret_cleanup_rate": 0
-                },
-                "section": "pod_lifecycle",
-                "timestamp": "2025-07-09T13:40:47.296-04:00",
                 "user": "admin"
               }
             ]

@@ -82,7 +82,7 @@ Evergreen.
 
 Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
-['Using Repo Level Settings'](Repo-Level-Settings).
+[Using Repo Level Settings](../Project-Configuration/Repo-Level-Settings).
 
 #### Spawn Host Script Path
 
@@ -129,9 +129,17 @@ while still allowing for other kinds of versions (periodic builds, patches, etc)
 Additionally, admins can **Force Repotracker Run** to check for new commits if needed
 (Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
 
-##### Run Every Mainline Commit
+The repotracker does not guarantee every commit runs their corresponding version, please see [run every mainline commit](#run-every-mainline-commit) for more details.
 
-Although a version gets created for every commit on a project with the repotracker, it does not necessarily activate each version. Evergreen runs a job periodically that activates the latest repotracker version. This is to avoid running unnecessary versions if there are a lot of commits in a short period of time. If you would like to activate every version created by the repotracker, you can enable "Run Every Mainline Commit". This will ensure that every version created by the repotracker gets activated and runs their tasks.
+**Important: Do not rewrite commit history on tracked branches.** The repotracker polls
+the GitHub API for commits on the tracked branch and processes all commits between the
+branch HEAD and the last commit it has seen. If the commit history on a tracked branch is
+modified — for example, by force-pushing rebased commits, or by merging another branch
+while preserving its commit history — the repotracker will treat any previously unseen
+commits as new and create versions for them. This can result in unexpected versions being
+created and activated for commits that were not originally part of the tracked branch. To avoid
+this, use squash merges or other strategies that do not rewrite the commit history
+of the tracked branch.
 
 ### Access and Admin Settings
 
@@ -158,8 +166,9 @@ Options:
   visible on the projects page or by API routes. Additionally, private
   variables will be redacted from task logs. After saving them, private
   variables cannot be retrieved.
-- Checking **admin only** ensures that the variable can only be used
-  by admins and mainline commits.
+- Checking **admin only** restricts the variable so it is only available
+  to tasks in mainline commits, periodic builds, or trigger versions, or
+  to tasks activated by a project admin.
 
 Project variables have some limitations:
 
@@ -172,6 +181,13 @@ Project variables have some limitations:
 - A project variable's value cannot exceed 8 KB in length. If you need to store
   a value longer than 8 KB, you can store it in multiple variables and
   concatenate them together in a script when your task runs.
+
+#### Admin Only
+
+Admin-only variables are injected into a task's environment only when the task
+belongs to a mainline commit, periodic build, or trigger version, or when the
+task was activated by a user with project admin permissions. Patches and PRs
+activated by non-admin users will not have access to these variables.
 
 ### Aliases
 
@@ -260,6 +276,18 @@ This supports GitHub checks on commits (i.e. to be visible at
 `https://github.com/<owner>/<repo>/commits`). Task/variant
 regexes/tags are required, and GitHub statuses will be sent with only
 the status of those tasks on the mainline commit version.
+
+### Run Every Mainline Commit
+
+Definitions for this section exist under the "GitHub" tab.
+
+Although a version gets created for every commit on a project with the repotracker, it does not necessarily activate each version. Evergreen runs a job periodically that activates the latest repotracker version. This is to avoid running unnecessary versions if there are a lot of commits in a short period of time. If you would like to activate every version created by the repotracker, you can enable "Run Every Mainline Commit". This will ensure that every version created by the repotracker gets activated and runs its tasks.
+
+#### Interaction with batchtime and cron
+
+"Run Every Mainline Commit" does not override batchtime and cron. Batchtime will still result in only the latest task or build variant being activated after the specified batchtime. Cron will still result in only the latest task or build variant being activated at the specified cron time.
+
+![run-every-mainline-commit-project-setting.png](../images/run-every-mainline-commit-project-setting.png)
 
 ### Triggering Versions With Git Tags
 
@@ -701,7 +729,7 @@ patch_aliases:
 
 ### Merge Queue Aliases
 
-These apply to the [GitHub merge queue integration](../Merge-Queue).
+These apply to the [GitHub merge queue integration](../Project-Configuration/Merge-Queue).
 
 ```yaml
 commit_queue_aliases:

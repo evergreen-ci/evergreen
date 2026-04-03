@@ -40,9 +40,6 @@ type Query {
     limit: Int = 10
   ): HostsResponse!
   taskQueueDistros: [TaskQueueDistro!]!
-
-  # containers
-  pod(podId: String!): Pod!
   
   # patch
   patch(patchId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Patch!

@@ -84,7 +84,7 @@ func TestArchiveTarballExtractExecute(t *testing.T) {
 				SourceDir: rootToArchive,
 				Include:   []string{"**"},
 			}
-			numFound, err := createCmd.makeArchive(ctx, logger.Task())
+			numFound, err := createCmd.makeArchive(ctx, logger.Task(), false)
 			require.NoError(t, err)
 			require.Equal(t, 2, numFound)
 

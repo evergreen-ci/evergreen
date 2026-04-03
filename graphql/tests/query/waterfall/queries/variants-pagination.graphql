@@ -1,5 +1,5 @@
 {
-  waterfall(options: { projectIdentifier: "spruce-identifier", limit: 1, variants: ["02 Ubuntu"], maxOrder: 341 }) {
+  waterfall(options: { projectIdentifier: "spruce-identifier", limit: 1, variants: ["nonexistent-variant"], maxOrder: 341 }) {
     flattenedVersions {
       id
       waterfallBuilds {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -27,7 +28,7 @@ func TestSend(t *testing.T) {
 		}
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.Empty(t, mock.sender.buffer)
 		assert.Zero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
@@ -44,7 +45,7 @@ func TestSend(t *testing.T) {
 		}
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.Empty(t, mock.sender.buffer)
 		assert.Zero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
@@ -61,7 +62,7 @@ func TestSend(t *testing.T) {
 		}
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.Empty(t, mock.sender.buffer)
 		assert.Zero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
@@ -73,7 +74,7 @@ func TestSend(t *testing.T) {
 		mock.sender.opts.MaxBufferSize = 1
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.NotEmpty(t, mock.sender.buffer)
 		assert.NotZero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
@@ -84,7 +85,7 @@ func TestSend(t *testing.T) {
 		mock.sender.closed = true
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.Empty(t, mock.sender.buffer)
 		assert.Zero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
@@ -103,7 +104,7 @@ func TestSend(t *testing.T) {
 
 		rawLines := []string{"Hello world!", "This is a log line.", "Goodbye world!"}
 		m := message.ConvertToComposer(level.Info, strings.Join(rawLines, "\n"))
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.Empty(t, mock.local.lastMessage)
 		require.Len(t, mock.sender.buffer, len(rawLines))
 		for i, line := range mock.sender.buffer {
@@ -117,18 +118,18 @@ func TestSend(t *testing.T) {
 
 		require.NoError(t, mock.sender.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Emergency}))
 		m := message.ConvertToComposer(level.Alert, "alert")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.Empty(t, mock.sender.buffer)
 		assert.Empty(t, mock.local.lastMessage)
 		m = message.ConvertToComposer(level.Emergency, "emergency")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		require.Len(t, mock.sender.buffer, 1)
 		assert.Equal(t, level.Emergency, mock.sender.buffer[0].Priority)
 		assert.Empty(t, mock.local.lastMessage)
 
 		require.NoError(t, mock.sender.SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Debug}))
 		m = message.ConvertToComposer(level.Debug, "debug")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		require.Len(t, mock.sender.buffer, 2)
 		assert.Equal(t, level.Debug, mock.sender.buffer[1].Priority)
 		assert.Empty(t, mock.local.lastMessage)
@@ -144,7 +145,7 @@ func TestSend(t *testing.T) {
 
 		rawLines := []string{"Hello world!", "This is a log line.", "Goodbye world!"}
 		m := message.ConvertToComposer(level.Info, strings.Join(rawLines, "\n"))
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		require.Len(t, mock.sender.buffer, len(rawLines))
 		assert.WithinDuration(t, time.Now(), time.Unix(0, mock.sender.buffer[0].Timestamp), time.Second)
 		for i := 1; i < len(mock.sender.buffer); i++ {
@@ -162,7 +163,7 @@ func TestSend(t *testing.T) {
 			rawLines = append(rawLines, utility.MakeRandomString(64), utility.MakeRandomString(64))
 			m := message.ConvertToComposer(level.Debug, strings.Join(rawLines[len(rawLines)-2:], "\n"))
 
-			mock.sender.Send(m)
+			mock.sender.Send(ctx, m)
 			require.Len(t, mock.sender.buffer, len(rawLines))
 			require.Equal(t, 128*len(rawLines), mock.sender.bufferSize)
 			require.Empty(t, mock.local.lastMessage)
@@ -170,7 +171,7 @@ func TestSend(t *testing.T) {
 
 		rawLines = append(rawLines, "overflow")
 		m := message.ConvertToComposer(level.Debug, rawLines[len(rawLines)-1])
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.Empty(t, mock.local.lastMessage)
 		require.Len(t, mock.service.lines, len(rawLines))
 		for i, line := range mock.service.lines {
@@ -225,7 +226,7 @@ func TestFlush(t *testing.T) {
 		mock.service.hasWriteErr = true
 
 		m := message.ConvertToComposer(level.Info, "going to be an error")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		require.NotEmpty(t, mock.sender.buffer)
 
 		assert.Error(t, mock.sender.Flush(ctx))
@@ -237,7 +238,7 @@ func TestFlush(t *testing.T) {
 		mock := newSenderTestMock(ctx)
 
 		m := message.ConvertToComposer(level.Info, "not going to make it")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		assert.NotEmpty(t, mock.sender.buffer)
 		mock.sender.closed = true
 
@@ -245,6 +246,37 @@ func TestFlush(t *testing.T) {
 		assert.NotEmpty(t, mock.sender.buffer)
 		assert.NotZero(t, mock.sender.bufferSize)
 		assert.Empty(t, mock.service.lines)
+	})
+	t.Run("TracksS3Usage", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+		usage := &s3usage.S3Usage{}
+		mock.sender.opts.S3Usage = usage
+
+		m := message.ConvertToComposer(level.Info, "some log data")
+		mock.sender.Send(ctx, m)
+		require.NotEmpty(t, mock.sender.buffer)
+
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Equal(t, 1, usage.Logs.PutRequests)
+		assert.Equal(t, int64(len("some log data")), usage.Logs.UploadBytes)
+
+		m = message.ConvertToComposer(level.Info, "more data")
+		mock.sender.Send(ctx, m)
+		require.NotEmpty(t, mock.sender.buffer)
+
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Equal(t, 2, usage.Logs.PutRequests)
+		assert.Equal(t, int64(len("some log data")+len("more data")), usage.Logs.UploadBytes)
+	})
+	t.Run("SkipsS3UsageWhenNil", func(t *testing.T) {
+		mock := newSenderTestMock(ctx)
+
+		m := message.ConvertToComposer(level.Info, "no tracking")
+		mock.sender.Send(ctx, m)
+		require.NotEmpty(t, mock.sender.buffer)
+
+		require.NoError(t, mock.sender.Flush(ctx))
+		assert.Empty(t, mock.sender.buffer)
 	})
 	t.Run("PersistsParsedData", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
@@ -257,7 +289,7 @@ func TestFlush(t *testing.T) {
 		}
 
 		m := message.ConvertToComposer(level.Info, "some message")
-		mock.sender.Send(m)
+		mock.sender.Send(ctx, m)
 		require.NotEmpty(t, mock.sender.buffer)
 
 		require.NoError(t, mock.sender.Flush(ctx))
@@ -346,7 +378,7 @@ func newSenderTestMock(ctx context.Context) *senderTestMock {
 				Parse: func(rawLine string) (log.LogLine, error) {
 					return log.LogLine{Data: rawLine}, nil
 				},
-				appendLines: func(ctx context.Context, lines []log.LogLine) error {
+				appendLines: func(ctx context.Context, lines []log.LogLine) (int64, error) {
 					return svc.Append(ctx, lines)
 				},
 			},
@@ -361,7 +393,7 @@ type mockSender struct {
 	lastMessage string
 }
 
-func (ms *mockSender) Send(m message.Composer) {
+func (ms *mockSender) Send(_ context.Context, m message.Composer) {
 	if ms.Level().ShouldLog(m) {
 		ms.lastMessage = m.String()
 	}
@@ -375,11 +407,15 @@ type mockLogService struct {
 	hasWriteErr bool
 }
 
-func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) error {
+func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) (int64, error) {
 	if s.hasWriteErr {
-		return errors.New("write error")
+		return 0, errors.New("write error")
+	}
+	var totalBytes int64
+	for _, line := range lines {
+		totalBytes += int64(len(line.Data))
 	}
 	s.lines = append(s.lines, lines...)
 
-	return nil
+	return totalBytes, nil
 }

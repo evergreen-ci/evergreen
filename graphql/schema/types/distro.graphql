@@ -145,6 +145,7 @@ input DistroInput {
   setupAsSudo: Boolean!
   singleTaskDistro: Boolean
   sshOptions: [String!]!
+  taskHostOverrides: TaskHostOverridesInput
   user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
@@ -311,6 +312,7 @@ type Distro {
   setupAsSudo: Boolean!
   singleTaskDistro: Boolean!
   sshOptions: [String!]!
+  taskHostOverrides: TaskHostOverrides
   user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
@@ -396,4 +398,24 @@ type ResourceLimits {
   numProcesses: Int!
   numTasks: Int!
   virtualMemoryKb: Int!
+}
+
+"""
+TaskHostOverrides contains provider settings that override the distro's defaults
+for task hosts.
+"""
+type TaskHostOverrides {
+  doNotAssignPublicIpv4Address: Boolean!
+  iamInstanceProfileArn: String!
+  providerAccount: String!
+  securityGroupIds: [String!]!
+  subnetId: String!
+}
+
+input TaskHostOverridesInput {
+  doNotAssignPublicIpv4Address: Boolean!
+  iamInstanceProfileArn: String!
+  providerAccount: String!
+  securityGroupIds: [String!]!
+  subnetId: String!
 }

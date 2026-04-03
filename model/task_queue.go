@@ -147,6 +147,9 @@ type TaskQueueItem struct {
 	Dependencies          []string                   `bson:"dependencies" json:"dependencies"`
 	DependenciesMet       bool                       `bson:"dependencies_met" json:"dependencies_met"`
 	ActivatedBy           string                     `bson:"activated_by" json:"activated_by"`
+	// queueIndex is the item's position in the scheduler-sorted queue. It is set when building the DAG
+	// and used as a tiebreaker for nodes at the same topological level to preserve the scheduler's composite ranking.
+	queueIndex int `bson:"-" json:"-"`
 }
 
 // must not no-lint these values
@@ -240,7 +243,7 @@ func updateTaskQueue(ctx context.Context, distro string, taskQueue []TaskQueueIt
 // and modifies the queue info.
 // This is in contrast to RemoveTaskQueues, which simply deletes these documents.
 func ClearTaskQueue(ctx context.Context, distroId string) error {
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "clearing task queue",
 		"distro":  distroId,
 	})
@@ -266,7 +269,7 @@ func ClearTaskQueue(ctx context.Context, distroId string) error {
 	}
 	// Want to at least try to clear even in the case of an error
 	if aliasCount == 0 && err == nil {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "secondary task queue not found, skipping",
 			"distro":  distroId,
 		})

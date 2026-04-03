@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/v70/github"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -127,7 +128,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 			return errors.Wrapf(err, "finalizing patch '%s'", p.Id.Hex())
 		}
 		if requester == evergreen.PatchVersionRequester {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":     "patch creation",
 				"message":       "finalized patch",
 				"from":          "rest route",
@@ -148,6 +149,35 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 	}
 
 	return model.SetVersionActivation(ctx, patchId, activated, user)
+}
+
+// SetMergeQueueGitRefNotFound marks a merge queue patch's GitRefNotFound field.
+func SetMergeQueueGitRefNotFound(ctx context.Context, versionId string) error {
+	p, err := patch.FindOne(ctx, patch.ByVersion(versionId))
+	if err != nil {
+		return errors.Wrap(err, "finding patch by version")
+	}
+	if p == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch for version '%s' not found", versionId),
+		}
+	}
+
+	if !p.IsMergeQueuePatch() {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "patch is not a merge queue patch",
+		}
+	}
+
+	update := mgobson.M{
+		"$set": mgobson.M{
+			bsonutil.GetDottedKeyName(patch.GithubMergeDataKey, patch.GithubMergeGroupGitRefNotFoundKey): true,
+		},
+	}
+
+	return patch.UpdateOne(ctx, mgobson.M{patch.IdKey: p.Id}, update)
 }
 
 // FindPatchesByUser finds patches for the input user as ordered by creation time

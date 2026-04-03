@@ -37,6 +37,14 @@ input SortOrder {
   Key: TaskSortCategory!
 }
 
+input RefreshGitHubStatusesInput {
+  versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+}
+
+type RefreshGitHubStatusesPayload {
+  success: Boolean!
+}
+
 ###### TYPES ######
 """
 Version models a commit within a project.
@@ -52,6 +60,7 @@ type Version {
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
   childVersions: [Version!]
+  cost: Cost
   createTime: Time!
   errors: [String!]!
   externalLinksForMetadata: [ExternalLinkForMetadata!]!
@@ -65,6 +74,7 @@ type Version {
   order: Int!
   parameters: [Parameter!]!
   patch: Patch
+  predictedCost: Cost
   previousVersion: Version
   project: String!
   projectIdentifier: String!
@@ -83,7 +93,6 @@ type Version {
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]
-  predictedCost: Cost
 }
 
 type VersionTasks {

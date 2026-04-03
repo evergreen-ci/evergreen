@@ -74,7 +74,7 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 
 	for _, accountRole := range accountRoles {
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "starting clean up for left over cloud resources",
 			"account":  accountRole.Account,
 			"provider": j.Provider,
@@ -95,7 +95,7 @@ func (j *cloudCleanupJob) Run(ctx context.Context) {
 
 		err = cloudManager.Cleanup(ctx)
 		j.AddError(errors.Wrap(err, "cleaning up for provider"))
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":  "cleaning up cloud resources",
 			"account":  accountRole.Account,
 			"provider": j.Provider,

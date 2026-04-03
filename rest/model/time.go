@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"io"
 	"strconv"
 	"strings"
@@ -41,7 +42,7 @@ func (i APIDuration) ToDuration() time.Duration {
 func MarshalAPIDuration(b APIDuration) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		_, err := w.Write([]byte(strconv.FormatInt(int64(b), 10)))
-		grip.Error(err)
+		grip.Error(context.Background(), err)
 	})
 }
 

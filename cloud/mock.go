@@ -245,10 +245,6 @@ func (m *mockManager) getOrDefaultInstanceStatus(ctx context.Context, hostID str
 	return instance.Status
 }
 
-func (m *mockManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
-	return nil
-}
-
 // get instance DNS
 func (m *mockManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	l := m.mutex

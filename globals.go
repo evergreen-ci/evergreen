@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"os"
 	"strings"
 	"time"
@@ -139,9 +140,6 @@ const (
 	// TaskDescriptionResultsFailed indicates that a task failed because the
 	// test results contained a failure.
 	TaskDescriptionResultsFailed = "test results contained failing test"
-	// TaskDescriptionContainerUnallocatable indicates that the reason a
-	// container task failed is because it cannot be allocated a container.
-	TaskDescriptionContainerUnallocatable = "container task cannot be allocated"
 	// TaskDescriptionAborted indicates that the reason a task failed is specifically
 	// because it was manually aborted.
 	TaskDescriptionAborted = "aborted"
@@ -174,9 +172,6 @@ const (
 	PushLogSuccess = "success"
 
 	HostTypeStatic = "static"
-
-	MergeTestSucceeded = "succeeded"
-	MergeTestFailed    = "failed"
 
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
@@ -242,10 +237,6 @@ const (
 	// automatically restarted via the retry_on_failure command flag.
 	AutoRestartActivator = "automatic_restart"
 
-	// StaleContainerTaskMonitor is the special name representing the unit
-	// responsible for monitoring container tasks that have not dispatched but
-	// have waiting for a long time since their activation.
-	StaleContainerTaskMonitor = "stale-container-task-monitor"
 	// UnderwaterTaskUnscheduler is the caller associated with unscheduling
 	// and disabling tasks older than the task.UnschedulableThreshold from
 	// their distro queue.
@@ -503,10 +494,36 @@ const (
 	TaskDescriptionOtelAttribute    = "evergreen.task.description"
 	TaskTagsOtelAttribute           = "evergreen.task.tags"
 	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
+	TaskIngestTimeOtelAttribute     = "evergreen.task.ingest_time"
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
+	TaskGroupOtelAttribute          = "evergreen.task.task_group"
+	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
 
-	// task otel attributes
+	// EBS cost otel attributes — task-level (throughput)
+	TaskEBSOnDemandThroughputCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_throughput_cost"
+	TaskEBSAdjustedThroughputCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_throughput_cost"
+
+	// S3 cost tracking otel span name — shared by per-file and aggregate events
+	S3CostTrackingOtelSpanName = "s3-cost-tracking"
+
+	// S3 cost tracking otel attributes — artifact aggregates
+	S3ArtifactPutRequestsOtelAttribute = "evergreen.task.s3_cost.artifact_put_requests"
+	S3ArtifactUploadBytesOtelAttribute = "evergreen.task.s3_cost.artifact_upload_bytes"
+	S3ArtifactCountOtelAttribute       = "evergreen.task.s3_cost.artifact_count"
+	S3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.artifact_put_cost"
+
+	// S3 cost tracking otel attributes — artifact per-file statistics
+	S3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
+	S3ArtifactWithMaxPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_max_put_requests_cost"
+	S3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
+
+	// S3 cost tracking otel attributes — log aggregates
+	S3LogPutRequestsOtelAttribute = "evergreen.task.s3_cost.log_put_requests"
+	S3LogUploadBytesOtelAttribute = "evergreen.task.s3_cost.log_upload_bytes"
+	S3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.log_put_cost"
+
+	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
 
@@ -547,6 +564,7 @@ const (
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
 	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
 	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
+	GraphQLAIAgentOtelAttribute    = "evergreen.graphql.ai_agent"
 	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
@@ -554,7 +572,6 @@ const (
 	RestartAction     ModificationAction = "restart"
 	SetActiveAction   ModificationAction = "set_active"
 	SetPriorityAction ModificationAction = "set_priority"
-	AbortAction       ModificationAction = "abort"
 )
 
 // Constants for Evergreen package names (including legacy ones).
@@ -571,22 +588,21 @@ var UserTriggeredOrigins = []string{
 }
 
 const (
-	AuthTokenCookie     = "mci-token"
-	LoginCookieTTL      = 365 * 24 * time.Hour
-	TaskHeader          = "Task-Id"
-	TaskSecretHeader    = "Task-Secret"
-	HostHeader          = "Host-Id"
-	HostSecretHeader    = "Host-Secret"
-	PodHeader           = "Pod-Id"
-	PodSecretHeader     = "Pod-Secret"
-	ContentTypeHeader   = "Content-Type"
-	ContentTypeValue    = "application/json"
-	ContentLengthHeader = "Content-Length"
-	APIUserHeader       = "Api-User"
-	APIKeyHeader        = "Api-Key"
-	SageUserHeader      = "x-authenticated-sage-user"
-	AuthorizationHeader = "Authorization"
-	EnvironmentHeader   = "X-Evergreen-Environment"
+	AuthTokenCookie      = "mci-token"
+	LoginCookieTTL       = 365 * 24 * time.Hour
+	TaskHeader           = "Task-Id"
+	TaskSecretHeader     = "Task-Secret"
+	HostHeader           = "Host-Id"
+	HostSecretHeader     = "Host-Secret"
+	ContentTypeHeader    = "Content-Type"
+	ContentTypeValue     = "application/json"
+	ContentLengthHeader  = "Content-Length"
+	APIUserHeader        = "Api-User"
+	APIKeyHeader         = "Api-Key"
+	SageUserHeader       = "x-authenticated-sage-user"
+	AuthorizationHeader  = "Authorization"
+	EnvironmentHeader    = "X-Evergreen-Environment"
+	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 )
 
 const (
@@ -610,8 +626,10 @@ const (
 	// general Evergreen operations occur in AWS if no particular region is
 	// specified.
 	DefaultEC2Region = "us-east-1"
+	// VolumeTypeGp3 is the AWS EBS gp3 volume type.
+	VolumeTypeGp3 = "gp3"
 	// DefaultEBSType is Amazon's default EBS type.
-	DefaultEBSType = "gp3"
+	DefaultEBSType = VolumeTypeGp3
 	// DefaultEBSAvailabilityZone is the default availability zone for EBS
 	// volumes. This may be a temporary default.
 	DefaultEBSAvailabilityZone = "us-east-1a"
@@ -855,13 +873,6 @@ func (k SenderKey) String() string {
 	}
 }
 
-// DevProdJiraServiceField defines a required field for DEVPROD tickets, which we sometimes auto-generate.
-// Using "Other" prevents this from getting out of sync with service naming too quickly.
-var DevProdJiraServiceField = map[string]string{
-	"id":    devProdServiceId,
-	"value": devProdServiceValue,
-}
-
 const (
 	PriorityLevelEmergency = "emergency"
 	PriorityLevelAlert     = "alert"
@@ -872,12 +883,6 @@ const (
 	PriorityLevelInfo      = "info"
 	PriorityLevelDebug     = "debug"
 	PriorityLevelTrace     = "trace"
-)
-
-const (
-	DevProdServiceFieldName = "customfield_24158"
-	devProdServiceId        = "27020"
-	devProdServiceValue     = "Other"
 )
 
 // Recognized Evergreen agent CPU architectures, which should be in the form
@@ -970,14 +975,6 @@ var (
 		HostTerminated,
 		HostQuarantined,
 		HostDecommissioned,
-	}
-
-	// NotRunningStatus is a list of host statuses from before the host starts running.
-	NotRunningStatus = []string{
-		HostUninitialized,
-		HostBuilding,
-		HostProvisioning,
-		HostStarting,
 	}
 
 	// IsRunningOrWillRunStatuses includes all statuses for active hosts (see
@@ -1093,8 +1090,6 @@ var (
 		TaskInactive,
 	}
 
-	SyncStatuses = []string{TaskSucceeded, TaskFailed}
-
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 
 	// Map from valid OS/architecture combinations to display names
@@ -1117,7 +1112,7 @@ func FindEvergreenHome() string {
 		return root
 	}
 
-	grip.Errorf("%s is unset", EvergreenHome)
+	grip.Errorf(context.Background(), "%s is unset", EvergreenHome)
 	return ""
 }
 
@@ -1441,72 +1436,6 @@ const (
 	LogViewerHTML    LogViewer = "html"
 	LogViewerParsley LogViewer = "parsley"
 )
-
-// ContainerOS denotes the operating system of a running container.
-type ContainerOS string
-
-const (
-	LinuxOS   ContainerOS = "linux"
-	WindowsOS ContainerOS = "windows"
-)
-
-// ValidContainerOperatingSystems contains all recognized container operating
-// systems.
-var ValidContainerOperatingSystems = []ContainerOS{LinuxOS, WindowsOS}
-
-// Validate checks that the container OS is recognized.
-func (c ContainerOS) Validate() error {
-	switch c {
-	case LinuxOS, WindowsOS:
-		return nil
-	default:
-		return errors.Errorf("unrecognized container OS '%s'", c)
-	}
-}
-
-// ContainerArch represents the CPU architecture necessary to run a container.
-type ContainerArch string
-
-const (
-	ArchARM64 ContainerArch = "arm64"
-	ArchAMD64 ContainerArch = "x86_64"
-)
-
-// ValidContainerArchitectures contains all recognized container CPU
-// architectures.
-var ValidContainerArchitectures = []ContainerArch{ArchARM64, ArchAMD64}
-
-// Validate checks that the container CPU architecture is recognized.
-func (c ContainerArch) Validate() error {
-	switch c {
-	case ArchARM64, ArchAMD64:
-		return nil
-	default:
-		return errors.Errorf("unrecognized CPU architecture '%s'", c)
-	}
-}
-
-// WindowsVersion specifies the compatibility version of Windows that is required for the container to run.
-type WindowsVersion string
-
-const (
-	Windows2022 WindowsVersion = "2022"
-	Windows2019 WindowsVersion = "2019"
-	Windows2016 WindowsVersion = "2016"
-)
-
-// ValidWindowsVersions contains all recognized container Windows versions.
-var ValidWindowsVersions = []WindowsVersion{Windows2016, Windows2019, Windows2022}
-
-// Validate checks that the container Windows version is recognized.
-func (w WindowsVersion) Validate() error {
-	switch w {
-	case Windows2022, Windows2019, Windows2016:
-		return nil
-	default:
-		return errors.Errorf("unrecognized Windows version '%s'", w)
-	}
-}
 
 // ParserProjectStorageMethod represents a means to store the parser project.
 type ParserProjectStorageMethod string

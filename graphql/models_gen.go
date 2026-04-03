@@ -160,9 +160,10 @@ type DistroEventsPayload struct {
 }
 
 type DistroPermissions struct {
-	Admin bool `json:"admin"`
-	Edit  bool `json:"edit"`
-	View  bool `json:"view"`
+	DistroID string `json:"distroId"`
+	Admin    bool   `json:"admin"`
+	Edit     bool   `json:"edit"`
+	View     bool   `json:"view"`
 }
 
 type DistroPermissionsOptions struct {
@@ -390,13 +391,6 @@ type Permissions struct {
 	UserID               string              `json:"userId"`
 }
 
-// PodEvents is the return value for the events query.
-// It contains the event log entries for a pod.
-type PodEvents struct {
-	Count           int                          `json:"count"`
-	EventLogEntries []*model.PodAPIEventLogEntry `json:"eventLogEntries"`
-}
-
 type ProjectBuildVariant struct {
 	DisplayName string   `json:"displayName"`
 	Name        string   `json:"name"`
@@ -413,8 +407,9 @@ type ProjectEvents struct {
 }
 
 type ProjectPermissions struct {
-	Edit bool `json:"edit"`
-	View bool `json:"view"`
+	ProjectIdentifier string `json:"projectIdentifier"`
+	Edit              bool   `json:"edit"`
+	View              bool   `json:"view"`
 }
 
 type ProjectPermissionsOptions struct {
@@ -445,13 +440,22 @@ type QuarantineTestPayload struct {
 type Query struct {
 }
 
+type RefreshGitHubStatusesInput struct {
+	VersionID string `json:"versionId"`
+}
+
+type RefreshGitHubStatusesPayload struct {
+	Success bool `json:"success"`
+}
+
 type RemoveFavoriteProjectInput struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
 type RepoPermissions struct {
-	Edit bool `json:"edit"`
-	View bool `json:"view"`
+	RepoID string `json:"repoId"`
+	Edit   bool   `json:"edit"`
+	View   bool   `json:"view"`
 }
 
 type RepoPermissionsOptions struct {
@@ -532,6 +536,7 @@ type SpawnHostInput struct {
 	VolumeID                *string                 `json:"volumeId,omitempty"`
 	UseOAuth                *bool                   `json:"useOAuth,omitempty"`
 	IsDebug                 *bool                   `json:"isDebug,omitempty"`
+	SetupStepNumber         *string                 `json:"setupStepNumber,omitempty"`
 }
 
 // SpawnVolumeInput is the input to the spawnVolume mutation.
@@ -788,11 +793,6 @@ type WaterfallPagination struct {
 	MostRecentVersionOrder int      `json:"mostRecentVersionOrder"`
 	NextPageOrder          int      `json:"nextPageOrder"`
 	PrevPageOrder          int      `json:"prevPageOrder"`
-}
-
-type WaterfallVersion struct {
-	InactiveVersions []*model.APIVersion `json:"inactiveVersions,omitempty"`
-	Version          *model.APIVersion   `json:"version,omitempty"`
 }
 
 type AccessLevel string
@@ -1224,7 +1224,6 @@ const (
 	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
 	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
 	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
 	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
 	ProjectSettingsSectionTestSelection        ProjectSettingsSection = "TEST_SELECTION"
 	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
@@ -1242,7 +1241,6 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionTriggers,
 	ProjectSettingsSectionPeriodicBuilds,
 	ProjectSettingsSectionPlugins,
-	ProjectSettingsSectionContainers,
 	ProjectSettingsSectionViewsAndFilters,
 	ProjectSettingsSectionTestSelection,
 	ProjectSettingsSectionGithubAndCommitQueue,
@@ -1252,7 +1250,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
 		return true
 	}
 	return false

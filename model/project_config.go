@@ -26,17 +26,16 @@ type ProjectConfigFields struct {
 	// These fields can be set for the ProjectRef struct on the project page, or in the project config yaml.
 	// Values for the below fields set on the project page will take precedence over this struct and will
 	// be the configs used for a given project during runtime.
-	TaskAnnotationSettings   *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
-	BuildBaronSettings       *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
-	CommitQueueAliases       []ProjectAlias                 `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
-	GitHubPRAliases          []ProjectAlias                 `yaml:"github_pr_aliases,omitempty" bson:"github_pr_aliases,omitempty"`
-	GitTagAliases            []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
-	GitHubChecksAliases      []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
-	PatchAliases             []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
-	WorkstationConfig        *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
-	GithubPRTriggerAliases   []string                       `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
-	GithubMQTriggerAliases   []string                       `yaml:"github_mq_trigger_aliases,omitempty" bson:"github_mq_trigger_aliases,omitempty"`
-	ContainerSizeDefinitions []ContainerResources           `yaml:"container_size_definitions,omitempty" bson:"container_size_definitions,omitempty"`
+	TaskAnnotationSettings *evergreen.AnnotationsSettings `yaml:"task_annotation_settings,omitempty" bson:"task_annotation_settings,omitempty"`
+	BuildBaronSettings     *evergreen.BuildBaronSettings  `yaml:"build_baron_settings,omitempty" bson:"build_baron_settings,omitempty"`
+	CommitQueueAliases     []ProjectAlias                 `yaml:"commit_queue_aliases,omitempty" bson:"commit_queue_aliases,omitempty"`
+	GitHubPRAliases        []ProjectAlias                 `yaml:"github_pr_aliases,omitempty" bson:"github_pr_aliases,omitempty"`
+	GitTagAliases          []ProjectAlias                 `yaml:"git_tag_aliases,omitempty" bson:"git_tag_aliases,omitempty"`
+	GitHubChecksAliases    []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
+	PatchAliases           []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
+	WorkstationConfig      *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
+	GithubPRTriggerAliases []string                       `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
+	GithubMQTriggerAliases []string                       `yaml:"github_mq_trigger_aliases,omitempty" bson:"github_mq_trigger_aliases,omitempty"`
 }
 
 // Comment above is used by the linter to detect the end of the struct.

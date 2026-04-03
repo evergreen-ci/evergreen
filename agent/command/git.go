@@ -36,10 +36,6 @@ const (
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
 
 	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
-
-	// githubMergeQueueInvalidRefError is the error message returned by Git when it fails to find
-	// a GitHub merge queue reference.
-	githubMergeQueueInvalidRefError = "couldn't find remote ref gh-readonly-queue"
 )
 
 var (
@@ -73,6 +69,8 @@ type gitFetchProject struct {
 	CommitterName string `mapstructure:"committer_name"`
 
 	CommitterEmail string `mapstructure:"committer_email"`
+
+	refNotFound bool
 
 	base
 }
@@ -287,7 +285,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
+func (c *gitFetchProject) opts(ctx context.Context, cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
 		owner:             conf.ProjectRef.Owner,
@@ -304,11 +302,11 @@ func (c *gitFetchProject) opts(cloneToken string, logger client.LoggerProducer, 
 		cloneDepth = shallowCloneDepth
 	}
 	if !shallowCloneEnabled && cloneDepth != 0 {
-		logger.Task().Infof("Clone depth is disabled for this distro; ignoring-user specified clone depth.")
+		logger.Task().Infof(ctx, "Clone depth is disabled for this distro; ignoring-user specified clone depth.")
 	} else {
 		opts.cloneDepth = cloneDepth
 		if c.CloneDepth != 0 && c.ShallowClone {
-			logger.Task().Infof("Specified clone depth of %d will be used instead of shallow_clone (which uses depth %d).", opts.cloneDepth, shallowCloneDepth)
+			logger.Task().Infof(ctx, "Specified clone depth of %d will be used instead of shallow_clone (which uses depth %d).", opts.cloneDepth, shallowCloneDepth)
 		}
 	}
 
@@ -324,7 +322,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	if err := loadModulesManifestInToExpansions(ctx, comm, conf); err != nil {
 		return errors.Wrap(err, "loading manifest")
 	}
-	logger.Task().Info("Manifest loaded successfully.")
+	logger.Task().Info(ctx, "Manifest loaded successfully.")
 
 	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
@@ -336,14 +334,14 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	}
 
 	var opts cloneOpts
-	opts, err = c.opts(cloneToken, logger, conf)
+	opts, err = c.opts(ctx, cloneToken, logger, conf)
 	if err != nil {
 		return err
 	}
 
 	err = c.fetch(ctx, comm, logger, conf, opts)
 	if err != nil {
-		logger.Task().Error(message.WrapError(err, message.Fields{
+		logger.Task().Error(ctx, message.WrapError(err, message.Fields{
 			"operation":    "git.get_project",
 			"message":      "cloning failed",
 			"num_attempts": gitFetchProjectRetries,
@@ -356,10 +354,26 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 	return err
 }
 
-func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) error {
+func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) error {
 	attempt := 0
-	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
+	return c.retryFetch(ctx, logger, comm, conf, true, opts, func(opts cloneOpts) error {
 		attempt++
+		// On the second attempt, check if the merge queue ref was deleted before retrying.
+		if attempt == 2 && conf.Task.Requester == evergreen.GithubMergeRequester && conf.GithubMergeData.HeadBranch != "" {
+			ref := "heads/" + conf.GithubMergeData.HeadBranch
+			appToken, tokenErr := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
+			if tokenErr == nil && appToken != "" {
+				exists, checkErr := thirdparty.MergeQueueRefExists(ctx, opts.owner, opts.repo, ref, appToken)
+				if checkErr != nil {
+					return errors.Wrap(checkErr, "checking if merge queue ref exists")
+				}
+				if !exists {
+					c.refNotFound = true
+					return errors.New("the GitHub merge SHA is not available most likely because the merge completed or was aborted")
+				}
+			}
+		}
+
 		gitCommands, err := c.buildSourceCloneCommand(conf, opts)
 		if err != nil {
 			return err
@@ -376,8 +390,8 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 		fetchSourceCmd := c.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender())
 
-		logger.Task().Info("Fetching source from git...")
-		logger.Task().Debugf("Commands are: %s", fetchScript)
+		logger.Task().Info(ctx, "Fetching source from git...")
+		logger.Task().Debugf(ctx, "Commands are: %s", fetchScript)
 
 		ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
 			attribute.String(cloneOwnerAttribute, opts.owner),
@@ -389,13 +403,14 @@ func (c *gitFetchProject) fetchSource(ctx context.Context, logger client.LoggerP
 
 		if err = fetchSourceCmd.Run(ctx); err != nil {
 			span.SetAttributes(attribute.String(cloneErrorAttribute, err.Error()))
+			return err
 		}
 
-		return err
+		return nil
 	})
 }
 
-func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, isSource bool, opts cloneOpts, fetch func(cloneOpts) error) error {
+func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerProducer, comm client.Communicator, conf *internal.TaskConfig, isSource bool, opts cloneOpts, fetch func(cloneOpts) error) error {
 	const (
 		fetchRetryMinDelay = time.Second
 		fetchRetryMaxDelay = 10 * time.Second
@@ -410,9 +425,12 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 	return utility.Retry(
 		ctx,
 		func() (bool, error) {
+			if isSource {
+				c.refNotFound = false
+			}
 			if attemptNum > 2 {
 				opts.useVerbose = true // use verbose for the last 2 attempts
-				logger.Task().Error(message.Fields{
+				logger.Task().Error(ctx, message.Fields{
 					"message":      fmt.Sprintf("running git '%s' clone with verbose output", fetchType),
 					"num_attempts": gitFetchProjectRetries,
 					"attempt":      attemptNum,
@@ -421,9 +439,12 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 			if err := fetch(opts); err != nil {
 				attemptNum++
 				if isSource && attemptNum == 1 {
-					logger.Task().Warning("git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
+					logger.Task().Warning(ctx, "git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
 				}
-				if strings.Contains(err.Error(), githubMergeQueueInvalidRefError) {
+				if isSource && c.refNotFound {
+					if markErr := comm.MarkMergeQueueGitRefNotFound(ctx, conf.TaskData()); markErr != nil {
+						logger.Task().Warningf(ctx, "Failed to mark git ref not found: %s", markErr)
+					}
 					return false, errors.Wrap(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
 				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
@@ -444,7 +465,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	moduleName string) error {
 
 	var err error
-	logger.Task().Infof("Fetching module '%s'.", moduleName)
+	logger.Task().Infof(ctx, "Fetching module '%s'.", moduleName)
 
 	var module *model.Module
 	module, err = conf.Project.GetModuleByName(moduleName)
@@ -467,11 +488,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		if modulePatch != nil {
 			if conf.Task.Requester == evergreen.GithubMergeRequester {
 				revision = module.Branch
-				c.logModuleRevision(logger, revision, moduleName, "defaulting to HEAD for merge")
+				c.logModuleRevision(ctx, logger, revision, moduleName, "defaulting to HEAD for merge")
 			} else {
 				revision = modulePatch.Githash
 				if revision != "" {
-					c.logModuleRevision(logger, revision, moduleName, "specified in set-module")
+					c.logModuleRevision(ctx, logger, revision, moduleName, "specified in set-module")
 				}
 			}
 		}
@@ -479,23 +500,23 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if revision == "" {
 		revision = c.Revisions[moduleName]
 		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "specified as parameter to git.get_project")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "specified as parameter to git.get_project")
 		}
 	}
 	if revision == "" {
 		revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
 		if revision != "" {
-			c.logModuleRevision(logger, revision, moduleName, "from manifest")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "from manifest")
 		}
 	}
 	// if there is no revision, then use the revision from the module, then branch name
 	if revision == "" {
 		if module.Ref != "" {
 			revision = module.Ref
-			c.logModuleRevision(logger, revision, moduleName, "ref field in config file")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "ref field in config file")
 		} else {
 			revision = module.Branch
-			c.logModuleRevision(logger, revision, moduleName, "branch field in config file")
+			c.logModuleRevision(ctx, logger, revision, moduleName, "branch field in config file")
 		}
 	}
 
@@ -516,7 +537,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	opts.owner = owner
 	opts.repo = repo
 	if strings.Contains(module.Repo, "git@github.com:") {
-		logger.Task().Warningf("ssh cloning is being deprecated. We are manually converting '%s'"+
+		logger.Task().Warningf(ctx, "ssh cloning is being deprecated. We are manually converting '%s'"+
 			" to https format. Please update your project config.", module.Repo)
 	}
 
@@ -541,7 +562,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	attempt := 0
-	return c.retryFetch(ctx, logger, false, opts, func(opts cloneOpts) error {
+	return c.retryFetch(ctx, logger, comm, conf, false, opts, func(opts cloneOpts) error {
 		attempt++
 		ctx, span := getTracer().Start(ctx, "clone_module", trace.WithAttributes(
 			attribute.String(cloneModuleAttribute, module.Name),
@@ -567,12 +588,12 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 		// Prefix every line of the output with the module name.
 		output := strings.ReplaceAll(stdOut.String(), "\n", fmt.Sprintf("\n%s: ", module.Name))
-		logger.Task().Info(output)
+		logger.Task().Info(ctx, output)
 
 		errOutput := stdErr.String()
 		if errOutput != "" {
 			errOutput = strings.ReplaceAll(errOutput, "\n", fmt.Sprintf("\n%s: ", module.Name))
-			logger.Task().Error(fmt.Sprintf("%s: %s", module.Name, errOutput))
+			logger.Task().Error(ctx, fmt.Sprintf("%s: %s", module.Name, errOutput))
 		}
 
 		if err != nil {
@@ -593,7 +614,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	defer cancel()
 
 	// Clone the project.
-	if err := c.fetchSource(ctx, logger, conf, opts); err != nil {
+	if err := c.fetchSource(ctx, logger, comm, conf, opts); err != nil {
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
@@ -601,7 +622,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	var p *patch.Patch
 	var err error
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
-		logger.Task().Info("Fetching patch.")
+		logger.Task().Info(ctx, "Fetching patch.")
 		p, err = comm.GetTaskPatch(ctx, conf.TaskData())
 		if err != nil {
 			return errors.Wrap(err, "getting patch for task")
@@ -617,7 +638,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		if module == nil {
 			return errors.Errorf("module '%s' not found", moduleName)
 		}
-		expandModulePrefix(conf, module.Name, module.Prefix, logger)
+		expandModulePrefix(ctx, conf, module.Name, module.Prefix, logger)
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -641,7 +662,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	if evergreen.IsPatchRequester(conf.Task.Requester) && !isGitHub(conf) {
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "getting patch contents")
-			logger.Task().Error(err.Error())
+			logger.Task().Error(ctx, err.Error())
 			return err
 		}
 
@@ -650,7 +671,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		// reorder patches so the main patch gets applied last
 		if err = c.applyPatch(ctx, logger, conf, reorderPatches(p.Patches)); err != nil {
 			err = errors.Wrap(err, "applying patch")
-			logger.Task().Error(err.Error())
+			logger.Task().Error(ctx, err.Error())
 			return err
 		}
 	}
@@ -674,8 +695,8 @@ func reorderPatches(originalPatches []patch.ModulePatch) []patch.ModulePatch {
 	return patches
 }
 
-func (c *gitFetchProject) logModuleRevision(logger client.LoggerProducer, revision, module, reason string) {
-	logger.Execution().Infof("Using revision/ref '%s' for module '%s' (reason: %s).", revision, module, reason)
+func (c *gitFetchProject) logModuleRevision(ctx context.Context, logger client.LoggerProducer, revision, module, reason string) {
+	logger.Execution().Infof(ctx, "Using revision/ref '%s' for module '%s' (reason: %s).", revision, module, reason)
 }
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
@@ -701,7 +722,7 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 		}
 
 		// otherwise, fetch the contents and load it into the patch object
-		logger.Execution().Infof("Fetching patch contents for patch file '%s'.", patchPart.PatchSet.PatchFileId)
+		logger.Execution().Infof(ctx, "Fetching patch contents for patch file '%s'.", patchPart.PatchSet.PatchFileId)
 
 		result, err := comm.GetPatchFile(ctx, conf.TaskData(), patchPart.PatchSet.PatchFileId)
 		if err != nil {
@@ -766,24 +787,24 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 			// skip the module if this build variant does not use it
 			if !utility.StringSliceContains(conf.BuildVariant.Modules, module.Name) {
-				logger.Execution().Infof(
+				logger.Execution().Infof(ctx,
 					"Skipping patch for module '%s': the current build variant does not use it.",
 					module.Name)
 				continue
 			}
-			expandModulePrefix(conf, module.Name, module.Prefix, logger)
+			expandModulePrefix(ctx, conf, module.Name, module.Prefix, logger)
 			moduleDir = filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 		}
 
 		if len(patchPart.PatchSet.Patch) == 0 {
-			logger.Execution().Info("Skipping empty patch file...")
+			logger.Execution().Info(ctx, "Skipping empty patch file...")
 			continue
 
 		} else if patchPart.ModuleName == "" {
-			logger.Execution().Info("Applying patch with git...")
+			logger.Execution().Info(ctx, "Applying patch with git...")
 
 		} else {
-			logger.Execution().Infof("Applying '%s' module patch with git...", patchPart.ModuleName)
+			logger.Execution().Infof(ctx, "Applying '%s' module patch with git...", patchPart.ModuleName)
 		}
 
 		// create a temporary folder and store patch files on disk,
@@ -793,8 +814,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			return errors.WithStack(err)
 		}
 		defer func() { //nolint:evg-lint
-			grip.Error(tempFile.Close())
-			grip.Error(os.Remove(tempFile.Name()))
+			grip.Error(ctx, tempFile.Close())
+			grip.Error(ctx, os.Remove(tempFile.Name()))
 		}()
 		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
 		if err != nil {

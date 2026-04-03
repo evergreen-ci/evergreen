@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -419,7 +418,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			event.LogTaskRestarted(ctx, t.Id, t.Execution, caller)
 		}
 		if t.DisplayOnly {
-			grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
+			grip.Error(ctx, message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
 				"message":                      "could not log task restart events for some execution tasks",
 				"display_task_id":              t.Id,
 				"restarted_execution_task_ids": t.ExecutionTasks,
@@ -504,7 +503,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	var githubCheckAliases ProjectAliases
 	if creationInfo.Version.Requester == evergreen.RepotrackerVersionRequester && creationInfo.ProjectRef.IsGithubChecksEnabled() {
 		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(ctx, creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "error getting github check aliases when adding tasks to build",
 			"project":            creationInfo.Version.Identifier,
 			"project_identifier": creationInfo.ProjectRef.Identifier,
@@ -573,7 +572,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		}
 		creationInfo.Version.BuildVariants[i].BatchTimeTasks = append(creationInfo.Version.BuildVariants[i].BatchTimeTasks, batchTimeTaskStatuses...)
 	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get activation time for tasks",
 		"variant": creationInfo.Build.BuildVariant,
 		"runner":  "addTasksToBuild",
@@ -794,7 +793,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			execTaskId := execTable.GetId(creationInfo.Build.BuildVariant, et)
 			if execTaskId == "" {
 				if !loggedExecutionTaskNotFound {
-					grip.Debug(message.Fields{
+					grip.Debug(ctx, message.Fields{
 						"message":                     "execution task not found",
 						"variant":                     creationInfo.Build.BuildVariant,
 						"exec_task":                   et,
@@ -819,7 +818,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		}
 
 		// update existing exec tasks
-		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
+		grip.Error(ctx, message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
 			"message":              "problem adding display task ID to exec tasks",
 			"exec_tasks_to_update": execTasksThatNeedParentId,
 			"display_task_id":      id,
@@ -829,7 +828,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 		// existing display task may need to be updated
 		if displayTaskAlreadyExists {
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
+			grip.Error(ctx, message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
 				"exec_tasks":   execTaskIds,
 				"display_task": dt.Name,
@@ -994,104 +993,6 @@ func setNumDependentsRec(t *task.Task, idToTasks map[string]*task.Task, seen map
 	}
 }
 
-func RecomputeNumDependents(ctx context.Context, t task.Task) error {
-	pipelineDown := getAllNodesInDepGraph(t.Id, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey), task.IdKey)
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipelineDown)
-	if err != nil {
-		return err
-	}
-	depTasks := []task.Task{}
-	err = cursor.All(ctx, &depTasks)
-	if err != nil {
-		return err
-	}
-	taskPtrs := []*task.Task{}
-	for i := range depTasks {
-		taskPtrs = append(taskPtrs, &depTasks[i])
-	}
-
-	pipelineUp := getAllNodesInDepGraph(t.Id, task.IdKey, bsonutil.GetDottedKeyName(task.DependsOnKey, task.DependencyTaskIdKey))
-	cursor, err = env.DB().Collection(task.Collection).Aggregate(ctx, pipelineUp)
-	if err != nil {
-		return errors.Wrap(err, "getting upstream dependencies of node")
-	}
-	depTasks = []task.Task{}
-	err = cursor.All(ctx, &depTasks)
-	if err != nil {
-		return err
-	}
-	for i := range depTasks {
-		taskPtrs = append(taskPtrs, &depTasks[i])
-	}
-	query := task.ByVersion(t.Version)
-	_, err = task.UpdateAll(ctx, query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
-	if err != nil {
-		return errors.Wrap(err, "resetting num dependents")
-	}
-	versionTasks, err := task.FindAll(ctx, db.Query(query))
-	if err != nil {
-		return errors.Wrap(err, "getting tasks in version")
-	}
-	for i := range versionTasks {
-		taskPtrs = append(taskPtrs, &versionTasks[i])
-	}
-
-	SetNumDependents(taskPtrs)
-	catcher := grip.NewBasicCatcher()
-	for _, t := range taskPtrs {
-		catcher.Add(t.SetNumDependents(ctx))
-	}
-
-	return errors.Wrap(catcher.Resolve(), "setting num dependents")
-}
-
-func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
-	return []bson.M{
-		{
-			"$match": bson.M{
-				task.IdKey: startTaskId,
-			},
-		},
-		{
-			"$graphLookup": bson.M{
-				"from":             task.Collection,
-				"startWith":        "$" + startKey,
-				"connectFromField": startKey,
-				"connectToField":   linkKey,
-				"as":               "dep_graph",
-			},
-		},
-		{
-			"$addFields": bson.M{
-				"dep_graph": bson.M{
-					"$concatArrays": []any{"$dep_graph", []string{"$$ROOT"}},
-				},
-			},
-		},
-		{
-			"$project": bson.M{
-				"_id":     0,
-				"results": "$dep_graph",
-			},
-		},
-		{
-			"$unwind": "$results",
-		},
-		{
-			"$replaceRoot": bson.M{
-				"newRoot": "$results",
-			},
-		},
-		{
-			"$project": bson.M{
-				task.IdKey:        1,
-				task.DependsOnKey: 1,
-			},
-		},
-	}
-}
-
 func getTaskCreateTime(ctx context.Context, creationInfo TaskCreationInfo) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(creationInfo.Version.Requester) {
@@ -1138,7 +1039,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		name, tags, ok := creationInfo.Project.GetTaskNameAndTags(buildVarTask)
 		if ok {
 			isGithubCheck, err = creationInfo.GithubChecksAliases.HasMatchingTask(name, tags)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "error checking if task matches aliases",
 				"version": creationInfo.Version.Id,
 				"task":    buildVarTask.Name,
@@ -1200,26 +1101,13 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		t.MustHaveResults = utility.FromBoolPtr(projectTask.MustHaveResults)
 	}
 
-	t.ExecutionPlatform = shouldRunOnContainer(buildVarTask.RunOn, creationInfo.BuildVariant.RunOn, creationInfo.Project.Containers)
-	if t.IsContainerTask() {
-		var err error
-		t.Container, err = getContainerFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
-		if err != nil {
-			return nil, err
-		}
-		opts, err := getContainerOptions(creationInfo, t.Container)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting container options")
-		}
-		t.ContainerOpts = *opts
-	} else {
-		distroID, secondaryDistros, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
-		if err != nil {
-			return nil, err
-		}
-		t.DistroId = distroID
-		t.SecondaryDistros = secondaryDistros
+	t.ExecutionPlatform = task.ExecutionPlatformHost
+	distroID, secondaryDistros, err := getDistrosFromRunOn(id, buildVarTask, creationInfo.BuildVariant)
+	if err != nil {
+		return nil, err
 	}
+	t.DistroId = distroID
+	t.SecondaryDistros = secondaryDistros
 
 	if stepbackInfo != nil {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
@@ -1308,80 +1196,6 @@ func getDistrosFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVari
 		return distroID, secondaryDistros, nil
 	}
 	return "", nil, errors.Errorf("task '%s' is not runnable as there is no distro specified", id)
-}
-
-func shouldRunOnContainer(taskRunOn, buildVariantRunOn []string, containers []Container) task.ExecutionPlatform {
-	containerNameMap := map[string]bool{}
-	for _, container := range containers {
-		containerNameMap[container.Name] = true
-	}
-	var runOn []string
-	if len(taskRunOn) > 0 {
-		runOn = taskRunOn
-	} else {
-		runOn = buildVariantRunOn
-	}
-	for _, r := range runOn {
-		if containerNameMap[r] {
-			return task.ExecutionPlatformContainer
-		}
-	}
-	return task.ExecutionPlatformHost
-}
-
-func getContainerFromRunOn(id string, buildVarTask BuildVariantTaskUnit, buildVariant *BuildVariant) (string, error) {
-	var container string
-
-	if len(buildVarTask.RunOn) > 0 {
-		container = buildVarTask.RunOn[0]
-	} else if len(buildVariant.RunOn) > 0 {
-		container = buildVariant.RunOn[0]
-	} else {
-		return "", errors.Errorf("task '%s' on buildvariant '%s' is not runnable as there is no container specified", id, buildVariant.Name)
-	}
-	return container, nil
-}
-
-// getContainerOptions resolves the task's container configuration based on the
-// task's container name and the container definitions available to the project.
-func getContainerOptions(creationInfo TaskCreationInfo, container string) (*task.ContainerOptions, error) {
-	for _, c := range creationInfo.Project.Containers {
-		if c.Name != container {
-			continue
-		}
-
-		opts := task.ContainerOptions{
-			WorkingDir:     c.WorkingDir,
-			Image:          c.Image,
-			RepoCredsName:  c.Credential,
-			OS:             c.System.OperatingSystem,
-			Arch:           c.System.CPUArchitecture,
-			WindowsVersion: c.System.WindowsVersion,
-		}
-
-		if c.Resources != nil {
-			opts.CPU = c.Resources.CPU
-			opts.MemoryMB = c.Resources.MemoryMB
-			return &opts, nil
-		}
-
-		var containerSize *ContainerResources
-		for _, size := range creationInfo.ProjectRef.ContainerSizeDefinitions {
-			if size.Name == c.Size {
-				containerSize = &size
-				break
-			}
-		}
-		if containerSize == nil {
-			return nil, errors.Errorf("container size '%s' not found", c.Size)
-		}
-
-		opts.CPU = containerSize.CPU
-		opts.MemoryMB = containerSize.MemoryMB
-		return &opts, nil
-	}
-
-	return nil, errors.Errorf("definition for container '%s' not found", container)
 }
 
 func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName string, execTasks []string, createTime time.Time, displayTaskActivated bool) (*task.Task, error) {
@@ -1666,7 +1480,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			TestSelectionParams:                 tsParams,
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"op":        "creating build for version",
 			"variant":   pair.Variant,
 			"activated": activateVariant,
@@ -1677,7 +1491,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			return nil, nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":        "skipping empty build for version",
 				"variant":   pair.Variant,
 				"activated": activateVariant,
@@ -1744,7 +1558,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
 	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
 		"runner":  "addNewBuilds",
 		"version": creationInfo.Version.Id,

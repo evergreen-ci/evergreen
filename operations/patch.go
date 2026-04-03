@@ -126,6 +126,9 @@ func Patch() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			confPath := c.Parent().String(ConfFlagName)
 			outputJSON := c.Bool(jsonFlagName)
 			if outputJSON {
@@ -134,7 +137,7 @@ func Patch() cli.Command {
 				// still appear so users can diagnose issues.
 				l := grip.GetSender().Level()
 				l.Threshold = level.Error
-				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
+				grip.Error(ctx, errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			args := c.Args()
 			params := &patchParams{
@@ -173,9 +176,6 @@ func Patch() cli.Command {
 				return err
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -211,15 +211,15 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			params.Description = params.getDescription()
+			params.Description = params.getDescription(ctx)
 
 			hasTasks := len(params.Tasks) > 0 || len(params.RegexTasks) > 0
 			hasVariants := len(params.Variants) > 0 || len(params.RegexVariants) > 0
 			if hasTasks && !hasVariants {
-				grip.Warningf("warning - you specified tasks without specifying variants")
+				grip.Warningf(ctx, "warning - you specified tasks without specifying variants")
 			}
 			if hasVariants && !hasTasks {
-				grip.Warningf("warning - you specified variants without specifying tasks")
+				grip.Warningf(ctx, "warning - you specified variants without specifying tasks")
 			}
 
 			isReusing := params.RepeatDefinition || params.RepeatFailed
@@ -240,21 +240,26 @@ func Patch() cli.Command {
 				return err
 			}
 
-			if err = params.validateSubmission(diffData); err != nil {
+			if err = params.validateSubmission(ctx, diffData); err != nil {
 				return err
 			}
 			// Initialize module path cache in case these have already been set by the user. We use a cache here
 			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
 			if params.IncludeModules {
-				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache)
+				if !outputJSON {
+					fmt.Fprint(os.Stderr, "Using --include-modules will apply module configuration changes to the patch "+
+						"regardless of whether you include each module's code changes.\nTo avoid this, "+
+						"use the set-module command to set modules individually instead.\n")
+				}
+				localModuleIncludes, err := getLocalModuleIncludes(ctx, params, conf, params.Path, ref.RemotePath, modulePathCache)
 				if err != nil {
 					return err
 				}
 				params.LocalModuleIncludes = localModuleIncludes
 			}
 
-			newPatch, err := params.createPatch(ac, diffData)
+			newPatch, err := params.createPatch(ctx, ac, diffData)
 			if err != nil {
 				return errors.Wrapf(err, "creating cli patch")
 			}
@@ -269,13 +274,13 @@ func Patch() cli.Command {
 				}
 
 				for _, module := range proj.Modules {
-					modulePath, err := params.getModulePath(conf, module.Name, modulePathCache)
+					modulePath, err := params.getModulePath(ctx, conf, module.Name, modulePathCache)
 					if err != nil {
-						grip.Error(err)
+						grip.Error(ctx, err)
 						continue
 					}
-					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
-						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
+					if err = addModuleToPatch(ctx, params, args, conf, newPatch, &module, modulePath); err != nil {
+						grip.Errorf(ctx, "Error adding module '%s' to patch: %s", module.Name, err)
 					}
 				}
 			}
@@ -286,7 +291,7 @@ func Patch() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(patchId); err != nil {
+					if err = ac.FinalizePatch(ctx, patchId); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
 					}
 					newPatch.Activated = true
@@ -299,9 +304,9 @@ func Patch() cli.Command {
 				outputJSON: outputJSON,
 			}
 			if err = params.displayPatch(ctx, ac, outputParams); err != nil {
-				grip.Error(err)
+				grip.Error(ctx, err)
 			}
-			params.setDefaultProject(conf)
+			params.setDefaultProject(ctx, conf)
 			return nil
 		},
 	}
@@ -414,6 +419,9 @@ func PatchFile() cli.Command {
 			mutuallyExclusiveArgs(false, baseFlagName, diffPatchIdFlagName),
 		),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			diffPatchId := c.String(diffPatchIdFlagName)
 			diffFilePath := c.String(diffPathFlagName)
 			allowEmpty := c.Bool(allowEmptyFlagName)
@@ -430,7 +438,7 @@ func PatchFile() cli.Command {
 				// still appear so users can diagnose issues.
 				l := grip.GetSender().Level()
 				l.Threshold = level.Error
-				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
+				grip.Error(ctx, errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			params := &patchParams{
 				Project:          c.String(projectFlagName),
@@ -457,9 +465,6 @@ func PatchFile() cli.Command {
 				return err
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -480,7 +485,7 @@ func PatchFile() cli.Command {
 			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
 				return err
 			}
-			params.Description = params.getDescription()
+			params.Description = params.getDescription(ctx)
 			var diffData localDiff
 			var rp *restmodel.APIRawPatch
 			if allowEmpty {
@@ -504,10 +509,10 @@ func PatchFile() cli.Command {
 				diffData.base = rp.Patch.Githash
 			}
 
-			if err = params.validateSubmission(&diffData); err != nil {
+			if err = params.validateSubmission(ctx, &diffData); err != nil {
 				return err
 			}
-			newPatch, err := params.createPatch(ac, &diffData)
+			newPatch, err := params.createPatch(ctx, ac, &diffData)
 			if err != nil {
 				return err
 			}
@@ -520,10 +525,10 @@ func PatchFile() cli.Command {
 						patch:   module.Diff,
 						base:    module.Githash,
 					}
-					if err = ac.UpdatePatchModule(moduleParams); err != nil {
+					if err = ac.UpdatePatchModule(ctx, moduleParams); err != nil {
 						return err
 					}
-					grip.Infof("Module '%s' updated.", module.Name)
+					grip.Infof(ctx, "Module '%s' updated.", module.Name)
 
 				}
 			}
@@ -535,7 +540,7 @@ func PatchFile() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(patchId); err != nil {
+					if err = ac.FinalizePatch(ctx, patchId); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
 					}
 					newPatch.Activated = true
@@ -554,7 +559,7 @@ func PatchFile() cli.Command {
 }
 
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
-func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string) ([]patch.LocalModuleInclude, error) {
+func getLocalModuleIncludes(ctx context.Context, params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string) ([]patch.LocalModuleInclude, error) {
 	var yml []byte
 	var err error
 	if path != "" {
@@ -588,9 +593,9 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 
 	moduleIncludes := []patch.LocalModuleInclude{}
 	for moduleName, includes := range includesByModule {
-		modulePath, err := params.getModulePath(conf, moduleName, modulePathCache)
+		modulePath, err := params.getModulePath(ctx, conf, moduleName, modulePathCache)
 		if err != nil {
-			grip.Error(errors.Wrapf(err, "getting module path for '%s'", moduleName))
+			grip.Error(ctx, errors.Wrapf(err, "getting module path for '%s'", moduleName))
 			continue
 		}
 

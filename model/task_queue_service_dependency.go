@@ -14,13 +14,16 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/topo"
 )
 
 const (
-	DAGDispatcher = "DAG-task-dispatcher"
+	DAGDispatcher                 = "DAG-task-dispatcher"
+	dispatcherSkipReasonAttribute = "evergreen.dispatcher.skip_reason"
 )
 
 type basicCachedDAGDispatcherImpl struct {
@@ -126,7 +129,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 
 	// A Node for the "dependent" <to> task is not present in the DAG.
 	if toNode == nil {
-		grip.Warning(message.Fields{
+		grip.Warning(context.Background(), message.Fields{
 			"dispatcher":         DAGDispatcher,
 			"function":           "addEdge",
 			"message":            "a Node for a dependent taskQueueItem is not present in the DAG",
@@ -155,7 +158,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	d.taskGroups = map[string]schedulableUnit{} // map[compositeGroupID(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
 
 	for i := range items {
-		// Add each individual <TaskQueueItem> node to the graph.
+		items[i].queueIndex = i
 		d.addItem(&items[i])
 	}
 
@@ -198,11 +201,23 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		}
 	}
 
-	sorted, err := topo.SortStabilized(d.graph, nil)
+	// Order nodes at the same topological level by their position in the scheduler-sorted queue
+	// so that root tasks maintain the scheduler's composite ranking (TotalValue).
+	order := func(nodes []graph.Node) {
+		sort.Slice(nodes, func(i, j int) bool {
+			itemI := d.nodeItemMap[nodes[i].ID()]
+			itemJ := d.nodeItemMap[nodes[j].ID()]
+			if itemI == nil || itemJ == nil {
+				return nodes[i].ID() < nodes[j].ID()
+			}
+			return itemI.queueIndex < itemJ.queueIndex
+		})
+	}
+	sorted, err := topo.SortStabilized(d.graph, order)
 	if err != nil {
 		unorderableNodes, ok := err.(topo.Unorderable)
 		if !ok {
-			grip.Alert(message.WrapError(err, message.Fields{
+			grip.Alert(context.Background(), message.WrapError(err, message.Fields{
 				"dispatcher":                 DAGDispatcher,
 				"function":                   "rebuild",
 				"message":                    "problem ordering the tasks and associated dependencies within the DirectedGraph",
@@ -222,7 +237,7 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			}
 			cycles = append(cycles, cycleIDs)
 		}
-		grip.Error(message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"dispatcher": DAGDispatcher,
 			"function":   "rebuild",
 			"message":    "tasks in the queue form dependency cycle(s)",
@@ -241,8 +256,20 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 // caused by latency in the function's DB operations. Read locks are placed on operations that fetch queue items, and write locks
 // are placed on operations that mark queue items as dispatched.
 func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec TaskSpec, amiUpdatedTime time.Time) *TaskQueueItem {
+	ctx, span := tracer.Start(ctx, "FindNextTask", trace.WithAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, d.distroID),
+		attribute.String(evergreen.ProjectIDOtelAttribute, spec.Project),
+		attribute.String(evergreen.VersionIDOtelAttribute, spec.Version),
+		attribute.String(evergreen.BuildNameOtelAttribute, spec.BuildVariant),
+	))
+	defer span.End()
+
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
+		span.SetAttributes(
+			attribute.String(evergreen.TaskGroupOtelAttribute, spec.Group),
+			attribute.Int(evergreen.TaskGroupMaxHostsOtelAttribute, spec.GroupMaxHosts),
+		)
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 		taskGroupUnit, ok, _ := d.getTaskGroup(taskGroupID)
 		if ok {
@@ -284,7 +311,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			}
 			nextTaskFromDB, err := task.FindOneId(ctx, item.Id)
 			if err != nil {
-				grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+				grip.WarningWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem finding task in db",
@@ -294,7 +321,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				return nil
 			}
 			if nextTaskFromDB == nil {
-				grip.Warning(message.Fields{
+				grip.Warning(ctx, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "task from db not found",
@@ -314,7 +341,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			if generateTasksLimit > 0 && tasksToGenerate > 0 {
 				pendingGenerateTasks, err := task.GetPendingGenerateTasks(ctx)
 				if err != nil {
-					grip.Warning(message.WrapError(err, message.Fields{
+					grip.Warning(ctx, message.WrapError(err, message.Fields{
 						"dispatcher": DAGDispatcher,
 						"function":   "FindNextTask",
 						"message":    "problem getting pending generate tasks",
@@ -324,16 +351,13 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 					continue
 				}
 				if pendingGenerateTasks+tasksToGenerate >= generateTasksLimit {
-					grip.Info(message.Fields{
-						"dispatcher":             DAGDispatcher,
-						"function":               "FindNextTask",
-						"message":                "skipping task because it would exceed the generate task limit",
-						"task_id":                item.Id,
-						"distro_id":              d.distroID,
-						"generate_task_limit":    generateTasksLimit,
-						"pending_generate_tasks": pendingGenerateTasks,
-						"tasks_to_generate":      tasksToGenerate,
-					})
+					span.SetAttributes(
+						attribute.String(dispatcherSkipReasonAttribute, "exceeds generate task limit"),
+						attribute.String(evergreen.TaskIDOtelAttribute, item.Id),
+						attribute.Int("evergreen.dispatcher.generate_task_limit", generateTasksLimit),
+						attribute.Int("evergreen.dispatcher.num_pending_generate_tasks", pendingGenerateTasks),
+						attribute.Int("evergreen.dispatcher.num_tasks_to_generate", tasksToGenerate),
+					)
 					continue
 				}
 			}
@@ -348,7 +372,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 			dependenciesMet, err := nextTaskFromDB.DependenciesMet(ctx, dependencyCaches)
 			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "error checking dependencies for task",
@@ -366,15 +390,12 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			// AMI Updated time is only provided if the host is running with an outdated AMI.
 			// If the task was created after the time that the AMI was updated, then we should wait for an updated host.
 			if !utility.IsZeroTime(amiUpdatedTime) && nextTaskFromDB.IngestTime.After(amiUpdatedTime) {
-				grip.Debug(message.Fields{
-					"dispatcher":       DAGDispatcher,
-					"function":         "FindNextTask",
-					"message":          "skipping because AMI is outdated",
-					"task_id":          nextTaskFromDB.Id,
-					"distro_id":        d.distroID,
-					"ami_updated_time": amiUpdatedTime,
-					"ingest_time":      nextTaskFromDB.IngestTime,
-				})
+				span.SetAttributes(
+					attribute.String(dispatcherSkipReasonAttribute, "AMI is outdated"),
+					attribute.String(evergreen.TaskIDOtelAttribute, nextTaskFromDB.Id),
+					attribute.String(evergreen.TaskIngestTimeOtelAttribute, nextTaskFromDB.IngestTime.Format(time.RFC3339)),
+					attribute.String("evergreen.dispatcher.ami_updated_time", amiUpdatedTime.Format(time.RFC3339)),
+				)
 				continue
 			}
 			return item
@@ -390,7 +411,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
 			numHosts, err := host.NumHostsByTaskSpec(ctx, item.Group, item.BuildVariant, item.Project, item.Version)
 			if err != nil {
-				grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+				grip.WarningWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
 					"message":    "problem running NumHostsByTaskSpec query - returning nil",
@@ -411,7 +432,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				if next := d.tryMarkNextTaskGroupTaskDispatched(ctx, taskGroupUnit); next != nil {
 					nextTaskFromDB, err := task.FindOneId(ctx, next.Id)
 					if err != nil {
-						grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+						grip.WarningWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 							"dispatcher": DAGDispatcher,
 							"function":   "FindNextTask",
 							"message":    "problem finding task in db",
@@ -422,7 +443,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 						return nil
 					}
 					if nextTaskFromDB == nil {
-						grip.Warning(message.Fields{
+						grip.Warning(ctx, message.Fields{
 							"dispatcher": DAGDispatcher,
 							"function":   "FindNextTask",
 							"message":    "task from db not found",
@@ -532,7 +553,7 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 	}
 	taskVersion, err := VersionFindOne(ctx, VersionById(nextTaskFromDB.Version).WithFields(VersionProjectStorageMethodKey))
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"dispatcher": DAGDispatcher,
 			"function":   "FindNextTask",
 			"message":    "problem finding version for task in db",
@@ -543,7 +564,7 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 		return false, true
 	}
 	if taskVersion == nil {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"dispatcher": DAGDispatcher,
 			"function":   "FindNextTask",
 			"message":    "version for task from db not found",
@@ -557,7 +578,7 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 	if taskVersion.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
 		numLargeParserProjectTasks, err := task.CountLargeParserProjectTasks(ctx)
 		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "FindNextTask",
 				"message":    "problem getting num large parser project tasks",
@@ -567,16 +588,14 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 			return true, false
 		}
 		if numLargeParserProjectTasks >= maxConcurrentLargeParserProjTasks {
-			grip.Info(message.Fields{
-				"dispatcher":       DAGDispatcher,
-				"function":         "FindNextTask",
-				"message":          "skipping task because it would exceed the concurrent large parser project task limit",
-				"task_id":          nextTaskFromDB.Id,
-				"distro_id":        distroId,
-				"is_degraded_mode": !settings.ServiceFlags.CPUDegradedModeDisabled,
-				"max_concurrent_large_parser_project_tasks": maxConcurrentLargeParserProjTasks,
-				"num_large_parser_project_tasks":            numLargeParserProjectTasks,
-			})
+			span := trace.SpanFromContext(ctx)
+			span.SetAttributes(
+				attribute.String(dispatcherSkipReasonAttribute, "exceeds the concurrent large parser project task limit"),
+				attribute.String(evergreen.TaskIDOtelAttribute, nextTaskFromDB.Id),
+				attribute.Bool("evergreen.dispatcher.is_degraded_mode", !settings.ServiceFlags.CPUDegradedModeDisabled),
+				attribute.Int("evergreen.dispatcher.max_concurrent_large_parser_project_tasks", maxConcurrentLargeParserProjTasks),
+				attribute.Int("evergreen.dispatcher.num_large_parser_project_tasks", numLargeParserProjectTasks),
+			)
 			return true, false
 		}
 	}
@@ -610,7 +629,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(ctx context.Context, un
 
 		nextTaskFromDB, err := task.FindOneId(ctx, nextTaskQueueItem.Id)
 		if err != nil {
-			grip.WarningWhen(!errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+			grip.WarningWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "problem finding task in db",
@@ -620,7 +639,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(ctx context.Context, un
 			return nil
 		}
 		if nextTaskFromDB == nil {
-			grip.Warning(message.Fields{
+			grip.Warning(ctx, message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "task from db not found",
@@ -642,7 +661,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(ctx context.Context, un
 		dependencyCaches := make(map[string]task.Task)
 		dependenciesMet, err := nextTaskFromDB.DependenciesMet(ctx, dependencyCaches)
 		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,
 				"function":   "nextTaskGroupTask",
 				"message":    "error checking dependencies for task",

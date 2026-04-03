@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/utility"
@@ -295,7 +294,6 @@ func TestJiraDescription(t *testing.T) {
 				So(d, ShouldContainSubstring, versionMessage)
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
 				So(d, ShouldContainSubstring, "08 Jan 19 11:56 UTC")
-				So(d, ShouldNotContainSubstring, "Pod")
 			})
 			Convey("with links to the task, host, project, logs", func() {
 				So(d, ShouldContainSubstring, url.PathEscape(taskId))
@@ -365,7 +363,6 @@ func TestJiraDescription(t *testing.T) {
 				So(d, ShouldContainSubstring, versionMessage)
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
 				So(d, ShouldContainSubstring, "08 Jan 19 11:56 UTC")
-				So(d, ShouldNotContainSubstring, "Pod")
 			})
 			Convey("with links to the task, host, project, logs", func() {
 				So(d, ShouldContainSubstring, url.PathEscape(taskId))
@@ -426,21 +423,6 @@ func TestJiraDescription(t *testing.T) {
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
 			So(desc, ShouldContainSubstring, "Host: N/A")
-		})
-		Convey("can generate a description for a container task", func() {
-			j.data.Task.ExecutionPlatform = task.ExecutionPlatformContainer
-			j.data.Pod = &pod.Pod{ID: "pod_id"}
-			desc, err := j.getDescription()
-			So(err, ShouldBeNil)
-			So(desc, ShouldContainSubstring, "Pod:")
-			So(desc, ShouldContainSubstring, j.data.Pod.ID)
-		})
-		Convey("can generate a description for a container task with no assigned pod", func() {
-			j.data.Task.ExecutionPlatform = task.ExecutionPlatformContainer
-			j.data.Pod = nil
-			desc, err := j.getDescription()
-			So(err, ShouldBeNil)
-			So(desc, ShouldContainSubstring, "Pod: N/A")
 		})
 		Convey("the description should return old_task_id if present", func() {
 			j.data.Task.Id = "new_task#!"
@@ -569,11 +551,11 @@ func TestCustomFields(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(issue)
 
-	assert.Empty(j.makeCustomFields(config.CustomFields[0].Fields))
+	assert.Empty(j.makeCustomFields(ctx, config.CustomFields[0].Fields))
 
 	j.project = "BFG"
 	j.data.FailedTestNames = []string{}
-	customFields := j.makeCustomFields(config.CustomFields[1].Fields)
+	customFields := j.makeCustomFields(ctx, config.CustomFields[1].Fields)
 	assert.Len(customFields, 6)
 	assert.Equal([]string{projectId}, customFields[jiraEvergreenProjectField])
 	assert.Equal([]string{taskName}, customFields[jiraFailingTasksField])

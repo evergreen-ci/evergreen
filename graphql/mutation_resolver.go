@@ -69,12 +69,12 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding issue: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // EditAnnotationNote is the resolver for the editAnnotationNote field.
@@ -103,12 +103,12 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving issue to suspected issues: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // RemoveAnnotationIssue is the resolver for the removeAnnotationIssue field.
@@ -123,12 +123,12 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting issue: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := annotations.RemoveSuspectedIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting suspected issue: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := annotations.RemoveSuspectedIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting suspected issue: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // SetAnnotationMetadataLinks is the resolver for the setAnnotationMetadataLinks field.
@@ -479,7 +479,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 }
 
 // CreateProject is the resolver for the createProject field.
-func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef) (*restModel.APIProjectRef, error) {
 	dbProjectRef, err := project.ToService()
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APIProjectRef '%s' to service: %s", utility.FromStringPtr(project.Id), err.Error()))
@@ -512,16 +512,11 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectIdentifier, err.Error()))
 	}
 
-	if utility.FromBoolPtr(requestS3Creds) {
-		if err = data.RequestS3Creds(ctx, *apiProjectRef.Identifier, u.EmailAddress); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating Jira ticket to request S3 credentials: %s", err.Error()))
-		}
-	}
 	return &apiProjectRef, nil
 }
 
 // CopyProject is the resolver for the copyProject field.
-func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.CopyProjectOpts, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, evergreen.GetEnvironment(), project)
 	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error
@@ -539,12 +534,6 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.Co
 		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
 		// https://github.com/99designs/gqlgen/issues/1191
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
-	}
-	if utility.FromBoolPtr(requestS3Creds) {
-		usr := mustHaveUser(ctx)
-		if err = data.RequestS3Creds(ctx, *projectRef.Identifier, usr.EmailAddress); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating Jira ticket to request AWS access: %s", err.Error()))
-		}
 	}
 	return projectRef, nil
 }
@@ -982,7 +971,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	if err != nil {
 		if httpStatus == http.StatusInternalServerError {
 			var parsedUrl, _ = url.Parse("/graphql/query")
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"method":  "POST",
 				"url":     parsedUrl,
 				"code":    httpStatus,
@@ -1487,6 +1476,30 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving settings for user '%s': %s", usr.Id, err.Error()))
 	}
 	return true, nil
+}
+
+// RefreshGitHubChecks is the resolver for the refreshGitHubChecks field.
+func (r *mutationResolver) RefreshGitHubStatuses(ctx context.Context, opts RefreshGitHubStatusesInput) (*RefreshGitHubStatusesPayload, error) {
+	versionID := opts.VersionID
+	p, err := patch.FindOne(ctx, patch.ByVersion(versionID))
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch for version '%s': %s", versionID, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch for version '%s' not found", versionID))
+	}
+	if !p.IsGithubPRPatch() && !p.IsMergeQueuePatch() {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("version '%s' is not associated with a GitHub pull request or merge queue patch", versionID))
+	}
+
+	j := units.NewGithubStatusRefreshJob(p)
+	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating GitHub status refresh job: %s", err.Error()))
+	}
+	return &RefreshGitHubStatusesPayload{
+		Success: true,
+	}, nil
 }
 
 // RestartVersions is the resolver for the restartVersions field.

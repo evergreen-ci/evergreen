@@ -93,7 +93,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	if flags.HostAllocatorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     hostAllocatorJobName,
 			"message": "host allocation is disabled",
 		})
@@ -107,6 +107,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 	if distro == nil {
 		j.AddError(errors.Errorf("distro '%s' not found", j.DistroID))
+		return
+	}
+	if err := applyTaskHostOverrides(distro); err != nil {
+		j.AddError(errors.Wrapf(err, "applying task host overrides to distro '%s'", j.DistroID))
 		return
 	}
 	if _, err = distro.GetResolvedHostAllocatorSettings(config); err != nil {
@@ -191,7 +195,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":             hostAllocatorJobName,
 		"distro":             j.DistroID,
 		"single_task_distro": distro.SingleTaskDistro,
@@ -206,7 +210,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	//////////////////////
 
 	numIntentHosts, err := host.CountIntentHosts(ctx)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"runner":   hostAllocatorJobName,
 		"instance": j.ID(),
 		"distro":   j.DistroID,
@@ -214,7 +218,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}))
 
 	if numIntentHosts > maxIntentHosts {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"runner":    hostAllocatorJobName,
 			"instance":  j.ID(),
 			"distro":    j.DistroID,
@@ -226,13 +230,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostSpawningBegins := time.Now()
 	// Number of new hosts to be allocated
-	hostsSpawned, err := scheduler.SpawnHosts(ctx, *distro, nHosts, containerPool)
+	hostsSpawned, err := scheduler.CreateIntentHosts(ctx, *distro, nHosts, containerPool)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "spawning new hosts"))
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":             hostAllocatorJobName,
 		"distro":             distro.Id,
 		"single_task_distro": distro.SingleTaskDistro,
@@ -332,7 +336,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                            "distro-scheduler-report",
 		"job_type":                           hostAllocatorJobName,
 		"distro":                             distro.Id,
@@ -409,7 +413,7 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 		}
 		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":  "could not enqueue job to draw down hosts",
 				"instance": j.ID(),
 				"distro":   distro.Id,
@@ -420,6 +424,40 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 
 }
 
+// applyTaskHostOverrides applies the distro's overrides for task hosts.
+func applyTaskHostOverrides(d *distro.Distro) error {
+	if d.TaskHostOverrides == nil || !evergreen.IsEc2Provider(d.Provider) {
+		return nil
+	}
+
+	d.ProviderAccount = d.TaskHostOverrides.ProviderAccount
+
+	for i, doc := range d.ProviderSettingsList {
+		// Task hosts are only spawned in the default EC2 region, so only
+		// override that region's provider settings.
+		region, hasRegion := doc.Lookup("region").StringValueOK()
+		if !hasRegion || region != evergreen.DefaultEC2Region {
+			continue
+		}
+
+		var updatedSettings cloud.EC2ProviderSettings
+		if err := updatedSettings.FromDocument(doc); err != nil {
+			return errors.Wrapf(err, "reading provider settings at index %d", i)
+		}
+		updatedSettings.IAMInstanceProfileARN = d.TaskHostOverrides.IAMInstanceProfileARN
+		updatedSettings.SecurityGroupIDs = d.TaskHostOverrides.SecurityGroupIDs
+		updatedSettings.SubnetId = d.TaskHostOverrides.SubnetID
+		updatedSettings.DoNotAssignPublicIPv4Address = d.TaskHostOverrides.DoNotAssignPublicIPv4Address
+		updatedDoc, err := updatedSettings.ToDocument()
+		if err != nil {
+			return errors.Wrap(err, "overriding provider settings with task host overrides")
+		}
+
+		d.ProviderSettingsList[i] = updatedDoc
+	}
+	return nil
+}
+
 // saveHostStats saves the latest host usage stats for an EC2 distro.
 func (j *hostAllocatorJob) saveHostStats(ctx context.Context, d *distro.Distro, numUpHosts int) {
 	if !evergreen.IsEc2Provider(d.Provider) {
@@ -428,7 +466,7 @@ func (j *hostAllocatorJob) saveHostStats(ctx context.Context, d *distro.Distro, 
 
 	hs := hoststat.NewHostStat(d.Id, numUpHosts)
 	if err := hs.Insert(ctx); err != nil && !db.IsDuplicateKey(err) {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "could not insert latest host stat data for distro",
 			"distro":    d.Id,
 			"num_hosts": numUpHosts,

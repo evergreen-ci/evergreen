@@ -8,6 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -328,19 +329,19 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 		return apiUser, nil
 	}
 
-	author, err := user.FindOneById(ctx, authorId)
+	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
 	// This is most likely a reaped user, so just return their ID
-	if author == nil {
+	if dbUser == nil {
 		return &restModel.APIDBUser{
 			UserID: obj.Author,
 		}, nil
 	}
 
 	apiUser := &restModel.APIDBUser{}
-	apiUser.BuildFromService(*author)
+	apiUser.BuildFromService(*dbUser)
 	return apiUser, nil
 }
 

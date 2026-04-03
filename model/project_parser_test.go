@@ -292,7 +292,8 @@ func TestTranslateTasks(t *testing.T) {
 	parserProject := &ParserProject{
 		BuildVariants: []parserBV{
 			{
-				Name: "bv0",
+				Name:            "bv0",
+				ExecTimeoutSecs: 50,
 				Tasks: parserBVTaskUnits{
 					{
 						Name:            "my_task",
@@ -415,7 +416,7 @@ func TestTranslateTasks(t *testing.T) {
 		Tasks: []parserTask{
 			{Name: "my_task", PatchOnly: utility.TruePtr(), ExecTimeoutSecs: 15},
 			{Name: "your_task", GitTagOnly: utility.FalsePtr(), Stepback: utility.TruePtr(), RunOn: []string{"a different distro"}},
-			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}},
+			{Name: "tg_task", PatchOnly: utility.TruePtr(), RunOn: []string{"a different distro"}, ExecTimeoutSecs: 10},
 			{Name: "a_task_with_no_special_configuration"},
 			{Name: "a_task_with_build_variant_task_configuration"},
 			{Name: "a_task_with_allowed_requesters", AllowedRequesters: []evergreen.UserRequester{evergreen.AdHocUserRequester}},
@@ -441,10 +442,13 @@ func TestTranslateTasks(t *testing.T) {
 	require.Len(t, out.BuildVariants[0].Tasks, 3)
 	assert.Equal(t, "my_task", out.BuildVariants[0].Tasks[0].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[0].PatchOnly))
+	assert.Equal(t, 30, out.BuildVariants[0].Tasks[0].ExecTimeoutSecs)
 	assert.Equal(t, "your_task", out.BuildVariants[0].Tasks[1].Name)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].GitTagOnly))
+	assert.Equal(t, 50, out.BuildVariants[0].Tasks[1].ExecTimeoutSecs)
 	assert.True(t, utility.FromBoolPtr(out.BuildVariants[0].Tasks[1].Stepback))
 	assert.Contains(t, out.BuildVariants[0].Tasks[1].RunOn, "a different distro")
+	assert.Equal(t, 20, out.BuildVariants[0].Tasks[2].ExecTimeoutSecs)
 
 	assert.Equal(t, "my_tg", out.BuildVariants[0].Tasks[2].Name)
 	bvt := out.FindTaskForVariant("my_tg", "bv0")
@@ -458,6 +462,7 @@ func TestTranslateTasks(t *testing.T) {
 
 	bvt = out.FindTaskForVariant("tg_task", "bv0")
 	assert.Equal(t, "my_tg", bvt.Name, "task within a task group retains its task group name in resulting build variant task unit")
+	assert.Equal(t, 20, bvt.ExecTimeoutSecs, "task group in build variant task list with exec_timeout_secs should take precedence over task definition's exec_timeout_secs")
 	assert.NotNil(t, bvt)
 	assert.True(t, utility.FromBoolPtr(bvt.PatchOnly))
 	assert.Contains(t, bvt.RunOn, "my_distro")
@@ -1006,49 +1011,6 @@ parameters:
 	assert.Equal(t, "you know it", p.Parameters[0].Description)
 	assert.Equal(t, "buggy", p.Parameters[1].Key)
 	assert.Equal(t, "driver", p.Parameters[1].Value)
-}
-
-func TestContainerParsing(t *testing.T) {
-	yml := `
-containers:
-- name: "container_1"
-  working_dir: "/workdir"
-  image: "demo/image:latest"
-  resources:
-    cpu: 1
-    memory_mb: 200
-  system:
-    cpu_architecture: "arm64"
-    operating_system: "windows"
-    windows_version: "2019"
-- name: "container_2"
-  working_dir: "/otherdir"
-  image: "sample/image:latest"
-  size: "XL"
-  system:
-    cpu_architecture: "x86_64"
-    operating_system: "linux"
-`
-	p := &Project{}
-	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", p)
-	assert.NoError(t, err)
-	require.Len(t, p.Containers, 2)
-	assert.Equal(t, "container_1", p.Containers[0].Name)
-	assert.Equal(t, "/workdir", p.Containers[0].WorkingDir)
-	assert.Equal(t, "demo/image:latest", p.Containers[0].Image)
-	assert.Equal(t, 1, p.Containers[0].Resources.CPU)
-	assert.Equal(t, 200, p.Containers[0].Resources.MemoryMB)
-	assert.Equal(t, "arm64", string(p.Containers[0].System.CPUArchitecture))
-	assert.Equal(t, "windows", string(p.Containers[0].System.OperatingSystem))
-	assert.Equal(t, "2019", string(p.Containers[0].System.WindowsVersion))
-
-	assert.Equal(t, "container_2", p.Containers[1].Name)
-	assert.Equal(t, "/otherdir", p.Containers[1].WorkingDir)
-	assert.Equal(t, "sample/image:latest", p.Containers[1].Image)
-	assert.Equal(t, "XL", p.Containers[1].Size)
-	assert.Equal(t, "linux", string(p.Containers[1].System.OperatingSystem))
-	assert.Equal(t, "x86_64", string(p.Containers[1].System.CPUArchitecture))
 }
 
 func TestDisplayTaskValidation(t *testing.T) {
@@ -2235,11 +2197,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 				Name: "my_module",
 			},
 		},
-		Containers: []Container{
-			{
-				Name: "container1",
-			},
-		},
 		Functions: map[string]*YAMLCommandSet{
 			"func1": {
 				SingleCommand: &PluginCommandConf{
@@ -2281,11 +2238,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 				Name: "add_my_module",
 			},
 		},
-		Containers: []Container{
-			{
-				Name: "container2",
-			},
-		},
 		Functions: map[string]*YAMLCommandSet{
 			"add_func1": {
 				SingleCommand: &PluginCommandConf{
@@ -2311,7 +2263,6 @@ func TestMergeUnorderedUnique(t *testing.T) {
 	assert.Len(t, main.Parameters, 2)
 	assert.Len(t, main.Modules, 2)
 	assert.Len(t, main.Functions, 4)
-	assert.Len(t, main.Containers, 2)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {
@@ -2336,11 +2287,6 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 		Modules: []Module{
 			{
 				Name: "my_module",
-			},
-		},
-		Containers: []Container{
-			{
-				Name: "my_container",
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
@@ -2384,11 +2330,6 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 				Name: "my_module",
 			},
 		},
-		Containers: []Container{
-			{
-				Name: "my_container",
-			},
-		},
 		Functions: map[string]*YAMLCommandSet{
 			"func1": {
 				SingleCommand: &PluginCommandConf{
@@ -2415,7 +2356,6 @@ func TestMergeUnorderedUniqueFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "module 'my_module' has been declared already")
 	assert.Contains(t, err.Error(), "function 'func1' has been declared already")
 	assert.Contains(t, err.Error(), "function 'func2' has been declared already")
-	assert.Contains(t, err.Error(), "container 'my_container' has been declared already")
 }
 
 func TestMergeUnordered(t *testing.T) {

@@ -32,7 +32,6 @@ const (
 	TaskActivated              = "TASK_ACTIVATED"
 	TaskDeactivated            = "TASK_DEACTIVATED"
 	TaskAbortRequest           = "TASK_ABORT_REQUEST"
-	ContainerAllocated         = "CONTAINER_ALLOCATED"
 	TaskPriorityChanged        = "TASK_PRIORITY_CHANGED"
 	TaskJiraAlertCreated       = "TASK_JIRA_ALERT_CREATED"
 	TaskDependenciesOverridden = "TASK_DEPENDENCIES_OVERRIDDEN"
@@ -42,7 +41,6 @@ const (
 type TaskEventData struct {
 	Execution int    `bson:"execution" json:"execution"`
 	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
-	PodID     string `bson:"pod_id,omitempty" json:"pod_id,omitempty"`
 	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    string `bson:"s,omitempty" json:"status,omitempty"`
 	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`
@@ -54,7 +52,7 @@ type TaskEventData struct {
 
 func logTaskEvent(ctx context.Context, taskId string, eventType string, eventData TaskEventData) {
 	event := getTaskEvent(taskId, eventType, eventData)
-	grip.Error(message.WrapError(event.Log(ctx), message.Fields{
+	grip.Error(ctx, message.WrapError(event.Log(ctx), message.Fields{
 		"resource_type": ResourceTypeTask,
 		"message":       "error logging event",
 		"source":        "event-log-fail",
@@ -73,7 +71,7 @@ func getTaskEvent(taskId string, eventType string, eventData TaskEventData) Even
 
 func logManyTaskEvents(ctx context.Context, taskIds []string, eventType string, eventData TaskEventData) {
 	if len(taskIds) == 0 {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":    "logManyTaskEvents cannot be called with no task IDs",
 			"task_ids":   taskIds,
 			"event_data": eventData,
@@ -94,7 +92,7 @@ func logManyTaskEvents(ctx context.Context, taskIds []string, eventType string, 
 		events = append(events, event)
 	}
 	if err := LogManyEvents(ctx, events); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging events",
 			"source":        "event-log-fail",
@@ -119,12 +117,6 @@ func LogHostTaskDispatched(ctx context.Context, taskId string, execution int, ho
 	logTaskEvent(ctx, taskId, TaskDispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-// LogContainerTaskDispatched logs an event for a container task being
-// dispatched to a pod.
-func LogContainerTaskDispatched(ctx context.Context, taskID string, execution int, podID string) {
-	logTaskEvent(ctx, taskID, TaskDispatched, TaskEventData{Execution: execution, PodID: podID})
-}
-
 // LogHostTaskUndispatched logs an event for a host being marked undispatched.
 func LogHostTaskUndispatched(ctx context.Context, taskId string, execution int, hostId string) {
 	logTaskEvent(ctx, taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
@@ -146,16 +138,6 @@ func LogHostTaskFinished(ctx context.Context, taskId string, execution int, host
 	LogTaskFinished(ctx, taskId, execution, status)
 	if hostId != "" {
 		LogHostEvent(ctx, hostId, EventHostTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
-	}
-}
-
-// LogContainerTaskFinished logs an event for a container task being marked
-// finished. If it was assigned to run on a pod, it logs an additional pod event
-// indicating that its assigned task has finished.
-func LogContainerTaskFinished(ctx context.Context, taskID string, execution int, podID, status string) {
-	LogTaskFinished(ctx, taskID, execution, status)
-	if podID != "" {
-		LogPodEvent(ctx, podID, EventPodFinishedTask, PodData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
 	}
 }
 
@@ -193,7 +175,7 @@ func LogManyTasksBlocked(ctx context.Context, data []TaskBlockedData) {
 		events = append(events, e)
 	}
 	if err := LogManyUnorderedEventsWithContext(ctx, events); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"event_type":    TaskBlocked,
 			"message":       "error logging events",
@@ -233,12 +215,6 @@ func LogManyTaskAbortRequests(ctx context.Context, taskIds []string, userId stri
 func LogManyTaskPriority(ctx context.Context, taskIds []string, userId string, priority int64) {
 	logManyTaskEvents(ctx, taskIds, TaskPriorityChanged,
 		TaskEventData{UserId: userId, Priority: priority})
-}
-
-// LogTaskContainerAllocated updates the DB with a container allocated event.
-func LogTaskContainerAllocated(ctx context.Context, taskId string, execution int, containerAllocatedTime time.Time) {
-	logTaskEvent(ctx, taskId, ContainerAllocated,
-		TaskEventData{Execution: execution, Timestamp: containerAllocatedTime})
 }
 
 // LogTaskDependenciesOverridden updates the DB with a task dependencies overridden event.

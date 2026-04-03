@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"fmt"
 	"io"
@@ -93,11 +94,11 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			assert.True(t, m.Loggable())
 			assert.NotNil(t, m)
 
-			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+			assert.NoError(t, s.SetErrorHandler(func(_ context.Context, err error, _ message.Composer) {
 				t.Error("error handler was called, but shouldn't have been")
 				t.FailNow()
 			}))
-			s.Send(m)
+			s.Send(t.Context(), m)
 			assert.Equal(t, "https://example.com", transport.lastUrl)
 
 			assert.Len(t, transport.header, 3)
@@ -107,7 +108,7 @@ func TestEvergreenWebhookSender(t *testing.T) {
 		},
 		"UnloggableMessage": func(t *testing.T) {
 			m := NewWebhookMessage(EvergreenWebhook{})
-			s.Send(m)
+			s.Send(t.Context(), m)
 			assert.Equal(t, "", transport.lastUrl)
 		},
 		"InvalidWithRetries": func(t *testing.T) {
@@ -123,11 +124,11 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			assert.NotNil(t, m)
 
 			var capturedErr error
-			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+			assert.NoError(t, s.SetErrorHandler(func(_ context.Context, err error, _ message.Composer) {
 				capturedErr = err
 			}))
 
-			s.Send(m)
+			s.Send(t.Context(), m)
 			assert.Equal(t, "https://example.com", transport.lastUrl)
 			assert.Equal(t, retryCount+1, transport.attemptCount)
 			require.Error(t, capturedErr)
@@ -149,11 +150,11 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			assert.True(t, m.Loggable())
 			assert.NotNil(t, m)
 
-			assert.NoError(t, s.SetErrorHandler(func(err error, _ message.Composer) {
+			assert.NoError(t, s.SetErrorHandler(func(_ context.Context, err error, _ message.Composer) {
 				t.Fatal("error handler was called, but shouldn't have been")
 			}))
 
-			s.Send(m)
+			s.Send(t.Context(), m)
 			assert.Equal(t, "https://example.com", transport.lastUrl)
 			assert.Equal(t, attempts, transport.attemptCount)
 			assert.Equal(t, body, transport.lastBody)
@@ -196,10 +197,10 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	}
 
 	channel := make(chan error, 1)
-	assert.NoError(s.SetErrorHandler(func(err error, _ message.Composer) {
+	assert.NoError(s.SetErrorHandler(func(_ context.Context, err error, _ message.Composer) {
 		channel <- err
 	}))
-	s.Send(m)
+	s.Send(context.Background(), m)
 
 	assert.ErrorContains(<-channel, "response was 400 (Bad Request)")
 	assert.Equal("https://example.com", transport.lastUrl)
@@ -270,7 +271,7 @@ func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, err
 		return resp, nil
 	}
 	resp.StatusCode = http.StatusNoContent
-	grip.Info(message.Fields{
+	grip.Info(context.Background(), message.Fields{
 		"message":   fmt.Sprintf("received %s", mid),
 		"signature": string(sig),
 		"body":      string(body),

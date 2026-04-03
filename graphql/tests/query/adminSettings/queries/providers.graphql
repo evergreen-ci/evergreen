@@ -40,35 +40,6 @@ query Providers {
         alertableInstanceTypes
         allowedRegions
         maxVolumeSizePerUser
-        pod {
-          role
-          region
-          ecs {
-            maxCPU
-            maxMemoryMb
-            taskDefinitionPrefix
-            taskRole
-            executionRole
-            logRegion
-            logGroup
-            logStreamPrefix
-            awsVPC {
-              subnets
-              securityGroups
-            }
-            clusters {
-              name
-              os
-            }
-            capacityProviders {
-              name
-              os
-              arch
-              windowsVersion
-            }
-            allowedImages
-          }
-        }
         accountRoles {
           account
           role

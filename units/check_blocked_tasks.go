@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
@@ -56,8 +55,6 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	var tasksToCheck []task.Task
 	if j.DistroId != "" {
 		tasksToCheck = j.getDistroTasksToCheck(ctx)
-	} else {
-		tasksToCheck = j.getContainerTasksToCheck(ctx)
 	}
 	dependencyCache := map[string]task.Task{}
 	for _, t := range tasksToCheck {
@@ -88,7 +85,7 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck(ctx context.Context) []task
 	}
 
 	if len(taskIds) == 0 {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":             "no task IDs found for distro",
 			"len_queue":           len(queue.Queue),
 			"len_secondary_queue": len(secondaryQueue.Queue),
@@ -107,17 +104,6 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck(ctx context.Context) []task
 	return tasksToCheck
 }
 
-func (j *checkBlockedTasksJob) getContainerTasksToCheck(ctx context.Context) []task.Task {
-	query := task.UndispatchedContainerTasksQuery()
-	query[task.ContainerAllocatedKey] = false
-	tasksToCheck, err := task.FindAll(ctx, db.Query(query))
-	if err != nil {
-		j.AddError(errors.Wrap(err, "getting container tasks to check"))
-		return nil
-	}
-	return tasksToCheck
-}
-
 // checkUnmarkedBlockingTasks checks if the task is blocked by any of its dependencies.
 // If it is blocked, it gets the blocking tasks and updates their dependencies.
 // For blocking tasks that are finished/blocked, it updates their blocked status.
@@ -127,7 +113,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 
 	dependenciesMet, err := t.DependenciesMet(ctx, dependencyCaches)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"message":      "could not check if dependencies met for task",
 			"task_id":      t.Id,
 			"activated_by": t.ActivatedBy,
@@ -167,7 +153,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	}
 
 	numModified := len(finishedBlockingTasks) + len(deactivatedBlockingTasks)
-	grip.DebugWhen(numModified > 0, message.Fields{
+	grip.DebugWhen(ctx, numModified > 0, message.Fields{
 		"message":                            "checked unmarked blocking tasks",
 		"blocking_finished_tasks_updated":    len(finishedBlockingTasks),
 		"blocking_deactivated_tasks_updated": len(deactivatedBlockingTasks),

@@ -126,7 +126,7 @@ func (t *versionTriggers) makeData(ctx context.Context, sub *event.Subscription,
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
 		}
-		grip.NoticeWhen(versionStatus != t.data.Status, message.Fields{
+		grip.NoticeWhen(ctx, versionStatus != t.data.Status, message.Fields{
 			"message":                   "patch's current collective status does not match the version event data's status",
 			"version_collective_status": versionStatus,
 			"version_event_status":      t.data.Status,

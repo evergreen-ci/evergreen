@@ -59,6 +59,7 @@ input AdminSettingsInput {
   amboyDB: AmboyDBConfigInput @redactSecrets
   api: APIConfigInput
   authConfig: AuthConfigInput
+  oktaServiceConfig: OktaServiceConfigInput
   banner: String
   bannerTheme: BannerTheme
   buckets: BucketsConfigInput
@@ -80,7 +81,6 @@ input AdminSettingsInput {
   hostJasper: HostJasperConfigInput
   jira: JiraConfigInput
   jiraNotifications: JiraNotificationsConfigInput
-  kanopySSHKeyPath: String @redactSecrets
   logPath: String
   loggerConfig: LoggerConfigInput
   notify: NotifyConfigInput
@@ -88,7 +88,6 @@ input AdminSettingsInput {
   parameterStore: ParameterStoreConfigInput
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
-  podLifecycle: PodLifecycleConfigInput
   pprofPort: String
   projectCreation: ProjectCreationConfigInput
   providers: CloudProviderConfigInput
@@ -117,6 +116,7 @@ type AdminSettings {
   amboyDB: AmboyDBConfig
   api: APIConfig
   authConfig: AuthConfig
+  oktaServiceConfig: OktaServiceConfig
   banner: String
   bannerTheme: BannerTheme
   buckets: BucketsConfig
@@ -138,7 +138,6 @@ type AdminSettings {
   hostJasper: HostJasperConfig
   jira: JiraConfig
   jiraNotifications: JiraNotificationsConfig
-  kanopySSHKeyPath: String @requireAdmin
   logPath: String
   loggerConfig: LoggerConfig
   notify: NotifyConfig
@@ -146,7 +145,6 @@ type AdminSettings {
   parameterStore: ParameterStoreConfig
   perfMonitoringKanopyURL: String
   perfMonitoringURL: String
-  podLifecycle: PodLifecycleConfig
   pprofPort: String
   projectCreation: ProjectCreationConfig
   providers: CloudProviderConfig

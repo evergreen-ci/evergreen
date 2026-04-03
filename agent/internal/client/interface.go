@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -93,6 +94,8 @@ type SharedCommunicator interface {
 	NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error)
 	UpdatePushStatus(context.Context, TaskData, *model.PushLog) error
 	AttachFiles(context.Context, TaskData, []*artifact.File) error
+	// ReportS3Usage reports the task's S3 usage metrics to the server.
+	ReportS3Usage(context.Context, TaskData, s3usage.S3Usage) error
 	GetManifest(context.Context, TaskData) (*manifest.Manifest, error)
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 
@@ -132,6 +135,9 @@ type SharedCommunicator interface {
 	// UpsertCheckRun upserts a checkrun for a task.
 	UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error
 
+	// MarkMergeQueueGitRefNotFound marks a merge queue patch's GitRefNotFound field.
+	MarkMergeQueueGitRefNotFound(ctx context.Context, td TaskData) error
+
 	// AssumeRole assumes an AWS role and returns the credentials.
 	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error)
 
@@ -154,6 +160,7 @@ type LoggerConfig struct {
 	SendToGlobalSender bool
 	AWSCredentials     aws.CredentialsProvider
 	RedactorOpts       redactor.RedactionOptions
+	S3Usage            *s3usage.S3Usage
 }
 
 type LogOpts struct {

@@ -17,7 +17,7 @@ import (
 const pathToTests = "../../graphql"
 
 func TestAtomicGQLQueries(t *testing.T) {
-	grip.Warning(grip.SetSender(send.MakePlainLogger()))
+	grip.Warning(t.Context(), grip.SetSender(send.MakePlainLogger()))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
 	testDirectories, err := os.ReadDir(filepath.Join(pathToTests, "tests"))

@@ -1064,18 +1064,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		pref := &ProjectRef{
 			Id:         "projectId",
 			Identifier: "projectName",
-			ContainerSizeDefinitions: []ContainerResources{
-				{
-					Name:     "small",
-					CPU:      256,
-					MemoryMB: 128,
-				},
-				{
-					Name:     "large",
-					CPU:      512,
-					MemoryMB: 256,
-				},
-			},
 		}
 		So(pref.Insert(t.Context()), ShouldBeNil)
 
@@ -1083,31 +1071,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			Variant: ".*"}
 		So(alias.Upsert(t.Context()), ShouldBeNil)
 		mustHaveResults := true
-		container1 := Container{
-			Name:       "container1",
-			WorkingDir: "/data",
-			Image:      "ubuntu",
-			Resources: &ContainerResources{
-				MemoryMB: 1024,
-				CPU:      512,
-			},
-			System: ContainerSystem{
-				OperatingSystem: evergreen.LinuxOS,
-				CPUArchitecture: evergreen.ArchARM64,
-			},
-			Credential: "repo_creds",
-		}
-		container2 := Container{
-			Name:       "container2",
-			WorkingDir: "/dir",
-			Image:      "windows",
-			Size:       "small",
-			System: ContainerSystem{
-				OperatingSystem: evergreen.WindowsOS,
-				CPUArchitecture: evergreen.ArchAMD64,
-				WindowsVersion:  evergreen.Windows2019,
-			},
-		}
 		parserProject := &ParserProject{
 			Identifier: utility.ToStringPtr("projectId"),
 			TaskGroups: []parserTaskGroup{
@@ -1168,7 +1131,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					Name: "singleHostTaskGroup3",
 				},
 			},
-			Containers:    []Container{container1, container2},
 			BuildVariants: []parserBV{buildVar1, buildVar2, buildVar3, buildVar4, buildVar5},
 		}
 
@@ -1389,38 +1351,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
+			build, _, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(build.Tasks), ShouldEqual, 4)
-
-			bvContainerOpts := task.ContainerOptions{
-				CPU:           container1.Resources.CPU,
-				MemoryMB:      container1.Resources.MemoryMB,
-				WorkingDir:    container1.WorkingDir,
-				Image:         container1.Image,
-				OS:            container1.System.OperatingSystem,
-				Arch:          container1.System.CPUArchitecture,
-				RepoCredsName: container1.Credential,
-			}
-			taskContainerOpts := task.ContainerOptions{
-				CPU:        256,
-				MemoryMB:   128,
-				WorkingDir: container2.WorkingDir,
-				Image:      container2.Image,
-				OS:         container2.System.OperatingSystem,
-				Arch:       container2.System.CPUArchitecture,
-			}
-			for _, tsk := range tasks[:3] {
-				So(tsk.ExecutionPlatform, ShouldEqual, task.ExecutionPlatformContainer)
-				if tsk.Id != "taskE" {
-					So(tsk.Container, ShouldEqual, container1.Name)
-					So(tsk.ContainerOpts, ShouldResemble, bvContainerOpts)
-				} else {
-					So(tsk.Container, ShouldEqual, container2.Name)
-					So(tsk.ContainerOpts, ShouldResemble, taskContainerOpts)
-				}
-			}
 		})
 
 		Convey("the build should contain task caches that correspond exactly"+
@@ -3166,107 +3100,6 @@ func TestAddNewTasks(t *testing.T) {
 			}
 			assert.Equal(t, testCase.bvActive, build.Activated)
 		})
-	}
-}
-
-func TestRecomputeNumDependents(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NoError(t, db.Clear(task.Collection))
-	t1 := task.Task{
-		Id: "1",
-		DependsOn: []task.Dependency{
-			{TaskId: "2"},
-		},
-		Version: "v1",
-	}
-	assert.NoError(t, t1.Insert(t.Context()))
-	t2 := task.Task{
-		Id: "2",
-		DependsOn: []task.Dependency{
-			{TaskId: "3"},
-		},
-		Version: "v1",
-	}
-	assert.NoError(t, t2.Insert(t.Context()))
-	t3 := task.Task{
-		Id: "3",
-		DependsOn: []task.Dependency{
-			{TaskId: "4"},
-		},
-		Version: "v1",
-	}
-	assert.NoError(t, t3.Insert(t.Context()))
-	t4 := task.Task{
-		Id: "4",
-		DependsOn: []task.Dependency{
-			{TaskId: "5"},
-		},
-		Version: "v1",
-	}
-	assert.NoError(t, t4.Insert(t.Context()))
-	t5 := task.Task{
-		Id:      "5",
-		Version: "v1",
-	}
-	assert.NoError(t, t5.Insert(t.Context()))
-
-	assert.NoError(t, RecomputeNumDependents(ctx, t3))
-	tasks, err := task.Find(ctx, task.ByVersion(t1.Version))
-	assert.NoError(t, err)
-	for i, dbTask := range tasks {
-		assert.Equal(t, i, dbTask.NumDependents)
-	}
-
-	assert.NoError(t, RecomputeNumDependents(ctx, t5))
-	tasks, err = task.Find(ctx, task.ByVersion(t1.Version))
-	assert.NoError(t, err)
-	for i, dbTask := range tasks {
-		assert.Equal(t, i, dbTask.NumDependents)
-	}
-
-	t6 := task.Task{
-		Id: "6",
-		DependsOn: []task.Dependency{
-			{TaskId: "8"},
-		},
-		Version: "v2",
-	}
-	assert.NoError(t, t6.Insert(t.Context()))
-	t7 := task.Task{
-		Id: "7",
-		DependsOn: []task.Dependency{
-			{TaskId: "8"},
-		},
-		Version: "v2",
-	}
-	assert.NoError(t, t7.Insert(t.Context()))
-	t8 := task.Task{
-		Id: "8",
-		DependsOn: []task.Dependency{
-			{TaskId: "9"},
-		},
-		Version: "v2",
-	}
-	assert.NoError(t, t8.Insert(t.Context()))
-	t9 := task.Task{
-		Id:      "9",
-		Version: "v2",
-	}
-	assert.NoError(t, t9.Insert(t.Context()))
-
-	assert.NoError(t, RecomputeNumDependents(ctx, t8))
-	tasks, err = task.Find(ctx, task.ByVersion(t6.Version))
-	assert.NoError(t, err)
-	expected := map[string]int{
-		"6": 0,
-		"7": 0,
-		"8": 2,
-		"9": 3,
-	}
-	for _, dbTask := range tasks {
-		assert.Equal(t, expected[dbTask.Id], dbTask.NumDependents)
 	}
 }
 

@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-02-24"
+	ClientVersion = "2026-03-30"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-02-24"
+	AgentVersion = "2026-04-01"
 )
 
 const (
@@ -67,6 +67,7 @@ type Settings struct {
 	AmboyDB             AmboyDBConfig           `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
 	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
 	AuthConfig          AuthConfig              `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	OktaServiceConfig   OktaServiceConfig       `yaml:"okta_service" bson:"okta_service" json:"okta_service" id:"okta_service"`
 	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
@@ -91,11 +92,9 @@ type Settings struct {
 	HostJasper          HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
 	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
-	// TODO (DEVPROD-15898): remove this key path.
-	KanopySSHKeyPath string       `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
-	LoggerConfig     LoggerConfig `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
-	LogPath          string       `yaml:"log_path" bson:"log_path" json:"log_path"`
-	Notify           NotifyConfig `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	LoggerConfig        LoggerConfig            `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
+	LogPath             string                  `yaml:"log_path" bson:"log_path" json:"log_path"`
+	Notify              NotifyConfig            `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	// OldestAllowedCLIVersion represents the oldest CLI version that a user can have installed locally. If this field is non-empty, and a user's
 	// binary is older than this version, their CLI will prompt them to update before they can continue.
 	OldestAllowedCLIVersion string                    `yaml:"oldest_allowed_cli_version" bson:"oldest_allowed_cli_version" json:"oldest_allowed_cli_version"`
@@ -105,7 +104,6 @@ type Settings struct {
 	PerfMonitoringKanopyURL string                    `yaml:"perf_monitoring_kanopy_url" bson:"perf_monitoring_kanopy_url" json:"perf_monitoring_kanopy_url"`
 	Plugins                 PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew              util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
-	PodLifecycle            PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
 	PprofPort               string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	ProjectCreation         ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
 	Providers               CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
@@ -151,7 +149,6 @@ func (c *Settings) Set(ctx context.Context) error {
 			githubOrgsKey:              c.GithubOrgs,
 			githubWebhookSecretKey:     c.GithubWebhookSecret,
 			disabledGQLQueriesKey:      c.DisabledGQLQueries,
-			kanopySSHKeyPathKey:        c.KanopySSHKeyPath,
 			logPathKey:                 c.LogPath,
 			oldestAllowedCLIVersionKey: c.OldestAllowedCLIVersion,
 			perfMonitoringURLKey:       c.PerfMonitoringURL,
@@ -291,7 +288,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
 		if paramMgr == nil {
-			grip.Errorf("parameter manager is nil, cannot read admin secrets from parameter store")
+			grip.Errorf(ctx, "parameter manager is nil, cannot read admin secrets from parameter store")
 			return baseConfig, nil
 		}
 		settingsValue := reflect.ValueOf(paramConfig).Elem()
@@ -303,7 +300,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		if ctx.Err() != nil {
 			return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
 		} else if err != nil {
-			grip.Error(errors.Wrap(err, "getting all admin secrets from parameter store"))
+			grip.Error(ctx, errors.Wrap(err, "getting all admin secrets from parameter store"))
 		} else {
 			for _, param := range params {
 				paramCache[param.Name] = param.Value
@@ -312,7 +309,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", paramCache, adminCatcher)
 		if adminCatcher.HasErrors() && ctx.Err() == nil {
-			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
+			grip.Error(ctx, errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {
 			baseConfig = paramConfig
 		}
@@ -372,7 +369,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 				// If the field is a string, store in parameter manager and update struct with path.
 				if fieldValue.Kind() == reflect.String {
 					// Check if the field path is already in the cache.
-					if cachedValue, ok := paramCache[fieldPath]; ok {
+					if cachedValue, ok := paramCache[paramMgr.GetPrefixedName(fieldPath)]; ok {
 						fieldValue.SetString(cachedValue)
 					} else {
 						// We don't defer the cancel() and instead cancel it immediately
@@ -396,7 +393,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					for _, key := range fieldValue.MapKeys() {
 						mapFieldPath := fmt.Sprintf("%s/%s", fieldPath, key.String())
 						// Check if the field path is already in the cache.
-						if cachedValue, ok := paramCache[mapFieldPath]; ok {
+						if cachedValue, ok := paramCache[paramMgr.GetPrefixedName(mapFieldPath)]; ok {
 							newMap.SetMapIndex(key, reflect.ValueOf(cachedValue))
 						} else {
 							// We don't defer the cancel() and instead cancel it immediately
@@ -419,7 +416,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
 						fieldValue.Set(newMap)
 					} else {
-						grip.ErrorWhen(ctx.Err() == nil, message.Fields{
+						grip.ErrorWhen(ctx, ctx.Err() == nil, message.Fields{
 							"message":  "readAdminSecrets did not find all map keys in parameter store",
 							"path":     fieldPath,
 							"keys":     fieldValue.MapKeys(),
@@ -704,7 +701,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 
 			senders = append(senders, logger.MakeQueueSender(ctx, env.LocalQueue(), sender))
 		}
-		grip.Warning(errors.Wrap(err, "setting up Slack alert logger"))
+		grip.Warning(ctx, errors.Wrap(err, "setting up Slack alert logger"))
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
@@ -785,7 +782,7 @@ func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
 	} else if rc.Level == "" {
 		return readconcern.Majority()
 	} else {
-		grip.Error(message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"error":   "ReadConcern Level is not majority or local, setting to majority",
 			"rcLevel": rc.Level})
 		return readconcern.Majority()

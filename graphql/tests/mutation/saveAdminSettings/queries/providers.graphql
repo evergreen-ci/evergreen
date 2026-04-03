@@ -40,51 +40,6 @@ mutation SaveAdminSettings {
         alertableInstanceTypes: ["m5.24xlarge", "c5.24xlarge"]
         allowedRegions: ["us-east-1", "us-west-1", "us-west-2"]
         maxVolumeSizePerUser: 1000
-        pod: {
-          role: "arn:aws:iam::123456789012:role/ECSTaskRole"
-          region: "us-east-1"
-          ecs: {
-            maxCPU: 1024
-            maxMemoryMb: 1024
-            taskDefinitionPrefix: "evergreen-"
-            taskRole: "arn:aws:iam::123456789012:role/ECSTaskRole"
-            executionRole: "arn:aws:iam::123456789012:role/ECSExecutionRole"
-            logRegion: "us-east-1"
-            logGroup: "/evergreen/ecs"
-            logStreamPrefix: "evergreen-task-"
-            awsVPC: {
-              subnets: ["subnet-12345678", "subnet-87654321"]
-              securityGroups: ["sg-12345678", "sg-87654321"]
-            }
-            clusters: [
-              {
-                name: "evergreen-cluster-1"
-                os: ECSOSLinux
-              }
-              {
-                name: "evergreen-cluster-2"
-                os: ECSOSWindows
-              }
-            ]
-            capacityProviders: [
-              {
-                name: "FARGATE"
-                os: ECSOSLinux
-                arch: ECS_ARCH_ARM64
-              }
-              {
-                name: "EC2"
-                os: ECSOSLinux
-                arch: ECS_ARCH_ARM64
-              }
-            ]
-            allowedImages: [
-              "amazonlinux:latest"
-              "ubuntu:20.04"
-              "centos:8"
-            ]
-          }
-        }
         accountRoles: [
           {account: "evgUser",  role: "super"}
         ]
@@ -147,37 +102,6 @@ mutation SaveAdminSettings {
         alertableInstanceTypes
         allowedRegions
         maxVolumeSizePerUser
-        pod {
-          role
-          region
-          ecs {
-            maxCPU
-            maxMemoryMb
-            taskDefinitionPrefix
-            taskRole
-            executionRole
-            logRegion
-            logGroup
-            logStreamPrefix
-            awsVPC {
-              subnets
-              securityGroups
-            }
-            clusters {
-              name
-              os
-            }
-            capacityProviders {
-              name
-              os
-              arch
-            }
-            allowedImages
-          }
-          secretsManager {
-            secretPrefix
-          }
-        }
         accountRoles {
           account
           role

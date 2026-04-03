@@ -9,9 +9,7 @@ import (
 	"testing"
 	"time"
 
-	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -433,105 +431,6 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	p, err = data.FindProjectById(s.T().Context(), "dimoxinil", true, false)
 	s.NoError(err)
 	s.Nil(p.PatchTriggerAliases)
-}
-
-func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "Test1"})
-	h := s.rm.(*projectIDPatchHandler)
-	h.user = &user.DBUser{Id: "me"}
-
-	smClient, err := cloud.MakeSecretsManagerClient(ctx, s.env.Settings())
-	s.Require().NoError(err)
-	vault, err := cloud.MakeSecretsManagerVault(smClient)
-	s.Require().NoError(err)
-
-	cocoaMock.ResetGlobalSecretCache()
-	defer cocoaMock.ResetGlobalSecretCache()
-
-	// Create new pod secret.
-	body := []byte(`{
-	"container_secrets": [
-		{
-			"name": "super_secret",
-			"type": "pod_secret",
-			"should_rotate": true
-		}
-	]}`)
-	req, err := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
-	s.Require().NoError(err)
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	s.Require().NoError(s.rm.Parse(ctx, req))
-
-	resp := s.rm.Run(ctx)
-	s.Require().NotNil(resp)
-	s.Require().NotNil(resp.Data())
-	s.Equal(http.StatusOK, resp.Status())
-
-	dbProjRef, err := serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
-	s.Require().NoError(err)
-	s.Require().NotNil(dbProjRef)
-	s.Require().Len(dbProjRef.ContainerSecrets, 1)
-	s.Equal("super_secret", dbProjRef.ContainerSecrets[0].Name)
-	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
-	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
-	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
-
-	externalID := dbProjRef.ContainerSecrets[0].ExternalID
-	s.Require().NotNil(vault)
-	initialStoredValue, err := vault.GetValue(ctx, externalID)
-	s.Require().NoError(err)
-	s.NotZero(initialStoredValue)
-
-	// Rotate the existing pod secret's value.
-	req, err = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
-	s.Require().NoError(err)
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	s.Require().NoError(s.rm.Parse(ctx, req))
-
-	resp = s.rm.Run(ctx)
-	s.Require().NotNil(resp)
-	s.Require().NotNil(resp.Data())
-	s.Equal(http.StatusOK, resp.Status())
-
-	dbProjRef, err = serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
-	s.Require().NoError(err)
-	s.Require().NotNil(dbProjRef)
-	s.Require().Len(dbProjRef.ContainerSecrets, 1)
-	s.Equal("super_secret", dbProjRef.ContainerSecrets[0].Name)
-	s.EqualValues(serviceModel.ContainerSecretPodSecret, dbProjRef.ContainerSecrets[0].Type)
-	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalName)
-	s.NotZero(dbProjRef.ContainerSecrets[0].ExternalID)
-
-	externalID = dbProjRef.ContainerSecrets[0].ExternalID
-	s.Require().NotNil(vault)
-	newStoredValue, err := vault.GetValue(ctx, externalID)
-	s.Require().NoError(err)
-	s.NotZero(newStoredValue)
-	s.NotEqual(initialStoredValue, newStoredValue)
-
-	// Delete the existing pod secret.
-	body = []byte(`{
-		"delete_container_secrets": ["super_secret"]
-	}`)
-	req, err = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(body))
-	s.Require().NoError(err)
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "dimoxinil"})
-	s.Require().NoError(s.rm.Parse(ctx, req))
-
-	resp = s.rm.Run(ctx)
-	s.Require().NotNil(resp)
-	s.Require().NotNil(resp.Data())
-	s.Equal(http.StatusOK, resp.Status())
-
-	dbProjRef, err = serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
-	s.Require().NoError(err)
-	s.Require().NotNil(dbProjRef)
-	s.Empty(dbProjRef.ContainerSecrets, "container secret should have been deleted")
-
-	_, err = vault.GetValue(ctx, externalID)
-	s.Error(err, "secret should have been deleted from the vault")
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithTestSelection() {

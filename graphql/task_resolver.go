@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -17,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // AbortInfo is the resolver for the abortInfo field.
@@ -359,6 +359,39 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	return &duration, nil
 }
 
+// ExecutionSteps is the resolver for the executionSteps field.
+func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITask) ([]*model.TaskExecutionStep, error) {
+	versionID := utility.FromStringPtr(obj.Version)
+	if versionID == "" {
+		return nil, nil
+	}
+
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version: %s", err.Error()))
+	}
+	if v == nil {
+		return nil, nil
+	}
+
+	project, _, err := model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("loading project: %s", err.Error()))
+	}
+
+	taskName := utility.FromStringPtr(obj.DisplayName)
+	steps, err := model.GetTaskExecutionSteps(project, taskName)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building execution steps: %s", err.Error()))
+	}
+
+	result := make([]*model.TaskExecutionStep, len(steps))
+	for i := range steps {
+		result[i] = &steps[i]
+	}
+	return result, nil
+}
+
 // ExecutionTasksFull is the resolver for the executionTasksFull field.
 func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
@@ -534,6 +567,46 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 	return position, nil
 }
 
+// NextTask is the resolver for the nextTask field.
+func (r *taskResolver) NextTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getNextTask(ctx, obj, evergreen.TaskStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding next task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// NextTaskCompleted is the resolver for the nextTaskCompleted field.
+func (r *taskResolver) NextTaskCompleted(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getNextTask(ctx, obj, evergreen.TaskCompletedStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding next completed task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// NextTaskFailing is the resolver for the nextTaskFailing field.
+func (r *taskResolver) NextTaskFailing(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getNextTask(ctx, obj, evergreen.TaskFailureStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding next failing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// NextTaskPassing is the resolver for the nextTaskPassing field.
+func (r *taskResolver) NextTaskPassing(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getNextTask(ctx, obj, []string{evergreen.TaskSucceeded})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding next passing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
 // Patch is the resolver for the patch field.
 func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
@@ -552,17 +625,44 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 	return &order, nil
 }
 
-// Pod is the resolver for the pod field.
-func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restModel.APIPod, error) {
-	podID := utility.FromStringPtr(obj.PodID)
-	if podID == "" {
-		return nil, nil
-	}
-	pod, err := data.FindAPIPodByID(ctx, podID)
+// PrevTask is the resolver for the prevTask field.
+func (r *taskResolver) PrevTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, evergreen.TaskStatuses)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod '%s': %s", podID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
-	return pod, nil
+
+	return tsk, nil
+}
+
+// PrevTaskCompleted is the resolver for the prevTaskCompleted field.
+func (r *taskResolver) PrevTaskCompleted(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, evergreen.TaskCompletedStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous completed task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// PrevTaskFailing is the resolver for the prevTaskFailing field.
+func (r *taskResolver) PrevTaskFailing(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, evergreen.TaskFailureStatuses)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous failing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
+}
+
+// PrevTaskPassing is the resolver for the prevTaskPassing field.
+func (r *taskResolver) PrevTaskPassing(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
+	tsk, err := getPrevTask(ctx, obj, []string{evergreen.TaskSucceeded})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous passing task for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+
+	return tsk, nil
 }
 
 // Project is the resolver for the project field.
@@ -726,7 +826,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)
-	v, err := model.VersionFindOne(ctx, model.VersionById(versionID).Project(bson.M{model.VersionBuildVariantsKey: 0}))
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
 	}

@@ -3,6 +3,8 @@ package util
 import (
 	"sync"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 )
 
@@ -141,4 +143,29 @@ func (e *DynamicExpansions) Range(op func(key, value string) bool) {
 			return
 		}
 	}
+}
+
+// AddVariantAndParameterExpansions applies build variant and parameter level expansions
+// to the expansions and vars map.
+func AddVariantAndParameterExpansions(expansionsAndVars *apimodels.ExpansionsAndVars, project *model.Project, variant string) {
+	// GetExpansionsAndVars does not include build variant expansions or project
+	// parameters, so load them from the project.
+	for _, bv := range project.BuildVariants {
+		if bv.Name == variant {
+			expansionsAndVars.Expansions.Update(bv.Expansions)
+			break
+		}
+	}
+	expansionsAndVars.Expansions.Update(expansionsAndVars.Vars)
+	for _, param := range project.Parameters {
+		// If the key doesn't exist, the value will default to "" anyway; this
+		// prevents an un-specified project parameter from overwriting
+		// lower-priority expansions.
+		if param.Value != "" {
+			expansionsAndVars.Expansions.Put(param.Key, param.Value)
+		}
+	}
+	// Overwrite any empty values here since these parameters were explicitly
+	// user-specified.
+	expansionsAndVars.Expansions.Update(expansionsAndVars.Parameters)
 }

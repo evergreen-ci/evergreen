@@ -35,18 +35,6 @@ type WaterfallBuild {
   tasks: [WaterfallTask!]!
 }
 
-type WaterfallBuildVariant {
-  id: String!
-  builds: [WaterfallBuild!]!
-  displayName: String!
-  version: String!
-}
-
-type WaterfallVersion {
-  inactiveVersions: [Version!]
-  version: Version
-}
-
 type WaterfallPagination {
   activeVersionIds: [String!]!
   hasNextPage: Boolean!

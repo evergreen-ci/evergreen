@@ -130,17 +130,23 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
+	s.Equal(testSettings.OktaServiceConfig.ClientID, settingsFromConnector.OktaServiceConfig.ClientID)
+	s.Equal(testSettings.OktaServiceConfig.ClientSecret, settingsFromConnector.OktaServiceConfig.ClientSecret)
+	s.Equal(testSettings.OktaServiceConfig.Scopes, settingsFromConnector.OktaServiceConfig.Scopes)
+	s.Equal(testSettings.OktaServiceConfig.Audience, settingsFromConnector.OktaServiceConfig.Audience)
+	s.Equal(testSettings.OktaServiceConfig.Issuer, settingsFromConnector.OktaServiceConfig.Issuer)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackMonths)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settingsFromConnector.Buckets.RetryFailedLogMoveMaxJobsPerRun)
+	s.EqualValues(testSettings.Buckets.TestResultsBucket, settingsFromConnector.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, settingsFromConnector.Buckets.Credentials.Secret)
+	s.Equal(testSettings.Buckets.Credentials.Bucket, settingsFromConnector.Buckets.Credentials.Bucket)
 	s.Equal(testSettings.FWS.URL, settingsFromConnector.FWS.URL)
 	s.EqualValues(testSettings.HostJasper.URL, settingsFromConnector.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(testSettings.HostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
 	s.EqualValues(testSettings.HostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
 	s.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
-	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settingsFromConnector.PodLifecycle.MaxParallelPodRequests)
-	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settingsFromConnector.PodLifecycle.MaxPodDefinitionCleanupRate)
-	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settingsFromConnector.PodLifecycle.MaxSecretCleanupRate)
 	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
 
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
@@ -173,9 +179,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ReleaseMode.TargetTimeSecondsOverride, settingsFromConnector.ReleaseMode.TargetTimeSecondsOverride)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
-	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
-	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
-	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
@@ -231,8 +234,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	paramSettings, err := evergreen.GetConfig(ctx)
 	s.Require().NoError(err)
 	s.Equal(testSettings.AuthConfig.Okta.ClientID, paramSettings.AuthConfig.Okta.ClientID)
+	s.EqualValues(testSettings.Buckets.TestResultsBucket, paramSettings.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, paramSettings.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, paramSettings.Buckets.Credentials.Secret)
+	s.Equal(testSettings.Buckets.Credentials.Bucket, paramSettings.Buckets.Credentials.Bucket)
 	s.Equal(testSettings.Jira.PersonalAccessToken, paramSettings.Jira.PersonalAccessToken)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, paramSettings.Providers.AWS.EC2Keys[0].Key)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Secret, paramSettings.Providers.AWS.EC2Keys[0].Secret)
@@ -332,8 +337,12 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.Equal(testSettings.FWS.URL, settingsFromConnector.FWS.URL)
 	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackMonths)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settingsFromConnector.Buckets.RetryFailedLogMoveMaxJobsPerRun)
+	s.EqualValues(testSettings.Buckets.TestResultsBucket, settingsFromConnector.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, settingsFromConnector.Buckets.Credentials.Secret)
+	s.Equal(testSettings.Buckets.Credentials.Bucket, settingsFromConnector.Buckets.Credentials.Bucket)
 
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 
@@ -356,9 +365,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
-	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
-	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
-	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
@@ -428,14 +434,12 @@ func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
 
 	settings := &evergreen.Settings{
 		ServiceFlags: evergreen.ServiceFlags{
-			HostInitDisabled:               true,
-			RepotrackerDisabled:            true,
-			TaskDispatchDisabled:           false,
-			PodInitDisabled:                true,
-			CloudCleanupDisabled:           false,
-			StaticAPIKeysDisabled:          true,
-			JWTTokenForCLIDisabled:         false,
-			UnrecognizedPodCleanupDisabled: true,
+			HostInitDisabled:       true,
+			RepotrackerDisabled:    true,
+			TaskDispatchDisabled:   false,
+			CloudCleanupDisabled:   false,
+			StaticAPIKeysDisabled:  true,
+			JWTTokenForCLIDisabled: false,
 		},
 	}
 	s.NoError(evergreen.UpdateConfig(ctx, settings))

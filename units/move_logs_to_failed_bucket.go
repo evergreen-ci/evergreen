@@ -18,9 +18,15 @@ import (
 
 const (
 	moveLogsToFailedBucketJobName     = "move-logs-to-failed-bucket"
-	fetchTimeout                      = 10 * time.Minute
+	fetchTimeout                      = 30 * time.Minute
 	moveLogsToFailedBucketMaxAttempts = 3
 )
+
+// MoveLogsTriggerTaskEnd is used when the app server enqueues after a failed task ends (agent path).
+const MoveLogsTriggerTaskEnd = "task_end"
+
+// MoveLogsTriggerWeeklyRetry is used by PopulateRetryFailedLogMoveJobs (weekly cron).
+const MoveLogsTriggerWeeklyRetry = "weekly_retry_failed_log_move"
 
 func init() {
 	registry.AddJobType(moveLogsToFailedBucketJobName, func() amboy.Job {
@@ -32,6 +38,9 @@ type moveLogsToFailedBucketJob struct {
 	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
 	TaskID          string                 `bson:"task_id"`
 	SourceBucketCfg evergreen.BucketConfig `bson:"source_bucket_cfg"`
+	// Trigger records why the job was enqueued.
+	Trigger string        `bson:"trigger,omitempty"`
+	Timeout time.Duration `bson:"timeout,omitempty"`
 
 	env evergreen.Environment
 }
@@ -49,15 +58,26 @@ func makeMoveLogsToFailedBucketJob() *moveLogsToFailedBucketJob {
 }
 
 // NewMoveLogsToFailedBucketJob creates a job that moves a task's logs to the failed bucket.
-func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig) amboy.Job {
+// Pass an optional timeout as the last argument to override the default (e.g. NewMoveLogsToFailedBucketJob(env, taskID, ts, sourceCfg, 60*time.Minute)).
+func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig, trigger string, timeout ...time.Duration) amboy.Job {
 	j := makeMoveLogsToFailedBucketJob()
 	j.env = env
 	j.TaskID = taskID
 	j.SourceBucketCfg = sourceBucketCfg
+	j.Trigger = trigger
+	if len(timeout) > 0 {
+		j.Timeout = timeout[0]
+	}
 	jobID := fmt.Sprintf("%s.%s.%s", moveLogsToFailedBucketJobName, taskID, ts)
 	j.SetID(jobID)
 	j.SetScopes([]string{jobID})
 	j.SetEnqueueAllScopes(true)
+	maxTime := fetchTimeout
+	if j.Timeout > 0 {
+		maxTime = j.Timeout
+	}
+	// MaxTime tells the Amboy pool how long this job may run; without it the pool may cancel the job before the S3 move completes.
+	j.UpdateTimeInfo(amboy.JobTimeInfo{MaxTime: maxTime})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(moveLogsToFailedBucketMaxAttempts),
@@ -68,6 +88,21 @@ func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, 
 func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
+	grip.Info(ctx, message.Fields{
+		"message": "failed_bucket_move: job started",
+		"task_id": j.TaskID,
+		"job":     j.ID(),
+		"trigger": j.Trigger,
+	})
+
+	timeout := fetchTimeout
+	if j.Timeout > 0 {
+		timeout = j.Timeout
+	}
 	t, err := task.FindOneId(ctx, j.TaskID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding task '%s'", j.TaskID))
@@ -77,29 +112,29 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 		j.AddError(errors.Errorf("task '%s' not found", j.TaskID))
 		return
 	}
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
 
-	fetchContext, cancel := context.WithTimeout(ctx, fetchTimeout)
+	fetchContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	// Use the source bucket config captured when the job was created rather than the one on
 	// the task config because that has already been updated to the failed bucket so that future
 	// logs are written there directly.
 	if err := t.MoveTestAndTaskLogsToFailedBucket(fetchContext, j.env.Settings(), j.SourceBucketCfg); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "moving logs to failed bucket",
 			"task_id":   t.Id,
 			"execution": t.Execution,
+			"timeout":   timeout.String(),
+			"trigger":   j.Trigger,
 		}))
 		j.AddRetryableError(errors.Wrap(err, "moving logs to failed bucket"))
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   "successfully moved logs to failed bucket",
 		"task_id":   t.Id,
 		"execution": t.Execution,
 		"job":       j.ID(),
+		"trigger":   j.Trigger,
 	})
 }

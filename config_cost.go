@@ -19,6 +19,8 @@ type CostConfig struct {
 	OnDemandDiscount float64 `bson:"on_demand_discount" json:"on_demand_discount" yaml:"on_demand_discount"`
 	// S3Cost holds S3-related cost discount configuration
 	S3Cost S3CostConfig `bson:"s3_cost" json:"s3_cost" yaml:"s3_cost"`
+	// EBSCost holds EBS-related cost discount configuration
+	EBSCost EBSCostConfig `bson:"ebs_cost" json:"ebs_cost" yaml:"ebs_cost"`
 }
 
 // S3UploadCostConfig represents S3 upload cost discount configuration.
@@ -30,6 +32,9 @@ type S3UploadCostConfig struct {
 type S3StorageCostConfig struct {
 	StandardStorageCostDiscount float64 `bson:"standard_storage_cost_discount" json:"standard_storage_cost_discount" yaml:"standard_storage_cost_discount"`
 	IAStorageCostDiscount       float64 `bson:"i_a_storage_cost_discount" json:"i_a_storage_cost_discount" yaml:"i_a_storage_cost_discount"`
+	ArchiveStorageCostDiscount  float64 `bson:"archive_storage_cost_discount" json:"archive_storage_cost_discount" yaml:"archive_storage_cost_discount"`
+	// DefaultMaxArtifactExpirationDays is the fallback retention period used when no lifecycle rule is found for a bucket.
+	DefaultMaxArtifactExpirationDays int `bson:"default_max_artifact_expiration_days" json:"default_max_artifact_expiration_days" yaml:"default_max_artifact_expiration_days"`
 }
 
 // S3CostConfig represents S3 cost configuration with separate upload and storage settings.
@@ -38,11 +43,18 @@ type S3CostConfig struct {
 	Storage S3StorageCostConfig `bson:"storage" json:"storage" yaml:"storage"`
 }
 
+// EBSCostConfig holds EBS-related cost discount configuration.
+type EBSCostConfig struct {
+	// EBSDiscount is the discount rate (0.0-1.0) applied to EBS costs (throughput, storage, etc.).
+	EBSDiscount float64 `bson:"ebs_discount" json:"ebs_discount" yaml:"ebs_discount"`
+}
+
 var (
 	financeConfigFormulaKey             = bsonutil.MustHaveTag(CostConfig{}, "FinanceFormula")
 	financeConfigSavingsPlanDiscountKey = bsonutil.MustHaveTag(CostConfig{}, "SavingsPlanDiscount")
 	financeConfigOnDemandDiscountKey    = bsonutil.MustHaveTag(CostConfig{}, "OnDemandDiscount")
 	financeConfigS3CostKey              = bsonutil.MustHaveTag(CostConfig{}, "S3Cost")
+	financeConfigEBSCostKey             = bsonutil.MustHaveTag(CostConfig{}, "EBSCost")
 )
 
 func (*CostConfig) SectionId() string { return "cost" }
@@ -58,6 +70,7 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			financeConfigSavingsPlanDiscountKey: c.SavingsPlanDiscount,
 			financeConfigOnDemandDiscountKey:    c.OnDemandDiscount,
 			financeConfigS3CostKey:              c.S3Cost,
+			financeConfigEBSCostKey:             c.EBSCost,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -77,6 +90,11 @@ func (c *CostConfig) ValidateAndDefault() error {
 	validateDiscountField(c.S3Cost.Upload.UploadCostDiscount, "S3 upload cost discount", catcher)
 	validateDiscountField(c.S3Cost.Storage.StandardStorageCostDiscount, "S3 standard storage cost discount", catcher)
 	validateDiscountField(c.S3Cost.Storage.IAStorageCostDiscount, "S3 infrequent access storage cost discount", catcher)
+	validateDiscountField(c.S3Cost.Storage.ArchiveStorageCostDiscount, "S3 archive storage cost discount", catcher)
+	validateDiscountField(c.EBSCost.EBSDiscount, "EBS cost discount", catcher)
+	if c.S3Cost.Storage.DefaultMaxArtifactExpirationDays < 0 {
+		catcher.New("default max artifact expiration days must be non-negative")
+	}
 
 	return catcher.Resolve()
 }
@@ -88,5 +106,8 @@ func (c *CostConfig) IsConfigured() bool {
 		c.OnDemandDiscount != 0 ||
 		c.S3Cost.Upload.UploadCostDiscount != 0 ||
 		c.S3Cost.Storage.StandardStorageCostDiscount != 0 ||
-		c.S3Cost.Storage.IAStorageCostDiscount != 0
+		c.S3Cost.Storage.IAStorageCostDiscount != 0 ||
+		c.S3Cost.Storage.ArchiveStorageCostDiscount != 0 ||
+		c.EBSCost.EBSDiscount != 0 ||
+		c.S3Cost.Storage.DefaultMaxArtifactExpirationDays != 0
 }

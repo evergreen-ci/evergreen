@@ -56,7 +56,6 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 		"parent decommission":        parentDecommissionJobs,
 		"periodic notification":      periodicNotificationJobs,
 		"user data done":             userDataDoneJobs,
-		"pod termination":            podTerminationJobs,
 	}
 
 	var allJobs []amboy.Job
@@ -87,7 +86,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 
 	j.ErrorCount = catcher.Len()
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"id":    j.ID(),
 		"type":  j.Type().Name,
 		"queue": "service",

@@ -262,6 +262,7 @@
       "display_name": "test-thirdparty-docker",
       "r": "github_pull_request",
       "status": "success",
+      "display_status_cache": "success",
       "branch": "evergreen",
       "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
@@ -275,6 +276,7 @@
       "display_name": "test-cloud",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
@@ -287,6 +289,7 @@
       "display_name": "generate-lint",
       "r": "github_pull_request",
       "status": "success",
+      "display_status_cache": "success",
       "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
@@ -299,6 +302,7 @@
       "display_name": "lint-service",
       "r": "github_pull_request",
       "status": "failed",
+      "display_status_cache": "failed",
       "build_id": "evergreen_lint_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
@@ -311,6 +315,7 @@
       "display_name": "test-db",
       "r": "github_pull_request",
       "status": "setup-failed",
+      "display_status_cache": "setup-failed",
       "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     },
@@ -323,6 +328,7 @@
       "display_name": "test-agent",
       "r": "github_pull_request",
       "status": "undispatched",
+      "display_status_cache": "undispatched",
       "build_id": "evergreen_ubuntu1604_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
       "display_task_id": ""
     }

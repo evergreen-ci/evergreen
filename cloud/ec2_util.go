@@ -19,6 +19,7 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -38,14 +39,6 @@ const (
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 	ec2TemplateNotFound     = "InvalidLaunchTemplateId.NotFound"
 
-	// EC2InsufficientAddressCapacity means that there are no IP addresses
-	// available to allocate.
-	EC2InsufficientAddressCapacity = "InsufficientAddressCapacity"
-	// ec2InsufficientAddressCapacity means that the account has reached its
-	// limit on the number of elastic IPs it can allocate.
-	EC2AddressLimitExceeded = "AddressLimitExceeded"
-	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
-	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
 
 	r53InvalidInput       = "InvalidInput"
@@ -74,15 +67,8 @@ var (
 	commercialLinuxDistros = []string{"suse"}
 )
 
-type MountPoint struct {
-	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
-	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
-	Size        int32  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
-	Iops        int32  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
-	Throughput  int32  `mapstructure:"throughput" json:"throughput,omitempty" bson:"throughput,omitempty"`
-	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
-	VolumeType  string `mapstructure:"volume_type" json:"volume_type,omitempty" bson:"volume_type,omitempty"`
-}
+// MountPoint is an alias for the shared EC2 mount definition in model/ec2mount.
+type MountPoint = ec2mount.MountPoint
 
 var (
 	// bson fields for the EC2ProviderSettings struct
@@ -103,8 +89,7 @@ var (
 
 // AztoRegion takes an availability zone and returns the region id.
 func AztoRegion(az string) string {
-	// an amazon region is just the availability zone minus the final letter
-	return az[:len(az)-1]
+	return util.AZToRegion(az)
 }
 
 // ec2StateToEvergreenStatus returns a "universal" status code based on EC2's
@@ -125,7 +110,7 @@ func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
 	case types.InstanceStateNameTerminated, types.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
-		grip.Error(message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"message": "got an unknown EC2 state name",
 			"status":  ec2State.Name,
 		})
@@ -300,7 +285,7 @@ func validateUserDataSize(userData, distroID string) error {
 		return nil
 	}
 	err := errors.New("user data size limit exceeded")
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(context.Background(), message.WrapError(err, message.Fields{
 		"size":     len(userData),
 		"max_size": userDataSizeLimit,
 		"distro":   distroID,
@@ -333,7 +318,7 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 		if h.NoExpiration {
 			// This is not a bulk operation for convenience because it's assumed
 			// that the number of unexpirable hosts is small.
-			grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, utility.FromStringPtr(instance.PublicIpAddress), client), message.Fields{
+			grip.Error(ctx, message.WrapError(setHostPersistentDNSName(ctx, env, h, utility.FromStringPtr(instance.PublicIpAddress), client), message.Fields{
 				"message":    "could not update host's persistent DNS name",
 				"op":         "upsert",
 				"dashboard":  "evergreen sleep schedule health",

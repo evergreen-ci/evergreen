@@ -27,11 +27,6 @@ mutation Runners {
         maxRepoRevisionsToSearch: 1
         numNewRepoRevisionsToFetch: 1
       }
-      podLifecycle: {
-        maxParallelPodRequests: 1
-        maxPodDefinitionCleanupRate: 1
-        maxSecretCleanupRate: 1
-      }
       scheduler: {
         acceptableHostIdleTimeSeconds: 1
         cacheDurationSeconds: 1
@@ -83,11 +78,6 @@ mutation Runners {
       maxConcurrentRequests
       maxRepoRevisionsToSearch
       numNewRepoRevisionsToFetch
-    }
-    podLifecycle {
-      maxParallelPodRequests
-      maxPodDefinitionCleanupRate
-      maxSecretCleanupRate
     }
     scheduler {
       acceptableHostIdleTimeSeconds

@@ -69,7 +69,7 @@ func (j *githubAPILimitJob) logInternalAppRateLimit(ctx context.Context) {
 	}
 
 	rateLimitInfo := getRateLimitInfo(limit)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":           "GitHub API rate limit",
 		"remaining":         rateLimitInfo.remaining,
 		"limit":             rateLimitInfo.limit,
@@ -90,7 +90,7 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 	}
 	ghAppsByAppID := map[int64]projectAndAppAuth{}
 
-	pRefs, err := model.FindProjectAndRepoRefsUsingGitHubAppForAPI(ctx)
+	pRefs, err := model.FindAllMergedEnabledTrackedProjectRefs(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding project refs using GitHub app for API"))
 		return
@@ -135,7 +135,7 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 		}
 
 		rateLimitInfo := getRateLimitInfo(limit)
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":           "project GitHub app API rate limit",
 			"app_id":            projectAppAuth.appAuth.AppID,
 			"project_ids":       projectAppAuth.projectIDs,

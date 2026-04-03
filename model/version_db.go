@@ -59,16 +59,12 @@ var (
 	VersionGitTagsTagKey                        = bsonutil.MustHaveTag(GitTag{}, "Tag")
 	VersionCostKey                              = bsonutil.MustHaveTag(Version{}, "Cost")
 	VersionPredictedCostKey                     = bsonutil.MustHaveTag(Version{}, "PredictedCost")
+	VersionS3UsageKey                           = bsonutil.MustHaveTag(Version{}, "S3Usage")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
 func VersionById(id string) db.Q {
 	return db.Query(bson.M{VersionIdKey: id})
-}
-
-// ByIds returns a db.Q object which will find any versions whose _id appears in the given list.
-func VersionByIds(ids []string) db.Q {
-	return db.Query(bson.M{VersionIdKey: bson.M{"$in": ids}})
 }
 
 // All is a query for all versions.
@@ -129,7 +125,6 @@ func BaseVersionByProjectIdAndRevision(projectId, revision string) db.Q {
 			VersionRequesterKey: bson.M{
 				"$in": []string{
 					evergreen.RepotrackerVersionRequester,
-					evergreen.TriggerRequester,
 				},
 			},
 		})

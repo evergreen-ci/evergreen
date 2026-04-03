@@ -168,7 +168,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				msg["head_branch"] = patchDoc.GithubMergeData.HeadBranch
 				msg["head_sha"] = patchDoc.GithubMergeData.HeadSHA
 			}
-			grip.Error(message.WrapError(err, msg))
+			grip.Error(ctx, message.WrapError(err, msg))
 		}
 		j.AddError(err)
 		return
@@ -184,7 +184,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 		}
 		update.Run(ctx)
 		j.AddError(update.Error())
-		grip.Error(message.WrapError(update.Error(), message.Fields{
+		grip.Error(ctx, message.WrapError(update.Error(), message.Fields{
 			"message":            "failed to queue status update",
 			"job":                j.ID(),
 			"patch_id":           j.PatchID,
@@ -231,7 +231,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if err = catcher.Resolve(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":      "failed to build patch document",
 			"job":          j.ID(),
 			"patch_id":     j.PatchID,
@@ -439,7 +439,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if catcher.HasErrors() {
-		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 			"message":     "failed to save subscription, patch will not notify",
 			"job":         j.ID(),
 			"patch_id":    j.PatchID,
@@ -455,7 +455,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":     "failed to finalize patch document",
 				"job":         j.ID(),
 				"patch_id":    j.PatchID,
@@ -466,7 +466,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			return err
 		}
 		if j.IntentType == patch.CliIntentType {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":     "patch creation",
 				"message":       "finalized patch at time of patch creation",
 				"from":          "CLI",
@@ -874,7 +874,7 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -939,7 +939,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, errors.Wrap(err, "checking if GitHub PR testing is disabled")
 	}
 	if flags.GithubPRTestingDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     patchIntentJobName,
 			"message": "GitHub PR testing is disabled, not processing pull request",
 
@@ -949,7 +949,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, errors.New("not processing PR because GitHub PR testing is disabled")
 	}
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -984,7 +984,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	isMember, err := j.isUserAuthorized(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":     "GitHub API failure",
 			"source":      "patch intents",
 			"job":         j.ID(),
@@ -998,7 +998,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		j.gitHubError = gitHubPermissionDenied
 		return false, err
 	} else if !isMember {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":     "user unauthorized to start patch",
 			"user":        patchDoc.GithubPatchData.Author,
 			"source":      "patch intents",
@@ -1064,7 +1064,7 @@ func (j *patchIntentProcessor) getChangedFilenamesForLargePRs(ctx context.Contex
 		// populating the patch's file list (which can cause bugs), it's
 		// preferable to just not show any patch changes at all for such a large
 		// PR.
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":     fmt.Sprintf("GitHub PR is very large (>=%d files) and Evergreen cannot retrieve all of its changed files, refusing to set partial list of changed files for the patch. Patch will not have changed files available.", thirdparty.MaxGitHubPRFilesListLength),
 			"owner":       patchDoc.GithubPatchData.BaseOwner,
 			"repo":        patchDoc.GithubPatchData.BaseRepo,
@@ -1096,7 +1096,7 @@ func (j *patchIntentProcessor) getChangedFilenamesForLargePRs(ctx context.Contex
 
 func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -1177,7 +1177,7 @@ func makeMergeQueueDescription(mergeGroup thirdparty.GithubMergeGroup) string {
 
 func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -1340,7 +1340,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser || githubUser == githubActionsUser {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"job":       j.ID(),
 			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),
 			"source":    "patch intents",
@@ -1354,7 +1354,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	// for the owner/repo specified, however this is okay since for the purposes of this check its to run patches.
 	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrganization, githubUser)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"job":          j.ID(),
 			"message":      "failed to authenticate GitHub PR",
 			"source":       "patch intents",
@@ -1372,7 +1372,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 
 	isAuthorizedForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, requiredOrganization, githubUser)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"job":          j.ID(),
 			"message":      "failed to check if user is an authorized app",
 			"source":       "patch intents",
@@ -1391,7 +1391,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	hasWritePermission, err := thirdparty.GitHubUserHasWritePermission(ctx,
 		patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo, githubUser)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"job":        j.ID(),
 			"message":    "failed to check if user has write permission for repo",
 			"source":     "patch intents",
@@ -1405,30 +1405,34 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 }
 
 func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchDoc *patch.Patch) {
-	var update amboy.Job
 	if j.IntentType == patch.GithubIntentType {
-		update = NewGithubStatusUpdateJobForProcessingError(
+		update := NewGithubStatusUpdateJobForProcessingError(
 			thirdparty.GithubStatusDefaultContext,
 			patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
 			j.gitHubError,
 		)
+		update.Run(ctx)
+		j.AddError(update.Error())
 	} else if j.IntentType == patch.GithubMergeIntentType {
-		update = NewGithubStatusUpdateJobForProcessingError(
-			thirdparty.GithubStatusDefaultContext,
-			patchDoc.GithubMergeData.Org,
-			patchDoc.GithubMergeData.Repo,
-			patchDoc.GithubMergeData.HeadSHA,
-			j.gitHubError,
-		)
+		// For merge queue items, we need to send error statuses for all required checks.
+		rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
+		for _, rule := range rules {
+			update := NewGithubStatusUpdateJobForProcessingError(
+				rule,
+				patchDoc.GithubMergeData.Org,
+				patchDoc.GithubMergeData.Repo,
+				patchDoc.GithubMergeData.HeadSHA,
+				j.gitHubError,
+			)
+			update.Run(ctx)
+			j.AddError(update.Error())
+		}
 	} else {
 		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
 		return
 	}
-	update.Run(ctx)
-
-	j.AddError(update.Error())
 }
 
 // sendGitHubSuccessMessageForIgnoredVariants sends GitHub success messages for variants that were ignored
@@ -1499,7 +1503,7 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 // return it, because we might have permission to send statuses but not to get the rules.
 func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context, owner, repo, branch string) []string {
 	branchProtectionRules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, owner, repo, branch)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"job":      j.ID(),
 		"job_type": j.Type,
 		"message":  "failed to get branch protection rules",
@@ -1510,7 +1514,7 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 	}))
 
 	rulesetRules, err := thirdparty.GetEvergreenRulesetRules(ctx, owner, repo, branch)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"job":      j.ID(),
 		"job_type": j.Type,
 		"message":  "failed to get ruleset rules",
@@ -1531,7 +1535,7 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 // and returns the list of ignored variant names.
 func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project) []string {
 	ignoredVariants := []string{}
-	if j.skipFilteringIgnoredVariants(ctx, patchDoc) {
+	if j.skipFilteringIgnoredVariants(ctx, patchDoc, patchedProject) {
 		return ignoredVariants
 	}
 
@@ -1587,14 +1591,19 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 
 // skipFilteringIgnoredVariants verifies that the patch should apply filtering, i.e. there are changed files,
 // this is a PR or merge queue patch, and path filtering for the merge queue is enabled.
-func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context, patchDoc *patch.Patch) bool {
+func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project) bool {
 	if !patchDoc.IsGithubPRPatch() && !patchDoc.IsMergeQueuePatch() {
 		return true
 	}
 	if patchDoc.IsMergeQueuePatch() {
+		// Check project-level setting first.
+		if patchedProject != nil && patchedProject.DisableMergeQueuePathFiltering {
+			return true
+		}
+		// Check global service flag.
 		flags, err := evergreen.GetServiceFlags(ctx)
 		if err != nil {
-			grip.Debug(message.WrapError(err, message.Fields{
+			grip.Debug(ctx, message.WrapError(err, message.Fields{
 				"message":  "failed to get service flags",
 				"job":      j.ID(),
 				"patch_id": patchDoc.Id.Hex(),
@@ -1602,16 +1611,11 @@ func (j *patchIntentProcessor) skipFilteringIgnoredVariants(ctx context.Context,
 			return true
 		}
 		if flags.UseMergeQueuePathFilteringDisabled {
-			grip.Info(message.Fields{
-				"message":  "merge queue path filtering is disabled",
-				"patch_id": patchDoc.Id.Hex(),
-				"job":      j.ID(),
-			})
 			return true
 		}
 	}
 	if len(patchDoc.FilesChanged()) == 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":     "patch has no changed files, skip path filtering",
 			"patch_id":    patchDoc.Id.Hex(),
 			"intent_type": j.IntentType,

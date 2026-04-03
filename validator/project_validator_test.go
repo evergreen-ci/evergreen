@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -31,15 +31,15 @@ func TestProjectErrorValidators(t *testing.T) {
 	// 2. They must not return any other type of ValidationError level.
 	testProjectValidatorsFunctions(t, projectErrorValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
 		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectErrorValidators should return at least one Error")
-		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings or Notices")
+		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings")
 	})
 }
 
 func TestProjectWarningValidators(t *testing.T) {
-	// projectWarningValidators must only return Warning or Notice.
+	// projectWarningValidators must only return Warning.
 	testProjectValidatorsFunctions(t, projectWarningValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
 		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectWarningValidators should never use Error")
-		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning or Notice")
+		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning")
 	})
 }
 
@@ -1939,7 +1939,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'execTask' defined but not used")
-		assert.Equal(t, Notice, errs[0].Level)
+		assert.Equal(t, Warning, errs[0].Level)
 	})
 	t.Run("DisabledTask", func(t *testing.T) {
 		project := &model.Project{
@@ -1977,7 +1977,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
-		assert.Equal(t, Notice, errs[0].Level)
+		assert.Equal(t, Warning, errs[0].Level)
 	})
 	t.Run("UnusedTaskDisabledForVariant", func(t *testing.T) {
 		project := &model.Project{
@@ -1996,7 +1996,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
-		assert.Equal(t, Notice, errs[0].Level)
+		assert.Equal(t, Warning, errs[0].Level)
 	})
 	t.Run("MultipleVariants", func(t *testing.T) {
 		project := &model.Project{
@@ -2883,6 +2883,63 @@ func TestValidateAliasCoverage(t *testing.T) {
 	}
 }
 
+func TestValidateGitHubAppCheckRuns(t *testing.T) {
+	testutil.Setup()
+	require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+
+	projectWithCheckRuns := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				Tasks: []model.BuildVariantTaskUnit{
+					{
+						Name:           "task",
+						CreateCheckRun: &model.CheckRun{PathToOutputs: "output.json"},
+					},
+				},
+			},
+		},
+	}
+	projectWithoutCheckRuns := &model.Project{}
+
+	ref := &model.ProjectRef{Id: "my-project"}
+	settings := &evergreen.Settings{}
+
+	t.Run("NoCheckRunsNoAppAuth", func(t *testing.T) {
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithoutCheckRuns, ref, false)
+		assert.Empty(t, errs)
+	})
+	t.Run("CheckRunsNoAppAuth", func(t *testing.T) {
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, ref, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "no GitHub app is configured")
+	})
+	t.Run("CheckRunsWithAppAuth", func(t *testing.T) {
+		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
+			Id:    ref.Id,
+			AppID: 12345,
+		}))
+		defer func() {
+			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+		}()
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, ref, false)
+		assert.Empty(t, errs)
+	})
+	t.Run("CheckRunsWithRepoAppAuth", func(t *testing.T) {
+		refWithRepo := &model.ProjectRef{Id: "my-project", RepoRefId: "my-repo"}
+		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
+			Id:    refWithRepo.RepoRefId,
+			AppID: 12345,
+		}))
+		defer func() {
+			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+		}()
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, refWithRepo, false)
+		assert.Empty(t, errs)
+	})
+}
+
 func TestValidateCheckRuns(t *testing.T) {
 	for testName, testCase := range map[string]func(*testing.T, *model.Project){
 		"NoPRAliases": func(t *testing.T, p *model.Project) {
@@ -3155,7 +3212,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3174,7 +3231,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble,
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble,
 				ValidationErrors{})
 		})
 		Convey("an error should be thrown if a task references a distro has a warning", func() {
@@ -3191,9 +3248,9 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
+			So(len(errs.AtLevel(Warning)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55' with the following admin-defined warning(s): 55 is not the best number")
 		})
 		Convey("an error should be thrown if a variant references a distro has a warning", func() {
@@ -3211,9 +3268,9 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
+			So(len(errs.AtLevel(Warning)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55-alias' with the following admin-defined warning: and this is not the best alias")
 		})
 		Convey("an error should be thrown if a referenced distro for a "+
@@ -3226,7 +3283,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3247,7 +3304,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3262,46 +3319,9 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
-		})
-		Convey("an error should be thrown if a referenced distro for a "+
-			"buildvariant has the same name as an existing container", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name:  "enterprise",
-						RunOn: []string{"rhel55"},
-					},
-				},
-			}
-			containerNameMap := map[string]bool{
-				"rhel55": true,
-			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 2)
-			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
-			So(errs[1].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
-		})
-
-		Convey("an error should be thrown if a buildvariant references a mix of distros and containers to run on", func() {
-			project := &model.Project{
-				BuildVariants: []model.BuildVariant{
-					{
-						Name:  "enterprise",
-						RunOn: []string{"rhel55", "c1"},
-					},
-				},
-			}
-			containerNameMap := map[string]bool{
-				"c1": true,
-			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
-			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
 		})
 
 		Convey("no error should be thrown if a referenced distro ID for a "+
@@ -3314,7 +3334,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -3327,7 +3347,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3351,7 +3371,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3365,7 +3385,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
@@ -3398,7 +3418,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("warning should be thrown if single task distro is used"+
@@ -3422,7 +3442,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "project not specified, skipping single task distro validation")
@@ -3454,7 +3474,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "task 'allowedSingleTask' in buildvariant 'bv' runs on a single task distro 'singleTaskDistro' and cannot use the generate tasks")
@@ -3480,7 +3500,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldResemble, ValidationErrors{})
 		})
 
@@ -3504,105 +3524,10 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
+			errs := ensureReferentialIntegrity(project, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "display task 'displayTask' in buildvariant 'bv' references a non-existent execution task 'nonExistentTask'")
-		})
-	})
-}
-
-func TestValidateProjectConfigContainers(t *testing.T) {
-	t.Run("SucceedsWithValidContainers", func(t *testing.T) {
-		pc := model.ProjectConfig{
-			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "small",
-						CPU:      128,
-						MemoryMB: 128,
-					},
-					{
-						Name:     "large",
-						CPU:      2048,
-						MemoryMB: 2048,
-					},
-				},
-			},
-		}
-		errs := validateProjectConfigContainers(t.Context(), &pc)
-		assert.Empty(t, errs)
-	})
-	t.Run("FailsWithInvalidContainerResources", func(t *testing.T) {
-		pc := model.ProjectConfig{
-			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "invalid",
-						CPU:      -10,
-						MemoryMB: -5,
-					},
-				},
-			},
-		}
-		errs := validateProjectConfigContainers(t.Context(), &pc)
-		assert.NotEmpty(t, errs)
-	})
-	t.Run("FailsWithUnnamedContainerSize", func(t *testing.T) {
-		pc := model.ProjectConfig{
-			ProjectConfigFields: model.ProjectConfigFields{
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "",
-						CPU:      128,
-						MemoryMB: 128,
-					},
-				},
-			},
-		}
-		errs := validateProjectConfigContainers(t.Context(), &pc)
-		assert.NotEmpty(t, errs)
-	})
-	t.Run("FailsWithContainerSizeExceedingGlobalLimits", func(t *testing.T) {
-		env := evergreen.GetEnvironment()
-		originalECSConf := env.Settings().Providers.AWS.Pod.ECS
-		defer func() {
-			env.Settings().Providers.AWS.Pod.ECS = originalECSConf
-		}()
-		env.Settings().Providers.AWS.Pod.ECS = evergreen.ECSConfig{
-			MaxCPU:      1024,
-			MaxMemoryMB: 2048,
-		}
-
-		t.Run("CPU", func(t *testing.T) {
-			pc := model.ProjectConfig{
-				ProjectConfigFields: model.ProjectConfigFields{
-					ContainerSizeDefinitions: []model.ContainerResources{
-						{
-							Name:     "xlarge",
-							CPU:      100000000,
-							MemoryMB: 100,
-						},
-					},
-				},
-			}
-			errs := validateProjectConfigContainers(t.Context(), &pc)
-			assert.NotEmpty(t, errs)
-		})
-		t.Run("Memory", func(t *testing.T) {
-			pc := model.ProjectConfig{
-				ProjectConfigFields: model.ProjectConfigFields{
-					ContainerSizeDefinitions: []model.ContainerResources{
-						{
-							Name:     "xlarge",
-							CPU:      100,
-							MemoryMB: 100000000,
-						},
-					},
-				},
-			}
-			errs := validateProjectConfigContainers(t.Context(), &pc)
-			assert.NotEmpty(t, errs)
 		})
 	})
 }
@@ -3723,7 +3648,7 @@ functions:
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldResemble, ValidationErrors{})
 		})
-		Convey("a notice should be thrown if a function call specifies retry_on_failure", func() {
+		Convey("a warning should be thrown if a function call specifies retry_on_failure", func() {
 			exampleYml := `
 tasks:
 - name: example_task
@@ -3743,7 +3668,7 @@ functions:
 			So(proj, ShouldNotBeNil)
 			validationErrs := validatePluginCommands(&proj)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
-			errs := validationErrs.AtLevel(Notice)
+			errs := validationErrs.AtLevel(Warning)
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "cannot specify retry_on_failure with function 'my-func' for task 'example_task'")
 		})
@@ -5251,1038 +5176,6 @@ func TestValidateVersionControl(t *testing.T) {
 
 }
 
-func TestValidateContainers(t *testing.T) {
-	s := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				Pod: evergreen.AWSPodConfig{
-					ECS: evergreen.ECSConfig{
-						AllowedImages: []string{
-							"hadjri/evg-container-self-tests",
-						},
-					},
-				},
-			},
-		},
-	}
-	assert.NoError(t, evergreen.UpdateConfig(t.Context(), testutil.TestConfig()))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
-	}()
-	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
-		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			assert.Empty(t, verrs)
-		},
-		"FailsWithoutContainerName": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Name = ""
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "name must be defined")
-		},
-		"FailsWithoutContainerImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Image = ""
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "image must be defined")
-		},
-		"FailsWithoutContainerWorkingDirectory": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].WorkingDir = ""
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "working directory must be defined")
-		},
-		"FailsWithNotAllowedImage": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Image = "not_allowed"
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "image 'not_allowed' not allowed")
-		},
-		"MustSpecifyEitherContainerSizeOrResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Size = ""
-			p.Containers[0].Resources = nil
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "either size or resources must be defined")
-		},
-		"ContainerSizeAndResourcesAreMutuallyExclusive": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Resources = &model.ContainerResources{
-				MemoryMB: 100,
-				CPU:      1,
-			}
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "size and resources cannot both be defined")
-		},
-		"FailsWithNonexistentContainerSize": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Size = "s2"
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "container size 's2' not found")
-		},
-		"FailsWithNonexistentRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Credential = "nonexistent"
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "credential 'nonexistent' is not defined in project settings")
-		},
-		"FailsWithInvalidOSAndArch": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].System = model.ContainerSystem{
-				OperatingSystem: "oops",
-				CPUArchitecture: "oops",
-			}
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "unrecognized container OS 'oops'")
-			assert.Contains(t, verrs[0].Message, "unrecognized CPU architecture 'oops'")
-		},
-		"FailsWithInvalidContainerResources": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			p.Containers[0].Resources = &model.ContainerResources{
-				MemoryMB: 0,
-				CPU:      -1,
-			}
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "container resource CPU must be a positive integer")
-			assert.Contains(t, verrs[0].Message, "container resource memory MB must be a positive integer")
-		},
-		"FailsWithPodSecretAsReferencedRepoCred": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
-			ref.ContainerSecrets[0].Type = model.ContainerSecretPodSecret
-			verrs := validateContainers(t.Context(), s, p, ref, false)
-			require.Len(t, verrs, 1)
-			assert.Contains(t, verrs[0].Message, "container credential named 'c1' exists but is not valid for use as a repository credential")
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
-
-			p := &model.Project{
-				Identifier: "proj",
-				Containers: []model.Container{
-					{
-						Name:       "c1",
-						Image:      "${image}",
-						WorkingDir: "/root",
-						Size:       "s1",
-						Credential: "c1",
-					},
-				},
-			}
-
-			projVars := model.ProjectVars{
-				Id:   "proj",
-				Vars: map[string]string{"image": "hadjri/evg-container-self-tests"},
-			}
-
-			ref := &model.ProjectRef{
-				Id:         "proj",
-				Identifier: "proj",
-				ContainerSizeDefinitions: []model.ContainerResources{
-					{
-						Name:     "s1",
-						CPU:      1,
-						MemoryMB: 100,
-					},
-					{
-						Name:     "",
-						CPU:      1,
-						MemoryMB: 100,
-					},
-				},
-				ContainerSecrets: []model.ContainerSecret{
-					{
-						Name:       "c1",
-						ExternalID: "external_id",
-						Type:       model.ContainerSecretRepoCreds,
-					},
-				},
-			}
-
-			require.NoError(t, ref.Replace(t.Context()))
-			require.NoError(t, projVars.Insert(t.Context()))
-			tCase(t, p, ref)
-		})
-	}
-}
-
-func TestTVToTaskUnit(t *testing.T) {
-	for testName, testCase := range map[string]struct {
-		expectedTVToTaskUnit map[model.TVPair]model.BuildVariantTaskUnit
-		project              model.Project
-	}{
-		"MapsTasksAndPopulates": {
-			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
-				{TaskName: "setup", Variant: "rhel"}: {
-					Name:     "setup",
-					Variant:  "rhel",
-					Priority: 20,
-				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:    "compile",
-					Variant: "ubuntu",
-					DependsOn: []model.TaskUnitDependency{
-						{
-							Name:    "setup",
-							Variant: "rhel",
-						},
-					},
-				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:    "compile",
-					Variant: "suse",
-					DependsOn: []model.TaskUnitDependency{
-						{
-							Name:    "setup",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			project: model.Project{
-				Tasks: []model.ProjectTask{
-					{
-						Name:            "setup",
-						Priority:        10,
-						ExecTimeoutSecs: 10,
-					}, {
-						Name:            "compile",
-						ExecTimeoutSecs: 10,
-						DependsOn: []model.TaskUnitDependency{
-							{
-								Name:    "setup",
-								Variant: "rhel",
-							},
-						},
-					},
-				},
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "rhel",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:     "setup",
-								Variant:  "rhel",
-								Priority: 20,
-							},
-						},
-					}, {
-						Name: "ubuntu",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "compile",
-								Variant: "ubuntu",
-								DependsOn: []model.TaskUnitDependency{
-									{
-										Name:    "setup",
-										Variant: "rhel",
-									},
-								},
-							},
-						},
-					}, {
-						Name: "suse",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "compile",
-								Variant: "suse",
-								DependsOn: []model.TaskUnitDependency{
-									{
-										Name:    "setup",
-										Variant: "rhel",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		"MapsTaskGroupTasksAndPopulates": {
-			expectedTVToTaskUnit: map[model.TVPair]model.BuildVariantTaskUnit{
-				{TaskName: "setup", Variant: "rhel"}: {
-					Name:     "setup",
-					Variant:  "rhel",
-					Priority: 20,
-				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:          "compile",
-					Variant:       "ubuntu",
-					IsPartOfGroup: true,
-					GroupName:     "compile_group",
-					DependsOn: []model.TaskUnitDependency{
-						{
-							Name:    "setup",
-							Variant: "rhel",
-						},
-					},
-				}, {TaskName: "compile", Variant: "suse"}: {
-					Name:          "compile",
-					Variant:       "suse",
-					IsPartOfGroup: true,
-					GroupName:     "compile_group",
-					DependsOn: []model.TaskUnitDependency{
-						{
-							Name:    "setup",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			project: model.Project{
-				TaskGroups: []model.TaskGroup{
-					{
-						Name:  "compile_group",
-						Tasks: []string{"compile"},
-					},
-				},
-				Tasks: []model.ProjectTask{
-					{
-						Name:            "setup",
-						Priority:        10,
-						ExecTimeoutSecs: 10,
-					}, {
-						Name:            "compile",
-						ExecTimeoutSecs: 10,
-						DependsOn: []model.TaskUnitDependency{
-							{
-								Name:    "setup",
-								Variant: "rhel",
-							},
-						},
-					},
-				},
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "rhel",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:     "setup",
-								Variant:  "rhel",
-								Priority: 20,
-							},
-						},
-					}, {
-						Name: "ubuntu",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "compile_group",
-								Variant: "ubuntu",
-							},
-						},
-					}, {
-						Name: "suse",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "compile_group",
-								Variant: "suse",
-							},
-						},
-					},
-				},
-			},
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			tvToTaskUnit := tvToTaskUnit(&testCase.project)
-			assert.Len(t, tvToTaskUnit, len(testCase.expectedTVToTaskUnit))
-			for expectedTV := range testCase.expectedTVToTaskUnit {
-				assert.Contains(t, tvToTaskUnit, expectedTV)
-				taskUnit := tvToTaskUnit[expectedTV]
-				expectedTaskUnit := testCase.expectedTVToTaskUnit[expectedTV]
-				assert.Equal(t, expectedTaskUnit.Name, taskUnit.Name)
-				assert.Equal(t, expectedTaskUnit.IsGroup, taskUnit.IsGroup, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
-				assert.Equal(t, expectedTaskUnit.IsPartOfGroup, taskUnit.IsPartOfGroup, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
-				assert.Equal(t, expectedTaskUnit.GroupName, taskUnit.GroupName, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
-				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
-				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
-				assert.Equal(t, expectedTaskUnit.Priority, taskUnit.Priority)
-				missingActual, missingExpected := utility.StringSliceSymmetricDifference(expectedTaskUnit.RunOn, taskUnit.RunOn)
-				assert.Empty(t, missingActual)
-				assert.Empty(t, missingExpected)
-				assert.Len(t, taskUnit.DependsOn, len(expectedTaskUnit.DependsOn))
-				for _, dep := range expectedTaskUnit.DependsOn {
-					assert.Contains(t, taskUnit.DependsOn, dep)
-				}
-				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
-				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)
-			}
-		})
-	}
-}
-
-func TestValidateTVDependsOnTV(t *testing.T) {
-	for testName, testCase := range map[string]struct {
-		dependedOnTask model.TVPair
-		dependentTask  model.TVPair
-		statuses       []string
-		buildVariants  []model.BuildVariant
-		expectError    bool
-	}{
-		"FindsDependency": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B"},
-							},
-						},
-						{
-							Name:    "B",
-							Variant: "ubuntu",
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"FindsDependencyWithoutExplicitBV": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							DependsOn: []model.TaskUnitDependency{{Name: "B"}},
-						},
-						{
-							Name:    "B",
-							Variant: "ubuntu",
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"FindsDependencyTransitively": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name: "B",
-								},
-							},
-						},
-						{
-							Name:    "B",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name:    "C",
-									Variant: "rhel",
-								},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "C",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"FailsForNoDependency": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"FailsIfDependencySkipsPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name:    "B",
-									Variant: "ubuntu",
-								},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"FailsIfIntermediateDependencySkipsPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name: "B",
-								},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "C", Variant: "rhel"},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{Name: "C", Variant: "rhel"},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"FailsIfDependencySkipsNonPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name:    "B",
-									Variant: "ubuntu",
-								},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"FailsIfIntermediateDependencySkipsNonPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name: "B",
-								},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							PatchOnly: utility.TruePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name:    "C",
-									Variant: "rhel",
-								},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "C",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"FailsIfDependencyIsPatchOptional": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name:          "B",
-									Variant:       "ubuntu",
-									PatchOptional: true,
-								},
-							},
-						},
-						{
-							Name:    "B",
-							Variant: "ubuntu",
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"FailsIfIntermediateDependencyIsPatchOptional": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:    "B",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "C", Variant: "rhel", PatchOptional: true},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "C",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"OnlyLastDependencyRequiresSuccessStatus": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			statuses: []string{
-				evergreen.TaskSucceeded,
-				"",
-			},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Status: evergreen.TaskFailed},
-							},
-						},
-						{
-							Name:    "B",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "C", Variant: "rhel"},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "C",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"FailsIfDependencyDoesNotRequireSuccessStatus": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			statuses: []string{
-				evergreen.TaskSucceeded,
-				"",
-			},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name:    "B",
-									Variant: "ubuntu",
-									Status:  evergreen.TaskFailed,
-								},
-							},
-						},
-						{Name: "B", Variant: "ubuntu"},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"FailsIfLastDependencyDoesNotRequireSuccessStatus": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			statuses: []string{
-				evergreen.TaskSucceeded,
-				"",
-			},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name: "B",
-								},
-							},
-						},
-						{
-							Name:    "B",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{
-									Name:    "C",
-									Variant: "rhel",
-									Status:  evergreen.TaskFailed,
-								},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "C",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"DependencyCanSkipPatchesIfSourceSkipsPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"IntermediateDependencyCanSkipPatchesIfSourceSkipsPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B"},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "C", Variant: "rhel", Status: evergreen.TaskFailed},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "C",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"DependencyCanSkipNonPatchesIfSourceSkipsNonPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							PatchOnly: utility.TruePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							PatchOnly: utility.TruePtr(),
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"IntermediateDependencyCanSkipNonPatchesIfSourceSkipsNonPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "C", Variant: "rhel"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							PatchOnly: utility.TruePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B"},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							PatchOnly: utility.TruePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "C", Variant: "rhel"},
-							},
-						},
-					},
-				},
-				{
-					Name: "rhel",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "C",
-							Variant: "rhel",
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"DependencySkipsGitTagsIfSourceRequiresPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							PatchOnly: utility.TruePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:       "B",
-							Variant:    "ubuntu",
-							GitTagOnly: utility.TruePtr(),
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"DependencySkipsGitTagsIfSourceRequiresNonPatches": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:       "B",
-							Variant:    "ubuntu",
-							GitTagOnly: utility.TruePtr(),
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"DependencySkipsGitTagsIfNotAllowedForGitTags": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:      "A",
-							Variant:   "ubuntu",
-							Patchable: utility.FalsePtr(),
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:           "B",
-							Variant:        "ubuntu",
-							AllowForGitTag: utility.FalsePtr(),
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"DependencyIncludesGitTagsIfAllowed": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:           "B",
-							Variant:        "ubuntu",
-							AllowForGitTag: utility.TruePtr(),
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"DependencySkipsPatchIfSourceIncludesGitTags": {
-			dependentTask:  model.TVPair{TaskName: "A", Variant: "ubuntu"},
-			dependedOnTask: model.TVPair{TaskName: "B", Variant: "ubuntu"},
-			buildVariants: []model.BuildVariant{
-				{
-					Name: "ubuntu",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    "A",
-							Variant: "ubuntu",
-							DependsOn: []model.TaskUnitDependency{
-								{Name: "B", Variant: "ubuntu"},
-							},
-						},
-						{
-							Name:      "B",
-							Variant:   "ubuntu",
-							PatchOnly: utility.TruePtr(),
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			err := validateTVDependsOnTV(
-				testCase.dependentTask,
-				testCase.dependedOnTask,
-				testCase.statuses,
-				&model.Project{BuildVariants: testCase.buildVariants},
-			)
-			if testCase.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
 func TestValidateTaskGroupsInBV(t *testing.T) {
 	tests := map[string]struct {
 		project        model.Project
@@ -6454,7 +5347,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, []string{}, evergreen.ProjectTasksPair{}, nil)
+			errs := ensureReferentialIntegrity(&testCase.project, []string{}, []string{}, []string{}, evergreen.ProjectTasksPair{}, nil)
 			if testCase.expectErr {
 				assert.Equal(t, testCase.expectedErrMsg, errs[0].Message)
 			} else {

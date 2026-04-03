@@ -35,22 +35,22 @@ func TestParameterManager(t *testing.T) {
 			}
 			t.Run("GetPrefixedName", func(t *testing.T) {
 				t.Run("PrefixesBasename", func(t *testing.T) {
-					assert.Equal(t, "/prefix/basename", pm.getPrefixedName("basename"))
+					assert.Equal(t, "/prefix/basename", pm.GetPrefixedName("basename"))
 				})
 				t.Run("PrefixesPartialName", func(t *testing.T) {
-					assert.Equal(t, "/prefix/path/to/basename", pm.getPrefixedName("/path/to/basename"))
+					assert.Equal(t, "/prefix/path/to/basename", pm.GetPrefixedName("/path/to/basename"))
 				})
 				t.Run("PrefixesPartialNamesWithoutLeadingSlash", func(t *testing.T) {
-					assert.Equal(t, "/prefix/path/to/basename", pm.getPrefixedName("path/to/basename"))
+					assert.Equal(t, "/prefix/path/to/basename", pm.GetPrefixedName("path/to/basename"))
 				})
 				t.Run("NoopsForAlreadyPrefixedName", func(t *testing.T) {
-					assert.Equal(t, "/prefix/path/to/basename", pm.getPrefixedName("/prefix/path/to/basename"))
+					assert.Equal(t, "/prefix/path/to/basename", pm.GetPrefixedName("/prefix/path/to/basename"))
 				})
 			})
 
 			t.Run("GetBasename", func(t *testing.T) {
 				t.Run("ParsesBasenameFromFullNameWithPrefix", func(t *testing.T) {
-					fullName := pm.getPrefixedName("basename")
+					fullName := pm.GetPrefixedName("basename")
 					assert.Equal(t, "/prefix/basename", fullName)
 					assert.Equal(t, "basename", GetBasename(fullName))
 				})

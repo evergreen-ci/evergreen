@@ -457,7 +457,7 @@ func UpsertAliasesForProject(ctx context.Context, aliases []ProjectAlias, projec
 		}
 		catcher.Add(aliases[i].Upsert(ctx))
 	}
-	grip.Debug(message.WrapError(catcher.Resolve(), message.Fields{
+	grip.Debug(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 		"message":    "problem getting aliases",
 		"project_id": projectId,
 	}))

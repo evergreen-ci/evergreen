@@ -58,16 +58,6 @@ const (
 	githubAuthMethodAttribute  = "evergreen.github.auth_method"
 )
 
-var UnblockedGithubStatuses = []string{
-	githubPRBehind,
-	githubPRClean,
-	githubPRDirty,
-	githubPRDraft,
-	githubPRHasHooks,
-	githubPRUnknown,
-	githubPRUnstable,
-}
-
 var githubWritePermissions = []string{
 	GithubPermissionAdmin,
 	GithubPermissionWrite,
@@ -83,20 +73,6 @@ var allGitHubPermissions = []string{
 }
 
 const (
-	// All PR statuses except for "blocked" based on statuses listed here:
-	// https://docs.github.com/en/graphql/reference/enums#mergestatestatus
-	// Because the pr.MergeableState is not documented, it can change without
-	// notice. That's why we want to only allow fields we know to be unblocked
-	// rather than simply blocking the "blocked" status. That way if it does
-	// change, it doesn't fail silently.
-	githubPRBehind   = "behind"
-	githubPRClean    = "clean"
-	githubPRDirty    = "dirty"
-	githubPRDraft    = "draft"
-	githubPRHasHooks = "has_hooks"
-	githubPRUnknown  = "unknown"
-	githubPRUnstable = "unstable"
-
 	githubCheckRunSuccess        = "success"
 	githubCheckRunFailure        = "failure"
 	githubCheckRunSkipped        = "skipped"
@@ -218,6 +194,10 @@ type GithubMergeGroup struct {
 	// together, so there are as many commits as there are PRs in the merge
 	// group. This is only the title of the first commit in the merge group.
 	HeadCommit string `bson:"head_commit"`
+	// HeadCommitDate is the timestamp of the head commit. GitHub creates the
+	// merge group commit when adding a PR to the queue, so this approximates
+	// when the PR entered the merge queue.
+	HeadCommitDate time.Time `bson:"head_commit_date,omitempty"`
 
 	// RemovedFromQueueAt is set when GitHub sends a "destroyed" MergeGroupEvent,
 	// indicating the patch is no longer in the merge queue. This is independent
@@ -228,13 +208,27 @@ type GithubMergeGroup struct {
 	// Possible values: "merged" (successfully merged), "invalidated" (tests failed),
 	// or "dequeued" (manually removed by user).
 	RemovalReason string `bson:"removal_reason,omitempty"`
+
+	// GitRefNotFound indicates that a git operation failed because the merge queue
+	// ref was deleted. This can happen for any removal reason (invalidated, dequeued,
+	// or merged) when GitHub deletes the ref before tasks complete.
+	GitRefNotFound bool `bson:"git_ref_not_found,omitempty"`
+
+	// InvalidatedByUpstream indicates this patch was removed from the queue because
+	// an item ahead of it in the merge queue failed, not because its own tests failed.
+	// This is set when GitHub's removal reason is "invalidated" AND one of the following
+	// is true: no version was created yet, the version is still running, it was removed
+	// before the finish time, the version succeeded or GitRefNotFound is set (to account
+	// for races where the webhook arrives after we've tried to clone and failed because
+	// the ref was already invalidated and deleted because the failure in this case is
+	// not the task's fault).
+	InvalidatedByUpstream bool `bson:"invalidated_by_upstream,omitempty"`
 }
 
 const (
 	// GitHub merge queue removal reasons
 	MergeQueueReasonInvalidated = "invalidated" // Status checks failed
 	MergeQueueReasonMerged      = "merged"      // Successfully merged
-	MergeQueueReasonDequeued    = "dequeued"    // Manually removed
 
 	// Merge queue status values for metrics
 	MergeQueueStatusSuccess = "success" // Successfully completed/merged
@@ -339,7 +333,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(req.Context(), message.WrapError(err, message.Fields{
 					"message":   "EOF error from github",
 					"method":    req.Method,
 					"url":       url,
@@ -348,13 +342,13 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 				return true
 			}
 			temporary := utility.IsTemporaryError(err)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(req.Context(), message.WrapError(err, message.Fields{
 				"message":   "failed trying to call github",
 				"method":    req.Method,
 				"url":       url,
 				"temporary": temporary,
 			}))
-			grip.InfoWhen(temporary, message.Fields{
+			grip.InfoWhen(req.Context(), temporary, message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   "error is temporary",
 				"caller":    caller,
@@ -364,7 +358,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp == nil {
-			grip.Info(message.Fields{
+			grip.Info(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   "resp is nil in githubShouldRetry",
 				"caller":    caller,
@@ -378,7 +372,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp.StatusCode >= http.StatusBadRequest {
-			grip.Error(message.Fields{
+			grip.Error(req.Context(), message.Fields{
 				"message": "bad response code from github",
 				"method":  req.Method,
 				"url":     url,
@@ -392,7 +386,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if resp.StatusCode == http.StatusBadGateway {
-			grip.Info(message.Fields{
+			grip.Info(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusBadGateway),
 				"caller":    caller,
@@ -402,7 +396,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		}
 
 		if config.retry404 && resp.StatusCode == http.StatusNotFound {
-			grip.Info(message.Fields{
+			grip.Info(req.Context(), message.Fields{
 				"ticket":    GithubInvestigation,
 				"message":   fmt.Sprintf("hit %d in githubShouldRetry", http.StatusNotFound),
 				"caller":    caller,
@@ -419,7 +413,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
 func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
-	grip.Info(message.Fields{
+	grip.Info(context.Background(), message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
 		"caller":  caller,
@@ -470,8 +464,8 @@ func RevokeInstallationToken(ctx context.Context, token string) error {
 	))
 	defer span.End()
 
-	// Ignore unauthorized responses since the token may have already been revoked.
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized}})
+	// Ignore unauthorized and not found responses since the token may have already been revoked or expired.
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized, http.StatusNotFound}})
 	defer githubClient.Close()
 	resp, err := githubClient.Apps.RevokeInstallationToken(ctx)
 	if resp != nil {
@@ -493,7 +487,7 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 
 	if settings.AuthConfig.Github == nil {
 		settings = evergreen.GetEnvironment().Settings()
-		grip.Info("no Github settings in auth config, using cached settings")
+		grip.Info(ctx, "no Github settings in auth config, using cached settings")
 	}
 
 	return githubapp.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, settings, defaultGitHubAPIRequestLifetime, opts)
@@ -538,7 +532,7 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 		}
 	} else {
 		errMsg := fmt.Sprintf("nil response from query for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
-		grip.Error(errMsg)
+		grip.Error(ctx, errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
 
@@ -576,7 +570,7 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 			return nil, err
 		}
 
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":           "could not retrieve GitHub file using git, falling back to using GitHub API to retrieve it",
 			"owner":             owner,
 			"repo":              repo,
@@ -638,7 +632,7 @@ func GetGithubFile(ctx context.Context, owner, repo, path, ref string, ghAppAuth
 			}
 		} else {
 			errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s': %v", owner, repo, path, err)
-			grip.Error(errMsg)
+			grip.Error(ctx, errMsg)
 			return APIResponseError{errMsg}
 		}
 
@@ -667,7 +661,7 @@ func runGitHubOp(ctx context.Context, owner, repo, caller string, ghAppAuth *git
 			return nil
 		}
 
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":    "GitHub operation with external GitHub app failed, falling back to attempt with internal app",
 			"caller":     caller,
 			"owner":      owner,
@@ -730,7 +724,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if flags.GithubStatusAPIDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     input.Caller,
 			"message": "GitHub status updates are disabled, not updating status",
 		})
@@ -771,8 +765,8 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		return errors.Wrap(err, "setting priority")
 	}
 
-	sender.Send(c)
-	grip.Info(message.Fields{
+	sender.Send(ctx, c)
+	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called github status send",
 		"caller":  "github check subscriptions",
@@ -841,7 +835,7 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 		}
 	} else {
 		apiErr := errors.Errorf("nil response from merge base commit response for '%s/%s'@%s..%s: %v", owner, repo, baseRevision, currentCommitHash, err)
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Error(ctx, message.WrapError(apiErr, message.Fields{
 			"message":             "failed to compare commits to determine order of commits",
 			"op":                  "getCommitComparison",
 			"github_error":        fmt.Sprint(err),
@@ -887,7 +881,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "requesting commit from github",
 		"commit":  githash,
 		"repo":    owner + "/" + repo,
@@ -902,7 +896,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		}
 	} else {
 		err = errors.Wrapf(err, "nil response from repo %s/%s for %s", owner, repo, githash)
-		grip.Error(message.WrapError(errors.Cause(err), message.Fields{
+		grip.Error(ctx, message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
 			"repo":    owner + "/" + repo,
 			"message": "problem querying repo",
@@ -920,7 +914,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	if commit != nil && commit.SHA != nil {
 		msg["commit"] = *commit.SHA
 	}
-	grip.Debug(msg)
+	grip.Debug(ctx, msg)
 
 	if commit == nil {
 		return nil, errors.New("commit not found in github")
@@ -932,43 +926,6 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	// if there are no strong references to them.
 	ghCommitCache.Put(ctx, ghCommitKey, commit, time.Now().Add(time.Hour*24))
 	return commit, nil
-}
-
-// GetBranchEvent gets the head of the a given branch via an API call to GitHub
-func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Branch, error) {
-	caller := "GetBranchEvent"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, branch),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-
-	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
-
-	branchEvent, resp, err := githubClient.Repositories.GetBranch(ctx, owner, repo, branch, 0)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from github for '%s/%s': branch: '%s': %v", owner, repo, branch, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
-
-	return branchEvent, nil
 }
 
 // githubRequest performs the specified http request. If the oauth token field is empty it will not use oauth
@@ -1007,20 +964,20 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 // tryGithubPost posts the data to the Github api endpoint with the url given
 func tryGithubPost(ctx context.Context, url string, oauthToken string, data any) (resp *http.Response, err error) {
 	err = utility.Retry(ctx, func() (bool, error) {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "Attempting GitHub API POST",
 			"ticket":  GithubInvestigation,
 			"url":     url,
 		})
 		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
 		if err != nil {
-			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
+			grip.Errorf(ctx, "failed trying to call github POST on %s: %+v", url, err)
 			return true, err
 		}
 		if resp.StatusCode == http.StatusUnauthorized {
 			err = errors.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
 			defer resp.Body.Close()
-			grip.Error(err)
+			grip.Error(ctx, err)
 			return false, err
 		}
 		if resp.StatusCode != http.StatusOK {
@@ -1142,6 +1099,49 @@ func GetTaggedCommitFromGithub(ctx context.Context, owner, repo, tag string) (st
 	return sha, nil
 }
 
+// MergeQueueRefExists checks if a GitHub ref exists. The ref should be "heads/branch-name"
+// (e.g. "heads/gh-readonly-queue/main/pr-515-abc123").
+// If token is non-empty, it will be used for authentication. Otherwise, an installation
+// token is created from Evergreen config (requires server environment).
+func MergeQueueRefExists(ctx context.Context, owner, repo, ref string, token string) (bool, error) {
+	caller := "MergeQueueRefExists"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, ref),
+	))
+	defer span.End()
+
+	var authToken string
+	if token != "" {
+		authToken = token
+	} else {
+		var err error
+		authToken, err = getInstallationToken(ctx, owner, repo, nil)
+		if err != nil {
+			return false, errors.Wrap(err, "getting installation token")
+		}
+	}
+
+	githubClient := getGithubClient(authToken, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	_, resp, err := githubClient.Git.GetRef(ctx, owner, repo, ref)
+	if resp != nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		if err != nil {
+			return false, parseGithubErrorResponse(resp)
+		}
+	}
+	if err != nil {
+		return false, errors.Wrapf(err, "checking if ref '%s' exists", ref)
+	}
+	return true, nil
+}
+
 func getObjectTag(ctx context.Context, owner, repo, sha string) (*github.Tag, error) {
 	caller := "getObjectTag"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1196,7 +1196,7 @@ func userInTeam(ctx context.Context, teams []string, org, user, owner, repo stri
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "number of teams in IsUserInGithubTeam",
 		"teams":   len(teams),
@@ -1512,107 +1512,8 @@ func GetPullRequestMergeBase(ctx context.Context, pr *github.PullRequest) (strin
 	repo := pr.GetBase().GetRepo().GetName()
 	baseSHA := pr.GetBase().GetSHA()
 	headSHA := pr.GetHead().GetSHA()
-	prNum := pr.GetNumber()
 
-	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
-	if err == nil {
-		return mergeBase, nil
-	}
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
-		"owner":      owner,
-		"repo":       repo,
-		"head":       headSHA,
-		"head_label": pr.GetHead().GetLabel(),
-		"pr_num":     prNum,
-		"base":       baseSHA,
-		"base_label": pr.GetBase().GetLabel(),
-	}))
-
-	return getPullRequestFallback(ctx, owner, repo, prNum)
-}
-
-// getPullRequestFallback is a secondary way of determining the merge base of a PR via API. A known case where
-// we expect GetGithubMergeBaseRevision to fail is when trying to find the merge base of a PR based on a private fork
-// that our GitHub app is not installed on.
-func getPullRequestFallback(ctx context.Context, owner, repo string, prNum int) (string, error) {
-	caller := "getPullRequestFallback"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
-	defer githubClient.Close()
-
-	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNum, nil)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return "", err
-	}
-
-	if len(commits) == 0 {
-		return "", errors.New("No commits received from github")
-	}
-	if commits[0].GetSHA() == "" {
-		return "", errors.New("hash is missing from pull request commit list")
-	}
-
-	commit, err := getCommit(ctx, owner, repo, *commits[0].SHA)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting commit on %s/%s with SHA '%s'", owner, repo, *commits[0].SHA)
-	}
-	if len(commit.Parents) == 0 {
-		return "", errors.New("can't find pull request branch point")
-	}
-	if commit.Parents[0].GetSHA() == "" {
-		return "", errors.New("parent hash is missing")
-	}
-
-	return commit.Parents[0].GetSHA(), nil
-}
-
-func getCommit(ctx context.Context, owner, repo, sha string) (*github.RepositoryCommit, error) {
-	caller := "getCommit"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, sha),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
-	defer githubClient.Close()
-
-	commit, resp, err := githubClient.Repositories.GetCommit(ctx, owner, repo, sha, nil)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return nil, err
-	}
-	if commit == nil {
-		return nil, errors.New("couldn't find commit")
-	}
-
-	return commit, nil
+	return GetGithubMergeBaseRevision(ctx, owner, repo, baseSHA, headSHA)
 }
 
 func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNumber int) (*github.PullRequest, error) {
@@ -1779,77 +1680,6 @@ func getPatchSummariesFromCommitFiles(files []*github.CommitFile) []Summary {
 		summaries = append(summaries, summary)
 	}
 	return summaries
-}
-
-func ValidatePR(pr *github.PullRequest) error {
-	if pr == nil {
-		return errors.New("No PR provided")
-	}
-
-	catcher := grip.NewSimpleCatcher()
-	if missingUserLogin(pr) {
-		catcher.Add(errors.New("no valid user"))
-	}
-	if missingBaseSHA(pr) {
-		catcher.Add(errors.New("no valid base SHA"))
-	}
-	if missingBaseRef(pr) {
-		catcher.Add(errors.New("no valid base ref"))
-	}
-	if missingBaseRepoName(pr) {
-		catcher.Add(errors.New("no valid base repo name"))
-	}
-	if missingBaseRepoFullName(pr) {
-		catcher.Add(errors.New("no valid base repo name"))
-	}
-	if missingBaseRepoOwnerLogin(pr) {
-		catcher.Add(errors.New("no valid base repo owner login"))
-	}
-	if missingHeadSHA(pr) {
-		catcher.Add(errors.New("no valid head SHA"))
-	}
-	if pr.GetNumber() == 0 {
-		catcher.Add(errors.New("no valid pr number"))
-	}
-	if pr.GetTitle() == "" {
-		catcher.Add(errors.New("no valid title"))
-	}
-	if pr.GetHTMLURL() == "" {
-		catcher.Add(errors.New("no valid HTML URL"))
-	}
-	if pr.Merged == nil {
-		catcher.Add(errors.New("no valid merged status"))
-	}
-
-	return catcher.Resolve()
-}
-
-func missingUserLogin(pr *github.PullRequest) bool {
-	return pr.User == nil || pr.User.GetLogin() == ""
-}
-
-func missingBaseSHA(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.GetSHA() == ""
-}
-
-func missingBaseRef(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.GetRef() == ""
-}
-
-func missingBaseRepoName(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.GetName() == "" || pr.Base.Repo.GetFullName() == ""
-}
-
-func missingBaseRepoFullName(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.GetFullName() == ""
-}
-
-func missingBaseRepoOwnerLogin(pr *github.PullRequest) bool {
-	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.Owner == nil || pr.Base.Repo.Owner.GetLogin() == ""
-}
-
-func missingHeadSHA(pr *github.PullRequest) bool {
-	return pr.Head == nil || pr.Head.GetSHA() == ""
 }
 
 // PostCommentToPullRequest posts the given comment to the associated PR.
@@ -2028,8 +1858,11 @@ func makeCheckRunName(task *task.Task) string {
 	return fmt.Sprintf("%s/%s", task.BuildVariantDisplayName, task.DisplayName)
 }
 
-// CreateCheckRun creates a checkRun and returns a Github CheckRun object
-func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
+// CreateCheckRun creates a checkRun and returns a Github CheckRun object.
+// If ghAppAuth is provided, it will first attempt to use the project's GitHub app
+// credentials. If that fails or no app is available, it falls back to using the
+// internal app for installation tokens.
+func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, task *task.Task, output *github.CheckRunOutput, ghAppAuth *githubapp.GithubAppAuth) (*github.CheckRun, error) {
 	caller := "createCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -2037,14 +1870,6 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
 
 	opts := github.CreateCheckRunOptions{
 		Name:        makeCheckRunName(task),
@@ -2058,21 +1883,33 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 		DetailsURL:  utility.ToStringPtr(makeTaskLink(uiBase, task.Id, task.Execution)),
 	}
 
-	checkRun, resp, err := githubClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
+	var checkRun *github.CheckRun
+	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
+		var resp *github.Response
+		var opErr error
+		checkRun, resp, opErr = ghClient.Checks.CreateCheckRun(ctx, owner, repo, opts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if opErr != nil {
+			return errors.Wrap(opErr, "creating checkRun")
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "creating checkRun")
+		return nil, err
 	}
 
 	return checkRun, nil
 }
 
-// UpdateCheckRun updates a checkRun and returns a Github CheckRun object
-// UpdateCheckRunOptions must specify a name for the check run
-func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID int64, task *task.Task, output *github.CheckRunOutput) (*github.CheckRun, error) {
+// UpdateCheckRun updates a checkRun and returns a Github CheckRun object.
+// UpdateCheckRunOptions must specify a name for the check run.
+// If ghAppAuth is provided, it will first attempt to use the project's GitHub app
+// credentials. If that fails or no app is available, it falls back to using the
+// internal app for installation tokens.
+func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID int64, task *task.Task, output *github.CheckRunOutput, ghAppAuth *githubapp.GithubAppAuth) (*github.CheckRun, error) {
 	caller := "updateCheckrun"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -2096,19 +1933,20 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 		Output:     output,
 	}
 
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
-
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
+	var checkRun *github.CheckRun
+	err := runGitHubOp(ctx, owner, repo, caller, ghAppAuth, func(ctx context.Context, ghClient *githubapp.GitHubClient) error {
+		var resp *github.Response
+		var opErr error
+		checkRun, resp, opErr = ghClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
+		if resp != nil {
+			defer resp.Body.Close()
+			span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		}
+		if opErr != nil {
+			return opErr
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "updating checkRun")
 	}

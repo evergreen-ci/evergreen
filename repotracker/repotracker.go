@@ -92,7 +92,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
 		// projects.
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":            "skip disabled project",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -120,7 +120,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		}
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"runner":             RunnerName,
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -129,7 +129,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		})
 		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
 	} else {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":            "found last recorded revision",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -139,7 +139,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		// if the projectRef has a repotracker error then don't get the revisions
 		if projectRef.RepotrackerError != nil {
 			if projectRef.RepotrackerError.Exists {
-				grip.Warning(message.Fields{
+				grip.Warning(ctx, message.Fields{
 					"runner":             RunnerName,
 					"message":            "repotracker error for base revision",
 					"project":            projectRef.Id,
@@ -157,7 +157,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	}
 
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "problem fetching revisions for repository",
 			"runner":             RunnerName,
 			"project":            projectRef.Id,
@@ -167,7 +167,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	}
 
 	if len(revisions) > 0 {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":            "storing revisions",
 			"project":            repoTracker.ProjectRef.Id,
 			"project_identifier": repoTracker.ProjectRef.Identifier,
@@ -176,7 +176,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		})
 		err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "problem storing revisions for repository",
 				"runner":             RunnerName,
 				"project":            projectRef.Id,
@@ -188,7 +188,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 
 	versions, err := model.DoProjectActivation(ctx, projectRef, time.Now())
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -198,7 +198,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 	if len(versions) > 0 {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":            "activated recent commit(s) for project",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -224,11 +224,11 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 	// least to most recent.
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
-		grip.Infof("Processing revision %s in project %s", revision, ref.Id)
+		grip.Infof(ctx, "Processing revision %s in project %s", revision, ref.Id)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
 		existingVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(ref.Id, revisions[i].Revision))
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "problem looking up version for project",
 			"runner":             RunnerName,
 			"project":            ref.Id,
@@ -237,7 +237,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}))
 
 		if existingVersion != nil {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":            "skipping creating version because it already exists",
 				"runner":             RunnerName,
 				"project":            ref.Id,
@@ -263,7 +263,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				if len(versionErrs.Errors) > 0 {
 					stubVersion, dbErr := ShellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
-						grip.Error(message.WrapError(dbErr, message.Fields{
+						grip.Error(ctx, message.WrapError(dbErr, message.Fields{
 							"message":            "error creating shell version",
 							"runner":             RunnerName,
 							"project":            ref.Id,
@@ -274,7 +274,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					stubVersion.Errors = versionErrs.Errors
 					stubVersion.Warnings = versionErrs.Warnings
 					err = stubVersion.Insert(ctx)
-					grip.Error(message.WrapError(err, message.Fields{
+					grip.Error(ctx, message.WrapError(err, message.Fields{
 						"message":            "error inserting shell version",
 						"runner":             RunnerName,
 						"project":            ref.Id,
@@ -285,7 +285,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					continue
 				}
 			} else {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":            "error getting project config",
 					"runner":             RunnerName,
 					"project":            ref.Id,
@@ -295,7 +295,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 				return err
 			}
 		} else if pInfo.Project == nil {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":            fmt.Sprintf("unable to find project config for revision %s", revision),
 				"runner":             RunnerName,
 				"project":            ref.Id,
@@ -311,7 +311,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		// Always get changed files for build variant filtering
 		filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error checking GitHub for changed files",
 				"runner":             RunnerName,
 				"project":            ref.Id,
@@ -336,7 +336,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 		v, err := CreateVersionFromConfig(ctx, projectInfo, metadata, ignore, versionErrs)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating version",
 				"runner":             RunnerName,
 				"project":            ref.Id,
@@ -349,7 +349,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating build break subscriptions",
 				"runner":             RunnerName,
 				"project":            ref.Id,
@@ -360,7 +360,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 		if ref.IsGithubChecksEnabled() {
 			if err = addGithubCheckSubscriptions(ctx, v); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":            "error adding github check subscriptions",
 					"runner":             RunnerName,
 					"project":            ref.Id,
@@ -373,7 +373,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		_, err = model.CreateManifest(ctx, v, pInfo.Project.Modules, ref)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
 				"runner":             RunnerName,
 				"project":            ref.Id,
@@ -388,7 +388,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 	if newestVersion != nil {
 		err := model.UpdateLastRevision(ctx, newestVersion.Identifier, newestVersion.Revision)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "problem updating last revision for repository",
 				"project":            ref.Id,
 				"project_identifier": ref.Identifier,
@@ -430,7 +430,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 				"path":               projectRef.RemotePath,
 			})
 
-			grip.Error(message.WrapError(err, msg))
+			grip.Error(ctx, message.WrapError(err, msg))
 			return model.ProjectInfo{}, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
 		}
 		// If we get here then we have an infrastructural error - e.g.
@@ -444,7 +444,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		var lastRevision string
 		repository, fErr := model.FindRepository(ctx, projectRef.Id)
 		if fErr != nil || repository == nil {
-			grip.Error(message.WrapError(fErr, message.Fields{
+			grip.Error(ctx, message.WrapError(fErr, message.Fields{
 				"message":            "problem finding repository",
 				"project":            projectRef.Id,
 				"project_identifier": projectRef.Identifier,
@@ -454,7 +454,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			lastRevision = repository.LastRevision
 		}
 
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "repotracker configuration problem",
 			"project":            projectRef.Id,
 			"project_identifier": projectRef.Identifier,
@@ -690,28 +690,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	var usr *user.DBUser
 	var err error
-	// Default to the pusher of the git tag, if relevant.
-	if metadata.GitTag.Pusher != "" {
-		usr, err = user.FindByGithubName(ctx, metadata.GitTag.Pusher)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "failed to fetch Evergreen user with GitHub info",
-			"method":         "git_tag",
-			"git_tag_pusher": metadata.GitTag.Pusher,
-		}))
-	}
-	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
-		usr, err = user.FindByGithubUID(ctx, metadata.Revision.AuthorGithubUID)
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":             "failed to fetch Evergreen user with GitHub info",
-			"method":              "user_uid",
-			"revision_author_uid": metadata.Revision.AuthorGithubUID,
-		}))
-	}
-	if usr != nil {
-		metadata.User = usr
-	}
 
 	number, err := model.GetNewRevisionOrderNumber(ctx, ref.Id)
 	if err != nil {
@@ -777,12 +756,81 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 	} else {
 		v.Id = makeVersionId(ref.Identifier, metadata.Revision.Revision)
 	}
+
+	if usr := resolveUserFromMetadata(ctx, v.Id, metadata); usr != nil {
+		metadata.User = usr
+	}
 	if metadata.User != nil {
 		v.AuthorID = metadata.User.Id
 		v.Author = metadata.User.DisplayName()
 		v.AuthorEmail = metadata.User.Email()
 	}
 	return v, nil
+}
+
+func resolveUserFromMetadata(ctx context.Context, versionId string, metadata model.VersionMetadata) *user.DBUser {
+	if metadata.User != nil {
+		return nil
+	}
+
+	var usr *user.DBUser
+	var err error
+	catcher := grip.NewBasicCatcher()
+
+	// Default to the pusher of the git tag, if relevant.
+	if metadata.GitTag.Pusher != "" {
+		usr, err = user.FindByGithubName(ctx, metadata.GitTag.Pusher)
+		catcher.Add(err)
+	}
+	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
+		usr, err = user.FindByGithubUID(ctx, metadata.Revision.AuthorGithubUID)
+		catcher.Add(err)
+	}
+	derivedIDFromEmail := deriveUserIDFromEmail(metadata.Revision.AuthorEmail)
+	if usr == nil && derivedIDFromEmail != "" {
+		usr, err = user.FindOneById(ctx, derivedIDFromEmail)
+		catcher.Add(err)
+	}
+	derivedID := deriveUserIDFromName(metadata.Revision.Author)
+	if usr == nil && derivedID != "" {
+		usr, err = user.FindOneById(ctx, derivedID)
+		catcher.Add(err)
+	}
+	grip.DebugWhen(ctx, usr == nil, message.Fields{
+		"message":               "failed to resolve Evergreen user for version",
+		"version_id":            versionId,
+		"git_tag_pusher":        metadata.GitTag.Pusher,
+		"revision_author_uid":   metadata.Revision.AuthorGithubUID,
+		"revision_author":       metadata.Revision.Author,
+		"revision_author_email": metadata.Revision.AuthorEmail,
+		"derived_id":            derivedID,
+		"derived_id_from_email": derivedIDFromEmail,
+		"errors":                catcher.Resolve(),
+	})
+	return usr
+}
+
+// deriveUserIDFromName converts a display name to a likely Evergreen user ID by
+// lowercasing and joining the first and last words with a dot
+// ("Hello My World" -> "hello.world", "Hello" -> "").
+func deriveUserIDFromName(name string) string {
+	words := strings.Fields(name)
+	if len(words) < 2 {
+		return ""
+	}
+	return strings.ToLower(words[0] + "." + words[len(words)-1])
+}
+
+// deriveUserIDFromEmail converts an email address to a likely Evergreen user ID
+// by extracting the local part before the @ symbol
+// ("hello.world@example.com" -> "hello.world").
+func deriveUserIDFromEmail(email string) string {
+	lower := strings.ToLower(email)
+	local, _, found := strings.Cut(lower, "@")
+	if !found || local == "" {
+		return ""
+	}
+	return local
 }
 
 func makeVersionId(project, revision string) string {
@@ -834,7 +882,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			var aliasesMatchingVariant model.ProjectAliases
 			aliasesMatchingVariant, err = aliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "error checking project aliases",
 					"project": projectInfo.Project.Identifier,
 					"version": v.Id,
@@ -848,7 +896,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				var match bool
 				name, tags, ok := projectInfo.Project.GetTaskNameAndTags(t)
 				if !ok {
-					grip.Debug(message.Fields{
+					grip.Debug(ctx, message.Fields{
 						"message": "task doesn't exist in project",
 						"project": projectInfo.Project.Identifier,
 						"task":    t,
@@ -857,7 +905,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				}
 				match, err = aliasesMatchingVariant.HasMatchingTask(name, tags)
 				if err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
+					grip.Error(ctx, message.WrapError(err, message.Fields{
 						"message":                  "error finding tasks with alias filter",
 						"task":                     t.Name,
 						"project":                  projectInfo.Project.Identifier,
@@ -873,7 +921,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}
 
 	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester, nil)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies",
 		"project": projectInfo.Project.Identifier,
 		"version": v.Id,
@@ -884,7 +932,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
 		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(ctx, v.Identifier, evergreen.GithubChecksAlias)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",
 			"project": projectInfo.Project.Identifier,
 			"version": v.Id,
@@ -897,7 +945,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		var aliasesMatchingVariant model.ProjectAliases
 		aliasesMatchingVariant, err = githubCheckAliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "error getting aliases matching variant",
 			"project":            projectInfo.Ref.Id,
 			"project_identifier": projectInfo.Ref.Identifier,
@@ -923,7 +971,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":            "error creating build",
 				"project":            projectInfo.Ref.Id,
 				"project_identifier": projectInfo.Ref.Identifier,
@@ -991,7 +1039,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	// We must set the NumDependents field for tasks prior to inserting them in the DB.
 	model.SetNumDependents(tasksToCreate)
 
-	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
+	grip.ErrorWhen(ctx, len(buildsToCreate) == 0, message.Fields{
 		"message":           "version has no builds",
 		"version":           v.Id,
 		"revision":          v.Revision,
@@ -1010,7 +1058,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 		return errors.Errorf("version '%s' in project '%s' using alias '%s' has no variants", v.Id, projectInfo.Ref.Identifier, aliasString)
 	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
 		"runner":  RunnerName,
 		"version": v.Id,
@@ -1032,7 +1080,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		database := env.DB()
 		_, err = database.Collection(model.VersionCollection).InsertOne(ctx, v)
 		if err != nil {
-			grip.Notice(message.WrapError(err, message.Fields{
+			grip.Notice(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "can't insert version",
 				"version": v.Id,
@@ -1045,7 +1093,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		if projectInfo.Config != nil {
 			_, err = database.Collection(model.ProjectConfigCollection).InsertOne(ctx, projectInfo.Config)
 			if err != nil {
-				grip.Notice(message.WrapError(err, message.Fields{
+				grip.Notice(ctx, message.WrapError(err, message.Fields{
 					"message": "aborting transaction",
 					"cause":   "can't insert project config",
 					"version": v.Id,
@@ -1058,7 +1106,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 		_, err = database.Collection(build.Collection).InsertMany(ctx, buildsToCreate)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "can't insert builds",
 				"version": v.Id,
@@ -1071,7 +1119,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 		err = tasksToCreate.InsertUnordered(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "can't insert tasks",
 				"version": v.Id,
@@ -1083,7 +1131,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 		err = sessCtx.CommitTransaction(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "unable to commit transaction",
 				"version": v.Id,
@@ -1094,7 +1142,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 			return errors.Wrapf(err, "committing transaction for version '%s'", v.Id)
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "successfully created version",
 			"version": v.Id,
 			"hash":    v.Revision,

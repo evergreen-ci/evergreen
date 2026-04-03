@@ -80,9 +80,9 @@ func (c *goTestResults) Execute(ctx context.Context,
 	if len(outputFiles) == 0 {
 		if c.outputIsOptional {
 			return nil
-		} else {
-			return errors.New("no files found to be parsed")
 		}
+
+		return errors.New("no files found to be parsed")
 	}
 
 	// parse all of the files
@@ -167,14 +167,14 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer, con
 
 		fileReader, err := os.Open(outputFile)
 		if err != nil {
-			logger.Task().Error(errors.Wrapf(err, "opening file '%s' for parsing", outputFile))
+			logger.Task().Error(ctx, errors.Wrapf(err, "opening file '%s' for parsing", outputFile))
 			continue
 		}
 		defer fileReader.Close() //nolint: evg-lint
 
 		log, results, err := parseTestOutput(ctx, conf, fileReader, suiteName)
 		if err != nil {
-			logger.Task().Error(errors.Wrapf(err, "parsing file '%s'", outputFile))
+			logger.Task().Error(ctx, errors.Wrapf(err, "parsing file '%s'", outputFile))
 			continue
 		}
 

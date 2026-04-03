@@ -13,6 +13,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -232,6 +233,7 @@ func TestS3GetFetchesFiles(t *testing.T) {
 	tconf := &internal.TaskConfig{
 		Task:    task.Task{},
 		WorkDir: temproot,
+		S3Usage: &s3usage.S3Usage{},
 	}
 
 	t.Run("GetOptionalDoesNotError", func(t *testing.T) {

@@ -17,7 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/pod"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -314,11 +314,6 @@ func (t *taskTriggers) makeData(ctx context.Context, sub *event.Subscription, pa
 			Title: "Host",
 			Value: fmt.Sprintf("<%s|%s>", hostLink(t.uiConfig.Url, t.task.HostId), t.task.HostId),
 		})
-	} else if t.task.PodID != "" {
-		attachmentFields = append(attachmentFields, &message.SlackAttachmentField{
-			Title: "Pod",
-			Value: fmt.Sprintf("<%s|%s>", podLink(t.uiConfig.Url, t.task.PodID), t.task.PodID),
-		})
 	}
 	data.slack = []message.SlackAttachment{
 		{
@@ -388,7 +383,7 @@ func (t *taskTriggers) generateWithAlertRecord(ctx context.Context, sub *event.S
 	}
 
 	newRec := newAlertRecord(sub.ID, t.task, alertType)
-	grip.Error(message.WrapError(newRec.Insert(ctx), message.Fields{
+	grip.Error(ctx, message.WrapError(newRec.Insert(ctx), message.Fields{
 		"source":  "alert-record",
 		"type":    alertType,
 		"task_id": t.task.Id,
@@ -613,7 +608,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			errMessage["error"] = err.Error()
-			grip.Error(errMessage)
+			grip.Error(ctx, errMessage)
 			return false, err
 		}
 
@@ -624,7 +619,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage["outcome"] = "sending alert"
 			errMessage[message.FieldsMsgName] = "identified transition to failure!"
-			grip.Info(errMessage)
+			grip.Info(ctx, errMessage)
 
 			return true, nil
 		}
@@ -639,7 +634,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage["error"] = err.Error()
 			errMessage["lastAlert"] = lastAlerted
 			errMessage["outcome"] = "not sending alert"
-			grip.Error(errMessage)
+			grip.Error(ctx, errMessage)
 			return false, err
 		}
 		if lastAlerted == nil {
@@ -657,7 +652,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 				errMessage["outcome"] = "not sending alert (75%)"
 
 			}
-			grip.Warning(errMessage)
+			grip.Warning(ctx, errMessage)
 
 			return maybeSend, nil
 		}
@@ -857,7 +852,7 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 		var match bool
 		match, err = testMatchesRegex(test.GetDisplayTestName(), sub)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
 				"message": "bad regex in db",
 				"task":    t.task.Id,
@@ -951,14 +946,6 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		return nil, errors.Errorf("build '%s' not found while building Jira task payload", params.Task.BuildId)
 	}
 
-	var podDoc *pod.Pod
-	if params.Task.PodID != "" {
-		podDoc, err = pod.FindOneByID(ctx, params.Task.PodID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", params.Task.PodID)
-		}
-	}
-
 	versionDoc, err := model.VersionFindOneId(ctx, params.Task.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding version '%s' while building Jira task payload", params.Task.Version)
@@ -986,7 +973,6 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		Project:         projectRef,
 		Build:           buildDoc,
 		Host:            params.Host,
-		Pod:             podDoc,
 		TaskDisplayName: params.Task.DisplayName,
 	}
 	if params.Task.IsPartOfDisplay(ctx) {
