@@ -520,7 +520,11 @@ func TestDownstreamParams(t *testing.T) {
 	r.downstreamParams = parameters
 	require.True(t, ok)
 
-	resp := r.Run(ctx)
+	foundTask, err := task.FindOneId(ctx, "task1")
+	require.NoError(t, err)
+	require.NotNil(t, foundTask)
+	taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+	resp := r.Run(taskCtx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -1052,7 +1056,11 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 			handler := makeStartTask(env).(*startTaskHandler)
 			require.NoError(t, handler.Parse(ctx, req))
 
-			resp := handler.Run(ctx)
+			foundTask, err := task.FindOneId(ctx, "test-task-id")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp := handler.Run(taskCtx)
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -1070,17 +1078,6 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 func TestReportS3Usage(t *testing.T) {
 	ctx := t.Context()
-
-	t.Run("TaskNotFound", func(t *testing.T) {
-		require.NoError(t, db.Clear(task.Collection))
-		handler := makeReportS3Usage().(*reportS3UsageHandler)
-		handler.taskID = "nonexistent"
-		handler.s3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10}},
-		}
-		resp := handler.Run(ctx)
-		assert.Equal(t, http.StatusNotFound, resp.Status())
-	})
 
 	t.Run("SavesArtifactAndLogUsage", func(t *testing.T) {
 		require.NoError(t, db.Clear(task.Collection))
@@ -1102,7 +1099,11 @@ func TestReportS3Usage(t *testing.T) {
 				UploadBytes: 4096,
 			},
 		}
-		resp := handler.Run(ctx)
+		foundTask, err := task.FindOneId(ctx, "t1")
+		require.NoError(t, err)
+		require.NotNil(t, foundTask)
+		taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+		resp := handler.Run(taskCtx)
 		assert.Equal(t, http.StatusOK, resp.Status())
 
 		dbTask, err := task.FindOneId(ctx, "t1")
@@ -1128,7 +1129,11 @@ func TestReportS3Usage(t *testing.T) {
 				UploadBytes: 8192,
 			},
 		}
-		resp := handler.Run(ctx)
+		foundTask, err := task.FindOneId(ctx, "t2")
+		require.NoError(t, err)
+		require.NotNil(t, foundTask)
+		taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+		resp := handler.Run(taskCtx)
 		assert.Equal(t, http.StatusOK, resp.Status())
 
 		dbTask, err := task.FindOneId(ctx, "t2")
