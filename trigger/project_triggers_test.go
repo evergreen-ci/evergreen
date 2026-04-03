@@ -1,6 +1,3 @@
-// Integration tests: GitHub API, app auth, and git-assisted config fetches.
-// Run with SETTINGS_OVERRIDE (see testutil.ConfigureIntegrationTest). CI should use the
-// same job template as test-thirdparty (mongodb-and-git) so a current git is available.
 package trigger
 
 import (
