@@ -158,6 +158,8 @@ func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	}
 }
 
+const maxRemovalAttempts = 5
+
 // removeAllAndCheck removes the directory and checks the data directory
 // usage afterwards. If the data directory is unhealthy, the host is disabled.
 func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
@@ -181,7 +183,8 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 // removeAll is the same as os.RemoveAll, but recursively changes permissions
 // for subdirectories and contents before removing. The permissions change fixes
 // an issue where some files may be marked read-only, which prevents
-// os.RemoveAll from deleting them.
+// os.RemoveAll from deleting them. Removal is retried to handle background
+// processes that may still be writing to the directory.
 func (a *Agent) removeAll(ctx context.Context, dir string) error {
 	grip.Error(ctx, errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
@@ -190,7 +193,20 @@ func (a *Agent) removeAll(ctx context.Context, dir string) error {
 		grip.Error(ctx, errors.Wrapf(os.Chmod(path, 0777), "changing permission before removal for path '%s'", path))
 		return nil
 	}), "recursively walking through path to change permissions"))
-	return os.RemoveAll(dir)
+
+	return utility.Retry(ctx, func() (bool, error) {
+		if err := os.RemoveAll(dir); err != nil {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":   "failed to remove task directory, will retry",
+				"directory": dir,
+			}))
+			return true, err
+		}
+		return false, nil
+	}, utility.RetryOptions{
+		MaxAttempts: maxRemovalAttempts,
+		MinDelay:    time.Second,
+	})
 }
 
 // tryCleanupDirectory is a very conservative function that attempts
