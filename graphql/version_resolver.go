@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -637,7 +638,65 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	return versionBuilds, nil
 }
 
+// Project is the resolver for the project field.
+func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
+	projectRef, err := model.FindMergedProjectRef(ctx, obj.Identifier, obj.Id, false)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()))
+	}
+	if projectRef == nil {
+		return nil, nil
+	}
+	return projectRef, nil
+}
+
+// User is the resolver for the user field.
+func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
+	// id, displayName, and emailAddress are always returned from the version document.
+	// Other fields require a database call.
+	requestedFields := graphql.CollectAllFields(ctx)
+	needsDBFetch := false
+	for _, field := range requestedFields {
+		if field != "id" && field != "displayName" && field != "emailAddress" {
+			needsDBFetch = true
+			break
+		}
+	}
+
+	if !needsDBFetch {
+		return &user.DBUser{
+			Id:           obj.AuthorID,
+			DispName:     obj.Author,
+			EmailAddress: obj.AuthorEmail,
+		}, nil
+	}
+
+	currentUser := mustHaveUser(ctx)
+	if currentUser.Id == obj.AuthorID {
+		return currentUser, nil
+	}
+
+	dbUser, err := loaders.GetUser(ctx, obj.AuthorID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", obj.AuthorID, err.Error()))
+	}
+	// This is most likely a service user, so just return their info from version
+	if dbUser == nil {
+		return &user.DBUser{
+			Id:           obj.AuthorID,
+			DispName:     obj.Author,
+			EmailAddress: obj.AuthorEmail,
+		}, nil
+	}
+
+	return dbUser, nil
+}
+
 // Version returns VersionResolver implementation.
 func (r *Resolver) Version() VersionResolver { return &versionResolver{r} }
 
+// VersionLite returns VersionLiteResolver implementation.
+func (r *Resolver) VersionLite() VersionLiteResolver { return &versionLiteResolver{r} }
+
 type versionResolver struct{ *Resolver }
+type versionLiteResolver struct{ *Resolver }

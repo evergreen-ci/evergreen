@@ -177,6 +177,54 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 }
 
+func TestNotificationSendMiddleware(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+
+	adminRole := gimlet.Role{
+		ID:          "notification_send",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{evergreen.PermissionNotificationsSend: evergreen.NotificationsSend.Value},
+	}
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{evergreen.SuperUserPermissionsID},
+	}
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(t.Context(), adminRole))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(t.Context(), superUserScope))
+
+	// Create a middleware that requires the notifications send permission.
+	permission := RequiresSuperUserPermission(evergreen.PermissionNotificationsSend, evergreen.NotificationsSend)
+	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
+		permission.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+	}
+	opCtx := model.Context{}
+	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{}, evergreen.GetEnvironment().RoleManager())
+	assert.NoError(t, err)
+	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
+	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
+
+	// Check that a regular user can't use the route.
+	r, err := http.NewRequest(http.MethodPut, "/notifications/email", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
+	ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "regular.user"})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw := httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, r, checkPermission)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+
+	// Check that an authenticated user can use the route.
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "notification.user", SystemRoles: []string{"notification_send"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, r, checkPermission)
+	assert.Equal(t, http.StatusOK, rw.Code)
+}
+
 func TestTaskAuthMiddleware(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
