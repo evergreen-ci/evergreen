@@ -179,7 +179,6 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 
 func TestNotificationSendMiddleware(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
-	defer cancel()
 
 	adminRole := gimlet.Role{
 		ID:          "notification_send",
