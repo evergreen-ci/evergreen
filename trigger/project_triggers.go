@@ -6,6 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/google/go-github/v70/github"
 	"github.com/pkg/errors"
 )
 
@@ -126,7 +128,28 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 	if repo == nil {
 		return metadata, errors.Errorf("repo '%s' not found", args.DownstreamProject.Id)
 	}
-	metadata.Revision.Revision = repo.LastRevision
+
+	// Fetch the latest commit from the downstream project's branch
+	// until the source version's creation time. This ensures that the
+	// downstream version is created with the latest commit on the branch
+	// before the source version was created.
+	opts := &github.CommitsListOptions{
+		SHA:   args.DownstreamProject.Branch,
+		Until: metadata.Revision.CreateTime,
+		ListOptions: github.ListOptions{
+			Page:    0,
+			PerPage: 1,
+		},
+	}
+
+	branchCommits, _, err := thirdparty.GetGithubCommits(ctx, args.DownstreamProject.Owner, args.DownstreamProject.Repo, opts)
+	if err != nil {
+		return metadata, errors.Wrapf(err, "fetching most recent revision for '%s'", args.DownstreamProject.Id)
+	}
+	if len(branchCommits) == 0 {
+		return metadata, errors.Errorf("no commits found for '%s'", args.DownstreamProject.Id)
+	}
+	metadata.Revision.Revision = branchCommits[0].GetSHA()
 
 	return metadata, nil
 }

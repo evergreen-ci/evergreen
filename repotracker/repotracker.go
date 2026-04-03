@@ -69,7 +69,7 @@ type RepoPoller interface {
 	// Fetches the most recent 'numNewRepoRevisionsToFetch' revisions for a
 	// project - with the most recent revision appearing as the first element in
 	// the slice.
-	GetRecentRevisions(numNewRepoRevisionsToFetch int) ([]model.Revision, error)
+	GetRecentRevisions(ctx context.Context, numNewRepoRevisionsToFetch int) ([]model.Revision, error)
 }
 
 type projectConfigError struct {
@@ -127,7 +127,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			"message":            "no last recorded revision or ignoring last recorded revision, using most recent revisions",
 			"number":             numRevisions,
 		})
-		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
+		revisions, err = repoTracker.GetRecentRevisions(ctx, numRevisions)
 	} else {
 		grip.Debug(ctx, message.Fields{
 			"message":            "found last recorded revision",

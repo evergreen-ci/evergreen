@@ -167,14 +167,26 @@ func (s *githubSuite) TestCheckGithubAPILimit() {
 }
 
 func (s *githubSuite) TestGetGithubCommits() {
-	githubCommits, _, err := GetGithubCommits(s.ctx, "evergreen-ci", "sample", "", time.Time{}, 0)
+	listOpts := &github.CommitsListOptions{
+		SHA: "",
+		ListOptions: github.ListOptions{
+			Page: 0,
+		},
+	}
+	githubCommits, _, err := GetGithubCommits(s.ctx, "evergreen-ci", "sample", listOpts)
 	s.NoError(err)
 	s.Len(githubCommits, 18)
 }
 
 func (s *githubSuite) TestGetGithubCommitsUntil() {
-	until := time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC)
-	githubCommits, _, err := GetGithubCommits(s.ctx, "evergreen-ci", "sample", "", until, 0)
+	listOpts := &github.CommitsListOptions{
+		SHA:   "",
+		Until: time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC),
+		ListOptions: github.ListOptions{
+			Page: 0,
+		},
+	}
+	githubCommits, _, err := GetGithubCommits(s.ctx, "evergreen-ci", "sample", listOpts)
 	s.NoError(err)
 	s.Len(githubCommits, 4)
 }

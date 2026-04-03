@@ -354,7 +354,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 	if len(versionIds) > 0 {
 		commits := make([]string, 0, len(event.Commits))
 		for _, commit := range event.Commits {
-			commits = append(triggeredDownstreamProjectIDs, utility.FromStringPtr(commit.ID))
+			commits = append(commits, utility.FromStringPtr(commit.ID))
 		}
 		grip.Info(ctx, message.Fields{
 			"source":                           "GitHub hook",
