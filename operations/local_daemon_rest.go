@@ -65,6 +65,7 @@ func (d *localDaemonREST) handleHealth(w http.ResponseWriter, r *http.Request) {
 func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ConfigPath string `json:"config_path"`
+		OAuthToken string `json:"oauth_token"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -72,8 +73,15 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if req.OAuthToken == "" {
+		http.Error(w, "OAuth token is required", http.StatusUnauthorized)
+		return
+	}
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	d.conf.OAuth.AccessToken = req.OAuthToken
 
 	// If an executor already exists with a selected task, hot reload the
 	// project so the debug session state is preserved.
@@ -99,13 +107,8 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		WorkingDir:  workDir,
 		ServerURL:   d.conf.getApiServerHost(true),
 		TaskID:      d.conf.TaskID,
-		OAuthToken:  d.conf.OAuth.AccessToken,
+		OAuthToken:  req.OAuthToken,
 		SpawnHostID: d.conf.SpawnHostID,
-	}
-
-	if opts.OAuthToken == "" {
-		http.Error(w, "OAuth token is required", http.StatusUnauthorized)
-		return
 	}
 
 	executor, err := taskexec.NewLocalExecutor(r.Context(), opts)
@@ -281,6 +284,15 @@ func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func (d *localDaemonREST) noMoreSteps(w http.ResponseWriter) bool {
+	if !d.executor.GetDebugState().HasMoreSteps() {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusNoContent)
+		return true
+	}
+	return false
+}
+
 // handleRunAll runs all remaining steps with streaming output.
 func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
@@ -288,6 +300,10 @@ func (d *localDaemonREST) handleRunAll(w http.ResponseWriter, r *http.Request) {
 
 	if d.executor == nil {
 		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	if d.noMoreSteps(w) {
 		return
 	}
 
@@ -366,6 +382,10 @@ func (d *localDaemonREST) handleStepNext(w http.ResponseWriter, r *http.Request)
 
 	if d.executor == nil {
 		http.Error(w, "no configuration loaded", http.StatusBadRequest)
+		return
+	}
+
+	if d.noMoreSteps(w) {
 		return
 	}
 

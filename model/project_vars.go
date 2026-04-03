@@ -33,6 +33,7 @@ var (
 	projectVarsParametersKey = bsonutil.MustHaveTag(ProjectVars{}, "Parameters")
 	privateVarsMapKey        = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 	adminOnlyVarsMapKey      = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
+	varsDescriptionsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "VarsDescriptions")
 )
 
 const (
@@ -66,6 +67,9 @@ type ProjectVars struct {
 
 	// AdminOnlyVars keeps track of variables that are only accessible by project admins.
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
+
+	// VarsDescriptions contains descriptions for each variable.
+	VarsDescriptions map[string]string `bson:"vars_descriptions,omitempty" json:"vars_descriptions,omitempty"`
 }
 
 // ParameterMappings is a wrapper around a slice of mappings between names and
@@ -195,6 +199,22 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 	return projectVars, nil
 }
 
+// FindOneProjectVarsWithoutParameterStore finds the project variables document for a given project ID, without
+// fetching the variable values from ParameterStore. This is used in cases where we don't need the variable values
+// and want to avoid the overhead of fetching from ParameterStore.
+func FindOneProjectVarsWithoutParameterStore(ctx context.Context, projectId string) (*ProjectVars, error) {
+	projectVars := &ProjectVars{}
+	q := db.Query(bson.M{projectVarIdKey: projectId})
+	err := db.FindOneQ(ctx, ProjectVarsCollection, q, projectVars)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return projectVars, nil
+}
+
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
 func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars, error) {
 	project, err := FindBranchProjectRef(ctx, projectID)
@@ -301,8 +321,9 @@ func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, er
 	projectVars.Parameters = *pm
 
 	setUpdate := bson.M{
-		privateVarsMapKey:   projectVars.PrivateVars,
-		adminOnlyVarsMapKey: projectVars.AdminOnlyVars,
+		privateVarsMapKey:      projectVars.PrivateVars,
+		adminOnlyVarsMapKey:    projectVars.AdminOnlyVars,
+		varsDescriptionsMapKey: projectVars.VarsDescriptions,
 	}
 	update := bson.M{}
 	if len(projectVars.Parameters) > 0 {
@@ -550,7 +571,8 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 	unsetUpdate := bson.M{}
 	update := bson.M{}
 	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
-		len(projectVars.AdminOnlyVars) == 0 && len(projectVars.Parameters) == 0 && len(varsToDelete) == 0 {
+		len(projectVars.AdminOnlyVars) == 0 && len(projectVars.Parameters) == 0 &&
+		len(projectVars.VarsDescriptions) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
 	for key, val := range projectVars.PrivateVars {
@@ -558,6 +580,9 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 	}
 	for key, val := range projectVars.AdminOnlyVars {
 		setUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, key)] = val
+	}
+	for key, val := range projectVars.VarsDescriptions {
+		setUpdate[bsonutil.GetDottedKeyName(varsDescriptionsMapKey, key)] = val
 	}
 	if len(projectVars.Parameters) > 0 {
 		setUpdate[projectVarsParametersKey] = projectVars.Parameters
@@ -571,15 +596,16 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 	for _, val := range varsToDelete {
 		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, val)] = 1
+		unsetUpdate[bsonutil.GetDottedKeyName(varsDescriptionsMapKey, val)] = 1
 	}
 	if len(unsetUpdate) > 0 {
 		update["$unset"] = unsetUpdate
 	}
 
-	if len(projectVars.PrivateVars) != 0 && len(projectVars.AdminOnlyVars) != 0 {
-		// Initialize the private and admin-only vars maps if they don't exist.
+	if len(projectVars.PrivateVars) != 0 || len(projectVars.AdminOnlyVars) != 0 || len(projectVars.VarsDescriptions) != 0 {
+		// Initialize the private, admin-only, and description vars maps if they don't exist.
 		initializeUpdate := bson.M{}
-		originalProjectVars, err := FindOneProjectVars(ctx, projectVars.Id)
+		originalProjectVars, err := FindOneProjectVarsWithoutParameterStore(ctx, projectVars.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
 		}
@@ -592,6 +618,9 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 		if originalProjectVars.AdminOnlyVars == nil {
 			initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
 		}
+		if originalProjectVars.VarsDescriptions == nil {
+			initializeUpdate[varsDescriptionsMapKey] = bson.M{}
+		}
 		if len(initializeUpdate) > 0 {
 			err := db.Update(ctx,
 				ProjectVarsCollection,
@@ -599,7 +628,7 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 				bson.M{"$set": initializeUpdate},
 			)
 			if err != nil {
-				return nil, errors.Wrap(err, "initializing private and admin-only vars in DB")
+				return nil, errors.Wrap(err, "initializing private vars, admin-only vars, and descriptions in DB")
 			}
 		}
 	}
@@ -673,6 +702,7 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	projectVars.Vars = map[string]string{}
 	projectVars.PrivateVars = map[string]bool{}
 	projectVars.AdminOnlyVars = map[string]bool{}
+	projectVars.VarsDescriptions = map[string]string{}
 
 	// Ignore the context cancellation to ensure that the parameters are
 	// deleted from Parameter Store and cleared from the database, this should be as
@@ -690,6 +720,7 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 				privateVarsMapKey:        1,
 				adminOnlyVarsMapKey:      1,
 				projectVarsParametersKey: 1,
+				varsDescriptionsMapKey:   1,
 			},
 		})
 	if err != nil {
@@ -742,9 +773,10 @@ func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 // with the empty string.
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
-		Vars:          map[string]string{},
-		PrivateVars:   map[string]bool{},
-		AdminOnlyVars: map[string]bool{},
+		Vars:             map[string]string{},
+		PrivateVars:      map[string]bool{},
+		AdminOnlyVars:    map[string]bool{},
+		VarsDescriptions: map[string]string{},
 	}
 	if projectVars == nil {
 		return res
@@ -759,6 +791,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	if projectVars.PrivateVars == nil {
 		res.PrivateVars = map[string]bool{}
 	}
+	if projectVars.VarsDescriptions == nil {
+		res.VarsDescriptions = map[string]string{}
+	}
 	// Redact private variables
 	for k, v := range projectVars.Vars {
 		if val, ok := projectVars.PrivateVars[k]; ok && val {
@@ -769,6 +804,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		}
 		if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
 			res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
+		}
+		if desc, ok := projectVars.VarsDescriptions[k]; ok {
+			res.VarsDescriptions[k] = desc
 		}
 	}
 
@@ -786,6 +824,9 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if projectVars.AdminOnlyVars == nil {
 		projectVars.AdminOnlyVars = map[string]bool{}
 	}
+	if projectVars.VarsDescriptions == nil {
+		projectVars.VarsDescriptions = map[string]string{}
+	}
 	if repoVars == nil {
 		return
 	}
@@ -800,6 +841,9 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 			if v, ok := repoVars.AdminOnlyVars[key]; ok {
 				projectVars.AdminOnlyVars[key] = v
+			}
+			if desc, ok := repoVars.VarsDescriptions[key]; ok {
+				projectVars.VarsDescriptions[key] = desc
 			}
 			if pm, ok := nameToParamMapping[key]; ok {
 				projectVars.Parameters = append(projectVars.Parameters, pm)

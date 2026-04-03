@@ -329,18 +329,20 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 		return apiUser, nil
 	}
 
-	author, err := loaders.GetUser(ctx, authorId)
+	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
 	// This is most likely a reaped user, so just return their ID
-	if author == nil {
+	if dbUser == nil {
 		return &restModel.APIDBUser{
 			UserID: obj.Author,
 		}, nil
 	}
 
-	return author, nil
+	apiUser := &restModel.APIDBUser{}
+	apiUser.BuildFromService(*dbUser)
+	return apiUser, nil
 }
 
 // VersionFull is the resolver for the versionFull field.

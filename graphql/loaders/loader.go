@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/vikstrous/dataloadgen"
 )
 
@@ -15,17 +16,17 @@ const loadersKey = ctxKey("dataloaders")
 
 // Loaders contains all dataloader instances for batching GraphQL queries.
 type Loaders struct {
-	APIVersionLoader *dataloadgen.Loader[string, *restModel.APIVersion]
-	UserLoader       *dataloadgen.Loader[string, *restModel.APIDBUser]
+	UserLoader    *dataloadgen.Loader[string, *user.DBUser]
+	VersionLoader *dataloadgen.Loader[string, *model.Version]
 }
 
 // New instantiates data loaders for the middleware.
 func New() *Loaders {
 	ur := &userReader{}
-	vr := &apiVersionReader{}
+	vr := &versionReader{}
 	return &Loaders{
-		UserLoader:       dataloadgen.NewMappedLoader(ur.getUsers, dataloadgen.WithWait(time.Millisecond)),
-		APIVersionLoader: dataloadgen.NewMappedLoader(vr.getAPIVersions, dataloadgen.WithWait(time.Millisecond)),
+		UserLoader:    dataloadgen.NewMappedLoader(ur.getUsers, dataloadgen.WithWait(time.Millisecond)),
+		VersionLoader: dataloadgen.NewMappedLoader(vr.getVersions, dataloadgen.WithWait(time.Millisecond)),
 	}
 }
 
