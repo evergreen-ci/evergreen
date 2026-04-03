@@ -11,17 +11,20 @@ input RepoPermissionsOptions {
 }
 
 type DistroPermissions {
+  distroId: String!
   admin: Boolean!
   edit: Boolean!
   view: Boolean!
 }
 
 type ProjectPermissions {
+  projectIdentifier: String!
   edit: Boolean!
   view: Boolean!
 }
 
 type RepoPermissions {
+  repoId: String!
   edit: Boolean!
   view: Boolean!
 }

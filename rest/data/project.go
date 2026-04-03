@@ -241,6 +241,8 @@ func UpdateProjectVars(ctx context.Context, projectId string, varsModel *restMod
 	varsModel.Vars = vars.Vars
 	varsModel.PrivateVars = vars.PrivateVars
 	varsModel.AdminOnlyVars = vars.AdminOnlyVars
+	varsModel.VarsDescriptions = vars.VarsDescriptions
+
 	varsModel.VarsToDelete = []string{}
 	return nil
 }
