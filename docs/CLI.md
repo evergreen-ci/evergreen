@@ -688,7 +688,7 @@ The "url" keys in each list item should contain the appropriate URL to the binar
 
 ### Task Debugger
 
-For debugging task commands on spawn hosts, see the [Task Debugger documentation](CLI-Task-Debugger.md).
+For debugging task commands on spawn hosts, see the [Task Debugger documentation](Hosts/Debug-Spawn-Hosts.md).
 
 ### Notifications
 
