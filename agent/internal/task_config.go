@@ -282,6 +282,38 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	return taskConfig, nil
 }
 
+// ApplyFunctionVarsToExpansions expands the given function vars and puts them into
+// NewExpansions so they're available during command execution. It returns
+// a cleanup function that restores the previous expansion values. The caller
+// is expected to call cleanup when the function ends because the function variables go out of scope.
+func (tc *TaskConfig) ApplyFunctionVarsToExpansions(vars map[string]string, cmdName string) (cleanup func(), err error) {
+	prevExp := map[string]string{}
+	for key, val := range vars {
+		prevExp[key] = tc.Expansions.Get(key)
+
+		newVal, err := tc.Expansions.ExpandString(val)
+		if err != nil {
+			return nil, errors.Wrapf(err, "expanding '%s'", val)
+		}
+		tc.NewExpansions.Put(key, newVal)
+	}
+
+	cleanup = func() {
+		// Ensure that function vars do not persist in the expansions after the
+		// function is over, unless they were updated using expansions.update.
+		if cmdName == "expansions.update" {
+			for k := range tc.DynamicExpansions.Map() {
+				if _, ok := vars[k]; ok {
+					delete(prevExp, k)
+				}
+			}
+		}
+		tc.NewExpansions.Update(prevExp)
+		tc.DynamicExpansions = *util.NewExpansions(map[string]string{})
+	}
+	return cleanup, nil
+}
+
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	attributes := map[string]string{
 		evergreen.TaskIDOtelAttribute:             tc.Task.Id,

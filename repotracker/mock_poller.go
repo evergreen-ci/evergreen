@@ -65,14 +65,14 @@ func (d *mockRepoPoller) GetRemoteConfig(_ context.Context, revision string) (mo
 	}, nil
 }
 
-func (d *mockRepoPoller) GetRevisionsSince(ctx context.Context, revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
+func (d *mockRepoPoller) GetRevisionsSince(_ context.Context, revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
 	if d.nextError != nil {
 		return nil, d.clearError()
 	}
 	return d.revisions, nil
 }
 
-func (d *mockRepoPoller) GetRecentRevisions(maxRevisionsToSearch int) ([]model.Revision, error) {
+func (d *mockRepoPoller) GetRecentRevisions(_ context.Context, _maxRevisionsToSearch int) ([]model.Revision, error) {
 	if d.nextError != nil {
 		return nil, d.clearError()
 	}

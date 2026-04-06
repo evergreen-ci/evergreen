@@ -220,7 +220,26 @@ func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubApp
 	}
 
 	return appAuth, nil
+}
 
+// HasGitHubAppAuth returns true if the project has a GitHub app auth (defined at the project or repo level).
+// It queries only the database, since we don't need to retrieve the actual auth.
+func (p *ProjectRef) HasGitHubAppAuth(ctx context.Context) bool {
+	hasAuth, err := githubapp.HasGitHubAppAuth(ctx, p.Id)
+	if err != nil {
+		return false
+	}
+	if hasAuth {
+		return true
+	}
+	if p.RepoRefId == "" {
+		return false
+	}
+	hasAuth, err = githubapp.HasGitHubAppAuth(ctx, p.RepoRefId)
+	if err != nil {
+		return false
+	}
+	return hasAuth
 }
 
 // GetGitHubAppAuthForAPI gets this project's GitHub app auth for

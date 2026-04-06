@@ -8,6 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -30,23 +31,6 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("user corresponding to author '%s' not found", author))
 	}
 	return usr.DisplayName(), nil
-}
-
-// BaseTaskStatuses is the resolver for the baseTaskStatuses field.
-func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	versionID := utility.FromStringPtr(obj.Id)
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching base version for version '%s': %s", versionID, err.Error()))
-	}
-	if baseVersion == nil {
-		return nil, nil
-	}
-	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, versionID, baseVersion.Id)
-	if err != nil {
-		return nil, nil
-	}
-	return statuses, nil
 }
 
 // Builds is the resolver for the builds field.
@@ -328,18 +312,20 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 		return apiUser, nil
 	}
 
-	author, err := GetUser(ctx, authorId)
+	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
 	}
 	// This is most likely a reaped user, so just return their ID
-	if author == nil {
+	if dbUser == nil {
 		return &restModel.APIDBUser{
 			UserID: obj.Author,
 		}, nil
 	}
 
-	return author, nil
+	apiUser := &restModel.APIDBUser{}
+	apiUser.BuildFromService(*dbUser)
+	return apiUser, nil
 }
 
 // VersionFull is the resolver for the versionFull field.

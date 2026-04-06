@@ -223,27 +223,27 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		return []testresult.TestResult{
 			{
 				TestName:      "A test",
-				Status:        "Pass",
+				Status:        "pass",
 				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 1, time.UTC),
 				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 12, 0, time.UTC),
 			},
 			{
 				TestName:        "B test",
 				DisplayTestName: "Display",
-				Status:          "Fail",
+				Status:          "fail",
 				TestStartTime:   time.Date(1996, time.August, 31, 12, 5, 10, 3, time.UTC),
 				TestEndTime:     time.Date(1996, time.August, 31, 12, 5, 16, 0, time.UTC),
 			},
 			{
 				TestName:        "C test",
 				DisplayTestName: "B",
-				Status:          "Fail",
+				Status:          "fail",
 				TestStartTime:   time.Date(1996, time.August, 31, 12, 5, 10, 2, time.UTC),
 				TestEndTime:     time.Date(1996, time.August, 31, 12, 5, 15, 0, time.UTC),
 			},
 			{
 				TestName:      "D test",
-				Status:        "Pass",
+				Status:        "pass",
 				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 4, time.UTC),
 				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 11, 0, time.UTC),
 				GroupID:       "llama",
@@ -257,24 +257,24 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			TaskID:   baseId,
 			TestName: "A test",
-			Status:   "Pass",
+			Status:   "pass",
 		},
 		{
 			TaskID:          baseId,
 			TestName:        "B test",
 			DisplayTestName: "Display",
-			Status:          "Fail",
+			Status:          "fail",
 		},
 		{
 			TaskID:          baseId,
 			TestName:        "C test",
 			DisplayTestName: "B",
-			Status:          "Pass",
+			Status:          "pass",
 		},
 		{
 			TaskID:   baseId,
 			TestName: "D test",
-			Status:   "Fail",
+			Status:   "fail",
 		},
 	}
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, baseResults, baseId)))
@@ -374,7 +374,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name:            "StatusFilter",
-			opts:            &FilterOptions{Statuses: []string{"Fail"}},
+			opts:            &FilterOptions{Statuses: []string{"fail"}},
 			expectedResults: results[1:3],
 			expectedCount:   2,
 		},

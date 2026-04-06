@@ -33,6 +33,8 @@ var (
 	LastScheduledTasksAtKey   = bsonutil.MustHaveTag(DBUser{}, "LastScheduledTasksAt")
 	SettingsKey               = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey                 = bsonutil.MustHaveTag(DBUser{}, "APIKey")
+	TokenExchangeStateKey     = bsonutil.MustHaveTag(DBUser{}, "TokenExchangeState")
+	TokenExchangeTokenKey     = bsonutil.MustHaveTag(DBUser{}, "TokenExchangeToken")
 	OnlyAPIKey                = bsonutil.MustHaveTag(DBUser{}, "OnlyAPI")
 	PubKeysKey                = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
 	LoginCacheKey             = bsonutil.MustHaveTag(DBUser{}, "LoginCache")

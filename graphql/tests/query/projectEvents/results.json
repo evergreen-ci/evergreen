@@ -21,6 +21,9 @@
                   "vars": {
                     "vars": {
                       "hello": "{REDACTED_BEFORE}"
+                    },
+                    "varsDescriptions": {
+                      "hello": "Old description for hello"
                     }
                   }
                 },
@@ -36,6 +39,9 @@
                   "vars": {
                     "vars": {
                       "hello": "{REDACTED_AFTER}"
+                    },
+                    "varsDescriptions": {
+                      "hello": "New description for hello"
                     }
                   }
                 }

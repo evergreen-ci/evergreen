@@ -15,7 +15,9 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -2879,6 +2881,63 @@ func TestValidateAliasCoverage(t *testing.T) {
 			testCase(t, p)
 		})
 	}
+}
+
+func TestValidateGitHubAppCheckRuns(t *testing.T) {
+	testutil.Setup()
+	require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+
+	projectWithCheckRuns := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				Tasks: []model.BuildVariantTaskUnit{
+					{
+						Name:           "task",
+						CreateCheckRun: &model.CheckRun{PathToOutputs: "output.json"},
+					},
+				},
+			},
+		},
+	}
+	projectWithoutCheckRuns := &model.Project{}
+
+	ref := &model.ProjectRef{Id: "my-project"}
+	settings := &evergreen.Settings{}
+
+	t.Run("NoCheckRunsNoAppAuth", func(t *testing.T) {
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithoutCheckRuns, ref, false)
+		assert.Empty(t, errs)
+	})
+	t.Run("CheckRunsNoAppAuth", func(t *testing.T) {
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, ref, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "no GitHub app is configured")
+	})
+	t.Run("CheckRunsWithAppAuth", func(t *testing.T) {
+		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
+			Id:    ref.Id,
+			AppID: 12345,
+		}))
+		defer func() {
+			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+		}()
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, ref, false)
+		assert.Empty(t, errs)
+	})
+	t.Run("CheckRunsWithRepoAppAuth", func(t *testing.T) {
+		refWithRepo := &model.ProjectRef{Id: "my-project", RepoRefId: "my-repo"}
+		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
+			Id:    refWithRepo.RepoRefId,
+			AppID: 12345,
+		}))
+		defer func() {
+			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+		}()
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, refWithRepo, false)
+		assert.Empty(t, errs)
+	})
 }
 
 func TestValidateCheckRuns(t *testing.T) {

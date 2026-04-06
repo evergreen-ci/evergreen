@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -899,7 +900,16 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 			revisionTime = commit.Commit.Committer.GetDate().Time
 		}
 
-		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, module.Branch, revisionTime, 0)
+		listOpts := &github.CommitsListOptions{
+			SHA:   module.Branch,
+			Until: revisionTime,
+			ListOptions: github.ListOptions{
+				Page:    0,
+				PerPage: 1,
+			},
+		}
+
+		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, listOpts)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
 		}

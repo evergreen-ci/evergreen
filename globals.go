@@ -155,6 +155,7 @@ const (
 	TestSilentlyFailedStatus = "silentfail"
 	TestSkippedStatus        = "skip"
 	TestSucceededStatus      = "pass"
+	TestTimedOutStatus       = "timeout"
 
 	BuildStarted   = "started"
 	BuildCreated   = "created"
@@ -565,6 +566,7 @@ const (
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
 	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
 	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
+	GraphQLAIAgentOtelAttribute    = "evergreen.graphql.ai_agent"
 	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
@@ -588,20 +590,21 @@ var UserTriggeredOrigins = []string{
 }
 
 const (
-	AuthTokenCookie     = "mci-token"
-	LoginCookieTTL      = 365 * 24 * time.Hour
-	TaskHeader          = "Task-Id"
-	TaskSecretHeader    = "Task-Secret"
-	HostHeader          = "Host-Id"
-	HostSecretHeader    = "Host-Secret"
-	ContentTypeHeader   = "Content-Type"
-	ContentTypeValue    = "application/json"
-	ContentLengthHeader = "Content-Length"
-	APIUserHeader       = "Api-User"
-	APIKeyHeader        = "Api-Key"
-	SageUserHeader      = "x-authenticated-sage-user"
-	AuthorizationHeader = "Authorization"
-	EnvironmentHeader   = "X-Evergreen-Environment"
+	AuthTokenCookie      = "mci-token"
+	LoginCookieTTL       = 365 * 24 * time.Hour
+	TaskHeader           = "Task-Id"
+	TaskSecretHeader     = "Task-Secret"
+	HostHeader           = "Host-Id"
+	HostSecretHeader     = "Host-Secret"
+	ContentTypeHeader    = "Content-Type"
+	ContentTypeValue     = "application/json"
+	ContentLengthHeader  = "Content-Length"
+	APIUserHeader        = "Api-User"
+	APIKeyHeader         = "Api-Key"
+	SageUserHeader       = "x-authenticated-sage-user"
+	AuthorizationHeader  = "Authorization"
+	EnvironmentHeader    = "X-Evergreen-Environment"
+	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 )
 
 const (
@@ -1173,10 +1176,11 @@ var (
 	SuperUserPermissionsID = "super_user"
 
 	// Admin permissions.
-	PermissionAdminSettings = "admin_settings"
-	PermissionProjectCreate = "project_create"
-	PermissionDistroCreate  = "distro_create"
-	PermissionRoleModify    = "modify_roles"
+	PermissionAdminSettings     = "admin_settings"
+	PermissionProjectCreate     = "project_create"
+	PermissionDistroCreate      = "distro_create"
+	PermissionNotificationsSend = "notifications_send"
+	PermissionRoleModify        = "modify_roles"
 	// Project permissions.
 	PermissionProjectSettings = "project_settings"
 
@@ -1202,6 +1206,10 @@ var (
 	}
 	DistroCreate = PermissionLevel{
 		Description: "Create new distros",
+		Value:       10,
+	}
+	NotificationsSend = PermissionLevel{
+		Description: "Send notifications as Evergreen",
 		Value:       10,
 	}
 	RoleModify = PermissionLevel{
@@ -1408,6 +1416,7 @@ var SuperuserPermissions = []string{
 	PermissionProjectCreate,
 	PermissionDistroCreate,
 	PermissionRoleModify,
+	PermissionNotificationsSend,
 }
 
 const (

@@ -2178,7 +2178,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
-// the statuses assigned during the addDisplayStatus aggregation step.
+// the statuses assigned by DisplayStatusExpression / addDisplayStatusCache.
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus

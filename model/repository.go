@@ -20,12 +20,9 @@ type Repository struct {
 
 var (
 	// BSON fields for the Repository struct
-	RepoProjectKey = bsonutil.MustHaveTag(Repository{},
-		"Project")
-	RepoLastRevisionKey = bsonutil.MustHaveTag(Repository{},
-		"LastRevision")
-	RepositoryOrderNumberKey = bsonutil.MustHaveTag(Repository{},
-		"RevisionOrderNumber")
+	RepoProjectKey           = bsonutil.MustHaveTag(Repository{}, "Project")
+	RepoLastRevisionKey      = bsonutil.MustHaveTag(Repository{}, "LastRevision")
+	RepositoryOrderNumberKey = bsonutil.MustHaveTag(Repository{}, "RevisionOrderNumber")
 )
 
 const (

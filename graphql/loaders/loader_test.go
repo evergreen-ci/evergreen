@@ -1,4 +1,4 @@
-package graphql
+package loaders
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,9 +50,9 @@ func TestGetUser(t *testing.T) {
 		result, err := GetUser(ctx, "user1")
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Equal(t, "user1", *result.UserID)
-		assert.Equal(t, "User One", *result.DisplayName)
-		assert.Equal(t, "user1@example.com", *result.EmailAddress)
+		assert.Equal(t, "user1", result.Id)
+		assert.Equal(t, "User One", result.DispName)
+		assert.Equal(t, "user1@example.com", result.EmailAddress)
 	})
 
 	t.Run("UserNotFound", func(t *testing.T) {
@@ -182,10 +181,10 @@ func TestGetVersion(t *testing.T) {
 		result, err := GetVersion(ctx, "version1")
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Equal(t, "version1", utility.FromStringPtr(result.Id))
-		assert.Equal(t, "abc123", utility.FromStringPtr(result.Revision))
-		assert.Equal(t, "user1", utility.FromStringPtr(result.Author))
-		assert.Equal(t, "First commit", utility.FromStringPtr(result.Message))
+		assert.Equal(t, "version1", result.Id)
+		assert.Equal(t, "abc123", result.Revision)
+		assert.Equal(t, "user1", result.Author)
+		assert.Equal(t, "First commit", result.Message)
 	})
 
 	t.Run("VersionNotFound", func(t *testing.T) {
@@ -284,7 +283,7 @@ func TestMiddleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		wrappedHandler := DataloaderMiddleware(handler)
+		wrappedHandler := Middleware(handler)
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		rec := httptest.NewRecorder()
@@ -294,22 +293,37 @@ func TestMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		// Verify loaders were injected
-		loaders := DataloaderFor(capturedCtx)
-		require.NotNil(t, loaders)
-		require.NotNil(t, loaders.UserLoader)
-		require.NotNil(t, loaders.VersionLoader)
+		l := For(capturedCtx)
+		require.NotNil(t, l)
+		require.NotNil(t, l.UserLoader)
+		require.NotNil(t, l.VersionLoader)
 	})
 }
 
-func TestNewLoaders(t *testing.T) {
-	loaders := NewLoaders()
-	require.NotNil(t, loaders)
-	require.NotNil(t, loaders.UserLoader)
-	require.NotNil(t, loaders.VersionLoader)
+func TestNew(t *testing.T) {
+	l := New()
+	require.NotNil(t, l)
+	require.NotNil(t, l.UserLoader)
+	require.NotNil(t, l.VersionLoader)
+}
+
+func TestIsBatchError(t *testing.T) {
+	t.Run("ReturnsTrueForBatchError", func(t *testing.T) {
+		err := &batchError{err: assert.AnError}
+		assert.True(t, IsBatchError(err))
+	})
+
+	t.Run("ReturnsFalseForRegularError", func(t *testing.T) {
+		assert.False(t, IsBatchError(assert.AnError))
+	})
+
+	t.Run("ReturnsFalseForNil", func(t *testing.T) {
+		assert.False(t, IsBatchError(nil))
+	})
 }
 
 // setupLoaderContext creates a context with dataloaders injected.
 func setupLoaderContext(ctx context.Context) context.Context {
-	loaders := NewLoaders()
-	return context.WithValue(ctx, loadersKey, loaders)
+	l := New()
+	return context.WithValue(ctx, loadersKey, l)
 }

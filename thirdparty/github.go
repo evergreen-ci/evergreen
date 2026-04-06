@@ -495,13 +495,13 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
+func GetGithubCommits(ctx context.Context, owner, repo string, opts *github.CommitsListOptions) ([]*github.RepositoryCommit, int, error) {
 	caller := "GetGithubCommits"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, ref),
+		attribute.String(githubRefAttribute, opts.SHA),
 	))
 	defer span.End()
 
@@ -513,17 +513,7 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	options := github.CommitsListOptions{
-		SHA: ref,
-		ListOptions: github.ListOptions{
-			Page: commitPage,
-		},
-	}
-	if !utility.IsZeroTime(until) {
-		options.Until = until
-	}
-
-	commits, resp, err := githubClient.Repositories.ListCommits(ctx, owner, repo, &options)
+	commits, resp, err := githubClient.Repositories.ListCommits(ctx, owner, repo, opts)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
@@ -531,7 +521,7 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 			return nil, 0, parseGithubErrorResponse(resp)
 		}
 	} else {
-		errMsg := fmt.Sprintf("nil response from query for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
+		errMsg := fmt.Sprintf("nil response from query for commits in '%s/%s' ref %s : %v", owner, repo, opts.SHA, err)
 		grip.Error(ctx, errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}

@@ -17,6 +17,104 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTestStatusSortRank(t *testing.T) {
+	failRank := testStatusSortRank(evergreen.TestFailedStatus)
+	silentFailRank := testStatusSortRank(evergreen.TestSilentlyFailedStatus)
+	assert.Greater(t, silentFailRank, failRank)
+
+	timedOutRank := testStatusSortRank(evergreen.TestTimedOutStatus)
+	assert.Greater(t, timedOutRank, silentFailRank)
+
+	skipRank := testStatusSortRank(evergreen.TestSkippedStatus)
+	assert.Greater(t, skipRank, timedOutRank)
+
+	passRank := testStatusSortRank(evergreen.TestSucceededStatus)
+	assert.Greater(t, passRank, skipRank)
+}
+
+func TestSortTestResultsByStatus(t *testing.T) {
+	results := []testresult.TestResult{
+		{DisplayTestName: "test_pass", Status: evergreen.TestSucceededStatus},
+		{DisplayTestName: "test_timeout", Status: evergreen.TestTimedOutStatus},
+		{DisplayTestName: "test_skip", Status: evergreen.TestSkippedStatus},
+		{DisplayTestName: "test_fail", Status: evergreen.TestFailedStatus},
+		{DisplayTestName: "test_silent_fail", Status: evergreen.TestSilentlyFailedStatus},
+	}
+
+	t.Run("ASC", func(t *testing.T) {
+		r := make([]testresult.TestResult, len(results))
+		copy(r, results)
+		opts := &FilterOptions{
+			Sort: []testresult.SortBy{{Key: testresult.SortByStatusKey}},
+		}
+		sortTestResults(r, opts, nil)
+		assert.Equal(t, evergreen.TestFailedStatus, r[0].Status)
+		assert.Equal(t, evergreen.TestSilentlyFailedStatus, r[1].Status)
+		assert.Equal(t, evergreen.TestTimedOutStatus, r[2].Status)
+		assert.Equal(t, evergreen.TestSkippedStatus, r[3].Status)
+		assert.Equal(t, evergreen.TestSucceededStatus, r[4].Status)
+	})
+
+	t.Run("DSC", func(t *testing.T) {
+		r := make([]testresult.TestResult, len(results))
+		copy(r, results)
+		opts := &FilterOptions{
+			Sort: []testresult.SortBy{{Key: testresult.SortByStatusKey, OrderDSC: true}},
+		}
+		sortTestResults(r, opts, nil)
+		assert.Equal(t, evergreen.TestSucceededStatus, r[0].Status)
+		assert.Equal(t, evergreen.TestSkippedStatus, r[1].Status)
+		assert.Equal(t, evergreen.TestTimedOutStatus, r[2].Status)
+		assert.Equal(t, evergreen.TestSilentlyFailedStatus, r[3].Status)
+		assert.Equal(t, evergreen.TestFailedStatus, r[4].Status)
+	})
+}
+
+func TestSortTestResultsByBaseStatus(t *testing.T) {
+	results := []testresult.TestResult{
+		{DisplayTestName: "test_pass"},
+		{DisplayTestName: "test_timeout"},
+		{DisplayTestName: "test_skip"},
+		{DisplayTestName: "test_fail"},
+		{DisplayTestName: "test_silent_fail"},
+	}
+	baseStatusMap := map[string]string{
+		"test_pass":        evergreen.TestSucceededStatus,
+		"test_timeout":     evergreen.TestTimedOutStatus,
+		"test_skip":        evergreen.TestSkippedStatus,
+		"test_fail":        evergreen.TestFailedStatus,
+		"test_silent_fail": evergreen.TestSilentlyFailedStatus,
+	}
+
+	t.Run("ASC", func(t *testing.T) {
+		r := make([]testresult.TestResult, len(results))
+		copy(r, results)
+		opts := &FilterOptions{
+			Sort: []testresult.SortBy{{Key: testresult.SortByBaseStatusKey}},
+		}
+		sortTestResults(r, opts, baseStatusMap)
+		assert.Equal(t, "test_fail", r[0].DisplayTestName)
+		assert.Equal(t, "test_silent_fail", r[1].DisplayTestName)
+		assert.Equal(t, "test_timeout", r[2].DisplayTestName)
+		assert.Equal(t, "test_skip", r[3].DisplayTestName)
+		assert.Equal(t, "test_pass", r[4].DisplayTestName)
+	})
+
+	t.Run("DSC", func(t *testing.T) {
+		r := make([]testresult.TestResult, len(results))
+		copy(r, results)
+		opts := &FilterOptions{
+			Sort: []testresult.SortBy{{Key: testresult.SortByBaseStatusKey, OrderDSC: true}},
+		}
+		sortTestResults(r, opts, baseStatusMap)
+		assert.Equal(t, "test_pass", r[0].DisplayTestName)
+		assert.Equal(t, "test_skip", r[1].DisplayTestName)
+		assert.Equal(t, "test_timeout", r[2].DisplayTestName)
+		assert.Equal(t, "test_silent_fail", r[3].DisplayTestName)
+		assert.Equal(t, "test_fail", r[4].DisplayTestName)
+	})
+}
+
 func TestGetTaskTestResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

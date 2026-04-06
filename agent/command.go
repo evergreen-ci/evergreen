@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -165,32 +164,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmd command.Command, options runCommandsOptions) error {
-	prevExp := map[string]string{}
-	for key, val := range commandInfo.Vars {
-		prevVal := tc.taskConfig.Expansions.Get(key)
-		prevExp[key] = prevVal
-
-		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
-		if err != nil {
-			return errors.Wrapf(err, "expanding '%s'", val)
-		}
-		tc.taskConfig.NewExpansions.Put(key, newVal)
+	cleanup, err := tc.taskConfig.ApplyFunctionVarsToExpansions(commandInfo.Vars, cmd.Name())
+	if err != nil {
+		return err
 	}
-	defer func() {
-		// This defer ensures that the function vars do not persist in the expansions after the function is over
-		// unless they were updated using expansions.update
-		if cmd.Name() == "expansions.update" {
-			updatedExpansions := tc.taskConfig.DynamicExpansions.Map()
-			for k := range updatedExpansions {
-				if _, ok := commandInfo.Vars[k]; ok {
-					// If expansions.update updated this key, don't reset it
-					delete(prevExp, k)
-				}
-			}
-		}
-		tc.taskConfig.NewExpansions.Update(prevExp)
-		tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
-	}()
+	defer cleanup()
 
 	tc.setCurrentCommand(cmd)
 	switch options.block {

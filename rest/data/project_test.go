@@ -313,7 +313,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 
 	dbNewVars, err := model.FindOneProjectVars(s.T().Context(), projectId)
 	s.NoError(err)
-	s.Require().NotZero(dbNewVars)
+	s.Require().NotNil(dbNewVars)
 
 	s.Len(dbNewVars.Vars, 3)
 	s.Equal("2", dbNewVars.Vars["b"])
@@ -333,12 +333,16 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		Id: "new_project",
 	}
 	s.Require().NoError(newProjRef.Insert(s.T().Context()))
+	newProjVars := &model.ProjectVars{
+		Id: newProjRef.Id,
+	}
+	s.Require().NoError(newProjVars.Insert(s.T().Context()))
 	// successful upsert
 	s.NoError(UpdateProjectVars(s.T().Context(), newProjRef.Id, &newVars, false))
 
 	dbUpsertedVars, err := model.FindOneProjectVars(s.T().Context(), newProjRef.Id)
 	s.NoError(err)
-	s.Require().NotZero(dbUpsertedVars)
+	s.Require().NotNil(dbUpsertedVars)
 
 	s.Len(dbUpsertedVars.Vars, 1)
 	s.Equal("4", dbUpsertedVars.Vars["d"])

@@ -103,6 +103,10 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
 
+	owner := gRepoPoller.ProjectRef.Owner
+	repo := gRepoPoller.ProjectRef.Repo
+	branch := gRepoPoller.ProjectRef.Branch
+
 	var foundLatest bool
 	var commits []*github.RepositoryCommit
 	var firstCommit *github.RepositoryCommit // we track this for later error handling
@@ -110,9 +114,15 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 	revisions := []model.Revision{}
 
 	for len(revisions) < maxRevisionsToSearch {
+		listOpts := &github.CommitsListOptions{
+			SHA: branch,
+			ListOptions: github.ListOptions{
+				Page: commitPage,
+			},
+		}
+
 		var err error
-		commits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.ProjectRef.Owner,
-			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch, time.Time{}, commitPage)
+		commits, commitPage, err = thirdparty.GetGithubCommits(ctx, owner, repo, listOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -168,8 +178,8 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 			defer cancel()
 			baseRevision, err = thirdparty.GetGithubMergeBaseRevision(
 				githubCtx,
-				gRepoPoller.ProjectRef.Owner,
-				gRepoPoller.ProjectRef.Repo,
+				owner,
+				repo,
 				revision,
 				*firstCommit.SHA,
 			)
@@ -196,11 +206,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 		}
 
 		// automatically set the newly found base revision as base revision and append revisions
-		commit, err := thirdparty.GetCommitEvent(ctx,
-			gRepoPoller.ProjectRef.Owner,
-			gRepoPoller.ProjectRef.Repo,
-			baseRevision,
-		)
+		commit, err := thirdparty.GetCommitEvent(ctx, owner, repo, baseRevision)
 		if err != nil {
 			return nil, errors.Wrapf(err, "loading base commit '%s'", baseRevision)
 		}
@@ -238,19 +244,28 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context
 }
 
 // GetRecentRevisions fetches the most recent 'numRevisions'
-func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) ([]model.Revision, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(ctx context.Context, maxRevisions int) ([]model.Revision, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+
+	owner := gRepoPoller.ProjectRef.Owner
+	repo := gRepoPoller.ProjectRef.Repo
+	branch := gRepoPoller.ProjectRef.Branch
 
 	var revisions []model.Revision
 	commitPage := 0
 
 	for {
+		listOpts := &github.CommitsListOptions{
+			SHA: branch,
+			ListOptions: github.ListOptions{
+				Page: commitPage,
+			},
+		}
+
 		var err error
 		var repoCommits []*github.RepositoryCommit
-		repoCommits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.ProjectRef.Owner,
-			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch,
-			time.Time{}, commitPage)
+		repoCommits, commitPage, err = thirdparty.GetGithubCommits(ctx, owner, repo, listOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -259,8 +274,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) 
 			if len(revisions) == maxRevisions {
 				break
 			}
-			revisions = append(revisions, githubCommitToRevision(
-				commit))
+			revisions = append(revisions, githubCommitToRevision(commit))
 		}
 
 		// stop querying for commits if we've reached our target

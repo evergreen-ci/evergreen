@@ -55,6 +55,8 @@ should be part of a Guild, as this is refreshed every day and better
 supports employees moving teams. Guilds can also dynamically add users
 who match certain characteristics.
 
+To verify what permissions have been granted to a specific user, use the [permission-details API endpoint](../API/REST-V2-Usage#tag/users/paths/~1users~1{user_id}~1permission-details/get).
+
 ## Project Settings
 
 The Project Settings file displays information about the Project itself,

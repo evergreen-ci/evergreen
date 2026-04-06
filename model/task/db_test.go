@@ -21,16 +21,6 @@ import (
 )
 
 func checkStatuses(t *testing.T, expected string, toCheck Task) {
-	var dbTasks []Task
-	aggregation := []bson.M{
-		{"$match": bson.M{
-			IdKey: toCheck.Id,
-		}},
-		addDisplayStatus,
-	}
-	err := db.Aggregate(t.Context(), Collection, aggregation, &dbTasks)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, dbTasks[0].DisplayStatus)
 	assert.Equal(t, expected, toCheck.GetDisplayStatus())
 }
 
@@ -374,52 +364,6 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 	dbTasks, err = FindAll(ctx, db.Query(ByBuildIdAndGithubChecks("b3")))
 	assert.NoError(t, err)
 	assert.Empty(t, dbTasks)
-}
-
-func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, OldCollection))
-	taskDoc := Task{
-		Id:        "task",
-		Status:    evergreen.TaskSucceeded,
-		Activated: true,
-	}
-	assert.NoError(taskDoc.Insert(t.Context()))
-	task, err := FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
-	assert.NoError(err)
-	assert.NotNil(task)
-	assert.Equal(evergreen.TaskSucceeded, task.DisplayStatus)
-
-	// Should fetch tasks from the old collection
-	assert.NoError(taskDoc.Archive(ctx))
-	task, err = FindOneOldByIdAndExecution(ctx, taskDoc.Id, 0)
-	assert.NoError(err)
-	assert.NotNil(task)
-	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
-	assert.NoError(err)
-	assert.NotNil(task)
-	assert.Equal(task.OldTaskId, taskDoc.Id)
-
-	// Should fetch recent executions by default
-	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, nil)
-	assert.NoError(err)
-	assert.NotNil(task)
-	assert.Equal(1, task.Execution)
-	assert.Equal(evergreen.TaskSucceeded, task.DisplayStatus)
-
-	taskDoc = Task{
-		Id:        "task2",
-		Status:    evergreen.TaskUndispatched,
-		Activated: false,
-	}
-	assert.NoError(taskDoc.Insert(t.Context()))
-	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
-	assert.NoError(err)
-	assert.NotNil(task)
-	assert.Equal(evergreen.TaskUnscheduled, task.DisplayStatus)
 }
 
 func TestFindAllFirstExecution(t *testing.T) {
@@ -930,6 +874,98 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 	// alphabetical order
 	assert.Equal(t, dt.Id, tasks[0].Id)
 	assert.Equal(t, t2.Id, tasks[1].Id)
+}
+
+func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	// Set up tasks matching the ticket scenario:
+	// - example-a and example-b are execution tasks (members of "grouped" display task)
+	// - example-c is a standalone task
+	// - grouped is the display task containing example-a and example-b
+	exampleA := Task{
+		Id:            "example-a",
+		DisplayName:   "example-a",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr("grouped"),
+		ActivatedTime: time.Now(),
+	}
+	exampleB := Task{
+		Id:            "example-b",
+		DisplayName:   "example-b",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr("grouped"),
+		ActivatedTime: time.Now(),
+	}
+	exampleC := Task{
+		Id:            "example-c",
+		DisplayName:   "example-c",
+		Version:       "v1",
+		DisplayTaskId: utility.ToStringPtr(""),
+		ActivatedTime: time.Now(),
+	}
+	grouped := Task{
+		Id:             "grouped",
+		DisplayName:    "grouped",
+		Version:        "v1",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"example-a", "example-b"},
+		ActivatedTime:  time.Now(),
+	}
+
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, exampleA, exampleB, exampleC, grouped))
+
+	ctx := context.TODO()
+
+	// Test 1: Filter by "example" should return all three tasks (example-a, example-b, example-c)
+	// Previously, only example-c would be returned because example-a and example-b were filtered out
+	opts := GetTasksByVersionOptions{
+		TaskNames: []string{"example"},
+		Sorts: []TasksSortOrder{
+			{Key: DisplayNameKey, Order: 1},
+		},
+	}
+	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
+	assert.NoError(t, err)
+	require.Equal(t, 3, count, "Should return all three tasks matching 'example'")
+	require.Len(t, tasks, 3)
+	assert.Equal(t, "example-a", tasks[0].DisplayName)
+	assert.Equal(t, "example-b", tasks[1].DisplayName)
+	assert.Equal(t, "example-c", tasks[2].DisplayName)
+
+	// Test 2: Filter by "example-a" should return only example-a
+	opts = GetTasksByVersionOptions{
+		TaskNames: []string{"example-a"},
+	}
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count, "Should return only example-a")
+	require.Len(t, tasks, 1)
+	assert.Equal(t, "example-a", tasks[0].DisplayName)
+
+	// Test 3: Filter by "grouped" should return only the display task
+	opts = GetTasksByVersionOptions{
+		TaskNames: []string{"grouped"},
+	}
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, count, "Should return only the grouped display task")
+	require.Len(t, tasks, 1)
+	assert.Equal(t, "grouped", tasks[0].DisplayName)
+	assert.True(t, tasks[0].DisplayOnly)
+
+	// Test 4: No filter should return display task and standalone task (not execution tasks)
+	opts = GetTasksByVersionOptions{
+		Sorts: []TasksSortOrder{
+			{Key: DisplayNameKey, Order: 1},
+		},
+	}
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count, "Should return only display task and standalone task")
+	require.Len(t, tasks, 2)
+	assert.Equal(t, "example-c", tasks[0].DisplayName)
+	assert.Equal(t, "grouped", tasks[1].DisplayName)
 }
 
 func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
@@ -1561,73 +1597,6 @@ func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTas
 			assert.Equal(t, expectedCount.Count, actualCount.Count)
 		}
 	}
-}
-
-func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
-	t1 := Task{
-		Id:                 "t1",
-		Version:            "v1",
-		Status:             evergreen.TaskStarted,
-		ActivatedTime:      time.Time{},
-		DisplayName:        "task_1",
-		BuildVariant:       "bv_1",
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskStarted,
-	}
-	t2 := Task{
-		Id:                 "t2",
-		Version:            "v1",
-		Status:             evergreen.TaskSetupFailed,
-		ActivatedTime:      time.Time{},
-		DisplayName:        "task_2",
-		BuildVariant:       "bv_2",
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskSetupFailed,
-	}
-	t3 := Task{
-		Id:                 "t1_base",
-		Version:            "v1_base",
-		Status:             evergreen.TaskSucceeded,
-		ActivatedTime:      time.Time{},
-		DisplayName:        "task_1",
-		BuildVariant:       "bv_1",
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskSucceeded,
-	}
-	t4 := Task{
-		Id:                 "t2_base",
-		Version:            "v1_base",
-		Status:             evergreen.TaskStarted,
-		ActivatedTime:      time.Time{},
-		DisplayName:        "task_2",
-		BuildVariant:       "bv_2",
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskStarted,
-	}
-	t5 := Task{
-		Id:                 "only_on_base",
-		Version:            "v1_base",
-		Status:             evergreen.TaskFailed,
-		ActivatedTime:      time.Time{},
-		DisplayName:        "only_on_base",
-		BuildVariant:       "bv_2",
-		DisplayTaskId:      utility.ToStringPtr(""),
-		DisplayStatusCache: evergreen.TaskFailed,
-	}
-	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5))
-	ctx := context.TODO()
-	statuses, err := GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
-	assert.NoError(t, err)
-	assert.Len(t, statuses, 2)
-	assert.Equal(t, evergreen.TaskStarted, statuses[0])
-	assert.Equal(t, evergreen.TaskSucceeded, statuses[1])
-
-	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t5))
-	statuses, err = GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
-	assert.NoError(t, err)
-	assert.Empty(t, statuses)
 }
 
 func TestHasMatchingTasks(t *testing.T) {

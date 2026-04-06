@@ -1502,6 +1502,18 @@ func (p *Project) GetNumCheckRunsFromTaskVariantPairs(variantTasks *TaskVariantP
 	return numCheckRuns
 }
 
+// HasCheckRuns returns true if the project has any check runs.
+func (p *Project) HasCheckRuns() bool {
+	for _, b := range p.BuildVariants {
+		for _, t := range b.Tasks {
+			if t.HasCheckRun() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (p *Project) getNumCheckRuns(taskName, variantName string) int {
 	if bvtu := p.FindTaskForVariant(taskName, variantName); bvtu != nil {
 		if bvtu.HasCheckRun() {

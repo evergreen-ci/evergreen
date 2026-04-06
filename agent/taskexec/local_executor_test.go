@@ -269,7 +269,7 @@ tasks:
 		_, err = executor.LoadProject(yamlFile)
 		require.NoError(t, err)
 
-		err = executor.PrepareTask(t.Context(), "test-task")
+		err = executor.PrepareTask(t.Context(), "test-task", "")
 		require.NoError(t, err)
 		assert.Equal(t, "test-task", executor.debugState.SelectedTask)
 		assert.Greater(t, len(executor.debugState.CommandList), 0)
@@ -294,7 +294,7 @@ tasks:
 		_, err = executor.LoadProject(yamlFile)
 		require.NoError(t, err)
 
-		err = executor.PrepareTask(t.Context(), "nonexistent-task")
+		err = executor.PrepareTask(t.Context(), "nonexistent-task", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "task 'nonexistent-task' not found")
 	})
@@ -303,9 +303,109 @@ tasks:
 		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
 		require.NoError(t, err)
 
-		err = executor.PrepareTask(t.Context(), "any-task")
+		err = executor.PrepareTask(t.Context(), "any-task", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "project not loaded")
+	})
+
+	t.Run("PreparesTaskWithVariantExpansions", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    expansions:
+      distro_id: ubuntu2204
+      edition: enterprise
+    tasks:
+      - name: test-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask(t.Context(), "test-task", "ubuntu2204")
+		require.NoError(t, err)
+		assert.Equal(t, "test-task", executor.debugState.SelectedTask)
+		assert.Equal(t, "ubuntu2204", executor.debugState.SelectedVariant)
+		assert.Equal(t, "ubuntu2204", executor.taskConfig.Expansions.Get("build_variant"))
+		assert.Equal(t, "ubuntu2204", executor.taskConfig.Expansions.Get("distro_id"))
+		assert.Equal(t, "enterprise", executor.taskConfig.Expansions.Get("edition"))
+	})
+
+	t.Run("ReturnsErrorForNonexistentVariant", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+buildvariants:
+  - name: ubuntu2204
+    tasks:
+      - name: test-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask(t.Context(), "test-task", "nonexistent-variant")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found in project")
+	})
+
+	t.Run("ReturnsErrorForTaskNotOnVariant", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+  - name: other-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "other"
+buildvariants:
+  - name: ubuntu2204
+    tasks:
+      - name: other-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask(t.Context(), "test-task", "ubuntu2204")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not defined on build variant")
 	})
 }
 
@@ -429,5 +529,151 @@ func TestLogFile(t *testing.T) {
 
 		assert.Contains(t, content, "=== STEP 5 START shell.exec (main) ===")
 		assert.Contains(t, content, "=== STEP 5 END success=true duration=1.2s ===")
+	})
+}
+
+func TestReloadProject(t *testing.T) {
+	makeYAML := func(t *testing.T, dir, content string) string {
+		t.Helper()
+		path := filepath.Join(dir, "test.yml")
+		require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+		return path
+	}
+
+	t.Run("PreservesStepIndexAndState", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "step1"
+      - command: shell.exec
+        params:
+          script: echo "step2"
+      - command: shell.exec
+        params:
+          script: echo "step3"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask(t.Context(), "test-task", ""))
+
+		executor.debugState.CurrentStepIndex = 2
+		executor.debugState.CustomVars["myvar"] = "myval"
+		executor.debugState.ExecutionHistory = []executionRecord{
+			{stepIndex: 0, success: true},
+			{stepIndex: 1, success: true},
+		}
+
+		project, err := executor.ReloadProject(t.Context(), yamlFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+
+		assert.Equal(t, 2, executor.debugState.CurrentStepIndex)
+		assert.Equal(t, "myval", executor.debugState.CustomVars["myvar"])
+		assert.Len(t, executor.debugState.ExecutionHistory, 2)
+		assert.Equal(t, "test-task", executor.debugState.SelectedTask)
+	})
+
+	t.Run("ClampsStepIndexWhenFewerSteps", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "step1"
+      - command: shell.exec
+        params:
+          script: echo "step2"
+      - command: shell.exec
+        params:
+          script: echo "step3"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask(t.Context(), "test-task", ""))
+
+		executor.debugState.CurrentStepIndex = 2
+
+		// Rewrite the file with fewer commands.
+		makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "only-step"
+`)
+
+		project, err := executor.ReloadProject(t.Context(), yamlFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+
+		expectedSteps := len(executor.debugState.CommandList)
+		assert.Equal(t, expectedSteps, executor.debugState.CurrentStepIndex)
+		assert.False(t, executor.debugState.HasMoreSteps())
+	})
+
+	t.Run("ReloadsWithNoSelectedTask", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		project, err := executor.ReloadProject(t.Context(), yamlFile)
+		require.NoError(t, err)
+		assert.NotNil(t, project)
+		assert.Equal(t, 0, executor.debugState.CurrentStepIndex)
+		assert.Empty(t, executor.debugState.CommandList)
+	})
+
+	t.Run("RestoresCustomVarsToExpansions", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := makeYAML(t, tmpDir, `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+`)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask(t.Context(), "test-task", ""))
+
+		executor.SetVariable("custom_key", "custom_value")
+
+		_, err = executor.ReloadProject(t.Context(), yamlFile)
+		require.NoError(t, err)
+
+		assert.Equal(t, "custom_value", executor.expansions.Get("custom_key"))
+		assert.Equal(t, "custom_value", executor.debugState.CustomVars["custom_key"])
 	})
 }
