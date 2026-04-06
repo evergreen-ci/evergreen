@@ -1,11 +1,12 @@
 # Task Debugger
 
-# Notice: Beta Feature
-The task debugger is currently in beta. Features and behavior may change.
+> **Notice:**
+> The task debugger is currently in **beta**. Features and behavior may change.
 
 ## Why Use the Task Debugger?
 
 When a task fails in Evergreen CI, debugging can have friction points:
+
 - Needing to adddebug logging, push a commit, and wait for a new run
 - Inability to inspect the exact state when the failure occurred  
 - Each debugging attempt requires a full CI cycle
@@ -22,7 +23,7 @@ The task debugger has three main components:
 
 This would be the typical workflow:
 
-```
+```text
 Failed Task in UI → Create Debug Spawn Host → SSH into Host → Run Debug Commands
 ```
 
@@ -31,6 +32,7 @@ Failed Task in UI → Create Debug Spawn Host → SSH into Host → Run Debug Co
 ### Create a Debug Spawn Host
 
 From your failed task in the Evergreen UI:
+
 1. Click the **"Spawn Host"** button on the task page
 2. In the spawn host form, check **"Debug Mode"** in the optional settings
 3. (Optional) Select a starting task [step](#understanding-step-numbers) you would like to start debugging at
@@ -73,7 +75,8 @@ evergreen debug load /home/user/project/evergreen.yml
 ```
 
 On success, reports the number of tasks and build variants found:
-```
+
+```text
 Loaded configuration: /home/user/project/evergreen.yml
 Tasks: 12, Variants: 5
 ```
@@ -88,7 +91,8 @@ evergreen debug select compile --variant ubuntu2204
 ```
 
 Output:
-```
+
+```text
 Selected task: compile
 Total steps: 8
 ```
@@ -136,7 +140,8 @@ evergreen debug jump 3
 ```
 
 Output:
-```
+
+```text
 Jumped to step 3
 ```
 
@@ -150,7 +155,8 @@ evergreen debug set-var BUILD_TYPE=debug
 ```
 
 Output:
-```
+
+```text
 Set variable: MY_FLAG=--verbose
 ```
 
@@ -165,7 +171,8 @@ evergreen debug list-steps
 ```
 
 Example output:
-```
+
+```text
 Steps:
   pre:1: setup environment ✓
   pre:2: install dependencies ✓
@@ -214,13 +221,15 @@ evergreen debug daemon status
 ```
 
 Output when running with a task selected:
-```
+
+```text
 Daemon is running
 Task: compile (step 3/10)
 ```
 
 Output when not running:
-```
+
+```text
 Daemon is not running
 ```
 
@@ -316,12 +325,14 @@ evergreen debug next
 ```
 
 This is useful when:
+
 - Testing different command arguments or flags
 - Adjusting timeout values
 - Modifying shell scripts within the config
 - Adding or removing commands from a task
 
 The hot reload preserves:
+
 - Your current task selection (no need to re-select)
 - Your current step position
 - Custom variables set with `set-var`
@@ -387,7 +398,6 @@ Steps are numbered based on their position in your task:
 | `post:N` | Post-task step | `post:1` |
 
 Use `list-steps` to see the exact numbering for your task.
-
 
 ## Setup Phase
 
