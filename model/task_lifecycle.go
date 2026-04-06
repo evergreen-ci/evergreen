@@ -756,6 +756,8 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
 			attribute.Float64(evergreen.TaskEBSOnDemandThroughputCostOtelAttribute, t.TaskCost.OnDemandEBSThroughputCost),
 			attribute.Float64(evergreen.TaskEBSAdjustedThroughputCostOtelAttribute, t.TaskCost.AdjustedEBSThroughputCost),
+			attribute.Float64(evergreen.TaskEBSOnDemandStorageCostOtelAttribute, t.TaskCost.OnDemandEBSStorageCost),
+			attribute.Float64(evergreen.TaskEBSAdjustedStorageCostOtelAttribute, t.TaskCost.AdjustedEBSStorageCost),
 		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, costAttrs)
 		span.SetAttributes(costAttrs...)

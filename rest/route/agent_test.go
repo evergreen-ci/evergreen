@@ -205,11 +205,15 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			rh.taskID = "t2"
-			resp := rh.Run(ctx)
+			foundTask, err := task.FindOneId(ctx, "t2")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp := rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId(ctx, "t2")
+			foundTask, err = task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -222,7 +226,11 @@ func TestMarkTaskForReset(t *testing.T) {
 			}))
 			require.NoError(t, foundTask.Archive(ctx))
 			require.NoError(t, foundTask.Reset(ctx, ""))
-			resp = rh.Run(ctx)
+			foundTask, err = task.FindOneId(ctx, "t2")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 
@@ -236,7 +244,11 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 		"RunSucceedsWithDisplayTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			rh.taskID = "et1"
-			resp := rh.Run(ctx)
+			et1Task, err := task.FindOneId(ctx, "et1")
+			require.NoError(t, err)
+			require.NotNil(t, et1Task)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, et1Task)
+			resp := rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -250,7 +262,11 @@ func TestMarkTaskForReset(t *testing.T) {
 			// Should not error if another execution task tries to mark the display task for restart
 			// before the display task has finished
 			rh.taskID = "et2"
-			resp = rh.Run(ctx)
+			et2Task, err := task.FindOneId(ctx, "et2")
+			require.NoError(t, err)
+			require.NotNil(t, et2Task)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, et2Task)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -264,7 +280,11 @@ func TestMarkTaskForReset(t *testing.T) {
 		"SuccessfullyChecksMaxRestartLimit": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			// Should succeed normally for first task
 			rh.taskID = "t2"
-			resp := rh.Run(ctx)
+			t2Task, err := task.FindOneId(ctx, "t2")
+			require.NoError(t, err)
+			require.NotNil(t, t2Task)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, t2Task)
+			resp := rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -277,7 +297,11 @@ func TestMarkTaskForReset(t *testing.T) {
 
 			// Should fail on second task since a limit is in place of 1
 			rh.taskID = "t3"
-			resp = rh.Run(ctx)
+			t3Task, err := task.FindOneId(ctx, "t3")
+			require.NoError(t, err)
+			require.NotNil(t, t3Task)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, t3Task)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusInternalServerError, resp.Status())
 			require.NotNil(t, resp.Data())
@@ -291,7 +315,11 @@ func TestMarkTaskForReset(t *testing.T) {
 			}
 			require.NoError(t, pRef.Replace(t.Context()))
 			rh.taskID = "t4"
-			resp = rh.Run(ctx)
+			t4Task, err := task.FindOneId(ctx, "t4")
+			require.NoError(t, err)
+			require.NotNil(t, t4Task)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, t4Task)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -493,7 +521,11 @@ func TestDownstreamParams(t *testing.T) {
 	r.downstreamParams = parameters
 	require.True(t, ok)
 
-	resp := r.Run(ctx)
+	foundTask, err := task.FindOneId(ctx, "task1")
+	require.NoError(t, err)
+	require.NotNil(t, foundTask)
+	taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+	resp := r.Run(taskCtx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -1025,7 +1057,11 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 			handler := makeStartTask(env).(*startTaskHandler)
 			require.NoError(t, handler.Parse(ctx, req))
 
-			resp := handler.Run(ctx)
+			foundTask, err := task.FindOneId(ctx, "test-task-id")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp := handler.Run(taskCtx)
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -1043,17 +1079,6 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 func TestReportS3Usage(t *testing.T) {
 	ctx := t.Context()
-
-	t.Run("TaskNotFound", func(t *testing.T) {
-		require.NoError(t, db.Clear(task.Collection))
-		handler := makeReportS3Usage().(*reportS3UsageHandler)
-		handler.taskID = "nonexistent"
-		handler.s3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10}},
-		}
-		resp := handler.Run(ctx)
-		assert.Equal(t, http.StatusNotFound, resp.Status())
-	})
 
 	t.Run("SavesArtifactAndLogUsage", func(t *testing.T) {
 		require.NoError(t, db.Clear(task.Collection))
@@ -1075,7 +1100,11 @@ func TestReportS3Usage(t *testing.T) {
 				UploadBytes: 4096,
 			},
 		}
-		resp := handler.Run(ctx)
+		foundTask, err := task.FindOneId(ctx, "t1")
+		require.NoError(t, err)
+		require.NotNil(t, foundTask)
+		taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+		resp := handler.Run(taskCtx)
 		assert.Equal(t, http.StatusOK, resp.Status())
 
 		dbTask, err := task.FindOneId(ctx, "t1")
@@ -1101,7 +1130,11 @@ func TestReportS3Usage(t *testing.T) {
 				UploadBytes: 8192,
 			},
 		}
-		resp := handler.Run(ctx)
+		foundTask, err := task.FindOneId(ctx, "t2")
+		require.NoError(t, err)
+		require.NotNil(t, foundTask)
+		taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+		resp := handler.Run(taskCtx)
 		assert.Equal(t, http.StatusOK, resp.Status())
 
 		dbTask, err := task.FindOneId(ctx, "t2")

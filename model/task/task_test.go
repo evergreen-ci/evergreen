@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2mount"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -5030,6 +5031,72 @@ func TestTaskCostIsZero(t *testing.T) {
 	assert.False(t, nonZeroEBSThroughputOnDemand.IsZero())
 	nonZeroEBSThroughputAdjusted := cost.Cost{AdjustedEBSThroughputCost: 0.1}
 	assert.False(t, nonZeroEBSThroughputAdjusted.IsZero())
+	nonZeroEBSStorageOnDemand := cost.Cost{OnDemandEBSStorageCost: 0.01}
+	assert.False(t, nonZeroEBSStorageOnDemand.IsZero())
+	nonZeroEBSStorageAdjusted := cost.Cost{AdjustedEBSStorageCost: 0.01}
+	assert.False(t, nonZeroEBSStorageAdjusted.IsZero())
+}
+
+func TestCalculateEBSStorageOnDemandCost(t *testing.T) {
+	t.Run("ZeroRuntime", func(t *testing.T) {
+		mountPoints := []ec2mount.MountPoint{{VolumeType: "gp3", Size: 100}}
+		assert.Equal(t, 0.0, CalculateEBSStorageOnDemandCost(0, mountPoints))
+	})
+	t.Run("NoVolumeSize", func(t *testing.T) {
+		mountPoints := []ec2mount.MountPoint{{VolumeType: "gp3", Size: 0}}
+		assert.Equal(t, 0.0, CalculateEBSStorageOnDemandCost(3600, mountPoints))
+	})
+	t.Run("ListPricePerFormula", func(t *testing.T) {
+		mountPoints := []ec2mount.MountPoint{{VolumeType: "gp3", Size: 100}}
+		runtimeSeconds := 3600.0
+		got := CalculateEBSStorageOnDemandCost(runtimeSeconds, mountPoints)
+		expected := (100.0 * GP3StoragePricePerGBMonth / SecondsPerMonth) * runtimeSeconds
+		assert.InDelta(t, expected, got, 0.000001)
+	})
+}
+
+func TestCalculateTotalVolumeSize(t *testing.T) {
+	t.Run("NoMountPoints", func(t *testing.T) {
+		assert.Equal(t, int32(0), calculateTotalVolumeSize([]ec2mount.MountPoint{}))
+	})
+	t.Run("GP3AndGP2Volumes", func(t *testing.T) {
+		mountPoints := []ec2mount.MountPoint{
+			{VolumeType: "gp3", Size: 100},
+			{VolumeType: "gp2", Size: 50},
+		}
+		assert.Equal(t, int32(150), calculateTotalVolumeSize(mountPoints))
+	})
+	t.Run("IncludesAllVolumeTypes", func(t *testing.T) {
+		// All volumes are counted; cost uses GP3 pricing as the standardized rate.
+		mountPoints := []ec2mount.MountPoint{
+			{VolumeType: "gp3", Size: 100},
+			{VolumeType: "io1", Size: 50},
+			{VolumeType: "gp2", Size: 25},
+		}
+		assert.Equal(t, int32(175), calculateTotalVolumeSize(mountPoints))
+	})
+	t.Run("IncludesMountPointsWithoutVolumeType", func(t *testing.T) {
+		// Many distros omit the volume_type field.
+		mountPoints := []ec2mount.MountPoint{
+			{VolumeType: "", Size: 300},
+		}
+		assert.Equal(t, int32(300), calculateTotalVolumeSize(mountPoints))
+	})
+}
+
+func TestCalculateEBSStorageAdjustedCost(t *testing.T) {
+	t.Run("ZeroRuntime", func(t *testing.T) {
+		mountPoints := []ec2mount.MountPoint{{VolumeType: "gp3", Size: 100}}
+		assert.Equal(t, 0.0, CalculateEBSStorageAdjustedCost(0, mountPoints, evergreen.EBSCostConfig{}))
+	})
+	t.Run("AppliesDiscount", func(t *testing.T) {
+		mountPoints := []ec2mount.MountPoint{{VolumeType: "gp3", Size: 100}}
+		ebsConfig := evergreen.EBSCostConfig{EBSDiscount: 0.2}
+		runtimeSeconds := 3600.0
+		adjusted := CalculateEBSStorageAdjustedCost(runtimeSeconds, mountPoints, ebsConfig)
+		onDemand := CalculateEBSStorageOnDemandCost(runtimeSeconds, mountPoints)
+		assert.InDelta(t, onDemand*(1-0.2), adjusted, 0.000001)
+	})
 }
 
 func TestUpdateTaskCost(t *testing.T) {

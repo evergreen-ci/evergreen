@@ -504,6 +504,9 @@ const (
 	// EBS cost otel attributes — task-level (throughput)
 	TaskEBSOnDemandThroughputCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_throughput_cost"
 	TaskEBSAdjustedThroughputCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_throughput_cost"
+	// EBS cost otel attributes — task-level (storage)
+	TaskEBSOnDemandStorageCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_storage_cost"
+	TaskEBSAdjustedStorageCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_storage_cost"
 
 	// S3 cost tracking otel span name — shared by per-file and aggregate events
 	S3CostTrackingOtelSpanName = "s3-cost-tracking"

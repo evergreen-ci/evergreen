@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
@@ -118,6 +119,49 @@ func MustHaveUser(ctx context.Context) *user.DBUser {
 	}
 
 	return usr
+}
+
+// GetTask returns the task stored in the request context by
+// TaskAuthMiddleware. Returns nil if no task is in the context.
+func GetTask(ctx context.Context) *task.Task {
+	if rv := ctx.Value(model.ApiTaskKey); rv != nil {
+		if t, ok := rv.(*task.Task); ok {
+			return t
+		}
+	}
+	return nil
+}
+
+// MustHaveTask returns the task stored in the request context by
+// TaskAuthMiddleware. It panics if none is set.
+func MustHaveTask(ctx context.Context) *task.Task {
+	t := GetTask(ctx)
+	if t == nil {
+		panic("task not attached to request")
+	}
+	return t
+}
+
+// GetHost returns the host stored in the request context by
+// hostAuthMiddleware or TaskAuthMiddleware. Returns nil if no host is
+// in the context.
+func GetHost(ctx context.Context) *host.Host {
+	if rv := ctx.Value(model.ApiHostKey); rv != nil {
+		if h, ok := rv.(*host.Host); ok {
+			return h
+		}
+	}
+	return nil
+}
+
+// MustHaveHost returns the host stored in the request context by
+// hostAuthMiddleware or TaskAuthMiddleware. It panics if none is set.
+func MustHaveHost(ctx context.Context) *host.Host {
+	h := GetHost(ctx)
+	if h == nil {
+		panic("host not attached to request")
+	}
+	return h
 }
 
 func validPriority(ctx context.Context, priority int64, project string, user gimlet.User) bool {
@@ -227,6 +271,8 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
+	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
+
 	updateHostAccessTime(r.Context(), h)
 	next(rw, r)
 }
@@ -322,6 +368,8 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
+	r = r.WithContext(context.WithValue(r.Context(), model.ApiTaskKey, t))
+
 	hostID, ok := gimlet.GetVars(r)["host_id"]
 	if !ok {
 		hostID = r.Header.Get(evergreen.HostHeader)
@@ -334,13 +382,16 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if _, code, err := model.ValidateHost(hostID, r); err != nil {
+	h, code, err := model.ValidateHost(hostID, r)
+	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    errors.Wrapf(err, "invalid host associated with task '%s'", taskID).Error(),
 		}))
 		return
 	}
+
+	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 
 	next(rw, r)
 }

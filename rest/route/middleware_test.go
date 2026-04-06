@@ -20,6 +20,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mongobson "go.mongodb.org/mongo-driver/bson"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -242,8 +243,9 @@ func TestTaskAuthMiddleware(t *testing.T) {
 		Status: evergreen.TaskSucceeded,
 	}
 	host1 := &host.Host{
-		Id:     "host1",
-		Secret: "abcdef",
+		Id:          "host1",
+		Secret:      "abcdef",
+		RunningTask: "task1",
 	}
 	assert.NoError(task1.Insert(t.Context()))
 	assert.NoError(completedTask.Insert(t.Context()))
@@ -268,7 +270,15 @@ func TestTaskAuthMiddleware(t *testing.T) {
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
 	rw = httptest.NewRecorder()
-	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		// Verify that the task and host are stored in the request context.
+		foundTask := GetTask(r.Context())
+		assert.NotNil(foundTask)
+		assert.Equal("task1", foundTask.Id)
+		foundHost := GetHost(r.Context())
+		assert.NotNil(foundHost)
+		assert.Equal("host1", foundHost.Id)
+	})
 	assert.Equal(http.StatusOK, rw.Code)
 
 	r.Header.Set(evergreen.TaskHeader, "completedTask")
@@ -277,6 +287,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	assert.NotEqual(http.StatusOK, rw.Code)
 
 	assert.NoError(task.UpdateOne(ctx, bson.M{task.IdKey: "completedTask"}, bson.M{"$set": bson.M{task.FinishTimeKey: time.Now().Add(-30 * time.Minute)}}))
+	assert.NoError(host.UpdateOne(ctx, mongobson.M{host.IdKey: "host1"}, mongobson.M{"$set": mongobson.M{host.RunningTaskKey: "completedTask"}}))
 	r.Header.Set(evergreen.TaskHeader, "completedTask")
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -303,7 +314,12 @@ func TestHostAuthMiddleware(t *testing.T) {
 					evergreen.HostSecretHeader: []string{h.Secret},
 				},
 			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+				// Verify that the host is stored in the request context.
+				foundHost := GetHost(r.Context())
+				assert.NotNil(t, foundHost)
+				assert.Equal(t, h.Id, foundHost.Id)
+			})
 			assert.Equal(t, http.StatusOK, rw.Code)
 		},
 		"FailsWithInvalidSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {

@@ -61,12 +61,16 @@ func (j *cronsRemoteWeekJob) Run(ctx context.Context) {
 	}
 
 	j.ErrorCount = catcher.Len()
-
-	grip.Debug(ctx, message.Fields{
+	fields := message.Fields{
 		"queue": "service",
 		"id":    j.ID(),
 		"type":  j.Type().Name,
 		"num":   len(ops),
 		"errs":  j.ErrorCount,
-	})
+	}
+	if err := catcher.Resolve(); err != nil {
+		grip.Error(ctx, message.WrapError(err, fields))
+	} else {
+		grip.Debug(ctx, fields)
+	}
 }
