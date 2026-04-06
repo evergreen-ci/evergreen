@@ -8,7 +8,7 @@
 When a task fails in Evergreen CI, debugging can have friction points:
 
 - Needing to adddebug logging, push a commit, and wait for a new run
-- Inability to inspect the exact state when the failure occurred  
+- Inability to inspect the exact state when the failure occurred
 - Each debugging attempt requires a full CI cycle
 
 **The task debugger addresses this** by letting you re-run failed commands interactively on a spawn host. You can step through commands one by one, inspect output, change variables, and retry failures, all without waiting for new CI runs.
@@ -97,8 +97,8 @@ Selected task: compile
 Total steps: 8
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag        | Description                                                      |
+| ----------- | ---------------------------------------------------------------- |
 | `--variant` | (Optional) Select a specific build variant's version of the task |
 
 Note: Selecting a new task clears session logs. Custom variables set with `set-var` persist across task selections.
@@ -185,11 +185,11 @@ Steps:
   post:1: cleanup workspace
 ```
 
-| Symbol | Meaning |
-|--------|---------|
-| `→` | Current step (will be executed next) |
-| `✓` | Step completed successfully |
-| `✗` | Step failed |
+| Symbol | Meaning                              |
+| ------ | ------------------------------------ |
+| `→`    | Current step (will be executed next) |
+| `✓`    | Step completed successfully          |
+| `✗`    | Step failed                          |
 
 #### `evergreen debug logs`
 
@@ -202,11 +202,11 @@ evergreen debug logs --tail 50 # Last 50 lines
 evergreen debug logs --setup    # Setup phase logs
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag          | Description                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------- |
 | `--step STEP` | Show logs from a specific [step](#understanding-step-numbers) only (e.g., `3`, `2.1`, `pre:1`) |
-| `--setup` | Show setup phase logs instead of session logs |
-| `--tail N` | Show only the last N lines |
+| `--setup`     | Show setup phase logs instead of session logs                                                  |
+| `--tail N`    | Show only the last N lines                                                                     |
 
 ### Daemon Management Commands
 
@@ -242,9 +242,9 @@ evergreen debug daemon start
 evergreen debug daemon start --port 8080
 ```
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--port`, `-p` | Port for the debugger to listen on | `9090` |
+| Flag           | Description                        | Default |
+| -------------- | ---------------------------------- | ------- |
+| `--port`, `-p` | Port for the debugger to listen on | `9090`  |
 
 #### `evergreen debug daemon stop`
 
@@ -266,7 +266,7 @@ evergreen debug load ./evergreen.yml
 evergreen debug select my_failing_task
 
 # Execute up to the problem step
-evergreen debug run-until 5 
+evergreen debug run-until 5
 
 # Try running it
 evergreen debug next
@@ -390,12 +390,12 @@ Commands that modify external Evergreen state are automatically skipped. These c
 
 Steps are numbered based on their position in your task:
 
-| Format | Meaning | Example |
-|--------|---------|---------|
-| `N` | Main task step | `3` |
-| `N.M` | Sub-step in a function | `2.1` |
-| `pre:N` | Pre-task step | `pre:1` |
-| `post:N` | Post-task step | `post:1` |
+| Format   | Meaning                | Example  |
+| -------- | ---------------------- | -------- |
+| `N`      | Main task step         | `3`      |
+| `N.M`    | Sub-step in a function | `2.1`    |
+| `pre:N`  | Pre-task step          | `pre:1`  |
+| `post:N` | Post-task step         | `post:1` |
 
 Use `list-steps` to see the exact numbering for your task.
 
@@ -412,9 +412,9 @@ This is useful when debugging later steps that need setup (e.g., debugging tests
 
 ## Troubleshooting
 
-| Problem | Solution                                                      |
-|---------|---------------------------------------------------------------|
-| "daemon not running" | Run `evergreen debug daemon start`                            |
-| "daemon not responding" | Run `daemon stop` then `daemon start`                         |
-| "step number not found" | Check valid steps with `list-steps`                           |
-| "no more steps to execute" | Use `jump` to go back to an earlier step                      |
+| Problem                    | Solution                                 |
+| -------------------------- | ---------------------------------------- |
+| "daemon not running"       | Run `evergreen debug daemon start`       |
+| "daemon not responding"    | Run `daemon stop` then `daemon start`    |
+| "step number not found"    | Check valid steps with `list-steps`      |
+| "no more steps to execute" | Use `jump` to go back to an earlier step |
