@@ -5,9 +5,9 @@ The task debugger is currently in beta. Features and behavior may change.
 
 ## Why Use the Task Debugger?
 
-When a task fails in Evergreen CI, debugging can be painful:
-- You add debug logging, push a commit, and wait for a new run
-- You can't inspect the exact state when the failure occurred  
+When a task fails in Evergreen CI, debugging can have friction points:
+- Needing to adddebug logging, push a commit, and wait for a new run
+- Inability to inspect the exact state when the failure occurred  
 - Each debugging attempt requires a full CI cycle
 
 **The task debugger addresses this** by letting you re-run failed commands interactively on a spawn host. You can step through commands one by one, inspect output, change variables, and retry failures, all without waiting for new CI runs.
@@ -37,7 +37,7 @@ From your failed task in the Evergreen UI:
 
 ### Start Debugging
 
-The debugger is already running by default once you SSH in. Here's a minimal debugging session:
+The debugger is already running by default once you SSH in. This would be a minimal debugging session:
 
 ```bash
 # Verify the debugger is ready
@@ -58,8 +58,6 @@ evergreen debug next
 # Check the logs if something failed
 evergreen debug logs --step 3
 ```
-
-That's it! You're now debugging your task interactively.
 
 ## Command Reference
 
@@ -185,7 +183,6 @@ Steps:
 | `→` | Current step (will be executed next) |
 | `✓` | Step completed successfully |
 | `✗` | Step failed |
-| _(no symbol)_ | Step has not been executed yet |
 
 #### `evergreen debug logs`
 
