@@ -338,6 +338,25 @@ The hot reload preserves:
 
 - Admin-only variables are not available in debug sessions
 
+### Special Command Behaviors
+
+#### `github.generate_token`
+
+When generating GitHub tokens in debug mode, the permissions are determined by the **"Debug"** requester type configured in your [github token project settings](../Project-Configuration/Github-Integrations#restricting-generated-tokens). This may be more restrictive than the permissions available during regular task execution.
+
+Your project admin must configure the appropriate GitHub permissions for the task debugger in the project settings.
+
+#### `ec2.assume_role`
+
+When using `ec2.assume_role` in debug mode, the AWS external ID format is different from regular task execution:
+
+- **Regular projects:** `debug-[project_id]-[requester]` (e.g., `debug-myproject-github_pull_request`)
+- **Untracked projects:** `debug-untracked-[repo_ref_id]-[requester]`
+
+Your AWS IAM trust policy must explicitly allow these debug external IDs. For example, if your regular external ID is `myproject-github_pull_request`, the debug external ID would be `debug-myproject-github_pull_request`.
+
+Contact your infrastructure team to [update the trust policies](../Project-Configuration/Project-Commands#assumerole-aws-setup) for any roles you need to assume during debugging.
+
 ### Commands That Will No-op
 
 Commands that modify external Evergreen state are automatically skipped. These commands will show as "skipped" but won't block execution:
