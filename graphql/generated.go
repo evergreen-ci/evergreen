@@ -75674,6 +75674,8 @@ func (ec *executionContext) fieldContext_VersionLite_cost(_ context.Context, fie
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
