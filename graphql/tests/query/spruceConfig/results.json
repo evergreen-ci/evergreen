@@ -151,6 +151,20 @@
           }
         }
       }
+    },
+    {
+      "query_file": "service_flags.graphql",
+      "result": {
+        "data": {
+          "spruceConfig": {
+            "serviceFlags": {
+              "debugSpawnHostDisabled": true,
+              "jwtTokenForCLIDisabled": true,
+              "staticAPIKeysDisabled": true
+            }
+          }
+        }
+      }
     }
   ]
 }

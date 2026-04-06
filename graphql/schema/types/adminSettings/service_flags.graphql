@@ -9,3 +9,10 @@ input ServiceFlagInput {
   name: String!
   enabled: Boolean!
 }
+
+# UserServiceFlags are service flags that users have permission to view.
+type UserServiceFlags {
+  debugSpawnHostDisabled: Boolean
+  jwtTokenForCLIDisabled: Boolean
+  staticAPIKeysDisabled: Boolean
+}

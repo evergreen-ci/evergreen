@@ -1815,6 +1815,7 @@ type ComplexityRoot struct {
 		Jira             func(childComplexity int) int
 		Providers        func(childComplexity int) int
 		SecretFields     func(childComplexity int) int
+		ServiceFlags     func(childComplexity int) int
 		SingleTaskDistro func(childComplexity int) int
 		Slack            func(childComplexity int) int
 		Spawnhost        func(childComplexity int) int
@@ -2248,6 +2249,12 @@ type ComplexityRoot struct {
 		DispName     func(childComplexity int) int
 		EmailAddress func(childComplexity int) int
 		Id           func(childComplexity int) int
+	}
+
+	UserServiceFlags struct {
+		DebugSpawnHostDisabled func(childComplexity int) int
+		JWTTokenForCLIDisabled func(childComplexity int) int
+		StaticAPIKeysDisabled  func(childComplexity int) int
 	}
 
 	UserSettings struct {
@@ -10239,6 +10246,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SpruceConfig.SecretFields(childComplexity), true
+	case "SpruceConfig.serviceFlags":
+		if e.complexity.SpruceConfig.ServiceFlags == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.ServiceFlags(childComplexity), true
 	case "SpruceConfig.singleTaskDistro":
 		if e.complexity.SpruceConfig.SingleTaskDistro == nil {
 			break
@@ -12116,6 +12129,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserLite.Id(childComplexity), true
+
+	case "UserServiceFlags.debugSpawnHostDisabled":
+		if e.complexity.UserServiceFlags.DebugSpawnHostDisabled == nil {
+			break
+		}
+
+		return e.complexity.UserServiceFlags.DebugSpawnHostDisabled(childComplexity), true
+	case "UserServiceFlags.jwtTokenForCLIDisabled":
+		if e.complexity.UserServiceFlags.JWTTokenForCLIDisabled == nil {
+			break
+		}
+
+		return e.complexity.UserServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
+	case "UserServiceFlags.staticAPIKeysDisabled":
+		if e.complexity.UserServiceFlags.StaticAPIKeysDisabled == nil {
+			break
+		}
+
+		return e.complexity.UserServiceFlags.StaticAPIKeysDisabled(childComplexity), true
 
 	case "UserSettings.dateFormat":
 		if e.complexity.UserSettings.DateFormat == nil {
@@ -51275,6 +51307,8 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_providers(ctx, field)
 			case "secretFields":
 				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
+			case "serviceFlags":
+				return ec.fieldContext_SpruceConfig_serviceFlags(ctx, field)
 			case "singleTaskDistro":
 				return ec.fieldContext_SpruceConfig_singleTaskDistro(ctx, field)
 			case "slack":
@@ -59303,6 +59337,43 @@ func (ec *executionContext) fieldContext_SpruceConfig_secretFields(_ context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpruceConfig_serviceFlags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SpruceConfig_serviceFlags,
+		func(ctx context.Context) (any, error) {
+			return obj.ServiceFlags, nil
+		},
+		nil,
+		ec.marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "debugSpawnHostDisabled":
+				return ec.fieldContext_UserServiceFlags_debugSpawnHostDisabled(ctx, field)
+			case "jwtTokenForCLIDisabled":
+				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
+			case "staticAPIKeysDisabled":
+				return ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
 		},
 	}
 	return fc, nil
@@ -71620,6 +71691,93 @@ func (ec *executionContext) fieldContext_UserLite_id(_ context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserServiceFlags_debugSpawnHostDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserServiceFlags_debugSpawnHostDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.DebugSpawnHostDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserServiceFlags_debugSpawnHostDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.JWTTokenForCLIDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserServiceFlags_staticAPIKeysDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.StaticAPIKeysDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserServiceFlags_staticAPIKeysDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -102551,6 +102709,11 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "serviceFlags":
+			out.Values[i] = ec._SpruceConfig_serviceFlags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "singleTaskDistro":
 			out.Values[i] = ec._SpruceConfig_singleTaskDistro(ctx, field, obj)
 		case "slack":
@@ -106897,6 +107060,46 @@ func (ec *executionContext) _UserLite(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var userServiceFlagsImplementors = []string{"UserServiceFlags"}
+
+func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.SelectionSet, obj *model.APIServiceFlags) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userServiceFlagsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserServiceFlags")
+		case "debugSpawnHostDisabled":
+			out.Values[i] = ec._UserServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
+		case "jwtTokenForCLIDisabled":
+			out.Values[i] = ec._UserServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
+		case "staticAPIKeysDisabled":
+			out.Values[i] = ec._UserServiceFlags_staticAPIKeysDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -114698,6 +114901,16 @@ func (ec *executionContext) marshalNUserLite2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 		return graphql.Null
 	}
 	return ec._UserLite(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNUserServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UserServiceFlags(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {

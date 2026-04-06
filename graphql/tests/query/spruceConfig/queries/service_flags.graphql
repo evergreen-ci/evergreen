@@ -1,0 +1,9 @@
+query {
+  spruceConfig {
+    serviceFlags {
+      debugSpawnHostDisabled
+      jwtTokenForCLIDisabled
+      staticAPIKeysDisabled
+    }
+  }
+}

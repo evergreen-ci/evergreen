@@ -981,6 +981,8 @@ models:
     fields:
       displayName:
         fieldName: "DispName"
+  UserServiceFlags:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUserSettings
   UserSettingsInput:
