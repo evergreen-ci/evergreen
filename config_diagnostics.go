@@ -7,9 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// DiagnosticsConfig holds settings for automated pod diagnostic data collection.
-// When memory usage exceeds the configured thresholds, pprof profiles are
-// captured and uploaded to the specified S3 bucket.
+// DiagnosticsConfig holds settings for Evergreen app server diagnostics.
 type DiagnosticsConfig struct {
 	S3BucketName string `yaml:"s3_bucket_name" bson:"s3_bucket_name" json:"s3_bucket_name"`
 	S3Prefix     string `yaml:"s3_prefix" bson:"s3_prefix" json:"s3_prefix"`
