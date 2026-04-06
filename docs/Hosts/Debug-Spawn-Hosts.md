@@ -1,5 +1,8 @@
 # Task Debugger
 
+# Notice: Beta Feature
+The task debugger is currently in beta. Features and behavior may change.
+
 ## Why Use the Task Debugger?
 
 When a task fails in Evergreen CI, debugging can be painful:
@@ -30,7 +33,7 @@ Failed Task in UI → Create Debug Spawn Host → SSH into Host → Run Debug Co
 From your failed task in the Evergreen UI:
 1. Click the **"Spawn Host"** button on the task page
 2. In the spawn host form, check **"Debug Mode"** in the optional settings
-3. (Optional) Select a starting task step you would like to start debugging at
+3. (Optional) Select a starting task [step](#understanding-step-numbers) you would like to start debugging at
 
 ### Start Debugging
 
@@ -58,15 +61,105 @@ evergreen debug logs --step 3
 
 That's it! You're now debugging your task interactively.
 
-## Essential Commands
+## Command Reference
 
-These four commands handle 80% of debugging scenarios:
+### Configuration Commands
 
-### `evergreen debug next`
-Execute the next step and see its output in real-time.
+#### `evergreen debug load <config.yml>`
 
-### `evergreen debug list-steps`
-See all steps and where you are:
+Load a project configuration file. The path can be relative or absolute. Must be run before selecting a task.
+
+```bash
+evergreen debug load ./evergreen.yml
+evergreen debug load /home/user/project/evergreen.yml
+```
+
+On success, reports the number of tasks and build variants found:
+```
+Loaded configuration: /home/user/project/evergreen.yml
+Tasks: 12, Variants: 5
+```
+
+#### `evergreen debug select <task_name>`
+
+Select a task from the loaded configuration to debug. Reports the total number of steps in the task.
+
+```bash
+evergreen debug select compile
+```
+
+Output:
+```
+Selected task: compile
+Total steps: 8
+```
+
+### Execution Commands
+
+#### `evergreen debug next`
+
+Execute the next [step](#understanding-step-numbers) and see its output in real-time. If the step fails, execution stops and the error is displayed.
+
+```bash
+evergreen debug next
+```
+
+#### `evergreen debug run-all`
+
+Run all remaining [steps](#understanding-step-numbers) from the current position to the end of the task. Stops immediately on the first step that fails.
+
+```bash
+evergreen debug run-all
+```
+
+#### `evergreen debug run-until <step>`
+
+Run from the current position up to and including the specified [step](#understanding-step-numbers). Stops immediately on the first step that fails.
+
+```bash
+evergreen debug run-until 5
+evergreen debug run-until 3.2
+evergreen debug run-until pre:1
+```
+
+#### `evergreen debug jump <step>`
+
+Move the current position to a [step](#understanding-step-numbers) without executing it. Useful for skipping ahead or going back to re-run a step.
+
+```bash
+evergreen debug jump 3
+```
+
+Output:
+```
+Jumped to step 3
+```
+
+#### `evergreen debug set-var <key>=<value>`
+
+Set a custom variable for the debug session. This can be used to override expansion variables used by task commands. Variables persist until you select a new task.
+
+```bash
+evergreen debug set-var MY_FLAG=--verbose
+evergreen debug set-var BUILD_TYPE=debug
+```
+
+Output:
+```
+Set variable: MY_FLAG=--verbose
+```
+
+### Inspection Commands
+
+#### `evergreen debug list-steps`
+
+Display all steps in the selected task with their execution status.
+
+```bash
+evergreen debug list-steps
+```
+
+Example output:
 ```
 Steps:
   pre:1: setup environment ✓
@@ -80,33 +173,87 @@ Steps:
   post:1: cleanup workspace
 ```
 
-### `evergreen debug logs`
-View output from executed steps:
+| Symbol | Meaning |
+|--------|---------|
+| `→` | Current step (will be executed next) |
+| `✓` | Step completed successfully |
+| `✗` | Step failed |
+| _(no symbol)_ | Step has not been executed yet |
+
+#### `evergreen debug logs`
+
+View logs from the current debug session.
+
 ```bash
 evergreen debug logs           # All logs
-evergreen debug logs --step 3  # Just step 3
+evergreen debug logs --step 3.1  # Just step 3.1
 evergreen debug logs --tail 50 # Last 50 lines
+evergreen debug logs --setup    # Setup phase logs
 ```
 
-### `evergreen debug jump <step>`
-Skip to a different step without executing:
+| Flag | Description |
+|------|-------------|
+| `--step STEP` | Show logs from a specific [step](#understanding-step-numbers) only (e.g., `3`, `2.1`, `pre:1`) |
+| `--setup` | Show setup phase logs instead of session logs |
+| `--tail N` | Show only the last N lines |
+
+### Daemon Management Commands
+
+The debugger runs as a background process. **Note: The daemon is already running when you SSH into a debug spawn host.** You only need these commands if the daemon has stopped or crashed.
+
+#### `evergreen debug daemon status`
+
+Check whether the debugger is running.
+
 ```bash
-evergreen debug jump 4  # Move to step 4
+evergreen debug daemon status
+```
+
+Output when running with a task selected:
+```
+Daemon is running
+Task: compile (step 3/10)
+```
+
+Output when not running:
+```
+Daemon is not running
+```
+
+#### `evergreen debug daemon start`
+
+Start the debugger (only needed if it's not already running).
+
+```bash
+evergreen debug daemon start
+evergreen debug daemon start --port 8080
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--port`, `-p` | Port for the debugger to listen on | `9090` |
+
+#### `evergreen debug daemon stop`
+
+Stop a running debugger.
+
+```bash
+evergreen debug daemon stop
 ```
 
 ## Common Debugging Workflows
 
 ### Debugging a Failed Step
 
-Your task failed at step 5. Here's how to debug it:
+Your task failed at [step](#understanding-step-numbers) 5. Here's how to debug it:
 
 ```bash
 # Load config and select your task
 evergreen debug load ./evergreen.yml
 evergreen debug select my_failing_task
 
-# Jump directly to the problem step
-evergreen debug jump 5
+# Execute up to the problem step
+evergreen debug run-until 5 
 
 # Try running it
 evergreen debug next
@@ -123,7 +270,7 @@ evergreen debug next
 
 ### Running With Different Variables
 
-Need to test with different environment variables?
+Need to test with different expansions or environment variables?
 
 ```bash
 # Set a custom variable
@@ -153,7 +300,7 @@ evergreen debug next
 ### Prerequisites
 
 - **Debug Mode Required**: When creating the spawn host, you must check the "Debug Mode" option
-- **Project Must Allow It**: Debug spawn hosts must be enabled for your project (contact your admin if not available)
+- **Project Must Enable**: Debug spawn hosts must be enabled for your project (contact your admin if not available)
 
 ### Security Limitations
 
@@ -162,7 +309,7 @@ evergreen debug next
 
 ### Commands That Will No-op
 
-Commands that modify external Evergreen state are automatically skipped. These steps will show as "skipped" but won't block execution:
+Commands that modify external Evergreen state are automatically skipped. These commands will show as "skipped" but won't block execution:
 
 - `host.create`
 - `host.list`
@@ -194,55 +341,20 @@ Use `list-steps` to see the exact numbering for your task.
 
 ## Setup Phase
 
-When creating a debug spawn host, you can have Evergreen automatically run steps 1-N before you SSH in:
+When creating a debug spawn host, you can have Evergreen automatically run steps 1-N (but NOT including N) before you SSH in:
 
-1. In the spawn host UI, select a "starting step"
+1. In the spawn host UI, select a "starting step" for the debug host
 2. Evergreen runs all prior steps automatically
-3. You receive a notification when ready
+3. The spawn host secup script completion notification will indicate the host is ready
 4. SSH in with the environment already prepared
 
 This is useful when debugging later steps that need setup (e.g., debugging tests after compilation).
 
-### Full Command Reference
-
-#### Execution Commands
-
-- `evergreen debug next` - Execute the next step
-- `evergreen debug run-all` - Run all remaining steps
-- `evergreen debug run-until <step>` - Run up to a specific step
-- `evergreen debug jump <step>` - Move to a step without executing
-
-#### Configuration Commands
-
-- `evergreen debug load <config.yml>` - Load your project configuration
-- `evergreen debug select <task_name>` - Select a task to debug
-- `evergreen debug set-var <key>=<value>` - Set a custom variable
-
-#### Inspection Commands
-
-- `evergreen debug list-steps` - Show all steps with status
-- `evergreen debug logs [options]` - View execution logs
-
-#### Daemon Commands (rarely needed)
-
-- `evergreen debug daemon status` - Check if daemon is running
-- `evergreen debug daemon start` - Start daemon (if stopped)
-- `evergreen debug daemon stop` - Stop the daemon
-
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| "daemon not running" | Run `evergreen debug daemon start` |
-| "daemon not responding" | Run `daemon stop` then `daemon start` |
-| "step number not found" | Check valid steps with `list-steps` |
-| "no more steps to execute" | Use `jump` to go back to an earlier step |
-| "Variable X is not available" | Variable might be admin-only, use `set-var` to override |
-| Debug Mode option not visible | Debug spawn hosts not enabled for your project, contact admin |
-
-## Tips
-
-- The daemon is usually already running when you SSH in—you don't need to start it
-- Your task's working directory is typically where you land when you SSH in
-- Use `list-steps` to understand where you are in the execution
-- You can edit files directly on the spawn host between step executions
+| Problem | Solution                                                      |
+|---------|---------------------------------------------------------------|
+| "daemon not running" | Run `evergreen debug daemon start`                            |
+| "daemon not responding" | Run `daemon stop` then `daemon start`                         |
+| "step number not found" | Check valid steps with `list-steps`                           |
+| "no more steps to execute" | Use `jump` to go back to an earlier step                      |
