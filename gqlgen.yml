@@ -647,6 +647,8 @@ models:
     model: github.com/evergreen-ci/evergreen/model.ProjectHealthView
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  ProjectLite:
+    model: github.com/evergreen-ci/evergreen/model.ProjectRef
   ProjectSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
@@ -887,6 +889,8 @@ models:
         resolver: true
       project:
         resolver: true
+      version:
+        resolver: true
   TaskAnnotationSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskExecutionStep:
@@ -976,6 +980,11 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  UserLite:
+    model: github.com/evergreen-ci/evergreen/model/user.DBUser
+    fields:
+      displayName:
+        fieldName: "DispName"
   UserServiceFlags:
     model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:
@@ -995,6 +1004,11 @@ models:
     fields:
       status:
         resolver: true
+  VersionLite:
+    model: github.com/evergreen-ci/evergreen/model.Version
+    fields:
+      order:
+        fieldName: "RevisionOrderNumber"
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:

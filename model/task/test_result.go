@@ -288,6 +288,27 @@ func filterTestResults(results []testresult.TestResult, opts *FilterOptions) ([]
 	return filteredResults, nil
 }
 
+// testStatusSortRank returns a numeric rank for a test status to enable
+// semantic sorting. Failure statuses (including timeouts) are ranked
+// lowest so they sort first in ascending order.
+func testStatusSortRank(status string) int {
+	switch status {
+	case evergreen.TestFailedStatus:
+		return 1
+	case evergreen.TestSilentlyFailedStatus:
+		return 2
+	case evergreen.TestTimedOutStatus:
+		return 3
+	case evergreen.TestSkippedStatus:
+		return 4
+	case evergreen.TestSucceededStatus:
+		return 5
+	default:
+		// Unknown statuses are treated as failures and sorted near the top.
+		return 3
+	}
+}
+
 func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseStatusMap map[string]string) {
 	sort.SliceStable(results, func(i, j int) bool {
 		for _, sortBy := range opts.Sort {
@@ -317,21 +338,25 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 				}
 				return results[i].GetDisplayTestName() < results[j].GetDisplayTestName()
 			case testresult.SortByStatusKey:
-				if results[i].Status == results[j].Status {
+				rankI := testStatusSortRank(results[i].Status)
+				rankJ := testStatusSortRank(results[j].Status)
+				if rankI == rankJ {
 					continue
 				}
 				if sortBy.OrderDSC {
-					return results[i].Status > results[j].Status
+					return rankI > rankJ
 				}
-				return results[i].Status < results[j].Status
+				return rankI < rankJ
 			case testresult.SortByBaseStatusKey:
-				if baseStatusMap[results[i].GetDisplayTestName()] == baseStatusMap[results[j].GetDisplayTestName()] {
+				rankI := testStatusSortRank(baseStatusMap[results[i].GetDisplayTestName()])
+				rankJ := testStatusSortRank(baseStatusMap[results[j].GetDisplayTestName()])
+				if rankI == rankJ {
 					continue
 				}
 				if sortBy.OrderDSC {
-					return baseStatusMap[results[i].GetDisplayTestName()] > baseStatusMap[results[j].GetDisplayTestName()]
+					return rankI > rankJ
 				}
-				return baseStatusMap[results[i].GetDisplayTestName()] < baseStatusMap[results[j].GetDisplayTestName()]
+				return rankI < rankJ
 			}
 		}
 

@@ -33,23 +33,6 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 	return usr.DisplayName(), nil
 }
 
-// BaseTaskStatuses is the resolver for the baseTaskStatuses field.
-func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
-	versionID := utility.FromStringPtr(obj.Id)
-	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching base version for version '%s': %s", versionID, err.Error()))
-	}
-	if baseVersion == nil {
-		return nil, nil
-	}
-	statuses, err := task.GetBaseStatusesForActivatedTasks(ctx, versionID, baseVersion.Id)
-	if err != nil {
-		return nil, nil
-	}
-	return statuses, nil
-}
-
 // Builds is the resolver for the builds field.
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	versionID := utility.FromStringPtr(obj.Version)

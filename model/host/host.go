@@ -294,10 +294,6 @@ type ProvisionOptions struct {
 	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
 	SetupScript string `bson:"setup_script" json:"setup_script"`
 
-	// UseOAuth indicates whether to run `evergreen fetch` with static credentials (legacy)
-	// or whether to write the command to a file, and have the user run `evergreen host fetch` (OAuth).
-	UseOAuth bool `bson:"use_oauth" json:"use_oauth"`
-
 	// SetupStepNumber, if set, indicates the step number that the debug host
 	// should run until after initializing the daemon. Accepts step notation (e.g., "5" or "5.1")
 	SetupStepNumber string `bson:"setup_step_number,omitempty" json:"setup_step_number,omitempty"`

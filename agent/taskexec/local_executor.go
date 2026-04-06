@@ -31,6 +31,7 @@ var noOpCommands = map[string]string{
 	"downstream_expansions.set":             "downstream expansions are not available in local execution",
 	evergreen.AttachXUnitResultsCommandName: "test result attachment is not supported in local execution",
 	evergreen.AttachResultsCommandName:      "result attachment is not supported in local execution",
+	"gotest.parse_files":                    "result attachment is not supported in local execution",
 	evergreen.AttachArtifactsCommandName:    "artifact attachment is not supported in local execution",
 	"papertrail.trace":                      "papertrail tracing is not available in local execution",
 	"keyval.inc":                            "key-value increment operations are not supported in local execution",
@@ -115,6 +116,7 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 
 	taskConfig := &internal.TaskConfig{
 		Expansions:            expansions,
+		NewExpansions:         agentutil.NewDynamicExpansions(expansions),
 		WorkDir:               opts.WorkingDir,
 		AssumeRoleInformation: map[string]internal.AssumeRoleInformation{},
 	}
@@ -178,6 +180,45 @@ func (e *LocalExecutor) LoadProject(configPath string) (*model.Project, error) {
 
 	e.logger.Infof(context.Background(), "Loaded project with %d tasks and %d build variants",
 		len(project.Tasks), len(project.BuildVariants))
+
+	return project, nil
+}
+
+// ReloadProject reloads the project configuration from a file while preserving
+// the current debug session state. If a task is currently selected, it
+// re-prepares the task with the new config.
+func (e *LocalExecutor) ReloadProject(ctx context.Context, configPath string) (*model.Project, error) {
+	savedIndex := e.debugState.CurrentStepIndex
+	savedVars := make(map[string]string, len(e.debugState.CustomVars))
+	for k, v := range e.debugState.CustomVars {
+		savedVars[k] = v
+	}
+	savedHistory := make([]executionRecord, len(e.debugState.ExecutionHistory))
+	copy(savedHistory, e.debugState.ExecutionHistory)
+
+	project, err := e.LoadProject(configPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading project")
+	}
+
+	if e.debugState.SelectedTask != "" {
+		if err := e.PrepareTask(ctx, e.debugState.SelectedTask, e.debugState.SelectedVariant); err != nil {
+			return nil, errors.Wrap(err, "re-preparing task after reload")
+		}
+	}
+
+	e.debugState.CustomVars = savedVars
+	e.debugState.ExecutionHistory = savedHistory
+	if savedIndex > len(e.debugState.CommandList) {
+		savedIndex = len(e.debugState.CommandList)
+	}
+	e.debugState.CurrentStepIndex = savedIndex
+
+	for k, v := range savedVars {
+		e.expansions.Put(k, v)
+	}
+
+	e.logger.Infof(ctx, "Reloaded project, preserved step index at %d", e.debugState.CurrentStepIndex)
 
 	return project, nil
 }
@@ -367,7 +408,13 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 			cmd := cmds[targetIndexWithinExpanded]
 			cmd.SetJasperManager(e.jasperManager)
 
-			err := cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
+			cleanup, err := e.taskConfig.ApplyFunctionVarsToExpansions(commandInfo.Vars, cmd.Name())
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+
+			err = cmd.Execute(ctx, e.communicator, e.loggerProducer, e.taskConfig)
 			if err != nil {
 				e.logger.Errorf(ctx, "Step %s failed: %v", targetCmd.FullStepNumber(), err)
 				if canFailTask {
@@ -511,12 +558,14 @@ func newStreamingLoggerProducerAdapter(producer *streamingLoggerProducer) *strea
 	}
 }
 
-func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler       { return a.logger }
-func (a *streamingLoggerProducerAdapter) Task() grip.Journaler            { return a.logger }
-func (a *streamingLoggerProducerAdapter) System() grip.Journaler          { return a.logger }
-func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error { return nil }
-func (a *streamingLoggerProducerAdapter) Close() error                    { return a.producer.Close() }
-func (a *streamingLoggerProducerAdapter) Closed() bool                    { return a.producer.Closed() }
+func (a *streamingLoggerProducerAdapter) Execution() grip.Journaler { return a.logger }
+func (a *streamingLoggerProducerAdapter) Task() grip.Journaler      { return a.logger }
+func (a *streamingLoggerProducerAdapter) System() grip.Journaler    { return a.logger }
+func (a *streamingLoggerProducerAdapter) Flush(ctx context.Context) error {
+	return a.producer.Flush(ctx)
+}
+func (a *streamingLoggerProducerAdapter) Close() error { return a.producer.Close() }
+func (a *streamingLoggerProducerAdapter) Closed() bool { return a.producer.Closed() }
 
 // createBlockDeps creates BlockExecutorDeps for use with RunCommandsInBlock
 func (e *LocalExecutor) createBlockDeps() executor.BlockExecutorDeps {
@@ -583,8 +632,10 @@ func (e *LocalExecutor) handleNoOpCommand(ctx context.Context, cmd command.Comma
 	e.logger.Infof(ctx, e.getNoOpMessage(cmd.Name()))
 }
 
-// PrepareTask prepares a task for execution by creating command blocks
-func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName string) error {
+// PrepareTask prepares a task for execution by creating command blocks.
+// If variantName is provided, it validates the task exists on that variant
+// and applies the variant's expansions.
+func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName string) error {
 	if e.project == nil {
 		return errors.New("project not loaded")
 	}
@@ -596,6 +647,20 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName string) error 
 
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof(ctx, "Preparing task: %s", taskName)
+
+	if variantName != "" {
+		bv := e.project.FindBuildVariant(variantName)
+		if bv == nil {
+			return errors.Errorf("build variant '%s' not found in project", variantName)
+		}
+		if _, err := bv.Get(taskName); err != nil {
+			return errors.Wrapf(err, "task '%s' is not defined on build variant '%s'", taskName, variantName)
+		}
+		e.debugState.SelectedVariant = variantName
+		e.taskConfig.Expansions.Put("build_variant", variantName)
+		e.taskConfig.Expansions.Update(bv.Expansions)
+		e.logger.Infof(ctx, "Applied expansions from build variant: %s", variantName)
+	}
 
 	// Build command blocks array with pre, main, and post blocks
 	var blocks []executorBlock
@@ -771,15 +836,6 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	for k, v := range expansionsAndVars.Vars {
 		e.taskConfig.Expansions.Put(k, v)
 	}
-
-	allExpansions := make(util.Expansions, len(expansionsAndVars.Expansions)+len(expansionsAndVars.Vars))
-	for k, v := range expansionsAndVars.Expansions {
-		allExpansions[k] = v
-	}
-	for k, v := range expansionsAndVars.Vars {
-		allExpansions[k] = v
-	}
-	e.taskConfig.NewExpansions = agentutil.NewDynamicExpansions(allExpansions)
 
 	if expansionsAndVars.PrivateVars == nil {
 		expansionsAndVars.PrivateVars = map[string]bool{}

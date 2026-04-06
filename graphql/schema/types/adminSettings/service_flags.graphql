@@ -92,4 +92,5 @@ type ServiceFlags {
 type UserServiceFlags {
   debugSpawnHostDisabled: Boolean
   jwtTokenForCLIDisabled: Boolean
+  staticAPIKeysDisabled: Boolean
 }
