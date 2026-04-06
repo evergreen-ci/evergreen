@@ -80,12 +80,13 @@ Loaded configuration: /home/user/project/evergreen.yml
 Tasks: 12, Variants: 5
 ```
 
-#### `evergreen debug select <task_name>`
+#### `evergreen debug select <task_name> [--variant <variant_name>]`
 
 Select a task from the loaded configuration to debug. Reports the total number of steps in the task.
 
 ```bash
 evergreen debug select compile
+evergreen debug select compile --variant ubuntu2204
 ```
 
 Output:
@@ -93,6 +94,12 @@ Output:
 Selected task: compile
 Total steps: 8
 ```
+
+| Flag | Description |
+|------|-------------|
+| `--variant` | (Optional) Select a specific build variant's version of the task |
+
+Note: Selecting a new task clears any previous session state, including logs, step progress, and custom variables.
 
 ### Execution Commands
 
@@ -294,6 +301,34 @@ evergreen debug select my_task
 evergreen debug jump 4
 evergreen debug next
 ```
+
+### Hot Reloading Configuration
+
+You can modify your `evergreen.yml` file and reload it between steps to test configuration changes:
+
+```bash
+# Edit your evergreen.yml file
+vim evergreen.yml
+
+# Reload the modified configuration
+evergreen debug load ./evergreen.yml
+
+# Your task selection, step position, and custom variables are all preserved
+# Continue debugging with the updated configuration
+evergreen debug next
+```
+
+This is useful when:
+- Testing different command arguments or flags
+- Adjusting timeout values
+- Modifying shell scripts within the config
+- Adding or removing commands from a task
+
+The hot reload preserves:
+- Your current task selection (no need to re-select)
+- Your current step position
+- Custom variables set with `set-var`
+- Execution history of completed steps
 
 ## Prerequisites and Limitations
 
