@@ -596,7 +596,8 @@
               { "name": "slack_notifications_disabled", "enabled": false },
               { "name": "email_notifications_disabled", "enabled": false },
               { "name": "webhook_notifications_disabled", "enabled": false },
-              { "name": "github_status_api_disabled", "enabled": false }
+              { "name": "github_status_api_disabled", "enabled": false },
+              { "name": "pod_diagnostics_disabled", "enabled": false }
             ]
           }
         }

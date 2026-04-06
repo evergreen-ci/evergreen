@@ -2067,7 +2067,7 @@ type APIServiceFlags struct {
 	S3LifecycleSyncDisabled            bool `json:"s3_lifecycle_sync_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
-	PodDiagnosticsDisabled    bool `json:"pod_diagnostics_disabled"`
+	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2567,7 +2567,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		S3LifecycleSyncDisabled:            as.S3LifecycleSyncDisabled,
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
-		PodDiagnosticsDisabled:    as.PodDiagnosticsDisabled,
+		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 	}, nil
 }
 

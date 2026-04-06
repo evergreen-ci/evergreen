@@ -94,7 +94,7 @@ var (
 	s3LifecycleSyncDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
-	podDiagnosticsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
+	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")
