@@ -8,12 +8,12 @@ import (
 )
 
 func TestDiagnosticsConfigValidateAndDefault(t *testing.T) {
-	t.Run("EmptyConfig", func(t *testing.T) {
+	t.Run("EmptyConfigIsValid", func(t *testing.T) {
 		c := DiagnosticsConfig{}
 		assert.NoError(t, c.ValidateAndDefault())
 	})
 
-	t.Run("FullyConfigured", func(t *testing.T) {
+	t.Run("FullyConfiguredIsValid", func(t *testing.T) {
 		c := DiagnosticsConfig{
 			S3BucketName: "my-bucket",
 			S3Prefix:     "pprof",
@@ -23,7 +23,7 @@ func TestDiagnosticsConfigValidateAndDefault(t *testing.T) {
 }
 
 func TestDiagnosticsConfigSetAndGet(t *testing.T) {
-	t.Run("SetAndGetAllFields", func(t *testing.T) {
+	t.Run("SetAndGetAllFieldsSucceeds", func(t *testing.T) {
 		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		defer func() {
 			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
@@ -42,7 +42,7 @@ func TestDiagnosticsConfigSetAndGet(t *testing.T) {
 		assert.Equal(t, original.S3Prefix, retrieved.S3Prefix)
 	})
 
-	t.Run("SetAndGetEmptyFields", func(t *testing.T) {
+	t.Run("SetAndGetEmptyFieldsSucceeds", func(t *testing.T) {
 		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		defer func() {
 			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
