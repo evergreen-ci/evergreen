@@ -41,7 +41,7 @@ func TestCostIsZero(t *testing.T) {
 }
 
 func TestCostJSONIncludesEBSThroughputFieldsWhenZero(t *testing.T) {
-	// Throughput and storage JSON keys omit `omitempty`, so zero values still serialize (for API stability).
+	// Adjusted EBS throughput and storage JSON keys omit `omitempty`, so zero values still serialize (for API stability).
 	c := Cost{}
 	data, err := json.Marshal(c)
 	require.NoError(t, err)
@@ -49,13 +49,11 @@ func TestCostJSONIncludesEBSThroughputFieldsWhenZero(t *testing.T) {
 	var unmarshaled map[string]interface{}
 	require.NoError(t, json.Unmarshal(data, &unmarshaled))
 
-	assert.Contains(t, unmarshaled, "on_demand_ebs_throughput_cost")
-	assert.Contains(t, unmarshaled, "adjusted_ebs_throughput_cost")
-	assert.Equal(t, 0.0, unmarshaled["on_demand_ebs_throughput_cost"])
-	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_throughput_cost"])
+	assert.NotContains(t, unmarshaled, "on_demand_ebs_throughput_cost")
+	assert.NotContains(t, unmarshaled, "on_demand_ebs_storage_cost")
 
-	assert.Contains(t, unmarshaled, "on_demand_ebs_storage_cost")
+	assert.Contains(t, unmarshaled, "adjusted_ebs_throughput_cost")
 	assert.Contains(t, unmarshaled, "adjusted_ebs_storage_cost")
-	assert.Equal(t, 0.0, unmarshaled["on_demand_ebs_storage_cost"])
+	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_throughput_cost"])
 	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_storage_cost"])
 }

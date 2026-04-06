@@ -7,11 +7,11 @@ type Cost struct {
 	// AdjustedEC2Cost is the cost calculated using the finance formula with savings plan and on-demand components.
 	AdjustedEC2Cost float64 `bson:"adjusted_ec2_cost,omitempty" json:"adjusted_ec2_cost,omitempty"`
 	// OnDemandEBSThroughputCost is the cost of EBS GP3 throughput calculated using on-demand rates.
-	OnDemandEBSThroughputCost float64 `bson:"on_demand_ebs_throughput_cost,omitempty" json:"on_demand_ebs_throughput_cost"`
+	OnDemandEBSThroughputCost float64 `bson:"on_demand_ebs_throughput_cost,omitempty" json:"-"`
 	// AdjustedEBSThroughputCost is the adjusted cost of EBS GP3 throughput with discount applied.
 	AdjustedEBSThroughputCost float64 `bson:"adjusted_ebs_throughput_cost,omitempty" json:"adjusted_ebs_throughput_cost"`
 	// OnDemandEBSStorageCost is the cost of EBS storage calculated using on-demand rates.
-	OnDemandEBSStorageCost float64 `bson:"on_demand_ebs_storage_cost,omitempty" json:"on_demand_ebs_storage_cost"`
+	OnDemandEBSStorageCost float64 `bson:"on_demand_ebs_storage_cost,omitempty" json:"-"`
 	// AdjustedEBSStorageCost is the adjusted cost of EBS storage (GP3/GP2) with discount applied.
 	AdjustedEBSStorageCost float64 `bson:"adjusted_ebs_storage_cost,omitempty" json:"adjusted_ebs_storage_cost"`
 	// S3ArtifactPutCost is the calculated S3 PUT request cost for uploading user artifacts.
