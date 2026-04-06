@@ -99,7 +99,7 @@ Total steps: 8
 |------|-------------|
 | `--variant` | (Optional) Select a specific build variant's version of the task |
 
-Note: Selecting a new task clears any previous session state, including logs, step progress, and custom variables.
+Note: Selecting a new task clears session logs. Custom variables set with `set-var` persist across task selections.
 
 ### Execution Commands
 
@@ -335,12 +335,11 @@ The hot reload preserves:
 ### Prerequisites
 
 - **Debug Mode Required**: When creating the spawn host, you must check the "Debug Mode" option
-- **Project Must Enable**: Debug spawn hosts must be enabled for your project (contact your admin if not available)
+- **Project Must Enable**: Debug spawn hosts are enabled by default. If disabled for your project, contact your project admin.
 
 ### Security Limitations
 
 - Admin-only variables are not available in debug sessions
-- Service users cannot use the debug feature
 
 ### Commands That Will No-op
 
@@ -380,7 +379,7 @@ When creating a debug spawn host, you can have Evergreen automatically run steps
 
 1. In the spawn host UI, select a "starting step" for the debug host
 2. Evergreen runs all prior steps automatically
-3. The spawn host secup script completion notification will indicate the host is ready
+3. The spawn host setup script completion notification will indicate the host is ready
 4. SSH in with the environment already prepared
 
 This is useful when debugging later steps that need setup (e.g., debugging tests after compilation).
