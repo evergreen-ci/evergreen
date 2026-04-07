@@ -1,7 +1,6 @@
 package units
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -20,6 +19,8 @@ func TestPopulateRetryFailedLogMoveJobs(t *testing.T) {
 
 	const failedBucket = "failed-task-logs"
 	const sourceBucket = "regular-task-logs"
+	sourceBucketCfg := evergreen.BucketConfig{Name: sourceBucket, Type: evergreen.BucketTypeS3}
+	failedBucketCfg := evergreen.BucketConfig{Name: failedBucket, Type: evergreen.BucketTypeS3}
 
 	retryCandidate := func(id, project string, finish time.Time) task.Task {
 		return task.Task{
@@ -31,15 +32,10 @@ func TestPopulateRetryFailedLogMoveJobs(t *testing.T) {
 			TaskOutputInfo: &task.TaskOutput{
 				TaskLogs: task.TaskLogOutput{
 					Version:      task.TestResultServiceEvergreen,
-					BucketConfig: evergreen.BucketConfig{Name: sourceBucket, Type: evergreen.BucketTypeS3},
+					BucketConfig: sourceBucketCfg,
 				},
 			},
 		}
-	}
-
-	jobID := func(taskID string) string {
-		ts := utility.RoundPartOfMinute(0).Format(TSFormat)
-		return fmt.Sprintf("%s.%s.%s", moveLogsToFailedBucketJobName, taskID, ts)
 	}
 
 	setup := func(t *testing.T) *mock.Environment {
@@ -54,47 +50,50 @@ func TestPopulateRetryFailedLogMoveJobs(t *testing.T) {
 		return PopulateRetryFailedLogMoveJobs(env)(ctx, env.RemoteQueue())
 	}
 
-	t.Run("EnqueuesWeeklyRetryJobForEvergreenFailedTask", func(t *testing.T) {
-		env := setup(t)
-		env.EvergreenSettings.Buckets.LogBucketFailedTasks = evergreen.BucketConfig{
-			Name: failedBucket, Type: evergreen.BucketTypeS3,
-		}
-		tsk := retryCandidate("evergreen-retry-1", tempRetryFailedLogMoveProject, time.Now())
-		require.NoError(t, tsk.Insert(ctx))
-		require.NoError(t, run(env))
+	for tName, tCase := range map[string]func(t *testing.T, env *mock.Environment){
+		"EnqueuesWeeklyRetryJobForEvergreenFailedTask": func(t *testing.T, env *mock.Environment) {
+			env.EvergreenSettings.Buckets.LogBucketFailedTasks = failedBucketCfg
+			tsk := retryCandidate("evergreen-retry-1", tempRetryFailedLogMoveProject, time.Now())
+			require.NoError(t, tsk.Insert(ctx))
+			require.NoError(t, run(env))
 
-		j, ok := env.RemoteQueue().Get(ctx, jobID(tsk.Id))
-		require.True(t, ok)
-		moveJob := j.(*moveLogsToFailedBucketJob)
-		assert.Equal(t, tsk.Id, moveJob.TaskID)
-		assert.Equal(t, MoveLogsTriggerWeeklyRetry, moveJob.Trigger)
-		assert.Equal(t, sourceBucket, moveJob.SourceBucketCfg.Name)
-	})
+			ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+			expectID := NewMoveLogsToFailedBucketJob(env, tsk.Id, ts, sourceBucketCfg, MoveLogsTriggerWeeklyRetry).ID()
+			j, ok := env.RemoteQueue().Get(ctx, expectID)
+			require.True(t, ok)
+			moveJob, ok := j.(*moveLogsToFailedBucketJob)
+			require.True(t, ok)
+			assert.Equal(t, tsk.Id, moveJob.TaskID)
+			assert.Equal(t, MoveLogsTriggerWeeklyRetry, moveJob.Trigger)
+			assert.Equal(t, sourceBucket, moveJob.SourceBucketCfg.Name)
+		},
+		"SkipsFailedTaskInOtherProject": func(t *testing.T, env *mock.Environment) {
+			env.EvergreenSettings.Buckets.LogBucketFailedTasks = failedBucketCfg
+			tsk := retryCandidate("other-proj-task", "some-other-project", time.Now())
+			require.NoError(t, tsk.Insert(ctx))
+			require.NoError(t, run(env))
 
-	t.Run("SkipsFailedTaskInOtherProject", func(t *testing.T) {
-		env := setup(t)
-		env.EvergreenSettings.Buckets.LogBucketFailedTasks = evergreen.BucketConfig{
-			Name: failedBucket, Type: evergreen.BucketTypeS3,
-		}
-		tsk := retryCandidate("other-proj-task", "some-other-project", time.Now())
-		require.NoError(t, tsk.Insert(ctx))
-		require.NoError(t, run(env))
+			ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+			expectID := NewMoveLogsToFailedBucketJob(env, tsk.Id, ts, sourceBucketCfg, MoveLogsTriggerWeeklyRetry).ID()
+			_, ok := env.RemoteQueue().Get(ctx, expectID)
+			assert.False(t, ok)
+		},
+		"SkipsTaskWhoseLogsAreAlreadyInFailedBucket": func(t *testing.T, env *mock.Environment) {
+			env.EvergreenSettings.Buckets.LogBucketFailedTasks = failedBucketCfg
+			tsk := retryCandidate("already-moved", tempRetryFailedLogMoveProject, time.Now())
+			tsk.TaskOutputInfo.TaskLogs.BucketConfig = failedBucketCfg
+			require.NoError(t, tsk.Insert(ctx))
+			require.NoError(t, run(env))
 
-		_, ok := env.RemoteQueue().Get(ctx, jobID(tsk.Id))
-		assert.False(t, ok)
-	})
-
-	t.Run("SkipsTaskWhoseLogsAreAlreadyInFailedBucket", func(t *testing.T) {
-		env := setup(t)
-		env.EvergreenSettings.Buckets.LogBucketFailedTasks = evergreen.BucketConfig{
-			Name: failedBucket, Type: evergreen.BucketTypeS3,
-		}
-		tsk := retryCandidate("already-moved", tempRetryFailedLogMoveProject, time.Now())
-		tsk.TaskOutputInfo.TaskLogs.BucketConfig = evergreen.BucketConfig{Name: failedBucket, Type: evergreen.BucketTypeS3}
-		require.NoError(t, tsk.Insert(ctx))
-		require.NoError(t, run(env))
-
-		_, ok := env.RemoteQueue().Get(ctx, jobID(tsk.Id))
-		assert.False(t, ok)
-	})
+			ts := utility.RoundPartOfMinute(0).Format(TSFormat)
+			expectID := NewMoveLogsToFailedBucketJob(env, tsk.Id, ts, sourceBucketCfg, MoveLogsTriggerWeeklyRetry).ID()
+			_, ok := env.RemoteQueue().Get(ctx, expectID)
+			assert.False(t, ok)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			env := setup(t)
+			tCase(t, env)
+		})
+	}
 }
