@@ -25,7 +25,7 @@ const podDiagnosticsJobName = "pod-diagnostics"
 
 const (
 	highMemoryThreshold     = 0.70
-	highMemoryDuration      = 60 * time.Second
+	highMemoryDuration      = time.Minute
 	criticalMemoryThreshold = 0.90
 	criticalMemoryDuration  = 5 * time.Second
 )
@@ -34,10 +34,11 @@ const (
 // kim: TODO: see if this can be not a global variable, or otherwise named
 // better.
 var (
-	podDiagnosticsStateMu sync.Mutex
-	above70PctSince       time.Time
-	above90PctSince       time.Time
-	lastCollectionAt      time.Time
+	podDiagnosticsMutex               sync.Mutex
+	aboveHighMemoryThresholdSince     time.Time
+	aboveCriticalMemoryThresholdSince time.Time
+	memoryLastCheckedAt               time.Time
+	pprofLastCollectedAt              time.Time
 )
 
 func init() {
@@ -68,11 +69,9 @@ func makePodDiagnosticsJob() *podDiagnosticsJob {
 func NewPodDiagnosticsJob(ts string) amboy.Job {
 	j := makePodDiagnosticsJob()
 	j.SetID(fmt.Sprintf("%s.%s", podDiagnosticsJobName, ts))
-	// kim: TODO: check if scopes works in a local queue. It may also be
-	// sufficient to just have this run once per minute, but need to confirm
-	// that the memory check is sufficiently fast.
-	j.SetScopes([]string{podDiagnosticsJobName})
-	j.SetEnqueueAllScopes(true)
+	j.SetTimeInfo(amboy.JobTimeInfo{
+		MaxTime: time.Minute,
+	})
 	return j
 }
 
@@ -83,85 +82,108 @@ func (j *podDiagnosticsJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	if j.env.Settings().Diagnostics.S3BucketName == "" {
+		// The diagnostics need to be uploaded to a bucket.
+		grip.Info(ctx, message.Fields{
+			"message": "S3 bucket not set, will not collect memory or pprof data",
+			"job":     j.ID(),
+		})
+		return
+	}
+
+	// Note: this lock is necessary to avoid multiple pod diagnostic jobs from
+	// running concurrently. Typically, most remote queue jobs would use scopes
+	// to prevent concurrent operations. However, this job runs in the local
+	// queue (since memory is per-app) and the local queue implementation that
+	// Evergreen has historically used does not support scopes.
+	podDiagnosticsMutex.Lock()
+	defer podDiagnosticsMutex.Unlock()
+
+	const minDurationBetweenMemoryChecks = 30 * time.Second
+	if memoryLastCheckedAt.IsZero() || time.Since(memoryLastCheckedAt) < minDurationBetweenMemoryChecks {
+		// Only check the memory periodically.
+		return
+	}
+
+	jobStartedAt := time.Now()
+
 	usageBytes, limitBytes, err := readCgroupMemory()
 	if err != nil {
-		// Cgroup files won't exist outside container environments; warn but
-		// don't surface this as a job error.
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "reading cgroup memory stats for pod diagnostics",
-			"job":     j.ID(),
-		}))
+		j.AddError(errors.Wrap(err, "reading cgroup memory usage/limit for pod diagnostics"))
 		return
 	}
+	memoryLastCheckedAt = jobStartedAt
 	if limitBytes == 0 {
-		return // container has no memory limit configured
-	}
-
-	usagePct := float64(usageBytes) / float64(limitBytes)
-
-	podDiagnosticsStateMu.Lock()
-	defer podDiagnosticsStateMu.Unlock()
-
-	now := time.Now()
-
-	// Update duration-tracking state based on current usage.
-	if usagePct >= criticalMemoryThreshold {
-		if above90PctSince.IsZero() {
-			above90PctSince = now
-		}
-		if above70PctSince.IsZero() {
-			above70PctSince = now
-		}
-	} else if usagePct >= highMemoryThreshold {
-		above90PctSince = time.Time{} // dropped below critical, reset that timer
-		if above70PctSince.IsZero() {
-			above70PctSince = now
-		}
-	} else {
-		above70PctSince = time.Time{}
-		above90PctSince = time.Time{}
-		return // memory is healthy
-	}
-
-	// Enforce cooldown to avoid uploading profiles on every job tick during a
-	// prolonged spike.
-	if !lastCollectionAt.IsZero() {
+		// If the limit is zero, then the container has no memory limit
+		// configured.
+		// kim: TODO: confirm whether this actually happens in practice. May be
+		// excessive/unnecessary guarding.
 		return
 	}
 
-	// Check whether either threshold condition has been met.
-	var triggerReason string
-	switch {
-	case !above90PctSince.IsZero() && now.Sub(above90PctSince) >= criticalMemoryDuration:
-		triggerReason = fmt.Sprintf(
-			"memory at %.1f%% of container limit for %.0fs (threshold: >90%% for >5s)",
-			usagePct*100, now.Sub(above90PctSince).Seconds())
-	case !above70PctSince.IsZero() && now.Sub(above70PctSince) >= highMemoryDuration:
-		triggerReason = fmt.Sprintf(
-			"memory at %.1f%% of container limit for %.0fs (threshold: >70%% for >60s)",
-			usagePct*100, now.Sub(above70PctSince).Seconds())
-	default:
-		return // neither threshold condition met yet
+	usagePercent := float64(usageBytes) / float64(limitBytes)
+
+	if usagePercent >= criticalMemoryThreshold {
+		if aboveCriticalMemoryThresholdSince.IsZero() {
+			aboveCriticalMemoryThresholdSince = jobStartedAt
+		}
+		if aboveHighMemoryThresholdSince.IsZero() {
+			aboveHighMemoryThresholdSince = jobStartedAt
+		}
+	} else if usagePercent >= highMemoryThreshold {
+		if aboveHighMemoryThresholdSince.IsZero() {
+			aboveHighMemoryThresholdSince = jobStartedAt
+		}
+		aboveCriticalMemoryThresholdSince = time.Time{}
+	} else {
+		aboveHighMemoryThresholdSince = time.Time{}
+		aboveCriticalMemoryThresholdSince = time.Time{}
+		pprofLastCollectedAt = time.Time{}
+		return
 	}
 
-	// Reset timers and record collection time before releasing the lock so
-	// the next job invocation doesn't re-trigger during the cooldown window.
-	above70PctSince = time.Time{}
-	above90PctSince = time.Time{}
-	lastCollectionAt = now
+	// Avoid uploading pprof too frequently during sustained high memory usage.
+	const cooldownBetweenPprofCollections = time.Minute
+	if !pprofLastCollectedAt.IsZero() || time.Since(pprofLastCollectedAt) < cooldownBetweenPprofCollections {
+		return
+	}
+
+	triggerReason := j.getTriggerReason(jobStartedAt, usagePercent)
+	if triggerReason == "" {
+		return
+	}
+
+	// Record that we collected pprof data already to avoid repeatedly
+	// collecting pprof on every job run during sustained high memory usage.
+	pprofLastCollectedAt = jobStartedAt
 
 	// Collect and upload outside the lock (state is already reset above).
-	j.collectAndUpload(ctx, usageBytes, limitBytes, usagePct, triggerReason)
+	// kim: TODO: double-check if we can do this outside the lock.
+	j.collectAndUpload(ctx, usageBytes, limitBytes, usagePercent, triggerReason, jobStartedAt)
 }
 
-func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, limitBytes int64, usagePct float64, triggerReason string, ts time.Time) error {
-	settings := j.env.Settings()
+// getTriggerReason returns the reason that pprof is being triggered. Returns an
+// empty string if pprof should not be triggered.
+func (j *podDiagnosticsJob) getTriggerReason(jobStartedAt time.Time, usagePercent float64) string {
+	if !aboveCriticalMemoryThresholdSince.IsZero() && jobStartedAt.Sub(aboveCriticalMemoryThresholdSince) >= criticalMemoryDuration {
+		return fmt.Sprintf(
+			"memory at %.1f%% of container limit for %.0fs (threshold: >90%% for >5s)",
+			usagePercent*100, jobStartedAt.Sub(aboveCriticalMemoryThresholdSince).Seconds())
+	}
+	if !aboveHighMemoryThresholdSince.IsZero() && jobStartedAt.Sub(aboveHighMemoryThresholdSince) >= highMemoryDuration {
+		return fmt.Sprintf(
+			"memory at %.1f%% of container limit for %.0fs (threshold: >70%% for >60s)",
+			usagePercent*100, jobStartedAt.Sub(aboveHighMemoryThresholdSince).Seconds())
+	}
+	return ""
+}
 
+func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, limitBytes int64, usagePercent float64, triggerReason string, ts time.Time) error {
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
 	}
-	s3Prefix := fmt.Sprintf("%s/%s", hostname, time.Now().Format(TSFormat))
+	s3Prefix := fmt.Sprintf("%s/%s", ts.Format(TSFormat), hostname)
 
 	heapBuf := &bytes.Buffer{}
 	if err := pprof.WriteHeapProfile(heapBuf); err != nil {
@@ -175,39 +197,30 @@ func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, li
 		}
 	}
 
-	cfg := settings.Diagnostics
-	s3Uploaded := false
-	if cfg.S3BucketName != "" {
-		if uploadErr := uploadPprofProfiles(ctx, cfg, s3Prefix, heapBuf, goroutineBuf); uploadErr != nil {
-			grip.Warning(ctx, message.WrapError(uploadErr, message.Fields{
-				"message": "could not upload pprof profiles to S3",
-				"job":     j.ID(),
-				"bucket":  cfg.S3BucketName,
-			}))
-		} else {
-			s3Uploaded = true
-		}
+	diagnosticsConf := j.env.Settings().Diagnostics
+
+	if err := j.uploadPprofFiles(ctx, diagnosticsConf, s3Prefix, heapBuf, goroutineBuf); err != nil {
+		return errors.Wrap(err, "upload pprof data to S3")
 	}
 
+	const gb = 1 << 30
 	grip.Notice(ctx, message.Fields{
 		"message":          "pod diagnostics triggered",
 		"trigger_reason":   triggerReason,
-		"memory_usage_pct": fmt.Sprintf("%.1f%%", usagePct*100),
-		"memory_usage_gb":  fmt.Sprintf("%.2f", float64(usageBytes)/(1<<30)),
-		"memory_limit_gb":  fmt.Sprintf("%.2f", float64(limitBytes)/(1<<30)),
+		"memory_usage_pct": fmt.Sprintf("%.1f%%", usagePercent*100),
+		"memory_usage_gb":  fmt.Sprintf("%.2f", float64(usageBytes)/float64(gb)),
+		"memory_limit_gb":  fmt.Sprintf("%.2f", float64(limitBytes)/float64(gb)),
 		"hostname":         hostname,
-		"s3_bucket":        cfg.S3BucketName,
+		"s3_bucket":        diagnosticsConf,
 		"s3_key_base":      s3Prefix,
-		"s3_uploaded":      s3Uploaded,
 		"job":              j.ID(),
 	})
 
 	return nil
 }
 
-// uploadPprofProfiles uploads heap and goroutine profiles to S3. nil buffers
-// are skipped.
-func uploadPprofProfiles(ctx context.Context, cfg evergreen.DiagnosticsConfig, s3Prefix string, heapBuf, goroutineBuf *bytes.Buffer) error {
+// uploadPprofFiles uploads heap and goroutine profiles to S3.
+func (j *podDiagnosticsJob) uploadPprofFiles(ctx context.Context, cfg evergreen.DiagnosticsConfig, s3Prefix string, heapBuf, goroutineBuf *bytes.Buffer) error {
 	prefix := cfg.S3Prefix
 	if prefix == "" {
 		prefix = "pprof"
@@ -232,21 +245,34 @@ func uploadPprofProfiles(ctx context.Context, cfg evergreen.DiagnosticsConfig, s
 
 // readCgroupMemory returns the current memory usage and limit in bytes for the
 // running container. It tries cgroups v2 first, then falls back to v1.
+// kim: TODO: confirm whether this correctly returns memory usage.
+// kim: TODO: confirm that this is a fast operation.
 func readCgroupMemory() (usageBytes, limitBytes int64, err error) {
+	startedAt := time.Now()
+	defer func() {
+		grip.Debug(context.Background(), message.Fields{
+			"message":     "kim: read cgroup memory",
+			"duration_ms": time.Since(startedAt).Milliseconds(),
+		})
+	}()
+
+	// kim: TODO: determine if app servers are using cgroups v1 or v2. We may
+	// only need to support one of them, which would simplify things.
 	// cgroups v2
 	if usage, err := readCgroupInt("/sys/fs/cgroup/memory.current"); err == nil {
 		if limit, err := readCgroupInt("/sys/fs/cgroup/memory.max"); err == nil {
 			return usage, limit, nil
 		}
 	}
+
 	// cgroups v1 fallback
 	usage, err := readCgroupInt("/sys/fs/cgroup/memory/memory.usage_in_bytes")
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "reading cgroup memory usage (tried cgroups v2 and v1 paths)")
+		return 0, 0, errors.Wrap(err, "reading cgroup memory usage from cgroups v1 and v2")
 	}
 	limit, err := readCgroupInt("/sys/fs/cgroup/memory/memory.limit_in_bytes")
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "reading cgroup memory limit")
+		return 0, 0, errors.Wrap(err, "reading cgroup memory limit from cgroups v1 and v2")
 	}
 	return usage, limit, nil
 }
@@ -256,15 +282,16 @@ func readCgroupMemory() (usageBytes, limitBytes int64, err error) {
 func readCgroupInt(path string) (int64, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return 0, errors.Wrapf(err, "reading '%s'", path)
+		return 0, errors.Wrapf(err, "reading file '%s'", path)
 	}
 	s := strings.TrimSpace(string(data))
 	if s == "max" {
-		return 0, errors.Errorf("'%s' reports no limit (value: max)", path)
+		// kim: TODO: double-check that callers handle this correctly
+		return 0, errors.Errorf("file '%s' reports no limit (value: max)", path)
 	}
 	val, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return 0, errors.Wrapf(err, "parsing value '%s' from '%s'", s, path)
+		return 0, errors.Wrapf(err, "parsing value '%s' from file '%s' as an integer", s, path)
 	}
 	return val, nil
 }
