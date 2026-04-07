@@ -236,6 +236,9 @@ func (j *podDiagnosticsJob) uploadProfilingData(ctx context.Context, s3Bucket, s
 // getMemoryStats returns the current memory usage and limit in bytes for the
 // running container.
 func (j *podDiagnosticsJob) getMemoryStats() (usageBytes, limitBytes int64, err error) {
+	// Modern versions of Linux (such as what the app servers run on) support
+	// cgroups v2. This system includes files that describe the current app
+	// server's resource usage and limits.
 	usage, err := j.readCgroupInt("/sys/fs/cgroup/memory.current")
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading memory usage from cgroups v2")
