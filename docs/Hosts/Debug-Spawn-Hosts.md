@@ -425,7 +425,13 @@ Steps are numbered based on their position in your task:
 | `pre:N`  | Pre-task step          | `pre:1`  |
 | `post:N` | Post-task step         | `post:1` |
 
-Use `list-steps` to see the exact numbering for your task.
+These step numbers correspond exactly to what appears in the original task logs. For example, you might see a log line like:
+
+```text
+Running command 'shell.exec' in function 'get-project-and-modules' (step 1.3 of 4).
+```
+
+This tells you the command is at step `1.3`. Use `list-steps` to see the exact numbering for your task.
 
 ## Setup Phase
 
