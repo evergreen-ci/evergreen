@@ -175,8 +175,8 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 // EscapeFiles escapes the base of the file link to avoid issues opening links
 // with special characters in the UI. Note that it will not escape path segments
 // other than the base (i.e. the last one).
-// Note: Links will not be escaped if the file's DoNotEncode field is set to true,
-// or if the link already appears to be escaped.
+// Note: Links will not be escaped if the file or associated link's DoNotEncode field
+// is set to true, or if the link already appears to be escaped.
 // For example, "url.com/something+another/file#1.tar.gz" will be escaped to "url.com/something+another/file%231.tar.gz".
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File

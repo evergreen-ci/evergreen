@@ -230,6 +230,14 @@ link to the Files element on the task page by:
     "name": "my-file",
     "link": "https://example.com/this-is-my-file",
     "visibility": "public"
+  },
+    {
+    "name": "my-file",
+    "link": "https://example.com/this-is-my-file?task=123",
+    "visibility": "public",
+    // By default, Evergreen escapes URLs. If your URL contains query parameters, consider using
+    // `do_not_encode` to tell Evergreen not to escape it.
+    "do_not_encode": true,
   }
 ]
 ```
