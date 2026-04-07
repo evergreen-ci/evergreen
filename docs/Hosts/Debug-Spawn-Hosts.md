@@ -7,11 +7,11 @@
 
 When a task fails in Evergreen CI, debugging can have friction points:
 
-- Needing to adddebug logging, push a commit, and wait for a new run
+- Needing to add debug logging, push a commit, and wait for a new run
 - Inability to inspect the exact state when the failure occurred
 - Each debugging attempt requires a full CI cycle
 
-**The task debugger addresses this** by letting you re-run failed commands interactively on a spawn host. You can step through commands one by one, inspect output, change variables, and retry failures, all without waiting for new CI runs.
+**The task debugger addresses this** by letting you re-run failed commands interactively on a spawn host. You can step through commands one by one, inspect output, change expansions, and retry failures, all without waiting for new CI runs.
 
 ## How It Works
 
@@ -35,31 +35,131 @@ From your failed task in the Evergreen UI:
 
 1. Click the **"Spawn Host"** button on the task page
 2. In the spawn host form, check **"Debug Mode"** in the optional settings
-3. (Optional) Select a starting task [step](#understanding-step-numbers) you would like to start debugging at
+3. (Optional) Select a starting task [step](#understanding-step-numbers) from the dropdown in the spawnhost modal. The dropdown shows the step numbers and command names from your task. If you select a starting step, Evergreen will automatically run all prior steps during host setup, so you don't need to manually load the YAML, select the task, or run earlier steps yourself.
 
 ### Start Debugging
 
-The debugger is already running by default once you SSH in. This would be a minimal debugging session:
+Follow these steps to start a debugging session:
+
+1. **Check the debugger is ready.** This confirms the daemon is running.
+
+   ```bash
+   evergreen debug daemon status
+   ```
+
+2. **Load your project's configuration file.** This tells the debugger where to find your task definitions. The file is pre-loaded into the spawn host entry point.
+
+   ```bash
+   evergreen debug load evergreen.yml
+   ```
+
+3. **Select the task you want to debug.** Use the exact task name as it appears in your Evergreen configuration.
+
+   ```bash
+   evergreen debug select compile
+   ```
+
+4. **List the available steps.** This shows all steps in the task with their numbers, so you know what will run.
+
+   ```bash
+   evergreen debug list-steps
+   ```
+
+5. **Run the next step.** This executes the next step in sequence. If you selected a starting step when creating the host, execution begins from that step instead of the beginning.
+
+   ```bash
+   evergreen debug next
+   ```
+
+6. **Check the logs if something failed.** Use the step number from `list-steps` to inspect a specific step's output.
+
+   ```bash
+   evergreen debug logs --step 3
+   ```
+
+## Common Debugging Workflows
+
+### Debugging a Failed Step
+
+Your task failed at [step](#understanding-step-numbers) 5. Here's how to debug it:
 
 ```bash
-# Verify the debugger is ready
-evergreen debug daemon status
-
-# Load your project's configuration file
+# Load config and select your task
 evergreen debug load ./evergreen.yml
+evergreen debug select my_failing_task
 
-# Select the task that failed (use the exact task name)
-evergreen debug select compile
+# Execute up to the problem step
+evergreen debug run-until 5
 
-# See all the steps in your task
-evergreen debug list-steps
-
-# Execute the next step
+# Try running it
 evergreen debug next
 
-# Check the logs if something failed
-evergreen debug logs --step 3
+# Check the detailed logs
+evergreen debug logs --step 5
+
+# Make any fixes needed (edit files, install tools, etc.)
+
+# Try running the step again
+evergreen debug jump 5
+evergreen debug next
 ```
+
+### Running With Different Expansions
+
+Need to test with different expansion values?
+
+```bash
+# Set a custom expansion
+evergreen debug set-var VERBOSE=true
+evergreen debug set-var BUILD_FLAGS="--debug"
+
+# Re-run the affected step
+evergreen debug jump 3
+evergreen debug next
+```
+
+### Skipping Setup Steps
+
+If you know steps 1-3 work fine and want to debug step 4:
+
+```bash
+evergreen debug load ./evergreen.yml
+evergreen debug select my_task
+
+# Jump straight to step 4 and execute it
+evergreen debug jump 4
+evergreen debug next
+```
+
+### Hot Reloading Configuration
+
+You can modify your `evergreen.yml` file and reload it between steps to test configuration changes. This continues from your current position and execution environment, it does not restart the debugger from the beginning.
+
+```bash
+# Edit your evergreen.yml file
+vim evergreen.yml
+
+# Reload the modified configuration
+evergreen debug load ./evergreen.yml
+
+# Your task selection, step position, and custom expansions are all preserved
+# Continue debugging with the updated configuration
+evergreen debug next
+```
+
+This is useful when:
+
+- Testing different command arguments or flags
+- Adjusting timeout values
+- Modifying shell scripts within the config
+- Adding or removing commands from a task
+
+The hot reload preserves:
+
+- Your current task selection (no need to re-select)
+- Your current step position
+- Custom expansions set with `set-var`
+- Execution history of completed steps
 
 ## Command Reference
 
@@ -101,7 +201,7 @@ Total steps: 8
 | ----------- | ---------------------------------------------------------------- |
 | `--variant` | (Optional) Select a specific build variant's version of the task |
 
-Note: Selecting a new task clears session logs. Custom variables set with `set-var` persist across task selections.
+Note: Selecting a new task clears session logs. Custom expansions set with `set-var` persist across task selections.
 
 ### Execution Commands
 
@@ -147,7 +247,7 @@ Jumped to step 3
 
 #### `evergreen debug set-var <key>=<value>`
 
-Set a custom variable for the debug session. This can be used to override expansion variables used by task commands. Variables persist until you select a new task.
+Set a custom expansion for the debug session. This can be used to override expansion values used by task commands. Expansions persist until you select a new task.
 
 ```bash
 evergreen debug set-var MY_FLAG=--verbose
@@ -157,7 +257,7 @@ evergreen debug set-var BUILD_TYPE=debug
 Output:
 
 ```text
-Set variable: MY_FLAG=--verbose
+Set expansion: MY_FLAG=--verbose
 ```
 
 ### Inspection Commands
@@ -254,100 +354,28 @@ Stop a running debugger.
 evergreen debug daemon stop
 ```
 
-## Common Debugging Workflows
-
-### Debugging a Failed Step
-
-Your task failed at [step](#understanding-step-numbers) 5. Here's how to debug it:
-
-```bash
-# Load config and select your task
-evergreen debug load ./evergreen.yml
-evergreen debug select my_failing_task
-
-# Execute up to the problem step
-evergreen debug run-until 5
-
-# Try running it
-evergreen debug next
-
-# Check the detailed logs
-evergreen debug logs --step 5
-
-# Make any fixes needed (edit files, install tools, etc.)
-
-# Try running the step again
-evergreen debug jump 5
-evergreen debug next
-```
-
-### Running With Different Variables
-
-Need to test with different expansions or environment variables?
-
-```bash
-# Set a custom variable
-evergreen debug set-var VERBOSE=true
-evergreen debug set-var BUILD_FLAGS="--debug"
-
-# Re-run the affected step
-evergreen debug jump 3
-evergreen debug next
-```
-
-### Skipping Setup Steps
-
-If you know steps 1-3 work fine and want to debug step 4:
-
-```bash
-evergreen debug load ./evergreen.yml
-evergreen debug select my_task
-
-# Jump straight to step 4
-evergreen debug jump 4
-evergreen debug next
-```
-
-### Hot Reloading Configuration
-
-You can modify your `evergreen.yml` file and reload it between steps to test configuration changes:
-
-```bash
-# Edit your evergreen.yml file
-vim evergreen.yml
-
-# Reload the modified configuration
-evergreen debug load ./evergreen.yml
-
-# Your task selection, step position, and custom variables are all preserved
-# Continue debugging with the updated configuration
-evergreen debug next
-```
-
-This is useful when:
-
-- Testing different command arguments or flags
-- Adjusting timeout values
-- Modifying shell scripts within the config
-- Adding or removing commands from a task
-
-The hot reload preserves:
-
-- Your current task selection (no need to re-select)
-- Your current step position
-- Custom variables set with `set-var`
-- Execution history of completed steps
-
 ## Prerequisites and Limitations
 
 ### Prerequisites
 
 - **Debug Mode Required**: When creating the spawn host, you must check the "Debug Mode" option
-- **Project Must Enable**: Debug spawn hosts are enabled by default. If disabled for your project, contact your project admin.
+- **Project Must Enable**: Debug spawn hosts are disabled by default. Your project admin must enable them in project settings.
+
+### For Project Admins
+
+Debug spawn hosts are **disabled by default**. To enable them, go to your project settings under the **General** section and uncheck the **"Debug Spawn Hosts Disabled"** toggle. Re-enabling the toggle will also automatically terminate any running debug hosts for the project.
+
+Before enabling debug spawn hosts for your project, be aware of the following:
+
+- **External state mutation**: Debug sessions may allow users to re-run task commands interactively. If your tasks mutate external state (e.g., uploading or downloading sensitive files, modifying databases, or calling external APIs), users could trigger those side effects repeatedly or in unexpected order. While many state-modifying Evergreen commands are [automatically skipped](#commands-that-will-no-op), custom shell commands in `subprocess.exec` or `shell.exec` are not restricted.
+- **Credential exposure**: Admin-only project variables are excluded from debug sessions, but **private** and **public** project variables are still accessible. Before enabling this feature, ensure that any highly sensitive secrets (credentials, signing keys, etc.) are marked as **admin-only** so they are withheld from debug sessions entirely. For lower-sensitivity secrets, ensure they are at least marked as private so that they are redacted from task logs and other places where Evergreen may transmit data off the host.
+- **AWS role assumptions**: Debug sessions use a [different external ID format](#ec2assume_role) for `ec2.assume_role`. Ensure your IAM trust policies are configured appropriately to scope debug access.
+- **GitHub token permissions**: Debug sessions use a separate [permission configuration](#githubgenerate_token) for generated GitHub tokens. Configure the "Debug" requester type in your project's GitHub token settings to restrict permissions as needed.
 
 ### Security Limitations
 
-- Admin-only variables are not available in debug sessions
+- Admin-only variables are not available in debug sessions for non-admins
+- Service users are not permitted to use the feature
 
 ### Special Command Behaviors
 
@@ -412,9 +440,8 @@ This is useful when debugging later steps that need setup (e.g., debugging tests
 
 ## Troubleshooting
 
-| Problem                    | Solution                                 |
-| -------------------------- | ---------------------------------------- |
-| "daemon not running"       | Run `evergreen debug daemon start`       |
-| "daemon not responding"    | Run `daemon stop` then `daemon start`    |
-| "step number not found"    | Check valid steps with `list-steps`      |
-| "no more steps to execute" | Use `jump` to go back to an earlier step |
+When investigating issues, check the following:
+
+1. Output from `evergreen debug daemon status`
+2. Relevant daemon logs from `~/.evergreen-local/daemon.log`
+3. Relevant execution logs from `evergreen debug logs`
