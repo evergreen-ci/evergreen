@@ -144,6 +144,25 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalIDDebug, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
 		},
+		"UseDebugOverridesNonDebugHost": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
+			require.NoError(t, task.Insert(t.Context()))
+			project := model.ProjectRef{Id: projectID, RepoRefId: repoRefID}
+			require.NoError(t, project.Insert(t.Context()))
+			repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: repoRefID}}
+			require.NoError(t, repoRef.Replace(t.Context()))
+			h := host.Host{Id: hostID, IsDebug: false}
+			require.NoError(t, h.Insert(t.Context()))
+
+			creds, err := manager.AssumeRole(t.Context(), taskID, hostID, AssumeRoleOptions{
+				RoleARN:  roleARN,
+				Policy:   &policy,
+				UseDebug: true,
+			})
+			require.NoError(t, err)
+			assert.NotEmpty(t, creds.AccessKeyID)
+			assert.Equal(t, externalIDDebug, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
+		},
 		"Success/DebugHost/UntrackedBranch": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
 			require.NoError(t, task.Insert(t.Context()))

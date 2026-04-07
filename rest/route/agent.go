@@ -1875,10 +1875,14 @@ func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
+	usr := gimlet.GetUser(ctx)
+	isUserRequest := usr != nil
+
 	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, h.hostID, cloud.AssumeRoleOptions{
 		RoleARN:         h.body.RoleARN,
 		Policy:          h.body.Policy,
 		DurationSeconds: h.body.DurationSeconds,
+		UseDebug:        isUserRequest,
 	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
