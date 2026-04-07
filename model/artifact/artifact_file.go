@@ -46,9 +46,9 @@ type Params map[string]string
 
 // AssociatedLink represents a link related to a file besides the main artifact link.
 type AssociatedLink struct {
-	Name        string `json:"name" bson:"name"`
-	Link        string `json:"link" bson:"link"`
-	DoNotEncode bool   `json:"do_not_encode,omitempty" bson:"do_not_encode,omitempty"`
+	Name            string `json:"name" bson:"name"`
+	Link            string `json:"link" bson:"link"`
+	DoNotEncodeLink bool   `json:"do_not_encode_link,omitempty" bson:"do_not_encode_link,omitempty"`
 }
 
 // File is a pairing of name and link for easy storage/display
@@ -83,8 +83,8 @@ type File struct {
 	PutCost float64 `json:"put_cost,omitempty" bson:"put_cost,omitempty"`
 	// AssociatedLinks is a list of links related to the file besides the main artifact link.
 	AssociatedLinks []AssociatedLink `json:"associated_links,omitempty" bson:"associated_links,omitempty"`
-	// DoNotEncode indicates that the file link should not be escaped.
-	DoNotEncode bool `json:"do_not_encode,omitempty" bson:"do_not_encode,omitempty"`
+	// DoNotEncodeLink indicates that the file link should not be escaped.
+	DoNotEncodeLink bool `json:"do_not_encode_link,omitempty" bson:"do_not_encode_link,omitempty"`
 }
 
 func (f *File) validate() error {
@@ -181,14 +181,14 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File
 	for _, file := range files {
-		if !file.DoNotEncode {
+		if !file.DoNotEncodeLink {
 			file.Link = escapeFile(file.Link)
 		}
 
 		escapedAssociatedLinks := make([]AssociatedLink, len(file.AssociatedLinks))
 		for i, link := range file.AssociatedLinks {
 			escapedAssociatedLinks[i] = link
-			if !link.DoNotEncode {
+			if !link.DoNotEncodeLink {
 				escapedAssociatedLinks[i].Link = escapeFile(link.Link)
 			}
 		}
