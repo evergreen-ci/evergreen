@@ -4433,8 +4433,8 @@ func allObjectsExistInBucket(ctx context.Context, bucket pail.Bucket, keys []str
 
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket.
 func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
-	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
-		// test logs and task logs will always be in the same bucket
+	if output.TestLogs.BucketConfig.Name != output.TaskLogs.BucketConfig.Name {
+		// moveLogsByNamesToBucket uses one source bucket for task and test log keys; names must agree.
 		return errors.New("test log and task log buckets do not match")
 	}
 	failedCfg := settings.Buckets.LogBucketFailedTasks
