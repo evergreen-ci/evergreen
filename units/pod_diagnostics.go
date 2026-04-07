@@ -60,8 +60,8 @@ func makePodDiagnosticsJob() *podDiagnosticsJob {
 }
 
 // NewPodDiagnosticsJob returns a job that checks the current pod's memory
-// usage against the configured thresholds and captures pprof diagnostic data
-// when a threshold condition is met.
+// usage against the configured thresholds and captures/stores profiling data in
+// S3 when it's using excessive memory.
 func NewPodDiagnosticsJob(ts string) amboy.Job {
 	j := makePodDiagnosticsJob()
 	j.SetID(fmt.Sprintf("%s.%s", podDiagnosticsJobName, ts))
@@ -82,11 +82,11 @@ func (j *podDiagnosticsJob) Run(ctx context.Context) {
 		return
 	}
 
-	// Note: this lock is necessary to avoid multiple pod diagnostic jobs from
-	// running concurrently. Typically, most remote queue jobs would use scopes
-	// to prevent concurrent operations. However, this job runs in the local
-	// queue (since memory is per-app) and the local queue implementation that
-	// Evergreen has historically used does not support scopes.
+	// This lock is necessary to avoid multiple pod diagnostic jobs from running
+	// concurrently. Typically, a remote queue job would use job scopes to
+	// prevent concurrent operations. However, this job runs in the local queue
+	// (since memory is per-app) and Evergreen's local queue implementation
+	// (i.e. the limited size local queue) does not support scopes.
 	podDiagnosticsMutex.Lock()
 	defer podDiagnosticsMutex.Unlock()
 
@@ -150,13 +150,13 @@ func (j *podDiagnosticsJob) Run(ctx context.Context) {
 func (j *podDiagnosticsJob) getTriggerReason(jobStartedAt time.Time, usagePercent float64) string {
 	if !aboveCriticalMemoryThresholdSince.IsZero() {
 		return fmt.Sprintf(
-			"critical memory usage - memory at %.1f%% of container limit for %s (threshold: >%.1f%%)",
+			"critical memory usage - memory is at %.1f%% of container limit for %s (threshold: >%.1f%%)",
 			usagePercent*100, jobStartedAt.Sub(aboveCriticalMemoryThresholdSince).String(), criticalMemoryThreshold*100,
 		)
 	}
 	if !aboveHighMemoryThresholdSince.IsZero() && jobStartedAt.Sub(aboveHighMemoryThresholdSince) >= highMemoryDuration {
 		return fmt.Sprintf(
-			"high memory usage - memory at %.1f%% of container limit for %s (threshold: >%.1f%% for >%s)",
+			"high memory usage - memory is at %.1f%% of container limit for %s (threshold: >%.1f%% for >%s)",
 			usagePercent*100, jobStartedAt.Sub(aboveHighMemoryThresholdSince).String(), highMemoryThreshold*100, highMemoryDuration.String(),
 		)
 	}
