@@ -163,6 +163,39 @@ func TestFindAllRulesForBucket(t *testing.T) {
 	}
 }
 
+func TestFindAllRules(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.Clear(Collection))
+
+	rules := []S3LifecycleRuleDoc{
+		{BucketName: "bucket1", FilterPrefix: "sandbox/", BucketType: BucketTypeUserSpecified, RuleID: "rule1", RuleStatus: "Enabled"},
+		{BucketName: "bucket1", FilterPrefix: "logs/", BucketType: BucketTypeUserSpecified, RuleID: "rule2", RuleStatus: "Enabled"},
+		{BucketName: "bucket2", FilterPrefix: "", BucketType: BucketTypeAdminManaged, RuleID: "rule3", RuleStatus: "Enabled"},
+	}
+	for _, rule := range rules {
+		r := rule
+		require.NoError(t, (&r).Upsert(ctx))
+	}
+
+	found, err := FindAllRules(ctx)
+	require.NoError(t, err)
+	assert.Len(t, found, 3)
+
+	bucketNames := map[string]bool{}
+	for _, r := range found {
+		bucketNames[r.BucketName] = true
+	}
+	assert.True(t, bucketNames["bucket1"])
+	assert.True(t, bucketNames["bucket2"])
+}
+
+func TestFindAllRulesEmptyCollection(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	found, err := FindAllRules(t.Context())
+	require.NoError(t, err)
+	assert.Empty(t, found)
+}
+
 func TestDiscoverAdminManagedBuckets(t *testing.T) {
 	roleARN := "arn:aws:iam::123456789012:role/LogRole"
 	tests := []struct {

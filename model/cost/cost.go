@@ -1,5 +1,15 @@
 package cost
 
+import "github.com/mongodb/anser/bsonutil"
+
+var (
+	OnDemandEC2CostKey       = bsonutil.MustHaveTag(Cost{}, "OnDemandEC2Cost")
+	AdjustedEC2CostKey       = bsonutil.MustHaveTag(Cost{}, "AdjustedEC2Cost")
+	S3ArtifactPutCostKey     = bsonutil.MustHaveTag(Cost{}, "S3ArtifactPutCost")
+	S3LogPutCostKey          = bsonutil.MustHaveTag(Cost{}, "S3LogPutCost")
+	S3ArtifactStorageCostKey = bsonutil.MustHaveTag(Cost{}, "S3ArtifactStorageCost")
+)
+
 // Cost represents a cost breakdown for tasks and versions
 type Cost struct {
 	// OnDemandEC2Cost is the cost calculated using only on-demand rates.

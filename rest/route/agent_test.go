@@ -1079,71 +1079,75 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 func TestReportS3Usage(t *testing.T) {
 	ctx := t.Context()
+	defer func() {
+		require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
+	}()
 
-	t.Run("SavesArtifactAndLogUsage", func(t *testing.T) {
-		require.NoError(t, db.Clear(task.Collection))
-		tk := task.Task{Id: "t1", Status: evergreen.TaskStarted}
-		require.NoError(t, tk.Insert(ctx))
-
-		handler := makeReportS3Usage().(*reportS3UsageHandler)
-		handler.taskID = "t1"
-		handler.s3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{
-				S3UploadMetrics: s3usage.S3UploadMetrics{
-					PutRequests: 50,
-					UploadBytes: 2048,
+	for name, tc := range map[string]struct {
+		taskID     string
+		insertTask *task.Task
+		s3Usage    s3usage.S3Usage
+		wantStatus int
+		assertions func(*testing.T, *task.Task)
+	}{
+		"TaskNotFound": {
+			taskID:     "nonexistent",
+			s3Usage:    s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10}}},
+			wantStatus: http.StatusNotFound,
+		},
+		"SavesArtifactAndLogUsage": {
+			taskID:     "t1",
+			insertTask: &task.Task{Id: "t1", Status: evergreen.TaskStarted},
+			s3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 50, UploadBytes: 2048},
+					Count:           5,
 				},
-				Count: 5,
+				Logs: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 4096},
 			},
-			Logs: s3usage.S3UploadMetrics{
-				PutRequests: 10,
-				UploadBytes: 4096,
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				assert.Equal(t, 50, dbTask.S3Usage.Artifacts.PutRequests)
+				assert.Equal(t, int64(2048), dbTask.S3Usage.Artifacts.UploadBytes)
+				assert.Equal(t, 5, dbTask.S3Usage.Artifacts.Count)
+				assert.Equal(t, 10, dbTask.S3Usage.Logs.PutRequests)
+				assert.Equal(t, int64(4096), dbTask.S3Usage.Logs.UploadBytes)
 			},
-		}
-		foundTask, err := task.FindOneId(ctx, "t1")
-		require.NoError(t, err)
-		require.NotNil(t, foundTask)
-		taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
-		resp := handler.Run(taskCtx)
-		assert.Equal(t, http.StatusOK, resp.Status())
-
-		dbTask, err := task.FindOneId(ctx, "t1")
-		require.NoError(t, err)
-		require.NotNil(t, dbTask)
-		assert.Equal(t, 50, dbTask.S3Usage.Artifacts.PutRequests)
-		assert.Equal(t, int64(2048), dbTask.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 5, dbTask.S3Usage.Artifacts.Count)
-		assert.Equal(t, 10, dbTask.S3Usage.Logs.PutRequests)
-		assert.Equal(t, int64(4096), dbTask.S3Usage.Logs.UploadBytes)
-	})
-
-	t.Run("SavesLogOnlyUsage", func(t *testing.T) {
-		require.NoError(t, db.Clear(task.Collection))
-		tk := task.Task{Id: "t2", Status: evergreen.TaskStarted}
-		require.NoError(t, tk.Insert(ctx))
-
-		handler := makeReportS3Usage().(*reportS3UsageHandler)
-		handler.taskID = "t2"
-		handler.s3Usage = s3usage.S3Usage{
-			Logs: s3usage.S3UploadMetrics{
-				PutRequests: 25,
-				UploadBytes: 8192,
+		},
+		"SavesLogOnlyUsage": {
+			taskID:     "t2",
+			insertTask: &task.Task{Id: "t2", Status: evergreen.TaskStarted},
+			s3Usage: s3usage.S3Usage{
+				Logs: s3usage.S3UploadMetrics{PutRequests: 25, UploadBytes: 8192},
 			},
-		}
-		foundTask, err := task.FindOneId(ctx, "t2")
-		require.NoError(t, err)
-		require.NotNil(t, foundTask)
-		taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
-		resp := handler.Run(taskCtx)
-		assert.Equal(t, http.StatusOK, resp.Status())
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
+				assert.Equal(t, 25, dbTask.S3Usage.Logs.PutRequests)
+				assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
+			if tc.insertTask != nil {
+				require.NoError(t, tc.insertTask.Insert(ctx))
+			}
 
-		dbTask, err := task.FindOneId(ctx, "t2")
-		require.NoError(t, err)
-		require.NotNil(t, dbTask)
-		assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
-		assert.Equal(t, 25, dbTask.S3Usage.Logs.PutRequests)
-		assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
-	})
+			handler := makeReportS3Usage().(*reportS3UsageHandler)
+			handler.taskID = tc.taskID
+			handler.s3Usage = tc.s3Usage
+			resp := handler.Run(ctx)
+			assert.Equal(t, tc.wantStatus, resp.Status())
+
+			if tc.assertions != nil {
+				dbTask, err := task.FindOneId(ctx, tc.taskID)
+				require.NoError(t, err)
+				require.NotNil(t, dbTask)
+				tc.assertions(t, dbTask)
+			}
+		})
+	}
 }
 
 func TestFindExpirationDaysForFileKey(t *testing.T) {
@@ -1198,55 +1202,5 @@ func TestFindExpirationDaysForFileKey(t *testing.T) {
 		}
 		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
 		assert.False(t, ok)
-	})
-}
-
-func TestBucketExpirationLookup(t *testing.T) {
-	ctx := t.Context()
-	days90 := 90
-
-	t.Run("NoRulesInDBShouldReturnNotFound", func(t *testing.T) {
-		require.NoError(t, db.Clear(s3lifecycle.Collection))
-		bel := newBucketExpirationLookup()
-		_, ok := bel.lookup(ctx, "mciuploads", "some-project/abc123/file.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("MatchingRuleInDBShouldReturnDays", func(t *testing.T) {
-		require.NoError(t, db.Clear(s3lifecycle.Collection))
-		rule := &s3lifecycle.S3LifecycleRuleDoc{
-			BucketName:     "mciuploads",
-			FilterPrefix:   "some-project/",
-			RuleStatus:     "Enabled",
-			ExpirationDays: &days90,
-		}
-		require.NoError(t, rule.Upsert(ctx))
-
-		bel := newBucketExpirationLookup()
-		days, ok := bel.lookup(ctx, "mciuploads", "some-project/abc123/file.txt")
-		assert.True(t, ok)
-		assert.Equal(t, 90, days)
-	})
-
-	t.Run("CachesRulesAfterFirstLookup", func(t *testing.T) {
-		require.NoError(t, db.Clear(s3lifecycle.Collection))
-		rule := &s3lifecycle.S3LifecycleRuleDoc{
-			BucketName:     "mciuploads",
-			FilterPrefix:   "some-project/",
-			RuleStatus:     "Enabled",
-			ExpirationDays: &days90,
-		}
-		require.NoError(t, rule.Upsert(ctx))
-
-		bel := newBucketExpirationLookup()
-		days, ok := bel.lookup(ctx, "mciuploads", "some-project/abc123/file.txt")
-		require.True(t, ok)
-		assert.Equal(t, 90, days)
-
-		// Clear DB — second call should still return the cached result.
-		require.NoError(t, db.Clear(s3lifecycle.Collection))
-		days, ok = bel.lookup(ctx, "mciuploads", "some-project/abc123/other.txt")
-		assert.True(t, ok)
-		assert.Equal(t, 90, days)
 	})
 }

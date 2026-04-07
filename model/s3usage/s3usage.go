@@ -21,6 +21,18 @@ type S3UploadMetrics struct {
 	UploadBytes int64 `bson:"upload_bytes,omitempty" json:"upload_bytes,omitempty"`
 }
 
+// BucketFileMetrics groups per-file byte metrics for a single S3 bucket.
+type BucketFileMetrics struct {
+	Bucket string      `bson:"bucket" json:"bucket"`
+	Files  []FileBytes `bson:"files" json:"files"`
+}
+
+// FileBytes tracks bytes uploaded for a single S3 file key.
+type FileBytes struct {
+	FileKey string `bson:"file_key" json:"file_key"`
+	Bytes   int64  `bson:"bytes" json:"bytes"`
+}
+
 // ArtifactMetrics tracks artifact upload metrics with an additional file count.
 type ArtifactMetrics struct {
 	S3UploadMetrics `bson:",inline"`
@@ -30,9 +42,8 @@ type ArtifactMetrics struct {
 	ArtifactWithMaxPutRequests int `bson:"max_put_requests_per_file,omitempty" json:"max_put_requests_per_file,omitempty"`
 	// ArtifactWithMinPutRequests is the lowest PUT request count for a single artifact across all s3.put invocations per task.
 	ArtifactWithMinPutRequests int `bson:"min_put_requests_per_file,omitempty" json:"min_put_requests_per_file,omitempty"`
-	// BytesByBucketAndKey maps S3 bucket name to a map of file key to bytes uploaded for that file.
-	// Used by the server to look up the most specific lifecycle rule per file for accurate storage cost calculation.
-	BytesByBucketAndKey map[string]map[string]int64 `bson:"bytes_by_bucket_and_key,omitempty" json:"bytes_by_bucket_and_key,omitempty"`
+	// BytesByBucketAndKey groups per-file byte metrics by S3 bucket.
+	BytesByBucketAndKey []BucketFileMetrics `bson:"bytes_by_bucket_and_key,omitempty" json:"bytes_by_bucket_and_key,omitempty"`
 }
 
 // FileMetrics contains metrics for a single uploaded file.
@@ -147,10 +158,6 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 // Returns 0 if cost cannot be calculated due to missing or invalid config.
 func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
 	if putRequests <= 0 {
-		grip.Warning(context.Background(), message.Fields{
-			"message":      "no put requests to calculate cost",
-			"put_requests": putRequests,
-		})
 		return 0.0
 	}
 
@@ -182,9 +189,6 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 		return 0.0
 	}
 	if expirationDays <= 0 {
-		grip.Warning(ctx, message.Fields{
-			"message": "expiration days not configured, cannot calculate S3 storage cost",
-		})
 		return 0.0
 	}
 	if costConfig == nil {
@@ -215,9 +219,7 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 	return float64(uploadBytes) * (standardCost + iaCost + archiveCost)
 }
 
-// IncrementArtifacts increments the artifact upload metrics (from s3.put commands).
-// maxPuts and minPuts are the per-file extremes from this s3.put invocation.
-// files is used to populate BytesByBucketAndKey for per-file lifecycle rule lookups on the server.
+// IncrementArtifacts updates aggregate artifact upload metrics after an s3.put command.
 func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCount int, maxPuts int, minPuts int, bucket string, files []FileMetrics) {
 	s.Artifacts.PutRequests += putRequests
 	s.Artifacts.UploadBytes += uploadBytes
@@ -230,14 +232,29 @@ func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCou
 		s.Artifacts.ArtifactWithMinPutRequests = minPuts
 	}
 
-	if s.Artifacts.BytesByBucketAndKey == nil {
-		s.Artifacts.BytesByBucketAndKey = make(map[string]map[string]int64)
+	var bucketEntry *BucketFileMetrics
+	for i := range s.Artifacts.BytesByBucketAndKey {
+		if s.Artifacts.BytesByBucketAndKey[i].Bucket == bucket {
+			bucketEntry = &s.Artifacts.BytesByBucketAndKey[i]
+			break
+		}
 	}
-	if s.Artifacts.BytesByBucketAndKey[bucket] == nil {
-		s.Artifacts.BytesByBucketAndKey[bucket] = make(map[string]int64)
+	if bucketEntry == nil {
+		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{Bucket: bucket})
+		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}
 	for _, f := range files {
-		s.Artifacts.BytesByBucketAndKey[bucket][f.RemotePath] += f.FileSizeBytes
+		found := false
+		for j := range bucketEntry.Files {
+			if bucketEntry.Files[j].FileKey == f.RemotePath {
+				bucketEntry.Files[j].Bytes += f.FileSizeBytes
+				found = true
+				break
+			}
+		}
+		if !found {
+			bucketEntry.Files = append(bucketEntry.Files, FileBytes{FileKey: f.RemotePath, Bytes: f.FileSizeBytes})
+		}
 	}
 }
 

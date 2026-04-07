@@ -700,18 +700,17 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 }
 
 // findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
-// for the given file key. Returns (0, false) if no matching enabled rule is found.
-func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (int, bool) {
+// for the given file key.
+func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
 	pailRules := make([]pail.LifecycleRule, 0, len(rules))
-	for _, doc := range rules {
+	for _, ruleDoc := range rules {
 		var expDays *int32
-		if doc.ExpirationDays != nil {
-			v := int32(*doc.ExpirationDays)
-			expDays = &v
+		if ruleDoc.ExpirationDays != nil {
+			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
 		}
 		pailRules = append(pailRules, pail.LifecycleRule{
-			Prefix:         doc.FilterPrefix,
-			Status:         doc.RuleStatus,
+			Prefix:         ruleDoc.FilterPrefix,
+			Status:         ruleDoc.RuleStatus,
 			ExpirationDays: expDays,
 		})
 	}
@@ -720,30 +719,6 @@ func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKe
 		return 0, false
 	}
 	return int(*rule.ExpirationDays), true
-}
-
-// bucketExpirationLookup caches S3 lifecycle rules per bucket and resolves per-file expiration days.
-type bucketExpirationLookup struct {
-	rulesCache map[string][]s3lifecycle.S3LifecycleRuleDoc
-}
-
-func newBucketExpirationLookup() *bucketExpirationLookup {
-	return &bucketExpirationLookup{
-		rulesCache: map[string][]s3lifecycle.S3LifecycleRuleDoc{},
-	}
-}
-
-func (b *bucketExpirationLookup) lookup(ctx context.Context, bucket, fileKey string) (int, bool) {
-	rules, ok := b.rulesCache[bucket]
-	if !ok {
-		var err error
-		rules, err = s3lifecycle.FindAllRulesForBucket(ctx, bucket)
-		if err != nil {
-			return 0, false
-		}
-		b.rulesCache[bucket] = rules
-	}
-	return findExpirationDaysForFileKey(rules, fileKey)
 }
 
 // POST /rest/v2/task/{task_id}/s3_usage
@@ -777,13 +752,25 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
 
 	t.S3Usage = h.s3Usage
-	bel := newBucketExpirationLookup()
-	if err := t.SaveS3Usage(ctx, bel.lookup); err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "saving S3 usage",
-			"task_id": h.taskID,
-		}))
+
+	allRules, _ := s3lifecycle.FindAllRules(ctx)
+	rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+	for _, rule := range allRules {
+		rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
+	}
+	lookup := func(ctx context.Context, bucket, fileKey string) (int, bool) {
+		return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
+	}
+
+	if err := t.SaveS3Usage(ctx, lookup); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
+	}
+
+	v, err := model.VersionFindOneId(ctx, t.Version)
+	if err != nil {
+		grip.Error(ctx, errors.Wrapf(err, "finding version '%s' to update aggregate task costs", t.Version))
+	} else if v != nil && evergreen.IsFinishedVersionStatus(v.Status) {
+		grip.Error(ctx, errors.Wrapf(v.UpdateAggregateTaskCosts(ctx), "updating aggregate task costs for version '%s' after S3 usage report", v.Id))
 	}
 
 	var avgFilePutCost, maxFilePutCost, minFilePutCost float64

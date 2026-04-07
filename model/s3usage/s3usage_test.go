@@ -8,6 +8,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// bytesForFile returns the stored bytes for a specific file in a specific bucket, or 0 if not found.
+func bytesForFile(metrics []BucketFileMetrics, bucket, fileKey string) int64 {
+	for _, b := range metrics {
+		if b.Bucket == bucket {
+			for _, f := range b.Files {
+				if f.FileKey == fileKey {
+					return f.Bytes
+				}
+			}
+		}
+	}
+	return 0
+}
+
+// hasBucket returns true if the given bucket exists in the metrics slice.
+func hasBucket(metrics []BucketFileMetrics, bucket string) bool {
+	for _, b := range metrics {
+		if b.Bucket == bucket {
+			return true
+		}
+	}
+	return false
+}
+
 func TestS3Usage(t *testing.T) {
 	t.Run("IsZero", func(t *testing.T) {
 		s3Usage := S3Usage{}
@@ -52,10 +76,10 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 2, s3Usage.Artifacts.Count)
 		assert.Equal(t, 3, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 2, s3Usage.Artifacts.ArtifactWithMinPutRequests)
-		require.NotNil(t, s3Usage.Artifacts.BytesByBucketAndKey)
-		require.NotNil(t, s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"])
-		assert.Equal(t, int64(600), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file1.txt"])
-		assert.Equal(t, int64(424), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file2.txt"])
+		require.NotEmpty(t, s3Usage.Artifacts.BytesByBucketAndKey)
+		require.True(t, hasBucket(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a"))
+		assert.Equal(t, int64(600), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"))
+		assert.Equal(t, int64(424), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file2.txt"))
 
 		filesB := []FileMetrics{
 			{RemotePath: "other/file3.txt", FileSizeBytes: 2048},
@@ -66,15 +90,15 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 5, s3Usage.Artifacts.Count)
 		assert.Equal(t, 8, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 1, s3Usage.Artifacts.ArtifactWithMinPutRequests)
-		require.NotNil(t, s3Usage.Artifacts.BytesByBucketAndKey["bucket-b"])
-		assert.Equal(t, int64(600), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file1.txt"], "bucket-a file bytes should be unchanged")
-		assert.Equal(t, int64(2048), s3Usage.Artifacts.BytesByBucketAndKey["bucket-b"]["other/file3.txt"])
+		require.True(t, hasBucket(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-b"))
+		assert.Equal(t, int64(600), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should be unchanged")
+		assert.Equal(t, int64(2048), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-b", "other/file3.txt"))
 
 		filesA2 := []FileMetrics{
 			{RemotePath: "path/file1.txt", FileSizeBytes: 512},
 		}
 		s3Usage.IncrementArtifacts(3, 512, 1, 3, 3, "bucket-a", filesA2)
-		assert.Equal(t, int64(1112), s3Usage.Artifacts.BytesByBucketAndKey["bucket-a"]["path/file1.txt"], "bucket-a file bytes should accumulate across invocations")
+		assert.Equal(t, int64(1112), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should accumulate across invocations")
 	})
 
 	t.Run("IncrementLogs", func(t *testing.T) {
