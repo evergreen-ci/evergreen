@@ -125,12 +125,12 @@ func Debug() cli.Command {
 			},
 			{
 				Name:      "load",
-				Usage:     "Load a configuration file",
-				ArgsUsage: "<config.yml>",
+				Usage:     "Load a configuration file or task from the server",
+				ArgsUsage: "[config.yml]",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:  debugTaskIDFlagName,
-						Usage: "Task ID for loading task configuration (required when not on a spawn host)",
+						Usage: "Task ID to load configuration from the server and auto-select the task (required when not on a spawn host)",
 					},
 				},
 				Action: loadConfigCmd,
@@ -511,19 +511,12 @@ func daemonStatusCmd(c *cli.Context) error {
 
 // loadConfigCmd loads a configuration file. It handles OAuth authentication
 // and spawn host or local permission validation before sending the config to
-// the daemon.
+// the daemon. When a --task-id is provided without a config file path, the
+// project configuration is loaded from the server and the task is
+// automatically selected.
 func loadConfigCmd(c *cli.Context) error {
-	if c.NArg() < 1 {
-		return errors.New("config file path required")
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-
-	configPath, err := filepath.Abs(c.Args().Get(0))
-	if err != nil {
-		return errors.Wrap(err, "resolving config file path")
-	}
 
 	confPath := getRootContext(c).String(ConfFlagName)
 	conf, err := NewClientSettings(confPath)
@@ -532,9 +525,19 @@ func loadConfigCmd(c *cli.Context) error {
 	}
 
 	taskID := c.String(debugTaskIDFlagName)
+	var configPath string
+	if c.NArg() > 0 {
+		configPath, err = filepath.Abs(c.Args().Get(0))
+		if err != nil {
+			return errors.Wrap(err, "resolving config file path")
+		}
+	}
 
 	if conf.SpawnHostID != "" {
 		// On a spawn host — use existing spawn host validation.
+		if configPath == "" {
+			return errors.New("config file path required when on a spawn host")
+		}
 		if err := validateDebugSpawnHost(ctx, conf); err != nil {
 			return err
 		}
@@ -542,6 +545,9 @@ func loadConfigCmd(c *cli.Context) error {
 		// Not on a spawn host — validate using the provided task ID.
 		if taskID == "" {
 			taskID = conf.TaskID
+		}
+		if taskID == "" {
+			return errors.New("--task-id is required when not on a spawn host")
 		}
 		projectID, err := validateDebugLocal(ctx, conf, taskID)
 		if err != nil {
@@ -570,8 +576,13 @@ func loadConfigCmd(c *cli.Context) error {
 		return errors.Wrap(err, "loading configuration")
 	}
 
-	grip.Infof(context.Background(), "Loaded configuration: %s", configPath)
-	grip.Infof(context.Background(), "Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
+	if autoSelected, ok := resp["auto_selected"].(bool); ok && autoSelected {
+		grip.Infof(context.Background(), "Loaded and auto-selected task: %v (variant: %v)", resp["selected_task"], resp["selected_variant"])
+		grip.Infof(context.Background(), "Total steps: %v", resp["step_count"])
+	} else {
+		grip.Infof(context.Background(), "Loaded configuration: %s", configPath)
+		grip.Infof(context.Background(), "Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
+	}
 
 	return nil
 }

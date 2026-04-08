@@ -489,6 +489,23 @@ func (e *LocalExecutor) GetDebugState() *DebugState {
 	return e.debugState
 }
 
+// GetProject returns the loaded project.
+func (e *LocalExecutor) GetProject() *model.Project {
+	return e.project
+}
+
+// GetFetchedTaskName returns the display name of the task fetched from
+// the server during initialization.
+func (e *LocalExecutor) GetFetchedTaskName() string {
+	return e.taskConfig.Task.DisplayName
+}
+
+// GetFetchedBuildVariant returns the build variant of the task fetched
+// from the server during initialization.
+func (e *LocalExecutor) GetFetchedBuildVariant() string {
+	return e.taskConfig.Task.BuildVariant
+}
+
 // SetStreamWriter sets the stream writer for streaming output during execution.
 // When set, command output is sent as NDJSON to the stream writer.
 func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
