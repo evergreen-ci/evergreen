@@ -690,9 +690,7 @@ func allowCORS(next http.HandlerFunc) http.HandlerFunc {
 // NewUserOrTaskAuthMiddleware returns a middleware that verifies the request
 // is authenticated as either a user or a task/host. When the request is
 // user-authenticated, the middleware additionally checks that the user has
-// patch submit permission on the project associated with the task in the URL.
-// This enforces that users accessing task routes (e.g. during a local debug
-// session) are authorized to interact with that task's project.
+// patch submit permission on the project associated with the task.
 func NewUserOrTaskAuthMiddleware() gimlet.Middleware {
 	return &userOrTaskAuthMiddleware{
 		taskFallback: NewTaskAuthMiddleware(),
@@ -707,7 +705,7 @@ func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	u := gimlet.GetUser(ctx)
 	if u == nil {
-		// Not user-authenticated; fall back to task/host auth.
+		// Fallback to task/host auth.
 		m.taskFallback.ServeHTTP(rw, r, next)
 		return
 	}

@@ -472,9 +472,7 @@ func daemonStatusCmd(c *cli.Context) error {
 }
 
 // loadConfigCmd loads a configuration file. It handles OAuth authentication
-// and spawn host or local permission validation before sending the config to
-// the daemon. When a --task-id is provided, the task's config
-// is automatically selected.
+// and spawn host validation before sending the config to the daemon.
 func loadConfigCmd(c *cli.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
