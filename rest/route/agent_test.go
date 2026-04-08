@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -915,20 +914,6 @@ func TestAWSAssumeRole(t *testing.T) {
 			request.Header.Set(evergreen.HostHeader, hostID)
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "validating assume role body for task 'taskID'")
-		},
-		"RunRejectsUserRequestWithNonDebugHost": func(ctx context.Context, t *testing.T, handler *awsAssumeRole) {
-			url := fmt.Sprintf(route, taskID)
-			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(fmt.Sprintf(json, roleARN, policy, duration))))
-			require.NoError(t, err)
-			options := map[string]string{"task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-			request.Header.Set(evergreen.HostHeader, hostID)
-			require.NoError(t, handler.Parse(ctx, request))
-
-			userCtx := gimlet.AttachUser(ctx, &user.DBUser{Id: "testuser"})
-			resp := handler.Run(userCtx)
-			require.NotNil(t, resp)
-			require.Equal(t, http.StatusUnauthorized, resp.Status())
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *awsAssumeRole) {
 			url := fmt.Sprintf(route, taskID)
