@@ -1204,7 +1204,20 @@ func (h *servePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	t := MustHaveTask(ctx)
+	t := GetTask(ctx)
+	if t == nil {
+		var err error
+		t, err = task.FindOneId(ctx, h.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			})
+		}
+	}
 
 	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
 	if err != nil {
