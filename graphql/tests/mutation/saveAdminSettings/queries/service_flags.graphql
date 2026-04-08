@@ -35,6 +35,7 @@ mutation {
         taskReliabilityDisabled: true
         useMergeQueuePathFilteringDisabled: true
         webhookNotificationsDisabled: true
+        podDiagnosticsDisabled: true
       }
     }
   ) {
@@ -72,6 +73,7 @@ mutation {
       taskReliabilityDisabled
       useMergeQueuePathFilteringDisabled
       webhookNotificationsDisabled
+      podDiagnosticsDisabled
     }
   }
 }

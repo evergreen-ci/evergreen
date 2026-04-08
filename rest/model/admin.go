@@ -25,6 +25,7 @@ func NewConfigModel() *APIAdminSettings {
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
 		Cost:                &APICostConfig{},
+		Diagnostics:         &APIDiagnosticsConfig{},
 		FWS:                 &APIFWSConfig{},
 		Graphite:            &APIGraphiteConfig{},
 		HostInit:            &APIHostInitConfig{},
@@ -74,6 +75,7 @@ type APIAdminSettings struct {
 	ConfigDir               *string                       `json:"configdir,omitempty"`
 	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
 	DebugSpawnHosts         *APIDebugSpawnHostsConfig     `json:"debug_spawn_hosts,omitempty"`
+	Diagnostics             *APIDiagnosticsConfig         `json:"diagnostics,omitempty"`
 	DomainName              *string                       `json:"domain_name,omitempty"`
 	Expansions              map[string]string             `json:"expansions,omitempty"`
 	Cost                    *APICostConfig                `json:"cost,omitempty"`
@@ -2065,6 +2067,7 @@ type APIServiceFlags struct {
 	S3LifecycleSyncDisabled            bool `json:"s3_lifecycle_sync_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
+	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2517,6 +2520,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
+		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2563,6 +2567,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		S3LifecycleSyncDisabled:            as.S3LifecycleSyncDisabled,
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
+		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 	}, nil
 }
 
@@ -2862,6 +2867,29 @@ func (c *APITracerSettings) ToService() (any, error) {
 	}
 
 	return config, nil
+}
+
+type APIDiagnosticsConfig struct {
+	S3BucketName *string `json:"s3_bucket_name"`
+	S3Prefix     *string `json:"s3_prefix"`
+}
+
+func (c *APIDiagnosticsConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.DiagnosticsConfig:
+		c.S3BucketName = utility.ToStringPtr(v.S3BucketName)
+		c.S3Prefix = utility.ToStringPtr(v.S3Prefix)
+	default:
+		return errors.Errorf("programmatic error: expected DiagnosticsConfig but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APIDiagnosticsConfig) ToService() (any, error) {
+	return evergreen.DiagnosticsConfig{
+		S3BucketName: utility.FromStringPtr(c.S3BucketName),
+		S3Prefix:     utility.FromStringPtr(c.S3Prefix),
+	}, nil
 }
 
 type APIGitHubCheckRunConfig struct {
