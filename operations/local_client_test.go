@@ -499,7 +499,7 @@ func TestValidateDebugLocal(t *testing.T) {
 		mockClient = &client.Mock{}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, validConf, "")
+		err := validateDebugLocal(ctx, validConf, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "--task-id is required")
 	})
@@ -512,19 +512,18 @@ func TestValidateDebugLocal(t *testing.T) {
 		}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, validConf, "task123")
+		err := validateDebugLocal(ctx, validConf, "task123")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "debug spawn hosts currently disabled")
 	})
 
 	t.Run("TaskNotFoundShouldError", func(t *testing.T) {
 		mockClient = &client.Mock{
-			MockServiceFlags:      &restmodel.APIServiceFlags{},
-			MockGetTaskByIDResult: nil,
+			MockServiceFlags: &restmodel.APIServiceFlags{},
 		}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, validConf, "nonexistent_task")
+		err := validateDebugLocal(ctx, validConf, "nonexistent_task")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
 	})
@@ -532,30 +531,22 @@ func TestValidateDebugLocal(t *testing.T) {
 	t.Run("TaskWithNoProjectShouldError", func(t *testing.T) {
 		mockClient = &client.Mock{
 			MockServiceFlags: &restmodel.APIServiceFlags{},
-			MockGetTaskByIDResult: &restmodel.APITask{
-				Id:        utility.ToStringPtr("task123"),
-				ProjectId: utility.ToStringPtr(""),
-			},
 		}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, validConf, "task123")
+		err := validateDebugLocal(ctx, validConf, "task123")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no associated project")
 	})
 
 	t.Run("ProjectNotFoundShouldError", func(t *testing.T) {
 		mockClient = &client.Mock{
-			MockServiceFlags: &restmodel.APIServiceFlags{},
-			MockGetTaskByIDResult: &restmodel.APITask{
-				Id:        utility.ToStringPtr("task123"),
-				ProjectId: utility.ToStringPtr("proj1"),
-			},
+			MockServiceFlags:     &restmodel.APIServiceFlags{},
 			MockGetProjectResult: nil,
 		}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, validConf, "task123")
+		err := validateDebugLocal(ctx, validConf, "task123")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "project 'proj1' not found")
 	})
@@ -563,17 +554,13 @@ func TestValidateDebugLocal(t *testing.T) {
 	t.Run("DebugDisabledOnProjectShouldError", func(t *testing.T) {
 		mockClient = &client.Mock{
 			MockServiceFlags: &restmodel.APIServiceFlags{},
-			MockGetTaskByIDResult: &restmodel.APITask{
-				Id:        utility.ToStringPtr("task123"),
-				ProjectId: utility.ToStringPtr("proj1"),
-			},
 			MockGetProjectResult: &restmodel.APIProjectRef{
 				DebugSpawnHostsDisabled: utility.ToBoolPtr(true),
 			},
 		}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, validConf, "task123")
+		err := validateDebugLocal(ctx, validConf, "task123")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "debug spawn hosts are disabled for project")
 	})
@@ -584,17 +571,13 @@ func TestValidateDebugLocal(t *testing.T) {
 		}
 		mockClient = &client.Mock{
 			MockServiceFlags: &restmodel.APIServiceFlags{},
-			MockGetTaskByIDResult: &restmodel.APITask{
-				Id:        utility.ToStringPtr("task123"),
-				ProjectId: utility.ToStringPtr("proj1"),
-			},
 			MockGetProjectResult: &restmodel.APIProjectRef{
 				DebugSpawnHostsDisabled: utility.ToBoolPtr(false),
 			},
 		}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, confNoUser, "task123")
+		err := validateDebugLocal(ctx, confNoUser, "task123")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "user not found in configuration")
 	})
@@ -602,18 +585,13 @@ func TestValidateDebugLocal(t *testing.T) {
 	t.Run("InsufficientPermissionsShouldError", func(t *testing.T) {
 		mockClient = &client.Mock{
 			MockServiceFlags: &restmodel.APIServiceFlags{},
-			MockGetTaskByIDResult: &restmodel.APITask{
-				Id:        utility.ToStringPtr("task123"),
-				ProjectId: utility.ToStringPtr("proj1"),
-			},
 			MockGetProjectResult: &restmodel.APIProjectRef{
 				DebugSpawnHostsDisabled: utility.ToBoolPtr(false),
 			},
-			MockHasProjectPermission: false,
 		}
 		defer func() { mockClient = nil }()
 
-		_, err := validateDebugLocal(ctx, validConf, "task123")
+		err := validateDebugLocal(ctx, validConf, "task123")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "does not have patch submit permission")
 	})
@@ -621,19 +599,13 @@ func TestValidateDebugLocal(t *testing.T) {
 	t.Run("ValidPermissionsShouldSucceed", func(t *testing.T) {
 		mockClient = &client.Mock{
 			MockServiceFlags: &restmodel.APIServiceFlags{},
-			MockGetTaskByIDResult: &restmodel.APITask{
-				Id:        utility.ToStringPtr("task123"),
-				ProjectId: utility.ToStringPtr("proj1"),
-			},
 			MockGetProjectResult: &restmodel.APIProjectRef{
 				DebugSpawnHostsDisabled: utility.ToBoolPtr(false),
 			},
-			MockHasProjectPermission: true,
 		}
 		defer func() { mockClient = nil }()
 
-		projectID, err := validateDebugLocal(ctx, validConf, "task123")
+		err := validateDebugLocal(ctx, validConf, "task123")
 		require.NoError(t, err)
-		assert.Equal(t, "proj1", projectID)
 	})
 }

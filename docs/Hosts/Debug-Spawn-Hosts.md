@@ -197,8 +197,8 @@ Loaded and auto-selected task: compile (variant: ubuntu2204)
 Total steps: 8
 ```
 
-| Flag        | Description                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------- |
+| Flag        | Description                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
 | `--task-id` | Task ID to fetch configuration from the server and auto-select the task (required when not on a spawn host) |
 
 #### `evergreen debug select <task_name> [--variant <variant_name>]`
@@ -420,13 +420,13 @@ You can also use the task debugger on your local laptop without creating a spawn
 
 ### Differences From Spawn Host Debugging
 
-| Behavior | Spawn Host | Local |
-| --- | --- | --- |
-| Config source | Local YAML file on the host | Fetched from the server |
-| Task selection | Manual via `debug select` | Automatic on load |
-| `debug select` command | Available | Not available |
-| Host-specific expansions (`distro_id`, etc.) | Populated from the host | Empty |
-| Working directory | Config file directory | Current working directory |
+| Behavior                                     | Spawn Host                  | Local                     |
+| -------------------------------------------- | --------------------------- | ------------------------- |
+| Config source                                | Local YAML file on the host | Fetched from the server   |
+| Task selection                               | Manual via `debug select`   | Automatic on load         |
+| `debug select` command                       | Available                   | Not available             |
+| Host-specific expansions (`distro_id`, etc.) | Populated from the host     | Empty                     |
+| Working directory                            | Config file directory       | Current working directory |
 
 ### Using a Local Config Override
 
