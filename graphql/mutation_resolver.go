@@ -531,6 +531,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.Co
 
 	}
 	if err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message":     "project was partially copied",
+			"old_project": project.ProjectIdToCopy,
+			"new_project": project.NewProjectIdentifier,
+		}))
 		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
 		// https://github.com/99designs/gqlgen/issues/1191
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))

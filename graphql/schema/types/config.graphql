@@ -68,6 +68,7 @@ input AdminSettingsInput {
   containerPools: ContainerPoolsConfigInput
   cost: CostConfigInput
   debugSpawnHosts: DebugSpawnHostsConfigInput
+  diagnostics: DiagnosticsConfigInput
   disabledGQLQueries: [String!]
   domainName: String
   expansions: StringMap
@@ -125,6 +126,7 @@ type AdminSettings {
   containerPools: ContainerPoolsConfig
   cost: CostConfig
   debugSpawnHosts: DebugSpawnHostsConfig
+  diagnostics: DiagnosticsConfig
   disabledGQLQueries: [String!]!
   domainName: String
   expansions: StringMap

@@ -193,6 +193,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDebugSpawnHostsConfig
   DebugSpawnHostsConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDebugSpawnHostsConfig
+  DiagnosticsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDiagnosticsConfig
+  DiagnosticsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDiagnosticsConfig
   DispatcherSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
   DispatcherSettingsInput:

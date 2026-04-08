@@ -170,6 +170,7 @@ type ComplexityRoot struct {
 		ContainerPools          func(childComplexity int) int
 		Cost                    func(childComplexity int) int
 		DebugSpawnHosts         func(childComplexity int) int
+		Diagnostics             func(childComplexity int) int
 		DisabledGQLQueries      func(childComplexity int) int
 		DomainName              func(childComplexity int) int
 		Expansions              func(childComplexity int) int
@@ -453,6 +454,11 @@ type ComplexityRoot struct {
 		Name           func(childComplexity int) int
 		RequiredStatus func(childComplexity int) int
 		TaskID         func(childComplexity int) int
+	}
+
+	DiagnosticsConfig struct {
+		S3BucketName func(childComplexity int) int
+		S3Prefix     func(childComplexity int) int
 	}
 
 	DispatcherSettings struct {
@@ -1765,6 +1771,7 @@ type ComplexityRoot struct {
 		LargeParserProjectsDisabled        func(childComplexity int) int
 		MonitorDisabled                    func(childComplexity int) int
 		PSLoggingDisabled                  func(childComplexity int) int
+		PodDiagnosticsDisabled             func(childComplexity int) int
 		ReleaseModeDisabled                func(childComplexity int) int
 		RepotrackerDisabled                func(childComplexity int) int
 		S3LifecycleSyncDisabled            func(childComplexity int) int
@@ -3164,6 +3171,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.DebugSpawnHosts(childComplexity), true
+	case "AdminSettings.diagnostics":
+		if e.complexity.AdminSettings.Diagnostics == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Diagnostics(childComplexity), true
 	case "AdminSettings.disabledGQLQueries":
 		if e.complexity.AdminSettings.DisabledGQLQueries == nil {
 			break
@@ -4284,6 +4297,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Dependency.TaskID(childComplexity), true
+
+	case "DiagnosticsConfig.s3BucketName":
+		if e.complexity.DiagnosticsConfig.S3BucketName == nil {
+			break
+		}
+
+		return e.complexity.DiagnosticsConfig.S3BucketName(childComplexity), true
+	case "DiagnosticsConfig.s3Prefix":
+		if e.complexity.DiagnosticsConfig.S3Prefix == nil {
+			break
+		}
+
+		return e.complexity.DiagnosticsConfig.S3Prefix(childComplexity), true
 
 	case "DispatcherSettings.version":
 		if e.complexity.DispatcherSettings.Version == nil {
@@ -10175,6 +10201,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServiceFlags.PSLoggingDisabled(childComplexity), true
+	case "ServiceFlags.podDiagnosticsDisabled":
+		if e.complexity.ServiceFlags.PodDiagnosticsDisabled == nil {
+			break
+		}
+
+		return e.complexity.ServiceFlags.PodDiagnosticsDisabled(childComplexity), true
 	case "ServiceFlags.releaseModeDisabled":
 		if e.complexity.ServiceFlags.ReleaseModeDisabled == nil {
 			break
@@ -13231,6 +13263,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDefaultSectionToRepoInput,
 		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDeleteGithubAppCredentialsInput,
+		ec.unmarshalInputDiagnosticsConfigInput,
 		ec.unmarshalInputDispatcherSettingsInput,
 		ec.unmarshalInputDisplayTask,
 		ec.unmarshalInputDistroEventsInput,
@@ -18780,6 +18813,41 @@ func (ec *executionContext) fieldContext_AdminSettings_debugSpawnHosts(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_diagnostics(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_diagnostics,
+		func(ctx context.Context) (any, error) {
+			return obj.Diagnostics, nil
+		},
+		nil,
+		ec.marshalODiagnosticsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDiagnosticsConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_diagnostics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "s3BucketName":
+				return ec.fieldContext_DiagnosticsConfig_s3BucketName(ctx, field)
+			case "s3Prefix":
+				return ec.fieldContext_DiagnosticsConfig_s3Prefix(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DiagnosticsConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AdminSettings_disabledGQLQueries(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19818,6 +19886,8 @@ func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Co
 				return ec.fieldContext_ServiceFlags_psLoggingDisabled(ctx, field)
 			case "useMergeQueuePathFilteringDisabled":
 				return ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field)
+			case "podDiagnosticsDisabled":
+				return ec.fieldContext_ServiceFlags_podDiagnosticsDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
 		},
@@ -24953,6 +25023,64 @@ func (ec *executionContext) _Dependency_taskId(ctx context.Context, field graphq
 func (ec *executionContext) fieldContext_Dependency_taskId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Dependency",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DiagnosticsConfig_s3BucketName(ctx context.Context, field graphql.CollectedField, obj *model.APIDiagnosticsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DiagnosticsConfig_s3BucketName,
+		func(ctx context.Context) (any, error) {
+			return obj.S3BucketName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DiagnosticsConfig_s3BucketName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DiagnosticsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DiagnosticsConfig_s3Prefix(ctx context.Context, field graphql.CollectedField, obj *model.APIDiagnosticsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DiagnosticsConfig_s3Prefix,
+		func(ctx context.Context) (any, error) {
+			return obj.S3Prefix, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DiagnosticsConfig_s3Prefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DiagnosticsConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -36799,6 +36927,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
 			case "debugSpawnHosts":
 				return ec.fieldContext_AdminSettings_debugSpawnHosts(ctx, field)
+			case "diagnostics":
+				return ec.fieldContext_AdminSettings_diagnostics(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			case "domainName":
@@ -51470,6 +51600,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
 			case "debugSpawnHosts":
 				return ec.fieldContext_AdminSettings_debugSpawnHosts(ctx, field)
+			case "diagnostics":
+				return ec.fieldContext_AdminSettings_diagnostics(ctx, field)
 			case "disabledGQLQueries":
 				return ec.fieldContext_AdminSettings_disabledGQLQueries(ctx, field)
 			case "domainName":
@@ -59492,6 +59624,35 @@ func (ec *executionContext) _ServiceFlags_useMergeQueuePathFilteringDisabled(ctx
 }
 
 func (ec *executionContext) fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceFlags",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceFlags_podDiagnosticsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceFlags_podDiagnosticsDisabled,
+		func(ctx context.Context) (any, error) {
+			return obj.PodDiagnosticsDisabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceFlags_podDiagnosticsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServiceFlags",
 		Field:      field,
@@ -79766,7 +79927,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -79885,6 +80046,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.DebugSpawnHosts = data
+		case "diagnostics":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("diagnostics"))
+			data, err := ec.unmarshalODiagnosticsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDiagnosticsConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Diagnostics = data
 		case "disabledGQLQueries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabledGQLQueries"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -81881,6 +82049,40 @@ func (ec *executionContext) unmarshalInputDeleteGithubAppCredentialsInput(ctx co
 				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDiagnosticsConfigInput(ctx context.Context, obj any) (model.APIDiagnosticsConfig, error) {
+	var it model.APIDiagnosticsConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"s3BucketName", "s3Prefix"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "s3BucketName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3BucketName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3BucketName = data
+		case "s3Prefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3Prefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.S3Prefix = data
 		}
 	}
 
@@ -87685,7 +87887,7 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled"}
+	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled", "podDiagnosticsDisabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87944,6 +88146,13 @@ func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context,
 				return it, err
 			}
 			it.UseMergeQueuePathFilteringDisabled = data
+		case "podDiagnosticsDisabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("podDiagnosticsDisabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PodDiagnosticsDisabled = data
 		}
 	}
 
@@ -91063,6 +91272,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_cost(ctx, field, obj)
 		case "debugSpawnHosts":
 			out.Values[i] = ec._AdminSettings_debugSpawnHosts(ctx, field, obj)
+		case "diagnostics":
+			out.Values[i] = ec._AdminSettings_diagnostics(ctx, field, obj)
 		case "disabledGQLQueries":
 			out.Values[i] = ec._AdminSettings_disabledGQLQueries(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -92825,6 +93036,44 @@ func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var diagnosticsConfigImplementors = []string{"DiagnosticsConfig"}
+
+func (ec *executionContext) _DiagnosticsConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIDiagnosticsConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, diagnosticsConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DiagnosticsConfig")
+		case "s3BucketName":
+			out.Values[i] = ec._DiagnosticsConfig_s3BucketName(ctx, field, obj)
+		case "s3Prefix":
+			out.Values[i] = ec._DiagnosticsConfig_s3Prefix(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -103994,6 +104243,8 @@ func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ServiceFlags_psLoggingDisabled(ctx, field, obj)
 		case "useMergeQueuePathFilteringDisabled":
 			out.Values[i] = ec._ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field, obj)
+		case "podDiagnosticsDisabled":
+			out.Values[i] = ec._ServiceFlags_podDiagnosticsDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -118009,6 +118260,21 @@ func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑ
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalODiagnosticsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDiagnosticsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIDiagnosticsConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DiagnosticsConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalODiagnosticsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDiagnosticsConfig(ctx context.Context, v any) (*model.APIDiagnosticsConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputDiagnosticsConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalODistro2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistro(ctx context.Context, sel ast.SelectionSet, v *model.APIDistro) graphql.Marshaler {

@@ -65,7 +65,8 @@
               "taskLoggingDisabled": true,
               "taskReliabilityDisabled": true,
               "useMergeQueuePathFilteringDisabled": true,
-              "webhookNotificationsDisabled": true
+              "webhookNotificationsDisabled": true,
+              "podDiagnosticsDisabled": true
             }
           }
         }
