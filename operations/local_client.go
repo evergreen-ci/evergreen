@@ -124,12 +124,12 @@ func Debug() cli.Command {
 			},
 			{
 				Name:      "load",
-				Usage:     "Load a configuration file or task from the server",
-				ArgsUsage: "[config.yml]",
+				Usage:     "Load a configuration file or specific task ID",
+				ArgsUsage: "<config.yml>",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:  debugTaskIDFlagName,
-						Usage: "Task ID to load configuration from the server and auto-select the task (required when not on a spawn host)",
+						Usage: "Task ID to load configuration from (required when not on a spawn host)",
 					},
 				},
 				Action: loadConfigCmd,
@@ -256,13 +256,10 @@ func validateDebugSpawnHost(ctx context.Context, conf *ClientSettings) error {
 }
 
 // validateDebugLocal validates that the current user is authorized to run
-// debug commands locally (not on a spawn host). It checks the task ID is
-// provided and that the global debug service flag is enabled. Permission
-// and per-project debug checks are enforced server-side by the
-// requireUserOrTask middleware.
+// debug commands locally.
 func validateDebugLocal(ctx context.Context, conf *ClientSettings, taskID string) error {
 	if taskID == "" {
-		return errors.New("--task-id is required when not on a spawn host")
+		return errors.New("task-id flag is required when not on a spawn host")
 	}
 
 	restClient, err := conf.setupRestCommunicator(ctx, false)
@@ -476,9 +473,8 @@ func daemonStatusCmd(c *cli.Context) error {
 
 // loadConfigCmd loads a configuration file. It handles OAuth authentication
 // and spawn host or local permission validation before sending the config to
-// the daemon. When a --task-id is provided without a config file path, the
-// project configuration is loaded from the server and the task is
-// automatically selected.
+// the daemon. When a --task-id is provided, the task's config
+// is automatically selected.
 func loadConfigCmd(c *cli.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -499,7 +495,6 @@ func loadConfigCmd(c *cli.Context) error {
 	}
 
 	if conf.SpawnHostID != "" {
-		// On a spawn host — use existing spawn host validation.
 		if configPath == "" {
 			return errors.New("config file path required when on a spawn host")
 		}
@@ -507,12 +502,8 @@ func loadConfigCmd(c *cli.Context) error {
 			return err
 		}
 	} else {
-		// Not on a spawn host — validate using the provided task ID.
 		if taskID == "" {
 			taskID = conf.TaskID
-		}
-		if taskID == "" {
-			return errors.New("--task-id is required when not on a spawn host")
 		}
 		if err := validateDebugLocal(ctx, conf, taskID); err != nil {
 			return err

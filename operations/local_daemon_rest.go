@@ -24,11 +24,7 @@ type localDaemonREST struct {
 	conf       *ClientSettings
 	configPath string
 	port       int
-	// localMode is true when a task ID was provided during load, meaning
-	// the project config came from the server rather than a local file.
-	// In this mode the task is auto-selected and the select command is
-	// blocked.
-	localMode bool
+	localMode  bool
 }
 
 // newLocalDaemonREST creates a new REST daemon
@@ -107,19 +103,17 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Use the task ID from the request if provided (local laptop flow),
-	// falling back to the daemon's config (spawn host flow).
+	// Use the task ID from the request if provided (task ID is required when using locally)
 	taskID := req.TaskID
 	if taskID == "" {
 		taskID = d.conf.TaskID
 	}
 
-	// Determine working directory: use config file's directory if provided,
-	// otherwise use the current working directory.
 	workDir := req.ConfigPath
 	if workDir != "" {
 		workDir = filepath.Dir(workDir)
 	} else {
+		// Fallback to OS working directory if config path is not provided (i.e. on a local machine)
 		var err error
 		workDir, err = os.Getwd()
 		if err != nil {
@@ -142,9 +136,8 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// When a config path is provided, load the local YAML to override the
-	// server-fetched project. Otherwise use the project fetched from the
-	// server as-is.
+	// When a config path is provided, load the provided YAML to override the
+	// server config.
 	if req.ConfigPath != "" {
 		if _, err := executor.LoadProject(req.ConfigPath); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -160,8 +153,8 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.executor = executor
 	d.configPath = req.ConfigPath
 
-	// When a task ID is provided, enable local mode: auto-select the task
-	// using the server-fetched task metadata and block the select command.
+	// Users must supply a specific task ID when using the feature locally. When it is provided,
+	// auto-select the task and automatically infer the task name and variant.
 	if req.TaskID != "" {
 		d.localMode = true
 		taskName := executor.GetFetchedTaskName()
