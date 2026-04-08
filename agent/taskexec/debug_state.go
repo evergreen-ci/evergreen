@@ -46,7 +46,6 @@ func (ds *DebugState) GetStepExecution(index int) (executed, success bool) {
 type CommandInfo struct {
 	Index            int
 	Command          model.PluginCommandConf
-	CommandName      string
 	IsFunction       bool
 	FunctionName     string
 	DisplayName      string
