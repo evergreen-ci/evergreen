@@ -831,15 +831,6 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 	return intermediateProject, nil
 }
 
-func variantExistsInGeneratedProject(variants []parserBV, variant string) bool {
-	for bv := range variants {
-		if variants[bv].Name == variant {
-			return true
-		}
-	}
-	return false
-}
-
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.
 type projectMaps struct {
 	buildVariants map[string]struct{}
