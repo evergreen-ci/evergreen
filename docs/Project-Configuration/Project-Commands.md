@@ -235,7 +235,6 @@ Parameters:
 - `optional`: default false; if set to true, will not error if the
   file(s) specified are not found.
 
-
 Each file should be JSON and contain an array of artifact objects:
 
 ```json
