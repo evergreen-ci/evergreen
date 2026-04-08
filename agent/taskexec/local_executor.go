@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
@@ -786,10 +785,6 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 		ID:                 opts.TaskID,
 		OverrideValidation: true,
 	}
-	if opts.TaskID == "" {
-		e.createSyntheticTask("local_task")
-		return nil
-	}
 
 	projectRef, err := e.communicator.GetProjectRef(ctx, taskData)
 	if err != nil {
@@ -865,15 +860,6 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	e.taskConfig.InternalRedactions = agentutil.NewDynamicExpansions(internalRedactions)
 
 	return nil
-}
-
-func (e *LocalExecutor) createSyntheticTask(taskName string) {
-	taskID := fmt.Sprintf("local_%s_%d", taskName, time.Now().Unix())
-	e.taskConfig.Task = task.Task{
-		Id:          taskID,
-		Project:     e.taskConfig.ProjectRef.Identifier,
-		DisplayName: taskName,
-	}
 }
 
 func getDurationStr(startTime time.Time) string {

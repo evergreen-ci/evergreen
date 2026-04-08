@@ -128,6 +128,80 @@ func (c *communicatorImpl) GetProject(ctx context.Context, projectID string) (*m
 	return &projectResp, nil
 }
 
+// GetTaskByID fetches a task by its ID from the REST API.
+func (c *communicatorImpl) GetTaskByID(ctx context.Context, taskID string) (*model.APITask, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("tasks/%s", taskID),
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get task '%s'", taskID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, util.RespError(resp, VPNError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting task '%s'", taskID)
+	}
+
+	taskResp := model.APITask{}
+	if err = utility.ReadJSON(resp.Body, &taskResp); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+	return &taskResp, nil
+}
+
+// permissionSummary mirrors rolemanager.PermissionSummary for JSON decoding
+// without importing the rolemanager package.
+type permissionSummary struct {
+	Type        string                    `json:"type"`
+	Permissions map[string]map[string]int `json:"permissions"`
+}
+
+// HasProjectPermission checks if a user has at least the given permission level
+// on a project by querying the user's permissions from the REST API.
+func (c *communicatorImpl) HasProjectPermission(ctx context.Context, userID, projectID, permission string, requiredLevel int) (bool, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("users/%s/permissions", userID),
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return false, errors.Wrapf(err, "sending request to get permissions for user '%s'", userID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return false, util.RespError(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false, util.RespErrorf(resp, "getting permissions for user '%s'", userID)
+	}
+
+	var summaries []permissionSummary
+	if err = utility.ReadJSON(resp.Body, &summaries); err != nil {
+		return false, errors.Wrap(err, "reading JSON response body")
+	}
+
+	for _, summary := range summaries {
+		if summary.Type != evergreen.ProjectResourceType {
+			continue
+		}
+		projectPerms, ok := summary.Permissions[projectID]
+		if !ok {
+			return false, nil
+		}
+		return projectPerms[permission] >= requiredLevel, nil
+	}
+	return false, nil
+}
+
 // ModifySpawnHost will start a job that updates the specified user-spawned host
 // with the modifications passed as a parameter.
 func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {

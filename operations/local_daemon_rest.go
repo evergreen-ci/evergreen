@@ -66,6 +66,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	var req struct {
 		ConfigPath string `json:"config_path"`
 		OAuthToken string `json:"oauth_token"`
+		TaskID     string `json:"task_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -103,10 +104,17 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	workDir := filepath.Dir(req.ConfigPath)
 
+	// Use the task ID from the request if provided (local laptop flow),
+	// falling back to the daemon's config (spawn host flow).
+	taskID := req.TaskID
+	if taskID == "" {
+		taskID = d.conf.TaskID
+	}
+
 	opts := taskexec.LocalExecutorOptions{
 		WorkingDir:  workDir,
 		ServerURL:   d.conf.getApiServerHost(true),
-		TaskID:      d.conf.TaskID,
+		TaskID:      taskID,
 		OAuthToken:  req.OAuthToken,
 		SpawnHostID: d.conf.SpawnHostID,
 	}
