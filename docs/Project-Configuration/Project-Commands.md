@@ -213,7 +213,7 @@ Use `*` for non-recursive matching and `**` for recursive descent. `archive.zip_
 
 This command allows users to add files to the "Files" section of the
 task page without using the `s3.put` command. This is useful when you've
-uploaded files to a remote location (e.g., using boto in a Python script)
+uploaded files to a remote location (e.g. using boto in a Python script)
 and want to link them in the Evergreen UI.
 
 ```yaml
@@ -260,7 +260,7 @@ Fields:
 - `visibility`: the visibility level for the artifact. Can be "public" or "private".
 - `do_not_encode_link`: optional boolean, defaults to false. Set to true to
   prevent Evergreen from URL-encoding the link. This is useful when your URL
-  contains query parameters (e.g., `?task=123&build=456`) that should not be escaped.
+  contains query parameters (e.g. `?task=123&build=456`) that should not be escaped.
 - `ignore_for_fetch`: optional boolean, defaults to false. If set to true, the
   file will not be downloaded when spawning a host from the spawn link on a test page.
 
