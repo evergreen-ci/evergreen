@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -257,64 +256,30 @@ func validateDebugSpawnHost(ctx context.Context, conf *ClientSettings) error {
 }
 
 // validateDebugLocal validates that the current user is authorized to run
-// debug commands locally (not on a spawn host). It verifies that the task
-// exists, that debug is enabled for the associated project, and that the
-// user has patch submit permissions on the project.
-func validateDebugLocal(ctx context.Context, conf *ClientSettings, taskID string) (string, error) {
+// debug commands locally (not on a spawn host). It checks the task ID is
+// provided and that the global debug service flag is enabled. Permission
+// and per-project debug checks are enforced server-side by the
+// requireUserOrTask middleware.
+func validateDebugLocal(ctx context.Context, conf *ClientSettings, taskID string) error {
 	if taskID == "" {
-		return "", errors.New("--task-id is required when not on a spawn host")
+		return errors.New("--task-id is required when not on a spawn host")
 	}
 
 	restClient, err := conf.setupRestCommunicator(ctx, false)
 	if err != nil {
-		return "", errors.Wrap(err, "setting up REST communicator")
+		return errors.Wrap(err, "setting up REST communicator")
 	}
 	defer restClient.Close()
 
 	flags, err := restClient.GetServiceFlags(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "getting service flags")
+		return errors.Wrap(err, "getting service flags")
 	}
 	if flags.DebugSpawnHostDisabled {
-		return "", errors.New("debug spawn hosts currently disabled")
+		return errors.New("debug spawn hosts currently disabled")
 	}
 
-	task, err := restClient.GetTaskByID(ctx, taskID)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting task '%s'", taskID)
-	}
-	if task == nil {
-		return "", errors.Errorf("task '%s' not found", taskID)
-	}
-
-	projectID := utility.FromStringPtr(task.ProjectId)
-	if projectID == "" {
-		return "", errors.Errorf("task '%s' has no associated project", taskID)
-	}
-
-	project, err := restClient.GetProject(ctx, projectID)
-	if err != nil {
-		return "", errors.Wrapf(err, "getting project '%s'", projectID)
-	}
-	if project == nil {
-		return "", errors.Errorf("project '%s' not found", projectID)
-	}
-	if utility.FromBoolPtr(project.DebugSpawnHostsDisabled) {
-		return "", errors.Errorf("debug spawn hosts are disabled for project '%s'", projectID)
-	}
-
-	if conf.User == "" {
-		return "", errors.New("user not found in configuration; cannot verify permissions")
-	}
-	hasPermission, err := restClient.HasProjectPermission(ctx, conf.User, projectID, evergreen.PermissionPatches, evergreen.PatchSubmit.Value)
-	if err != nil {
-		return "", errors.Wrapf(err, "checking permissions for user '%s' on project '%s'", conf.User, projectID)
-	}
-	if !hasPermission {
-		return "", errors.Errorf("user '%s' does not have patch submit permission on project '%s'", conf.User, projectID)
-	}
-
-	return projectID, nil
+	return nil
 }
 
 // startDebugDaemonCmd starts the debug daemon
@@ -549,12 +514,10 @@ func loadConfigCmd(c *cli.Context) error {
 		if taskID == "" {
 			return errors.New("--task-id is required when not on a spawn host")
 		}
-		projectID, err := validateDebugLocal(ctx, conf, taskID)
-		if err != nil {
+		if err := validateDebugLocal(ctx, conf, taskID); err != nil {
 			return err
 		}
 		conf.TaskID = taskID
-		conf.ProjectID = projectID
 	}
 
 	if err := conf.SetOAuthToken(ctx); err != nil {

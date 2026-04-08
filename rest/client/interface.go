@@ -93,14 +93,6 @@ type Communicator interface {
 	// Get project settings by project ID
 	GetProject(context.Context, string) (*restmodel.APIProjectRef, error)
 
-	// GetTaskByID fetches a task by its ID.
-	GetTaskByID(ctx context.Context, taskID string) (*restmodel.APITask, error)
-
-	// HasProjectPermission checks if a user has at least the given permission
-	// level on a project. It returns true when the user's effective permission
-	// for the specified key meets or exceeds requiredLevel.
-	HasProjectPermission(ctx context.Context, userID, projectID, permission string, requiredLevel int) (bool, error)
-
 	// Get parameters for project
 	GetParameters(context.Context, string) ([]model.ParameterInfo, error)
 

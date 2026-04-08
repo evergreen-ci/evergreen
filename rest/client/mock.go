@@ -28,13 +28,10 @@ type Mock struct {
 	apiKey  string
 
 	// mock behavior
-	GetSubscriptionsFail        bool
-	MockServiceFlags            *model.APIServiceFlags
-	MockServiceFlagErr          error
-	MockGetTaskByIDResult       *model.APITask
-	MockGetProjectResult        *model.APIProjectRef
-	MockHasProjectPermission    bool
-	MockHasProjectPermissionErr error
+	GetSubscriptionsFail bool
+	MockServiceFlags     *model.APIServiceFlags
+	MockServiceFlagErr   error
+	MockGetProjectResult *model.APIProjectRef
 
 	GetRecentVersionsResult   []restmodel.APIVersion
 	GetBuildsForVersionResult []restmodel.APIBuild
@@ -82,14 +79,6 @@ func (*Mock) GetSpawnHost(ctx context.Context, hostID string) (*model.APIHost, e
 
 func (c *Mock) GetProject(ctx context.Context, projectID string) (*model.APIProjectRef, error) {
 	return c.MockGetProjectResult, nil
-}
-
-func (c *Mock) GetTaskByID(ctx context.Context, taskID string) (*model.APITask, error) {
-	return c.MockGetTaskByIDResult, nil
-}
-
-func (c *Mock) HasProjectPermission(ctx context.Context, userID, projectID, permission string, requiredLevel int) (bool, error) {
-	return c.MockHasProjectPermission, c.MockHasProjectPermissionErr
 }
 
 func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
