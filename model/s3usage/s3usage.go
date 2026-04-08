@@ -219,31 +219,42 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 	return float64(uploadBytes) * (standardCost + iaCost + archiveCost)
 }
 
-// IncrementArtifacts updates aggregate artifact upload metrics after an s3.put command.
-func (s *S3Usage) IncrementArtifacts(putRequests int, uploadBytes int64, fileCount int, maxPuts int, minPuts int, bucket string, files []FileMetrics) {
-	s.Artifacts.PutRequests += putRequests
-	s.Artifacts.UploadBytes += uploadBytes
-	s.Artifacts.Count += fileCount
+// ArtifactIncrementOptions holds the parameters for incrementing artifact upload metrics.
+type ArtifactIncrementOptions struct {
+	PutRequests int
+	UploadBytes int64
+	FileCount   int
+	MaxPuts     int
+	MinPuts     int
+	Bucket      string
+	Files       []FileMetrics
+}
 
-	if maxPuts > s.Artifacts.ArtifactWithMaxPutRequests {
-		s.Artifacts.ArtifactWithMaxPutRequests = maxPuts
+// IncrementArtifacts updates aggregate artifact upload metrics after an s3.put command.
+func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
+	s.Artifacts.PutRequests += opts.PutRequests
+	s.Artifacts.UploadBytes += opts.UploadBytes
+	s.Artifacts.Count += opts.FileCount
+
+	if opts.MaxPuts > s.Artifacts.ArtifactWithMaxPutRequests {
+		s.Artifacts.ArtifactWithMaxPutRequests = opts.MaxPuts
 	}
-	if s.Artifacts.ArtifactWithMinPutRequests == 0 || minPuts < s.Artifacts.ArtifactWithMinPutRequests {
-		s.Artifacts.ArtifactWithMinPutRequests = minPuts
+	if s.Artifacts.ArtifactWithMinPutRequests == 0 || opts.MinPuts < s.Artifacts.ArtifactWithMinPutRequests {
+		s.Artifacts.ArtifactWithMinPutRequests = opts.MinPuts
 	}
 
 	var bucketEntry *BucketFileMetrics
 	for i := range s.Artifacts.BytesByBucketAndKey {
-		if s.Artifacts.BytesByBucketAndKey[i].Bucket == bucket {
+		if s.Artifacts.BytesByBucketAndKey[i].Bucket == opts.Bucket {
 			bucketEntry = &s.Artifacts.BytesByBucketAndKey[i]
 			break
 		}
 	}
 	if bucketEntry == nil {
-		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{Bucket: bucket})
+		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{Bucket: opts.Bucket})
 		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}
-	for _, f := range files {
+	for _, f := range opts.Files {
 		found := false
 		for j := range bucketEntry.Files {
 			if bucketEntry.Files[j].FileKey == f.RemotePath {

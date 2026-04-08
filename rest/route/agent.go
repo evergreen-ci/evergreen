@@ -753,13 +753,21 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	t.S3Usage = h.s3Usage
 
-	allRules, _ := s3lifecycle.FindAllRules(ctx)
-	rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
-	for _, rule := range allRules {
-		rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
-	}
-	lookup := func(ctx context.Context, bucket, fileKey string) (int, bool) {
-		return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
+	allRules, err := s3lifecycle.FindAllRules(ctx)
+	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "getting S3 lifecycle rules for storage cost calculation, skipping storage cost calculation",
+			"task_id": t.Id,
+		}))
+	} else {
+		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+		for _, rule := range allRules {
+			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
+		}
+		lookup = func(ctx context.Context, bucket, fileKey string) (int, bool) {
+			return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
+		}
 	}
 
 	if err := t.SaveS3Usage(ctx, lookup); err != nil {

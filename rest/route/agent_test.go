@@ -1084,19 +1084,12 @@ func TestReportS3Usage(t *testing.T) {
 	}()
 
 	for name, tc := range map[string]struct {
-		taskID     string
 		insertTask *task.Task
 		s3Usage    s3usage.S3Usage
 		wantStatus int
 		assertions func(*testing.T, *task.Task)
 	}{
-		"TaskNotFound": {
-			taskID:     "nonexistent",
-			s3Usage:    s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10}}},
-			wantStatus: http.StatusNotFound,
-		},
 		"SavesArtifactAndLogUsage": {
-			taskID:     "t1",
 			insertTask: &task.Task{Id: "t1", Status: evergreen.TaskStarted},
 			s3Usage: s3usage.S3Usage{
 				Artifacts: s3usage.ArtifactMetrics{
@@ -1115,7 +1108,6 @@ func TestReportS3Usage(t *testing.T) {
 			},
 		},
 		"SavesLogOnlyUsage": {
-			taskID:     "t2",
 			insertTask: &task.Task{Id: "t2", Status: evergreen.TaskStarted},
 			s3Usage: s3usage.S3Usage{
 				Logs: s3usage.S3UploadMetrics{PutRequests: 25, UploadBytes: 8192},
@@ -1130,18 +1122,21 @@ func TestReportS3Usage(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
-			if tc.insertTask != nil {
-				require.NoError(t, tc.insertTask.Insert(ctx))
-			}
+			require.NoError(t, tc.insertTask.Insert(ctx))
+
+			foundTask, err := task.FindOneId(ctx, tc.insertTask.Id)
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
 
 			handler := makeReportS3Usage().(*reportS3UsageHandler)
-			handler.taskID = tc.taskID
+			handler.taskID = tc.insertTask.Id
 			handler.s3Usage = tc.s3Usage
-			resp := handler.Run(ctx)
+			resp := handler.Run(taskCtx)
 			assert.Equal(t, tc.wantStatus, resp.Status())
 
 			if tc.assertions != nil {
-				dbTask, err := task.FindOneId(ctx, tc.taskID)
+				dbTask, err := task.FindOneId(ctx, tc.insertTask.Id)
 				require.NoError(t, err)
 				require.NotNil(t, dbTask)
 				tc.assertions(t, dbTask)

@@ -5183,7 +5183,7 @@ func TestUpdateTaskCost(t *testing.T) {
 func TestSaveS3Usage(t *testing.T) {
 	ctx := t.Context()
 	defer func() {
-		require.NoError(t, db.ClearCollections(Collection, evergreen.ConfigCollection))
+		require.NoError(t, db.ClearCollections(Collection))
 	}()
 
 	defaultCostConfig := evergreen.CostConfig{
@@ -5231,7 +5231,7 @@ func TestSaveS3Usage(t *testing.T) {
 		"CalculatesCostFromUsage": {
 			task: Task{Id: "t2"},
 			setupUsage: func(u *s3usage.S3Usage) {
-				u.IncrementArtifacts(1000, 5*1024*1024, 3, 500, 1, "mciuploads", multiFileArtifacts)
+				u.IncrementArtifacts(s3usage.ArtifactIncrementOptions{PutRequests: 1000, UploadBytes: 5 * 1024 * 1024, FileCount: 3, MaxPuts: 500, MinPuts: 1, Bucket: "mciuploads", Files: multiFileArtifacts})
 				u.IncrementLogs(50, 500000)
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
@@ -5241,12 +5241,15 @@ func TestSaveS3Usage(t *testing.T) {
 				assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
 			},
 		},
-		"CalculatesCostFromUsageWithConfig": {
+		"CalculatesCostFromUsageWithDefaultExpiration": {
 			task:       Task{Id: "t3"},
 			costConfig: &defaultCostConfig,
 			setupUsage: func(u *s3usage.S3Usage) {
-				u.IncrementArtifacts(1000, 5*1024*1024, 3, 500, 1, "mciuploads", multiFileArtifacts)
+				u.IncrementArtifacts(s3usage.ArtifactIncrementOptions{PutRequests: 1000, UploadBytes: 5 * 1024 * 1024, FileCount: 3, MaxPuts: 500, MinPuts: 1, Bucket: "mciuploads", Files: multiFileArtifacts})
 				u.IncrementLogs(50, 500000)
+			},
+			lookup: func(_ context.Context, _, _ string) (int, bool) {
+				return 0, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
@@ -5273,24 +5276,37 @@ func TestSaveS3Usage(t *testing.T) {
 				assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
 			},
 		},
-		"CalculatesArtifactStorageCostWithConfig": {
+		"CalculatesArtifactStorageCostWithDefaultExpiration": {
 			task:       Task{Id: "t5", Project: "some-project"},
 			costConfig: &defaultCostConfig,
 			setupUsage: func(u *s3usage.S3Usage) {
-				u.IncrementArtifacts(0, 10*1024*1024, 2, 0, 0, "mciuploads", []s3usage.FileMetrics{
+				u.IncrementArtifacts(s3usage.ArtifactIncrementOptions{UploadBytes: 10 * 1024 * 1024, FileCount: 2, Bucket: "mciuploads", Files: []s3usage.FileMetrics{
 					{RemotePath: "some-project/abc123/artifacts/core-dump.tar.gz", FileSizeBytes: 6 * 1024 * 1024},
 					{RemotePath: "some-project/abc123/artifacts/binary.tar.gz", FileSizeBytes: 4 * 1024 * 1024},
-				})
+				}})
+			},
+			lookup: func(_ context.Context, _, _ string) (int, bool) {
+				return 0, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+			},
+		},
+		"NilLookupSkipsStorageCostCalculation": {
+			task:       Task{Id: "t9", Project: "some-project"},
+			costConfig: &defaultCostConfig,
+			setupUsage: func(u *s3usage.S3Usage) {
+				u.IncrementArtifacts(s3usage.ArtifactIncrementOptions{UploadBytes: 5 * 1024 * 1024, FileCount: 1, Bucket: "mciuploads", Files: singleFileArtifact})
+			},
+			assertions: func(t *testing.T, dbTask *Task) {
+				assert.Equal(t, float64(0), dbTask.TaskCost.S3ArtifactStorageCost)
 			},
 		},
 		"CalculatesStorageCostWithLookupMatch": {
 			task:       Task{Id: "t6", Project: "some-project"},
 			costConfig: &defaultCostConfig,
 			setupUsage: func(u *s3usage.S3Usage) {
-				u.IncrementArtifacts(0, 5*1024*1024, 1, 0, 0, "mciuploads", singleFileArtifact)
+				u.IncrementArtifacts(s3usage.ArtifactIncrementOptions{UploadBytes: 5 * 1024 * 1024, FileCount: 1, Bucket: "mciuploads", Files: singleFileArtifact})
 			},
 			lookup: func(_ context.Context, _, _ string) (int, bool) {
 				return 90, true
@@ -5305,7 +5321,7 @@ func TestSaveS3Usage(t *testing.T) {
 			task:       Task{Id: "t7", Project: "some-project"},
 			costConfig: &defaultCostConfig,
 			setupUsage: func(u *s3usage.S3Usage) {
-				u.IncrementArtifacts(0, 5*1024*1024, 1, 0, 0, "mciuploads", singleFileArtifact)
+				u.IncrementArtifacts(s3usage.ArtifactIncrementOptions{UploadBytes: 5 * 1024 * 1024, FileCount: 1, Bucket: "mciuploads", Files: singleFileArtifact})
 			},
 			lookup: func(_ context.Context, _, _ string) (int, bool) {
 				return 0, false
@@ -5324,9 +5340,12 @@ func TestSaveS3Usage(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(Collection, evergreen.ConfigCollection))
+			require.NoError(t, db.ClearCollections(Collection))
 			if tc.costConfig != nil {
 				require.NoError(t, tc.costConfig.Set(ctx))
+				defer func() {
+					require.NoError(t, (&evergreen.CostConfig{}).Set(ctx))
+				}()
 			}
 			require.NoError(t, tc.task.Insert(ctx))
 			if tc.setupUsage != nil {

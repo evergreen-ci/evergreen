@@ -70,7 +70,7 @@ func TestS3Usage(t *testing.T) {
 			{RemotePath: "path/file1.txt", FileSizeBytes: 600},
 			{RemotePath: "path/file2.txt", FileSizeBytes: 424},
 		}
-		s3Usage.IncrementArtifacts(5, 1024, 2, 3, 2, "bucket-a", filesA)
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 5, UploadBytes: 1024, FileCount: 2, MaxPuts: 3, MinPuts: 2, Bucket: "bucket-a", Files: filesA})
 		assert.Equal(t, 5, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 2, s3Usage.Artifacts.Count)
@@ -84,7 +84,7 @@ func TestS3Usage(t *testing.T) {
 		filesB := []FileMetrics{
 			{RemotePath: "other/file3.txt", FileSizeBytes: 2048},
 		}
-		s3Usage.IncrementArtifacts(10, 2048, 3, 8, 1, "bucket-b", filesB)
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 10, UploadBytes: 2048, FileCount: 3, MaxPuts: 8, MinPuts: 1, Bucket: "bucket-b", Files: filesB})
 		assert.Equal(t, 15, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 5, s3Usage.Artifacts.Count)
@@ -97,7 +97,7 @@ func TestS3Usage(t *testing.T) {
 		filesA2 := []FileMetrics{
 			{RemotePath: "path/file1.txt", FileSizeBytes: 512},
 		}
-		s3Usage.IncrementArtifacts(3, 512, 1, 3, 3, "bucket-a", filesA2)
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 3, UploadBytes: 512, FileCount: 1, MaxPuts: 3, MinPuts: 3, Bucket: "bucket-a", Files: filesA2})
 		assert.Equal(t, int64(1112), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should accumulate across invocations")
 	})
 
