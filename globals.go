@@ -373,6 +373,10 @@ const (
 	PresignMinimumValidTime = 15 * time.Minute
 )
 
+var (
+	ErrNotFound = errors.New("not found")
+)
+
 var TestFailureStatuses = []string{
 	TestFailedStatus,
 	TestSilentlyFailedStatus,

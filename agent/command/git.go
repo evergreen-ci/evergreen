@@ -161,6 +161,34 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	}, nil
 }
 
+func (opts cloneOpts) getCloneCommandForWiki() ([]string, error) {
+	if err := opts.validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid clone command options")
+	}
+
+	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
+
+	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
+
+	if opts.useVerbose {
+		clone = fmt.Sprintf("GIT_TRACE=1 %s", clone)
+	}
+	if opts.cloneDepth > 0 {
+		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
+	}
+	if opts.branch != "" {
+		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
+	}
+
+	return []string{
+		"set +o xtrace",
+		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
+		clone,
+		"set -o xtrace",
+		fmt.Sprintf("cd %s", opts.dir),
+	}, nil
+}
+
 func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
 
 func loadModulesManifestInToExpansions(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig) error {
@@ -263,6 +291,16 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	}
 	if ref == "" && !isGitHubPRModulePatch(conf, modulePatch) {
 		return nil, errors.New("empty ref/branch to check out")
+	}
+
+	// Wiki modules do not support Evergreen's advance module options due to limitations on the GitHub API for wikis.
+	if strings.HasSuffix(opts.repo, ".wiki") {
+		cloneCmd, err := opts.getCloneCommandForWiki()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting command to clone repo")
+		}
+		gitCommands = append(gitCommands, cloneCmd...)
+		return append(gitCommands, "git checkout '%s'", ref), nil
 	}
 
 	cloneCmd, err := opts.getCloneCommand()
@@ -478,12 +516,23 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	moduleBase := filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 
+	var revision string
+
+	// If the module is a wiki, then always use the provided branch or ref as the revision.
+	// Wiki modules do not support Evergreen's advance module options due to limitations on the
+	// GitHub API for wikis.
+	if strings.HasSuffix(module.Repo, ".wiki") {
+		revision = module.Branch
+		if revision == "" {
+			revision = module.Ref
+		}
+	}
+
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
 	// We ignore set-module changes for commit queue and GitHub merge queue, since we should verify HEAD before merging.
 	var modulePatch *patch.ModulePatch
-	var revision string
-	if p != nil {
+	if revision == "" && p != nil {
 		modulePatch := p.FindModule(moduleName)
 		if modulePatch != nil {
 			if conf.Task.Requester == evergreen.GithubMergeRequester {

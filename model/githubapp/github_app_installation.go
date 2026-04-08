@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
+	gitHubAppNotInstalledError = errors.Wrapf(evergreen.ErrNotFound, "GitHub app")
 )
 
 // GitHubAppInstallation holds information about a GitHub app, notably its
