@@ -223,7 +223,7 @@ and want to link them in the Evergreen UI.
       - example.json
 ```
 
-### Command Parameters
+Parameters:
 
 - `files`: an array of gitignore file globs. All files that are
   matched - ones that would be ignored by gitignore - are included.
@@ -235,8 +235,6 @@ and want to link them in the Evergreen UI.
 - `optional`: default false; if set to true, will not error if the
   file(s) specified are not found.
 
-
-### File Format
 
 Each file should be JSON and contain an array of artifact objects:
 
