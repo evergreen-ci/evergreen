@@ -165,11 +165,9 @@ The hot reload preserves:
 
 ### Configuration Commands
 
-#### `evergreen debug load [config.yml] [--task-id <id>]`
+#### `evergreen debug load <config.yml>`
 
-Load a project configuration. There are two modes:
-
-**From a local file** (spawn host): provide the path to your project YAML. Must be run before selecting a task.
+Load a project configuration file. The path can be relative or absolute. Must be run before selecting a task.
 
 ```bash
 evergreen debug load ./evergreen.yml
@@ -183,29 +181,9 @@ Loaded configuration: /home/user/project/evergreen.yml
 Tasks: 12, Variants: 5
 ```
 
-**From a task ID** (local laptop): provide `--task-id` to fetch the configuration from the server. The task and its build variant are automatically selected. See [Debugging Locally](#debugging-locally-without-a-spawn-host) for details.
-
-```bash
-evergreen debug load --task-id <task_id>
-evergreen debug load --task-id <task_id> ./local-override.yml
-```
-
-On success, reports the auto-selected task:
-
-```text
-Loaded and auto-selected task: compile (variant: ubuntu2204)
-Total steps: 8
-```
-
-| Flag        | Description                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------- |
-| `--task-id` | Task ID to fetch configuration from the server and auto-select the task (required when not on a spawn host) |
-
 #### `evergreen debug select <task_name> [--variant <variant_name>]`
 
 Select a task from the loaded configuration to debug. Reports the total number of steps in the task.
-
-> **Note:** This command is not available when using `--task-id` to load a task (local mode). In that case, the task is automatically selected during load.
 
 ```bash
 evergreen debug select compile
@@ -378,25 +356,24 @@ evergreen debug daemon stop
 
 ## Debugging Locally (Without a Spawn Host)
 
-You can also use the task debugger on your local laptop without creating a spawn host. Instead of loading a local YAML file and selecting a task manually, you provide a task ID and the debugger fetches the project configuration directly from the Evergreen server.
+You can also use the task debugger on your local laptop without creating a spawn host. Instead of selecting a task manually, you must provide a task ID and the debugger fetches the project configuration directly from Evergreen.
 
 ### Requirements
 
 - You must have **patch submit** permissions on the project associated with the task.
-- You need a valid Evergreen CLI configuration (`~/.evergreen.yml`) with your credentials.
 - Debug spawn hosts must be enabled for the project.
 
 ### Quick Start
 
-1. **Find the task ID** of the task you want to debug. You can copy it from the task page URL in the Evergreen UI.
+1. **Find the task ID** of the task you want to debug.
 
-2. **Start the daemon** (if not already running):
+2. **Start the daemon:**
 
    ```bash
    evergreen debug daemon start
    ```
 
-3. **Load the task:**
+3. **Load the task by ID:**
 
    ```bash
    evergreen debug load --task-id <task_id>
@@ -418,25 +395,11 @@ You can also use the task debugger on your local laptop without creating a spawn
    evergreen debug next
    ```
 
-### Differences From Spawn Host Debugging
-
-| Behavior                                     | Spawn Host                  | Local                     |
-| -------------------------------------------- | --------------------------- | ------------------------- |
-| Config source                                | Local YAML file on the host | Fetched from the server   |
-| Task selection                               | Manual via `debug select`   | Automatic on load         |
-| `debug select` command                       | Available                   | Not available             |
-| Host-specific expansions (`distro_id`, etc.) | Populated from the host     | Empty                     |
-| Working directory                            | Config file directory       | Current working directory |
-
-### Using a Local Config Override
-
-You can optionally provide a local config file alongside `--task-id` if you want to test local YAML changes against a real task's expansions and environment:
+In local usage, the task is automatically loaded into the debugger based on its ID. The `evergreen debug select` command is not permitted. Optionally, you can provide a local YAML path as well, which overrides the server-fetched config while keeping the task's expansions and variables. For example:
 
 ```bash
 evergreen debug load --task-id <task_id> ./my-modified-evergreen.yml
 ```
-
-The task is still auto-selected and the `select` command remains blocked. The local YAML overrides the server-fetched project definition while keeping the task's expansions and variables.
 
 ## Prerequisites and Limitations
 
