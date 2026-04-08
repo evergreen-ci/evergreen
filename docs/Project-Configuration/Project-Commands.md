@@ -254,7 +254,7 @@ Each file should be JSON and contain an array of artifact objects:
 ]
 ```
 
-Each artifact object in the JSON file supports the following fields:
+Fields:
 
 - `name`: the display name for the artifact in the Evergreen UI.
 - `link`: the URL to the artifact.
