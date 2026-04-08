@@ -138,8 +138,10 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		opts:           opts,
 	}
 
-	if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
-		return nil, errors.Wrap(err, "fetching task config")
+	if opts.TaskID != "" {
+		if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
+			return nil, errors.Wrap(err, "fetching task config")
+		}
 	}
 
 	return localExecutor, nil
