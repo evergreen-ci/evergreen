@@ -183,7 +183,7 @@ func (j *podDiagnosticsJob) collectAndUpload(ctx context.Context, usageBytes, li
 		return errors.Wrap(err, "upload profiling data to S3")
 	}
 
-	const byteToGB = 1 << 30
+	const byteToGiB = 1 << 30
 	grip.Notice(ctx, message.Fields{
 		"message":          "successfully uploaded pod diagnostics for high memory usage",
 		"trigger_reason":   triggerReason,
