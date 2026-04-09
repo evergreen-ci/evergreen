@@ -1423,19 +1423,20 @@ Parameters:
 - `upload_checksum_sha256`: defaults to false. If set to true, the command will
   tell AWS to include the sha256 checksum of the file as metadata on the uploaded object.
 - `associated_links_file`: the name of a JSON file containing additional links to be displayed alongside the artifact in the UI. The file should contain an array of objects, each with `name` and `link` fields. Example file content:
-  ```json
-  [
-    {
-      "name": "Documentation",
-      "link": "https://example.com/docs"
-    },
-    {
-      "name": "Coverage Report",
-      "link": "https://example.com/${task_id}/coverage?sort_by=duration",
-      "do_not_encode_link": true,
-    }
-  ]
-  ```
+
+```json
+[
+  {
+    "name": "Documentation",
+    "link": "https://example.com/docs"
+  },
+  {
+    "name": "Coverage Report",
+    "link": "https://example.com/${task_id}/coverage?sort_by=duration",
+    "do_not_encode_link": true,
+  }
+]
+```
 
 ## s3.put with multiple files
 
