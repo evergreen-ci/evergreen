@@ -68,7 +68,9 @@ const (
 	S3UploadMethodPut    S3UploadMethod = "put"
 	S3UploadMethodCopy   S3UploadMethod = "copy"
 
-	// S3 Intelligent Tiering pricing and transition thresholds.
+	// S3 Intelligent Tiering pricing constants and tier transition thresholds.
+	// Transition days (30, 90) are defined by AWS S3 Intelligent Tiering:
+	// https://aws.amazon.com/s3/storage-classes/intelligent-tiering/
 	S3StandardPricePerGBMonth = 0.023
 	S3IAPricePerGBMonth       = 0.0125
 	S3ArchivePricePerGBMonth  = 0.004

@@ -1079,9 +1079,9 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 func TestReportS3Usage(t *testing.T) {
 	ctx := t.Context()
-	defer func() {
+	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
-	}()
+	})
 
 	for name, tc := range map[string]struct {
 		insertTask *task.Task
