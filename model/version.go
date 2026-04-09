@@ -450,6 +450,21 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	return nil
 }
 
+// GetHighestExecutionTask returns the highest execution number of all tasks in the version.
+func (v *Version) GetHighestExecutionTask(ctx context.Context) (int, error) {
+	tasks, err := task.FindAll(ctx, db.Query(task.ByVersion(v.Id)))
+	if err != nil {
+		return 0, errors.Wrap(err, "getting tasks for version")
+	}
+	highestExecutionTask := 0
+	for _, t := range tasks {
+		if t.Execution > highestExecutionTask {
+			highestExecutionTask = t.Execution
+		}
+	}
+	return highestExecutionTask, nil
+}
+
 // VersionBuildStatus stores metadata relating to each build
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`

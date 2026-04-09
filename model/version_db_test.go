@@ -677,3 +677,95 @@ func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
 	}
 	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
 }
+
+func TestGetHighestExecutionTask(t *testing.T) {
+	ctx := t.Context()
+	const versionID = "version_get_highest_execution_task"
+
+	require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+	defer func() {
+		require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+	}()
+
+	tests := []struct {
+		name  string
+		setup func(t *testing.T)
+		want  int
+	}{
+		{
+			name: "EmptyVersionReturnsZero",
+			setup: func(t *testing.T) {
+				require.NoError(t, (&Version{Id: versionID}).Insert(ctx))
+			},
+			want: 0,
+		},
+		{
+			name: "SingleTaskExecutionZeroReturnsZero",
+			setup: func(t *testing.T) {
+				require.NoError(t, (&Version{Id: versionID}).Insert(ctx))
+				require.NoError(t, (&task.Task{
+					Id:        "exec_task_0",
+					Version:   versionID,
+					Execution: 0,
+					Status:    evergreen.TaskUndispatched,
+				}).Insert(ctx))
+			},
+			want: 0,
+		},
+		{
+			name: "ReturnsMaxExecutionAcrossTasks",
+			setup: func(t *testing.T) {
+				require.NoError(t, (&Version{Id: versionID}).Insert(ctx))
+				for _, tc := range []struct {
+					id        string
+					execution int
+				}{
+					{"exec_task_a", 0},
+					{"exec_task_b", 3},
+					{"exec_task_c", 1},
+				} {
+					require.NoError(t, (&task.Task{
+						Id:        tc.id,
+						Version:   versionID,
+						Execution: tc.execution,
+						Status:    evergreen.TaskUndispatched,
+					}).Insert(ctx))
+				}
+			},
+			want: 3,
+		},
+		{
+			name: "IgnoresTasksFromOtherVersions",
+			setup: func(t *testing.T) {
+				const otherVersionID = "other_version_get_highest_execution"
+				require.NoError(t, (&Version{Id: versionID}).Insert(ctx))
+				require.NoError(t, (&Version{Id: otherVersionID}).Insert(ctx))
+				require.NoError(t, (&task.Task{
+					Id:        "exec_in_target",
+					Version:   versionID,
+					Execution: 2,
+					Status:    evergreen.TaskUndispatched,
+				}).Insert(ctx))
+				require.NoError(t, (&task.Task{
+					Id:        "exec_in_other_version",
+					Version:   otherVersionID,
+					Execution: 50,
+					Status:    evergreen.TaskUndispatched,
+				}).Insert(ctx))
+			},
+			want: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+			tt.setup(t)
+
+			v := &Version{Id: versionID}
+			got, err := v.GetHighestExecutionTask(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
