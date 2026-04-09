@@ -212,10 +212,9 @@ Use `*` for non-recursive matching and `**` for recursive descent. `archive.zip_
 ## attach.artifacts
 
 This command allows users to add files to the "Files" section of the
-task page without using the `s3.put` command. Suppose you uploaded a
-file to <https://example.com/this-is-my-file> in your task. For
-instance, you might be using boto in a Python script. You can then add a
-link to the Files element on the task page by:
+task page without using the `s3.put` command. This is useful when you've
+uploaded files to a remote location (e.g. using boto in a Python script)
+and want to link them in the Evergreen UI.
 
 ```yaml
 - command: attach.artifacts
@@ -224,19 +223,7 @@ link to the Files element on the task page by:
       - example.json
 ```
 
-```json
-[
-  {
-    "name": "my-file",
-    "link": "https://example.com/this-is-my-file",
-    "visibility": "public"
-  }
-]
-```
-
-An additional "ignore_for_fetch" parameter controls whether the file
-will be downloaded when spawning a host from the spawn link on a test
-page.
+Parameters:
 
 - `files`: an array of gitignore file globs. All files that are
   matched - ones that would be ignored by gitignore - are included.
@@ -246,7 +233,36 @@ page.
   indicates to treat the files array as a list of exact filenames to
   match, rather than an array of gitignore file globs.
 - `optional`: default false; if set to true, will not error if the
-  file(s) specified are not found
+  file(s) specified are not found.
+
+Each file should be JSON and contain an array of artifact objects:
+
+```json
+[
+  {
+    "name": "my-file",
+    "link": "https://example.com/this-is-my-file",
+    "visibility": "public"
+  },
+  {
+    "name": "my-file-with-params",
+    "link": "https://example.com/this-is-my-file?task=123&build=456",
+    "visibility": "public",
+    "do_not_encode_link": true
+  }
+]
+```
+
+Fields:
+
+- `name`: the display name for the artifact in the Evergreen UI.
+- `link`: the URL to the artifact.
+- `visibility`: the visibility level for the artifact. Can be "public" or "private".
+- `do_not_encode_link`: optional boolean, defaults to false. Set to true to
+  prevent Evergreen from URL-encoding the link. This is useful when your URL
+  contains query parameters (e.g. `?task=123&build=456`) that should not be escaped.
+- `ignore_for_fetch`: optional boolean, defaults to false. If set to true, the
+  file will not be downloaded when spawning a host from the spawn link on a test page.
 
 ## attach.results
 
