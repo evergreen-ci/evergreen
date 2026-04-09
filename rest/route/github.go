@@ -204,12 +204,12 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			})
 
 			skip, err := shouldSkipCIForGraphite(ctx,
-				event.GetPullRequest().GetBase().GetRepo().GetOwner().GetLogin(),
-				event.GetPullRequest().GetBase().GetRepo().GetName(),
-				event.GetPullRequest().GetNumber(),
-				event.GetPullRequest().GetHead().GetSHA(),
-				event.GetPullRequest().GetBase().GetRef(),
-				event.GetPullRequest().GetHead().GetRef(),
+				event.Repo.Owner.GetLogin(),
+				event.Repo.GetName(),
+				event.PullRequest.GetNumber(),
+				event.PullRequest.GetHead().GetSHA(),
+				event.PullRequest.GetBase().GetRef(),
+				event.PullRequest.GetHead().GetRef(),
 			)
 			if err != nil {
 				grip.Error(ctx, message.WrapError(err, message.Fields{
