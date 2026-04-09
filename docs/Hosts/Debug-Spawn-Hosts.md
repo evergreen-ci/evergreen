@@ -356,7 +356,7 @@ evergreen debug daemon stop
 
 ## Debugging Locally (Without a Spawn Host)
 
-You can also use the task debugger on your local laptop without creating a spawn host. Instead of selecting a task manually, you must provide a task ID and the debugger fetches the project configuration directly from Evergreen.
+You can also use the task debugger on your local laptop without creating a spawn host. Instead of selecting a task manually, you must provide a task ID and the debugger fetches the project configuration directly from Evergreen. Be mindful that your local device architecture may have key discrepancies with the OS used by the passed in task ID.
 
 ### Requirements
 
