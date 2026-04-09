@@ -222,14 +222,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				}))
 				// Continue on error - don't block PR patch creation.
 			} else if skip {
-				grip.Info(ctx, message.Fields{
-					"source":    "GitHub hook",
-					"msg_id":    gh.msgID,
-					"event":     gh.eventType,
-					"message":   "skipping CI on PR due to Graphite CI optimizer",
-					"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
-					"pr_number": event.GetPullRequest().GetNumber(),
-				})
 				break
 			}
 
