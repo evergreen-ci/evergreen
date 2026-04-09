@@ -2961,7 +2961,6 @@ func TestValidateGitHubAppCheckRuns(t *testing.T) {
 	})
 }
 
-
 func TestValidateProjectAliases(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("ensure misconfigured aliases throw an error", func() {
