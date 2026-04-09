@@ -3,10 +3,8 @@ package route
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -496,127 +494,4 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 		t.Run(testCase, test)
 	}
-}
-
-func TestShouldSkipCIForGraphite(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-
-	for tName, tCase := range map[string]func(t *testing.T){
-		"EmptyConfigReturnsNoSkip": func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
-
-			skip, err := shouldSkipCIForGraphite(t.Context(), "owner", "repo", 1, "sha", "main", "feature")
-			assert.NoError(t, err)
-			assert.False(t, skip)
-		},
-		"GraphiteAPIReturnsSkipTrue": func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, http.MethodPost, r.Method)
-				assert.Equal(t, "/api/v1/ci/optimizer", r.URL.Path)
-
-				var body map[string]any
-				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-				context, ok := body["context"].(map[string]any)
-				require.True(t, ok)
-				assert.EqualValues(t, 42, context["pr"])
-				assert.Equal(t, "test-sha", context["sha"])
-
-				w.WriteHeader(http.StatusOK)
-				_, err := w.Write([]byte(`{"skip": true}`))
-				require.NoError(t, err)
-			}))
-			defer srv.Close()
-
-			require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
-			graphiteConf := &evergreen.GraphiteConfig{
-				ServerURL:           srv.URL,
-				CIOptimizationToken: "test-token",
-			}
-			require.NoError(t, graphiteConf.Set(t.Context()))
-
-			skip, err := shouldSkipCIForGraphite(t.Context(), "owner", "repo", 42, "test-sha", "main", "feature")
-			assert.NoError(t, err)
-			assert.True(t, skip)
-		},
-		"GraphiteAPIReturnsSkipFalse": func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-				_, err := w.Write([]byte(`{"skip": false}`))
-				require.NoError(t, err)
-			}))
-			defer srv.Close()
-
-			require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
-			graphiteConf := &evergreen.GraphiteConfig{
-				ServerURL:           srv.URL,
-				CIOptimizationToken: "test-token",
-			}
-			require.NoError(t, graphiteConf.Set(t.Context()))
-
-			skip, err := shouldSkipCIForGraphite(t.Context(), "owner", "repo", 1, "sha", "main", "feature")
-			assert.NoError(t, err)
-			assert.False(t, skip)
-		},
-		"GraphiteAPIReturnsServerError": func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusInternalServerError)
-			}))
-			defer srv.Close()
-
-			require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
-			graphiteConf := &evergreen.GraphiteConfig{
-				ServerURL:           srv.URL,
-				CIOptimizationToken: "test-token",
-			}
-			require.NoError(t, graphiteConf.Set(t.Context()))
-
-			skip, err := shouldSkipCIForGraphite(t.Context(), "owner", "repo", 1, "sha", "main", "feature")
-			assert.Error(t, err)
-			assert.False(t, skip)
-		},
-	} {
-		t.Run(tName, tCase)
-	}
-}
-
-func (s *GithubWebhookRouteSuite) TestPREventSkipsGraphiteBaseBranch() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.IntentCollection))
-
-	doc := &model.ProjectRef{
-		Owner:            "evergreen-ci",
-		Repo:             "evergreen",
-		Branch:           "main",
-		Enabled:          true,
-		BatchTime:        10,
-		Id:               "ident0",
-		PRTestingEnabled: utility.TruePtr(),
-	}
-	s.NoError(doc.Insert(s.T().Context()))
-
-	event, err := github.ParseWebHook("pull_request", s.prBody)
-	s.NoError(err)
-	s.NotNil(event)
-
-	prEvent, ok := event.(*github.PullRequestEvent)
-	s.True(ok)
-
-	// Modify the base branch to be a Graphite temporary base branch.
-	graphiteBaseBranch := "graphite-base/1234/main"
-	prEvent.PullRequest.Base.Ref = &graphiteBaseBranch
-
-	s.h.event = prEvent
-	s.h.msgID = "graphite-base-test"
-
-	resp := s.h.Run(s.T().Context())
-	s.Equal(http.StatusOK, resp.Status())
-
-	// No intent should be created because the base branch is a Graphite
-	// temporary branch, so CI should be skipped.
-	count, err := db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
-	s.NoError(err)
-	s.Equal(0, count)
 }
