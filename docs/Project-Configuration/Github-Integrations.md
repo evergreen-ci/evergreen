@@ -96,12 +96,7 @@ Evergreen offers integration with the GitHub checks API. Users have the option t
 
 ### Configuration
 
-A GitHub App must be configured in the project or repo settings to use check runs. The app must have `checks:write` permission.
-
-The behavior when no GitHub app is configured depends on how many check-run-configured tasks the project has:
-
-- **Below the threshold (fewer than 10 check-run-configured tasks):** a project-level GitHub app is not required, and no validation warning is issued.
-- **At or above the threshold (10 or more check-run-configured tasks):** a validation warning is issued, and check run operations fail with an error at runtime. At this scale, a GitHub app is required for check runs to work.
+A GitHub App must be configured in the project or repo settings to have more than 10 check runs defined in a project. The app must have `checks:write` permission.
 
 To add a check run to a task, specify it in the list of tasks in the build variant definition.
 Check runs cannot be defined in the task level and will be ignored if done so.
