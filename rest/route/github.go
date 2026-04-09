@@ -217,8 +217,12 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"msg_id":    gh.msgID,
 					"event":     gh.eventType,
 					"message":   "error checking Graphite CI optimizer",
-					"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
-					"pr_number": event.GetPullRequest().GetNumber(),
+					"owner":     event.Repo.Owner.GetLogin(),
+					"repo":      event.Repo.GetName(),
+					"pr_number": event.PullRequest.GetNumber(),
+					"head_sha":  event.PullRequest.GetHead().GetSHA(),
+					"base_ref":  event.PullRequest.GetBase().GetRef(),
+					"head_ref":  event.PullRequest.GetHead().GetRef(),
 				}))
 				// Continue on error - don't block PR patch creation.
 			} else if skip {
