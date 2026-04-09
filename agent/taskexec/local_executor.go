@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
@@ -139,8 +138,10 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		opts:           opts,
 	}
 
-	if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
-		return nil, errors.Wrap(err, "fetching task config")
+	if opts.TaskID != "" {
+		if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
+			return nil, errors.Wrap(err, "fetching task config")
+		}
 	}
 
 	return localExecutor, nil
@@ -320,9 +321,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 	startTime := time.Now()
 
-	_, isNoOp := noOpCommands[targetCmd.Command.Command]
+	_, isNoOp := noOpCommands[targetCmd.CommandName]
 	if isNoOp {
-		noOpMsg := e.getNoOpMessage(targetCmd.Command.Command)
+		noOpMsg := e.getNoOpMessage(targetCmd.CommandName)
 		if e.streamWriter != nil {
 			e.streamWriter.WriteChannelMessage(ExecChannel, noOpMsg)
 		}
@@ -488,6 +489,23 @@ func (e *LocalExecutor) RunAll(ctx context.Context) error {
 // GetDebugState returns the current debug state
 func (e *LocalExecutor) GetDebugState() *DebugState {
 	return e.debugState
+}
+
+// GetProject returns the loaded project.
+func (e *LocalExecutor) GetProject() *model.Project {
+	return e.project
+}
+
+// GetFetchedTaskName returns the display name of the task fetched from
+// the server during initialization.
+func (e *LocalExecutor) GetFetchedTaskName() string {
+	return e.taskConfig.Task.DisplayName
+}
+
+// GetFetchedBuildVariant returns the build variant of the task fetched
+// from the server during initialization.
+func (e *LocalExecutor) GetFetchedBuildVariant() string {
+	return e.taskConfig.Task.BuildVariant
 }
 
 // SetStreamWriter sets the stream writer for streaming output during execution.
@@ -736,6 +754,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
+					CommandName:    cmd.Command,
 					DisplayName:    cmd.GetDisplayName(),
 					IsFunction:     cmd.Function != "",
 					FunctionName:   cmd.Function,
@@ -757,6 +776,7 @@ func (e *LocalExecutor) rebuildCommandList() error {
 				info := CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
+					CommandName:    rcmd.Name(),
 					DisplayName:    displayName,
 					IsFunction:     cmd.Function != "",
 					FunctionName:   cmd.Function,
@@ -785,10 +805,6 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	taskData := client.TaskData{
 		ID:                 opts.TaskID,
 		OverrideValidation: true,
-	}
-	if opts.TaskID == "" {
-		e.createSyntheticTask("local_task")
-		return nil
 	}
 
 	projectRef, err := e.communicator.GetProjectRef(ctx, taskData)
@@ -865,15 +881,6 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	e.taskConfig.InternalRedactions = agentutil.NewDynamicExpansions(internalRedactions)
 
 	return nil
-}
-
-func (e *LocalExecutor) createSyntheticTask(taskName string) {
-	taskID := fmt.Sprintf("local_%s_%d", taskName, time.Now().Unix())
-	e.taskConfig.Task = task.Task{
-		Id:          taskID,
-		Project:     e.taskConfig.ProjectRef.Identifier,
-		DisplayName: taskName,
-	}
 }
 
 func getDurationStr(startTime time.Time) string {

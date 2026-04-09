@@ -354,6 +354,53 @@ Stop a running debugger.
 evergreen debug daemon stop
 ```
 
+## Debugging Locally (Without a Spawn Host)
+
+You can also use the task debugger on your local laptop without creating a spawn host. Instead of selecting a task manually, you must provide a task ID and the debugger fetches the project configuration directly from Evergreen. Be mindful that your local device architecture may have key discrepancies with the OS used by the passed in task ID.
+
+### Requirements
+
+- You must have **patch submit** permissions on the project associated with the task.
+- Debug spawn hosts must be enabled for the project.
+
+### Quick Start
+
+1. **Find the task ID** of the task you want to debug.
+
+2. **Start the daemon:**
+
+   ```bash
+   evergreen debug daemon start
+   ```
+
+3. **Load the task by ID:**
+
+   ```bash
+   evergreen debug load --task-id <task_id>
+   ```
+
+   This fetches the project configuration and task expansions from the server and automatically selects the task and its build variant. No local config file is needed.
+
+   Output:
+
+   ```text
+   Loaded and auto-selected task: compile (variant: ubuntu2204)
+   Total steps: 8
+   ```
+
+4. **Start stepping through:**
+
+   ```bash
+   evergreen debug list-steps
+   evergreen debug next
+   ```
+
+In local usage, the task is automatically loaded into the debugger based on its ID. The `evergreen debug select` command is not permitted. Optionally, you can provide a local YAML path as well, which overrides the server-fetched config while keeping the task's expansions and variables. For example:
+
+```bash
+evergreen debug load --task-id <task_id> ./my-modified-evergreen.yml
+```
+
 ## Prerequisites and Limitations
 
 ### Prerequisites

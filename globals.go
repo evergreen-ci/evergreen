@@ -516,6 +516,7 @@ const (
 	S3ArtifactUploadBytesOtelAttribute = "evergreen.task.s3_cost.artifact_upload_bytes"
 	S3ArtifactCountOtelAttribute       = "evergreen.task.s3_cost.artifact_count"
 	S3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.artifact_put_cost"
+	S3ArtifactStorageCostOtelAttribute = "evergreen.task.s3_cost.artifact_storage_cost"
 
 	// S3 cost tracking otel attributes — artifact per-file statistics
 	S3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"

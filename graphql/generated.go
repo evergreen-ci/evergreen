@@ -411,6 +411,7 @@ type ComplexityRoot struct {
 		AdjustedEC2Cost           func(childComplexity int) int
 		OnDemandEC2Cost           func(childComplexity int) int
 		S3ArtifactPutCost         func(childComplexity int) int
+		S3ArtifactStorageCost     func(childComplexity int) int
 		S3LogPutCost              func(childComplexity int) int
 	}
 
@@ -4175,6 +4176,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.S3ArtifactPutCost(childComplexity), true
+	case "Cost.s3ArtifactStorageCost":
+		if e.complexity.Cost.S3ArtifactStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.S3ArtifactStorageCost(childComplexity), true
 	case "Cost.s3LogPutCost":
 		if e.complexity.Cost.S3LogPutCost == nil {
 			break
@@ -24489,6 +24496,35 @@ func (ec *executionContext) _Cost_s3LogPutCost(ctx context.Context, field graphq
 }
 
 func (ec *executionContext) fieldContext_Cost_s3LogPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_s3ArtifactStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_s3ArtifactStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3ArtifactStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_s3ArtifactStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -66560,6 +66596,8 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -66603,6 +66641,8 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -74299,6 +74339,8 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -74831,6 +74873,8 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -75791,6 +75835,8 @@ func (ec *executionContext) fieldContext_VersionLite_cost(_ context.Context, fie
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -92701,6 +92747,8 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
 		case "s3LogPutCost":
 			out.Values[i] = ec._Cost_s3LogPutCost(ctx, field, obj)
+		case "s3ArtifactStorageCost":
+			out.Values[i] = ec._Cost_s3ArtifactStorageCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

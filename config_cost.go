@@ -69,8 +69,12 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			financeConfigFormulaKey:             c.FinanceFormula,
 			financeConfigSavingsPlanDiscountKey: c.SavingsPlanDiscount,
 			financeConfigOnDemandDiscountKey:    c.OnDemandDiscount,
-			financeConfigS3CostKey:              c.S3Cost,
-			financeConfigEBSCostKey:             c.EBSCost,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "upload", "upload_cost_discount"):                  c.S3Cost.Upload.UploadCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "standard_storage_cost_discount"):       c.S3Cost.Storage.StandardStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "i_a_storage_cost_discount"):            c.S3Cost.Storage.IAStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "archive_storage_cost_discount"):        c.S3Cost.Storage.ArchiveStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "default_max_artifact_expiration_days"): c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+			financeConfigEBSCostKey: c.EBSCost,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

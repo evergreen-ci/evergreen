@@ -31,6 +31,7 @@ type Mock struct {
 	GetSubscriptionsFail bool
 	MockServiceFlags     *model.APIServiceFlags
 	MockServiceFlagErr   error
+	MockGetProjectResult *model.APIProjectRef
 
 	GetRecentVersionsResult   []restmodel.APIVersion
 	GetBuildsForVersionResult []restmodel.APIBuild
@@ -76,8 +77,8 @@ func (*Mock) GetSpawnHost(ctx context.Context, hostID string) (*model.APIHost, e
 	return nil, errors.New("(*Mock) GetSpawnHost is not implemented")
 }
 
-func (*Mock) GetProject(ctx context.Context, projectID string) (*model.APIProjectRef, error) {
-	return nil, errors.New("(*Mock) GetProject is not implemented")
+func (c *Mock) GetProject(ctx context.Context, projectID string) (*model.APIProjectRef, error) {
+	return c.MockGetProjectResult, nil
 }
 
 func (*Mock) ModifySpawnHost(ctx context.Context, hostID string, changes host.HostModifyOptions) error {
