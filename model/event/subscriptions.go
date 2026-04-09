@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -453,6 +454,15 @@ func CopyProjectSubscriptions(ctx context.Context, oldProject, newProject string
 		return errors.Wrapf(err, "finding subscription for project '%s'", oldProject)
 	}
 
+	if len(subs) == 0 {
+		grip.Debug(ctx, message.Fields{
+			"message":     "no subscriptions found to copy for project",
+			"old_project": oldProject,
+			"new_project": newProject,
+		})
+		return nil
+	}
+
 	catcher := grip.NewBasicCatcher()
 	for _, sub := range subs {
 		sub.Owner = newProject
@@ -463,7 +473,9 @@ func CopyProjectSubscriptions(ctx context.Context, oldProject, newProject string
 				sub.Filter.Project = newProject
 			}
 		}
-		catcher.Add(sub.Upsert(ctx))
+		if err := sub.Upsert(ctx); err != nil {
+			catcher.Add(err)
+		}
 	}
 	return catcher.Resolve()
 }

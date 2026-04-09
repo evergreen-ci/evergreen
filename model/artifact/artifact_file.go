@@ -46,8 +46,9 @@ type Params map[string]string
 
 // AssociatedLink represents a link related to a file besides the main artifact link.
 type AssociatedLink struct {
-	Name string `json:"name" bson:"name"`
-	Link string `json:"link" bson:"link"`
+	Name            string `json:"name" bson:"name"`
+	Link            string `json:"link" bson:"link"`
+	DoNotEncodeLink bool   `json:"do_not_encode_link,omitempty" bson:"do_not_encode_link,omitempty"`
 }
 
 // File is a pairing of name and link for easy storage/display
@@ -82,6 +83,8 @@ type File struct {
 	PutCost float64 `json:"put_cost,omitempty" bson:"put_cost,omitempty"`
 	// AssociatedLinks is a list of links related to the file besides the main artifact link.
 	AssociatedLinks []AssociatedLink `json:"associated_links,omitempty" bson:"associated_links,omitempty"`
+	// DoNotEncodeLink indicates that the file link should not be escaped.
+	DoNotEncodeLink bool `json:"do_not_encode_link,omitempty" bson:"do_not_encode_link,omitempty"`
 }
 
 func (f *File) validate() error {
@@ -172,11 +175,25 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 // EscapeFiles escapes the base of the file link to avoid issues opening links
 // with special characters in the UI. Note that it will not escape path segments
 // other than the base (i.e. the last one).
+// Note: Links will not be escaped if the file or associated link's DoNotEncode field
+// is set to true, or if the link already appears to be escaped.
 // For example, "url.com/something+another/file#1.tar.gz" will be escaped to "url.com/something+another/file%231.tar.gz".
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File
 	for _, file := range files {
-		file.Link = escapeFile(file.Link)
+		if !file.DoNotEncodeLink {
+			file.Link = escapeFile(file.Link)
+		}
+
+		escapedAssociatedLinks := make([]AssociatedLink, len(file.AssociatedLinks))
+		for i, link := range file.AssociatedLinks {
+			escapedAssociatedLinks[i] = link
+			if !link.DoNotEncodeLink {
+				escapedAssociatedLinks[i].Link = escapeFile(link.Link)
+			}
+		}
+		file.AssociatedLinks = escapedAssociatedLinks
+
 		escapedFiles = append(escapedFiles, file)
 	}
 	return escapedFiles

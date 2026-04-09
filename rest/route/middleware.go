@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
@@ -118,6 +119,49 @@ func MustHaveUser(ctx context.Context) *user.DBUser {
 	}
 
 	return usr
+}
+
+// GetTask returns the task stored in the request context by
+// TaskAuthMiddleware. Returns nil if no task is in the context.
+func GetTask(ctx context.Context) *task.Task {
+	if rv := ctx.Value(model.ApiTaskKey); rv != nil {
+		if t, ok := rv.(*task.Task); ok {
+			return t
+		}
+	}
+	return nil
+}
+
+// MustHaveTask returns the task stored in the request context by
+// TaskAuthMiddleware. It panics if none is set.
+func MustHaveTask(ctx context.Context) *task.Task {
+	t := GetTask(ctx)
+	if t == nil {
+		panic("task not attached to request")
+	}
+	return t
+}
+
+// GetHost returns the host stored in the request context by
+// hostAuthMiddleware or TaskAuthMiddleware. Returns nil if no host is
+// in the context.
+func GetHost(ctx context.Context) *host.Host {
+	if rv := ctx.Value(model.ApiHostKey); rv != nil {
+		if h, ok := rv.(*host.Host); ok {
+			return h
+		}
+	}
+	return nil
+}
+
+// MustHaveHost returns the host stored in the request context by
+// hostAuthMiddleware or TaskAuthMiddleware. It panics if none is set.
+func MustHaveHost(ctx context.Context) *host.Host {
+	h := GetHost(ctx)
+	if h == nil {
+		panic("host not attached to request")
+	}
+	return h
 }
 
 func validPriority(ctx context.Context, priority int64, project string, user gimlet.User) bool {
@@ -227,6 +271,8 @@ func (m *hostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
+	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
+
 	updateHostAccessTime(r.Context(), h)
 	next(rw, r)
 }
@@ -322,6 +368,8 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
+	r = r.WithContext(context.WithValue(r.Context(), model.ApiTaskKey, t))
+
 	hostID, ok := gimlet.GetVars(r)["host_id"]
 	if !ok {
 		hostID = r.Header.Get(evergreen.HostHeader)
@@ -334,13 +382,16 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if _, code, err := model.ValidateHost(hostID, r); err != nil {
+	h, code, err := model.ValidateHost(hostID, r)
+	if err != nil {
 		gimlet.WriteResponse(r.Context(), rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    errors.Wrapf(err, "invalid host associated with task '%s'", taskID).Error(),
 		}))
 		return
 	}
+
+	r = r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 
 	next(rw, r)
 }
@@ -636,7 +687,91 @@ func allowCORS(next http.HandlerFunc) http.HandlerFunc {
 	return AddCORSHeaders(origins, next)
 }
 
-// NewUserOrTaskAuthMiddleware returns a middleware that verifies the request is authenticated as a user or task.
+// NewUserOrTaskAuthMiddleware returns a middleware that verifies the request
+// is authenticated as either a user or a task/host. When the request is
+// user-authenticated, the middleware additionally checks that the user has
+// patch submit permission on the project associated with the task.
 func NewUserOrTaskAuthMiddleware() gimlet.Middleware {
-	return gimlet.NewRequireUserOrMiddlewareAuthHandler(NewTaskAuthMiddleware())
+	return &userOrTaskAuthMiddleware{
+		taskFallback: NewTaskAuthMiddleware(),
+	}
+}
+
+type userOrTaskAuthMiddleware struct {
+	taskFallback gimlet.Middleware
+}
+
+func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	u := gimlet.GetUser(ctx)
+	if u == nil {
+		// Fallback to task/host auth.
+		m.taskFallback.ServeHTTP(rw, r, next)
+		return
+	}
+
+	vars := gimlet.GetVars(r)
+	taskID := vars["task_id"]
+	if taskID == "" {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "task ID is required",
+		}))
+		return
+	}
+
+	if evergreen.GetEnvironment().Settings().ServiceFlags.DebugSpawnHostDisabled {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "debug spawn hosts are currently disabled",
+		}))
+		return
+	}
+
+	projectID, err := task.FindProjectForTask(ctx, taskID)
+	if err != nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("could not find project for task '%s': %s", taskID, err.Error()),
+		}))
+		return
+	}
+
+	pRef, err := model.FindBranchProjectRef(ctx, projectID)
+	if err != nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("finding project '%s': %s", projectID, err.Error()),
+		}))
+		return
+	}
+	if pRef == nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' not found", projectID),
+		}))
+		return
+	}
+	if !pRef.IsDebugSpawnHostsEnabled() {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("debug spawn hosts are disabled for project '%s'", projectID),
+		}))
+		return
+	}
+
+	if !u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      projectID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	}) {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("user '%s' does not have patch submit permission on project '%s'", u.Username(), projectID),
+		}))
+		return
+	}
+
+	next(rw, r)
 }

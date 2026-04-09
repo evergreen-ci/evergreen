@@ -25,16 +25,17 @@ import (
 )
 
 const (
-	taskCollection           = "tasks"
-	oldTaskCollection        = "old_tasks"
-	taskVersionKey           = "version"
-	taskDisplayOnlyKey       = "display_only"
-	taskCostKey              = "cost"
-	taskPredictedCostKey     = "predicted_cost"
-	taskOnDemandCostKey      = "on_demand_ec2_cost"
-	taskAdjustedCostKey      = "adjusted_ec2_cost"
-	taskS3ArtifactPutCostKey = "s3_artifact_put_cost"
-	taskS3LogPutCostKey      = "s3_log_put_cost"
+	taskCollection               = "tasks"
+	oldTaskCollection            = "old_tasks"
+	taskVersionKey               = "version"
+	taskDisplayOnlyKey           = "display_only"
+	taskCostKey                  = "cost"
+	taskPredictedCostKey         = "predicted_cost"
+	taskOnDemandCostKey          = "on_demand_ec2_cost"
+	taskAdjustedCostKey          = "adjusted_ec2_cost"
+	taskS3ArtifactPutCostKey     = "s3_artifact_put_cost"
+	taskS3ArtifactStorageCostKey = "s3_artifact_storage_cost"
+	taskS3LogPutCostKey          = "s3_log_put_cost"
 
 	taskS3UsageKey         = "s3_usage"
 	taskS3ArtifactsKey     = "artifacts"
@@ -372,18 +373,19 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			},
 		}},
 		{"$group": bson.M{
-			"_id":                         nil,
-			"total_on_demand":             bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
-			"total_adjusted":              bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
-			"expected_on_demand":          bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
-			"expected_adjusted":           bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
-			"total_s3_artifact_put_cost":  bson.M{"$sum": "$" + taskCostKey + "." + taskS3ArtifactPutCostKey},
-			"total_s3_log_put_cost":       bson.M{"$sum": "$" + taskCostKey + "." + taskS3LogPutCostKey},
-			"total_artifact_put_requests": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3PutRequestsKey},
-			"total_artifact_upload_bytes": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3UploadBytesKey},
-			"total_artifact_count":        bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactCountKey},
-			"total_log_put_requests":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3PutRequestsKey},
-			"total_log_upload_bytes":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3UploadBytesKey},
+			"_id":                            nil,
+			"total_on_demand":                bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
+			"total_adjusted":                 bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
+			"expected_on_demand":             bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
+			"expected_adjusted":              bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
+			"total_s3_artifact_put_cost":     bson.M{"$sum": "$" + taskCostKey + "." + taskS3ArtifactPutCostKey},
+			"total_s3_artifact_storage_cost": bson.M{"$sum": "$" + taskCostKey + "." + taskS3ArtifactStorageCostKey},
+			"total_s3_log_put_cost":          bson.M{"$sum": "$" + taskCostKey + "." + taskS3LogPutCostKey},
+			"total_artifact_put_requests":    bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3PutRequestsKey},
+			"total_artifact_upload_bytes":    bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3UploadBytesKey},
+			"total_artifact_count":           bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactCountKey},
+			"total_log_put_requests":         bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3PutRequestsKey},
+			"total_log_upload_bytes":         bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3UploadBytesKey},
 		}},
 	}
 
@@ -393,17 +395,18 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	}
 
 	var results []struct {
-		TotalOnDemand            float64 `bson:"total_on_demand"`
-		TotalAdjusted            float64 `bson:"total_adjusted"`
-		PredictedOnDemand        float64 `bson:"expected_on_demand"`
-		PredictedAdjusted        float64 `bson:"expected_adjusted"`
-		TotalS3ArtifactPutCost   float64 `bson:"total_s3_artifact_put_cost"`
-		TotalS3LogPutCost        float64 `bson:"total_s3_log_put_cost"`
-		TotalArtifactPutRequests int     `bson:"total_artifact_put_requests"`
-		TotalArtifactUploadBytes int64   `bson:"total_artifact_upload_bytes"`
-		TotalArtifactCount       int     `bson:"total_artifact_count"`
-		TotalLogPutRequests      int     `bson:"total_log_put_requests"`
-		TotalLogUploadBytes      int64   `bson:"total_log_upload_bytes"`
+		TotalOnDemand              float64 `bson:"total_on_demand"`
+		TotalAdjusted              float64 `bson:"total_adjusted"`
+		PredictedOnDemand          float64 `bson:"expected_on_demand"`
+		PredictedAdjusted          float64 `bson:"expected_adjusted"`
+		TotalS3ArtifactPutCost     float64 `bson:"total_s3_artifact_put_cost"`
+		TotalS3ArtifactStorageCost float64 `bson:"total_s3_artifact_storage_cost"`
+		TotalS3LogPutCost          float64 `bson:"total_s3_log_put_cost"`
+		TotalArtifactPutRequests   int     `bson:"total_artifact_put_requests"`
+		TotalArtifactUploadBytes   int64   `bson:"total_artifact_upload_bytes"`
+		TotalArtifactCount         int     `bson:"total_artifact_count"`
+		TotalLogPutRequests        int     `bson:"total_log_put_requests"`
+		TotalLogUploadBytes        int64   `bson:"total_log_upload_bytes"`
 	}
 	if err = cursor.All(ctx, &results); err != nil {
 		return errors.Wrap(err, "reading aggregated task cost results")
@@ -415,6 +418,7 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		total.OnDemandEC2Cost = results[0].TotalOnDemand
 		total.AdjustedEC2Cost = results[0].TotalAdjusted
 		total.S3ArtifactPutCost = results[0].TotalS3ArtifactPutCost
+		total.S3ArtifactStorageCost = results[0].TotalS3ArtifactStorageCost
 		total.S3LogPutCost = results[0].TotalS3LogPutCost
 		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
 		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
@@ -427,9 +431,14 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 
 	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{
-			VersionCostKey:          total,
-			VersionPredictedCostKey: predicted,
-			VersionS3UsageKey:       s3Total,
+			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEC2CostKey):          total.OnDemandEC2Cost,
+			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEC2CostKey):          total.AdjustedEC2Cost,
+			bsonutil.GetDottedKeyName(VersionCostKey, cost.S3ArtifactPutCostKey):        total.S3ArtifactPutCost,
+			bsonutil.GetDottedKeyName(VersionCostKey, cost.S3ArtifactStorageCostKey):    total.S3ArtifactStorageCost,
+			bsonutil.GetDottedKeyName(VersionCostKey, cost.S3LogPutCostKey):             total.S3LogPutCost,
+			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEC2CostKey): predicted.OnDemandEC2Cost,
+			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEC2CostKey): predicted.AdjustedEC2Cost,
+			VersionS3UsageKey: s3Total,
 		},
 	}); err != nil {
 		return errors.Wrap(err, "updating version aggregated task costs")

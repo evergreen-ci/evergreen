@@ -249,6 +249,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(requireUser, editRoles).RouteHandler(makeDeleteUserPermissions(env.RoleManager()))
+	app.AddRoute("/users/{user_id}/permission-details").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUserPermissionDetails(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/roles").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserRoles(env.RoleManager()))
 	app.AddRoute("/validate").Version(2).Post().Wrap(requireUser).RouteHandler(makeValidateProject())
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionByID())

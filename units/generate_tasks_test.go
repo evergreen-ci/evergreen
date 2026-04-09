@@ -734,9 +734,9 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		case "version_gen", "dependency_task":
 			assert.Equal([]task.Dependency{}, foundTask.DependsOn)
 		case "shouldDependOnVersionGen":
+			// BV-level depends_on (version_gen) only; sibling shouldDependOnDependencyTask's edge to dependencyTask does not apply.
 			assert.Equal([]task.Dependency{
 				{TaskId: "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
-				{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
 			}, foundTask.DependsOn)
 		case "shouldDependOnDependencyTask":
 			assert.Equal([]task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}}, foundTask.DependsOn)

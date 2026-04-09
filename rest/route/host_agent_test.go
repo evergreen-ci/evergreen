@@ -804,7 +804,11 @@ func TestHostEndTask(t *testing.T) {
 			startTaskHandler := makeStartTask(env).(*startTaskHandler)
 			startTaskHandler.hostID = hostId
 			startTaskHandler.taskID = taskId
-			resp := startTaskHandler.Run(ctx)
+			foundTask, err := task.FindOneId(ctx, taskId)
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp := startTaskHandler.Run(taskCtx)
 			require.Equal(t, http.StatusOK, resp.Status())
 			require.NotNil(t, resp)
 
