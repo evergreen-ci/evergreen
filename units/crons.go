@@ -1050,6 +1050,11 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		catcher.Wrap(queue.Put(ctx, NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", utility.RoundPartOfMinute(30).Format(TSFormat)))), "enqueueing system info stats job")
 		catcher.Wrap(queue.Put(ctx, NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", utility.RoundPartOfMinute(0).Format(TSFormat)))), "enqueueing Amboy local queue stats collector job")
+
+		if !flags.PodDiagnosticsDisabled {
+			catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, NewPodDiagnosticsJob(utility.RoundPartOfMinute(0).Format(TSFormat))), "enqueueing pod diagnostics job")
+		}
+
 		return catcher.Resolve()
 
 	}

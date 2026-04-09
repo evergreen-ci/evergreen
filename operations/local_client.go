@@ -29,9 +29,10 @@ const (
 
 	daemonEnvVar = "_EVERGREEN_DAEMON_CHILD"
 
-	stepFlagName  = "step"
-	setupFlagName = "setup"
-	tailFlagName  = "tail"
+	stepFlagName        = "step"
+	setupFlagName       = "setup"
+	tailFlagName        = "tail"
+	debugTaskIDFlagName = "task-id"
 )
 
 // getRootContext walks up the cli.Context chain to find the root context,
@@ -123,9 +124,15 @@ func Debug() cli.Command {
 			},
 			{
 				Name:      "load",
-				Usage:     "Load a configuration file",
+				Usage:     "Load a configuration file or specific task ID",
 				ArgsUsage: "<config.yml>",
-				Action:    loadConfigCmd,
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:  debugTaskIDFlagName,
+						Usage: "Task ID to load configuration from (required when not on a spawn host)",
+					},
+				},
+				Action: loadConfigCmd,
 			},
 			{
 				Name:      "select",
@@ -243,6 +250,30 @@ func validateDebugSpawnHost(ctx context.Context, conf *ClientSettings) error {
 	debugSpawnHostsDisabled := utility.FromBoolPtr(project.DebugSpawnHostsDisabled)
 	if debugSpawnHostsDisabled {
 		return errors.Errorf("debug spawn hosts are disabled for project '%s'", conf.ProjectID)
+	}
+
+	return nil
+}
+
+// validateDebugLocal validates that the current user is authorized to run
+// debug commands locally.
+func validateDebugLocal(ctx context.Context, conf *ClientSettings, taskID string) error {
+	if taskID == "" {
+		return errors.New("task-id flag is required when not on a spawn host")
+	}
+
+	restClient, err := conf.setupRestCommunicator(ctx, false)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
+	defer restClient.Close()
+
+	flags, err := restClient.GetServiceFlags(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+	if flags.DebugSpawnHostDisabled {
+		return errors.New("debug spawn hosts currently disabled")
 	}
 
 	return nil
@@ -443,17 +474,8 @@ func daemonStatusCmd(c *cli.Context) error {
 // loadConfigCmd loads a configuration file. It handles OAuth authentication
 // and spawn host validation before sending the config to the daemon.
 func loadConfigCmd(c *cli.Context) error {
-	if c.NArg() < 1 {
-		return errors.New("config file path required")
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-
-	configPath, err := filepath.Abs(c.Args().Get(0))
-	if err != nil {
-		return errors.Wrap(err, "resolving config file path")
-	}
 
 	confPath := getRootContext(c).String(ConfFlagName)
 	conf, err := NewClientSettings(confPath)
@@ -461,8 +483,30 @@ func loadConfigCmd(c *cli.Context) error {
 		return errors.Wrapf(err, "finding configuration at '%s'", confPath)
 	}
 
-	if err := validateDebugSpawnHost(ctx, conf); err != nil {
-		return err
+	taskID := c.String(debugTaskIDFlagName)
+	var configPath string
+	if c.NArg() > 0 {
+		configPath, err = filepath.Abs(c.Args().Get(0))
+		if err != nil {
+			return errors.Wrap(err, "resolving config file path")
+		}
+	}
+
+	if conf.SpawnHostID != "" {
+		if configPath == "" {
+			return errors.New("config file path required when on a spawn host")
+		}
+		if err := validateDebugSpawnHost(ctx, conf); err != nil {
+			return err
+		}
+	} else {
+		if taskID == "" {
+			taskID = conf.TaskID
+		}
+		if err := validateDebugLocal(ctx, conf, taskID); err != nil {
+			return err
+		}
+		conf.TaskID = taskID
 	}
 
 	if err := conf.SetOAuthToken(ctx); err != nil {
@@ -478,13 +522,21 @@ func loadConfigCmd(c *cli.Context) error {
 		"config_path": configPath,
 		"oauth_token": conf.OAuth.AccessToken,
 	}
+	if conf.SpawnHostID == "" {
+		reqBody["task_id"] = conf.TaskID
+	}
 	resp, err := postJSON(url+"/config/load", reqBody)
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
 	}
 
-	grip.Infof(context.Background(), "Loaded configuration: %s", configPath)
-	grip.Infof(context.Background(), "Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
+	if autoSelected, ok := resp["auto_selected"].(bool); ok && autoSelected {
+		grip.Infof(context.Background(), "Loaded and auto-selected task: %v (variant: %v)", resp["selected_task"], resp["selected_variant"])
+		grip.Infof(context.Background(), "Total steps: %v", resp["step_count"])
+	} else {
+		grip.Infof(context.Background(), "Loaded configuration: %s", configPath)
+		grip.Infof(context.Background(), "Tasks: %v, Variants: %v", resp["task_count"], resp["variant_count"])
+	}
 
 	return nil
 }

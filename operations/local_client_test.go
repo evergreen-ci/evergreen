@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
+	"github.com/evergreen-ci/evergreen/rest/client"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -481,5 +483,36 @@ func TestReadAndRenderStream(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.False(t, result.Success)
 		assert.Equal(t, "exit code 1", result.Error)
+	})
+}
+
+func TestValidateDebugLocal(t *testing.T) {
+	ctx := t.Context()
+
+	validConf := &ClientSettings{
+		APIServerHost: "http://localhost",
+		User:          "testuser",
+	}
+
+	t.Run("EmptyTaskIDShouldError", func(t *testing.T) {
+		mockClient = &client.Mock{}
+		defer func() { mockClient = nil }()
+
+		err := validateDebugLocal(ctx, validConf, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "task-id flag is required")
+	})
+
+	t.Run("ServiceFlagsDisabledShouldError", func(t *testing.T) {
+		mockClient = &client.Mock{
+			MockServiceFlags: &restmodel.APIServiceFlags{
+				DebugSpawnHostDisabled: true,
+			},
+		}
+		defer func() { mockClient = nil }()
+
+		err := validateDebugLocal(ctx, validConf, "task123")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "debug spawn hosts currently disabled")
 	})
 }
