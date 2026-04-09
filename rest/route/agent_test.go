@@ -764,7 +764,7 @@ tasks:
 	ppMany.Id = manyVersionID
 	require.NoError(t, ppMany.Insert(t.Context()))
 
-	// Project ref needed for GetGitHubAppAuthForProject to find a ref and check auth.
+	// Project ref needed for GetAndValidateCheckRunGitHubAppAuth to find a ref and check auth.
 	require.NoError(t, (&model.ProjectRef{Id: projectID}).Insert(t.Context()))
 
 	fewTask := task.Task{Project: projectID, Version: fewVersionID}
@@ -777,22 +777,22 @@ tasks:
 		}))
 		defer func() { require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection)) }()
 
-		auth, err := getCheckRunGitHubAppAuth(t.Context(), &fewTask)
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &fewTask)
 		require.NotNil(t, auth)
 		assert.NoError(t, err)
 	})
 	t.Run("FewCheckRunsNoAuthShouldProceedWithNilAuth", func(t *testing.T) {
-		auth, err := getCheckRunGitHubAppAuth(t.Context(), &fewTask)
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &fewTask)
 		assert.Nil(t, auth)
 		assert.NoError(t, err)
 	})
 	t.Run("ManyCheckRunsNoAuthShouldError", func(t *testing.T) {
-		auth, err := getCheckRunGitHubAppAuth(t.Context(), &manyTask)
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &manyTask)
 		assert.Nil(t, auth)
 		assert.Error(t, err)
 	})
 	t.Run("ProjectConfigNotFoundShouldProceedWithNilAuth", func(t *testing.T) {
-		auth, err := getCheckRunGitHubAppAuth(t.Context(), &noVersionTask)
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &noVersionTask)
 		assert.Nil(t, auth)
 		assert.NoError(t, err)
 	})
@@ -826,17 +826,64 @@ func TestCheckRunHandlerRun(t *testing.T) {
 	require.NoError(t, (&model.ProjectRef{Id: projectID}).Insert(t.Context()))
 
 	// Parser project with >= threshold check runs so the handler returns an error when no auth.
-	var manyYAML strings.Builder
-	manyYAML.WriteString("buildvariants:\n  - name: bv\n    tasks:\n")
-	for i := range model.CheckRunGitHubAppAuthThreshold {
-		fmt.Fprintf(&manyYAML, "      - name: task%d\n        create_check_run:\n          path_to_outputs: output.json\n", i)
-	}
-	manyYAML.WriteString("tasks:\n")
-	for i := range model.CheckRunGitHubAppAuthThreshold {
-		fmt.Fprintf(&manyYAML, "  - name: task%d\n    commands: []\n", i)
-	}
+	manyCheckRunYAML := `
+buildvariants:
+  - name: bv
+    tasks:
+      - name: task0
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task1
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task2
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task3
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task4
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task5
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task6
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task7
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task8
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task9
+        create_check_run:
+          path_to_outputs: output.json
+tasks:
+  - name: task0
+    commands: []
+  - name: task1
+    commands: []
+  - name: task2
+    commands: []
+  - name: task3
+    commands: []
+  - name: task4
+    commands: []
+  - name: task5
+    commands: []
+  - name: task6
+    commands: []
+  - name: task7
+    commands: []
+  - name: task8
+    commands: []
+  - name: task9
+    commands: []
+`
 	var manyProj model.Project
-	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyYAML.String()), nil, projectID, &manyProj)
+	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj)
 	require.NoError(t, err)
 	ppMany.Id = manyVersionID
 	require.NoError(t, ppMany.Insert(t.Context()))

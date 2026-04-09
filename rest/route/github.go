@@ -380,7 +380,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	}
 
 	// Get the project's GitHub app auth for check run operations.
-	ghAppAuth, err := getCheckRunGitHubAppAuth(ctx, taskToRestart)
+	ghAppAuth, err := model.GetAndValidateCheckRunGitHubAppAuth(ctx, taskToRestart)
 	if err != nil {
 		return errors.Wrapf(err, "checkRun not updated for task '%s'", taskToRestart.Id)
 	}

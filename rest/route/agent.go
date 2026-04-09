@@ -1521,34 +1521,6 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 	})
 }
 
-// getCheckRunGitHubAppAuth returns the GitHub app auth for the task's project, if available. Returns an error
-// if the project doesn't have a GitHub App configured, and has more check runs configured than is allowed.
-func getCheckRunGitHubAppAuth(ctx context.Context, t *task.Task) (*githubapp.GithubAppAuth, error) {
-	ghAppAuth := model.GetGitHubAppAuthForProject(ctx, t.Project)
-	if ghAppAuth != nil {
-		return ghAppAuth, nil
-	}
-	// Only load the project config in the nil-auth case to count check runs.
-	p, err := model.FindProjectFromVersionID(ctx, t.Version)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading project config for check run operation")
-	}
-	if p == nil {
-		return nil, errors.New("project config not found for check run operation")
-	}
-	checkRunCount := p.CountCheckRuns()
-	if checkRunCount < model.CheckRunGitHubAppAuthThreshold {
-		return nil, nil
-	}
-	grip.Debug(ctx, message.Fields{
-		"message":         "check run operation skipped, project has no GitHub app configured",
-		"task_id":         t.Id,
-		"project":         t.Project,
-		"check_run_count": checkRunCount,
-	})
-	return nil, errors.Errorf("project '%s' has no GitHub app configured and has more than %d check runs configured", t.Project, model.CheckRunGitHubAppAuthThreshold)
-}
-
 // POST /task/{task_id}/check_run
 type checkRunHandler struct {
 	taskID         string
@@ -1623,7 +1595,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Get the project's GitHub app auth for check run operations.
-	ghAppAuth, err := getCheckRunGitHubAppAuth(ctx, t)
+	ghAppAuth, err := model.GetAndValidateCheckRunGitHubAppAuth(ctx, t)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
