@@ -677,3 +677,106 @@ tasks:
 		assert.Equal(t, "custom_value", executor.debugState.CustomVars["custom_key"])
 	})
 }
+
+func TestRebuildCommandList(t *testing.T) {
+	t.Run("StandaloneCommandHasCommandName", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: test-task
+    commands:
+      - command: shell.exec
+        params:
+          script: echo "test"
+      - command: s3.put
+        params:
+          aws_key: key
+          aws_secret: secret
+          local_file: file.txt
+          remote_file: remote.txt
+          bucket: bucket
+`
+		require.NoError(t, os.WriteFile(yamlFile, []byte(yamlContent), 0644))
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask(t.Context(), "test-task", ""))
+
+		require.Len(t, executor.debugState.CommandList, 2)
+		assert.Equal(t, "shell.exec", executor.debugState.CommandList[0].CommandName)
+		assert.Equal(t, "s3.put", executor.debugState.CommandList[1].CommandName)
+	})
+
+	t.Run("FunctionExpandedCommandHasCommandName", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+functions:
+  my_func:
+    - command: shell.exec
+      params:
+        script: echo "in func"
+    - command: s3.put
+      params:
+        aws_key: key
+        aws_secret: secret
+        local_file: file.txt
+        remote_file: remote.txt
+        bucket: bucket
+tasks:
+  - name: test-task
+    commands:
+      - func: my_func
+`
+		require.NoError(t, os.WriteFile(yamlFile, []byte(yamlContent), 0644))
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask(t.Context(), "test-task", ""))
+
+		require.Len(t, executor.debugState.CommandList, 2)
+		assert.Equal(t, "shell.exec", executor.debugState.CommandList[0].CommandName)
+		assert.Equal(t, "s3.put", executor.debugState.CommandList[1].CommandName)
+	})
+
+	t.Run("NoOpCommandInFunctionIsDetected", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+functions:
+  upload_func:
+    - command: s3.put
+      params:
+        aws_key: key
+        aws_secret: secret
+        local_file: file.txt
+        remote_file: remote.txt
+        bucket: bucket
+tasks:
+  - name: test-task
+    commands:
+      - func: upload_func
+`
+		require.NoError(t, os.WriteFile(yamlFile, []byte(yamlContent), 0644))
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+		require.NoError(t, executor.PrepareTask(t.Context(), "test-task", ""))
+
+		require.Len(t, executor.debugState.CommandList, 1)
+		cmdInfo := executor.debugState.CommandList[0]
+		assert.Equal(t, "s3.put", cmdInfo.CommandName)
+		_, isNoOp := noOpCommands[cmdInfo.CommandName]
+		assert.True(t, isNoOp, "s3.put inside a function should be detected as a noOp command")
+	})
+}

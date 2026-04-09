@@ -521,7 +521,9 @@ func loadConfigCmd(c *cli.Context) error {
 	reqBody := map[string]string{
 		"config_path": configPath,
 		"oauth_token": conf.OAuth.AccessToken,
-		"task_id":     conf.TaskID,
+	}
+	if conf.SpawnHostID == "" {
+		reqBody["task_id"] = conf.TaskID
 	}
 	resp, err := postJSON(url+"/config/load", reqBody)
 	if err != nil {
