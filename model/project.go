@@ -1519,14 +1519,20 @@ func (p *Project) CountCheckRuns() int {
 	return count
 }
 
-// CheckRunLimitExceeded reports whether numCheckRuns exceeds the applicable limit.
-// If the project has a GitHub app configured, the admin-configured settingsLimit applies (when > 0).
+// VerifyCheckRunLimit returns an error if numCheckRuns exceeds the applicable limit.
+// If the project has a GitHub app configured, the admin-configured settingsLimit applies.
 // If the project has no GitHub app configured, CheckRunGitHubAppAuthThreshold applies instead.
-func CheckRunLimitExceeded(numCheckRuns, settingsLimit int, hasGitHubAppAuth bool) bool {
+func VerifyCheckRunLimit(numCheckRuns, settingsLimit int, hasGitHubAppAuth bool) error {
 	if hasGitHubAppAuth {
-		return numCheckRuns > settingsLimit
+		if numCheckRuns > settingsLimit {
+			return errors.Errorf("total number of check runs (%d) exceeds maximum limit (%d)", numCheckRuns, settingsLimit)
+		}
+		return nil
 	}
-	return numCheckRuns > CheckRunGitHubAppAuthThreshold
+	if numCheckRuns > CheckRunGitHubAppAuthThreshold {
+		return errors.Errorf("total number of check runs (%d) exceeds maximum limit without a configured GitHub App (%d)", numCheckRuns, CheckRunGitHubAppAuthThreshold)
+	}
+	return nil
 }
 
 func (p *Project) getNumCheckRuns(taskName, variantName string) int {

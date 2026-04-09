@@ -1040,15 +1040,11 @@ func validateGitHubAppCheckRuns(ctx context.Context, settings *evergreen.Setting
 	if numCheckRuns == 0 {
 		return errs
 	}
-	hasAppAuth := ref.HasGitHubAppAuth(ctx)
-	if model.CheckRunLimitExceeded(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, hasAppAuth) {
-		var msg string
-		if hasAppAuth {
-			msg = fmt.Sprintf("check runs will be skipped; total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, settings.GitHubCheckRun.CheckRunLimit)
-		} else {
-			msg = fmt.Sprintf("check runs will be skipped; total number of checkRuns (%d) exceeds maximum limit without configured GitHub App (%d)", numCheckRuns, model.CheckRunGitHubAppAuthThreshold)
-		}
-		errs = append(errs, ValidationError{Message: msg, Level: Warning})
+	if err := model.VerifyCheckRunLimit(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, ref.HasGitHubAppAuth(ctx)); err != nil {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("check runs will be skipped; %s", err.Error()),
+			Level:   Warning,
+		})
 	}
 	return errs
 }

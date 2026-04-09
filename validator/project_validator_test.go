@@ -2932,7 +2932,7 @@ func TestValidateGitHubAppCheckRuns(t *testing.T) {
 		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithManyCheckRuns, ref, false)
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "exceeds maximum limit without configured GitHub App")
+		assert.Contains(t, errs[0].Message, "exceeds maximum limit without a configured GitHub App")
 	})
 	t.Run("CheckRunsWithAppAuth", func(t *testing.T) {
 		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
