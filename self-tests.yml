@@ -607,64 +607,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     name: test-repotracker
     tags: ["db", "test"]
-  - name: test-s3-cost-tracking
-    commands:
-      - command: shell.exec
-        display_name: Create test files of varying sizes
-        params:
-          shell: bash
-          script: |
-            set -o errexit
-            set -o verbose
-            mkdir -p s3-cost-test-files
-
-            # Small file (~1KB) - single PUT request
-            dd if=/dev/urandom of=s3-cost-test-files/small-1kb.bin bs=1024 count=1
-
-            # Medium file (~3MB) - single PUT request (under 5MB threshold)
-            dd if=/dev/urandom of=s3-cost-test-files/medium-3mb.bin bs=1048576 count=3
-
-            # Large file (~10MB) - multipart upload (above 5MB threshold)
-            dd if=/dev/urandom of=s3-cost-test-files/large-10mb.bin bs=1048576 count=10
-
-            # Extra large file (~25MB) - multipart upload with several parts
-            dd if=/dev/urandom of=s3-cost-test-files/xlarge-25mb.bin bs=1048576 count=25
-
-            # List files with sizes for verification
-            ls -lh s3-cost-test-files/
-      - command: s3.put
-        display_name: Upload single small file
-        params:
-          role_arn: ${assume_role_arn}
-          local_file: s3-cost-test-files/small-1kb.bin
-          remote_file: evergreen/${task_id}/s3-cost-test/small-1kb.bin
-          bucket: mciuploads
-          content_type: binary/octet-stream
-          permissions: private
-          visibility: signed
-          display_name: "Small file (1KB)"
-      - command: s3.put
-        display_name: Upload single large file
-        params:
-          role_arn: ${assume_role_arn}
-          local_file: s3-cost-test-files/xlarge-25mb.bin
-          remote_file: evergreen/${task_id}/s3-cost-test/xlarge-25mb.bin
-          bucket: mciuploads
-          content_type: binary/octet-stream
-          permissions: private
-          visibility: signed
-          display_name: "Extra large file (25MB)"
-      - command: s3.put
-        display_name: Upload multiple files via glob
-        params:
-          role_arn: ${assume_role_arn}
-          local_files_include_filter: s3-cost-test-files/*.bin
-          remote_file: evergreen/${task_id}/s3-cost-test-multi/
-          bucket: mciuploads
-          content_type: binary/octet-stream
-          permissions: private
-          visibility: signed
-          display_name: "(S3 cost test files)"
   - name: verify-swaggo-fmt
     tags: ["linter"]
     commands:
@@ -921,7 +863,6 @@ buildvariants:
       - name: test-cloud
       - name: generate-api-docs
       - name: generate-graphql-merged-schema
-      - name: test-s3-cost-tracking
 
   - name: race-detector
     display_name: Race Detector
