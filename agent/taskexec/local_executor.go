@@ -320,9 +320,9 @@ func (e *LocalExecutor) stepNext(ctx context.Context) error {
 
 	startTime := time.Now()
 
-	_, isNoOp := noOpCommands[targetCmd.CommandName]
+	_, isNoOp := noOpCommands[targetCmd.Command.Command]
 	if isNoOp {
-		noOpMsg := e.getNoOpMessage(targetCmd.CommandName)
+		noOpMsg := e.getNoOpMessage(targetCmd.Command.Command)
 		if e.streamWriter != nil {
 			e.streamWriter.WriteChannelMessage(ExecChannel, noOpMsg)
 		}
@@ -736,7 +736,6 @@ func (e *LocalExecutor) rebuildCommandList() error {
 				e.debugState.CommandList = append(e.debugState.CommandList, CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
-					CommandName:    cmd.Command,
 					DisplayName:    cmd.GetDisplayName(),
 					IsFunction:     cmd.Function != "",
 					FunctionName:   cmd.Function,
@@ -758,7 +757,6 @@ func (e *LocalExecutor) rebuildCommandList() error {
 				info := CommandInfo{
 					Index:          globalIndex,
 					Command:        cmd,
-					CommandName:    rcmd.Name(),
 					DisplayName:    displayName,
 					IsFunction:     cmd.Function != "",
 					FunctionName:   cmd.Function,
