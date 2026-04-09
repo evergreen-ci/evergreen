@@ -699,26 +699,40 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 	}
 }
 
-// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
-// for the given file key.
-func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
+// findLifecycleTierInfoForFileKey returns the storage tier info from the most specific lifecycle rule for the given file key.
+func findLifecycleTierInfoForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (s3usage.StorageTierInfo, bool) {
 	pailRules := make([]pail.LifecycleRule, 0, len(rules))
 	for _, ruleDoc := range rules {
-		var expDays *int32
+		var expDays, iaDays, glacierDays *int32
 		if ruleDoc.ExpirationDays != nil {
 			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
 		}
+		if ruleDoc.TransitionToIADays != nil {
+			iaDays = utility.ToInt32Ptr(int32(*ruleDoc.TransitionToIADays))
+		}
+		if ruleDoc.TransitionToGlacierDays != nil {
+			glacierDays = utility.ToInt32Ptr(int32(*ruleDoc.TransitionToGlacierDays))
+		}
 		pailRules = append(pailRules, pail.LifecycleRule{
-			Prefix:         ruleDoc.FilterPrefix,
-			Status:         ruleDoc.RuleStatus,
-			ExpirationDays: expDays,
+			Prefix:                  ruleDoc.FilterPrefix,
+			Status:                  ruleDoc.RuleStatus,
+			ExpirationDays:          expDays,
+			TransitionToIADays:      iaDays,
+			TransitionToGlacierDays: glacierDays,
 		})
 	}
 	rule := pail.FindMatchingRule(pailRules, fileKey)
 	if rule == nil || rule.ExpirationDays == nil {
-		return 0, false
+		return s3usage.StorageTierInfo{}, false
 	}
-	return int(*rule.ExpirationDays), true
+	tierInfo := s3usage.StorageTierInfo{ExpirationDays: int(*rule.ExpirationDays)}
+	if rule.TransitionToIADays != nil {
+		tierInfo.TransitionToIADays = int(*rule.TransitionToIADays)
+	}
+	if rule.TransitionToGlacierDays != nil {
+		tierInfo.TransitionToGlacierDays = int(*rule.TransitionToGlacierDays)
+	}
+	return tierInfo, true
 }
 
 // POST /rest/v2/task/{task_id}/s3_usage
@@ -753,20 +767,25 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	t.S3Usage = h.s3Usage
 
-	allRules, err := s3lifecycle.FindAllRules(ctx)
-	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "getting S3 lifecycle rules for storage cost calculation, skipping storage cost calculation",
+	rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+	var rulesErr error
+	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
+		rules, err := s3lifecycle.FindAllRulesForBucket(ctx, bucketEntry.Bucket)
+		if err != nil {
+			rulesErr = err
+			break
+		}
+		rulesByBucket[bucketEntry.Bucket] = rules
+	}
+	var lookup func(ctx context.Context, bucket, fileKey string) (s3usage.StorageTierInfo, bool)
+	if rulesErr != nil {
+		grip.Debug(ctx, message.WrapError(rulesErr, message.Fields{
+			"message": "getting S3 lifecycle rules for storage cost calculation",
 			"task_id": t.Id,
 		}))
 	} else {
-		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
-		for _, rule := range allRules {
-			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
-		}
-		lookup = func(ctx context.Context, bucket, fileKey string) (int, bool) {
-			return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
+		lookup = func(ctx context.Context, bucket, fileKey string) (s3usage.StorageTierInfo, bool) {
+			return findLifecycleTierInfoForFileKey(rulesByBucket[bucket], fileKey)
 		}
 	}
 
@@ -776,9 +795,9 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
-		grip.Error(ctx, errors.Wrapf(err, "finding version '%s' to update aggregate task costs", t.Version))
+		grip.Debug(ctx, errors.Wrapf(err, "finding version '%s' to update aggregate task costs", t.Version))
 	} else if v != nil && evergreen.IsFinishedVersionStatus(v.Status) {
-		grip.Error(ctx, errors.Wrapf(v.UpdateAggregateTaskCosts(ctx), "updating aggregate task costs for version '%s' after S3 usage report", v.Id))
+		grip.Debug(ctx, errors.Wrapf(v.UpdateAggregateTaskCosts(ctx), "updating aggregate task costs for version '%s' after S3 usage report", v.Id))
 	}
 
 	var avgFilePutCost, maxFilePutCost, minFilePutCost float64

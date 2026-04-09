@@ -5264,8 +5264,8 @@ func TestSaveS3Usage(t *testing.T) {
 				})
 				u.IncrementLogs(50, 500000)
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) {
-				return 0, false
+			lookup: func(_ context.Context, _, _ string) (s3usage.StorageTierInfo, bool) {
+				return s3usage.StorageTierInfo{}, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
@@ -5306,8 +5306,8 @@ func TestSaveS3Usage(t *testing.T) {
 					},
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) {
-				return 0, false
+			lookup: func(_ context.Context, _, _ string) (s3usage.StorageTierInfo, bool) {
+				return s3usage.StorageTierInfo{}, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
@@ -5339,12 +5339,25 @@ func TestSaveS3Usage(t *testing.T) {
 					Files:       singleFileArtifact,
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) {
-				return 90, true
+			lookup: func(_ context.Context, _, _ string) (s3usage.StorageTierInfo, bool) {
+				return s3usage.StorageTierInfo{
+					ExpirationDays:          90,
+					TransitionToIADays:      30,
+					TransitionToGlacierDays: 90,
+				}, true
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
-				expectedCost := s3usage.CalculateS3StorageCostWithConfig(ctx, 5*1024*1024, 90, &defaultCostConfig)
+				expectedCost := s3usage.CalculateS3StorageCostWithConfig(
+					ctx,
+					5*1024*1024,
+					s3usage.StorageTierInfo{
+						ExpirationDays:          90,
+						TransitionToIADays:      30,
+						TransitionToGlacierDays: 90,
+					},
+					&defaultCostConfig,
+				)
 				assert.InDelta(t, expectedCost, dbTask.TaskCost.S3ArtifactStorageCost, 0.0001)
 			},
 		},
@@ -5359,12 +5372,17 @@ func TestSaveS3Usage(t *testing.T) {
 					Files:       singleFileArtifact,
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) {
-				return 0, false
+			lookup: func(_ context.Context, _, _ string) (s3usage.StorageTierInfo, bool) {
+				return s3usage.StorageTierInfo{}, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
-				expectedCost := s3usage.CalculateS3StorageCostWithConfig(ctx, 5*1024*1024, 365, &defaultCostConfig)
+				expectedCost := s3usage.CalculateS3StorageCostWithConfig(
+					ctx,
+					5*1024*1024,
+					s3usage.StorageTierInfo{ExpirationDays: 365},
+					&defaultCostConfig,
+				)
 				assert.InDelta(t, expectedCost, dbTask.TaskCost.S3ArtifactStorageCost, 0.0001)
 			},
 		},

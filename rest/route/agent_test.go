@@ -1145,14 +1145,17 @@ func TestReportS3Usage(t *testing.T) {
 	}
 }
 
-func TestFindExpirationDaysForFileKey(t *testing.T) {
+func TestFindLifecycleTierInfoForFileKey(t *testing.T) {
 	enabled := "Enabled"
 	disabled := "Disabled"
+	days365 := 365
 	days90 := 90
 	days30 := 30
+	iaDays60 := 60
+	glacierDays180 := 180
 
 	t.Run("NoRulesShouldReturnNotFound", func(t *testing.T) {
-		_, ok := findExpirationDaysForFileKey(nil, "logs/build/output.txt")
+		_, ok := findLifecycleTierInfoForFileKey(nil, "logs/build/output.txt")
 		assert.False(t, ok)
 	})
 
@@ -1160,17 +1163,34 @@ func TestFindExpirationDaysForFileKey(t *testing.T) {
 		rules := []s3lifecycle.S3LifecycleRuleDoc{
 			{FilterPrefix: "sandbox/", RuleStatus: enabled, ExpirationDays: &days90},
 		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		_, ok := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt")
 		assert.False(t, ok)
 	})
 
-	t.Run("MatchingPrefixShouldReturnDays", func(t *testing.T) {
+	t.Run("MatchingPrefixShouldReturnExpirationDays", func(t *testing.T) {
 		rules := []s3lifecycle.S3LifecycleRuleDoc{
 			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
 		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		tierInfo, ok := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt")
 		assert.True(t, ok)
-		assert.Equal(t, 90, days)
+		assert.Equal(t, 90, tierInfo.ExpirationDays)
+	})
+
+	t.Run("MatchingPrefixShouldReturnTransitionDays", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{
+				FilterPrefix:            "artifacts/",
+				RuleStatus:              enabled,
+				ExpirationDays:          &days365,
+				TransitionToIADays:      &iaDays60,
+				TransitionToGlacierDays: &glacierDays180,
+			},
+		}
+		tierInfo, ok := findLifecycleTierInfoForFileKey(rules, "artifacts/build/binary.tar.gz")
+		assert.True(t, ok)
+		assert.Equal(t, 365, tierInfo.ExpirationDays)
+		assert.Equal(t, 60, tierInfo.TransitionToIADays)
+		assert.Equal(t, 180, tierInfo.TransitionToGlacierDays)
 	})
 
 	t.Run("MostSpecificPrefixShouldWin", func(t *testing.T) {
@@ -1178,16 +1198,16 @@ func TestFindExpirationDaysForFileKey(t *testing.T) {
 			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
 			{FilterPrefix: "logs/build/", RuleStatus: enabled, ExpirationDays: &days30},
 		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		tierInfo, ok := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt")
 		assert.True(t, ok)
-		assert.Equal(t, 30, days)
+		assert.Equal(t, 30, tierInfo.ExpirationDays)
 	})
 
 	t.Run("DisabledRuleShouldBeIgnored", func(t *testing.T) {
 		rules := []s3lifecycle.S3LifecycleRuleDoc{
 			{FilterPrefix: "logs/", RuleStatus: disabled, ExpirationDays: &days90},
 		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		_, ok := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt")
 		assert.False(t, ok)
 	})
 
@@ -1195,7 +1215,7 @@ func TestFindExpirationDaysForFileKey(t *testing.T) {
 		rules := []s3lifecycle.S3LifecycleRuleDoc{
 			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: nil},
 		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		_, ok := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt")
 		assert.False(t, ok)
 	})
 }

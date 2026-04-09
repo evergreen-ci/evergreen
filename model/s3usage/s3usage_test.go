@@ -244,6 +244,64 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 
 }
 
+func TestStorageTierDays(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		tierInfo     StorageTierInfo
+		wantStandard int
+		wantIA       int
+		wantArchive  int
+	}{
+		{
+			name: "BothIAAndGlacierTransitions",
+			tierInfo: StorageTierInfo{
+				ExpirationDays:          180,
+				TransitionToIADays:      30,
+				TransitionToGlacierDays: 90,
+			},
+			wantStandard: 30,
+			wantIA:       60,
+			wantArchive:  90,
+		},
+		{
+			name: "IATransitionOnly",
+			tierInfo: StorageTierInfo{
+				ExpirationDays:     60,
+				TransitionToIADays: 30,
+			},
+			wantStandard: 30,
+			wantIA:       30,
+			wantArchive:  0,
+		},
+		{
+			name: "GlacierTransitionOnly",
+			tierInfo: StorageTierInfo{
+				ExpirationDays:          90,
+				TransitionToGlacierDays: 30,
+			},
+			wantStandard: 30,
+			wantIA:       0,
+			wantArchive:  60,
+		},
+		{
+			name: "NoTransitions",
+			tierInfo: StorageTierInfo{
+				ExpirationDays: 30,
+			},
+			wantStandard: 30,
+			wantIA:       0,
+			wantArchive:  0,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			standard, ia, archive := storageTierDays(tc.tierInfo)
+			assert.Equal(t, tc.wantStandard, standard)
+			assert.Equal(t, tc.wantIA, ia)
+			assert.Equal(t, tc.wantArchive, archive)
+		})
+	}
+}
+
 func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 	validConfig := &evergreen.CostConfig{
 		S3Cost: evergreen.S3CostConfig{
@@ -258,13 +316,13 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 	const GB = 1024 * 1024 * 1024
 
 	t.Run("DefaultArtifacts365Days", func(t *testing.T) {
-		// ExpirationDays=365: Standard=30, IA=60, Archive=275
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, validConfig)
+		// ExpirationDays=365, default transitions (IA=30, Glacier=90): Standard=30, IA=60, Archive=275
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{
+			ExpirationDays:          365,
+			TransitionToIADays:      30,
+			TransitionToGlacierDays: 90,
+		}, validConfig)
 		assert.Greater(t, cost, 0.0)
-		// Verify tier breakdown manually:
-		// Standard: 30 * (0.023/GB/30) * (1-0.37) = 0.023 * 0.63
-		// IA:       60 * (0.0125/GB/30) * (1-0.312) = 2 * 0.0125 * 0.688
-		// Archive:  275 * (0.004/GB/30) * (1-0.265)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		archive := 275.0 * (0.004 / float64(GB) / 30.0) * (1 - 0.265)
@@ -273,8 +331,12 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 	})
 
 	t.Run("MongoDBMongoArtifacts90Days", func(t *testing.T) {
-		// ExpirationDays=90: Standard=30, IA=60, Archive=0
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 90, validConfig)
+		// ExpirationDays=90, default transitions (IA=30, Glacier=90): Standard=30, IA=60, Archive=0
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{
+			ExpirationDays:          90,
+			TransitionToIADays:      30,
+			TransitionToGlacierDays: 90,
+		}, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		expected := float64(GB) * (standard + ia)
@@ -282,8 +344,12 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 	})
 
 	t.Run("MongoSyncArtifacts180Days", func(t *testing.T) {
-		// ExpirationDays=180: Standard=30, IA=60, Archive=90
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 180, validConfig)
+		// ExpirationDays=180, default transitions (IA=30, Glacier=90): Standard=30, IA=60, Archive=90
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{
+			ExpirationDays:          180,
+			TransitionToIADays:      30,
+			TransitionToGlacierDays: 90,
+		}, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		archive := 90.0 * (0.004 / float64(GB) / 30.0) * (1 - 0.265)
@@ -291,39 +357,66 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 		assert.InDelta(t, expected, cost, 0.000001)
 	})
 
-	t.Run("DefaultLog60Days", func(t *testing.T) {
-		// ExpirationDays=60: Standard=30, IA=30, Archive=0
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 60, validConfig)
+	t.Run("DefaultLog60DaysWithIATransition", func(t *testing.T) {
+		// ExpirationDays=60, IA=30, no glacier: Standard=30, IA=30, Archive=0
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{
+			ExpirationDays:     60,
+			TransitionToIADays: 30,
+		}, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 30.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		expected := float64(GB) * (standard + ia)
 		assert.InDelta(t, expected, cost, 0.000001)
 	})
 
-	t.Run("FailedLog180Days", func(t *testing.T) {
-		// ExpirationDays=180: Standard=30, IA=60, Archive=90
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 180, validConfig)
-		assert.Greater(t, cost, 0.0)
+	t.Run("StandardOnlyBucket365Days", func(t *testing.T) {
+		// No tier transitions: object stays in Standard for all 365 days
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{
+			ExpirationDays: 365,
+		}, validConfig)
+		standard := 365.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
+		expected := float64(GB) * standard
+		assert.InDelta(t, expected, cost, 0.000001)
 	})
 
-	t.Run("LongRetentionLog365Days", func(t *testing.T) {
-		// ExpirationDays=365: Standard=30, IA=60, Archive=275
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, validConfig)
-		assert.Greater(t, cost, 0.0)
+	t.Run("NonDefaultTransitions365Days", func(t *testing.T) {
+		// IA=60, Glacier=180: Standard=60, IA=120, Archive=185
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{
+			ExpirationDays:          365,
+			TransitionToIADays:      60,
+			TransitionToGlacierDays: 180,
+		}, validConfig)
+		standard := 60.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
+		ia := 120.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
+		archive := 185.0 * (0.004 / float64(GB) / 30.0) * (1 - 0.265)
+		expected := float64(GB) * (standard + ia + archive)
+		assert.InDelta(t, expected, cost, 0.000001)
+	})
+
+	t.Run("IATransitionWithoutGlacier365Days", func(t *testing.T) {
+		// IA transition at 30 days, no glacier: Standard=30, IA=335, Archive=0
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{
+			ExpirationDays:     365,
+			TransitionToIADays: 30,
+		}, validConfig)
+		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
+		ia := 335.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
+		expected := float64(GB) * (standard + ia)
+		assert.InDelta(t, expected, cost, 0.000001)
 	})
 
 	t.Run("ZeroBytes", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(t.Context(), 0, 365, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), 0, StorageTierInfo{ExpirationDays: 365}, validConfig)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("ZeroExpirationDays", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 0, validConfig)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{}, validConfig)
 		assert.Equal(t, 0.0, cost)
 	})
 
 	t.Run("NilConfig", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, nil)
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{ExpirationDays: 365}, nil)
 		assert.Equal(t, 0.0, cost)
 	})
 }

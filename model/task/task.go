@@ -4323,8 +4323,8 @@ func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 
-// bucketExpirationLookup resolves the S3 lifecycle expiration days for a given artifact file.
-type bucketExpirationLookup func(ctx context.Context, bucket, fileKey string) (days int, found bool)
+// bucketExpirationLookup resolves the S3 lifecycle tier info for a given artifact file.
+type bucketExpirationLookup func(ctx context.Context, bucket, fileKey string) (s3usage.StorageTierInfo, bool)
 
 // SaveS3Usage persists the task's S3 usage metrics and calculates S3 costs.
 func (t *Task) SaveS3Usage(ctx context.Context, lookup bucketExpirationLookup) error {
@@ -4346,14 +4346,16 @@ func (t *Task) SaveS3Usage(ctx context.Context, lookup bucketExpirationLookup) e
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
 }
 
-// resolveArtifactExpirationDays looks up the expiration days for an artifact, falling back to DefaultMaxArtifactExpirationDays if no matching rule is found.
-func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (days int, found bool) {
+// resolveArtifactStorageTierInfo returns the storage tier info for an artifact, falling back to the configured default expiration.
+func resolveArtifactStorageTierInfo(ctx context.Context, bucket, fileKey string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (s3usage.StorageTierInfo, bool) {
 	if lookup != nil {
-		if days, ok := lookup(ctx, bucket, fileKey); ok {
-			return days, true
+		if tierInfo, ok := lookup(ctx, bucket, fileKey); ok {
+			return tierInfo, true
 		}
 	}
-	return costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, false
+	return s3usage.StorageTierInfo{
+		ExpirationDays: costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+	}, false
 }
 
 // calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
@@ -4373,7 +4375,7 @@ func (t *Task) setS3StorageCosts(ctx context.Context, lookup bucketExpirationLoo
 	}
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
 		for _, fileEntry := range bucketEntry.Files {
-			days, found := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
+			tierInfo, found := resolveArtifactStorageTierInfo(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
 			if !found {
 				grip.Info(ctx, message.Fields{
 					"message": "no S3 lifecycle rule found for artifact bucket, using default expiration days",
@@ -4381,7 +4383,7 @@ func (t *Task) setS3StorageCosts(ctx context.Context, lookup bucketExpirationLoo
 					"task_id": t.Id,
 				})
 			}
-			t.TaskCost.S3ArtifactStorageCost += s3usage.CalculateS3StorageCostWithConfig(ctx, fileEntry.Bytes, days, costConfig)
+			t.TaskCost.S3ArtifactStorageCost += s3usage.CalculateS3StorageCostWithConfig(ctx, fileEntry.Bytes, tierInfo, costConfig)
 		}
 	}
 }

@@ -74,8 +74,6 @@ const (
 	S3StandardPricePerGBMonth = 0.023
 	S3IAPricePerGBMonth       = 0.0125
 	S3ArchivePricePerGBMonth  = 0.004
-	S3TransitionToIADays      = 30
-	S3TransitionToArchiveDays = 90
 	S3BytesPerGB              = 1024 * 1024 * 1024
 	S3DaysPerMonth            = 30.0
 )
@@ -182,15 +180,19 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 	return float64(putRequests) * S3PutRequestCost * (1 - discount)
 }
 
-// CalculateS3StorageCostWithConfig calculates the S3 storage cost for uploadBytes over their retention period
-// using the bucket's Intelligent Tiering schedule. expirationDays must be positive; buckets without a
-// lifecycle expiration policy have no defined retention period and cannot have their cost calculated, so
-// this function returns 0 for them. Returns 0 if config is nil.
-func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, expirationDays int, costConfig *evergreen.CostConfig) float64 {
+// StorageTierInfo holds the S3 lifecycle tier configuration for a bucket rule. Zero transition days mean no transition to that tier.
+type StorageTierInfo struct {
+	ExpirationDays          int
+	TransitionToIADays      int
+	TransitionToGlacierDays int
+}
+
+// CalculateS3StorageCostWithConfig calculates the S3 storage cost for uploadBytes over their retention period.
+func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, tierInfo StorageTierInfo, costConfig *evergreen.CostConfig) float64 {
 	if uploadBytes <= 0 {
 		return 0.0
 	}
-	if expirationDays <= 0 {
+	if tierInfo.ExpirationDays <= 0 {
 		return 0.0
 	}
 	if costConfig == nil {
@@ -204,11 +206,7 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 	iaDiscount := costConfig.S3Cost.Storage.IAStorageCostDiscount
 	archiveDiscount := costConfig.S3Cost.Storage.ArchiveStorageCostDiscount
 
-	// Each variable represents how many days the object spends in that Intelligent Tiering tier:
-	// Standard (days 0–30), Infrequent Access (days 30–90), Archive (days 90+).
-	daysInStandard := min(expirationDays, S3TransitionToIADays)
-	daysInIA := max(0, min(expirationDays, S3TransitionToArchiveDays)-S3TransitionToIADays)
-	daysInArchive := max(0, expirationDays-S3TransitionToArchiveDays)
+	daysInStandard, daysInIA, daysInArchive := storageTierDays(tierInfo)
 
 	pricePerBytePerDay := func(pricePerGBMonth float64) float64 {
 		return pricePerGBMonth / S3BytesPerGB / S3DaysPerMonth
@@ -219,6 +217,35 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 	archiveCost := float64(daysInArchive) * pricePerBytePerDay(S3ArchivePricePerGBMonth) * (1 - archiveDiscount)
 
 	return float64(uploadBytes) * (standardCost + iaCost + archiveCost)
+}
+
+// storageTierDays returns how many days an object spends in each S3 storage tier given its lifecycle rule.
+func storageTierDays(tierInfo StorageTierInfo) (daysInStandard, daysInIA, daysInArchive int) {
+	iaTransitionDays := tierInfo.TransitionToIADays
+	glacierTransitionDays := tierInfo.TransitionToGlacierDays
+	expirationDays := tierInfo.ExpirationDays
+
+	firstTransitionDays := expirationDays
+	if iaTransitionDays > 0 {
+		firstTransitionDays = iaTransitionDays
+	} else if glacierTransitionDays > 0 {
+		firstTransitionDays = glacierTransitionDays
+	}
+	daysInStandard = min(expirationDays, firstTransitionDays)
+
+	if iaTransitionDays > 0 {
+		iaEndDays := expirationDays
+		if glacierTransitionDays > 0 {
+			iaEndDays = glacierTransitionDays
+		}
+		daysInIA = max(0, min(expirationDays, iaEndDays)-iaTransitionDays)
+	}
+
+	if glacierTransitionDays > 0 {
+		daysInArchive = max(0, expirationDays-glacierTransitionDays)
+	}
+
+	return daysInStandard, daysInIA, daysInArchive
 }
 
 // ArtifactIncrementOptions holds the parameters for incrementing artifact upload metrics.
