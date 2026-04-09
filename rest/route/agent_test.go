@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -721,6 +720,7 @@ func TestGetCheckRunGitHubAppAuth(t *testing.T) {
 	require.NoError(t, db.ClearCollections(
 		model.VersionCollection, model.ParserProjectCollection,
 		githubapp.GitHubAppAuthCollection, model.ProjectRefCollection,
+		fakeparameter.Collection,
 	))
 
 	const (
@@ -749,17 +749,64 @@ tasks:
 	ppFew.Id = fewVersionID
 	require.NoError(t, ppFew.Insert(t.Context()))
 
-	var manyYAML strings.Builder
-	manyYAML.WriteString("buildvariants:\n  - name: bv\n    tasks:\n")
-	for i := range model.CheckRunGitHubAppAuthThreshold {
-		fmt.Fprintf(&manyYAML, "      - name: task%d\n        create_check_run:\n          path_to_outputs: output.json\n", i)
-	}
-	manyYAML.WriteString("tasks:\n")
-	for i := range model.CheckRunGitHubAppAuthThreshold {
-		fmt.Fprintf(&manyYAML, "  - name: task%d\n    commands: []\n", i)
-	}
+	manyCheckRunYAML := `
+buildvariants:
+  - name: bv
+    tasks:
+      - name: task0
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task1
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task2
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task3
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task4
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task5
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task6
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task7
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task8
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task9
+        create_check_run:
+          path_to_outputs: output.json
+tasks:
+  - name: task0
+    commands: []
+  - name: task1
+    commands: []
+  - name: task2
+    commands: []
+  - name: task3
+    commands: []
+  - name: task4
+    commands: []
+  - name: task5
+    commands: []
+  - name: task6
+    commands: []
+  - name: task7
+    commands: []
+  - name: task8
+    commands: []
+  - name: task9
+    commands: []
+`
 	var manyProj model.Project
-	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyYAML.String()), nil, projectID, &manyProj)
+	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj)
 	require.NoError(t, err)
 	ppMany.Id = manyVersionID
 	require.NoError(t, ppMany.Insert(t.Context()))
@@ -772,10 +819,13 @@ tasks:
 	noVersionTask := task.Task{Project: projectID, Version: "nonexistent_version"}
 
 	t.Run("AuthExistsShouldProceed", func(t *testing.T) {
-		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
-			Id: projectID, AppID: 12345,
+		require.NoError(t, githubapp.UpsertGitHubAppAuth(t.Context(), &githubapp.GithubAppAuth{
+			Id: projectID, AppID: 12345, PrivateKey: []byte("fake-private-key"),
 		}))
-		defer func() { require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection)) }()
+		defer func() {
+			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+			require.NoError(t, db.Clear(fakeparameter.Collection))
+		}()
 
 		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &fewTask)
 		require.NotNil(t, auth)
@@ -791,10 +841,10 @@ tasks:
 		assert.Nil(t, auth)
 		assert.Error(t, err)
 	})
-	t.Run("ProjectConfigNotFoundShouldProceedWithNilAuth", func(t *testing.T) {
+	t.Run("ProjectConfigNotFoundShouldError", func(t *testing.T) {
 		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &noVersionTask)
 		assert.Nil(t, auth)
-		assert.NoError(t, err)
+		assert.Error(t, err)
 	})
 }
 

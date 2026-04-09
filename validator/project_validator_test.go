@@ -2942,7 +2942,8 @@ func TestValidateGitHubAppCheckRuns(t *testing.T) {
 		defer func() {
 			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
 		}()
-		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, ref, false)
+		settingsWithLimit := &evergreen.Settings{GitHubCheckRun: evergreen.GitHubCheckRunConfig{CheckRunLimit: 100}}
+		errs := validateGitHubAppCheckRuns(t.Context(), settingsWithLimit, projectWithCheckRuns, ref, false)
 		assert.Empty(t, errs)
 	})
 	t.Run("CheckRunsWithRepoAppAuth", func(t *testing.T) {
@@ -2954,7 +2955,8 @@ func TestValidateGitHubAppCheckRuns(t *testing.T) {
 		defer func() {
 			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
 		}()
-		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, refWithRepo, false)
+		settingsWithLimit := &evergreen.Settings{GitHubCheckRun: evergreen.GitHubCheckRunConfig{CheckRunLimit: 100}}
+		errs := validateGitHubAppCheckRuns(t.Context(), settingsWithLimit, projectWithCheckRuns, refWithRepo, false)
 		assert.Empty(t, errs)
 	})
 }

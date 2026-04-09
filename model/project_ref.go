@@ -273,21 +273,18 @@ func getGitHubAppAuthForProject(ctx context.Context, projectID string) *githubap
 }
 
 // GetAndValidateCheckRunGitHubAppAuth returns the GitHub app auth for the task's project, if available. Returns an error
-// if the project doesn't have a GitHub App configured, and has more check runs configured than is allowed.
+// if the project doesn't have a GitHub App configured and has more check runs configured than is allowed.
 func GetAndValidateCheckRunGitHubAppAuth(ctx context.Context, t *task.Task) (*githubapp.GithubAppAuth, error) {
 	ghAppAuth := getGitHubAppAuthForProject(ctx, t.Project)
 	if ghAppAuth != nil {
 		return ghAppAuth, nil
 	}
-	// Only load the project config in the nil-auth case to count check runs.
 	p, err := FindProjectFromVersionID(ctx, t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading project config for check run operation")
 	}
-	if p == nil {
-		return nil, errors.New("project config not found for check run operation")
-	}
 	checkRunCount := p.CountCheckRuns()
+	// Returning no error and no auth is the signal to fall back to the internal app.
 	if checkRunCount < CheckRunGitHubAppAuthThreshold {
 		return nil, nil
 	}
