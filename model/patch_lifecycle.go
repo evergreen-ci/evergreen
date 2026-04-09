@@ -196,9 +196,8 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	if p.IsGithubPRPatch() {
 		numCheckRuns := project.GetNumCheckRunsFromVariantTasks(p.VariantsTasks)
-		checkRunLimit := settings.GitHubCheckRun.CheckRunLimit
-		if numCheckRuns > checkRunLimit {
-			return http.StatusInternalServerError, errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
+		if CheckRunLimitExceeded(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, proj.HasGitHubAppAuth(ctx)) {
+			return http.StatusInternalServerError, errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, settings.GitHubCheckRun.CheckRunLimit)
 		}
 	}
 

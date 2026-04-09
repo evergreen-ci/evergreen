@@ -1502,16 +1502,31 @@ func (p *Project) GetNumCheckRunsFromTaskVariantPairs(variantTasks *TaskVariantP
 	return numCheckRuns
 }
 
-// HasCheckRuns returns true if the project has any check runs.
-func (p *Project) HasCheckRuns() bool {
+// CheckRunGitHubAppAuthThreshold is the minimum number of check-run-configured tasks at or
+// above which a project-level GitHub app auth is required.
+const CheckRunGitHubAppAuthThreshold = 10
+
+// CountCheckRuns returns the number of build variant tasks that have check runs configured.
+func (p *Project) CountCheckRuns() int {
+	count := 0
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
 			if t.HasCheckRun() {
-				return true
+				count++
 			}
 		}
 	}
-	return false
+	return count
+}
+
+// CheckRunLimitExceeded reports whether numCheckRuns exceeds the applicable limit.
+// If the project has a GitHub app configured, the admin-configured settingsLimit applies (when > 0).
+// If the project has no GitHub app configured, CheckRunGitHubAppAuthThreshold applies instead.
+func CheckRunLimitExceeded(numCheckRuns, settingsLimit int, hasGitHubAppAuth bool) bool {
+	if hasGitHubAppAuth {
+		return numCheckRuns > settingsLimit
+	}
+	return numCheckRuns > CheckRunGitHubAppAuthThreshold
 }
 
 func (p *Project) getNumCheckRuns(taskName, variantName string) int {

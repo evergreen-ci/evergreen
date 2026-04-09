@@ -276,9 +276,9 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 
 	if v.Requester == evergreen.GithubPRRequester {
 		numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(newTVPairs)
-		checkRunLimit := settings.GitHubCheckRun.CheckRunLimit
-		if numCheckRuns > checkRunLimit {
-			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
+		hasGitHubAppAuth := GetGitHubAppAuthForProject(ctx, v.Identifier) != nil
+		if CheckRunLimitExceeded(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, hasGitHubAppAuth) {
+			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, settings.GitHubCheckRun.CheckRunLimit)
 		}
 	}
 

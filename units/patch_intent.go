@@ -422,7 +422,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if patchDoc.IsGithubPRPatch() {
 		numCheckRuns := patchedProject.GetNumCheckRunsFromVariantTasks(patchDoc.VariantsTasks)
 		checkRunLimit := j.env.Settings().GitHubCheckRun.CheckRunLimit
-		if numCheckRuns > checkRunLimit {
+		if model.CheckRunLimitExceeded(numCheckRuns, checkRunLimit, pref.HasGitHubAppAuth(ctx)) {
 			j.gitHubError = checkRunLimitExceeded
 			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
 		}
