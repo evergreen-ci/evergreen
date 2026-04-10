@@ -452,6 +452,8 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 
 // GetHighestExecutionTask returns the highest execution number of all tasks in the version.
 func (v *Version) GetHighestExecutionTask(ctx context.Context) (int, error) {
+	// FindAll, an aggregation, and a FindOne sort query were considered
+	// but after testing, the FindOne sort query was found to be the most performant.
 	t, err := task.FindOne(ctx, db.Query(task.ByVersion(v.Id)).WithFields(task.ExecutionKey).Sort([]string{"-" + task.ExecutionKey}).Limit(1))
 	if err != nil {
 		return 0, errors.Wrap(err, "getting highest execution task for version")
