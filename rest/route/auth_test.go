@@ -135,7 +135,7 @@ func TestTokenExchangeAuthorizeHandler(t *testing.T) {
 			Issuer:       oktaDiscoverySrv.URL,
 			Scopes:       []string{"openid", "email", "profile", "offline_access"},
 		}
-		env.EvergreenSettings.Ui.Url = "https://evergreen.example.com"
+		env.EvergreenSettings.Api.CorpURL = "https://evergreen.example.com"
 		return env
 	}
 

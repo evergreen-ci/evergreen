@@ -145,7 +145,7 @@ func (h *tokenExchangeCallbackHandler) Run(ctx context.Context) gimlet.Responder
 	}
 
 	// The Okta web app config is used to exchange the authorization code for a user access token.
-	callbackURL := fmt.Sprintf("%s/rest/v2/auth/token_exchange/callback", strings.TrimRight(settings.Ui.Url, "/"))
+	callbackURL := fmt.Sprintf("%s/rest/v2/auth/token_exchange/callback", strings.TrimRight(settings.Api.CorpURL, "/"))
 	userAccessToken, err := thirdparty.ExchangeAuthCodeForToken(ctx, thirdparty.AuthCodeExchangeOptions{
 		TokenURL:     settings.AuthConfig.Okta.Issuer,
 		ClientID:     settings.AuthConfig.Okta.ClientID,
