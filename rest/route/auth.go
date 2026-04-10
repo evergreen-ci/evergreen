@@ -73,7 +73,7 @@ func tokenExchangeAuthorizeHandler(env evergreen.Environment) http.HandlerFunc {
 			Issuer:      settings.AuthConfig.Okta.Issuer,
 			ClientID:    settings.AuthConfig.Okta.ClientID,
 			Scopes:      settings.AuthConfig.Okta.Scopes,
-			RedirectURI: fmt.Sprintf("%s/rest/v2/auth/token_exchange/callback", strings.TrimRight(settings.Ui.Url, "/")),
+			RedirectURI: fmt.Sprintf("%s/rest/v2/auth/token_exchange/callback", strings.TrimRight(settings.Api.CorpURL, "/")),
 		})
 		if err != nil {
 			http.Error(w, errors.Wrap(err, "building authorize URL").Error(), http.StatusInternalServerError)
