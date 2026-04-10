@@ -907,7 +907,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 
-		revisionTime := time.Unix(0, 0)
+		revisionTime := time.Time{}
 
 		// If this is a mainline commit or a trigger version, retrieve the module's commit from the time of the mainline commit.
 		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
