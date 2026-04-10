@@ -1,8 +1,6 @@
 {
-  patch(patchId: "9e4ff3abe3c3317e352062e4") {
-    versionFull {
-      id
-    }
+  task(taskId: "taskity_task_2") {
+    id
     version {
       id
       status
