@@ -211,21 +211,32 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				event.PullRequest.GetBase().GetRef(),
 				event.PullRequest.GetHead().GetRef(),
 			)
-			if err != nil {
-				grip.Error(ctx, message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"source":    "GitHub hook",
+				"msg_id":    gh.msgID,
+				"event":     gh.eventType,
+				"message":   "error checking Graphite CI optimizer",
+				"owner":     event.Repo.Owner.GetLogin(),
+				"repo":      event.Repo.GetName(),
+				"pr_number": event.PullRequest.GetNumber(),
+				"head_sha":  event.PullRequest.GetHead().GetSHA(),
+				"base_ref":  event.PullRequest.GetBase().GetRef(),
+				"head_ref":  event.PullRequest.GetHead().GetRef(),
+			}))
+			// Continue on error - don't block PR patch creation.
+			if skip {
+				grip.Debug(ctx, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
 					"event":     gh.eventType,
-					"message":   "error checking Graphite CI optimizer",
+					"message":   "Graphite CI optimizer determined this PR does not need to be tested",
 					"owner":     event.Repo.Owner.GetLogin(),
 					"repo":      event.Repo.GetName(),
 					"pr_number": event.PullRequest.GetNumber(),
 					"head_sha":  event.PullRequest.GetHead().GetSHA(),
 					"base_ref":  event.PullRequest.GetBase().GetRef(),
 					"head_ref":  event.PullRequest.GetHead().GetRef(),
-				}))
-				// Continue on error - don't block PR patch creation.
-			} else if skip {
+				})
 				break
 			}
 
