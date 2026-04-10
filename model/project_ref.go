@@ -2315,8 +2315,6 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
-					// TODO DEVPROD-8355: remove after UI changes are merged
-					projectRefRunEveryMainlineCommitKey: p.RunEveryMainlineCommit,
 				},
 			})
 	case ProjectPageNotificationsSection:
