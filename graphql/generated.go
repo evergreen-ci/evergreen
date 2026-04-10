@@ -2344,6 +2344,8 @@ type ComplexityRoot struct {
 		Revision            func(childComplexity int) int
 		RevisionOrderNumber func(childComplexity int) int
 		StartTime           func(childComplexity int) int
+		Status              func(childComplexity int) int
+		TaskStatusStats     func(childComplexity int) int
 		User                func(childComplexity int) int
 		Warnings            func(childComplexity int) int
 	}
@@ -2804,6 +2806,8 @@ type VersionResolver interface {
 type VersionLiteResolver interface {
 	Project(ctx context.Context, obj *model1.Version) (*model1.ProjectRef, error)
 
+	Status(ctx context.Context, obj *model1.Version) (string, error)
+	TaskStatusStats(ctx context.Context, obj *model1.Version) (*task.TaskStats, error)
 	User(ctx context.Context, obj *model1.Version) (*user.DBUser, error)
 }
 type VolumeResolver interface {
@@ -12631,6 +12635,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.StartTime(childComplexity), true
+	case "VersionLite.status":
+		if e.complexity.VersionLite.Status == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.Status(childComplexity), true
+	case "VersionLite.taskStatusStats":
+		if e.complexity.VersionLite.TaskStatusStats == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.TaskStatusStats(childComplexity), true
 	case "VersionLite.user":
 		if e.complexity.VersionLite.User == nil {
 			break
@@ -65426,6 +65442,10 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_revision(ctx, field)
 			case "startTime":
 				return ec.fieldContext_VersionLite_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_VersionLite_status(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_VersionLite_taskStatusStats(ctx, field)
 			case "user":
 				return ec.fieldContext_VersionLite_user(ctx, field)
 			case "warnings":
@@ -74783,6 +74803,70 @@ func (ec *executionContext) fieldContext_VersionLite_startTime(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VersionLite_status(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_status,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().Status(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VersionLite_taskStatusStats(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_taskStatusStats,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().TaskStatusStats(ctx, obj)
+		},
+		nil,
+		ec.marshalOTaskStats2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐTaskStats,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_taskStatusStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "counts":
+				return ec.fieldContext_TaskStats_counts(ctx, field)
+			case "eta":
+				return ec.fieldContext_TaskStats_eta(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskStats", field.Name)
 		},
 	}
 	return fc, nil
@@ -108507,6 +108591,75 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			}
 		case "startTime":
 			out.Values[i] = ec._VersionLite_startTime(ctx, field, obj)
+		case "status":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_status(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "taskStatusStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_taskStatusStats(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "user":
 			field := field
 

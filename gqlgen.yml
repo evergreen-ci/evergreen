@@ -1009,6 +1009,8 @@ models:
     fields:
       order:
         fieldName: "RevisionOrderNumber"
+      status:
+        resolver: true
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:

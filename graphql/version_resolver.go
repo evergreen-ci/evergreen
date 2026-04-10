@@ -399,7 +399,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 	}
 
 	versionID := utility.FromStringPtr(obj.Id)
-	stats, err := task.GetTaskStatsByVersion(ctx, versionID, opts)
+	stats, err := task.GetFilteredTaskStatsByVersion(ctx, versionID, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task status stats for version '%s': %s", versionID, err.Error()))
 	}
@@ -631,6 +631,17 @@ func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (
 		return nil, nil
 	}
 	return projectRef, nil
+}
+
+// Status is the resolver for the status field.
+func (r *versionLiteResolver) Status(ctx context.Context, obj *model.Version) (string, error) {
+	return getDisplayStatus(ctx, obj)
+}
+
+// TaskStatusStats is the resolver for the taskStatusStats field.
+func (r *versionLiteResolver) TaskStatusStats(ctx context.Context, obj *model.Version) (*task.TaskStats, error) {
+	includeNeverActivated := !evergreen.IsPatchRequester(obj.Requester)
+	return task.GetTaskStatsByVersion(ctx, obj.Id, includeNeverActivated)
 }
 
 // User is the resolver for the user field.

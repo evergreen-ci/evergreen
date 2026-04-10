@@ -2030,8 +2030,41 @@ type GroupedTaskStatusCount struct {
 	StatusCounts []*StatusCount `bson:"status_counts"`
 }
 
-func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+// GetTaskStatsByVersion returns aggregate task status counts for a version
+// using a lean pipeline that references display_status_cache directly.
+func GetTaskStatsByVersion(ctx context.Context, versionID string, includeNeverActivated bool) (*TaskStats, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatsByVersion")})
+
+	match := bson.M{
+		VersionKey:       versionID,
+		DisplayTaskIdKey: "",
+	}
+	if !includeNeverActivated {
+		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	}
+
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$group": bson.M{"_id": "$" + DisplayStatusCacheKey, "count": bson.M{"$sum": 1}}},
+		{"$sort": bson.M{"_id": 1}},
+		{"$project": bson.M{"status": "$_id", "count": 1}},
+	}
+
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	var counts []StatusCount
+	if err := cursor.All(ctx, &counts); err != nil {
+		return nil, errors.Wrap(err, "decoding task stats for version")
+	}
+
+	return &TaskStats{Counts: counts}, nil
+}
+
+func GetFilteredTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetFilteredTaskStatsByVersion")})
 
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
