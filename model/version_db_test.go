@@ -673,7 +673,7 @@ func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
 	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
 }
 
-func TestGetHighestExecutionTask(t *testing.T) {
+func TestGetHighestTaskExecution(t *testing.T) {
 	const versionID = "version_get_highest_execution_task"
 
 	require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
@@ -757,7 +757,7 @@ func TestGetHighestExecutionTask(t *testing.T) {
 			tt.setup(t)
 
 			v := &Version{Id: versionID}
-			got, err := v.GetHighestExecutionTask(t.Context())
+			got, err := v.GetHighestTaskExecution(t.Context())
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})

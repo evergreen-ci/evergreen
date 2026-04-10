@@ -974,7 +974,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		return nil, errors.Wrap(err, "getting time spent")
 	}
 
-	highestExecutionTask, err := v.GetHighestExecutionTask(ctx)
+	highestExecutionTask, err := v.GetHighestTaskExecution(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting highest execution task")
 	}
