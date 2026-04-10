@@ -27,7 +27,8 @@
             "projectRef": {
               "commitQueue": {
                 "enabled": true
-              }
+              },
+              "runEveryMainlineCommit": true
             },
             "vars": {
               "vars": { "hello": "" },
