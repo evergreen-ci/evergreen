@@ -298,7 +298,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
+	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPagePullRequestsSection)
 	a.NoError(err)
 	a.True(modified)
 	aliasesFromDb, err = model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
