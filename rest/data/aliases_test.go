@@ -277,13 +277,19 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 	newInternalAlias := restModel.APIProjectAlias{
 		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
-		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), //internal alias shouldn't be added
+		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), // internal alias
 		Variant: utility.ToStringPtr("var"),
 		Task:    utility.ToStringPtr("task"),
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	modified, err := updateAliasesForSection(
+		a.T().Context(),
+		"project_id",
+		updatedAliases,
+		originalAliases,
+		model.ProjectPagePatchAliasSection,
+	)
 	a.NoError(err)
 	a.True(modified)
 
@@ -298,12 +304,26 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPagePullRequestsSection)
+	modified, err = updateAliasesForSection(
+		a.T().Context(),
+		"project_id",
+		updatedAliases,
+		originalAliases,
+		model.ProjectPagePullRequestsSection,
+	)
 	a.NoError(err)
 	a.True(modified)
 	aliasesFromDb, err = model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
-	a.Len(aliasesFromDb, 4) // adds internal alias
+	a.Len(aliasesFromDb, 4) // internal alias added
+
+	foundChecks := false
+	for _, alias := range aliasesFromDb {
+		if alias.Alias == evergreen.GithubChecksAlias {
+			foundChecks = true
+		}
+	}
+	a.True(foundChecks, "expected GithubChecksAlias to be present after updating a GitHub section")
 }
 
 func TestValidateFeaturesHaveAliases(t *testing.T) {
