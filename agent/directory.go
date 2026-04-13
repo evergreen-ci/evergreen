@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -184,7 +185,9 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 // for subdirectories and contents before removing. The permissions change fixes
 // an issue where some files may be marked read-only, which prevents
 // os.RemoveAll from deleting them. Removal is retried to handle background
-// processes that may still be writing to the directory.
+// processes that may still be writing to the directory. If all retries are
+// exhausted, it falls back to privileged removal to handle root-owned files
+// left behind by containerized workloads.
 func (a *Agent) removeAll(ctx context.Context, dir string) error {
 	grip.Error(ctx, errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
@@ -194,7 +197,7 @@ func (a *Agent) removeAll(ctx context.Context, dir string) error {
 		return nil
 	}), "recursively walking through path to change permissions"))
 
-	return utility.Retry(ctx, func() (bool, error) {
+	err := utility.Retry(ctx, func() (bool, error) {
 		if err := os.RemoveAll(dir); err != nil {
 			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message":   "failed to remove task directory, will retry",
@@ -206,6 +209,69 @@ func (a *Agent) removeAll(ctx context.Context, dir string) error {
 	}, utility.RetryOptions{
 		MaxAttempts: maxRemovalAttempts,
 		MinDelay:    time.Second,
+	})
+	if err == nil {
+		return nil
+	}
+
+	mounts := activeMountsUnder(ctx, dir)
+	logRemovalFailureDiagnostics(ctx, dir, mounts)
+
+	// Bind mounts left behind by containers prevent removal even with elevated
+	// privileges, so unmount before attempting privileged removal.
+	if len(mounts) > 0 {
+		grip.Warningf(ctx, "Detected %d active mount(s) under task directory '%s', attempting to unmount before removal.", len(mounts), dir)
+		if err := exec.Command("sudo", "umount", "-R", dir).Run(); err != nil {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":   "failed to unmount task directory, will still attempt privileged removal",
+				"directory": dir,
+			}))
+		}
+	}
+
+	// Fall back to privileged removal for files that the agent user cannot
+	// remove (e.g., root-owned files written by containers into the task
+	// directory via bind mounts).
+	grip.Warningf(ctx, "Standard removal of task directory '%s' failed, attempting privileged removal.", dir)
+	return errors.Wrapf(exec.Command("sudo", "rm", "-rf", dir).Run(), "privileged removal of task directory '%s' failed", dir)
+}
+
+// logRemovalFailureDiagnostics logs remaining file metadata and active mounts
+// when removal fails, to identify whether containerized workloads left behind
+// bind mounts or root-owned files that prevented cleanup.
+func logRemovalFailureDiagnostics(ctx context.Context, dir string, mounts []string) {
+	type fileInfo struct {
+		Path  string `json:"path"`
+		Mode  string `json:"mode"`
+		IsDir bool   `json:"is_dir"`
+		Size  int64  `json:"size"`
+	}
+
+	var remaining []fileInfo
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			remaining = append(remaining, fileInfo{Path: path, IsDir: d.IsDir()})
+			return nil
+		}
+		remaining = append(remaining, fileInfo{
+			Path:  path,
+			Mode:  info.Mode().String(),
+			IsDir: d.IsDir(),
+			Size:  info.Size(),
+		})
+		return nil
+	})
+
+	grip.Warning(ctx, message.Fields{
+		"message":         "files remaining in task directory after failed removal",
+		"directory":       dir,
+		"remaining_count": len(remaining),
+		"active_mounts":   mounts,
+		"files":           remaining,
 	})
 }
 

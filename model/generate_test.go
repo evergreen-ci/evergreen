@@ -2481,6 +2481,324 @@ func TestAddDependencies(t *testing.T) {
 	}
 }
 
+// TestInactiveGeneratedTaskDoesNotAutoActivateSameVariantDependency ensures a
+// prerequisite_task pulled in only for an inactive generated task
+// (inactive_generated_task, activate: false) is not auto-activated when it
+// shares the same variant as the generated buildvariant entry.
+func TestInactiveGeneratedTaskDoesNotAutoActivateSameVariantDependency(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
+	ref := ProjectRef{Id: "proj"}
+	require.NoError(t, ref.Insert(t.Context()))
+	ref2 := ProjectRef{Id: ""}
+	require.NoError(t, ref2.Insert(t.Context()))
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	originalConfig, err := evergreen.GetConfig(t.Context())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if originalConfig != nil {
+			assert.NoError(t, evergreen.UpdateConfig(context.Background(), originalConfig))
+		}
+	})
+
+	genTask := &task.Task{
+		Id:          "generator_task",
+		DisplayName: "generator_task",
+		BuildId:     "b1",
+		Version:     "v1",
+		Activated:   true,
+	}
+	require.NoError(t, genTask.Insert(t.Context()))
+	existingGenBuild := build.Build{
+		Id:           "b1",
+		BuildVariant: "shared_bv",
+		Version:      "v1",
+		Activated:    true,
+	}
+	require.NoError(t, existingGenBuild.Insert(t.Context()))
+	v := &Version{
+		Id:         "v1",
+		Identifier: "proj",
+		BuildIds:   []string{"b1"},
+	}
+	require.NoError(t, v.Insert(t.Context()))
+
+	parserProj := ParserProject{}
+	initialConfig := `
+tasks:
+- name: generator_task
+- name: prerequisite_task
+
+buildvariants:
+- name: shared_bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator_task
+  - name: prerequisite_task
+`
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	parserProj.Id = "v1"
+	require.NoError(t, parserProj.Insert(t.Context()))
+
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "inactive_generated_task",
+			"commands": [
+				{
+					"command": "shell.exec"
+				}
+			],
+			"depends_on": [
+				{
+					"name": "prerequisite_task"
+				}
+			]
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "shared_bv",
+			"tasks": [
+				{
+					"name": "inactive_generated_task",
+					"activate": false
+				}
+			]
+		}
+	]
+}
+`
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	require.NoError(t, err)
+	g.Task = genTask
+
+	p, pp, err := FindAndTranslateProjectForVersion(t.Context(), env.Settings(), v, false)
+	require.NoError(t, err)
+	p, pp, v, err = g.NewVersion(t.Context(), p, pp, v)
+	require.NoError(t, err)
+	require.NoError(t, g.Save(t.Context(), env.Settings(), p, pp, v))
+
+	prerequisiteTask := task.Task{}
+	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "prerequisite_task"}), &prerequisiteTask))
+	assert.False(t, prerequisiteTask.Activated,
+		"prerequisite_task must stay inactive; failing means it was auto-activated though only inactive_generated_task needed it")
+
+	inactiveGeneratedTask := task.Task{}
+	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "inactive_generated_task"}), &inactiveGeneratedTask))
+	assert.False(t, inactiveGeneratedTask.Activated)
+	require.Len(t, inactiveGeneratedTask.DependsOn, 1)
+	assert.Equal(t, prerequisiteTask.Id, inactiveGeneratedTask.DependsOn[0].TaskId)
+}
+
+// TestSharedPrerequisiteActivationInfoMergeRecordsInactiveForSharedPrerequisite
+// exercises only GetNewTasksAndActivationInfo (no DB), after merging generated
+// tasks into the parser project like NewVersion. It documents whether
+// prerequisite_task ends up in activationInfo when one generated sibling is
+// active and another is activate: false, both depending on the same prerequisite.
+// Inactive=true in deactivateGeneratedDeps is not cleared by the active sibling's
+// assignment of false for that prerequisite key.
+func TestSharedPrerequisiteActivationInfoMergeRecordsInactiveForSharedPrerequisite(t *testing.T) {
+	baseYAML := `
+tasks:
+- name: generator_task
+- name: prerequisite_task
+buildvariants:
+- name: shared_bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator_task
+  - name: prerequisite_task
+`
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "active_generated_task",
+			"commands": [{"command": "shell.exec"}],
+			"depends_on": [{"name": "prerequisite_task"}]
+		},
+		{
+			"name": "inactive_generated_task",
+			"commands": [{"command": "shell.exec"}],
+			"depends_on": [{"name": "prerequisite_task"}]
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "shared_bv",
+			"tasks": [
+				{"name": "active_generated_task"},
+				{"name": "inactive_generated_task", "activate": false}
+			]
+		}
+	]
+}
+`
+	pp := &ParserProject{}
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(baseYAML), &pp))
+	p0, err := TranslateProject(pp)
+	require.NoError(t, err)
+
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	require.NoError(t, err)
+	g.Task = &task.Task{Id: "gen"}
+	cached := cacheProjectData(p0)
+	mergedPP, err := g.addGeneratedProjectToConfig(pp, cached)
+	require.NoError(t, err)
+	p, err := TranslateProject(mergedPP)
+	require.NoError(t, err)
+
+	v := &Version{Requester: evergreen.RepotrackerVersionRequester}
+
+	g.NewTVPairs, g.ActivationInfo = nil, nil
+	_, activationInfo := g.GetNewTasksAndActivationInfo(t.Context(), v, p)
+
+	assert.True(t, activationInfo.taskHasSpecificActivation("shared_bv", "prerequisite_task"),
+		"inactive sibling's dependency edge marks shared prerequisite in activationInfo; active sibling's false does not clear it")
+}
+
+// TestSharedPrerequisiteBetweenActiveAndInactiveGeneratedTasks checks the full
+// generate.tasks save path. Even when activationInfo marks shared prerequisite_task
+// as having specific activation (see TestSharedPrerequisiteActivationInfoMergeRecordsInactiveForSharedPrerequisite),
+// addNewTasksToExistingBuilds activates recursive dependencies of newly-activated
+// tasks, so prerequisite_task still ends up Activated in the DB.
+func TestSharedPrerequisiteBetweenActiveAndInactiveGeneratedTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, ParserProjectCollection, ProjectRefCollection))
+	ref := ProjectRef{Id: "proj"}
+	require.NoError(t, ref.Insert(t.Context()))
+	ref2 := ProjectRef{Id: ""}
+	require.NoError(t, ref2.Insert(t.Context()))
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	originalConfig, err := evergreen.GetConfig(t.Context())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if originalConfig != nil {
+			assert.NoError(t, evergreen.UpdateConfig(context.Background(), originalConfig))
+		}
+	})
+
+	genTask := &task.Task{
+		Id:          "generator_task",
+		DisplayName: "generator_task",
+		BuildId:     "b1",
+		Version:     "v1",
+		Activated:   true,
+	}
+	require.NoError(t, genTask.Insert(t.Context()))
+	existingGenBuild := build.Build{
+		Id:           "b1",
+		BuildVariant: "shared_bv",
+		Version:      "v1",
+		Activated:    true,
+	}
+	require.NoError(t, existingGenBuild.Insert(t.Context()))
+	v := &Version{
+		Id:         "v1",
+		Identifier: "proj",
+		BuildIds:   []string{"b1"},
+	}
+	require.NoError(t, v.Insert(t.Context()))
+
+	parserProj := ParserProject{}
+	initialConfig := `
+tasks:
+- name: generator_task
+- name: prerequisite_task
+
+buildvariants:
+- name: shared_bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator_task
+  - name: prerequisite_task
+`
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	parserProj.Id = "v1"
+	require.NoError(t, parserProj.Insert(t.Context()))
+
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "active_generated_task",
+			"commands": [
+				{
+					"command": "shell.exec"
+				}
+			],
+			"depends_on": [
+				{
+					"name": "prerequisite_task"
+				}
+			]
+		},
+		{
+			"name": "inactive_generated_task",
+			"commands": [
+				{
+					"command": "shell.exec"
+				}
+			],
+			"depends_on": [
+				{
+					"name": "prerequisite_task"
+				}
+			]
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "shared_bv",
+			"tasks": [
+				{
+					"name": "active_generated_task"
+				},
+				{
+					"name": "inactive_generated_task",
+					"activate": false
+				}
+			]
+		}
+	]
+}
+`
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	require.NoError(t, err)
+	g.Task = genTask
+
+	p, pp, err := FindAndTranslateProjectForVersion(t.Context(), env.Settings(), v, false)
+	require.NoError(t, err)
+	p, pp, v, err = g.NewVersion(t.Context(), p, pp, v)
+	require.NoError(t, err)
+	require.NoError(t, g.Save(t.Context(), env.Settings(), p, pp, v))
+
+	prerequisiteTask := task.Task{}
+	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "prerequisite_task"}), &prerequisiteTask))
+
+	activeGeneratedTask := task.Task{}
+	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "active_generated_task"}), &activeGeneratedTask))
+	require.True(t, activeGeneratedTask.Activated, "sanity: default-active generated task should be activated")
+
+	inactiveGeneratedTask := task.Task{}
+	require.NoError(t, db.FindOneQ(t.Context(), task.Collection, db.Query(bson.M{task.DisplayNameKey: "inactive_generated_task"}), &inactiveGeneratedTask))
+	require.False(t, inactiveGeneratedTask.Activated)
+
+	require.Len(t, activeGeneratedTask.DependsOn, 1)
+	require.Len(t, inactiveGeneratedTask.DependsOn, 1)
+	assert.Equal(t, prerequisiteTask.Id, activeGeneratedTask.DependsOn[0].TaskId)
+	assert.Equal(t, prerequisiteTask.Id, inactiveGeneratedTask.DependsOn[0].TaskId)
+
+	assert.True(t, prerequisiteTask.Activated,
+		"shared prerequisite_task should activate when a generated sibling is active and depends on it "+
+			"(if false, inactive sibling's deactivateGeneratedDeps=true likely overwrote the active sibling's false)")
+}
+
 func TestTaskGroupActivation(t *testing.T) {
 	// Test that activate: false on a task group reference properly
 	// expands to all tasks within the group.

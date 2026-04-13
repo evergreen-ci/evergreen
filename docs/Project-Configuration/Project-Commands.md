@@ -248,7 +248,18 @@ Each file should be JSON and contain an array of artifact objects:
     "name": "my-file-with-params",
     "link": "https://example.com/this-is-my-file?task=123&build=456",
     "visibility": "public",
-    "do_not_encode_link": true
+    "do_not_encode_link": true,
+    "associated_links": [
+      {
+        "name": "Documentation",
+        "link": "https://example.com/docs"
+      },
+      {
+        "name": "Raw Data",
+        "link": "https://example.com/data?format=json&id=123",
+        "do_not_encode_link": true
+      }
+    ]
   }
 ]
 ```
@@ -263,6 +274,10 @@ Fields:
   contains query parameters (e.g. `?task=123&build=456`) that should not be escaped.
 - `ignore_for_fetch`: optional boolean, defaults to false. If set to true, the
   file will not be downloaded when spawning a host from the spawn link on a test page.
+- `associated_links`: optional array of related links to be displayed alongside the main artifact in the UI. Each link object contains:
+  - `name`: the display name for the associated link.
+  - `link`: the URL for the associated link.
+  - `do_not_encode_link`: optional boolean, defaults to false. Set to true to prevent URL-encoding the link.
 
 ## attach.results
 
@@ -1332,6 +1347,19 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
     region: us-east-1
+# Upload with associated links:
+- command: s3.put
+  params:
+    role_arn: ${role_arn}
+    local_file: coverage/report.html
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/coverage/report.html
+    bucket: mciuploads
+    region: us-east-1
+    permissions: private
+    visibility: signed
+    content_type: text/html
+    display_name: Coverage Report
+    associated_links_file: coverage/links.json
 ```
 
 Parameters:
@@ -1394,6 +1422,21 @@ Parameters:
   of putting all the files into the same folder
 - `upload_checksum_sha256`: defaults to false. If set to true, the command will
   tell AWS to include the sha256 checksum of the file as metadata on the uploaded object.
+- `associated_links_file`: the name of a JSON file containing additional links to be displayed alongside the artifact in the UI. The file should contain an array of objects, each with `name` and `link` fields. Example file content:
+
+  ```json
+  [
+    {
+      "name": "Documentation",
+      "link": "https://example.com/docs"
+    },
+    {
+      "name": "Coverage Report",
+      "link": "https://example.com/${task_id}/coverage?format=html&view=summary",
+      "do_not_encode_link": true
+    }
+  ]
+  ```
 
 ## s3.put with multiple files
 

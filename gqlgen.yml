@@ -789,10 +789,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
-  ServiceFlags:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
-  ServiceFlagsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   SingleTaskDistroConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SingleTaskDistroConfigInput:
@@ -1013,6 +1009,8 @@ models:
     fields:
       order:
         fieldName: "RevisionOrderNumber"
+      status:
+        resolver: true
   VersionToRestart:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:

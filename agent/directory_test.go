@@ -3,6 +3,7 @@ package agent
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -15,9 +16,67 @@ import (
 
 func osExists(err error) bool { return !os.IsNotExist(err) }
 
+func TestLogRemovalFailureDiagnostics(t *testing.T) {
+	t.Run("NonexistentDirectoryDoesNotPanic", func(t *testing.T) {
+		logRemovalFailureDiagnostics(t.Context(), "/nonexistent/path/that/does/not/exist", nil)
+	})
+
+	t.Run("LogsRemainingFilesWithPermissions", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "readable.txt"), []byte("data"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "readonly.txt"), []byte("data"), 0444))
+		subDir := filepath.Join(dir, "subdir")
+		require.NoError(t, os.Mkdir(subDir, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(subDir, "nested.txt"), []byte("data"), 0600))
+
+		logRemovalFailureDiagnostics(t.Context(), dir, []string{filepath.Join(dir, "subdir")})
+	})
+}
+
+func TestActiveMountsUnder(t *testing.T) {
+	t.Run("ReturnsMountsUnderDirectory", func(t *testing.T) {
+		// /proc is always mounted on Linux; activeMountsUnder("/") must
+		// return at least one entry on a real Linux system.
+		if runtime.GOOS != "linux" {
+			t.Skip("mountinfo is Linux-only")
+		}
+		mounts := activeMountsUnder(t.Context(), "/")
+		assert.NotEmpty(t, mounts, "expected at least one mount under /")
+	})
+
+	t.Run("ReturnsNilForUnrelatedDirectory", func(t *testing.T) {
+		if runtime.GOOS != "linux" {
+			t.Skip("mountinfo is Linux-only")
+		}
+		// A freshly created temp directory will never be a mount point.
+		dir := t.TempDir()
+		mounts := activeMountsUnder(t.Context(), dir)
+		assert.Empty(t, mounts)
+	})
+
+	t.Run("ReturnsNilOnNonLinux", func(t *testing.T) {
+		if runtime.GOOS == "linux" {
+			t.Skip("testing non-Linux behavior")
+		}
+		assert.Nil(t, activeMountsUnder(t.Context(), "/"))
+	})
+}
+
 func TestRemoveAll(t *testing.T) {
 	t.Run("SucceedsOnFirstAttempt", func(t *testing.T) {
 		dir := t.TempDir()
+		a := Agent{}
+		require.NoError(t, a.removeAll(t.Context(), dir))
+		assert.NoDirExists(t, dir)
+	})
+
+	t.Run("SucceedsOnReadOnlyFiles", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "readonly.txt"), []byte("data"), 0444))
+		subDir := filepath.Join(dir, "subdir")
+		require.NoError(t, os.Mkdir(subDir, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(subDir, "also-readonly.txt"), []byte("data"), 0444))
+
 		a := Agent{}
 		require.NoError(t, a.removeAll(t.Context(), dir))
 		assert.NoDirExists(t, dir)
