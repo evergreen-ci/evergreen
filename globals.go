@@ -296,6 +296,10 @@ const (
 	TagExpireOn          = "expire-on"
 	TagAllowRemoteAccess = "AllowRemoteAccess"
 	TagIsDebug           = "IsDebug"
+	TagTaskID            = "task-id"
+	TagTaskExecution     = "task-execution"
+	TagBuildID           = "build-id"
+	TagProject           = "project"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
