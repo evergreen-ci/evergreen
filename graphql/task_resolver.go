@@ -607,6 +607,21 @@ func (r *taskResolver) NextTaskPassing(ctx context.Context, obj *restModel.APITa
 	return tsk, nil
 }
 
+// InvalidatedByUpstream is the resolver for the invalidatedByUpstream field.
+func (r *taskResolver) InvalidatedByUpstream(ctx context.Context, obj *restModel.APITask) (*bool, error) {
+	if !evergreen.IsGithubMergeQueueRequester(utility.FromStringPtr(obj.Requester)) {
+		return nil, nil
+	}
+	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+	}
+	if apiPatch == nil {
+		return nil, nil
+	}
+	return &apiPatch.InvalidatedByUpstream, nil
+}
+
 // Patch is the resolver for the patch field.
 func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {

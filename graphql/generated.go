@@ -1202,40 +1202,41 @@ type ComplexityRoot struct {
 	}
 
 	Patch struct {
-		Activated            func(childComplexity int) int
-		Alias                func(childComplexity int) int
-		Author               func(childComplexity int) int
-		AuthorDisplayName    func(childComplexity int) int
-		Builds               func(childComplexity int) int
-		ChildPatchAliases    func(childComplexity int) int
-		ChildPatches         func(childComplexity int) int
-		CreateTime           func(childComplexity int) int
-		Description          func(childComplexity int) int
-		Duration             func(childComplexity int) int
-		GeneratedTaskCounts  func(childComplexity int) int
-		Githash              func(childComplexity int) int
-		GithubPatchData      func(childComplexity int) int
-		Hidden               func(childComplexity int) int
-		Id                   func(childComplexity int) int
-		IncludedLocalModules func(childComplexity int) int
-		ModuleCodeChanges    func(childComplexity int) int
-		Parameters           func(childComplexity int) int
-		PatchNumber          func(childComplexity int) int
-		PatchTriggerAliases  func(childComplexity int) int
-		Project              func(childComplexity int) int
-		ProjectId            func(childComplexity int) int
-		ProjectIdentifier    func(childComplexity int) int
-		ProjectMetadata      func(childComplexity int) int
-		Status               func(childComplexity int) int
-		TaskCount            func(childComplexity int) int
-		TaskStatuses         func(childComplexity int) int
-		Tasks                func(childComplexity int) int
-		Time                 func(childComplexity int) int
-		User                 func(childComplexity int) int
-		Variants             func(childComplexity int) int
-		VariantsTasks        func(childComplexity int) int
-		Version              func(childComplexity int) int
-		VersionFull          func(childComplexity int) int
+		Activated             func(childComplexity int) int
+		Alias                 func(childComplexity int) int
+		Author                func(childComplexity int) int
+		AuthorDisplayName     func(childComplexity int) int
+		Builds                func(childComplexity int) int
+		ChildPatchAliases     func(childComplexity int) int
+		ChildPatches          func(childComplexity int) int
+		CreateTime            func(childComplexity int) int
+		Description           func(childComplexity int) int
+		Duration              func(childComplexity int) int
+		GeneratedTaskCounts   func(childComplexity int) int
+		Githash               func(childComplexity int) int
+		GithubPatchData       func(childComplexity int) int
+		Hidden                func(childComplexity int) int
+		Id                    func(childComplexity int) int
+		IncludedLocalModules  func(childComplexity int) int
+		InvalidatedByUpstream func(childComplexity int) int
+		ModuleCodeChanges     func(childComplexity int) int
+		Parameters            func(childComplexity int) int
+		PatchNumber           func(childComplexity int) int
+		PatchTriggerAliases   func(childComplexity int) int
+		Project               func(childComplexity int) int
+		ProjectId             func(childComplexity int) int
+		ProjectIdentifier     func(childComplexity int) int
+		ProjectMetadata       func(childComplexity int) int
+		Status                func(childComplexity int) int
+		TaskCount             func(childComplexity int) int
+		TaskStatuses          func(childComplexity int) int
+		Tasks                 func(childComplexity int) int
+		Time                  func(childComplexity int) int
+		User                  func(childComplexity int) int
+		Variants              func(childComplexity int) int
+		VariantsTasks         func(childComplexity int) int
+		Version               func(childComplexity int) int
+		VersionFull           func(childComplexity int) int
 	}
 
 	PatchDuration struct {
@@ -1914,6 +1915,7 @@ type ComplexityRoot struct {
 		Id                      func(childComplexity int) int
 		ImageID                 func(childComplexity int) int
 		IngestTime              func(childComplexity int) int
+		InvalidatedByUpstream   func(childComplexity int) int
 		IsPerfPluginEnabled     func(childComplexity int) int
 		LatestExecution         func(childComplexity int) int
 		Logs                    func(childComplexity int) int
@@ -2731,6 +2733,7 @@ type TaskResolver interface {
 	NextTaskFailing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	NextTaskPassing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
+	InvalidatedByUpstream(ctx context.Context, obj *model.APITask) (*bool, error)
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 	PrevTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
@@ -7570,6 +7573,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.IncludedLocalModules(childComplexity), true
+	case "Patch.invalidatedByUpstream":
+		if e.complexity.Patch.InvalidatedByUpstream == nil {
+			break
+		}
+
+		return e.complexity.Patch.InvalidatedByUpstream(childComplexity), true
 	case "Patch.moduleCodeChanges":
 		if e.complexity.Patch.ModuleCodeChanges == nil {
 			break
@@ -10736,6 +10745,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.IngestTime(childComplexity), true
+	case "Task.invalidatedByUpstream":
+		if e.complexity.Task.InvalidatedByUpstream == nil {
+			break
+		}
+
+		return e.complexity.Task.InvalidatedByUpstream(childComplexity), true
 	case "Task.isPerfPluginEnabled":
 		if e.complexity.Task.IsPerfPluginEnabled == nil {
 			break
@@ -20216,6 +20231,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -28991,6 +29008,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -32490,6 +32509,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -35222,6 +35243,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -37229,6 +37252,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -37340,6 +37365,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -39192,6 +39219,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -39413,6 +39442,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -39634,6 +39665,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -39855,6 +39888,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40076,6 +40111,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40297,6 +40334,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40518,6 +40557,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -41762,6 +41803,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -43955,6 +43998,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -45070,6 +45115,35 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Patch_invalidatedByUpstream(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_invalidatedByUpstream,
+		func(ctx context.Context) (any, error) {
+			return obj.InvalidatedByUpstream, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_invalidatedByUpstream(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PatchDuration_makespan(ctx context.Context, field graphql.CollectedField, obj *PatchDuration) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45656,6 +45730,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -52356,6 +52432,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -53235,6 +53313,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -53456,6 +53536,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -60863,6 +60945,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -61659,6 +61743,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -62056,6 +62142,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -62474,6 +62562,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -62925,6 +63015,8 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -63134,6 +63226,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -63343,6 +63437,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -63552,6 +63648,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -63650,6 +63748,35 @@ func (ec *executionContext) fieldContext_Task_order(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_invalidatedByUpstream(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_invalidatedByUpstream,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().InvalidatedByUpstream(ctx, obj)
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_invalidatedByUpstream(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_patch(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -63742,6 +63869,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -63918,6 +64047,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64127,6 +64258,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64336,6 +64469,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64545,6 +64680,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -66862,6 +66999,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -71047,6 +71186,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -73488,6 +73629,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -75198,6 +75341,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -98060,6 +98205,11 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "invalidatedByUpstream":
+			out.Values[i] = ec._Patch_invalidatedByUpstream(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -104760,6 +104910,39 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "invalidatedByUpstream":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_invalidatedByUpstream(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patch":
 			field := field
 

@@ -332,6 +332,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 			taskSorts = append(taskSorts, task.TasksSortOrder{Key: key, Order: order})
 		}
 	}
+	fmt.Println("taskSorts", taskSorts)
 	baseVersionID := ""
 	baseVersion, err := model.FindBaseVersionForVersion(ctx, utility.FromStringPtr(obj.Id))
 	if err != nil {
