@@ -56,7 +56,10 @@ func TestMakeHost(t *testing.T) {
 	require.NoError(d.Insert(ctx))
 
 	sampleTask := &task.Task{
-		Id: "task-id",
+		Id:        "task-id",
+		Execution: 2,
+		BuildId:   "build-id",
+		Project:   "project",
 	}
 	require.NoError(sampleTask.Insert(t.Context()))
 
@@ -81,7 +84,10 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
-	assert.Equal("task-id", h.SpawnOptions.TaskID)
+	assert.Equal(sampleTask.Id, h.SpawnOptions.TaskID)
+	assert.Equal(sampleTask.Execution, h.SpawnOptions.TaskExecutionNumber)
+	assert.Equal(sampleTask.Project, h.SpawnOptions.ProjectID)
+	assert.Empty(h.SpawnOptions.BuildID)
 	ec2Settings := &cloud.EC2ProviderSettings{}
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
@@ -105,6 +111,7 @@ func TestMakeHost(t *testing.T) {
 	myTask := task.Task{
 		Id:      "task-id",
 		BuildId: "build-id",
+		Project: "project",
 	}
 	require.NoError(myTask.Insert(t.Context()))
 	c = apimodels.CreateHost{
@@ -123,7 +130,10 @@ func TestMakeHost(t *testing.T) {
 	assert.NotNil(h)
 	ec2Settings = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
-	assert.Equal("build-id", h.SpawnOptions.BuildID)
+	assert.Empty(h.SpawnOptions.TaskID)
+	assert.Zero(h.SpawnOptions.TaskExecutionNumber)
+	assert.Equal(myTask.Project, h.SpawnOptions.ProjectID)
+	assert.Equal(myTask.BuildId, h.SpawnOptions.BuildID)
 	assert.Empty(ec2Settings.KeyName)
 	assert.True(ec2Settings.IsVpc)
 
