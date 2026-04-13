@@ -1209,7 +1209,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 			Ref: utility.ToStringPtr("main"),
 		},
 		Head: &github.PullRequestBranch{
-			SHA: github.String("ed42b5e51e81724c5258686a0b9d515a99696eac"),
+			SHA: github.String("75296bc001a22600252f2d4e8f35d47c9b31221b"),
 			Repo: &github.Repository{
 				FullName: utility.ToStringPtr("evergreen-ci/DEVPROD-123"),
 			},
