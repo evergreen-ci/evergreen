@@ -1535,7 +1535,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(448, "evergreen-ci/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "evergreen-ci/evergreen", "729b1ab0e21514fb1af39fc298e3fae9b480d568", "octocat", "title1"))
+	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(448, "evergreen-ci/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", s.headRepo, "729b1ab0e21514fb1af39fc298e3fae9b480d568", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
