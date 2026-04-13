@@ -422,23 +422,62 @@ func (s *githubSuite) TestGitHubUserPermissionLevel() {
 	s.False(hasPermission)
 }
 
-func (s *githubSuite) TestGetGithubPullRequestDiff() {
-	p := GithubPatch{
-		PRNumber:   448,
-		BaseOwner:  "evergreen-ci",
-		BaseRepo:   "evergreen",
-		BaseBranch: "main",
-	}
-
-	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
-	s.NoError(err)
-	s.Len(summaries, 2)
-	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
-}
-
 func (s *githubSuite) TestGetBranchProtectionRules() {
 	_, err := GetEvergreenBranchProtectionRules(s.ctx, "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
+}
+
+func TestGetGithubPullRequestPatch(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	const (
+		owner, repo = "evergreen-ci", "evergreen"
+		// PR 448 — main at the time of the PR.
+		base448  = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
+		head448  = "729b1ab0e21514fb1af39fc298e3fae9b480d568"
+		ref448   = "EVG-2387-use-plain-logger"
+		// PR 9880 — main at the time of the PR.
+		base9880 = "cd147d8cbb698549a5bce79302075b86b029acd1"
+		head9880 = "1869c8add1cd54a76dd9fb52d6d7b8f9924bc3e9"
+		ref9880  = "DEVPROD-21346_docs"
+	)
+
+	for _, tc := range []struct{ name, head string }{
+		{"HeadHash", head448},
+		{"HeadRef", ref448},
+	} {
+		t.Run("PR448/"+tc.name, func(t *testing.T) {
+			diff, summaries, err := GetGithubPullRequestPatch(t.Context(), GithubPatch{
+				BaseOwner: owner,
+				BaseRepo:  repo,
+				BaseHash:  base448,
+				HeadHash:  tc.head,
+			})
+			require.NoError(t, err)
+			require.Len(t, summaries, 2)
+			require.Contains(t, diff, "diff --git a/cli/host.go b/cli/host.go")
+		})
+	}
+
+	const noBinaryShorthand = "Binary files /dev/null and b/docs/images/run-every-mainline-commit-project-setting.png differ"
+	for _, tc := range []struct{ name, head string }{
+		{"HeadHash", head9880},
+		{"HeadRef", ref9880},
+	} {
+		t.Run("PR9880/"+tc.name, func(t *testing.T) {
+			diff, summaries, err := GetGithubPullRequestPatch(t.Context(), GithubPatch{
+				BaseOwner: owner,
+				BaseRepo:  repo,
+				BaseHash:  base9880,
+				HeadHash:  tc.head,
+			})
+			require.NoError(t, err)
+			require.Len(t, summaries, 2)
+			require.Contains(t, diff, "GIT binary patch")
+			require.NotContains(t, diff, noBinaryShorthand)
+		})
+	}
 }
 
 func TestVerifyGithubAPILimitHeader(t *testing.T) {

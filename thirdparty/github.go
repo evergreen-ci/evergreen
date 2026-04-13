@@ -1535,15 +1535,16 @@ func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNum
 	return pr, nil
 }
 
-// GetGithubPullRequestDiff downloads the pull request diff using GitHub's
+// GetGithubPullRequestPatch downloads the pull request diff using GitHub's
 // compare commits API (merge_base...head). This includes per-file patch data
 // that the pull request raw diff endpoint omits (e.g. binary files).
-func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
-	caller := "GetGithubPullRequestDiff"
+func GetGithubPullRequestPatch(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
+	caller := "GetGithubPullRequestPatch"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, gh.BaseOwner),
 		attribute.String(githubRepoAttribute, gh.BaseRepo),
+		attribute.String(githubRefAttribute, gh.HeadHash),
 	))
 	defer span.End()
 
@@ -1556,11 +1557,7 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	defer githubClient.Close()
 
 	diff, resp, err := githubClient.Repositories.CompareCommitsRaw(
-		ctx,
-		gh.BaseOwner,
-		gh.BaseRepo,
-		gh.MergeBase,
-		gh.HeadHash,
+		ctx, gh.BaseOwner, gh.BaseRepo, gh.BaseHash, gh.HeadHash,
 		github.RawOptions{Type: github.Patch},
 	)
 	if resp != nil {
