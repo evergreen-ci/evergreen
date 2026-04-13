@@ -323,9 +323,21 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"creation_time":      j.host.CreationTime,
 		"started_by":         j.host.StartedBy,
 		"user_host":          j.host.UserHost,
+		"spawned_by_task":    j.host.SpawnOptions.SpawnedByTask,
 	}
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
+	}
+	if j.host.SpawnOptions.SpawnedByTask {
+		// kim: TODO: verify logs look okay when spawned by task.
+		terminationMessage["spawned_by_project"] = j.host.SpawnOptions.ProjectID
+		if j.host.SpawnOptions.TaskID != "" {
+			terminationMessage["spawned_by_task_id"] = j.host.SpawnOptions.TaskID
+			terminationMessage["spawned_by_task_execution"] = j.host.SpawnOptions.TaskExecutionNumber
+		}
+		if j.host.SpawnOptions.BuildID != "" {
+			terminationMessage["spawned_by_build_id"] = j.host.SpawnOptions.BuildID
+		}
 	}
 	var instanceType string
 	if evergreen.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
@@ -348,9 +360,22 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		attribute.String(fmt.Sprintf("%s.started_by", hostTerminationAttributePrefix), j.host.StartedBy),
 		attribute.Bool(fmt.Sprintf("%s.user_host", hostTerminationAttributePrefix), j.host.UserHost),
 		attribute.Int(fmt.Sprintf("%s.task_count", hostTerminationAttributePrefix), j.host.TaskCount),
+		attribute.Bool(fmt.Sprintf("%s.spawned_by_task", hostTerminationAttributePrefix), j.host.SpawnOptions.SpawnedByTask),
 	)
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		span.SetAttributes(attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()))
+	}
+	if j.host.SpawnOptions.SpawnedByTask {
+		span.SetAttributes(attribute.String(fmt.Sprintf("%s.spawned_by_project", hostTerminationAttributePrefix), j.host.SpawnOptions.ProjectID))
+		if j.host.SpawnOptions.TaskID != "" {
+			span.SetAttributes(
+				attribute.String(fmt.Sprintf("%s.spawned_by_task_id", hostTerminationAttributePrefix), j.host.SpawnOptions.TaskID),
+				attribute.Int64(fmt.Sprintf("%s.spawned_by_task_execution", hostTerminationAttributePrefix), int64(j.host.SpawnOptions.TaskExecutionNumber)),
+			)
+		}
+		if j.host.SpawnOptions.BuildID != "" {
+			span.SetAttributes(attribute.String(fmt.Sprintf("%s.spawned_by_build_id", hostTerminationAttributePrefix), j.host.SpawnOptions.BuildID))
+		}
 	}
 	if instanceType != "" {
 		span.SetAttributes(attribute.String(fmt.Sprintf("%s.instance_type", hostTerminationAttributePrefix), instanceType))

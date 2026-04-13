@@ -38,6 +38,7 @@ type taskSpawnedHost struct {
 	Task                string `json:"task_scope"`
 	TaskExecutionNumber int    `json:"task_execution_number"`
 	Build               string `json:"build_scope"`
+	Project             string `json:"project"`
 }
 
 func makeHostStats() *hostStatsJob {
@@ -88,6 +89,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 			Task:                h.SpawnOptions.TaskID,
 			TaskExecutionNumber: h.SpawnOptions.TaskExecutionNumber,
 			Build:               h.SpawnOptions.BuildID,
+			Project:             h.SpawnOptions.ProjectID,
 		})
 	}
 	j.logger.Info(ctx, message.Fields{
@@ -106,6 +108,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 				"task_scope":            h.SpawnOptions.TaskID,
 				"task_execution_number": h.SpawnOptions.TaskExecutionNumber,
 				"build_scope":           h.SpawnOptions.BuildID,
+				"project":               h.SpawnOptions.ProjectID,
 			})
 		}
 	}

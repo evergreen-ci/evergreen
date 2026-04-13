@@ -344,6 +344,7 @@ func getHostCreationOptions(ctx context.Context, d distro.Distro, taskID, userID
 			options.SpawnOptions.TaskID = taskID
 			options.SpawnOptions.TaskExecutionNumber = t.Execution
 		}
+		options.SpawnOptions.ProjectID = t.Project
 		options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(createHost.TeardownTimeoutSecs) * time.Second)
 		options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(createHost.SetupTimeoutSecs) * time.Second)
 		options.SpawnOptions.Retries = createHost.Retries

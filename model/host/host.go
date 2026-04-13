@@ -331,6 +331,9 @@ type SpawnOptions struct {
 
 	// SpawnedByTask indicates that this host has been spawned by a task.
 	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
+
+	// ProjectID is the ID of the project that's running the task.
+	ProjectID string `bson:"project_id,omitempty" json:"project_id,omitempty"`
 }
 
 // SleepScheduleInfo stores information about a host's sleep schedule and
