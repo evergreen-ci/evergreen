@@ -163,7 +163,7 @@ func validateFeaturesHaveAliases(ctx context.Context, originalProjectRef *model.
 
 func isGithubAliasSection(section model.ProjectPageSection) bool {
 	switch section {
-	case model.ProjectPageGithubAndCQSection, // TODO DEVPROD-8355: remove GithubAndCQSection
+	case model.ProjectPageGithubAndCQSection, // TODO DEVPROD-31534: remove GithubAndCQSection
 		model.ProjectPagePullRequestsSection,
 		model.ProjectPageMergeQueueSection,
 		model.ProjectPageCommitChecksSection,

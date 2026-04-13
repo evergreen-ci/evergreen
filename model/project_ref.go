@@ -672,7 +672,7 @@ const (
 	ProjectPagePluginSection          = "PLUGINS"
 	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
 	ProjectPageTestSelectionSection   = "TEST_SELECTION"
-	// TODO DEVPROD-8355: deprecate this section
+	// TODO DEVPROD-31534: deprecate this section
 	ProjectPageGithubAndCQSection       = "GITHUB_AND_COMMIT_QUEUE"
 	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
 	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
@@ -2306,7 +2306,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefAdminsKey:     p.Admins,
 				},
 			})
-	// TODO DEVPROD-8355: deprecate this section
+	// TODO DEVPROD-31534: deprecate this section
 	case ProjectPageGithubAndCQSection:
 		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2479,7 +2479,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 			modified = true
 		}
 		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
-	// TODO DEVPROD-8355: remove GithubAndCQSection
+	// TODO DEVPROD-31534: remove GithubAndCQSection
 	case ProjectPageGithubAndCQSection, ProjectPagePullRequestsSection, ProjectPageGitTagsSection, ProjectPageMergeQueueSection, ProjectPageCommitChecksSection:
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias

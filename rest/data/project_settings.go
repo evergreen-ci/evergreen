@@ -388,7 +388,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, errors.Wrapf(err, "updating project variables for project '%s'", projectId)
 		}
 		modified = true
-	// TODO DEVPROD-8355: remove GithubAndCQSection
+	// TODO DEVPROD-31534: remove GithubAndCQSection
 	case model.ProjectPageGithubAndCQSection, model.ProjectPagePullRequestsSection, model.ProjectPageGitTagsSection, model.ProjectPageMergeQueueSection, model.ProjectPageCommitChecksSection:
 		mergedSection.Owner = mergedBeforeRef.Owner
 		mergedSection.Repo = mergedBeforeRef.Repo
