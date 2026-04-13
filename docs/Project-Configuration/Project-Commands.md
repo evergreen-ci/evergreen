@@ -1432,7 +1432,7 @@ Parameters:
     },
     {
       "name": "Coverage Report",
-      "link": "https://example.com/${task_id}/coverage?sort_by=duration",
+      "link": "https://example.com/${task_id}/coverage?format=html&view=summary",
       "do_not_encode_link": true
     }
   ]
