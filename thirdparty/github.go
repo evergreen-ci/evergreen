@@ -1535,9 +1535,9 @@ func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNum
 	return pr, nil
 }
 
-// GetGithubPullRequestDiff downloads a raw diff from a Github Pull Request.
-// This can fail if the PR is too large (e.g. greater than 300 files). See
-// GetGitHubPullRequestFiles.
+// GetGithubPullRequestDiff downloads the pull request diff using GitHub's
+// compare commits API (merge_base...head). This includes per-file patch data
+// that the pull request raw diff endpoint omits (e.g. binary files).
 func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
 	caller := "GetGithubPullRequestDiff"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1555,14 +1555,22 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
 	defer githubClient.Close()
 
-	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
+	diff, resp, err := githubClient.Repositories.CompareCommitsRaw(
+		ctx,
+		gh.BaseOwner,
+		gh.BaseRepo,
+		gh.MergeBase,
+		gh.HeadHash,
+		github.RawOptions{Type: github.Patch},
+	)
 	if resp != nil {
-		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		resp.Body.Close()
 	}
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrap(err, "failed to get pull request diff")
 	}
+
 	summaries, err := GetPatchSummaries(diff)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to get patch summary")
