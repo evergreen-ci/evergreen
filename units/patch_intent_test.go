@@ -224,6 +224,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
 		BaseBranch: "main",
+		BaseHash:   "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
 		HeadOwner:  "richardsamuels",
 		HeadRepo:   "evergreen",
 		HeadHash:   "729b1ab0e21514fb1af39fc298e3fae9b480d568",
