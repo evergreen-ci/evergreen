@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -20,14 +21,10 @@ import (
 
 const (
 	Collection = "s3_lifecycle_rules"
-)
 
-const (
 	BucketTypeAdminManaged  = "admin_managed"
 	BucketTypeUserSpecified = "user_specified"
-)
 
-const (
 	AdminBucketCategoryLog              = "log"
 	AdminBucketCategoryLogLongRetention = "log_long_retention"
 	AdminBucketCategoryLogFailedTasks   = "log_failed_tasks"
@@ -64,7 +61,6 @@ func DiscoverAdminManagedBuckets(ctx context.Context, settings *evergreen.Settin
 	buckets := make(map[string]BucketInfo)
 	bucketsConfig := settings.Buckets
 
-	// Admin-managed buckets
 	adminBuckets := []evergreen.BucketConfig{
 		bucketsConfig.LogBucket,
 		bucketsConfig.LogBucketLongRetention,
@@ -168,7 +164,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 	return true
 }
 
-// convertPailTransitions converts pail.Transition to s3lifecycle.Transition.
+// convertPailTransitions converts pail.Transition to Transition.
 func convertPailTransitions(pailTransitions []pail.Transition) []Transition {
 	transitions := make([]Transition, 0, len(pailTransitions))
 	for _, pt := range pailTransitions {
@@ -352,4 +348,57 @@ func UpdateSyncError(ctx context.Context, bucketName, filterPrefix, syncError st
 		"updating sync error for bucket '%s' prefix '%s'",
 		bucketName, filterPrefix,
 	)
+}
+
+// BuildTierInfoByKey fetches all S3 lifecycle rules and resolves StorageTierInfo for every artifact and log file key in the given S3 usage data.
+func BuildTierInfoByKey(ctx context.Context, usage s3usage.S3Usage, logBucketName string, costConfig *evergreen.CostConfig) (map[string]s3usage.StorageTierInfo, error) {
+	if costConfig == nil {
+		return nil, errors.New("cost config is required to resolve storage tier info")
+	}
+
+	allRules, err := FindAllRules(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting S3 lifecycle rules")
+	}
+
+	rulesByBucket := map[string][]S3LifecycleRuleDoc{}
+	for _, rule := range allRules {
+		rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
+	}
+
+	defaultTierInfo := s3usage.StorageTierInfo{ExpirationDays: costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays}
+
+	tierInfoByKey := map[string]s3usage.StorageTierInfo{}
+	for _, f := range usage.Artifacts.AllFiles() {
+		tierInfoByKey[f.FileKey] = findLifecycleTierInfoForFileKey(rulesByBucket[f.Bucket], f.FileKey, defaultTierInfo)
+	}
+	for _, lm := range []s3usage.LogTypeMetrics{usage.Logs.Task, usage.Logs.Agent, usage.Logs.System} {
+		if lm.LogKey == "" {
+			continue
+		}
+		tierInfoByKey[lm.LogKey] = findLifecycleTierInfoForFileKey(rulesByBucket[logBucketName], lm.LogKey, defaultTierInfo)
+	}
+	return tierInfoByKey, nil
+}
+
+// findLifecycleTierInfoForFileKey returns the storage tier info from the most specific matching lifecycle rule for the given file key,
+// or defaultTierInfo if no matching rule is found.
+func findLifecycleTierInfoForFileKey(rules []S3LifecycleRuleDoc, fileKey string, defaultTierInfo s3usage.StorageTierInfo) s3usage.StorageTierInfo {
+	pailRules := make([]pail.LifecycleRule, 0, len(rules))
+	for _, rule := range rules {
+		var expDays *int32
+		if rule.ExpirationDays != nil {
+			expDays = utility.ToInt32Ptr(int32(*rule.ExpirationDays))
+		}
+		pailRules = append(pailRules, pail.LifecycleRule{
+			Prefix:         rule.FilterPrefix,
+			Status:         rule.RuleStatus,
+			ExpirationDays: expDays,
+		})
+	}
+	matched := pail.FindMatchingRule(pailRules, fileKey)
+	if matched == nil || matched.ExpirationDays == nil {
+		return defaultTierInfo
+	}
+	return s3usage.StorageTierInfo{ExpirationDays: int(*matched.ExpirationDays)}
 }

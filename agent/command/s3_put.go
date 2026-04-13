@@ -576,7 +576,7 @@ retryLoop:
 	)
 
 	maxPuts, minPuts := computePerFileExtremes(uploadedFiles)
-	conf.S3Usage.IncrementArtifacts(s3usage.ArtifactIncrementOptions{
+	conf.S3Usage.IncrementArtifacts(s3usage.ArtifactUpload{
 		PutRequests: totalPutRequests,
 		UploadBytes: totalFileSize,
 		FileCount:   len(uploadedFiles),

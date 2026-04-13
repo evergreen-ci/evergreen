@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 
-func TestS3LifecycleRuleDoc_Upsert(t *testing.T) {
+func TestS3LifecycleRuleDocUpsert(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 	now := time.Now().Truncate(time.Second)
 
@@ -47,18 +48,19 @@ func TestS3LifecycleRuleDoc_Upsert(t *testing.T) {
 	assert.Equal(t, doc.RuleID, found.RuleID)
 	assert.Equal(t, now.Unix(), found.LastSyncedAt.Unix())
 
-	// Test update
 	doc.ProjectAssociations = []string{"proj1", "proj2", "proj3"}
 	doc.ExpirationDays = ptr(90)
 	require.NoError(t, doc.Upsert(t.Context()))
 
 	found, err = FindByBucketAndPrefix(t.Context(), "test-bucket", "logs/")
 	require.NoError(t, err)
+	require.NotNil(t, found)
 	assert.Equal(t, []string{"proj1", "proj2", "proj3"}, found.ProjectAssociations)
+	require.NotNil(t, found.ExpirationDays)
 	assert.Equal(t, 90, *found.ExpirationDays)
 }
 
-func TestS3LifecycleRuleDoc_UpsertEmptyBucketName(t *testing.T) {
+func TestS3LifecycleRuleDocUpsertEmptyBucketName(t *testing.T) {
 	err := (&S3LifecycleRuleDoc{BucketName: "", BucketType: BucketTypeAdminManaged}).Upsert(t.Context())
 	assert.ErrorContains(t, err, "bucket name cannot be empty")
 }
@@ -71,19 +73,19 @@ func TestMakeRuleID(t *testing.T) {
 		expected     string
 	}{
 		{
-			name:         "with prefix",
+			name:         "WithPrefix",
 			bucketName:   "mciuploads",
 			filterPrefix: "sandbox/",
 			expected:     "mciuploads#sandbox/",
 		},
 		{
-			name:         "empty prefix (default rule)",
+			name:         "EmptyPrefixDefaultRule",
 			bucketName:   "mciuploads",
 			filterPrefix: "",
 			expected:     "mciuploads#",
 		},
 		{
-			name:         "multi-level prefix",
+			name:         "MultiLevelPrefix",
 			bucketName:   "mciuploads",
 			filterPrefix: "lifecycle/sandbox/",
 			expected:     "mciuploads#lifecycle/sandbox/",
@@ -155,7 +157,7 @@ func TestFindAllRulesForBucket(t *testing.T) {
 			assert.ErrorContains(t, err, tt.wantErr)
 		} else {
 			require.NoError(t, err)
-			assert.Len(t, found, tt.wantCount)
+			require.Len(t, found, tt.wantCount)
 			if tt.wantRuleID != "" {
 				assert.Equal(t, tt.wantRuleID, found[0].RuleID)
 			}
@@ -206,7 +208,7 @@ func TestDiscoverAdminManagedBuckets(t *testing.T) {
 		checkBucket func(t *testing.T, buckets map[string]BucketInfo)
 	}{
 		{
-			name: "basic discovery with role ARN",
+			name: "BasicDiscoveryWithRoleARN",
 			config: evergreen.BucketsConfig{
 				LogBucket:              evergreen.BucketConfig{Name: "log-bucket", Type: evergreen.BucketTypeS3, RoleARN: roleARN},
 				LogBucketLongRetention: evergreen.BucketConfig{Name: "retention-bucket", Type: evergreen.BucketTypeS3},
@@ -222,7 +224,7 @@ func TestDiscoverAdminManagedBuckets(t *testing.T) {
 			},
 		},
 		{
-			name: "skips non-S3 buckets",
+			name: "SkipsNonS3Buckets",
 			config: evergreen.BucketsConfig{
 				LogBucket:              evergreen.BucketConfig{Name: "gridfs", Type: evergreen.BucketTypeGridFS},
 				LogBucketLongRetention: evergreen.BucketConfig{Name: "s3-bucket", Type: evergreen.BucketTypeS3},
@@ -234,7 +236,7 @@ func TestDiscoverAdminManagedBuckets(t *testing.T) {
 			},
 		},
 		{
-			name: "skips empty names",
+			name: "SkipsEmptyNames",
 			config: evergreen.BucketsConfig{
 				LogBucket:              evergreen.BucketConfig{Name: "", Type: evergreen.BucketTypeS3},
 				LogBucketLongRetention: evergreen.BucketConfig{Name: "valid-bucket", Type: evergreen.BucketTypeS3},
@@ -245,7 +247,7 @@ func TestDiscoverAdminManagedBuckets(t *testing.T) {
 			},
 		},
 		{
-			name: "errors with no valid buckets",
+			name: "ErrorsWithNoValidBuckets",
 			config: evergreen.BucketsConfig{
 				LogBucket:              evergreen.BucketConfig{Name: "", Type: evergreen.BucketTypeS3},
 				LogBucketLongRetention: evergreen.BucketConfig{Name: "", Type: evergreen.BucketTypeGridFS},
@@ -273,7 +275,7 @@ func TestDiscoverAdminManagedBuckets(t *testing.T) {
 	}
 }
 
-// mockS3LifecycleClient is a mock implementation of cloud.S3LifecycleClient for testing.
+// mockS3LifecycleClient is a mock implementation of cloud.S3LifecycleClient.
 type mockS3LifecycleClient struct {
 	rules []pail.LifecycleRule
 	err   error
@@ -308,7 +310,7 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 		}
 
 		discovered := DiscoverAndCacheProjectBucket(t.Context(), "test-bucket", "us-east-1", nil, nil, "test-project", mockClient)
-		assert.True(t, discovered, "should trigger discovery for new bucket")
+		assert.True(t, discovered)
 
 		rules, err := FindAllRulesForBucket(t.Context(), "test-bucket")
 		require.NoError(t, err)
@@ -320,12 +322,14 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 		assert.Equal(t, "test-bucket#sandbox/", sandboxRule.ID)
 		assert.Equal(t, BucketTypeUserSpecified, sandboxRule.BucketType)
 		assert.Equal(t, []string{"test-project"}, sandboxRule.ProjectAssociations)
+		require.NotNil(t, sandboxRule.ExpirationDays)
 		assert.Equal(t, 30, *sandboxRule.ExpirationDays)
 
 		defaultRule, err := FindByBucketAndPrefix(t.Context(), "test-bucket", "")
 		require.NoError(t, err)
 		require.NotNil(t, defaultRule)
 		assert.Equal(t, "test-bucket#", defaultRule.ID)
+		require.NotNil(t, defaultRule.ExpirationDays)
 		assert.Equal(t, 90, *defaultRule.ExpirationDays)
 	})
 
@@ -348,11 +352,11 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 		}
 
 		discovered := DiscoverAndCacheProjectBucket(t.Context(), "cached-bucket", "us-east-1", nil, nil, "test-project", mockClient)
-		assert.False(t, discovered, "should skip discovery for cached bucket")
+		assert.False(t, discovered)
 
 		rules, err := FindAllRulesForBucket(t.Context(), "cached-bucket")
 		require.NoError(t, err)
-		assert.Len(t, rules, 1)
+		require.Len(t, rules, 1)
 		assert.Equal(t, "existing-rule", rules[0].RuleID)
 	})
 
@@ -364,7 +368,7 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 		}
 
 		discovered := DiscoverAndCacheProjectBucket(t.Context(), "error-bucket", "us-east-1", nil, nil, "test-project", mockClient)
-		assert.True(t, discovered, "should return true even if AWS call fails")
+		assert.False(t, discovered)
 
 		rules, err := FindAllRulesForBucket(t.Context(), "error-bucket")
 		require.NoError(t, err)
@@ -379,10 +383,63 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 		}
 
 		discovered := DiscoverAndCacheProjectBucket(t.Context(), "empty-bucket", "us-east-1", nil, nil, "test-project", mockClient)
-		assert.True(t, discovered, "should trigger discovery even if no rules returned")
+		assert.True(t, discovered)
 
 		rules, err := FindAllRulesForBucket(t.Context(), "empty-bucket")
 		require.NoError(t, err)
 		assert.Len(t, rules, 0)
+	})
+}
+
+func TestFindLifecycleTierInfoForFileKey(t *testing.T) {
+	enabled := "Enabled"
+	disabled := "Disabled"
+	defaultTierInfo := s3usage.StorageTierInfo{ExpirationDays: 365}
+	noMatch := s3usage.StorageTierInfo{}
+
+	t.Run("NoRulesShouldReturnDefault", func(t *testing.T) {
+		result := findLifecycleTierInfoForFileKey(nil, "logs/build/output.txt", defaultTierInfo)
+		assert.Equal(t, defaultTierInfo, result)
+	})
+
+	t.Run("NoMatchingPrefixShouldReturnDefault", func(t *testing.T) {
+		rules := []S3LifecycleRuleDoc{
+			{FilterPrefix: "sandbox/", RuleStatus: enabled, ExpirationDays: ptr(90)},
+		}
+		result := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt", defaultTierInfo)
+		assert.Equal(t, defaultTierInfo, result)
+	})
+
+	t.Run("MatchingPrefixShouldReturnExpirationDays", func(t *testing.T) {
+		rules := []S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: ptr(90)},
+		}
+		result := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt", noMatch)
+		assert.Equal(t, 90, result.ExpirationDays)
+	})
+
+	t.Run("MostSpecificPrefixShouldWin", func(t *testing.T) {
+		rules := []S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: ptr(90)},
+			{FilterPrefix: "logs/build/", RuleStatus: enabled, ExpirationDays: ptr(30)},
+		}
+		result := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt", noMatch)
+		assert.Equal(t, 30, result.ExpirationDays)
+	})
+
+	t.Run("DisabledRuleShouldReturnDefault", func(t *testing.T) {
+		rules := []S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: disabled, ExpirationDays: ptr(90)},
+		}
+		result := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt", defaultTierInfo)
+		assert.Equal(t, defaultTierInfo, result)
+	})
+
+	t.Run("NilExpirationDaysShouldReturnDefault", func(t *testing.T) {
+		rules := []S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: nil},
+		}
+		result := findLifecycleTierInfoForFileKey(rules, "logs/build/output.txt", defaultTierInfo)
+		assert.Equal(t, defaultTierInfo, result)
 	})
 }

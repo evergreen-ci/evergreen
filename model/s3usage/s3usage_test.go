@@ -70,7 +70,7 @@ func TestS3Usage(t *testing.T) {
 			{RemotePath: "path/file1.txt", FileSizeBytes: 600},
 			{RemotePath: "path/file2.txt", FileSizeBytes: 424},
 		}
-		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 5, UploadBytes: 1024, FileCount: 2, MaxPuts: 3, MinPuts: 2, Bucket: "bucket-a", Files: filesA})
+		s3Usage.IncrementArtifacts(ArtifactUpload{PutRequests: 5, UploadBytes: 1024, FileCount: 2, MaxPuts: 3, MinPuts: 2, Bucket: "bucket-a", Files: filesA})
 		assert.Equal(t, 5, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 2, s3Usage.Artifacts.Count)
@@ -84,7 +84,7 @@ func TestS3Usage(t *testing.T) {
 		filesB := []FileMetrics{
 			{RemotePath: "other/file3.txt", FileSizeBytes: 2048},
 		}
-		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 10, UploadBytes: 2048, FileCount: 3, MaxPuts: 8, MinPuts: 1, Bucket: "bucket-b", Files: filesB})
+		s3Usage.IncrementArtifacts(ArtifactUpload{PutRequests: 10, UploadBytes: 2048, FileCount: 3, MaxPuts: 8, MinPuts: 1, Bucket: "bucket-b", Files: filesB})
 		assert.Equal(t, 15, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 5, s3Usage.Artifacts.Count)
@@ -97,7 +97,7 @@ func TestS3Usage(t *testing.T) {
 		filesA2 := []FileMetrics{
 			{RemotePath: "path/file1.txt", FileSizeBytes: 512},
 		}
-		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 3, UploadBytes: 512, FileCount: 1, MaxPuts: 3, MinPuts: 3, Bucket: "bucket-a", Files: filesA2})
+		s3Usage.IncrementArtifacts(ArtifactUpload{PutRequests: 3, UploadBytes: 512, FileCount: 1, MaxPuts: 3, MinPuts: 3, Bucket: "bucket-a", Files: filesA2})
 		assert.Equal(t, int64(1112), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should accumulate across invocations")
 	})
 
@@ -106,13 +106,17 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 0, s3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(0), s3Usage.Logs.UploadBytes)
 
-		s3Usage.IncrementLogs(5, 1024)
+		s3Usage.IncrementLogs(5, 1024, LogTypeTask, "project/task1/0/task.log")
 		assert.Equal(t, 5, s3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Logs.UploadBytes)
+		assert.Equal(t, int64(1024), s3Usage.Logs.Task.Bytes)
+		assert.Equal(t, "project/task1/0/task.log", s3Usage.Logs.Task.LogKey)
 
-		s3Usage.IncrementLogs(10, 2048)
+		s3Usage.IncrementLogs(10, 2048, LogTypeAgent, "project/task1/0/agent.log")
 		assert.Equal(t, 15, s3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Logs.UploadBytes)
+		assert.Equal(t, int64(2048), s3Usage.Logs.Agent.Bytes)
+		assert.Equal(t, "project/task1/0/agent.log", s3Usage.Logs.Agent.LogKey)
 	})
 
 	t.Run("NilReceiverIsZero", func(t *testing.T) {
@@ -244,6 +248,52 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 
 }
 
+func TestStorageTierDays(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		tierInfo     StorageTierInfo
+		wantStandard int
+		wantIA       int
+		wantArchive  int
+	}{
+		{
+			name:         "ExpirationBeforeIAThresholdShouldBeAllStandard",
+			tierInfo:     StorageTierInfo{ExpirationDays: 20},
+			wantStandard: 20,
+			wantIA:       0,
+			wantArchive:  0,
+		},
+		{
+			name:         "ExpirationBetweenThresholdsShouldSplitStandardAndIA",
+			tierInfo:     StorageTierInfo{ExpirationDays: 60},
+			wantStandard: 30,
+			wantIA:       30,
+			wantArchive:  0,
+		},
+		{
+			name:         "ExpirationAtGlacierThresholdShouldHaveNoArchiveDays",
+			tierInfo:     StorageTierInfo{ExpirationDays: 90},
+			wantStandard: 30,
+			wantIA:       60,
+			wantArchive:  0,
+		},
+		{
+			name:         "ExpirationAfterGlacierThresholdShouldSplitAllThreeTiers",
+			tierInfo:     StorageTierInfo{ExpirationDays: 365},
+			wantStandard: 30,
+			wantIA:       60,
+			wantArchive:  275,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			standard, ia, archive := storageTierDays(tc.tierInfo)
+			assert.Equal(t, tc.wantStandard, standard)
+			assert.Equal(t, tc.wantIA, ia)
+			assert.Equal(t, tc.wantArchive, archive)
+		})
+	}
+}
+
 func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 	validConfig := &evergreen.CostConfig{
 		S3Cost: evergreen.S3CostConfig{
@@ -257,14 +307,9 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 
 	const GB = 1024 * 1024 * 1024
 
-	t.Run("DefaultArtifacts365Days", func(t *testing.T) {
-		// ExpirationDays=365: Standard=30, IA=60, Archive=275
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, validConfig)
+	t.Run("365DaysShouldSplitAcrossAllThreeTiers", func(t *testing.T) {
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{ExpirationDays: 365}, validConfig)
 		assert.Greater(t, cost, 0.0)
-		// Verify tier breakdown manually:
-		// Standard: 30 * (0.023/GB/30) * (1-0.37) = 0.023 * 0.63
-		// IA:       60 * (0.0125/GB/30) * (1-0.312) = 2 * 0.0125 * 0.688
-		// Archive:  275 * (0.004/GB/30) * (1-0.265)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		archive := 275.0 * (0.004 / float64(GB) / 30.0) * (1 - 0.265)
@@ -272,18 +317,8 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 		assert.InDelta(t, expected, cost, 0.000001)
 	})
 
-	t.Run("MongoDBMongoArtifacts90Days", func(t *testing.T) {
-		// ExpirationDays=90: Standard=30, IA=60, Archive=0
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 90, validConfig)
-		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
-		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
-		expected := float64(GB) * (standard + ia)
-		assert.InDelta(t, expected, cost, 0.000001)
-	})
-
-	t.Run("MongoSyncArtifacts180Days", func(t *testing.T) {
-		// ExpirationDays=180: Standard=30, IA=60, Archive=90
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 180, validConfig)
+	t.Run("180DaysShouldSplitAcrossAllThreeTiers", func(t *testing.T) {
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{ExpirationDays: 180}, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		archive := 90.0 * (0.004 / float64(GB) / 30.0) * (1 - 0.265)
@@ -291,39 +326,169 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 		assert.InDelta(t, expected, cost, 0.000001)
 	})
 
-	t.Run("DefaultLog60Days", func(t *testing.T) {
-		// ExpirationDays=60: Standard=30, IA=30, Archive=0
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 60, validConfig)
+	t.Run("90DaysShouldExcludeArchiveTier", func(t *testing.T) {
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{ExpirationDays: 90}, validConfig)
+		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
+		ia := 60.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
+		expected := float64(GB) * (standard + ia)
+		assert.InDelta(t, expected, cost, 0.000001)
+	})
+
+	t.Run("60DaysShouldExcludeArchiveTier", func(t *testing.T) {
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{ExpirationDays: 60}, validConfig)
 		standard := 30.0 * (0.023 / float64(GB) / 30.0) * (1 - 0.37)
 		ia := 30.0 * (0.0125 / float64(GB) / 30.0) * (1 - 0.312)
 		expected := float64(GB) * (standard + ia)
 		assert.InDelta(t, expected, cost, 0.000001)
 	})
 
-	t.Run("FailedLog180Days", func(t *testing.T) {
-		// ExpirationDays=180: Standard=30, IA=60, Archive=90
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 180, validConfig)
-		assert.Greater(t, cost, 0.0)
-	})
-
-	t.Run("LongRetentionLog365Days", func(t *testing.T) {
-		// ExpirationDays=365: Standard=30, IA=60, Archive=275
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, validConfig)
-		assert.Greater(t, cost, 0.0)
-	})
-
-	t.Run("ZeroBytes", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(t.Context(), 0, 365, validConfig)
+	t.Run("ZeroBytesShouldReturnZero", func(t *testing.T) {
+		cost := CalculateS3StorageCostWithConfig(t.Context(), 0, StorageTierInfo{ExpirationDays: 365}, validConfig)
 		assert.Equal(t, 0.0, cost)
 	})
 
-	t.Run("ZeroExpirationDays", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 0, validConfig)
+	t.Run("ZeroExpirationDaysShouldReturnZero", func(t *testing.T) {
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{}, validConfig)
 		assert.Equal(t, 0.0, cost)
 	})
 
-	t.Run("NilConfig", func(t *testing.T) {
-		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, nil)
+	t.Run("NilConfigShouldReturnZero", func(t *testing.T) {
+		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, StorageTierInfo{ExpirationDays: 365}, nil)
 		assert.Equal(t, 0.0, cost)
+	})
+}
+
+func TestCalculateArtifactPutCosts(t *testing.T) {
+	validConfig := &evergreen.CostConfig{
+		S3Cost: evergreen.S3CostConfig{
+			Upload: evergreen.S3UploadCostConfig{
+				UploadCostDiscount: 0.0,
+			},
+		},
+	}
+
+	t.Run("ZeroArtifactsShouldReturnZero", func(t *testing.T) {
+		var costs S3Costs
+		calculateArtifactPutCosts(&costs, S3Usage{}, validConfig)
+		assert.Equal(t, 0.0, costs.ArtifactPutCost)
+		assert.Equal(t, 0.0, costs.AvgFilePutCost)
+		assert.Equal(t, 0.0, costs.MaxFilePutCost)
+		assert.Equal(t, 0.0, costs.MinFilePutCost)
+	})
+
+	t.Run("SingleFileShouldHaveEqualAvgMinMax", func(t *testing.T) {
+		var costs S3Costs
+		usage := S3Usage{
+			Artifacts: ArtifactMetrics{
+				S3UploadMetrics:            S3UploadMetrics{PutRequests: 3},
+				Count:                      1,
+				ArtifactWithMaxPutRequests: 3,
+				ArtifactWithMinPutRequests: 3,
+			},
+		}
+		calculateArtifactPutCosts(&costs, usage, validConfig)
+		assert.Greater(t, costs.ArtifactPutCost, 0.0)
+		assert.Equal(t, costs.AvgFilePutCost, costs.MaxFilePutCost)
+		assert.Equal(t, costs.AvgFilePutCost, costs.MinFilePutCost)
+	})
+
+	t.Run("MultipleFilesWithDifferentPutsShouldComputeExtremes", func(t *testing.T) {
+		var costs S3Costs
+		usage := S3Usage{
+			Artifacts: ArtifactMetrics{
+				S3UploadMetrics:            S3UploadMetrics{PutRequests: 10},
+				Count:                      3,
+				ArtifactWithMaxPutRequests: 6,
+				ArtifactWithMinPutRequests: 1,
+			},
+		}
+		calculateArtifactPutCosts(&costs, usage, validConfig)
+		expectedPutCost := float64(10) * S3PutRequestCost
+		assert.InDelta(t, expectedPutCost, costs.ArtifactPutCost, 0.000001)
+		assert.InDelta(t, expectedPutCost/3, costs.AvgFilePutCost, 0.000001)
+		assert.Greater(t, costs.MaxFilePutCost, costs.MinFilePutCost)
+		costPerPut := expectedPutCost / 10
+		assert.InDelta(t, costPerPut*6, costs.MaxFilePutCost, 0.000001)
+		assert.InDelta(t, costPerPut*1, costs.MinFilePutCost, 0.000001)
+	})
+
+	t.Run("NilConfigShouldReturnZero", func(t *testing.T) {
+		var costs S3Costs
+		usage := S3Usage{
+			Artifacts: ArtifactMetrics{
+				S3UploadMetrics: S3UploadMetrics{PutRequests: 10},
+				Count:           3,
+			},
+		}
+		calculateArtifactPutCosts(&costs, usage, nil)
+		assert.Equal(t, 0.0, costs.ArtifactPutCost)
+		assert.Equal(t, 0.0, costs.AvgFilePutCost)
+		assert.Equal(t, 0.0, costs.MaxFilePutCost)
+		assert.Equal(t, 0.0, costs.MinFilePutCost)
+	})
+}
+
+func TestCalculateAllCosts(t *testing.T) {
+	validConfig := &evergreen.CostConfig{
+		S3Cost: evergreen.S3CostConfig{
+			Upload: evergreen.S3UploadCostConfig{UploadCostDiscount: 0.0},
+			Storage: evergreen.S3StorageCostConfig{
+				DefaultMaxArtifactExpirationDays: 365,
+			},
+		},
+	}
+	const MB = 1024 * 1024
+
+	t.Run("PutCostsCalculatedIndependentlyFromStorageCosts", func(t *testing.T) {
+		usage := S3Usage{
+			Artifacts: ArtifactMetrics{
+				S3UploadMetrics:            S3UploadMetrics{PutRequests: 10, UploadBytes: int64(5 * MB)},
+				Count:                      2,
+				ArtifactWithMaxPutRequests: 7,
+				ArtifactWithMinPutRequests: 3,
+			},
+			Logs: LogMetrics{S3UploadMetrics: S3UploadMetrics{PutRequests: 5}},
+		}
+		costs := CalculateAllCosts(t.Context(), usage, nil, validConfig)
+		assert.Greater(t, costs.ArtifactPutCost, 0.0)
+		assert.Greater(t, costs.LogPutCost, 0.0)
+		assert.Greater(t, costs.MaxFilePutCost, costs.MinFilePutCost)
+		assert.Equal(t, 0.0, costs.ArtifactStorageCost)
+		assert.Equal(t, 0.0, costs.LogStorageCost)
+	})
+
+	t.Run("StorageCostsCalculatedWithTierInfo", func(t *testing.T) {
+		fileKey := "project/task1/0/artifacts/binary.tar.gz"
+		usage := S3Usage{
+			Artifacts: ArtifactMetrics{
+				S3UploadMetrics: S3UploadMetrics{PutRequests: 1},
+				Count:           1,
+				BytesByBucketAndKey: []BucketFileMetrics{
+					{Bucket: "mciuploads", Files: []FileBytes{{FileKey: fileKey, Bytes: int64(5 * MB)}}},
+				},
+				ArtifactWithMaxPutRequests: 1,
+				ArtifactWithMinPutRequests: 1,
+			},
+		}
+		tierInfoByKey := map[string]StorageTierInfo{
+			fileKey: {ExpirationDays: 90},
+		}
+		costs := CalculateAllCosts(t.Context(), usage, tierInfoByKey, validConfig)
+		assert.Greater(t, costs.ArtifactPutCost, 0.0)
+		assert.Greater(t, costs.ArtifactStorageCost, 0.0)
+	})
+
+	t.Run("NilConfigShouldReturnZeroCosts", func(t *testing.T) {
+		usage := S3Usage{
+			Artifacts: ArtifactMetrics{
+				S3UploadMetrics: S3UploadMetrics{PutRequests: 10},
+				Count:           1,
+			},
+		}
+		costs := CalculateAllCosts(t.Context(), usage, nil, nil)
+		assert.Equal(t, 0.0, costs.ArtifactPutCost)
+		assert.Equal(t, 0.0, costs.LogPutCost)
+		assert.Equal(t, 0.0, costs.ArtifactStorageCost)
+		assert.Equal(t, 0.0, costs.LogStorageCost)
 	})
 }

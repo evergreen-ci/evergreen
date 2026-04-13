@@ -48,6 +48,9 @@ type EvergreenSenderOptions struct {
 	// S3Usage tracks S3 API usage for log uploads. If set, flush() will
 	// increment log file metrics after each successful write.
 	S3Usage *s3usage.S3Usage
+	// LogType and LogKey identify the log type and S3 key for per-type storage cost tracking.
+	LogType string
+	LogKey  string
 
 	appendLines logLineAppender
 }
@@ -245,7 +248,7 @@ func (s *evergreenSender) flush(ctx context.Context) error {
 	}
 
 	if s.opts.S3Usage != nil && uploadBytes > 0 {
-		s.opts.S3Usage.IncrementLogs(1, uploadBytes)
+		s.opts.S3Usage.IncrementLogs(1, uploadBytes, s.opts.LogType, s.opts.LogKey)
 	}
 
 	s.buffer = []log.LogLine{}

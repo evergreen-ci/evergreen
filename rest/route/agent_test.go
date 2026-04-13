@@ -1096,7 +1096,7 @@ func TestReportS3Usage(t *testing.T) {
 					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 50, UploadBytes: 2048},
 					Count:           5,
 				},
-				Logs: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 4096},
+				Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 4096}},
 			},
 			wantStatus: http.StatusOK,
 			assertions: func(t *testing.T, dbTask *task.Task) {
@@ -1110,7 +1110,7 @@ func TestReportS3Usage(t *testing.T) {
 		"SavesLogOnlyUsage": {
 			insertTask: &task.Task{Id: "t2", Status: evergreen.TaskStarted},
 			s3Usage: s3usage.S3Usage{
-				Logs: s3usage.S3UploadMetrics{PutRequests: 25, UploadBytes: 8192},
+				Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 25, UploadBytes: 8192}},
 			},
 			wantStatus: http.StatusOK,
 			assertions: func(t *testing.T, dbTask *task.Task) {
@@ -1143,59 +1143,4 @@ func TestReportS3Usage(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestFindExpirationDaysForFileKey(t *testing.T) {
-	enabled := "Enabled"
-	disabled := "Disabled"
-	days90 := 90
-	days30 := 30
-
-	t.Run("NoRulesShouldReturnNotFound", func(t *testing.T) {
-		_, ok := findExpirationDaysForFileKey(nil, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("NoMatchingPrefixShouldReturnNotFound", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "sandbox/", RuleStatus: enabled, ExpirationDays: &days90},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("MatchingPrefixShouldReturnDays", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
-		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.True(t, ok)
-		assert.Equal(t, 90, days)
-	})
-
-	t.Run("MostSpecificPrefixShouldWin", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
-			{FilterPrefix: "logs/build/", RuleStatus: enabled, ExpirationDays: &days30},
-		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.True(t, ok)
-		assert.Equal(t, 30, days)
-	})
-
-	t.Run("DisabledRuleShouldBeIgnored", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: disabled, ExpirationDays: &days90},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("NilExpirationDaysShouldReturnNotFound", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: nil},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
 }

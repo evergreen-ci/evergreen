@@ -512,8 +512,9 @@ const (
 	TaskEBSOnDemandStorageCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_storage_cost"
 	TaskEBSAdjustedStorageCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_storage_cost"
 
-	// S3 cost tracking otel span name — shared by per-file and aggregate events
-	S3CostTrackingOtelSpanName = "s3-cost-tracking"
+	// S3 cost tracking otel span name and top-level attributes
+	S3CostTrackingOtelSpanName    = "s3-cost-tracking"
+	S3CostCalculatedOtelAttribute = "evergreen.task.s3_cost.cost_calculated"
 
 	// S3 cost tracking otel attributes — artifact aggregates
 	S3ArtifactPutRequestsOtelAttribute = "evergreen.task.s3_cost.artifact_put_requests"
@@ -526,11 +527,18 @@ const (
 	S3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
 	S3ArtifactWithMaxPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_max_put_requests_cost"
 	S3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
+	S3ArtifactAvgStorageCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_storage_cost"
+	S3ArtifactMinStorageCostOtelAttribute         = "evergreen.task.s3_cost.artifact_min_storage_cost"
+	S3ArtifactMaxStorageCostOtelAttribute         = "evergreen.task.s3_cost.artifact_max_storage_cost"
 
 	// S3 cost tracking otel attributes — log aggregates
-	S3LogPutRequestsOtelAttribute = "evergreen.task.s3_cost.log_put_requests"
-	S3LogUploadBytesOtelAttribute = "evergreen.task.s3_cost.log_upload_bytes"
-	S3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.log_put_cost"
+	S3LogPutRequestsOtelAttribute    = "evergreen.task.s3_cost.log_put_requests"
+	S3LogUploadBytesOtelAttribute    = "evergreen.task.s3_cost.log_upload_bytes"
+	S3LogPutCostOtelAttribute        = "evergreen.task.s3_cost.log_put_cost"
+	S3LogStorageCostOtelAttribute    = "evergreen.task.s3_cost.log_storage_cost"
+	S3LogAvgStorageCostOtelAttribute = "evergreen.task.s3_cost.log_avg_storage_cost"
+	S3LogMinStorageCostOtelAttribute = "evergreen.task.s3_cost.log_min_storage_cost"
+	S3LogMaxStorageCostOtelAttribute = "evergreen.task.s3_cost.log_max_storage_cost"
 
 	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
