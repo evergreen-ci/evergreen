@@ -59,6 +59,32 @@
           }
         }
       }
+    },
+    {
+      "query_file": "version_status_and_stats.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "taskity_task_2",
+            "version": {
+              "id": "version_admin_user",
+              "status": "succeeded",
+              "taskStatusStats": {
+                "counts": [
+                  {
+                    "status": "failed",
+                    "count": 1
+                  },
+                  {
+                    "status": "succeeded",
+                    "count": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

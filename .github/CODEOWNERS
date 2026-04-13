@@ -1,5 +1,6 @@
 * @evergreen-ci/evg-app
 graphql/ @evergreen-ci/evg-ui
+gqlgen.yml @evergreen-ci/evg-ui
 
 # Don't automatically assign reviewers on PRs that only modify these files.
 # As they have no owner listed, these files are not owned by anyone.

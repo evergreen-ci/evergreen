@@ -541,6 +541,7 @@ const (
 	VersionFinishTimeOtelAttribute            = "evergreen.version.finish_time"
 	VersionAuthorOtelAttribute                = "evergreen.version.author"
 	VersionBranchOtelAttribute                = "evergreen.version.branch"
+	VersionHighestExecutionTaskOtelAttribute  = "evergreen.version.highest_execution_task"
 	VersionMakespanSecondsOtelAttribute       = "evergreen.version.makespan_seconds"
 	VersionTimeTakenSecondsOtelAttribute      = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute                 = "evergreen.version.pr_num"

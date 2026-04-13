@@ -17,6 +17,22 @@
           "patch": {
             "versionFull": {
               "id": "5dd2e89cd1fe07048e43bb9c"
+            },
+            "version": {
+              "id": "5dd2e89cd1fe07048e43bb9c",
+              "status": "failed",
+              "taskStatusStats": {
+                "counts": [
+                  {
+                    "status": "failed",
+                    "count": 1
+                  },
+                  {
+                    "status": "succeeded",
+                    "count": 1
+                  }
+                ]
+              }
             }
           }
         }
