@@ -1338,27 +1338,6 @@ func TestDetachFromRepo(t *testing.T) {
 }
 
 func TestDefaultRepoBySection(t *testing.T) {
-	githubSectionsTest := func(t *testing.T, id string, section ProjectPageSection) {
-		t.Helper()
-		aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
-		assert.NoError(t, err)
-		assert.Len(t, aliases, 5)
-		assert.NoError(t, DefaultSectionToRepo(t.Context(), id, section, "me"))
-		pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
-		assert.NoError(t, err)
-		assert.NotNil(t, pRefFromDb)
-		assert.Nil(t, pRefFromDb.PRTestingEnabled)
-		assert.Nil(t, pRefFromDb.GithubChecksEnabled)
-		assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-		aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
-		assert.NoError(t, err)
-		assert.Len(t, aliases, 1)
-		// assert that only patch aliases are left
-		for _, a := range aliases {
-			assert.NotContains(t, evergreen.InternalAliases, a.Alias)
-		}
-	}
-
 	for name, test := range map[string]func(t *testing.T, id string){
 		ProjectPageGeneralSection: func(t *testing.T, id string) {
 			repoRef := RepoRef{
@@ -1403,19 +1382,109 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		// TODO DEVPROD-31534: remove GithubAndCQSection
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
-			githubSectionsTest(t, id, ProjectPageGithubAndCQSection)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubAndCQSection, "me"))
+
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.PRTestingEnabled)
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 1)
+			// assert that only patch aliases are left
+			for _, a := range aliases {
+				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
+			}
 		},
 		ProjectPagePullRequestsSection: func(t *testing.T, id string) {
-			githubSectionsTest(t, id, ProjectPagePullRequestsSection)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPagePullRequestsSection, "me"))
+
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			assert.Nil(t, pRefFromDb.PRTestingEnabled)
+			assert.Nil(t, pRefFromDb.ManualPRTestingEnabled)
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
+			assert.Equal(t, []string{"anna"}, pRefFromDb.GitTagAuthorizedUsers)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 1)
+			for _, a := range aliases {
+				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
+			}
 		},
 		ProjectPageGitTagsSection: func(t *testing.T, id string) {
-			githubSectionsTest(t, id, ProjectPageGitTagsSection)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGitTagsSection, "me"))
+
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			assert.True(t, pRefFromDb.IsPRTestingEnabled())
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 1)
+			for _, a := range aliases {
+				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
+			}
 		},
 		ProjectPageMergeQueueSection: func(t *testing.T, id string) {
-			githubSectionsTest(t, id, ProjectPageMergeQueueSection)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageMergeQueueSection, "me"))
+
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
+			assert.True(t, pRefFromDb.IsPRTestingEnabled())
+			assert.Equal(t, []string{"anna"}, pRefFromDb.GitTagAuthorizedUsers)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 1)
+			for _, a := range aliases {
+				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
+			}
 		},
 		ProjectPageCommitChecksSection: func(t *testing.T, id string) {
-			githubSectionsTest(t, id, ProjectPageCommitChecksSection)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageCommitChecksSection, "me"))
+
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			assert.True(t, pRefFromDb.IsPRTestingEnabled())
+			assert.False(t, pRefFromDb.IsGithubChecksEnabled()) // stays false
+			assert.Equal(t, []string{"anna"}, pRefFromDb.GitTagAuthorizedUsers)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			assert.NoError(t, err)
+			assert.Len(t, aliases, 1)
+			for _, a := range aliases {
+				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
+			}
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageNotificationsSection, "me"))
