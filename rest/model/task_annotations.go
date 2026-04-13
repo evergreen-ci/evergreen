@@ -250,7 +250,10 @@ func APIMetadataLinksToService(t []*APIMetadataLink) []annotations.MetadataLink 
 
 func GetJiraTicketFromURL(ctx context.Context, jiraURL string) (*thirdparty.JiraTicket, error) {
 	settings := evergreen.GetEnvironment().Settings()
-	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	jiraHandler, err := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating jira handler")
+	}
 
 	parsedURL, err := url.Parse(jiraURL)
 	if err != nil {

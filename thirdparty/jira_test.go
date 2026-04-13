@@ -96,7 +96,8 @@ func TestJiraIssueToJiraTicket_JSONRoundTripCustomFields(t *testing.T) {
 func TestJiraIntegration(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	Convey("With a JIRA rest interface that makes a valid request", t, func() {
-		jira := NewJiraHandler(*testConfig.Jira.Export())
+		jira, err := NewJiraHandler(*testConfig.Jira.Export())
+		So(err, ShouldBeNil)
 
 		Convey("the request for a ticket should return a valid ticket response", func() {
 			ticket, err := jira.GetIssue(t.Context(), "BF-1")

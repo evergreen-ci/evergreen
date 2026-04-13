@@ -79,7 +79,7 @@ func (jiraHandler *JiraHandler) GetIssue(ctx context.Context, key string) (*Jira
 
 // JQLSearch runs the given JQL query against the given jira instance and returns
 // the results in a JiraSearchResults.
-func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int) (*JiraSearchResults, error) {
+func (jiraHandler *JiraHandler) JQLSearch(ctx context.Context, query string, startAt, maxResults int) (*JiraSearchResults, error) {
 	if jiraHandler.client == nil {
 		return nil, errors.New("jira client is not initialized")
 	}
@@ -87,7 +87,7 @@ func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int)
 	if maxResults > 0 {
 		opts.MaxResults = maxResults
 	}
-	issues, resp, err := jiraHandler.client.Issue.Search(query, opts)
+	issues, resp, err := jiraHandler.client.Issue.SearchWithContext(ctx, query, opts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -109,7 +109,7 @@ func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int)
 	return out, nil
 }
 
-func NewJiraHandler(opts send.JiraOptions) JiraHandler {
+func NewJiraHandler(opts send.JiraOptions) (JiraHandler, error) {
 	httpClient := utility.GetHTTPClient()
 	if opts.PersonalAccessTokenOpts.Token != "" {
 		transport := jira.BearerAuthTransport{
@@ -120,9 +120,9 @@ func NewJiraHandler(opts send.JiraOptions) JiraHandler {
 	}
 	jiraClient, err := jira.NewClient(httpClient, opts.BaseURL)
 	if err != nil {
-		return JiraHandler{}
+		return JiraHandler{}, errors.Wrap(err, "creating jira client")
 	}
-	return JiraHandler{client: jiraClient}
+	return JiraHandler{client: jiraClient}, nil
 }
 
 // jiraIssueToJiraTicket converts a go-jira Issue into our API shape. go-jira's IssueFields.MarshalJSON
