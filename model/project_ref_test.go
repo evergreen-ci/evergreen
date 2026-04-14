@@ -1419,9 +1419,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
-			for _, a := range aliases {
-				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
-			}
+			assert.NotContains(t, evergreen.InternalAliases, aliases)
 		},
 		ProjectPageGitTagsSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
@@ -1440,9 +1438,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
-			for _, a := range aliases {
-				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
-			}
+			assert.NotContains(t, evergreen.InternalAliases, aliases)
 		},
 		ProjectPageMergeQueueSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
@@ -1461,9 +1457,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
-			for _, a := range aliases {
-				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
-			}
+			assert.NotContains(t, evergreen.InternalAliases, aliases)
 		},
 		ProjectPageCommitChecksSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
@@ -1482,9 +1476,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
-			for _, a := range aliases {
-				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
-			}
+			assert.NotContains(t, evergreen.InternalAliases, aliases)
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageNotificationsSection, "me"))

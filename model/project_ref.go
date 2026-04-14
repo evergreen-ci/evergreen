@@ -2409,7 +2409,6 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefGithubChecksEnabledKey:   p.GithubChecksEnabled,
 					projectRefGitTagVersionsEnabledKey: p.GitTagVersionsEnabled,
 					ProjectRefGitTagAuthorizedUsersKey: p.GitTagAuthorizedUsers,
 					ProjectRefGitTagAuthorizedTeamsKey: p.GitTagAuthorizedTeams,
@@ -2420,8 +2419,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefGithubChecksEnabledKey: p.GithubChecksEnabled,
-					projectRefCommitQueueKey:         p.CommitQueue,
+					projectRefCommitQueueKey: p.CommitQueue,
 				},
 			})
 	case ProjectPageCommitChecksSection:
@@ -2429,7 +2427,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefCommitQueueKey: p.CommitQueue,
+					projectRefGithubChecksEnabledKey: p.GithubChecksEnabled,
 				},
 			})
 	case ProjectPageVariablesSection:
