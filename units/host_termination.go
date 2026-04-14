@@ -306,7 +306,26 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	lastIdle, err := j.incrementIdleTime(ctx)
 	j.AddError(err)
 
-	terminationMessage := message.Fields{
+	j.logTerminationStats(ctx, lastIdle)
+
+	if j.host.StartedBy == evergreen.User && j.host.TaskCount == 0 {
+		grip.Info(ctx, message.Fields{
+			"message":          "task host ran no tasks before it was terminated",
+			"status":           prevStatus,
+			"host_id":          j.HostID,
+			"host_tag":         j.host.Tag,
+			"distro":           j.host.Distro.Id,
+			"uptime_secs":      time.Since(j.host.StartTime).Seconds(),
+			"provider":         j.host.Provider,
+			"spawn_host":       j.host.StartedBy != evergreen.User,
+			"is_ec2_host":      cloud.IsEC2InstanceID(j.HostID),
+			"agent_start_time": j.host.AgentStartTime,
+		})
+	}
+}
+
+func (j *hostTerminationJob) logTerminationStats(ctx context.Context, lastIdle time.Duration) {
+	msg := message.Fields{
 		"message":            "host successfully terminated",
 		"host_id":            j.host.Id,
 		"distro":             j.host.Distro.Id,
@@ -325,32 +344,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"user_host":          j.host.UserHost,
 		"spawned_by_task":    j.host.SpawnOptions.SpawnedByTask,
 	}
-	if !utility.IsZeroTime(j.host.BillingStartTime) {
-		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
-	}
-	if j.host.SpawnOptions.SpawnedByTask {
-		// kim: TODO: verify logs look okay when spawned by task.
-		terminationMessage["spawned_by_project"] = j.host.SpawnOptions.ProjectID
-		if j.host.SpawnOptions.TaskID != "" {
-			terminationMessage["spawned_by_task_id"] = j.host.SpawnOptions.TaskID
-			terminationMessage["spawned_by_task_execution"] = j.host.SpawnOptions.TaskExecutionNumber
-		}
-		if j.host.SpawnOptions.BuildID != "" {
-			terminationMessage["spawned_by_build_id"] = j.host.SpawnOptions.BuildID
-		}
-	}
-	var instanceType string
-	if evergreen.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
-		var ok bool
-		instanceType, ok = j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
-		if ok {
-			terminationMessage["instance_type"] = instanceType
-		}
-	}
-	grip.Info(ctx, terminationMessage)
-
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(
+	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
 		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
 		attribute.Float64(fmt.Sprintf("%s.idle_secs", hostTerminationAttributePrefix), j.host.TotalIdleTime.Seconds()),
@@ -361,40 +355,39 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		attribute.Bool(fmt.Sprintf("%s.user_host", hostTerminationAttributePrefix), j.host.UserHost),
 		attribute.Int(fmt.Sprintf("%s.task_count", hostTerminationAttributePrefix), j.host.TaskCount),
 		attribute.Bool(fmt.Sprintf("%s.spawned_by_task", hostTerminationAttributePrefix), j.host.SpawnOptions.SpawnedByTask),
-	)
+	}
+
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
-		span.SetAttributes(attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()))
+		billableSecs := j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
+		msg["total_billable_secs"] = billableSecs
+		attrs = append(attrs, attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), billableSecs))
 	}
 	if j.host.SpawnOptions.SpawnedByTask {
-		span.SetAttributes(attribute.String(fmt.Sprintf("%s.spawned_by_project", hostTerminationAttributePrefix), j.host.SpawnOptions.ProjectID))
+		msg["spawned_by_project"] = j.host.SpawnOptions.ProjectID
+		attrs = append(attrs, attribute.String(fmt.Sprintf("%s.spawned_by_project", hostTerminationAttributePrefix), j.host.SpawnOptions.ProjectID))
 		if j.host.SpawnOptions.TaskID != "" {
-			span.SetAttributes(
+			msg["spawned_by_task_id"] = j.host.SpawnOptions.TaskID
+			msg["spawned_by_task_execution"] = j.host.SpawnOptions.TaskExecutionNumber
+			attrs = append(attrs,
 				attribute.String(fmt.Sprintf("%s.spawned_by_task_id", hostTerminationAttributePrefix), j.host.SpawnOptions.TaskID),
 				attribute.Int64(fmt.Sprintf("%s.spawned_by_task_execution", hostTerminationAttributePrefix), int64(j.host.SpawnOptions.TaskExecutionNumber)),
 			)
 		}
 		if j.host.SpawnOptions.BuildID != "" {
-			span.SetAttributes(attribute.String(fmt.Sprintf("%s.spawned_by_build_id", hostTerminationAttributePrefix), j.host.SpawnOptions.BuildID))
+			msg["spawned_by_build_id"] = j.host.SpawnOptions.BuildID
+			attrs = append(attrs, attribute.String(fmt.Sprintf("%s.spawned_by_build_id", hostTerminationAttributePrefix), j.host.SpawnOptions.BuildID))
 		}
 	}
-	if instanceType != "" {
-		span.SetAttributes(attribute.String(fmt.Sprintf("%s.instance_type", hostTerminationAttributePrefix), instanceType))
+	if evergreen.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
+		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+		if ok {
+			msg["instance_type"] = instanceType
+			attrs = append(attrs, attribute.String(fmt.Sprintf("%s.instance_type", hostTerminationAttributePrefix), instanceType))
+		}
 	}
 
-	if j.host.StartedBy == evergreen.User && j.host.TaskCount == 0 {
-		grip.Info(ctx, message.Fields{
-			"message":          "task host ran no tasks before it was terminated",
-			"status":           prevStatus,
-			"host_id":          j.HostID,
-			"host_tag":         j.host.Tag,
-			"distro":           j.host.Distro.Id,
-			"uptime_secs":      time.Since(j.host.StartTime).Seconds(),
-			"provider":         j.host.Provider,
-			"spawn_host":       j.host.StartedBy != evergreen.User,
-			"is_ec2_host":      cloud.IsEC2InstanceID(j.HostID),
-			"agent_start_time": j.host.AgentStartTime,
-		})
-	}
+	grip.Info(ctx, msg)
+	trace.SpanFromContext(ctx).SetAttributes(attrs...)
 }
 
 func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) (time.Duration, error) {
