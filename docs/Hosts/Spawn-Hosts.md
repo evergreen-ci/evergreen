@@ -58,9 +58,7 @@ EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or
 
 ## Evergreen CLI on a spawn host
 
-After migration, when **you load task-related data on a spawn host**, **[Authenticate spawn hosts](#authenticate-spawn-hosts-oauth)** in Spruce is required before Spruce lets you create that spawn host. That step provisions a valid token on the spawn host. You should not need a **device-code / browser** login on the spawn host for that flow.
-
-If you use the Evergreen CLI **elsewhere** (for example on a machine without a GUI) and the CLI prompts you to authenticate with a URL and code, you can set `oauth.do_not_use_browser` to `true` in `~/.evergreen.yml` and complete the steps in the terminal. Example:
+If you're having trouble authenticating on your spawn host, please make sure the following setting is set:
 
 ```yaml
 # ~/.evergreen.yml
