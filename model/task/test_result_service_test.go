@@ -197,7 +197,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 			{
 				TaskID:        "task1",
 				TestName:      "A test",
-				Status:        "Pass",
+				Status:        "pass",
 				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 1, time.UTC),
 				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 12, 0, time.UTC),
 			},
@@ -205,7 +205,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 				TaskID:          "task1",
 				TestName:        "B test",
 				DisplayTestName: "Display",
-				Status:          "Fail",
+				Status:          "fail",
 				TestStartTime:   time.Date(1996, time.August, 31, 12, 5, 10, 3, time.UTC),
 				TestEndTime:     time.Date(1996, time.August, 31, 12, 5, 16, 0, time.UTC),
 			},
@@ -213,14 +213,14 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 				TaskID:          "task1",
 				TestName:        "C test",
 				DisplayTestName: "B",
-				Status:          "Fail",
+				Status:          "fail",
 				TestStartTime:   time.Date(1996, time.August, 31, 12, 5, 10, 2, time.UTC),
 				TestEndTime:     time.Date(1996, time.August, 31, 12, 5, 15, 0, time.UTC),
 			},
 			{
 				TaskID:        "task1",
 				TestName:      "D test",
-				Status:        "Pass",
+				Status:        "pass",
 				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 4, time.UTC),
 				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 11, 0, time.UTC),
 				GroupID:       "llama",
@@ -255,24 +255,24 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 		{
 			TaskID:   baseTask.Id,
 			TestName: "A test",
-			Status:   "Pass",
+			Status:   "pass",
 		},
 		{
 			TaskID:          baseTask.Id,
 			TestName:        "B test",
 			DisplayTestName: "Display",
-			Status:          "Fail",
+			Status:          "fail",
 		},
 		{
 			TaskID:          baseTask.Id,
 			TestName:        "C test",
 			DisplayTestName: "B",
-			Status:          "Pass",
+			Status:          "pass",
 		},
 		{
 			TaskID:   baseTask.Id,
 			TestName: "D test",
-			Status:   "Fail",
+			Status:   "fail",
 		},
 	}
 
@@ -407,7 +407,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name:            "StatusFilter",
-			opts:            &FilterOptions{Statuses: []string{"Fail"}},
+			opts:            &FilterOptions{Statuses: []string{"fail"}},
 			expectedResults: results[1:3],
 			expectedCount:   2,
 		},

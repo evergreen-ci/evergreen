@@ -133,6 +133,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			p := intent.NewPatch()
 			assert.Equal(t, evergreen.CommitQueueAlias, p.Alias)
 			assert.Equal(t, *mge.MergeGroup.BaseSHA, p.Githash)
+			assert.Equal(t, *mge.MergeGroup.BaseSHA, p.GithubMergeData.BaseSHA)
 			assert.Equal(t, *mge.MergeGroup.HeadSHA, p.GithubMergeData.HeadSHA)
 			assert.Equal(t, mge.MergeGroup.GetHeadCommit().GetMessage(), p.GithubMergeData.HeadCommit)
 			assert.Equal(t, *mge.Org.Login, p.GithubMergeData.Org)

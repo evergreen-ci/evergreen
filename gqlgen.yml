@@ -193,6 +193,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDebugSpawnHostsConfig
   DebugSpawnHostsConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDebugSpawnHostsConfig
+  DiagnosticsConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDiagnosticsConfig
+  DiagnosticsConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIDiagnosticsConfig
   DispatcherSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIDispatcherSettings
   DispatcherSettingsInput:
@@ -241,6 +245,8 @@ models:
         value: github.com/evergreen-ci/evergreen.HostAllocatorNoFeedback
       DEFAULT:
         value: github.com/evergreen-ci/evergreen.HostAllocatorUseDefaultFeedback
+  AssociatedLink:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAssociatedLink
   File:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFile
   FileDiff:
@@ -645,6 +651,8 @@ models:
     model: github.com/evergreen-ci/evergreen/model.ProjectHealthView
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  ProjectLite:
+    model: github.com/evergreen-ci/evergreen/model.ProjectRef
   ProjectSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
@@ -781,10 +789,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
-  ServiceFlags:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
-  ServiceFlagsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   SingleTaskDistroConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SingleTaskDistroConfigInput:
@@ -885,6 +889,8 @@ models:
         resolver: true
       project:
         resolver: true
+      version:
+        resolver: true
   TaskAnnotationSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotationSettings
   TaskExecutionStep:
@@ -974,6 +980,11 @@ models:
         resolver: true
       subscriptions:
         resolver: true
+  UserLite:
+    model: github.com/evergreen-ci/evergreen/model/user.DBUser
+    fields:
+      displayName:
+        fieldName: "DispName"
   UserServiceFlags:
     model: github.com/evergreen-ci/evergreen/rest/model.APIServiceFlags
   UserSettings:
@@ -991,6 +1002,13 @@ models:
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
     fields:
+      status:
+        resolver: true
+  VersionLite:
+    model: github.com/evergreen-ci/evergreen/model.Version
+    fields:
+      order:
+        fieldName: "RevisionOrderNumber"
       status:
         resolver: true
   VersionToRestart:

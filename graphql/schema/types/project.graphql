@@ -344,3 +344,47 @@ type TestSelectionSettings {
   allowed: Boolean
   defaultEnabled: Boolean
 }
+
+"""
+ProjectLite replaces Project by sidestepping the APIProjectRef layer. It does not contain all Project fields at this time.
+"""
+type ProjectLite {
+  id: String!
+  admins: [String!]
+  batchTime: Int!
+  branch: String!
+  deactivatePrevious: Boolean
+  debugSpawnHostsDisabled: Boolean
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String!
+  enabled: Boolean
+  githubChecksEnabled: Boolean
+  githubPRTriggerAliases: [String!]
+  githubMQTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  hidden: Boolean
+  identifier: String!
+  isFavorite: Boolean!
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  oldestAllowedMergeBase: String!
+  owner: String!
+  patchingDisabled: Boolean
+  perfEnabled: Boolean
+  projectHealthView: ProjectHealthView!
+  prTestingEnabled: Boolean
+  remotePath: String!
+  repo: String!
+  repoRefId: String!
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  runEveryMainlineCommit: Boolean
+  spawnHostScriptPath: String!
+  stepbackDisabled: Boolean
+  stepbackBisect: Boolean
+  tracksPushEvents: Boolean
+  versionControlEnabled: Boolean
+}

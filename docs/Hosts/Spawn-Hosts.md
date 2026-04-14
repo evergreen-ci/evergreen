@@ -38,7 +38,7 @@ Only distros backed by a provider that supports dynamically spinning up new host
 
 ## Spawning a Host
 
-Visit `/spawn` to view the spawn hosts control panel. Click on "Spawn Host" and choose the distro you want to spawn, and choose the key you'd like to use (or provide a new one).
+Navigate to the [spawn hosts page](https://spruce.corp.mongodb.com/spawn/host) and select the "Spawn a host" button.
 
 ## Spawning a Host From a Task
 
@@ -46,21 +46,9 @@ Alternately, for a task that ran on a distro where spawning is enabled, you will
 
 ![task_page_spawn_host.png](../images/task_page_spawn_host.png)
 
-Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro.
+Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro. You will have to complete an short authentication step to finish spawning the host.
 
-![spawn_host_modal.png](../images/spawn_host_modal.png)
-
-Additionally, the page offers an option to load task-related data (such as binaries, artifacts, and the repository) which generates a pre-filled fetch command for you.
-
-Please note that the spawn host does not automatically download the task-related data during start-up because it does not have the required permissions. After establishing an SSH connection to the host, you’ll need to run the following command to fetch the files (this will prompt you to authenticate):
-
-```sh
-evergreen host fetch
-```
-
-> Important: This command must be executed for each spawn host that needs to fetch task artifacts and binaries.
-
-Alternatively, you can use the Evergreen CLI's [fetch command](../CLI#fetch) to manually retrieve task-related binaries and artifacts.
+![spawn_host_modal.mov](../images/spawnhost_flow.mov)
 
 Artifacts are placed in /data/mci.
 
@@ -68,9 +56,9 @@ If your project has [a project setup script defined at the admin level](../Proje
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
 
-## Evergreen CLI
+## Evergreen CLI on a spawn host
 
-When using the Evergreen CLI on a spawn host, you will be prompted to authenticate by going to a URL and entering a code. If the link does not appear in the terminal, you may have to set `oauth.do_not_use_browser` to true in your Evergreen CLI config file (usually located at `~/.evergreen.yml`). Example:
+If you're having trouble authenticating on your spawn host, please make sure the following setting is set:
 
 ```yaml
 # ~/.evergreen.yml

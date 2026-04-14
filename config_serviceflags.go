@@ -42,6 +42,7 @@ type ServiceFlags struct {
 	S3LifecycleSyncDisabled            bool `bson:"s3_lifecycle_sync_disabled" json:"s3_lifecycle_sync_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `bson:"use_merge_queue_path_filtering_disabled" json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
+	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -98,6 +99,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			s3LifecycleSyncDisabledKey:            c.S3LifecycleSyncDisabled,
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
+			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

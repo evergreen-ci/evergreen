@@ -416,6 +416,241 @@ func TestGetUserPermissions(t *testing.T) {
 	assert.Equal(t, evergreen.ProjectSettingsEdit.Value, data[0].Permissions["resource3"][evergreen.PermissionProjectSettings])
 }
 
+// permissionLevelDescriptions extracts the description strings from a slice of APIPermissionLevel.
+func permissionLevelDescriptions(levels []restModel.APIPermissionLevel) []string {
+	descriptions := make([]string, 0, len(levels))
+	for _, l := range levels {
+		descriptions = append(descriptions, l.Description)
+	}
+	return descriptions
+}
+
+func TestGetUserPermissionDetails(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, model.ProjectRefCollection))
+	rm := env.RoleManager()
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+	u := user.DBUser{
+		Id:          "user",
+		SystemRoles: []string{"role1", "role2", "role3"},
+	}
+	projectRefs := []model.ProjectRef{
+		{Id: "resource1", Identifier: "project-one"},
+		{Id: "resource2", Identifier: "project-two", Hidden: utility.TruePtr()},
+		{Id: "resource3", Identifier: "project-three"},
+	}
+	for _, projectRef := range projectRefs {
+		require.NoError(t, projectRef.Replace(t.Context()))
+	}
+	require.NoError(t, u.Insert(t.Context()))
+	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: evergreen.ProjectResourceType}))
+	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: evergreen.ProjectResourceType}))
+	require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: evergreen.ProjectResourceType}))
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{ID: "role1", Scope: "scope1", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{ID: "role2", Scope: "scope2", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{ID: "role3", Scope: "scope3", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+
+	handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, verbose: true}
+	resp := handler.Run(ctx)
+	require.Equal(t, http.StatusOK, resp.Status())
+	data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+	require.True(t, ok)
+	require.NotNil(t, data)
+	assert.Equal(t, u.Id, data.UserID)
+	// resource2 is hidden, so only resource1 and resource3 should appear.
+	require.NotNil(t, data.Projects)
+	require.Len(t, *data.Projects, 2)
+
+	settingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
+	tasksKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionTasks)
+
+	require.NotNil(t, data.AvailablePermissions, "available_permissions should be populated when verbose is true")
+	assert.NotEmpty(t, data.AvailablePermissions.Note)
+	assert.Len(t, data.AvailablePermissions.Permissions, len(evergreen.ProjectPermissions), "available_permissions should have one entry per permission category")
+	require.Contains(t, data.AvailablePermissions.Permissions, settingsKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[settingsKey]), evergreen.ProjectSettingsEdit.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[settingsKey]), evergreen.ProjectSettingsView.Description)
+	require.Contains(t, data.AvailablePermissions.Permissions, tasksKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[tasksKey]), evergreen.TasksBasic.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[tasksKey]), evergreen.TasksAdmin.Description)
+
+	byID := map[string]restModel.APIProjectPermissionSummary{}
+	for _, p := range *data.Projects {
+		byID[p.ProjectID] = p
+	}
+
+	require.Contains(t, byID, "resource1")
+	assert.Equal(t, "project-one", byID["resource1"].ProjectIdentifier)
+	assert.Contains(t, byID["resource1"].Permissions[settingsKey], evergreen.ProjectSettingsEdit.Description, "user has edit-level settings")
+	assert.Contains(t, byID["resource1"].Permissions[settingsKey], evergreen.ProjectSettingsView.Description, "edit level implies view level")
+	assert.NotContains(t, byID["resource1"].Permissions, tasksKey, "no tasks permission set")
+
+	assert.NotContains(t, byID, "resource2", "hidden project should be excluded")
+
+	require.Contains(t, byID, "resource3")
+	assert.Equal(t, "project-three", byID["resource3"].ProjectIdentifier)
+}
+
+func TestGetUserPermissionDetailsWithProjectFilter(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection, model.ProjectRefCollection, model.RepoRefCollection))
+	rm := env.RoleManager()
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+	u := user.DBUser{
+		Id:          "user",
+		SystemRoles: []string{"role-a", "role-b", evergreen.BasicProjectAccessRole},
+	}
+	require.NoError(t, u.Insert(ctx))
+
+	projectRefs := []model.ProjectRef{
+		{Id: "project-a-id", Identifier: "project-alpha"},
+		{Id: "project-b-id", Identifier: "project-beta"},
+		{Id: "project-c-id", Identifier: "project-gamma"},
+	}
+	for _, ref := range projectRefs {
+		require.NoError(t, ref.Replace(ctx))
+	}
+
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: "scope-a", Resources: []string{"project-a-id"}, Type: evergreen.ProjectResourceType}))
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: "scope-b", Resources: []string{"project-b-id"}, Type: evergreen.ProjectResourceType}))
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: "role-a", Scope: "scope-a", Permissions: gimlet.Permissions{evergreen.PermissionTasks: evergreen.TasksBasic.Value}}))
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: "role-b", Scope: "scope-b", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value}}))
+	// BasicProjectAccessRole grants baseline permissions to all users on all projects.
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: evergreen.BasicProjectAccessRole, Permissions: gimlet.Permissions{evergreen.PermissionLogs: evergreen.LogsView.Value}}))
+
+	t.Run("FilterByIdentifier", func(t *testing.T) {
+		handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "project-alpha"}
+		resp := handler.Run(ctx)
+		require.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+		require.True(t, ok)
+		require.NotNil(t, data)
+		assert.Empty(t, data.AvailablePermissions)
+		tasksKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionTasks)
+		logsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionLogs)
+		require.NotNil(t, data.Projects)
+		require.Len(t, *data.Projects, 1)
+		assert.Equal(t, "project-a-id", (*data.Projects)[0].ProjectID)
+		assert.Equal(t, "project-alpha", (*data.Projects)[0].ProjectIdentifier)
+		// Explicit role grants Tasks: Basic.
+		assert.Contains(t, (*data.Projects)[0].Permissions[tasksKey], evergreen.TasksBasic.Description)
+		assert.Contains(t, (*data.Projects)[0].Permissions[tasksKey], evergreen.TasksView.Description)
+		assert.NotContains(t, (*data.Projects)[0].Permissions[tasksKey], evergreen.TasksAdmin.Description)
+		// Baseline role grants Logs: View to all users.
+		assert.Contains(t, (*data.Projects)[0].Permissions[logsKey], evergreen.LogsView.Description)
+		// Categories with no access are present as empty slices so users know what they're missing.
+		settingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
+		assert.Empty(t, (*data.Projects)[0].Permissions[settingsKey])
+		assert.Contains(t, (*data.Projects)[0].Permissions, settingsKey)
+	})
+
+	t.Run("FilterByInternalID", func(t *testing.T) {
+		handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "project-a-id"}
+		resp := handler.Run(ctx)
+		require.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+		require.True(t, ok)
+		require.NotNil(t, data)
+		require.NotNil(t, data.Projects)
+		require.Len(t, *data.Projects, 1)
+		assert.Equal(t, "project-a-id", (*data.Projects)[0].ProjectID)
+	})
+
+	t.Run("ProjectExistsWithNoExplicitPermissions", func(t *testing.T) {
+		handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "project-gamma"}
+		resp := handler.Run(ctx)
+		require.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+		require.True(t, ok)
+		require.NotNil(t, data)
+		require.NotNil(t, data.Projects)
+		require.Len(t, *data.Projects, 1)
+		assert.Equal(t, "project-c-id", (*data.Projects)[0].ProjectID)
+		assert.Equal(t, "project-gamma", (*data.Projects)[0].ProjectIdentifier)
+		// No explicit grants, but baseline permissions should still be present.
+		logsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionLogs)
+		assert.Contains(t, (*data.Projects)[0].Permissions[logsKey], evergreen.LogsView.Description)
+		// Categories with no access at all are present as empty slices.
+		settingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
+		assert.Contains(t, (*data.Projects)[0].Permissions, settingsKey)
+		assert.Empty(t, (*data.Projects)[0].Permissions[settingsKey])
+	})
+
+	t.Run("NonExistentProject", func(t *testing.T) {
+		handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "does-not-exist"}
+		resp := handler.Run(ctx)
+		assert.Equal(t, http.StatusNotFound, resp.Status())
+	})
+
+	t.Run("FilterByRepoRefID", func(t *testing.T) {
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-ref-id"}}
+		require.NoError(t, repoRef.Replace(ctx))
+		require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: "scope-repo", Resources: []string{"repo-ref-id"}, Type: evergreen.ProjectResourceType}))
+		require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: "role-repo", Scope: "scope-repo", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value}}))
+		u2 := user.DBUser{Id: "user2", SystemRoles: []string{"role-repo"}}
+		require.NoError(t, u2.Insert(ctx))
+
+		handler := userPermissionDetailsGetHandler{rm: rm, userID: u2.Id, resourceType: evergreen.ProjectResourceType, projectFilter: "repo-ref-id"}
+		resp := handler.Run(ctx)
+		require.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+		require.True(t, ok)
+		require.NotNil(t, data)
+		require.NotNil(t, data.Projects)
+		require.Len(t, *data.Projects, 1)
+		assert.Equal(t, "repo-ref-id", (*data.Projects)[0].ProjectID)
+		assert.True(t, (*data.Projects)[0].IsRepo)
+		settingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
+		assert.Contains(t, (*data.Projects)[0].Permissions[settingsKey], evergreen.ProjectSettingsView.Description)
+	})
+}
+
+func TestGetUserPermissionDetailsTypeFilter(t *testing.T) {
+	ctx := t.Context()
+	env := testutil.NewEnvironment(ctx, t)
+	require.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	rm := env.RoleManager()
+	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
+
+	u := user.DBUser{
+		Id:          "user",
+		SystemRoles: []string{"distro-role"},
+	}
+	require.NoError(t, u.Insert(ctx))
+
+	require.NoError(t, rm.AddScope(ctx, gimlet.Scope{ID: "distro-scope", Resources: []string{"rhel80"}, Type: evergreen.DistroResourceType}))
+	require.NoError(t, rm.UpdateRole(ctx, gimlet.Role{ID: "distro-role", Scope: "distro-scope", Permissions: gimlet.Permissions{evergreen.PermissionDistroSettings: evergreen.DistroSettingsEdit.Value}}))
+
+	handler := userPermissionDetailsGetHandler{rm: rm, userID: u.Id, resourceType: evergreen.DistroResourceType, verbose: true}
+	resp := handler.Run(ctx)
+	require.Equal(t, http.StatusOK, resp.Status())
+	data, ok := resp.Data().(*restModel.APIUserProjectPermissions)
+	require.True(t, ok)
+	require.NotNil(t, data)
+	distroSettingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionDistroSettings)
+	projectSettingsKey := evergreen.GetDisplayNameForPermissionKey(evergreen.PermissionProjectSettings)
+
+	require.NotNil(t, data.AvailablePermissions, "available_permissions should be populated when verbose is true")
+	assert.NotEmpty(t, data.AvailablePermissions.Note)
+	assert.Len(t, data.AvailablePermissions.Permissions, len(evergreen.DistroPermissions), "distro available_permissions should have one entry per distro permission category")
+	require.Contains(t, data.AvailablePermissions.Permissions, distroSettingsKey)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[distroSettingsKey]), evergreen.DistroSettingsEdit.Description)
+	assert.Contains(t, permissionLevelDescriptions(data.AvailablePermissions.Permissions[distroSettingsKey]), evergreen.DistroSettingsAdmin.Description)
+	assert.NotContains(t, data.AvailablePermissions.Permissions, projectSettingsKey, "distro available_permissions should not include project permission categories")
+
+	assert.Nil(t, data.Projects, "distro response should not populate the projects field")
+	require.NotNil(t, data.Distros)
+	require.Len(t, *data.Distros, 1)
+	assert.Equal(t, "rhel80", (*data.Distros)[0].DistroID)
+	assert.Contains(t, (*data.Distros)[0].Permissions[distroSettingsKey], evergreen.DistroSettingsEdit.Description)
+	assert.Contains(t, (*data.Distros)[0].Permissions[distroSettingsKey], evergreen.DistroSettingsView.Description)
+	assert.NotContains(t, (*data.Distros)[0].Permissions[distroSettingsKey], evergreen.DistroSettingsAdmin.Description)
+	assert.NotContains(t, (*data.Distros)[0].Permissions, projectSettingsKey, "distro response should not include project permission keys")
+}
+
 func TestPostUserRoles(t *testing.T) {
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection))
 	u := user.DBUser{

@@ -5,7 +5,32 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// bytesForFile returns the stored bytes for a specific file in a specific bucket, or 0 if not found.
+func bytesForFile(metrics []BucketFileMetrics, bucket, fileKey string) int64 {
+	for _, b := range metrics {
+		if b.Bucket == bucket {
+			for _, f := range b.Files {
+				if f.FileKey == fileKey {
+					return f.Bytes
+				}
+			}
+		}
+	}
+	return 0
+}
+
+// hasBucket returns true if the given bucket exists in the metrics slice.
+func hasBucket(metrics []BucketFileMetrics, bucket string) bool {
+	for _, b := range metrics {
+		if b.Bucket == bucket {
+			return true
+		}
+	}
+	return false
+}
 
 func TestS3Usage(t *testing.T) {
 	t.Run("IsZero", func(t *testing.T) {
@@ -41,19 +66,39 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 
-		s3Usage.IncrementArtifacts(5, 1024, 2, 3, 2)
+		filesA := []FileMetrics{
+			{RemotePath: "path/file1.txt", FileSizeBytes: 600},
+			{RemotePath: "path/file2.txt", FileSizeBytes: 424},
+		}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 5, UploadBytes: 1024, FileCount: 2, MaxPuts: 3, MinPuts: 2, Bucket: "bucket-a", Files: filesA})
 		assert.Equal(t, 5, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 2, s3Usage.Artifacts.Count)
 		assert.Equal(t, 3, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 2, s3Usage.Artifacts.ArtifactWithMinPutRequests)
+		require.NotEmpty(t, s3Usage.Artifacts.BytesByBucketAndKey)
+		require.True(t, hasBucket(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a"))
+		assert.Equal(t, int64(600), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"))
+		assert.Equal(t, int64(424), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file2.txt"))
 
-		s3Usage.IncrementArtifacts(10, 2048, 3, 8, 1)
+		filesB := []FileMetrics{
+			{RemotePath: "other/file3.txt", FileSizeBytes: 2048},
+		}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 10, UploadBytes: 2048, FileCount: 3, MaxPuts: 8, MinPuts: 1, Bucket: "bucket-b", Files: filesB})
 		assert.Equal(t, 15, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 5, s3Usage.Artifacts.Count)
 		assert.Equal(t, 8, s3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 1, s3Usage.Artifacts.ArtifactWithMinPutRequests)
+		require.True(t, hasBucket(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-b"))
+		assert.Equal(t, int64(600), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should be unchanged")
+		assert.Equal(t, int64(2048), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-b", "other/file3.txt"))
+
+		filesA2 := []FileMetrics{
+			{RemotePath: "path/file1.txt", FileSizeBytes: 512},
+		}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 3, UploadBytes: 512, FileCount: 1, MaxPuts: 3, MinPuts: 3, Bucket: "bucket-a", Files: filesA2})
+		assert.Equal(t, int64(1112), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should accumulate across invocations")
 	})
 
 	t.Run("IncrementLogs", func(t *testing.T) {
@@ -281,5 +326,4 @@ func TestCalculateS3StorageCostWithConfig(t *testing.T) {
 		cost := CalculateS3StorageCostWithConfig(t.Context(), GB, 365, nil)
 		assert.Equal(t, 0.0, cost)
 	})
-
 }

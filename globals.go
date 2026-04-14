@@ -155,6 +155,7 @@ const (
 	TestSilentlyFailedStatus = "silentfail"
 	TestSkippedStatus        = "skip"
 	TestSucceededStatus      = "pass"
+	TestTimedOutStatus       = "timeout"
 
 	BuildStarted   = "started"
 	BuildCreated   = "created"
@@ -189,8 +190,6 @@ const (
 	NumTasksForLargePatch = 10000
 
 	DefaultEvergreenConfig = ".evergreen.yml"
-
-	WhyIsMyDataMissingName = "whyIsTheDataMissing.txt"
 
 	// Env vars
 	EvergreenHome           = "EVGHOME"
@@ -259,7 +258,6 @@ const (
 	TempSetupScriptName           = "setup-temp.sh"
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
-	SpawnhostFetchScriptName      = ".evergreen-spawnhost-fetch.sh"
 
 	PlannerVersionTunable = "tunable"
 
@@ -295,6 +293,10 @@ const (
 	TagExpireOn          = "expire-on"
 	TagAllowRemoteAccess = "AllowRemoteAccess"
 	TagIsDebug           = "IsDebug"
+	TagTaskID            = "task-id"
+	TagTaskExecution     = "task-execution"
+	TagBuildID           = "build-id"
+	TagProject           = "project"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
@@ -503,6 +505,9 @@ const (
 	// EBS cost otel attributes — task-level (throughput)
 	TaskEBSOnDemandThroughputCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_throughput_cost"
 	TaskEBSAdjustedThroughputCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_throughput_cost"
+	// EBS cost otel attributes — task-level (storage)
+	TaskEBSOnDemandStorageCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_storage_cost"
+	TaskEBSAdjustedStorageCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_storage_cost"
 
 	// S3 cost tracking otel span name — shared by per-file and aggregate events
 	S3CostTrackingOtelSpanName = "s3-cost-tracking"
@@ -512,6 +517,7 @@ const (
 	S3ArtifactUploadBytesOtelAttribute = "evergreen.task.s3_cost.artifact_upload_bytes"
 	S3ArtifactCountOtelAttribute       = "evergreen.task.s3_cost.artifact_count"
 	S3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.artifact_put_cost"
+	S3ArtifactStorageCostOtelAttribute = "evergreen.task.s3_cost.artifact_storage_cost"
 
 	// S3 cost tracking otel attributes — artifact per-file statistics
 	S3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
@@ -536,6 +542,7 @@ const (
 	VersionFinishTimeOtelAttribute            = "evergreen.version.finish_time"
 	VersionAuthorOtelAttribute                = "evergreen.version.author"
 	VersionBranchOtelAttribute                = "evergreen.version.branch"
+	VersionHighestExecutionTaskOtelAttribute  = "evergreen.version.highest_execution_task"
 	VersionMakespanSecondsOtelAttribute       = "evergreen.version.makespan_seconds"
 	VersionTimeTakenSecondsOtelAttribute      = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute                 = "evergreen.version.pr_num"
@@ -564,6 +571,7 @@ const (
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
 	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
 	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
+	GraphQLAIAgentOtelAttribute    = "evergreen.graphql.ai_agent"
 	AggregationNameOtelAttribute   = "db.aggregationName"
 )
 
@@ -587,20 +595,21 @@ var UserTriggeredOrigins = []string{
 }
 
 const (
-	AuthTokenCookie     = "mci-token"
-	LoginCookieTTL      = 365 * 24 * time.Hour
-	TaskHeader          = "Task-Id"
-	TaskSecretHeader    = "Task-Secret"
-	HostHeader          = "Host-Id"
-	HostSecretHeader    = "Host-Secret"
-	ContentTypeHeader   = "Content-Type"
-	ContentTypeValue    = "application/json"
-	ContentLengthHeader = "Content-Length"
-	APIUserHeader       = "Api-User"
-	APIKeyHeader        = "Api-Key"
-	SageUserHeader      = "x-authenticated-sage-user"
-	AuthorizationHeader = "Authorization"
-	EnvironmentHeader   = "X-Evergreen-Environment"
+	AuthTokenCookie      = "mci-token"
+	LoginCookieTTL       = 365 * 24 * time.Hour
+	TaskHeader           = "Task-Id"
+	TaskSecretHeader     = "Task-Secret"
+	HostHeader           = "Host-Id"
+	HostSecretHeader     = "Host-Secret"
+	ContentTypeHeader    = "Content-Type"
+	ContentTypeValue     = "application/json"
+	ContentLengthHeader  = "Content-Length"
+	APIUserHeader        = "Api-User"
+	APIKeyHeader         = "Api-Key"
+	SageUserHeader       = "x-authenticated-sage-user"
+	AuthorizationHeader  = "Authorization"
+	EnvironmentHeader    = "X-Evergreen-Environment"
+	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 )
 
 const (
@@ -1172,10 +1181,11 @@ var (
 	SuperUserPermissionsID = "super_user"
 
 	// Admin permissions.
-	PermissionAdminSettings = "admin_settings"
-	PermissionProjectCreate = "project_create"
-	PermissionDistroCreate  = "distro_create"
-	PermissionRoleModify    = "modify_roles"
+	PermissionAdminSettings     = "admin_settings"
+	PermissionProjectCreate     = "project_create"
+	PermissionDistroCreate      = "distro_create"
+	PermissionNotificationsSend = "notifications_send"
+	PermissionRoleModify        = "modify_roles"
 	// Project permissions.
 	PermissionProjectSettings = "project_settings"
 
@@ -1201,6 +1211,10 @@ var (
 	}
 	DistroCreate = PermissionLevel{
 		Description: "Create new distros",
+		Value:       10,
+	}
+	NotificationsSend = PermissionLevel{
+		Description: "Send notifications as Evergreen",
 		Value:       10,
 	}
 	RoleModify = PermissionLevel{
@@ -1407,6 +1421,7 @@ var SuperuserPermissions = []string{
 	PermissionProjectCreate,
 	PermissionDistroCreate,
 	PermissionRoleModify,
+	PermissionNotificationsSend,
 }
 
 const (

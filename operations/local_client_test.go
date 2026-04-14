@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
+	"github.com/evergreen-ci/evergreen/rest/client"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -190,7 +192,22 @@ buildvariants:
 
 	daemon := newLocalDaemonREST(9090, &ClientSettings{OAuth: OAuth{AccessToken: "mock_oauth_token"}, APIServerHost: "http://localhost.com"})
 
-	reqBody := map[string]string{"config_path": configPath}
+	t.Run("MissingOAuthTokenShouldReturnUnauthorized", func(t *testing.T) {
+		reqBody := map[string]string{"config_path": configPath}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", "/config/load", bytes.NewReader(jsonBody))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		recorder := httptest.NewRecorder()
+		daemon.handleLoadConfig(recorder, req)
+
+		assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+	})
+
+	reqBody := map[string]string{"config_path": configPath, "oauth_token": "mock_oauth_token"}
 	jsonBody, err := json.Marshal(reqBody)
 	require.NoError(t, err)
 
@@ -387,6 +404,28 @@ func TestSelectTaskCmd(t *testing.T) {
 	})
 }
 
+func TestWaitForDaemon(t *testing.T) {
+	t.Run("HealthyDaemonShouldSucceed", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		var port int
+		_, err := fmt.Sscanf(server.URL, "http://127.0.0.1:%d", &port)
+		require.NoError(t, err)
+
+		err = waitForDaemon(port)
+		assert.NoError(t, err)
+	})
+
+	t.Run("UnhealthyDaemonShouldError", func(t *testing.T) {
+		err := waitForDaemon(0)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "did not become healthy")
+	})
+}
+
 func TestReadAndRenderStream(t *testing.T) {
 	t.Run("ParsesNDJSONStream", func(t *testing.T) {
 		success := true
@@ -444,5 +483,36 @@ func TestReadAndRenderStream(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.False(t, result.Success)
 		assert.Equal(t, "exit code 1", result.Error)
+	})
+}
+
+func TestValidateDebugLocal(t *testing.T) {
+	ctx := t.Context()
+
+	validConf := &ClientSettings{
+		APIServerHost: "http://localhost",
+		User:          "testuser",
+	}
+
+	t.Run("EmptyTaskIDShouldError", func(t *testing.T) {
+		mockClient = &client.Mock{}
+		defer func() { mockClient = nil }()
+
+		err := validateDebugLocal(ctx, validConf, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "task-id flag is required")
+	})
+
+	t.Run("ServiceFlagsDisabledShouldError", func(t *testing.T) {
+		mockClient = &client.Mock{
+			MockServiceFlags: &restmodel.APIServiceFlags{
+				DebugSpawnHostDisabled: true,
+			},
+		}
+		defer func() { mockClient = nil }()
+
+		err := validateDebugLocal(ctx, validConf, "task123")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "debug spawn hosts currently disabled")
 	})
 }

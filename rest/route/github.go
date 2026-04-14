@@ -202,6 +202,44 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      event.GetSender().GetLogin(),
 				"message":   "PR accepted, attempting to queue",
 			})
+
+			skip, err := shouldSkipCIForGraphite(ctx,
+				event.Repo.Owner.GetLogin(),
+				event.Repo.GetName(),
+				event.PullRequest.GetNumber(),
+				event.PullRequest.GetHead().GetSHA(),
+				event.PullRequest.GetBase().GetRef(),
+				event.PullRequest.GetHead().GetRef(),
+			)
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"source":    "GitHub hook",
+				"msg_id":    gh.msgID,
+				"event":     gh.eventType,
+				"message":   "error checking Graphite CI optimizer",
+				"owner":     event.Repo.Owner.GetLogin(),
+				"repo":      event.Repo.GetName(),
+				"pr_number": event.PullRequest.GetNumber(),
+				"head_sha":  event.PullRequest.GetHead().GetSHA(),
+				"base_ref":  event.PullRequest.GetBase().GetRef(),
+				"head_ref":  event.PullRequest.GetHead().GetRef(),
+			}))
+			// Continue on error - don't block PR patch creation.
+			if skip {
+				grip.Debug(ctx, message.Fields{
+					"source":    "GitHub hook",
+					"msg_id":    gh.msgID,
+					"event":     gh.eventType,
+					"message":   "Graphite CI optimizer determined this PR does not need to be tested",
+					"owner":     event.Repo.Owner.GetLogin(),
+					"repo":      event.Repo.GetName(),
+					"pr_number": event.PullRequest.GetNumber(),
+					"head_sha":  event.PullRequest.GetHead().GetSHA(),
+					"base_ref":  event.PullRequest.GetBase().GetRef(),
+					"head_ref":  event.PullRequest.GetHead().GetRef(),
+				})
+				break
+			}
+
 			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
 				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
@@ -855,22 +893,6 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 	pr, err := thirdparty.GetGithubPullRequest(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
-	}
-
-	skip, err := shouldSkipCIForGraphite(ctx, owner, repo, prNumber, pr.Head.GetSHA(), pr.Base.GetRef(), pr.Head.GetRef())
-	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message": "error checking Graphite CI optimizer",
-			"owner":   owner,
-			"repo":    repo,
-			"pr":      prNumber,
-			"sha":     pr.Head.GetSHA(),
-			"ref":     pr.Base.GetRef(),
-			"headRef": pr.Head.GetRef(),
-		}))
-		// Continue on error - don't block PR patch creation.
-	} else if skip {
-		return nil
 	}
 
 	baseBranch := pr.Base.GetRef()

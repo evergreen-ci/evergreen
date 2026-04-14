@@ -2178,7 +2178,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
-// the statuses assigned during the addDisplayStatus aggregation step.
+// the statuses assigned by DisplayStatusExpression / addDisplayStatusCache.
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
@@ -4112,13 +4112,16 @@ func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, f
 	}
 }
 
-// EBS GP3 throughput pricing constants (us-east-1 rates).
+// EBS GP3 pricing constants (us-east-1 rates).
 // Pricing is standardized to us-east-1 and does not account for regional variations.
+// GP2 volumes use GP3 pricing; price differences are ignored.
 const (
 	// GP3FreeThroughputMBps is the free throughput tier for GP3 volumes (125 MB/s).
 	GP3FreeThroughputMBps = 125
 	// GP3ThroughputPricePerMBpsMonth is the price per MB/s-month above the free tier.
 	GP3ThroughputPricePerMBpsMonth = 0.04
+	// GP3StoragePricePerGBMonth is the on-demand price per GB-month for EBS storage (us-east-1).
+	GP3StoragePricePerGBMonth = 0.08
 	// SecondsPerMonth is 2,592,000 (60 * 60 * 24 * 30) and is used to convert monthly pricing to per-second pricing.
 	SecondsPerMonth = 60 * 60 * 24 * 30
 )
@@ -4144,8 +4147,8 @@ func calculateBillableThroughput(totalThroughput int32) int32 {
 }
 
 // CalculateEBSThroughputOnDemandCost calculates the raw on-demand cost for EBS GP3 throughput.
-// Pricing based on us-east-1 rates: $0.04 per MB/s-month above 125 MB/s baseline.
-// Does not apply discount; use CalculateEBSThroughputAdjustedCost for discounted cost.
+// Pricing is based on us-east-1 rates: $0.04 per MB/s-month above the 125 MB/s baseline.
+// It does not apply a discount; use CalculateEBSThroughputAdjustedCost for the discounted cost.
 func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
 	if runtimeSeconds <= 0 {
 		return 0
@@ -4165,7 +4168,7 @@ func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec
 }
 
 // CalculateEBSThroughputAdjustedCost calculates the adjusted cost for EBS GP3 throughput.
-// Applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+// It applies the discount: adjusted = on_demand * (1 - EBSDiscount).
 func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
 	onDemandCost := CalculateEBSThroughputOnDemandCost(runtimeSeconds, mountPoints)
 	return onDemandCost * (1 - ebsConfig.EBSDiscount)
@@ -4198,6 +4201,51 @@ func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig eve
 		mountPoints,
 		financeConfig.EBSCost,
 	)
+	t.TaskCost.OnDemandEBSStorageCost = CalculateEBSStorageOnDemandCost(
+		runtimeSeconds,
+		mountPoints,
+	)
+	t.TaskCost.AdjustedEBSStorageCost = CalculateEBSStorageAdjustedCost(
+		runtimeSeconds,
+		mountPoints,
+		financeConfig.EBSCost,
+	)
+}
+
+// calculateTotalVolumeSize sums each volume's size in GB across mount points.
+// GP3 pricing standardization applies only in the cost calculation.
+func calculateTotalVolumeSize(mountPoints []ec2mount.MountPoint) int32 {
+	var totalSize int32
+	for _, mp := range mountPoints {
+		if mp.Size <= 0 {
+			continue
+		}
+		totalSize += mp.Size
+	}
+	return totalSize
+}
+
+// CalculateEBSStorageOnDemandCost calculates the raw on-demand cost for EBS storage.
+// Pricing is based on us-east-1 rates: $0.08 per GB-month (GP3); GP2 volumes use the same rate in this model.
+// It does not apply a discount; use CalculateEBSStorageAdjustedCost for the discounted cost.
+func CalculateEBSStorageOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
+	if runtimeSeconds <= 0 {
+		return 0
+	}
+
+	totalSize := calculateTotalVolumeSize(mountPoints)
+	if totalSize == 0 {
+		return 0
+	}
+
+	return (float64(totalSize) * GP3StoragePricePerGBMonth / SecondsPerMonth) * runtimeSeconds
+}
+
+// CalculateEBSStorageAdjustedCost calculates the adjusted EBS storage cost.
+// It applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+func CalculateEBSStorageAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
+	onDemandCost := CalculateEBSStorageOnDemandCost(runtimeSeconds, mountPoints)
+	return onDemandCost * (1 - ebsConfig.EBSDiscount)
 }
 
 func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, *distro.Distro, error) {
@@ -4254,7 +4302,10 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		t.calculateRuntimeCost(financeConfig, costData)
 		t.calculateEBSThroughputCost(ctx, financeConfig, d)
 	}
-	t.calculateS3PutCosts(ctx)
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err == nil {
+		t.calculateS3PutCosts(costConfig)
+	}
 
 	if t.TaskCost.IsZero() {
 		return nil
@@ -4272,38 +4323,66 @@ func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 
-// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
-func (t *Task) SaveS3Usage(ctx context.Context) error {
-	t.calculateS3PutCosts(ctx)
+// bucketExpirationLookup resolves the S3 lifecycle expiration days for a given artifact file.
+type bucketExpirationLookup func(ctx context.Context, bucket, fileKey string) (days int, found bool)
+
+// SaveS3Usage persists the task's S3 usage metrics and calculates S3 costs.
+func (t *Task) SaveS3Usage(ctx context.Context, lookup bucketExpirationLookup) error {
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		return errors.Wrap(err, "getting cost config")
+	}
+
+	t.calculateS3PutCosts(costConfig)
+	t.setS3StorageCosts(ctx, lookup, costConfig)
 
 	setFields := bson.M{
 		S3UsageKey: t.S3Usage,
-		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"): t.TaskCost.S3ArtifactPutCost,
-		bsonutil.GetDottedKeyName(TaskCostKey, "s3_log_put_cost"):      t.TaskCost.S3LogPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3ArtifactPutCostKey):     t.TaskCost.S3ArtifactPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3LogPutCostKey):          t.TaskCost.S3LogPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3ArtifactStorageCostKey): t.TaskCost.S3ArtifactStorageCost,
 	}
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
 }
 
-// calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
-func (t *Task) calculateS3PutCosts(ctx context.Context) {
-	if t.S3Usage.Artifacts.PutRequests <= 0 && t.S3Usage.Logs.PutRequests <= 0 {
-		return
+// resolveArtifactExpirationDays looks up the expiration days for an artifact, falling back to DefaultMaxArtifactExpirationDays if no matching rule is found.
+func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (days int, found bool) {
+	if lookup != nil {
+		if days, ok := lookup(ctx, bucket, fileKey); ok {
+			return days, true
+		}
 	}
+	return costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, false
+}
 
-	costConfig := &evergreen.CostConfig{}
-	if err := costConfig.Get(ctx); err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "could not get cost config to calculate S3 PUT costs",
-			"task_id": t.Id,
-		}))
-		return
-	}
+// calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
+func (t *Task) calculateS3PutCosts(costConfig *evergreen.CostConfig) {
 	if t.S3Usage.Artifacts.PutRequests > 0 {
 		t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
 	}
 	if t.S3Usage.Logs.PutRequests > 0 {
 		t.TaskCost.S3LogPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Logs.PutRequests, costConfig)
+	}
+}
+
+// setS3StorageCosts calculates and sets the task's S3 artifact storage cost. Skipped if the lifecycle rules lookup is nil.
+func (t *Task) setS3StorageCosts(ctx context.Context, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) {
+	if lookup == nil {
+		return
+	}
+	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
+		for _, fileEntry := range bucketEntry.Files {
+			days, found := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
+			if !found {
+				grip.Info(ctx, message.Fields{
+					"message": "no S3 lifecycle rule found for artifact bucket, using default expiration days",
+					"bucket":  bucketEntry.Bucket,
+					"task_id": t.Id,
+				})
+			}
+			t.TaskCost.S3ArtifactStorageCost += s3usage.CalculateS3StorageCostWithConfig(ctx, fileEntry.Bytes, days, costConfig)
+		}
 	}
 }
 
@@ -4385,8 +4464,8 @@ func allObjectsExistInBucket(ctx context.Context, bucket pail.Bucket, keys []str
 
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket.
 func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
-	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
-		// test logs and task logs will always be in the same bucket
+	if output.TestLogs.BucketConfig.Name != output.TaskLogs.BucketConfig.Name {
+		// moveLogsByNamesToBucket uses one source bucket for task and test log keys; names must agree.
 		return errors.New("test log and task log buckets do not match")
 	}
 	failedCfg := settings.Buckets.LogBucketFailedTasks

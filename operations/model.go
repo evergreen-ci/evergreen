@@ -117,6 +117,10 @@ type OAuth struct {
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
 	// This setting is the final authority on the flow.
 	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser"`
+
+	// SpawnHostAccessToken is an access token for a spawn host. This is used to
+	// initially authenticate a spawn host before the user has SSH'd into it.
+	SpawnHostAccessToken *oauth2.Token `json:"spawn_host_access_token,omitempty" yaml:"spawn_host_access_token,omitempty"`
 }
 
 // AccessTokenIfNotExpired returns the access token if it is not expired, otherwise it returns an empty string.
@@ -655,6 +659,13 @@ func (s *ClientSettings) SetAutoUpgradeCLI(ctx context.Context) {
 func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
 		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce at '%s' in to your configuration file at '%s'", s.UIServerHost+"/preferences/cli", s.LoadedFrom)
+	}
+	if s.OAuth.SpawnHostAccessToken != nil {
+		if s.OAuth.SpawnHostAccessToken.Expiry.After(time.Now()) {
+			return s.OAuth.SpawnHostAccessToken, "", nil
+		}
+		// Clear the access token if it is expired.
+		s.OAuth.SpawnHostAccessToken = nil
 	}
 	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,

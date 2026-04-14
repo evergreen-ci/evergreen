@@ -624,7 +624,8 @@ tasks:
 
 ### Controlling When Tasks and Variants Run
 
-You can control when tasks and build variants run using several different mechanisms:
+You can control when tasks and build variants run by setting activate, batchtime, disable, or cron on tasks or build variants, detailed
+[here](Controlling-when-tasks-run). There are also options to limit tasks and build variants to certain requesters or changed files, detailed below.
 
 #### Limiting by Requester Type
 
@@ -641,18 +642,6 @@ To cause a task to only run in versions NOT triggered from git tags, set
 
 To cause a task to only run in versions triggered from git tags, set
 `git_tag_only: true`.
-
-To cause a task to not run at all, set `disable: true`.
-
-- This behaves similarly to commenting out the task but will not
-  trigger any validation errors.
-- Disabling a task prevents it from being warned on for not being used.
-- If a task is disabled and is depended on by another task, the
-  dependent task will simply exclude the disabled task from its
-  dependencies.
-
-Can also set activate, batchtime or cron on tasks or build variants, detailed
-[here](Controlling-when-tasks-run).
 
 If there are conflicting settings defined at different levels, the order of
 priority is defined [here](#task-fields-override-hierarchy).

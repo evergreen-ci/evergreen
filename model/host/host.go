@@ -294,10 +294,6 @@ type ProvisionOptions struct {
 	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
 	SetupScript string `bson:"setup_script" json:"setup_script"`
 
-	// UseOAuth indicates whether to run `evergreen fetch` with static credentials (legacy)
-	// or whether to write the command to a file, and have the user run `evergreen host fetch` (OAuth).
-	UseOAuth bool `bson:"use_oauth" json:"use_oauth"`
-
 	// SetupStepNumber, if set, indicates the step number that the debug host
 	// should run until after initializing the daemon. Accepts step notation (e.g., "5" or "5.1")
 	SetupStepNumber string `bson:"setup_step_number,omitempty" json:"setup_step_number,omitempty"`
@@ -325,6 +321,9 @@ type SpawnOptions struct {
 	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
+
+	// ProjectID is the ID of the project that's running the task.
+	ProjectID string `bson:"project_id,omitempty" json:"project_id,omitempty"`
 
 	// Retries is the number of times Evergreen should try to spawn this host.
 	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`

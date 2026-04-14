@@ -756,6 +756,8 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
 			attribute.Float64(evergreen.TaskEBSOnDemandThroughputCostOtelAttribute, t.TaskCost.OnDemandEBSThroughputCost),
 			attribute.Float64(evergreen.TaskEBSAdjustedThroughputCostOtelAttribute, t.TaskCost.AdjustedEBSThroughputCost),
+			attribute.Float64(evergreen.TaskEBSOnDemandStorageCostOtelAttribute, t.TaskCost.OnDemandEBSStorageCost),
+			attribute.Float64(evergreen.TaskEBSAdjustedStorageCostOtelAttribute, t.TaskCost.AdjustedEBSStorageCost),
 		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, costAttrs)
 		span.SetAttributes(costAttrs...)
@@ -972,6 +974,11 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		return nil, errors.Wrap(err, "getting time spent")
 	}
 
+	highestExecutionTask, err := v.GetHighestTaskExecution(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting highest execution task")
+	}
+
 	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, v.Requester),
@@ -985,6 +992,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		attribute.Int(evergreen.VersionMakespanSecondsOtelAttribute, int(makespan.Seconds())),
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
+		attribute.Int(evergreen.VersionHighestExecutionTaskOtelAttribute, highestExecutionTask),
 	}
 
 	if !v.Cost.IsZero() {

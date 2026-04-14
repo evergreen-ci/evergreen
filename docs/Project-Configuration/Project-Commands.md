@@ -212,10 +212,9 @@ Use `*` for non-recursive matching and `**` for recursive descent. `archive.zip_
 ## attach.artifacts
 
 This command allows users to add files to the "Files" section of the
-task page without using the `s3.put` command. Suppose you uploaded a
-file to <https://example.com/this-is-my-file> in your task. For
-instance, you might be using boto in a Python script. You can then add a
-link to the Files element on the task page by:
+task page without using the `s3.put` command. This is useful when you've
+uploaded files to a remote location (e.g. using boto in a Python script)
+and want to link them in the Evergreen UI.
 
 ```yaml
 - command: attach.artifacts
@@ -224,19 +223,7 @@ link to the Files element on the task page by:
       - example.json
 ```
 
-```json
-[
-  {
-    "name": "my-file",
-    "link": "https://example.com/this-is-my-file",
-    "visibility": "public"
-  }
-]
-```
-
-An additional "ignore_for_fetch" parameter controls whether the file
-will be downloaded when spawning a host from the spawn link on a test
-page.
+Parameters:
 
 - `files`: an array of gitignore file globs. All files that are
   matched - ones that would be ignored by gitignore - are included.
@@ -246,7 +233,51 @@ page.
   indicates to treat the files array as a list of exact filenames to
   match, rather than an array of gitignore file globs.
 - `optional`: default false; if set to true, will not error if the
-  file(s) specified are not found
+  file(s) specified are not found.
+
+Each file should be JSON and contain an array of artifact objects:
+
+```json
+[
+  {
+    "name": "my-file",
+    "link": "https://example.com/this-is-my-file",
+    "visibility": "public"
+  },
+  {
+    "name": "my-file-with-params",
+    "link": "https://example.com/this-is-my-file?task=123&build=456",
+    "visibility": "public",
+    "do_not_encode_link": true,
+    "associated_links": [
+      {
+        "name": "Documentation",
+        "link": "https://example.com/docs"
+      },
+      {
+        "name": "Raw Data",
+        "link": "https://example.com/data?format=json&id=123",
+        "do_not_encode_link": true
+      }
+    ]
+  }
+]
+```
+
+Fields:
+
+- `name`: the display name for the artifact in the Evergreen UI.
+- `link`: the URL to the artifact.
+- `visibility`: the visibility level for the artifact. Can be "public" or "private".
+- `do_not_encode_link`: optional boolean, defaults to false. Set to true to
+  prevent Evergreen from URL-encoding the link. This is useful when your URL
+  contains query parameters (e.g. `?task=123&build=456`) that should not be escaped.
+- `ignore_for_fetch`: optional boolean, defaults to false. If set to true, the
+  file will not be downloaded when spawning a host from the spawn link on a test page.
+- `associated_links`: optional array of related links to be displayed alongside the main artifact in the UI. Each link object contains:
+  - `name`: the display name for the associated link.
+  - `link`: the URL for the associated link.
+  - `do_not_encode_link`: optional boolean, defaults to false. Set to true to prevent URL-encoding the link.
 
 ## attach.results
 
@@ -1152,7 +1183,7 @@ Parameters:
 
 This command traces artifact releases with the Papertrail service. It is owned
 by the Release Infrastructure team, and you may receive assistance with it in
-`#ask-devprod-release-tools`.
+[#ask-devprod](https://mongodb.enterprise.slack.com/archives/C69UXN1CP).
 
 ```yaml
 - command: papertrail.trace
@@ -1260,6 +1291,8 @@ Parameters:
 - `require_checksum_sha256`: optional base64-encoded sha256 checksum
   to verify the downloaded file against. If the checksum does not match,
   the command will fail.
+- `version_id`: optional S3 object version ID. When set, the download
+  will fetch this specific version of the object rather than the latest version.
 - `optional`: boolean: if set, won't error if the file isn't found or there's an error with downloading.
 
 ## s3.put
@@ -1316,6 +1349,19 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
     region: us-east-1
+# Upload with associated links:
+- command: s3.put
+  params:
+    role_arn: ${role_arn}
+    local_file: coverage/report.html
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/coverage/report.html
+    bucket: mciuploads
+    region: us-east-1
+    permissions: private
+    visibility: signed
+    content_type: text/html
+    display_name: Coverage Report
+    associated_links_file: coverage/links.json
 ```
 
 Parameters:
@@ -1378,6 +1424,21 @@ Parameters:
   of putting all the files into the same folder
 - `upload_checksum_sha256`: defaults to false. If set to true, the command will
   tell AWS to include the sha256 checksum of the file as metadata on the uploaded object.
+- `associated_links_file`: the name of a JSON file containing additional links to be displayed alongside the artifact in the UI. The file should contain an array of objects, each with `name` and `link` fields. Example file content:
+
+  ```json
+  [
+    {
+      "name": "Documentation",
+      "link": "https://example.com/docs"
+    },
+    {
+      "name": "Coverage Report",
+      "link": "https://example.com/${task_id}/coverage?format=html&view=summary",
+      "do_not_encode_link": true
+    }
+  ]
+  ```
 
 ## s3.put with multiple files
 

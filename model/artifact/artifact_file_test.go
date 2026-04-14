@@ -210,6 +210,32 @@ func (s *TestArtifactFileSuite) TestEscapeFiles() {
 			Name: "a_cat_picture_with_percent_symbol",
 			Link: "https://bucket.s3.amazonaws.com/something/file%.tar.gz",
 		},
+		{
+			Name:            "file_with_do_not_encode_true",
+			Link:            "https://example.com/file#special.txt",
+			DoNotEncodeLink: true,
+		},
+		{
+			Name:            "file_with_do_not_encode_false",
+			Link:            "https://example.com/file#special2.txt",
+			DoNotEncodeLink: false,
+		},
+		{
+			Name: "file_with_associated_links",
+			Link: "https://example.com/artifact#1.txt",
+			AssociatedLinks: []AssociatedLink{
+				{
+					Name:            "link_should_escape",
+					Link:            "https://example.com/docs#page1.html",
+					DoNotEncodeLink: false,
+				},
+				{
+					Name:            "link_should_not_escape",
+					Link:            "https://example.com/coverage#report.html",
+					DoNotEncodeLink: true,
+				},
+			},
+		},
 	}
 
 	escapedFiles := EscapeFiles(files)
@@ -218,6 +244,13 @@ func (s *TestArtifactFileSuite) TestEscapeFiles() {
 	s.Equal("https://notacat%230.png", escapedFiles[1].Link)
 	s.Equal("https://bucket.s3.amazonaws.com/something/file%21.tar.gz", escapedFiles[2].Link, "should not escape a URL whose file name has already been escaped")
 	s.Equal("https://bucket.s3.amazonaws.com/something/file%25.tar.gz", escapedFiles[3].Link, "should escape a URL whose file name happens to contain a percent symbol but is not properly escaped yet")
+	s.Equal("https://example.com/file#special.txt", escapedFiles[4].Link, "should not escape URL if DoNotEncodeLink is true")
+	s.Equal("https://example.com/file%23special2.txt", escapedFiles[5].Link, "should escape URL if DoNotEncodeLink is false")
+	s.Equal("https://example.com/artifact%231.txt", escapedFiles[6].Link, "should escape URL if DoNotEncodeLink is unset")
+
+	s.Require().Len(escapedFiles[6].AssociatedLinks, 2)
+	s.Equal("https://example.com/docs%23page1.html", escapedFiles[6].AssociatedLinks[0].Link, "should escape associated link if DoNotEncodeLink is false")
+	s.Equal("https://example.com/coverage#report.html", escapedFiles[6].AssociatedLinks[1].Link, "should not escape associated link if DoNotEncodeLink is true")
 }
 
 func TestLooksAlreadyEscaped(t *testing.T) {

@@ -1,7 +1,6 @@
 package trigger
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -10,110 +9,95 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestMetadataFromArgsWithVersion(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(user.Collection, model.RepositoriesCollection))
-	defer func() {
-		assert.NoError(db.ClearCollections(user.Collection, model.RepositoriesCollection))
-	}()
-	author := user.DBUser{
-		Id: "me",
-		Settings: user.UserSettings{
-			GithubUser: user.GithubUser{
-				UID: 123,
-			},
+func TestGetMetadataFromArgs(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig)
+	require.NoError(t, testConfig.Set(t.Context()))
+
+	until := time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC)
+	commits, _, err := thirdparty.GetGithubCommits(t.Context(), "evergreen-ci", "sample", &github.CommitsListOptions{
+		SHA:   "",
+		Until: until,
+		ListOptions: github.ListOptions{
+			Page: 0, PerPage: 1,
 		},
-	}
-	assert.NoError(author.Insert(t.Context()))
-	source := model.Version{
-		Author:     "name",
-		CreateTime: time.Now(),
-		Revision:   "abc",
-		AuthorID:   "me",
-	}
-	ref := model.ProjectRef{
-		Id: "project",
-	}
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, commits)
+	wantSHA := commits[0].GetSHA()
 
-	args := ProcessorArgs{
-		SourceVersion:     &source,
-		DownstreamProject: ref,
-		TriggerType:       model.ProjectTriggerLevelPush,
-	}
-	// Without updating the repositories collection, this errors.
-	_, err := getMetadataFromArgs(t.Context(), args)
-	assert.Error(err)
+	t.Run("WithSourceVersion", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(user.Collection, model.RepositoriesCollection))
+		t.Cleanup(func() {
+			require.NoError(t, db.ClearCollections(user.Collection, model.RepositoriesCollection))
+		})
+		downstreamID := "project-triggers-md-src"
+		_, err := model.GetNewRevisionOrderNumber(ctx, downstreamID)
+		require.NoError(t, err)
+		require.NoError(t, model.UpdateLastRevision(ctx, downstreamID, "bootstrap"))
+		author := user.DBUser{Id: "md-src-author", Settings: user.UserSettings{GithubUser: user.GithubUser{UID: 123}}}
+		require.NoError(t, author.Insert(ctx))
+		source := model.Version{Author: "a", CreateTime: until, AuthorID: author.Id, Message: "m"}
+		meta, err := getMetadataFromArgs(ctx, ProcessorArgs{
+			SourceVersion:     &source,
+			DownstreamProject: model.ProjectRef{Id: downstreamID, Owner: "evergreen-ci", Repo: "sample"},
+			TriggerType:       model.ProjectTriggerLevelTask,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, wantSHA, meta.Revision.Revision)
+		assert.Equal(t, 123, meta.Revision.AuthorGithubUID)
+		assert.Empty(t, meta.SourceCommit)
+	})
 
-	_, err = model.GetNewRevisionOrderNumber(t.Context(), ref.Id)
-	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(t.Context(), ref.Id, "def"))
-
-	metadata, err := getMetadataFromArgs(t.Context(), args)
-	assert.NoError(err)
-	assert.Equal(source.Author, metadata.Revision.Author)
-	assert.Equal(source.CreateTime, metadata.Revision.CreateTime)
-	assert.Equal("def", metadata.Revision.Revision)
-	assert.Equal(123, metadata.Revision.AuthorGithubUID)
-	assert.Empty(metadata.SourceCommit)
-	assert.True(metadata.Activate)
+	t.Run("WithPushRevision", func(t *testing.T) {
+		ctx := t.Context()
+		require.NoError(t, db.ClearCollections(user.Collection, model.RepositoriesCollection))
+		t.Cleanup(func() {
+			require.NoError(t, db.ClearCollections(user.Collection, model.RepositoriesCollection))
+		})
+		downstreamID := "project-triggers-md-push"
+		_, err := model.GetNewRevisionOrderNumber(ctx, downstreamID)
+		require.NoError(t, err)
+		require.NoError(t, model.UpdateLastRevision(ctx, downstreamID, "bootstrap"))
+		push := model.Revision{Revision: "upstream", CreateTime: until, Author: "p"}
+		meta, err := getMetadataFromArgs(ctx, ProcessorArgs{
+			TriggerType:       model.ProjectTriggerLevelPush,
+			DownstreamProject: model.ProjectRef{Id: downstreamID, Owner: "evergreen-ci", Repo: "sample"},
+			PushRevision:      push,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, wantSHA, meta.Revision.Revision)
+		assert.Equal(t, push.Revision, meta.SourceCommit)
+	})
 }
 
-func TestMetadataFromArgsWithoutVersion(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.Clear(model.RepositoriesCollection))
-	ref := model.ProjectRef{
-		Id: "project",
-	}
-	args := ProcessorArgs{
-		TriggerType:       model.ProjectTriggerLevelPush,
-		DownstreamProject: ref,
-		PushRevision: model.Revision{
-			Revision: "1234",
-			Author:   "me",
-		},
-	}
-
-	// Without updating the repositories collection, this errors.
-	_, err := getMetadataFromArgs(t.Context(), args)
-	assert.Error(err)
-
-	_, err = model.GetNewRevisionOrderNumber(t.Context(), ref.Id)
-	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(t.Context(), ref.Id, "def"))
-	metadata, err := getMetadataFromArgs(t.Context(), args)
-	assert.NoError(err)
-	assert.True(metadata.Activate)
-	assert.Equal(args.TriggerType, metadata.TriggerType)
-	// Should equal the downstream project's ref rather than the push revision.
-	assert.Equal("def", metadata.Revision.Revision)
-	assert.Equal(args.PushRevision.Revision, metadata.SourceCommit)
-}
-
-func TestMakeDownstreamConfigFromFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(evergreen.ConfigCollection))
+func TestMakeDownstreamProjectFromFile(t *testing.T) {
+	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
 
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig)
-	assert.NoError(testConfig.Set(ctx))
+	require.NoError(t, testConfig.Set(t.Context()))
 
 	ref := model.ProjectRef{
-		Id:    "myProj",
-		Owner: "evergreen-ci",
-		Repo:  "evergreen",
+		Id:     "myProj",
+		Owner:  "evergreen-ci",
+		Repo:   "evergreen",
+		Branch: "main",
 	}
-	projectInfo, err := makeDownstreamProjectFromFile(ctx, ref, "trigger/testdata/downstream_config.yml")
-	assert.NoError(err)
-	assert.NotNil(projectInfo.Project)
-	assert.NotNil(projectInfo.IntermediateProject)
-	assert.Equal(ref.Id, projectInfo.Project.Identifier)
-	assert.Len(projectInfo.Project.Tasks, 2)
-	assert.Equal("task1", projectInfo.Project.Tasks[0].Name)
-	assert.Len(projectInfo.Project.BuildVariants, 1)
-	assert.Equal("something", projectInfo.Project.BuildVariants[0].DisplayName)
+	projectInfo, err := makeDownstreamProjectFromFile(t.Context(), ref, "trigger/testdata/downstream_config.yml")
+	require.NoError(t, err)
+	require.NotNil(t, projectInfo.Project)
+	require.NotNil(t, projectInfo.IntermediateProject)
+	assert.Equal(t, ref.Id, projectInfo.Project.Identifier)
+	assert.Len(t, projectInfo.Project.Tasks, 2)
+	assert.Equal(t, "task1", projectInfo.Project.Tasks[0].Name)
+	assert.Len(t, projectInfo.Project.BuildVariants, 1)
+	assert.Equal(t, "something", projectInfo.Project.BuildVariants[0].DisplayName)
 }

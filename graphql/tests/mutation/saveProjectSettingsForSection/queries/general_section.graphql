@@ -10,6 +10,7 @@ mutation {
                 owner: "evergreen-ci"
                 repo: "commit-queue-sandbox"
                 branch: "main"
+                runEveryMainlineCommit: true
             }
         },
         section: GENERAL
@@ -18,6 +19,7 @@ mutation {
             enabled
             remotePath
             spawnHostScriptPath ## overwritten
+            runEveryMainlineCommit
         }
         vars {
             vars ## should be unchanged

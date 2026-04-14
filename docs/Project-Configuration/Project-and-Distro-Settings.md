@@ -55,6 +55,8 @@ should be part of a Guild, as this is refreshed every day and better
 supports employees moving teams. Guilds can also dynamically add users
 who match certain characteristics.
 
+To verify what permissions have been granted to a specific user, use the [permission-details API endpoint](../API/REST-V2-Usage#tag/users/paths/~1users~1{user_id}~1permission-details/get).
+
 ## Project Settings
 
 The Project Settings file displays information about the Project itself,
@@ -279,7 +281,7 @@ the status of those tasks on the mainline commit version.
 
 ### Run Every Mainline Commit
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the "General Settings" tab.
 
 Although a version gets created for every commit on a project with the repotracker, it does not necessarily activate each version. Evergreen runs a job periodically that activates the latest repotracker version. This is to avoid running unnecessary versions if there are a lot of commits in a short period of time. If you would like to activate every version created by the repotracker, you can enable "Run Every Mainline Commit". This will ensure that every version created by the repotracker gets activated and runs its tasks.
 

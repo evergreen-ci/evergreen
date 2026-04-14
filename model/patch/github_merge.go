@@ -267,6 +267,7 @@ func (g *githubMergeIntent) NewPatch() *Patch {
 			Repo:           g.Repo,
 			BaseBranch:     baseBranch,
 			HeadBranch:     headBranch,
+			BaseSHA:        g.BaseSHA,
 			HeadSHA:        g.HeadSHA,
 			HeadCommit:     g.HeadCommit,
 			HeadCommitDate: g.HeadCommitDate,
