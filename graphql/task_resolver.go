@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // AbortInfo is the resolver for the abortInfo field.
@@ -393,11 +394,28 @@ func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITas
 }
 
 // ExecutionTasksFull is the resolver for the executionTasksFull field.
-func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
+func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask, options *TaskFilterOptions) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
 	}
-	tasks, err := task.FindByExecutionTasksAndMaxExecution(ctx, utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
+
+	var filters []bson.E
+	if options != nil {
+		if len(options.Statuses) > 0 {
+			validStatuses := getValidTaskStatusesFilter(options.Statuses)
+			if len(validStatuses) > 0 {
+				filters = append(filters, bson.E{Key: task.DisplayStatusCacheKey, Value: bson.M{"$in": validStatuses}})
+			}
+		}
+		if len(options.BaseStatuses) > 0 {
+			validBaseStatuses := getValidTaskStatusesFilter(options.BaseStatuses)
+			if len(validBaseStatuses) > 0 {
+				filters = append(filters, bson.E{Key: task.BaseTaskStatusKey, Value: bson.M{"$in": validBaseStatuses}})
+			}
+		}
+	}
+
+	tasks, err := task.FindByExecutionTasksAndMaxExecution(ctx, utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution, filters...)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding execution tasks for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

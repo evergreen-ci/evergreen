@@ -91,7 +91,7 @@ type Task {
   execution: Int!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
-  executionTasksFull: [Task!]
+  executionTasksFull(options: TaskFilterOptions): [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
   files: TaskFiles!
