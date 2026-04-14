@@ -194,6 +194,12 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Variant:   "^ubuntu2004$",
 		Task:      "^bynntask$",
 	}).Upsert(s.ctx))
+	s.NoError((&model.ProjectAlias{
+		ProjectID: "commit-queue-sandbox",
+		Alias:     evergreen.GithubPRAlias,
+		Variant:   "ubuntu.*",
+		Task:      "unit_tests",
+	}).Upsert(s.ctx))
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert(s.ctx))
 	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert(s.ctx))
