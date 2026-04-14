@@ -180,7 +180,7 @@ func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) b
 		return true
 	}
 	// if we're updating patch aliases, skip internal aliases
-	if isGithubAliasSection(section) && !model.IsPatchAlias(alias) {
+	if section == model.ProjectPagePatchAliasSection && !model.IsPatchAlias(alias) {
 		return true
 	}
 	return false
