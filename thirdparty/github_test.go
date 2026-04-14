@@ -459,7 +459,7 @@ func TestGetGithubPullRequestPatch(t *testing.T) {
 		// These are the headers that indicate a binary file is included in the patch.
 		assert.Contains(t, diff, "GIT binary patch")
 		assert.Contains(t, diff, "literal 1006867")
-		// This is the header that indicates a binray file is in the diff but not included
+		// This is the header that indicates a binary file is in the diff but not included
 		// in the patch.
 		assert.NotContains(t, diff, "Binary files /dev/null and b/docs/images/run-every-mainline-commit-project-setting.png differ")
 	})
