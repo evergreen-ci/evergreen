@@ -1597,7 +1597,10 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	// Get the project's GitHub app auth for check run operations.
 	ghAppAuth, err := model.GetAndValidateCheckRunGitHubAppAuth(ctx, t)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
 	}
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {

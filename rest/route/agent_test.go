@@ -822,10 +822,9 @@ tasks:
 		require.NoError(t, githubapp.UpsertGitHubAppAuth(t.Context(), &githubapp.GithubAppAuth{
 			Id: projectID, AppID: 12345, PrivateKey: []byte("fake-private-key"),
 		}))
-		defer func() {
-			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
-			require.NoError(t, db.Clear(fakeparameter.Collection))
-		}()
+		t.Cleanup(func() {
+			require.NoError(t, db.ClearCollections(githubapp.GitHubAppAuthCollection, fakeparameter.Collection))
+		})
 
 		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &fewTask)
 		require.NotNil(t, auth)
@@ -946,7 +945,7 @@ tasks:
 			Requester: evergreen.RepotrackerVersionRequester,
 		}
 		require.NoError(t, t1.Insert(t.Context()))
-		defer func() { require.NoError(t, db.Clear(task.Collection)) }()
+		t.Cleanup(func() { require.NoError(t, db.Clear(task.Collection)) })
 
 		h := &checkRunHandler{}
 		taskCtx := context.WithValue(t.Context(), model.ApiTaskKey, &t1)
@@ -969,7 +968,7 @@ tasks:
 		taskCtx := context.WithValue(t.Context(), model.ApiTaskKey, &t2)
 		resp := h.Run(taskCtx)
 		require.NotNil(t, resp)
-		assert.Equal(t, http.StatusInternalServerError, resp.Status())
+		assert.Equal(t, http.StatusBadRequest, resp.Status())
 		assert.Contains(t, fmt.Sprintf("%v", resp.Data()), "does not have a GitHub app configured")
 	})
 }

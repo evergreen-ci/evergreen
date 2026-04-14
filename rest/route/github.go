@@ -382,7 +382,18 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	// Get the project's GitHub app auth for check run operations.
 	ghAppAuth, err := model.GetAndValidateCheckRunGitHubAppAuth(ctx, taskToRestart)
 	if err != nil {
-		return errors.Wrapf(err, "checkRun not updated for task '%s'", taskToRestart.Id)
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"source":    "GitHub hook",
+			"operation": "check run",
+			"msg_id":    gh.msgID,
+			"event":     gh.eventType,
+			"owner":     owner,
+			"repo":      repo,
+			"task":      taskToRestart.Id,
+			"message":   "checkRun not updated for task",
+		}))
+		// Don't want to retry on this case, so log but return no error.
+		return nil
 	}
 	// Check run status should stay the same while task is being re-run.
 	latestExecutionForTask.Status = taskToRestart.Status
