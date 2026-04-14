@@ -36,14 +36,6 @@ Evergreen administrators can choose to make a distro available to users for spaw
 
 Only distros backed by a provider that supports dynamically spinning up new hosts (static hosts, of course, do not) allow this option.
 
-## Authenticate spawn hosts (OAuth)
-
-Evergreen is migrating away from static credentials (see the [Static Token Deprecation FAQ](../FAQ/Static-Token-Deprecation-FAQ.md)). After that migration is in effect, **Spruce only gates creating a spawn host when you load task-related data on that spawn host** (for example binaries, artifacts, or the repository from a task). If you create a spawn host **without** loading task data on it, you do not need this step.
-
-**In that case**, you **cannot** finish creating the spawn host until you have completed the OAuth / Okta token exchange and Spruce shows you as authenticated.
-
-On the [spawn hosts page](https://spruce.corp.mongodb.com/spawn/host), click **Authenticate spawn hosts**. That opens the OAuth / Okta token exchange flow in a new browser tab. After you finish signing in, return to Spruce. You can **create spawn hosts that load task-related data on the spawn host** without being blocked by this gate. **You do not need to run any Evergreen CLI commands on the spawn host** to complete this authentication.
-
 ## Spawning a Host
 
 Navigate to the [spawn hosts page](https://spruce.corp.mongodb.com/spawn/host) and select the "Spawn a host" button.
@@ -57,8 +49,6 @@ Alternately, for a task that ran on a distro where spawning is enabled, you will
 Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro. You will have to complete an short authentication step to finish spawning the host.
 
 ![spawn_host_modal.mov](../images/spawnhost_flow.mov)
-
-Additionally, the page offers an option to load task-related data on the spawn host (such as binaries, artifacts, and the repository).
 
 Artifacts are placed in /data/mci.
 
