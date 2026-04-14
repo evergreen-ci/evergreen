@@ -149,7 +149,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
-		OldestAllowedMergeBase: "536cde7f7b29f7e117371a48a3e59540a44af1ac",
+		OldestAllowedMergeBase: "0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f",
 	}).Insert(s.ctx))
 
 	s.NoError((&model.ProjectRef{
@@ -1200,31 +1200,31 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 
 func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	pr := &github.PullRequest{
-		Title: utility.ToStringPtr("Test title"),
+		Title:  github.Ptr("Test title"),
+		Number: github.Ptr(816),
 		Base: &github.PullRequestBranch{
-			SHA: github.String("ed42b5e51e81724c5258686a0b9d515a99696eac"),
+			SHA: github.Ptr("0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f"),
 			Repo: &github.Repository{
-				FullName: utility.ToStringPtr("evergreen-ci/commit-queue-sandbox"),
+				FullName: github.Ptr("evergreen-ci/commit-queue-sandbox"),
 			},
-			Ref: utility.ToStringPtr("main"),
+			Ref: github.Ptr("main"),
 		},
 		Head: &github.PullRequestBranch{
-			SHA: github.String("75296bc001a22600252f2d4e8f35d47c9b31221b"),
+			SHA: github.Ptr("69145f9bcac5c5f5d2b6de76c78e5b717f993097"),
 			Repo: &github.Repository{
-				FullName: utility.ToStringPtr("evergreen-ci/DEVPROD-123"),
+				FullName: github.Ptr("minnakt/commit-queue-sandbox"),
 			},
-			Ref: utility.ToStringPtr("abc"),
+			Ref: github.Ptr("refresh-statuses"),
 		},
 		User: &github.User{
 			ID:    github.Int64(1),
-			Login: utility.ToStringPtr("abc"),
+			Login: github.Ptr("abc"),
 		},
-		Number:         github.Int(1),
-		MergeCommitSHA: github.String("abcdef"),
+		MergeCommitSHA: github.Ptr("abcdef"),
 	}
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	// SHA ed42b5e51e81724c5258686a0b9d515a99696eac is newer than the oldest allowed merge base and should be accepted
-	intent, err := patch.NewGithubIntent(s.ctx, "id", "auto", "", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
+	// SHA 0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f is newer than the oldest allowed merge base and should be accepted
+	intent, err := patch.NewGithubIntent(s.ctx, "id", "auto", "", "", "0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1236,8 +1236,8 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 
 	s.Equal("main", patchDoc.Branch)
 
-	// SHA 4aa79c5e7ef7af351764b843a2c05fab98c23881 is older than the oldest allowed merge base and should be rejected
-	intent, err = patch.NewGithubIntent(s.ctx, "another_id", "auto", "", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
+	// SHA 6e8cd5c8e8fe18e38b1dc9a609465a732d29fb99 is older than the oldest allowed merge base and should be rejected
+	intent, err = patch.NewGithubIntent(s.ctx, "another_id", "auto", "", "", "6e8cd5c8e8fe18e38b1dc9a609465a732d29fb99", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
