@@ -78,6 +78,11 @@ type s3get struct {
 	// RoleARN is an ARN that should be assumed to make the S3 request.
 	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
 
+	// VersionID pins download operations to a specific S3 object version.
+	// When set, Get and Reader operations will request this version of
+	// the object.
+	VersionID string `mapstructure:"version_id" plugin:"expand"`
+
 	// RequireChecksumSha256 will verify the sha256 checksum inside
 	// the file's metadata with the given one. The checksum is Base64
 	// encoded.
@@ -372,6 +377,7 @@ func (c *s3get) createPailBucket(ctx context.Context, comm client.Communicator, 
 	opts := pail.S3Options{
 		Region:                 c.Region,
 		Name:                   c.Bucket,
+		VersionID:              c.VersionID,
 		ExpectedChecksumSHA256: c.RequireChecksumSha256,
 	}
 
