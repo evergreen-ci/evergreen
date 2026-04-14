@@ -170,7 +170,6 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
 	}
 	if intentHost.SpawnOptions.SpawnedByTask {
-		// kim: TODO: confirm staging host.create host is tagged properly.
 		systemTags = append(systemTags, host.Tag{Key: evergreen.TagProject, Value: intentHost.SpawnOptions.ProjectID, CanBeModified: false})
 		if intentHost.SpawnOptions.TaskID != "" {
 			systemTags = append(systemTags,
