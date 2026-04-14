@@ -35,7 +35,7 @@ If the API key belongs to a [service user](../Project-Configuration/Project-and-
 
 ## Will spawn hosts be affected?
 
-Yes, when **you load task-related data on a spawn host**. After migration, **Spruce requires Authenticate spawn hosts** before you can finish creating that spawn host. To complete that step, open the spawn hosts page, click **Authenticate spawn hosts**, and finish the OAuth / Okta token exchange in your browser. Evergreen then injects an access token into the spawn host’s client configuration so the CLI can use the API without you running authentication commands on the spawn host. **If you create a spawn host without loading task data on it**, Spruce does not apply this gate. See [Authenticate spawn hosts (OAuth)](../Hosts/Spawn-Hosts.md#authenticate-spawn-hosts-oauth).
+Yes, spawn hosts that load task data will require an additional authentication step. Check out the documentation for [spawning a host from a task](../Hosts/Spawn-Hosts.md#spawning-a-host-from-a-task) for more information.
 
 ## How often will I be asked to click on a link to authenticate?
 
