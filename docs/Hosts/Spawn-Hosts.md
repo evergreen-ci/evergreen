@@ -54,15 +54,11 @@ Alternately, for a task that ran on a distro where spawning is enabled, you will
 
 ![task_page_spawn_host.png](../images/task_page_spawn_host.png)
 
-Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro.
+Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro. You will have to complete an short authentication step to finish spawning the host.
 
-![spawn_host_modal.png](../images/spawn_host_modal.png)
+![spawn_host_modal.mov](../images/spawnhost_flow.mov)
 
 Additionally, the page offers an option to load task-related data on the spawn host (such as binaries, artifacts, and the repository).
-
-**After migration**, the **Authenticate spawn hosts** gate applies when **you load task-related data on the spawn host**, including when you use this option while spawning from a task. You must complete it in Spruce before Spruce lets you finish creating that spawn host. Evergreen then provisions API credentials on the spawn host. You **do not** need to run interactive OAuth or login commands over SSH for that. If you create a spawn host **without** loading task data on it, this gate does not apply.
-
-When you load task-related data on the spawn host, Evergreen provisions binaries, artifacts, and the repository as part of spawn host setup. You do not run a separate CLI command on the host to fetch that data. Completing [Authenticate spawn hosts](#authenticate-spawn-hosts-oauth) in Spruce supplies credentials used during provisioning.
 
 Artifacts are placed in /data/mci.
 
