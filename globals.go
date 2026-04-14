@@ -191,8 +191,6 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	WhyIsMyDataMissingName = "whyIsTheDataMissing.txt"
-
 	// Env vars
 	EvergreenHome           = "EVGHOME"
 	MongodbURL              = "MONGO_URL"
@@ -260,7 +258,6 @@ const (
 	TempSetupScriptName           = "setup-temp.sh"
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
-	SpawnhostFetchScriptName      = ".evergreen-spawnhost-fetch.sh"
 
 	PlannerVersionTunable = "tunable"
 

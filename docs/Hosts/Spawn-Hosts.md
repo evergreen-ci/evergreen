@@ -36,9 +36,17 @@ Evergreen administrators can choose to make a distro available to users for spaw
 
 Only distros backed by a provider that supports dynamically spinning up new hosts (static hosts, of course, do not) allow this option.
 
+## Authenticate spawn hosts (OAuth)
+
+Evergreen is migrating away from static credentials (see the [Static Token Deprecation FAQ](../FAQ/Static-Token-Deprecation-FAQ.md)). After that migration is in effect, **Spruce only gates creating a spawn host when you load task-related data on that spawn host** (for example binaries, artifacts, or the repository from a task). If you create a spawn host **without** loading task data on it, you do not need this step.
+
+**In that case**, you **cannot** finish creating the spawn host until you have completed the OAuth / Okta token exchange and Spruce shows you as authenticated.
+
+On the [spawn hosts page](https://spruce.corp.mongodb.com/spawn/host), click **Authenticate spawn hosts**. That opens the OAuth / Okta token exchange flow in a new browser tab. After you finish signing in, return to Spruce. You can **create spawn hosts that load task-related data on the spawn host** without being blocked by this gate. **You do not need to run any Evergreen CLI commands on the spawn host** to complete this authentication.
+
 ## Spawning a Host
 
-Visit `/spawn` to view the spawn hosts control panel. Click on "Spawn Host" and choose the distro you want to spawn, and choose the key you'd like to use (or provide a new one).
+Navigate to the [spawn hosts page](https://spruce.corp.mongodb.com/spawn/host) and select the "Spawn a host" button.
 
 ## Spawning a Host From a Task
 
@@ -50,17 +58,11 @@ Clicking it will pre-populate the spawn host page with a request to spawn a host
 
 ![spawn_host_modal.png](../images/spawn_host_modal.png)
 
-Additionally, the page offers an option to load task-related data (such as binaries, artifacts, and the repository) which generates a pre-filled fetch command for you.
+Additionally, the page offers an option to load task-related data on the spawn host (such as binaries, artifacts, and the repository).
 
-Please note that the spawn host does not automatically download the task-related data during start-up because it does not have the required permissions. After establishing an SSH connection to the host, you’ll need to run the following command to fetch the files (this will prompt you to authenticate):
+**After migration**, the **Authenticate spawn hosts** gate applies when **you load task-related data on the spawn host**, including when you use this option while spawning from a task. You must complete it in Spruce before Spruce lets you finish creating that spawn host. Evergreen then provisions API credentials on the spawn host. You **do not** need to run interactive OAuth or login commands over SSH for that. If you create a spawn host **without** loading task data on it, this gate does not apply.
 
-```sh
-evergreen host fetch
-```
-
-> Important: This command must be executed for each spawn host that needs to fetch task artifacts and binaries.
-
-Alternatively, you can use the Evergreen CLI's [fetch command](../CLI#fetch) to manually retrieve task-related binaries and artifacts.
+When you load task-related data on the spawn host, Evergreen provisions binaries, artifacts, and the repository as part of spawn host setup. You do not run a separate CLI command on the host to fetch that data. Completing [Authenticate spawn hosts](#authenticate-spawn-hosts-oauth) in Spruce supplies credentials used during provisioning.
 
 Artifacts are placed in /data/mci.
 
@@ -68,9 +70,11 @@ If your project has [a project setup script defined at the admin level](../Proje
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
 
-## Evergreen CLI
+## Evergreen CLI on a spawn host
 
-When using the Evergreen CLI on a spawn host, you will be prompted to authenticate by going to a URL and entering a code. If the link does not appear in the terminal, you may have to set `oauth.do_not_use_browser` to true in your Evergreen CLI config file (usually located at `~/.evergreen.yml`). Example:
+After migration, when **you load task-related data on a spawn host**, **[Authenticate spawn hosts](#authenticate-spawn-hosts-oauth)** in Spruce is required before Spruce lets you create that spawn host. That step provisions a valid token on the spawn host. You should not need a **device-code / browser** login on the spawn host for that flow.
+
+If you use the Evergreen CLI **elsewhere** (for example on a machine without a GUI) and the CLI prompts you to authenticate with a URL and code, you can set `oauth.do_not_use_browser` to `true` in `~/.evergreen.yml` and complete the steps in the terminal. Example:
 
 ```yaml
 # ~/.evergreen.yml

@@ -35,21 +35,15 @@ If the API key belongs to a [service user](../Project-Configuration/Project-and-
 
 ## Will spawn hosts be affected?
 
-Yes, please see the documentation on [spawn hosts and the Evergreen CLI](../Hosts/Spawn-Hosts.md#evergreen-cli).
-
-For spawn hosts that should fetch task binaries and artifacts automatically, after SSHing into the host you will need to run:
-
-```sh
-evergreen host fetch
-```
+Yes, when **you load task-related data on a spawn host**. After migration, **Spruce requires Authenticate spawn hosts** before you can finish creating that spawn host. To complete that step, open the spawn hosts page, click **Authenticate spawn hosts**, and finish the OAuth / Okta token exchange in your browser. Evergreen then injects an access token into the spawn host’s client configuration so the CLI can use the API without you running authentication commands on the spawn host. **If you create a spawn host without loading task data on it**, Spruce does not apply this gate. See [Authenticate spawn hosts (OAuth)](../Hosts/Spawn-Hosts.md#authenticate-spawn-hosts-oauth).
 
 ## How often will I be asked to click on a link to authenticate?
 
 Please see [here](https://kanopy.corp.mongodb.com/docs/corpsecure/auth_flow/#refresh-token).
 
-## What if I am in an enviornment where I cannot open a browser to authenticate?
+## What if I am in an environment where I cannot open a browser to authenticate?
 
-Please follow the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli).
+Please follow the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host) (e.g. a spawn host. This is set automatically for new spawn hosts).
 
 ## Why did I have to wait a while for the CLI command to load after authenticating?
 
