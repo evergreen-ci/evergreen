@@ -919,9 +919,6 @@ const defaultRetryFailedLogMoveLookbackMonths = 2
 // defaultRetryFailedLogMoveMaxJobsPerRun caps enqueued jobs to avoid S3 rate limiting.
 const defaultRetryFailedLogMoveMaxJobsPerRun = 50
 
-// tempRetryFailedLogMoveProject is a temporary project filter for the weekly retry
-const tempRetryFailedLogMoveProject = "evergreen"
-
 // PopulateRetryFailedLogMoveJobs finds failed tasks whose logs are still in the regular
 // bucket (move job failed or never ran) and enqueues one move-logs-to-failed-bucket job per task.
 // Caps enqueued jobs per run to avoid S3 rate limiting; newest failures are prioritized.
@@ -952,8 +949,9 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			task.FinishTimeKey:  bson.M{"$gte": cutoff},
 			task.DisplayOnlyKey: bson.M{"$ne": true},
 			task.TaskOutputInfoKey + ".task_logs.bucket_config.name": bson.M{"$exists": true, "$ne": failedBucketCfg.Name},
-			// DEVPROD-31297 todo: remove this after the first run of the weekly cron.
-			task.ProjectKey: tempRetryFailedLogMoveProject,
+		}
+		if len(settings.Buckets.LongRetentionProjects) > 0 {
+			filter[task.ProjectKey] = bson.M{"$nin": settings.Buckets.LongRetentionProjects}
 		}
 
 		query := db.Query(filter).WithFields(

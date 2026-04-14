@@ -278,6 +278,11 @@ func FindAllRulesForBucket(ctx context.Context, bucketName string) ([]S3Lifecycl
 	return findS3LifecycleRules(ctx, bson.M{BucketNameKey: bucketName})
 }
 
+// FindAllRules retrieves all S3 lifecycle rules across all buckets.
+func FindAllRules(ctx context.Context) ([]S3LifecycleRuleDoc, error) {
+	return findS3LifecycleRules(ctx, bson.M{})
+}
+
 // FindDistinctBucketNames returns all unique bucket names for the given bucket type.
 func FindDistinctBucketNames(ctx context.Context, bucketType string) ([]string, error) {
 	if bucketType == "" {

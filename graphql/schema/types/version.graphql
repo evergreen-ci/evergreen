@@ -177,6 +177,8 @@ type VersionLite {
   requester: String!
   revision: String!
   startTime: Time
+  status: String!
+  taskStatusStats: TaskStats
   user: UserLite!
   warnings: [String!]!
 }

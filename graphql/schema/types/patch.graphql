@@ -97,7 +97,9 @@ type Patch {
   user: User!
   variants: [String!]!
   variantsTasks: [VariantTask!]!
+  version: VersionLite
   versionFull: Version
+  invalidatedByUpstream: Boolean!
 }
 
 type ChildPatchAlias {

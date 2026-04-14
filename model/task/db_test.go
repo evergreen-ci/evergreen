@@ -1380,7 +1380,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 	assert.Equal(t, "t3", tasks[3].Id)
 }
 
-func TestGetTaskStatsByVersion(t *testing.T) {
+func TestGetFilteredTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
 		Id:                 "t1",
@@ -1437,16 +1437,141 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
 	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}
-	stats, err := GetTaskStatsByVersion(ctx, "v1", opts)
+	stats, err := GetFilteredTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, stats.Counts, 4)
 	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, t3, t4, t5, t6))
-	stats, err = GetTaskStatsByVersion(ctx, "v1", opts)
+	stats, err = GetFilteredTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Nil(t, stats.ETA)
+}
+
+func TestGetTaskStatsByVersion(t *testing.T) {
+	t.Run("BasicCountsByStatus", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		tasks := []Task{
+			{
+				Id:                 "started1",
+				Version:            "v1",
+				Status:             evergreen.TaskStarted,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskStarted,
+				ActivatedTime:      time.Now(),
+			},
+			{
+				Id:                 "started2",
+				Version:            "v1",
+				Status:             evergreen.TaskStarted,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskStarted,
+				ActivatedTime:      time.Now(),
+			},
+			{
+				Id:                 "succeeded1",
+				Version:            "v1",
+				Status:             evergreen.TaskSucceeded,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskSucceeded,
+				ActivatedTime:      time.Now(),
+			},
+			{
+				Id:                 "failed1",
+				Version:            "v1",
+				Status:             evergreen.TaskFailed,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskFailed,
+				ActivatedTime:      time.Now(),
+			},
+		}
+		for _, task := range tasks {
+			require.NoError(t, task.Insert(t.Context()))
+		}
+
+		stats, err := GetTaskStatsByVersion(t.Context(), "v1", true)
+		require.NoError(t, err)
+		assert.Len(t, stats.Counts, 3)
+	})
+
+	t.Run("ExcludesNeverActivatedTasks", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		tasks := []Task{
+			{
+				Id:                 "activated1",
+				Version:            "v1",
+				Status:             evergreen.TaskSucceeded,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskSucceeded,
+				ActivatedTime:      time.Now(),
+			},
+			{
+				Id:                 "never_activated",
+				Version:            "v1",
+				Status:             evergreen.TaskUndispatched,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskUndispatched,
+				ActivatedTime:      utility.ZeroTime,
+			},
+		}
+		for _, task := range tasks {
+			require.NoError(t, task.Insert(t.Context()))
+		}
+
+		stats, err := GetTaskStatsByVersion(t.Context(), "v1", false)
+		require.NoError(t, err)
+		require.Len(t, stats.Counts, 1)
+		assert.Equal(t, evergreen.TaskSucceeded, stats.Counts[0].Status)
+		assert.Equal(t, 1, stats.Counts[0].Count)
+
+		stats, err = GetTaskStatsByVersion(t.Context(), "v1", true)
+		require.NoError(t, err)
+		assert.Len(t, stats.Counts, 2)
+	})
+
+	t.Run("ExcludesExecutionTasksUnderDisplayTasks", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+		tasks := []Task{
+			{
+				Id:                 "display_task",
+				Version:            "v1",
+				Status:             evergreen.TaskStarted,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskStarted,
+				ActivatedTime:      time.Now(),
+			},
+			{
+				Id:                 "exec_task_under_display",
+				Version:            "v1",
+				Status:             evergreen.TaskSucceeded,
+				DisplayTaskId:      utility.ToStringPtr("display_task"),
+				DisplayStatusCache: evergreen.TaskSucceeded,
+				ActivatedTime:      time.Now(),
+			},
+			{
+				Id:                 "standalone_task",
+				Version:            "v1",
+				Status:             evergreen.TaskFailed,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				DisplayStatusCache: evergreen.TaskFailed,
+				ActivatedTime:      time.Now(),
+			},
+		}
+		for _, task := range tasks {
+			require.NoError(t, task.Insert(t.Context()))
+		}
+
+		stats, err := GetTaskStatsByVersion(t.Context(), "v1", true)
+		require.NoError(t, err)
+		assert.Len(t, stats.Counts, 2)
+
+		totalCount := 0
+		for _, c := range stats.Counts {
+			totalCount += c.Count
+		}
+		assert.Equal(t, 2, totalCount)
+	})
 }
 
 func TestGetGroupedTaskStatsByVersion(t *testing.T) {

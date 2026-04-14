@@ -8,7 +8,8 @@
             "projectRef": {
               "enabled": true,
               "remotePath": "my_path_is_new",
-              "spawnHostScriptPath": ""
+              "spawnHostScriptPath": "",
+              "runEveryMainlineCommit": true
             },
             "vars": {
               "vars": { "hello": "" },
@@ -26,8 +27,7 @@
             "projectRef": {
               "commitQueue": {
                 "enabled": true
-              },
-              "runEveryMainlineCommit": true
+              }
             },
             "vars": {
               "vars": { "hello": "" },

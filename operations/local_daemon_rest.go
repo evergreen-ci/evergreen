@@ -24,6 +24,7 @@ type localDaemonREST struct {
 	conf       *ClientSettings
 	configPath string
 	port       int
+	localMode  bool
 }
 
 // newLocalDaemonREST creates a new REST daemon
@@ -66,6 +67,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	var req struct {
 		ConfigPath string `json:"config_path"`
 		OAuthToken string `json:"oauth_token"`
+		TaskID     string `json:"task_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -85,7 +87,7 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 
 	// If an executor already exists with a selected task, hot reload the
 	// project so the debug session state is preserved.
-	if d.executor != nil {
+	if d.executor != nil && req.ConfigPath != "" {
 		project, err := d.executor.ReloadProject(r.Context(), req.ConfigPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -101,12 +103,29 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	workDir := filepath.Dir(req.ConfigPath)
+	// Use the task ID from the request if provided (task ID is required when using locally)
+	taskID := req.TaskID
+	if taskID == "" {
+		taskID = d.conf.TaskID
+	}
+
+	workDir := req.ConfigPath
+	if workDir != "" {
+		workDir = filepath.Dir(workDir)
+	} else {
+		// Fallback to OS working directory if config path is not provided (i.e. on a local machine)
+		var err error
+		workDir, err = os.Getwd()
+		if err != nil {
+			http.Error(w, errors.Wrap(err, "getting current working directory").Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
 	opts := taskexec.LocalExecutorOptions{
 		WorkingDir:  workDir,
 		ServerURL:   d.conf.getApiServerHost(true),
-		TaskID:      d.conf.TaskID,
+		TaskID:      taskID,
 		OAuthToken:  req.OAuthToken,
 		SpawnHostID: d.conf.SpawnHostID,
 	}
@@ -117,10 +136,13 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	project, err := executor.LoadProject(req.ConfigPath)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// When a config path is provided, load the provided YAML to override the
+	// server config.
+	if req.ConfigPath != "" {
+		if _, err := executor.LoadProject(req.ConfigPath); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if err := executor.SetupWorkingDirectory(workDir); err != nil {
@@ -131,6 +153,31 @@ func (d *localDaemonREST) handleLoadConfig(w http.ResponseWriter, r *http.Reques
 	d.executor = executor
 	d.configPath = req.ConfigPath
 
+	// Users must supply a specific task ID when using the feature locally. When it is provided,
+	// auto-select the task and automatically infer the task name and variant.
+	if req.TaskID != "" {
+		d.localMode = true
+		taskName := executor.GetFetchedTaskName()
+		variant := executor.GetFetchedBuildVariant()
+		if err := executor.PrepareTask(r.Context(), taskName, variant); err != nil {
+			http.Error(w, errors.Wrapf(err, "auto-selecting task '%s' on variant '%s'", taskName, variant).Error(), http.StatusInternalServerError)
+			return
+		}
+
+		state := executor.GetDebugState()
+		grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":          true,
+			"task_count":       len(executor.GetDebugState().CommandList),
+			"variant_count":    0,
+			"auto_selected":    true,
+			"selected_task":    taskName,
+			"selected_variant": variant,
+			"step_count":       len(state.CommandList),
+		}))
+		return
+	}
+
+	project := executor.GetProject()
 	grip.Error(r.Context(), json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":       true,
 		"task_count":    len(project.Tasks),
@@ -152,6 +199,11 @@ func (d *localDaemonREST) handleSelectTask(w http.ResponseWriter, r *http.Reques
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	if d.localMode {
+		http.Error(w, "task selection is not available in local mode; the task was automatically selected during load", http.StatusBadRequest)
+		return
+	}
 
 	if d.executor == nil {
 		http.Error(w, "no configuration loaded", http.StatusBadRequest)

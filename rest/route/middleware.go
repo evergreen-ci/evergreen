@@ -687,7 +687,91 @@ func allowCORS(next http.HandlerFunc) http.HandlerFunc {
 	return AddCORSHeaders(origins, next)
 }
 
-// NewUserOrTaskAuthMiddleware returns a middleware that verifies the request is authenticated as a user or task.
+// NewUserOrTaskAuthMiddleware returns a middleware that verifies the request
+// is authenticated as either a user or a task/host. When the request is
+// user-authenticated, the middleware additionally checks that the user has
+// patch submit permission on the project associated with the task.
 func NewUserOrTaskAuthMiddleware() gimlet.Middleware {
-	return gimlet.NewRequireUserOrMiddlewareAuthHandler(NewTaskAuthMiddleware())
+	return &userOrTaskAuthMiddleware{
+		taskFallback: NewTaskAuthMiddleware(),
+	}
+}
+
+type userOrTaskAuthMiddleware struct {
+	taskFallback gimlet.Middleware
+}
+
+func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	u := gimlet.GetUser(ctx)
+	if u == nil {
+		// Fallback to task/host auth.
+		m.taskFallback.ServeHTTP(rw, r, next)
+		return
+	}
+
+	vars := gimlet.GetVars(r)
+	taskID := vars["task_id"]
+	if taskID == "" {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "task ID is required",
+		}))
+		return
+	}
+
+	if evergreen.GetEnvironment().Settings().ServiceFlags.DebugSpawnHostDisabled {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    "debug spawn hosts are currently disabled",
+		}))
+		return
+	}
+
+	projectID, err := task.FindProjectForTask(ctx, taskID)
+	if err != nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("could not find project for task '%s': %s", taskID, err.Error()),
+		}))
+		return
+	}
+
+	pRef, err := model.FindBranchProjectRef(ctx, projectID)
+	if err != nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("finding project '%s': %s", projectID, err.Error()),
+		}))
+		return
+	}
+	if pRef == nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project '%s' not found", projectID),
+		}))
+		return
+	}
+	if !pRef.IsDebugSpawnHostsEnabled() {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("debug spawn hosts are disabled for project '%s'", projectID),
+		}))
+		return
+	}
+
+	if !u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      projectID,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionPatches,
+		RequiredLevel: evergreen.PatchSubmit.Value,
+	}) {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("user '%s' does not have patch submit permission on project '%s'", u.Username(), projectID),
+		}))
+		return
+	}
+
+	next(rw, r)
 }

@@ -328,6 +328,22 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 	return apiUser, nil
 }
 
+// Version is the resolver for the version field.
+func (r *patchResolver) Version(ctx context.Context, obj *restModel.APIPatch) (*model.Version, error) {
+	versionID := utility.FromStringPtr(obj.Version)
+	if versionID == "" {
+		return nil, nil
+	}
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
+	}
+	return v, nil
+}
+
 // VersionFull is the resolver for the versionFull field.
 func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)

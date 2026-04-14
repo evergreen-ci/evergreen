@@ -96,7 +96,6 @@ input AdminSettingsInput {
   repotracker: RepotrackerConfigInput
   runtimeEnvironments: RuntimeEnvironmentConfigInput
   scheduler: SchedulerConfigInput
-  serviceFlags: ServiceFlagsInput
   shutdownWaitSeconds: Int
   singleTaskDistro: SingleTaskDistroConfigInput
   slack: SlackConfigInput
@@ -154,7 +153,6 @@ type AdminSettings {
   repotracker: RepotrackerConfig
   runtimeEnvironments: RuntimeEnvironmentConfig
   scheduler: SchedulerConfig
-  serviceFlags: ServiceFlags
   serviceFlagsList: [ServiceFlag!]
   shutdownWaitSeconds: Int
   singleTaskDistro: SingleTaskDistroConfig

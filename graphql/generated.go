@@ -201,7 +201,6 @@ type ComplexityRoot struct {
 		SSH                     func(childComplexity int) int
 		Sage                    func(childComplexity int) int
 		Scheduler               func(childComplexity int) int
-		ServiceFlags            func(childComplexity int) int
 		ServiceFlagsList        func(childComplexity int) int
 		ShutdownWaitSeconds     func(childComplexity int) int
 		SingleTaskDistro        func(childComplexity int) int
@@ -411,6 +410,7 @@ type ComplexityRoot struct {
 		AdjustedEC2Cost           func(childComplexity int) int
 		OnDemandEC2Cost           func(childComplexity int) int
 		S3ArtifactPutCost         func(childComplexity int) int
+		S3ArtifactStorageCost     func(childComplexity int) int
 		S3LogPutCost              func(childComplexity int) int
 	}
 
@@ -1202,39 +1202,41 @@ type ComplexityRoot struct {
 	}
 
 	Patch struct {
-		Activated            func(childComplexity int) int
-		Alias                func(childComplexity int) int
-		Author               func(childComplexity int) int
-		AuthorDisplayName    func(childComplexity int) int
-		Builds               func(childComplexity int) int
-		ChildPatchAliases    func(childComplexity int) int
-		ChildPatches         func(childComplexity int) int
-		CreateTime           func(childComplexity int) int
-		Description          func(childComplexity int) int
-		Duration             func(childComplexity int) int
-		GeneratedTaskCounts  func(childComplexity int) int
-		Githash              func(childComplexity int) int
-		GithubPatchData      func(childComplexity int) int
-		Hidden               func(childComplexity int) int
-		Id                   func(childComplexity int) int
-		IncludedLocalModules func(childComplexity int) int
-		ModuleCodeChanges    func(childComplexity int) int
-		Parameters           func(childComplexity int) int
-		PatchNumber          func(childComplexity int) int
-		PatchTriggerAliases  func(childComplexity int) int
-		Project              func(childComplexity int) int
-		ProjectId            func(childComplexity int) int
-		ProjectIdentifier    func(childComplexity int) int
-		ProjectMetadata      func(childComplexity int) int
-		Status               func(childComplexity int) int
-		TaskCount            func(childComplexity int) int
-		TaskStatuses         func(childComplexity int) int
-		Tasks                func(childComplexity int) int
-		Time                 func(childComplexity int) int
-		User                 func(childComplexity int) int
-		Variants             func(childComplexity int) int
-		VariantsTasks        func(childComplexity int) int
-		VersionFull          func(childComplexity int) int
+		Activated             func(childComplexity int) int
+		Alias                 func(childComplexity int) int
+		Author                func(childComplexity int) int
+		AuthorDisplayName     func(childComplexity int) int
+		Builds                func(childComplexity int) int
+		ChildPatchAliases     func(childComplexity int) int
+		ChildPatches          func(childComplexity int) int
+		CreateTime            func(childComplexity int) int
+		Description           func(childComplexity int) int
+		Duration              func(childComplexity int) int
+		GeneratedTaskCounts   func(childComplexity int) int
+		Githash               func(childComplexity int) int
+		GithubPatchData       func(childComplexity int) int
+		Hidden                func(childComplexity int) int
+		Id                    func(childComplexity int) int
+		IncludedLocalModules  func(childComplexity int) int
+		InvalidatedByUpstream func(childComplexity int) int
+		ModuleCodeChanges     func(childComplexity int) int
+		Parameters            func(childComplexity int) int
+		PatchNumber           func(childComplexity int) int
+		PatchTriggerAliases   func(childComplexity int) int
+		Project               func(childComplexity int) int
+		ProjectId             func(childComplexity int) int
+		ProjectIdentifier     func(childComplexity int) int
+		ProjectMetadata       func(childComplexity int) int
+		Status                func(childComplexity int) int
+		TaskCount             func(childComplexity int) int
+		TaskStatuses          func(childComplexity int) int
+		Tasks                 func(childComplexity int) int
+		Time                  func(childComplexity int) int
+		User                  func(childComplexity int) int
+		Variants              func(childComplexity int) int
+		VariantsTasks         func(childComplexity int) int
+		Version               func(childComplexity int) int
+		VersionFull           func(childComplexity int) int
 	}
 
 	PatchDuration struct {
@@ -1747,46 +1749,6 @@ type ComplexityRoot struct {
 		Name    func(childComplexity int) int
 	}
 
-	ServiceFlags struct {
-		AgentStartDisabled                 func(childComplexity int) int
-		AlertsDisabled                     func(childComplexity int) int
-		BackgroundReauthDisabled           func(childComplexity int) int
-		BackgroundStatsDisabled            func(childComplexity int) int
-		CLIUpdatesDisabled                 func(childComplexity int) int
-		CacheStatsEndpointDisabled         func(childComplexity int) int
-		CacheStatsJobDisabled              func(childComplexity int) int
-		CheckBlockedTasksDisabled          func(childComplexity int) int
-		CloudCleanupDisabled               func(childComplexity int) int
-		DebugSpawnHostDisabled             func(childComplexity int) int
-		DegradedModeDisabled               func(childComplexity int) int
-		ElasticIPsDisabled                 func(childComplexity int) int
-		EmailNotificationsDisabled         func(childComplexity int) int
-		EventProcessingDisabled            func(childComplexity int) int
-		GithubPRTestingDisabled            func(childComplexity int) int
-		GithubStatusAPIDisabled            func(childComplexity int) int
-		HostAllocatorDisabled              func(childComplexity int) int
-		HostInitDisabled                   func(childComplexity int) int
-		JIRANotificationsDisabled          func(childComplexity int) int
-		JWTTokenForCLIDisabled             func(childComplexity int) int
-		LargeParserProjectsDisabled        func(childComplexity int) int
-		MonitorDisabled                    func(childComplexity int) int
-		PSLoggingDisabled                  func(childComplexity int) int
-		PodDiagnosticsDisabled             func(childComplexity int) int
-		ReleaseModeDisabled                func(childComplexity int) int
-		RepotrackerDisabled                func(childComplexity int) int
-		S3LifecycleSyncDisabled            func(childComplexity int) int
-		SchedulerDisabled                  func(childComplexity int) int
-		SlackNotificationsDisabled         func(childComplexity int) int
-		SleepScheduleDisabled              func(childComplexity int) int
-		StaticAPIKeysDisabled              func(childComplexity int) int
-		SystemFailedTaskRestartDisabled    func(childComplexity int) int
-		TaskDispatchDisabled               func(childComplexity int) int
-		TaskLoggingDisabled                func(childComplexity int) int
-		TaskReliabilityDisabled            func(childComplexity int) int
-		UseMergeQueuePathFilteringDisabled func(childComplexity int) int
-		WebhookNotificationsDisabled       func(childComplexity int) int
-	}
-
 	SetCursorAPIKeyPayload struct {
 		KeyLastFour func(childComplexity int) int
 		Success     func(childComplexity int) int
@@ -1953,6 +1915,7 @@ type ComplexityRoot struct {
 		Id                      func(childComplexity int) int
 		ImageID                 func(childComplexity int) int
 		IngestTime              func(childComplexity int) int
+		InvalidatedByUpstream   func(childComplexity int) int
 		IsPerfPluginEnabled     func(childComplexity int) int
 		LatestExecution         func(childComplexity int) int
 		Logs                    func(childComplexity int) int
@@ -2384,6 +2347,8 @@ type ComplexityRoot struct {
 		Revision            func(childComplexity int) int
 		RevisionOrderNumber func(childComplexity int) int
 		StartTime           func(childComplexity int) int
+		Status              func(childComplexity int) int
+		TaskStatusStats     func(childComplexity int) int
 		User                func(childComplexity int) int
 		Warnings            func(childComplexity int) int
 	}
@@ -2619,6 +2584,7 @@ type PatchResolver interface {
 	Time(ctx context.Context, obj *model.APIPatch) (*PatchTime, error)
 	User(ctx context.Context, obj *model.APIPatch) (*model.APIDBUser, error)
 
+	Version(ctx context.Context, obj *model.APIPatch) (*model1.Version, error)
 	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
 }
 type PatchesResolver interface {
@@ -2767,6 +2733,7 @@ type TaskResolver interface {
 	NextTaskFailing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 	NextTaskPassing(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
+	InvalidatedByUpstream(ctx context.Context, obj *model.APITask) (*bool, error)
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 	PrevTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
@@ -2844,6 +2811,8 @@ type VersionResolver interface {
 type VersionLiteResolver interface {
 	Project(ctx context.Context, obj *model1.Version) (*model1.ProjectRef, error)
 
+	Status(ctx context.Context, obj *model1.Version) (string, error)
+	TaskStatusStats(ctx context.Context, obj *model1.Version) (*task.TaskStats, error)
 	User(ctx context.Context, obj *model1.Version) (*user.DBUser, error)
 }
 type VolumeResolver interface {
@@ -3357,12 +3326,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Scheduler(childComplexity), true
-	case "AdminSettings.serviceFlags":
-		if e.complexity.AdminSettings.ServiceFlags == nil {
-			break
-		}
-
-		return e.complexity.AdminSettings.ServiceFlags(childComplexity), true
 	case "AdminSettings.serviceFlagsList":
 		if e.complexity.AdminSettings.ServiceFlagsList == nil {
 			break
@@ -4175,6 +4138,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.S3ArtifactPutCost(childComplexity), true
+	case "Cost.s3ArtifactStorageCost":
+		if e.complexity.Cost.S3ArtifactStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.S3ArtifactStorageCost(childComplexity), true
 	case "Cost.s3LogPutCost":
 		if e.complexity.Cost.S3LogPutCost == nil {
 			break
@@ -7604,6 +7573,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.IncludedLocalModules(childComplexity), true
+	case "Patch.invalidatedByUpstream":
+		if e.complexity.Patch.InvalidatedByUpstream == nil {
+			break
+		}
+
+		return e.complexity.Patch.InvalidatedByUpstream(childComplexity), true
 	case "Patch.moduleCodeChanges":
 		if e.complexity.Patch.ModuleCodeChanges == nil {
 			break
@@ -7700,6 +7675,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.VariantsTasks(childComplexity), true
+	case "Patch.version":
+		if e.complexity.Patch.Version == nil {
+			break
+		}
+
+		return e.complexity.Patch.Version(childComplexity), true
 	case "Patch.versionFull":
 		if e.complexity.Patch.VersionFull == nil {
 			break
@@ -10063,229 +10044,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ServiceFlag.Name(childComplexity), true
 
-	case "ServiceFlags.agentStartDisabled":
-		if e.complexity.ServiceFlags.AgentStartDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.AgentStartDisabled(childComplexity), true
-	case "ServiceFlags.alertsDisabled":
-		if e.complexity.ServiceFlags.AlertsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.AlertsDisabled(childComplexity), true
-	case "ServiceFlags.backgroundReauthDisabled":
-		if e.complexity.ServiceFlags.BackgroundReauthDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.BackgroundReauthDisabled(childComplexity), true
-	case "ServiceFlags.backgroundStatsDisabled":
-		if e.complexity.ServiceFlags.BackgroundStatsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.BackgroundStatsDisabled(childComplexity), true
-	case "ServiceFlags.cliUpdatesDisabled":
-		if e.complexity.ServiceFlags.CLIUpdatesDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.CLIUpdatesDisabled(childComplexity), true
-	case "ServiceFlags.cacheStatsEndpointDisabled":
-		if e.complexity.ServiceFlags.CacheStatsEndpointDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.CacheStatsEndpointDisabled(childComplexity), true
-	case "ServiceFlags.cacheStatsJobDisabled":
-		if e.complexity.ServiceFlags.CacheStatsJobDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.CacheStatsJobDisabled(childComplexity), true
-	case "ServiceFlags.checkBlockedTasksDisabled":
-		if e.complexity.ServiceFlags.CheckBlockedTasksDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.CheckBlockedTasksDisabled(childComplexity), true
-	case "ServiceFlags.cloudCleanupDisabled":
-		if e.complexity.ServiceFlags.CloudCleanupDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.CloudCleanupDisabled(childComplexity), true
-	case "ServiceFlags.debugSpawnHostDisabled":
-		if e.complexity.ServiceFlags.DebugSpawnHostDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.DebugSpawnHostDisabled(childComplexity), true
-	case "ServiceFlags.degradedModeDisabled":
-		if e.complexity.ServiceFlags.DegradedModeDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.DegradedModeDisabled(childComplexity), true
-	case "ServiceFlags.elasticIPsDisabled":
-		if e.complexity.ServiceFlags.ElasticIPsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.ElasticIPsDisabled(childComplexity), true
-	case "ServiceFlags.emailNotificationsDisabled":
-		if e.complexity.ServiceFlags.EmailNotificationsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.EmailNotificationsDisabled(childComplexity), true
-	case "ServiceFlags.eventProcessingDisabled":
-		if e.complexity.ServiceFlags.EventProcessingDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.EventProcessingDisabled(childComplexity), true
-	case "ServiceFlags.githubPRTestingDisabled":
-		if e.complexity.ServiceFlags.GithubPRTestingDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.GithubPRTestingDisabled(childComplexity), true
-	case "ServiceFlags.githubStatusAPIDisabled":
-		if e.complexity.ServiceFlags.GithubStatusAPIDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.GithubStatusAPIDisabled(childComplexity), true
-	case "ServiceFlags.hostAllocatorDisabled":
-		if e.complexity.ServiceFlags.HostAllocatorDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.HostAllocatorDisabled(childComplexity), true
-	case "ServiceFlags.hostInitDisabled":
-		if e.complexity.ServiceFlags.HostInitDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.HostInitDisabled(childComplexity), true
-	case "ServiceFlags.jiraNotificationsDisabled":
-		if e.complexity.ServiceFlags.JIRANotificationsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.JIRANotificationsDisabled(childComplexity), true
-	case "ServiceFlags.jwtTokenForCLIDisabled":
-		if e.complexity.ServiceFlags.JWTTokenForCLIDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
-	case "ServiceFlags.largeParserProjectsDisabled":
-		if e.complexity.ServiceFlags.LargeParserProjectsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.LargeParserProjectsDisabled(childComplexity), true
-	case "ServiceFlags.monitorDisabled":
-		if e.complexity.ServiceFlags.MonitorDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.MonitorDisabled(childComplexity), true
-	case "ServiceFlags.psLoggingDisabled":
-		if e.complexity.ServiceFlags.PSLoggingDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.PSLoggingDisabled(childComplexity), true
-	case "ServiceFlags.podDiagnosticsDisabled":
-		if e.complexity.ServiceFlags.PodDiagnosticsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.PodDiagnosticsDisabled(childComplexity), true
-	case "ServiceFlags.releaseModeDisabled":
-		if e.complexity.ServiceFlags.ReleaseModeDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.ReleaseModeDisabled(childComplexity), true
-	case "ServiceFlags.repotrackerDisabled":
-		if e.complexity.ServiceFlags.RepotrackerDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.RepotrackerDisabled(childComplexity), true
-	case "ServiceFlags.s3LifecycleSyncDisabled":
-		if e.complexity.ServiceFlags.S3LifecycleSyncDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.S3LifecycleSyncDisabled(childComplexity), true
-	case "ServiceFlags.schedulerDisabled":
-		if e.complexity.ServiceFlags.SchedulerDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.SchedulerDisabled(childComplexity), true
-	case "ServiceFlags.slackNotificationsDisabled":
-		if e.complexity.ServiceFlags.SlackNotificationsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.SlackNotificationsDisabled(childComplexity), true
-	case "ServiceFlags.sleepScheduleDisabled":
-		if e.complexity.ServiceFlags.SleepScheduleDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.SleepScheduleDisabled(childComplexity), true
-	case "ServiceFlags.staticAPIKeysDisabled":
-		if e.complexity.ServiceFlags.StaticAPIKeysDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.StaticAPIKeysDisabled(childComplexity), true
-	case "ServiceFlags.systemFailedTaskRestartDisabled":
-		if e.complexity.ServiceFlags.SystemFailedTaskRestartDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.SystemFailedTaskRestartDisabled(childComplexity), true
-	case "ServiceFlags.taskDispatchDisabled":
-		if e.complexity.ServiceFlags.TaskDispatchDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.TaskDispatchDisabled(childComplexity), true
-	case "ServiceFlags.taskLoggingDisabled":
-		if e.complexity.ServiceFlags.TaskLoggingDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.TaskLoggingDisabled(childComplexity), true
-	case "ServiceFlags.taskReliabilityDisabled":
-		if e.complexity.ServiceFlags.TaskReliabilityDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.TaskReliabilityDisabled(childComplexity), true
-	case "ServiceFlags.useMergeQueuePathFilteringDisabled":
-		if e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.UseMergeQueuePathFilteringDisabled(childComplexity), true
-	case "ServiceFlags.webhookNotificationsDisabled":
-		if e.complexity.ServiceFlags.WebhookNotificationsDisabled == nil {
-			break
-		}
-
-		return e.complexity.ServiceFlags.WebhookNotificationsDisabled(childComplexity), true
-
 	case "SetCursorAPIKeyPayload.keyLastFour":
 		if e.complexity.SetCursorAPIKeyPayload.KeyLastFour == nil {
 			break
@@ -10987,6 +10745,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.IngestTime(childComplexity), true
+	case "Task.invalidatedByUpstream":
+		if e.complexity.Task.InvalidatedByUpstream == nil {
+			break
+		}
+
+		return e.complexity.Task.InvalidatedByUpstream(childComplexity), true
 	case "Task.isPerfPluginEnabled":
 		if e.complexity.Task.IsPerfPluginEnabled == nil {
 			break
@@ -12894,6 +12658,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.StartTime(childComplexity), true
+	case "VersionLite.status":
+		if e.complexity.VersionLite.Status == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.Status(childComplexity), true
+	case "VersionLite.taskStatusStats":
+		if e.complexity.VersionLite.TaskStatusStats == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.TaskStatusStats(childComplexity), true
 	case "VersionLite.user":
 		if e.complexity.VersionLite.User == nil {
 			break
@@ -13360,7 +13136,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSchedulerConfigInput,
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputServiceFlagInput,
-		ec.unmarshalInputServiceFlagsInput,
 		ec.unmarshalInputSetLastRevisionInput,
 		ec.unmarshalInputSingleTaskDistroConfigInput,
 		ec.unmarshalInputSlackConfigInput,
@@ -19790,111 +19565,6 @@ func (ec *executionContext) fieldContext_AdminSettings_scheduler(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _AdminSettings_serviceFlags(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AdminSettings_serviceFlags,
-		func(ctx context.Context) (any, error) {
-			return obj.ServiceFlags, nil
-		},
-		nil,
-		ec.marshalOServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AdminSettings_serviceFlags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AdminSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "taskDispatchDisabled":
-				return ec.fieldContext_ServiceFlags_taskDispatchDisabled(ctx, field)
-			case "hostInitDisabled":
-				return ec.fieldContext_ServiceFlags_hostInitDisabled(ctx, field)
-			case "largeParserProjectsDisabled":
-				return ec.fieldContext_ServiceFlags_largeParserProjectsDisabled(ctx, field)
-			case "monitorDisabled":
-				return ec.fieldContext_ServiceFlags_monitorDisabled(ctx, field)
-			case "alertsDisabled":
-				return ec.fieldContext_ServiceFlags_alertsDisabled(ctx, field)
-			case "agentStartDisabled":
-				return ec.fieldContext_ServiceFlags_agentStartDisabled(ctx, field)
-			case "repotrackerDisabled":
-				return ec.fieldContext_ServiceFlags_repotrackerDisabled(ctx, field)
-			case "schedulerDisabled":
-				return ec.fieldContext_ServiceFlags_schedulerDisabled(ctx, field)
-			case "checkBlockedTasksDisabled":
-				return ec.fieldContext_ServiceFlags_checkBlockedTasksDisabled(ctx, field)
-			case "githubPRTestingDisabled":
-				return ec.fieldContext_ServiceFlags_githubPRTestingDisabled(ctx, field)
-			case "cliUpdatesDisabled":
-				return ec.fieldContext_ServiceFlags_cliUpdatesDisabled(ctx, field)
-			case "backgroundStatsDisabled":
-				return ec.fieldContext_ServiceFlags_backgroundStatsDisabled(ctx, field)
-			case "taskLoggingDisabled":
-				return ec.fieldContext_ServiceFlags_taskLoggingDisabled(ctx, field)
-			case "cacheStatsJobDisabled":
-				return ec.fieldContext_ServiceFlags_cacheStatsJobDisabled(ctx, field)
-			case "cacheStatsEndpointDisabled":
-				return ec.fieldContext_ServiceFlags_cacheStatsEndpointDisabled(ctx, field)
-			case "taskReliabilityDisabled":
-				return ec.fieldContext_ServiceFlags_taskReliabilityDisabled(ctx, field)
-			case "hostAllocatorDisabled":
-				return ec.fieldContext_ServiceFlags_hostAllocatorDisabled(ctx, field)
-			case "backgroundReauthDisabled":
-				return ec.fieldContext_ServiceFlags_backgroundReauthDisabled(ctx, field)
-			case "cloudCleanupDisabled":
-				return ec.fieldContext_ServiceFlags_cloudCleanupDisabled(ctx, field)
-			case "debugSpawnHostDisabled":
-				return ec.fieldContext_ServiceFlags_debugSpawnHostDisabled(ctx, field)
-			case "sleepScheduleDisabled":
-				return ec.fieldContext_ServiceFlags_sleepScheduleDisabled(ctx, field)
-			case "staticAPIKeysDisabled":
-				return ec.fieldContext_ServiceFlags_staticAPIKeysDisabled(ctx, field)
-			case "jwtTokenForCLIDisabled":
-				return ec.fieldContext_ServiceFlags_jwtTokenForCLIDisabled(ctx, field)
-			case "systemFailedTaskRestartDisabled":
-				return ec.fieldContext_ServiceFlags_systemFailedTaskRestartDisabled(ctx, field)
-			case "degradedModeDisabled":
-				return ec.fieldContext_ServiceFlags_degradedModeDisabled(ctx, field)
-			case "elasticIPsDisabled":
-				return ec.fieldContext_ServiceFlags_elasticIPsDisabled(ctx, field)
-			case "releaseModeDisabled":
-				return ec.fieldContext_ServiceFlags_releaseModeDisabled(ctx, field)
-			case "eventProcessingDisabled":
-				return ec.fieldContext_ServiceFlags_eventProcessingDisabled(ctx, field)
-			case "jiraNotificationsDisabled":
-				return ec.fieldContext_ServiceFlags_jiraNotificationsDisabled(ctx, field)
-			case "slackNotificationsDisabled":
-				return ec.fieldContext_ServiceFlags_slackNotificationsDisabled(ctx, field)
-			case "emailNotificationsDisabled":
-				return ec.fieldContext_ServiceFlags_emailNotificationsDisabled(ctx, field)
-			case "webhookNotificationsDisabled":
-				return ec.fieldContext_ServiceFlags_webhookNotificationsDisabled(ctx, field)
-			case "githubStatusAPIDisabled":
-				return ec.fieldContext_ServiceFlags_githubStatusAPIDisabled(ctx, field)
-			case "s3LifecycleSyncDisabled":
-				return ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled(ctx, field)
-			case "psLoggingDisabled":
-				return ec.fieldContext_ServiceFlags_psLoggingDisabled(ctx, field)
-			case "useMergeQueuePathFilteringDisabled":
-				return ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field)
-			case "podDiagnosticsDisabled":
-				return ec.fieldContext_ServiceFlags_podDiagnosticsDisabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ServiceFlags", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _AdminSettings_serviceFlagsList(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20561,6 +20231,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -24489,6 +24161,35 @@ func (ec *executionContext) _Cost_s3LogPutCost(ctx context.Context, field graphq
 }
 
 func (ec *executionContext) fieldContext_Cost_s3LogPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_s3ArtifactStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_s3ArtifactStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3ArtifactStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_s3ArtifactStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -29307,6 +29008,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -32806,6 +32509,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -35538,6 +35243,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -36983,8 +36690,6 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
 			case "scheduler":
 				return ec.fieldContext_AdminSettings_scheduler(ctx, field)
-			case "serviceFlags":
-				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
 			case "serviceFlagsList":
 				return ec.fieldContext_AdminSettings_serviceFlagsList(ctx, field)
 			case "shutdownWaitSeconds":
@@ -37543,8 +37248,12 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "version":
+				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -37652,8 +37361,12 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "version":
+				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -39506,6 +39219,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -39727,6 +39442,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -39948,6 +39665,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40169,6 +39888,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40390,6 +40111,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40611,6 +40334,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40832,6 +40557,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -42076,6 +41803,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -44265,8 +43994,12 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "version":
+				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -45198,6 +44931,75 @@ func (ec *executionContext) fieldContext_Patch_variantsTasks(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Patch_version(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_version,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Patch().Version(ctx, obj)
+		},
+		nil,
+		ec.marshalOVersionLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_VersionLite_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "branch":
+				return ec.fieldContext_VersionLite_branch(ctx, field)
+			case "cost":
+				return ec.fieldContext_VersionLite_cost(ctx, field)
+			case "createTime":
+				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_VersionLite_errors(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_VersionLite_finishTime(ctx, field)
+			case "ignored":
+				return ec.fieldContext_VersionLite_ignored(ctx, field)
+			case "message":
+				return ec.fieldContext_VersionLite_message(ctx, field)
+			case "order":
+				return ec.fieldContext_VersionLite_order(ctx, field)
+			case "project":
+				return ec.fieldContext_VersionLite_project(ctx, field)
+			case "repo":
+				return ec.fieldContext_VersionLite_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_VersionLite_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_VersionLite_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_VersionLite_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_VersionLite_status(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_VersionLite_taskStatusStats(ctx, field)
+			case "user":
+				return ec.fieldContext_VersionLite_user(ctx, field)
+			case "warnings":
+				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_versionFull(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45308,6 +45110,35 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_invalidatedByUpstream(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_invalidatedByUpstream,
+		func(ctx context.Context) (any, error) {
+			return obj.InvalidatedByUpstream, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_invalidatedByUpstream(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -45895,8 +45726,12 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "version":
+				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -51656,8 +51491,6 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_runtimeEnvironments(ctx, field)
 			case "scheduler":
 				return ec.fieldContext_AdminSettings_scheduler(ctx, field)
-			case "serviceFlags":
-				return ec.fieldContext_AdminSettings_serviceFlags(ctx, field)
 			case "serviceFlagsList":
 				return ec.fieldContext_AdminSettings_serviceFlagsList(ctx, field)
 			case "shutdownWaitSeconds":
@@ -52595,8 +52428,12 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "version":
+				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -53476,6 +53313,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -53697,6 +53536,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -58592,1079 +58433,6 @@ func (ec *executionContext) fieldContext_ServiceFlag_enabled(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _ServiceFlags_taskDispatchDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_taskDispatchDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.TaskDispatchDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_taskDispatchDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_hostInitDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_hostInitDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.HostInitDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_hostInitDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_largeParserProjectsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_largeParserProjectsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.LargeParserProjectsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_largeParserProjectsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_monitorDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_monitorDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.MonitorDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_monitorDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_alertsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_alertsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.AlertsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_alertsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_agentStartDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_agentStartDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.AgentStartDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_agentStartDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_repotrackerDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_repotrackerDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.RepotrackerDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_repotrackerDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_schedulerDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_schedulerDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.SchedulerDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_schedulerDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_checkBlockedTasksDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_checkBlockedTasksDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.CheckBlockedTasksDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_checkBlockedTasksDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_githubPRTestingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_githubPRTestingDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.GithubPRTestingDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_githubPRTestingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_cliUpdatesDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_cliUpdatesDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.CLIUpdatesDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_cliUpdatesDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_backgroundStatsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_backgroundStatsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.BackgroundStatsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_backgroundStatsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_taskLoggingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_taskLoggingDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.TaskLoggingDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_taskLoggingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_cacheStatsJobDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_cacheStatsJobDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.CacheStatsJobDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_cacheStatsJobDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_cacheStatsEndpointDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_cacheStatsEndpointDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.CacheStatsEndpointDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_cacheStatsEndpointDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_taskReliabilityDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_taskReliabilityDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.TaskReliabilityDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_taskReliabilityDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_hostAllocatorDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_hostAllocatorDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.HostAllocatorDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_hostAllocatorDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_backgroundReauthDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_backgroundReauthDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.BackgroundReauthDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_backgroundReauthDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_cloudCleanupDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_cloudCleanupDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.CloudCleanupDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_cloudCleanupDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_debugSpawnHostDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_debugSpawnHostDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.DebugSpawnHostDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_debugSpawnHostDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_sleepScheduleDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_sleepScheduleDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.SleepScheduleDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_sleepScheduleDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_staticAPIKeysDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_staticAPIKeysDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.StaticAPIKeysDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_staticAPIKeysDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_jwtTokenForCLIDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.JWTTokenForCLIDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_systemFailedTaskRestartDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_systemFailedTaskRestartDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.SystemFailedTaskRestartDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_systemFailedTaskRestartDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_degradedModeDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_degradedModeDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.DegradedModeDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_degradedModeDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_elasticIPsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_elasticIPsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.ElasticIPsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_elasticIPsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_releaseModeDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_releaseModeDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.ReleaseModeDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_releaseModeDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_eventProcessingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_eventProcessingDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.EventProcessingDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_eventProcessingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_jiraNotificationsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_jiraNotificationsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.JIRANotificationsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_jiraNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_slackNotificationsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_slackNotificationsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.SlackNotificationsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_slackNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_emailNotificationsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_emailNotificationsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.EmailNotificationsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_emailNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_webhookNotificationsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_webhookNotificationsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.WebhookNotificationsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_webhookNotificationsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_githubStatusAPIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_githubStatusAPIDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.GithubStatusAPIDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_githubStatusAPIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_s3LifecycleSyncDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_s3LifecycleSyncDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.S3LifecycleSyncDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_s3LifecycleSyncDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_psLoggingDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_psLoggingDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.PSLoggingDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_psLoggingDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_useMergeQueuePathFilteringDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.UseMergeQueuePathFilteringDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_useMergeQueuePathFilteringDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServiceFlags_podDiagnosticsDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ServiceFlags_podDiagnosticsDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.PodDiagnosticsDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ServiceFlags_podDiagnosticsDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _SetCursorAPIKeyPayload_success(ctx context.Context, field graphql.CollectedField, obj *SetCursorAPIKeyPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -62177,6 +60945,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -62973,6 +61743,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -63370,6 +62142,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -63788,6 +62562,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64239,6 +63015,8 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64448,6 +63226,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64657,6 +63437,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64866,6 +63648,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -64964,6 +63748,35 @@ func (ec *executionContext) fieldContext_Task_order(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_invalidatedByUpstream(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_invalidatedByUpstream,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Task().InvalidatedByUpstream(ctx, obj)
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_invalidatedByUpstream(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_patch(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -65052,8 +63865,12 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "version":
+				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -65230,6 +64047,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -65439,6 +64258,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -65648,6 +64469,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -65857,6 +64680,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -66560,6 +65385,8 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -66603,6 +65430,8 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -66839,6 +65668,10 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_revision(ctx, field)
 			case "startTime":
 				return ec.fieldContext_VersionLite_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_VersionLite_status(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_VersionLite_taskStatusStats(ctx, field)
 			case "user":
 				return ec.fieldContext_VersionLite_user(ctx, field)
 			case "warnings":
@@ -68166,6 +66999,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -72351,6 +71186,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -74299,6 +73136,8 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -74786,8 +73625,12 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_variants(ctx, field)
 			case "variantsTasks":
 				return ec.fieldContext_Patch_variantsTasks(ctx, field)
+			case "version":
+				return ec.fieldContext_Patch_version(ctx, field)
 			case "versionFull":
 				return ec.fieldContext_Patch_versionFull(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Patch_invalidatedByUpstream(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Patch", field.Name)
 		},
@@ -74831,6 +73674,8 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -75791,6 +74636,8 @@ func (ec *executionContext) fieldContext_VersionLite_cost(_ context.Context, fie
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
 			case "s3LogPutCost":
 				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3ArtifactStorageCost":
+				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -76195,6 +75042,70 @@ func (ec *executionContext) fieldContext_VersionLite_startTime(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _VersionLite_status(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_status,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().Status(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VersionLite_taskStatusStats(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_taskStatusStats,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().TaskStatusStats(ctx, obj)
+		},
+		nil,
+		ec.marshalOTaskStats2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋtaskᚐTaskStats,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_taskStatusStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "counts":
+				return ec.fieldContext_TaskStats_counts(ctx, field)
+			case "eta":
+				return ec.fieldContext_TaskStats_eta(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskStats", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VersionLite_user(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -76430,6 +75341,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -79927,7 +78840,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "serviceFlags", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80259,13 +79172,6 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Scheduler = data
-		case "serviceFlags":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceFlags"))
-			data, err := ec.unmarshalOServiceFlagsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServiceFlags = data
 		case "shutdownWaitSeconds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shutdownWaitSeconds"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -87880,285 +86786,6 @@ func (ec *executionContext) unmarshalInputServiceFlagInput(ctx context.Context, 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputServiceFlagsInput(ctx context.Context, obj any) (model.APIServiceFlags, error) {
-	var it model.APIServiceFlags
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"taskDispatchDisabled", "hostInitDisabled", "largeParserProjectsDisabled", "monitorDisabled", "alertsDisabled", "agentStartDisabled", "repotrackerDisabled", "schedulerDisabled", "checkBlockedTasksDisabled", "githubPRTestingDisabled", "cliUpdatesDisabled", "backgroundStatsDisabled", "taskLoggingDisabled", "cacheStatsJobDisabled", "cacheStatsEndpointDisabled", "taskReliabilityDisabled", "hostAllocatorDisabled", "backgroundReauthDisabled", "cloudCleanupDisabled", "debugSpawnHostDisabled", "sleepScheduleDisabled", "staticAPIKeysDisabled", "jwtTokenForCLIDisabled", "systemFailedTaskRestartDisabled", "degradedModeDisabled", "elasticIPsDisabled", "releaseModeDisabled", "eventProcessingDisabled", "jiraNotificationsDisabled", "slackNotificationsDisabled", "emailNotificationsDisabled", "webhookNotificationsDisabled", "githubStatusAPIDisabled", "s3LifecycleSyncDisabled", "psLoggingDisabled", "useMergeQueuePathFilteringDisabled", "podDiagnosticsDisabled"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "taskDispatchDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskDispatchDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskDispatchDisabled = data
-		case "hostInitDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostInitDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HostInitDisabled = data
-		case "largeParserProjectsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("largeParserProjectsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.LargeParserProjectsDisabled = data
-		case "monitorDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("monitorDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MonitorDisabled = data
-		case "alertsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alertsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AlertsDisabled = data
-		case "agentStartDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentStartDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AgentStartDisabled = data
-		case "repotrackerDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repotrackerDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RepotrackerDisabled = data
-		case "schedulerDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("schedulerDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SchedulerDisabled = data
-		case "checkBlockedTasksDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("checkBlockedTasksDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CheckBlockedTasksDisabled = data
-		case "githubPRTestingDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPRTestingDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.GithubPRTestingDisabled = data
-		case "cliUpdatesDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cliUpdatesDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CLIUpdatesDisabled = data
-		case "backgroundStatsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backgroundStatsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BackgroundStatsDisabled = data
-		case "taskLoggingDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskLoggingDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskLoggingDisabled = data
-		case "cacheStatsJobDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheStatsJobDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CacheStatsJobDisabled = data
-		case "cacheStatsEndpointDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheStatsEndpointDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CacheStatsEndpointDisabled = data
-		case "taskReliabilityDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskReliabilityDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskReliabilityDisabled = data
-		case "hostAllocatorDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostAllocatorDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HostAllocatorDisabled = data
-		case "backgroundReauthDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("backgroundReauthDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BackgroundReauthDisabled = data
-		case "cloudCleanupDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloudCleanupDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CloudCleanupDisabled = data
-		case "debugSpawnHostDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debugSpawnHostDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DebugSpawnHostDisabled = data
-		case "sleepScheduleDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sleepScheduleDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SleepScheduleDisabled = data
-		case "staticAPIKeysDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("staticAPIKeysDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.StaticAPIKeysDisabled = data
-		case "jwtTokenForCLIDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jwtTokenForCLIDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.JWTTokenForCLIDisabled = data
-		case "systemFailedTaskRestartDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("systemFailedTaskRestartDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SystemFailedTaskRestartDisabled = data
-		case "degradedModeDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("degradedModeDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DegradedModeDisabled = data
-		case "elasticIPsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("elasticIPsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ElasticIPsDisabled = data
-		case "releaseModeDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("releaseModeDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ReleaseModeDisabled = data
-		case "eventProcessingDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventProcessingDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.EventProcessingDisabled = data
-		case "jiraNotificationsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jiraNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.JIRANotificationsDisabled = data
-		case "slackNotificationsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slackNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SlackNotificationsDisabled = data
-		case "emailNotificationsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emailNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.EmailNotificationsDisabled = data
-		case "webhookNotificationsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webhookNotificationsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.WebhookNotificationsDisabled = data
-		case "githubStatusAPIDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubStatusAPIDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.GithubStatusAPIDisabled = data
-		case "s3LifecycleSyncDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("s3LifecycleSyncDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.S3LifecycleSyncDisabled = data
-		case "psLoggingDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("psLoggingDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PSLoggingDisabled = data
-		case "useMergeQueuePathFilteringDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useMergeQueuePathFilteringDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UseMergeQueuePathFilteringDisabled = data
-		case "podDiagnosticsDisabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("podDiagnosticsDisabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PodDiagnosticsDisabled = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputSetLastRevisionInput(ctx context.Context, obj any) (SetLastRevisionInput, error) {
 	var it SetLastRevisionInput
 	asMap := map[string]any{}
@@ -91331,8 +89958,6 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_runtimeEnvironments(ctx, field, obj)
 		case "scheduler":
 			out.Values[i] = ec._AdminSettings_scheduler(ctx, field, obj)
-		case "serviceFlags":
-			out.Values[i] = ec._AdminSettings_serviceFlags(ctx, field, obj)
 		case "serviceFlagsList":
 			field := field
 
@@ -92701,6 +91326,8 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
 		case "s3LogPutCost":
 			out.Values[i] = ec._Cost_s3LogPutCost(ctx, field, obj)
+		case "s3ArtifactStorageCost":
+			out.Values[i] = ec._Cost_s3ArtifactStorageCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99512,6 +98139,39 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "version":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_version(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "versionFull":
 			field := field
 
@@ -99545,6 +98205,11 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "invalidatedByUpstream":
+			out.Values[i] = ec._Patch_invalidatedByUpstream(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -104160,114 +102825,6 @@ func (ec *executionContext) _ServiceFlag(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
-var serviceFlagsImplementors = []string{"ServiceFlags"}
-
-func (ec *executionContext) _ServiceFlags(ctx context.Context, sel ast.SelectionSet, obj *model.APIServiceFlags) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, serviceFlagsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ServiceFlags")
-		case "taskDispatchDisabled":
-			out.Values[i] = ec._ServiceFlags_taskDispatchDisabled(ctx, field, obj)
-		case "hostInitDisabled":
-			out.Values[i] = ec._ServiceFlags_hostInitDisabled(ctx, field, obj)
-		case "largeParserProjectsDisabled":
-			out.Values[i] = ec._ServiceFlags_largeParserProjectsDisabled(ctx, field, obj)
-		case "monitorDisabled":
-			out.Values[i] = ec._ServiceFlags_monitorDisabled(ctx, field, obj)
-		case "alertsDisabled":
-			out.Values[i] = ec._ServiceFlags_alertsDisabled(ctx, field, obj)
-		case "agentStartDisabled":
-			out.Values[i] = ec._ServiceFlags_agentStartDisabled(ctx, field, obj)
-		case "repotrackerDisabled":
-			out.Values[i] = ec._ServiceFlags_repotrackerDisabled(ctx, field, obj)
-		case "schedulerDisabled":
-			out.Values[i] = ec._ServiceFlags_schedulerDisabled(ctx, field, obj)
-		case "checkBlockedTasksDisabled":
-			out.Values[i] = ec._ServiceFlags_checkBlockedTasksDisabled(ctx, field, obj)
-		case "githubPRTestingDisabled":
-			out.Values[i] = ec._ServiceFlags_githubPRTestingDisabled(ctx, field, obj)
-		case "cliUpdatesDisabled":
-			out.Values[i] = ec._ServiceFlags_cliUpdatesDisabled(ctx, field, obj)
-		case "backgroundStatsDisabled":
-			out.Values[i] = ec._ServiceFlags_backgroundStatsDisabled(ctx, field, obj)
-		case "taskLoggingDisabled":
-			out.Values[i] = ec._ServiceFlags_taskLoggingDisabled(ctx, field, obj)
-		case "cacheStatsJobDisabled":
-			out.Values[i] = ec._ServiceFlags_cacheStatsJobDisabled(ctx, field, obj)
-		case "cacheStatsEndpointDisabled":
-			out.Values[i] = ec._ServiceFlags_cacheStatsEndpointDisabled(ctx, field, obj)
-		case "taskReliabilityDisabled":
-			out.Values[i] = ec._ServiceFlags_taskReliabilityDisabled(ctx, field, obj)
-		case "hostAllocatorDisabled":
-			out.Values[i] = ec._ServiceFlags_hostAllocatorDisabled(ctx, field, obj)
-		case "backgroundReauthDisabled":
-			out.Values[i] = ec._ServiceFlags_backgroundReauthDisabled(ctx, field, obj)
-		case "cloudCleanupDisabled":
-			out.Values[i] = ec._ServiceFlags_cloudCleanupDisabled(ctx, field, obj)
-		case "debugSpawnHostDisabled":
-			out.Values[i] = ec._ServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
-		case "sleepScheduleDisabled":
-			out.Values[i] = ec._ServiceFlags_sleepScheduleDisabled(ctx, field, obj)
-		case "staticAPIKeysDisabled":
-			out.Values[i] = ec._ServiceFlags_staticAPIKeysDisabled(ctx, field, obj)
-		case "jwtTokenForCLIDisabled":
-			out.Values[i] = ec._ServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
-		case "systemFailedTaskRestartDisabled":
-			out.Values[i] = ec._ServiceFlags_systemFailedTaskRestartDisabled(ctx, field, obj)
-		case "degradedModeDisabled":
-			out.Values[i] = ec._ServiceFlags_degradedModeDisabled(ctx, field, obj)
-		case "elasticIPsDisabled":
-			out.Values[i] = ec._ServiceFlags_elasticIPsDisabled(ctx, field, obj)
-		case "releaseModeDisabled":
-			out.Values[i] = ec._ServiceFlags_releaseModeDisabled(ctx, field, obj)
-		case "eventProcessingDisabled":
-			out.Values[i] = ec._ServiceFlags_eventProcessingDisabled(ctx, field, obj)
-		case "jiraNotificationsDisabled":
-			out.Values[i] = ec._ServiceFlags_jiraNotificationsDisabled(ctx, field, obj)
-		case "slackNotificationsDisabled":
-			out.Values[i] = ec._ServiceFlags_slackNotificationsDisabled(ctx, field, obj)
-		case "emailNotificationsDisabled":
-			out.Values[i] = ec._ServiceFlags_emailNotificationsDisabled(ctx, field, obj)
-		case "webhookNotificationsDisabled":
-			out.Values[i] = ec._ServiceFlags_webhookNotificationsDisabled(ctx, field, obj)
-		case "githubStatusAPIDisabled":
-			out.Values[i] = ec._ServiceFlags_githubStatusAPIDisabled(ctx, field, obj)
-		case "s3LifecycleSyncDisabled":
-			out.Values[i] = ec._ServiceFlags_s3LifecycleSyncDisabled(ctx, field, obj)
-		case "psLoggingDisabled":
-			out.Values[i] = ec._ServiceFlags_psLoggingDisabled(ctx, field, obj)
-		case "useMergeQueuePathFilteringDisabled":
-			out.Values[i] = ec._ServiceFlags_useMergeQueuePathFilteringDisabled(ctx, field, obj)
-		case "podDiagnosticsDisabled":
-			out.Values[i] = ec._ServiceFlags_podDiagnosticsDisabled(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var setCursorAPIKeyPayloadImplementors = []string{"SetCursorAPIKeyPayload"}
 
 func (ec *executionContext) _SetCursorAPIKeyPayload(ctx context.Context, sel ast.SelectionSet, obj *SetCursorAPIKeyPayload) graphql.Marshaler {
@@ -106353,6 +104910,39 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "invalidatedByUpstream":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_invalidatedByUpstream(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patch":
 			field := field
 
@@ -110308,6 +108898,75 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			}
 		case "startTime":
 			out.Values[i] = ec._VersionLite_startTime(ctx, field, obj)
+		case "status":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_status(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "taskStatusStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_taskStatusStats(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "user":
 			field := field
 
@@ -120580,21 +119239,6 @@ func (ec *executionContext) marshalOServiceFlag2ᚕᚖgithubᚗcomᚋevergreen�
 	return ret
 }
 
-func (ec *executionContext) marshalOServiceFlags2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, sel ast.SelectionSet, v *model.APIServiceFlags) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ServiceFlags(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOServiceFlagsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIServiceFlags(ctx context.Context, v any) (*model.APIServiceFlags, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputServiceFlagsInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalOSingleTaskDistroConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISingleTaskDistroConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISingleTaskDistroConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -121509,6 +120153,13 @@ func (ec *executionContext) marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 		return graphql.Null
 	}
 	return ec._Version(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOVersionLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion(ctx context.Context, sel ast.SelectionSet, v *model1.Version) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._VersionLite(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOVersionTiming2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVersionTiming(ctx context.Context, sel ast.SelectionSet, v *VersionTiming) graphql.Marshaler {

@@ -116,6 +116,7 @@ type Task {
   nextTaskFailing: Task
   nextTaskPassing: Task
   order: Int!
+  invalidatedByUpstream: Boolean
   patch: Patch
   patchNumber: Int
   """
@@ -338,6 +339,7 @@ type Cost {
   adjustedEBSStorageCost: Float
   s3ArtifactPutCost: Float
   s3LogPutCost: Float
+  s3ArtifactStorageCost: Float
 }
 
 input QuarantineTestInput {
