@@ -43,7 +43,7 @@ Please see [here](https://kanopy.corp.mongodb.com/docs/corpsecure/auth_flow/#ref
 
 ## What if I am in an environment where I cannot open a browser to authenticate?
 
-Please follow the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host) (e.g. a spawn host. This is set automatically for new spawn hosts).
+Please follow the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
 ## Why did I have to wait a while for the CLI command to load after authenticating?
 
