@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
@@ -251,6 +250,12 @@ func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars,
 
 // CopyProjectVars copies the variables for the first project to the second
 func CopyProjectVars(ctx context.Context, oldProjectId, newProjectId string) error {
+	// kim: NOTE: this is implementation for REST route project copy.
+	// kim: NOTE: Splunk logs: https://mongodb.splunkcloud.com/en-US/app/search/search?earliest=1774018800&latest=1774022400&q=search%20index%3Devergreen%20%2Fcopy&display.page.search.mode=fast&dispatch.sample_ratio=1&display.general.type=events&display.page.search.tab=events&workload_pool=&display.events.timelineEarliestTime=1774020840&display.events.timelineLatestTime=1774020900&sid=1776268615.249437
+	// kim: NOTE: this FindOneProjectVars passed, which means that for the old
+	// project to be copied, there were either no project vars at this moment,
+	// or the project vars were in a valid state (i.e. the project vars were
+	// valid in the old "mms" project).
 	vars, err := FindOneProjectVars(ctx, oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding variables for project '%s'", oldProjectId)
@@ -300,20 +305,10 @@ func GetAWSKeyForProject(ctx context.Context, projectId string) (*AWSSSHKey, err
 	}, nil
 }
 
-// defaultParameterStoreAccessTimeout is the default timeout for accessing
-// Parameter Store. In general, the context timeout should prefer to be
-// inherited from a higher-level context (e.g. a REST request's context), so
-// this timeout should only be used as a last resort if the context cannot
-// easily be passed down.
-const defaultParameterStoreAccessTimeout = 30 * time.Second
-
 // Upsert creates or updates a project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
 func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
-	defer cancel()
-
 	pm, err := projectVars.upsertParameterStore(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "upserting project variables into Parameter Store")
@@ -349,14 +344,27 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) (*Para
 	projectID := projectVars.Id
 	after := projectVars
 
+	// kim: NOTE: this errored
+	// but it was doing FindOneProjectVars using the new project ID
+	// ("mms-v20260325"). I would have expected this to return empty, but it
+	// didn't. From the Slack thread
+	// (https://mongodb.slack.com/archives/C69UXN1CP/p1774025257537879?thread_ts=1774022368.553139&cid=C69UXN1CP),
+	// it sounds like the new project already existed. If that initial copy
+	// errored or had issues, then it seems like it was already in a bad state.
+	// We don't have any record of what the original mms-v20260325 project vars
+	// looked like though or how the project was initialized.
 	before, err := FindOneProjectVars(ctx, projectID)
 	if err != nil {
+		// kim: NOTE: hit 500 on this line trying to find parameters that didn't
+		// exist.
 		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
 	if before == nil {
 		before = &ProjectVars{Id: projectID}
 	}
 
+	// kim: NOTE: when copying vars for the first time, before should have been
+	// empty because the project vars haven't been initialized yet.
 	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
 
 	pm, err := projectVars.syncParameterDiff(ctx, before.Parameters, varsToUpsert, varsToDelete)
@@ -521,9 +529,6 @@ func (projectVars *ProjectVars) Insert(ctx context.Context) error {
 	// This has to be done after inserting the initial document because it
 	// upserts the project vars doc. If this ran first, it would cause the DB
 	// insert to fail due to the ID already existing.
-	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
-	defer cancel()
-
 	pm, err := insertParameterStore(ctx, projectVars)
 	if err != nil {
 		return errors.Wrap(err, "inserting project vars into Parameter Store")
@@ -558,9 +563,6 @@ func insertParameterStore(ctx context.Context, vars *ProjectVars) (*ParameterMap
 // succeeds, projectVars will contain all the project variables, including those
 // that were not explicitly modified.
 func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete []string) (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeoutCause(ctx, defaultParameterStoreAccessTimeout, errors.New("parameter store access timeout"))
-	defer cancel()
-
 	pm, err := projectVars.findAndModifyParameterStore(ctx, varsToDelete)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding and modifying project vars in Parameter Store")
@@ -707,8 +709,7 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	// Ignore the context cancellation to ensure that the parameters are
 	// deleted from Parameter Store and cleared from the database, this should be as
 	// 'atomic' as possible.
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultParameterStoreAccessTimeout)
-	defer cancel()
+	ctx = context.WithoutCancel(ctx)
 	if _, err := projectVars.upsertParameterStore(ctx); err != nil {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
 	}
