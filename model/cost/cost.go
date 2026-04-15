@@ -3,16 +3,16 @@ package cost
 import "github.com/mongodb/anser/bsonutil"
 
 var (
-	OnDemandEC2CostKey                  = bsonutil.MustHaveTag(Cost{}, "OnDemandEC2Cost")
-	AdjustedEC2CostKey                  = bsonutil.MustHaveTag(Cost{}, "AdjustedEC2Cost")
-	OnDemandS3ArtifactPutCostKey        = bsonutil.MustHaveTag(Cost{}, "OnDemandS3ArtifactPutCost")
-	AdjustedS3ArtifactPutCostKey        = bsonutil.MustHaveTag(Cost{}, "AdjustedS3ArtifactPutCost")
-	OnDemandS3LogPutCostKey             = bsonutil.MustHaveTag(Cost{}, "OnDemandS3LogPutCost")
-	AdjustedS3LogPutCostKey             = bsonutil.MustHaveTag(Cost{}, "AdjustedS3LogPutCost")
-	OnDemandS3ArtifactStorageCostKey    = bsonutil.MustHaveTag(Cost{}, "OnDemandS3ArtifactStorageCost")
-	AdjustedS3ArtifactStorageCostKey    = bsonutil.MustHaveTag(Cost{}, "AdjustedS3ArtifactStorageCost")
-	OnDemandS3LogStorageCostKey         = bsonutil.MustHaveTag(Cost{}, "OnDemandS3LogStorageCost")
-	AdjustedS3LogStorageCostKey         = bsonutil.MustHaveTag(Cost{}, "AdjustedS3LogStorageCost")
+	OnDemandEC2CostKey               = bsonutil.MustHaveTag(Cost{}, "OnDemandEC2Cost")
+	AdjustedEC2CostKey               = bsonutil.MustHaveTag(Cost{}, "AdjustedEC2Cost")
+	OnDemandS3ArtifactPutCostKey     = bsonutil.MustHaveTag(Cost{}, "OnDemandS3ArtifactPutCost")
+	AdjustedS3ArtifactPutCostKey     = bsonutil.MustHaveTag(Cost{}, "AdjustedS3ArtifactPutCost")
+	OnDemandS3LogPutCostKey          = bsonutil.MustHaveTag(Cost{}, "OnDemandS3LogPutCost")
+	AdjustedS3LogPutCostKey          = bsonutil.MustHaveTag(Cost{}, "AdjustedS3LogPutCost")
+	OnDemandS3ArtifactStorageCostKey = bsonutil.MustHaveTag(Cost{}, "OnDemandS3ArtifactStorageCost")
+	AdjustedS3ArtifactStorageCostKey = bsonutil.MustHaveTag(Cost{}, "AdjustedS3ArtifactStorageCost")
+	OnDemandS3LogStorageCostKey      = bsonutil.MustHaveTag(Cost{}, "OnDemandS3LogStorageCost")
+	AdjustedS3LogStorageCostKey      = bsonutil.MustHaveTag(Cost{}, "AdjustedS3LogStorageCost")
 )
 
 // Cost represents a cost breakdown for tasks and versions
