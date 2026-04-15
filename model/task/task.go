@@ -4327,23 +4327,42 @@ func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData
 type bucketExpirationLookup func(ctx context.Context, bucket, fileKey string) (days int, found bool)
 
 // SaveS3Usage persists the task's S3 usage metrics and calculates S3 costs.
-func (t *Task) SaveS3Usage(ctx context.Context, lookup bucketExpirationLookup) error {
+func (t *Task) SaveS3Usage(ctx context.Context, lookup bucketExpirationLookup, logBucketName string) error {
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "getting cost config")
 	}
 
 	t.calculateS3PutCosts(costConfig)
-	t.setS3StorageCosts(ctx, lookup, costConfig)
+	t.setS3ArtifactStorageCosts(ctx, lookup, costConfig)
+	t.setS3LogStorageCosts(ctx, logBucketName, lookup, costConfig)
 
 	setFields := bson.M{
 		S3UsageKey: t.S3Usage,
 		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3ArtifactPutCostKey):     t.TaskCost.S3ArtifactPutCost,
 		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3LogPutCostKey):          t.TaskCost.S3LogPutCost,
 		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3ArtifactStorageCostKey): t.TaskCost.S3ArtifactStorageCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3LogStorageCostKey):      t.TaskCost.S3LogStorageCost,
 	}
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
+}
+
+// setS3LogStorageCosts calculates and sets the task's S3 log storage cost using lifecycle rules for the log bucket.
+func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) {
+	if logBucketName == "" || lookup == nil {
+		return
+	}
+	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System} {
+		if lm.LogKey == "" {
+			continue
+		}
+		days, found := lookup(ctx, logBucketName, lm.LogKey)
+		if !found {
+			days = costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays
+		}
+		t.TaskCost.S3LogStorageCost += s3usage.CalculateS3StorageCostWithConfig(ctx, lm.Bytes, days, costConfig)
+	}
 }
 
 // resolveArtifactExpirationDays looks up the expiration days for an artifact, falling back to DefaultMaxArtifactExpirationDays if no matching rule is found.
@@ -4366,8 +4385,8 @@ func (t *Task) calculateS3PutCosts(costConfig *evergreen.CostConfig) {
 	}
 }
 
-// setS3StorageCosts calculates and sets the task's S3 artifact storage cost. Skipped if the lifecycle rules lookup is nil.
-func (t *Task) setS3StorageCosts(ctx context.Context, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) {
+// setS3ArtifactStorageCosts calculates and sets the task's S3 artifact storage cost. Skipped if the lifecycle rules lookup is nil.
+func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) {
 	if lookup == nil {
 		return
 	}

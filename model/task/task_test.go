@@ -5203,11 +5203,12 @@ func TestSaveS3Usage(t *testing.T) {
 	}
 
 	for name, tc := range map[string]struct {
-		task       Task
-		costConfig *evergreen.CostConfig
-		setupUsage func(*s3usage.S3Usage)
-		lookup     bucketExpirationLookup
-		assertions func(*testing.T, *Task)
+		task          Task
+		costConfig    *evergreen.CostConfig
+		setupUsage    func(*s3usage.S3Usage)
+		lookup        bucketExpirationLookup
+		logBucketName string
+		assertions    func(*testing.T, *Task)
 	}{
 		"PersistsS3Usage": {
 			task: Task{Id: "t1"},
@@ -5240,7 +5241,7 @@ func TestSaveS3Usage(t *testing.T) {
 					Bucket:      "mciuploads",
 					Files:       multiFileArtifacts,
 				})
-				u.IncrementLogs(50, 500000)
+				u.IncrementLogs(50, 500000, "", "")
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
@@ -5262,7 +5263,7 @@ func TestSaveS3Usage(t *testing.T) {
 					Bucket:      "mciuploads",
 					Files:       multiFileArtifacts,
 				})
-				u.IncrementLogs(50, 500000)
+				u.IncrementLogs(50, 500000, "", "")
 			},
 			lookup: func(_ context.Context, _, _ string) (int, bool) {
 				return 0, false
@@ -5278,12 +5279,7 @@ func TestSaveS3Usage(t *testing.T) {
 		"CalculatesLogChunkCostOnly": {
 			task: Task{Id: "t4"},
 			setupUsage: func(u *s3usage.S3Usage) {
-				*u = s3usage.S3Usage{
-					Logs: s3usage.S3UploadMetrics{
-						PutRequests: 100,
-						UploadBytes: 200000,
-					},
-				}
+				u.IncrementLogs(100, 200000, "", "")
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
@@ -5374,6 +5370,51 @@ func TestSaveS3Usage(t *testing.T) {
 				assert.True(t, dbTask.TaskCost.IsZero())
 			},
 		},
+		"CalculatesLogStorageCostWithLookupMatch": {
+			task:          Task{Id: "t10"},
+			costConfig:    &defaultCostConfig,
+			logBucketName: "log-bucket",
+			setupUsage: func(u *s3usage.S3Usage) {
+				u.IncrementLogs(10, 1024*1024, s3usage.LogTypeTask, "some-project/abc123/0/task_logs/task")
+			},
+			lookup: func(_ context.Context, _, _ string) (int, bool) {
+				return 60, true
+			},
+			assertions: func(t *testing.T, dbTask *Task) {
+				assert.True(t, dbTask.TaskCost.S3LogStorageCost > 0)
+				expectedCost := s3usage.CalculateS3StorageCostWithConfig(ctx, 1024*1024, 60, &defaultCostConfig)
+				assert.InDelta(t, expectedCost, dbTask.TaskCost.S3LogStorageCost, 0.0001)
+			},
+		},
+		"CalculatesLogStorageCostWithLookupMissUsesDefault": {
+			task:          Task{Id: "t11"},
+			costConfig:    &defaultCostConfig,
+			logBucketName: "log-bucket",
+			setupUsage: func(u *s3usage.S3Usage) {
+				u.IncrementLogs(10, 1024*1024, s3usage.LogTypeTask, "some-project/abc123/0/task_logs/task")
+			},
+			lookup: func(_ context.Context, _, _ string) (int, bool) {
+				return 0, false
+			},
+			assertions: func(t *testing.T, dbTask *Task) {
+				assert.True(t, dbTask.TaskCost.S3LogStorageCost > 0)
+				expectedCost := s3usage.CalculateS3StorageCostWithConfig(ctx, 1024*1024, defaultCostConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, &defaultCostConfig)
+				assert.InDelta(t, expectedCost, dbTask.TaskCost.S3LogStorageCost, 0.0001)
+			},
+		},
+		"EmptyLogBucketNameSkipsLogStorageCost": {
+			task:       Task{Id: "t12"},
+			costConfig: &defaultCostConfig,
+			setupUsage: func(u *s3usage.S3Usage) {
+				u.IncrementLogs(10, 1024*1024, s3usage.LogTypeTask, "some-project/abc123/0/task_logs/task")
+			},
+			lookup: func(_ context.Context, _, _ string) (int, bool) {
+				return 60, true
+			},
+			assertions: func(t *testing.T, dbTask *Task) {
+				assert.Equal(t, float64(0), dbTask.TaskCost.S3LogStorageCost)
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
@@ -5387,7 +5428,7 @@ func TestSaveS3Usage(t *testing.T) {
 			if tc.setupUsage != nil {
 				tc.setupUsage(&tc.task.S3Usage)
 			}
-			require.NoError(t, tc.task.SaveS3Usage(ctx, tc.lookup))
+			require.NoError(t, tc.task.SaveS3Usage(ctx, tc.lookup, tc.logBucketName))
 
 			dbTask, err := FindOneId(ctx, tc.task.Id)
 			require.NoError(t, err)

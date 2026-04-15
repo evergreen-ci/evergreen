@@ -1096,7 +1096,7 @@ func TestReportS3Usage(t *testing.T) {
 					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 50, UploadBytes: 2048},
 					Count:           5,
 				},
-				Logs: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 4096},
+				Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 4096}},
 			},
 			wantStatus: http.StatusOK,
 			assertions: func(t *testing.T, dbTask *task.Task) {
@@ -1110,7 +1110,7 @@ func TestReportS3Usage(t *testing.T) {
 		"SavesLogOnlyUsage": {
 			insertTask: &task.Task{Id: "t2", Status: evergreen.TaskStarted},
 			s3Usage: s3usage.S3Usage{
-				Logs: s3usage.S3UploadMetrics{PutRequests: 25, UploadBytes: 8192},
+				Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 25, UploadBytes: 8192}},
 			},
 			wantStatus: http.StatusOK,
 			assertions: func(t *testing.T, dbTask *task.Task) {

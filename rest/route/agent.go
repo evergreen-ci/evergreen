@@ -770,7 +770,12 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	if err := t.SaveS3Usage(ctx, lookup); err != nil {
+	logBucketName := ""
+	if t.TaskOutputInfo != nil {
+		logBucketName = t.TaskOutputInfo.TaskLogs.BucketConfig.Name
+	}
+
+	if err := t.SaveS3Usage(ctx, lookup, logBucketName); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
@@ -799,6 +804,7 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
 		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
 		attribute.Float64(evergreen.S3LogPutCostOtelAttribute, t.TaskCost.S3LogPutCost),
+		attribute.Float64(evergreen.S3LogStorageCostOtelAttribute, t.TaskCost.S3LogStorageCost),
 		attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
 		attribute.Float64(evergreen.S3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
 		attribute.Float64(evergreen.S3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),

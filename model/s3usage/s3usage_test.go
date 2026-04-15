@@ -106,11 +106,11 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 0, s3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(0), s3Usage.Logs.UploadBytes)
 
-		s3Usage.IncrementLogs(5, 1024)
+		s3Usage.IncrementLogs(5, 1024, "", "")
 		assert.Equal(t, 5, s3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(1024), s3Usage.Logs.UploadBytes)
 
-		s3Usage.IncrementLogs(10, 2048)
+		s3Usage.IncrementLogs(10, 2048, "", "")
 		assert.Equal(t, 15, s3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Logs.UploadBytes)
 	})

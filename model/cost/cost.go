@@ -8,6 +8,7 @@ var (
 	S3ArtifactPutCostKey     = bsonutil.MustHaveTag(Cost{}, "S3ArtifactPutCost")
 	S3LogPutCostKey          = bsonutil.MustHaveTag(Cost{}, "S3LogPutCost")
 	S3ArtifactStorageCostKey = bsonutil.MustHaveTag(Cost{}, "S3ArtifactStorageCost")
+	S3LogStorageCostKey      = bsonutil.MustHaveTag(Cost{}, "S3LogStorageCost")
 )
 
 // Cost represents a cost breakdown for tasks and versions
@@ -30,6 +31,8 @@ type Cost struct {
 	S3LogPutCost float64 `bson:"s3_log_put_cost,omitempty" json:"s3_log_put_cost,omitempty"`
 	// S3ArtifactStorageCost is the calculated S3 storage cost for artifact bytes over their retention period.
 	S3ArtifactStorageCost float64 `bson:"s3_artifact_storage_cost,omitempty" json:"s3_artifact_storage_cost,omitempty"`
+	// S3LogStorageCost is the calculated S3 storage cost for log bytes over their retention period.
+	S3LogStorageCost float64 `bson:"s3_log_storage_cost,omitempty" json:"s3_log_storage_cost,omitempty"`
 }
 
 // IsZero returns true if all cost components are zero.
@@ -42,5 +45,6 @@ func (c Cost) IsZero() bool {
 		c.AdjustedEBSStorageCost == 0 &&
 		c.S3ArtifactPutCost == 0 &&
 		c.S3LogPutCost == 0 &&
-		c.S3ArtifactStorageCost == 0
+		c.S3ArtifactStorageCost == 0 &&
+		c.S3LogStorageCost == 0
 }

@@ -9,10 +9,31 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+// S3 log types for storage cost tracking.
+const (
+	LogTypeTask   = "task_log"
+	LogTypeAgent  = "agent_log"
+	LogTypeSystem = "system_log"
+)
+
+// LogTypeMetrics holds the S3 key and byte count for a single log type.
+type LogTypeMetrics struct {
+	LogKey string `bson:"log_key,omitempty" json:"log_key,omitempty"`
+	Bytes  int64  `bson:"bytes,omitempty" json:"bytes,omitempty"`
+}
+
+// LogMetrics tracks log upload metrics broken down by log type.
+type LogMetrics struct {
+	S3UploadMetrics `bson:",inline"`
+	Task            LogTypeMetrics `bson:"task_log,omitempty" json:"task_log,omitempty"`
+	Agent           LogTypeMetrics `bson:"agent_log,omitempty" json:"agent_log,omitempty"`
+	System          LogTypeMetrics `bson:"system_log,omitempty" json:"system_log,omitempty"`
+}
+
 // S3Usage tracks S3 API usage for cost calculation.
 type S3Usage struct {
 	Artifacts ArtifactMetrics `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
-	Logs      S3UploadMetrics `bson:"logs,omitempty" json:"logs,omitempty"`
+	Logs      LogMetrics      `bson:"logs,omitempty" json:"logs,omitempty"`
 }
 
 // S3UploadMetrics tracks common S3 upload metrics shared across upload types.
@@ -271,10 +292,27 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 	}
 }
 
-// IncrementLogs increments the log chunk upload metrics.
-func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64) {
+// IncrementLogs increments log upload metrics and accumulates per-type bytes for storage cost tracking.
+func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
+	switch logType {
+	case LogTypeTask:
+		s.Logs.Task.Bytes += uploadBytes
+		if logKey != "" {
+			s.Logs.Task.LogKey = logKey
+		}
+	case LogTypeAgent:
+		s.Logs.Agent.Bytes += uploadBytes
+		if logKey != "" {
+			s.Logs.Agent.LogKey = logKey
+		}
+	case LogTypeSystem:
+		s.Logs.System.Bytes += uploadBytes
+		if logKey != "" {
+			s.Logs.System.LogKey = logKey
+		}
+	}
 }
 
 // IsZero implements bsoncodec.Zeroer for BSON marshalling.
