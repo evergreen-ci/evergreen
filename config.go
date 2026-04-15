@@ -722,6 +722,10 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 		return nil, errors.Wrap(err, "setting Splunk error handler")
 	}
 
+	if s.Tracer.TraceURLTemplate != "" {
+		sender = send.NewTraceURLSender(sender, s.Tracer.TraceURLTemplate)
+	}
+
 	opts := send.BufferedSenderOptions{
 		FlushInterval: time.Duration(s.LoggerConfig.Buffer.DurationSeconds) * time.Second,
 		BufferSize:    s.LoggerConfig.Buffer.Count,

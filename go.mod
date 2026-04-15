@@ -238,3 +238,5 @@ require (
 )
 
 tool github.com/99designs/gqlgen
+
+replace github.com/mongodb/grip => github.com/zackarysantana/grip v0.0.0-20260415160604-b042ee394aaf
