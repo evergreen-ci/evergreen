@@ -2843,7 +2843,7 @@ type APITracerSettings struct {
 	CollectorEndpoint         *string `json:"collector_endpoint"`
 	CollectorInternalEndpoint *string `json:"collector_internal_endpoint"`
 	CollectorAPIKey           *string `json:"collector_api_key"`
-	TraceURLTemplate *string `json:"trace_url_template"`
+	TraceURLTemplate          *string `json:"trace_url_template"`
 }
 
 func (c *APITracerSettings) BuildFromService(h any) error {
@@ -2866,7 +2866,7 @@ func (c *APITracerSettings) ToService() (any, error) {
 		CollectorEndpoint:         utility.FromStringPtr(c.CollectorEndpoint),
 		CollectorInternalEndpoint: utility.FromStringPtr(c.CollectorInternalEndpoint),
 		CollectorAPIKey:           utility.FromStringPtr(c.CollectorAPIKey),
-		TraceURLTemplate: utility.FromStringPtr(c.TraceURLTemplate),
+		TraceURLTemplate:          utility.FromStringPtr(c.TraceURLTemplate),
 	}
 
 	return config, nil
