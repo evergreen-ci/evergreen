@@ -620,6 +620,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	patchVersion := &Version{
 		Id:                   p.Id.Hex(),
 		CreateTime:           time.Now(),
+		IngestTime:           p.IngestTime,
 		Identifier:           p.Project,
 		Revision:             p.Githash,
 		Author:               p.Author,

@@ -16,7 +16,7 @@ import (
 func TestVersionBuildFromService(t *testing.T) {
 	assert := assert.New(t)
 
-	time := time.Now()
+	ts := time.Now()
 	versionId := "versionId"
 	revision := "revision"
 	author := "author"
@@ -52,11 +52,13 @@ func TestVersionBuildFromService(t *testing.T) {
 		Tag:    "my-triggered-tag",
 		Pusher: "pusher",
 	}
+	ingestTs := ts.Add(time.Minute)
 	v := model.Version{
 		Id:                versionId,
-		CreateTime:        time,
-		StartTime:         time,
-		FinishTime:        time,
+		CreateTime:        ts,
+		IngestTime:        ingestTs,
+		StartTime:         ts,
+		FinishTime:        ts,
 		Revision:          revision,
 		Author:            author,
 		AuthorEmail:       authorEmail,
@@ -75,9 +77,11 @@ func TestVersionBuildFromService(t *testing.T) {
 	apiVersion.BuildFromService(t.Context(), v)
 	// Each field should be as expected
 	assert.Equal(apiVersion.Id, utility.ToStringPtr(versionId))
-	assert.Equal(*apiVersion.CreateTime, time)
-	assert.Equal(*apiVersion.StartTime, time)
-	assert.Equal(*apiVersion.FinishTime, time)
+	assert.Equal(*apiVersion.CreateTime, ts)
+	require.NotNil(t, apiVersion.IngestTime)
+	assert.Equal(*apiVersion.IngestTime, ingestTs)
+	assert.Equal(*apiVersion.StartTime, ts)
+	assert.Equal(*apiVersion.FinishTime, ts)
 	assert.Equal(apiVersion.Revision, utility.ToStringPtr(revision))
 	assert.Equal(apiVersion.Author, utility.ToStringPtr(author))
 	assert.Equal(apiVersion.AuthorEmail, utility.ToStringPtr(authorEmail))

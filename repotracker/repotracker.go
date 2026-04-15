@@ -1078,6 +1078,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrap(err, "starting transaction")
 		}
 		database := env.DB()
+		v.IngestTime = time.Now()
 		_, err = database.Collection(model.VersionCollection).InsertOne(ctx, v)
 		if err != nil {
 			grip.Notice(ctx, message.WrapError(err, message.Fields{

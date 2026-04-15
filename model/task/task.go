@@ -83,8 +83,11 @@ var (
 type Task struct {
 	Id     string `bson:"_id" json:"id"`
 	Secret string `bson:"secret" json:"secret"`
-	// time information for task
-	// CreateTime - the creation time for the task, derived from the commit time or the patch creation time.
+	// Time fields (see also model.Version for the same CreateTime vs IngestTime distinction):
+	// CreateTime - logical time for this task, aligned with the parent version's semantics: derived from
+	// commit/revision metadata or patch timing (same idea as the version's CreateTime). It is not the
+	// wall-clock time the task row was written; use IngestTime for that.
+	// IngestTime - wall-clock time this task document was first inserted in Evergreen (set in createOneTask).
 	// DispatchTime - the time the task runner starts up the agent on the host.
 	// ScheduledTime - the time the task is scheduled.
 	// StartTime - the time the agent starts the task on the host after spinning it up.

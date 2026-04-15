@@ -74,6 +74,7 @@ type Patch {
   childPatchAliases: [ChildPatchAlias!]
   childPatches: [Patch!]
   createTime: Time
+  ingestTime: Time
   description: String!
   duration: PatchDuration
   generatedTaskCounts: [GeneratedTaskCountResults!]!

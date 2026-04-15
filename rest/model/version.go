@@ -16,6 +16,8 @@ type APIVersion struct {
 	Id *string `json:"version_id"`
 	// Time that the version was first created
 	CreateTime *time.Time `json:"create_time"`
+	// Time at which the version document was persisted in Evergreen. Will be null for versions created before this field was added.
+	IngestTime *time.Time `json:"ingest_time,omitempty"`
 	// Time at which tasks associated with this version started running
 	StartTime *time.Time `json:"start_time"`
 	// Time at which tasks associated with this version finished running
@@ -76,6 +78,7 @@ type buildDetail struct {
 func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Version) {
 	apiVersion.Id = utility.ToStringPtr(v.Id)
 	apiVersion.CreateTime = ToTimePtr(v.CreateTime)
+	apiVersion.IngestTime = ToTimePtr(v.IngestTime)
 	apiVersion.StartTime = ToTimePtr(v.StartTime)
 	apiVersion.FinishTime = ToTimePtr(v.FinishTime)
 	apiVersion.Revision = utility.ToStringPtr(v.Revision)

@@ -65,6 +65,8 @@ type Patch struct {
 	Version                                 string           `bson:"version"`
 	Status                                  string           `bson:"status"`
 	CreateTime                              time.Time        `bson:"create_time"`
+	// IngestTime is the wall-clock time when this patch document was first persisted.
+	IngestTime                              time.Time        `bson:"ingest_time,omitempty"`
 	StartTime                               time.Time        `bson:"start_time"`
 	FinishTime                              time.Time        `bson:"finish_time"`
 	BuildVariants                           []string         `bson:"build_variants"`
@@ -417,6 +419,7 @@ func TryMarkStarted(ctx context.Context, versionId string, startTime time.Time) 
 
 // Insert inserts the patch into the db, returning any errors that occur
 func (p *Patch) Insert(ctx context.Context) error {
+	p.IngestTime = time.Now()
 	return db.Insert(ctx, Collection, p)
 }
 

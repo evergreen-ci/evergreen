@@ -47,8 +47,15 @@ const (
 )
 
 type Version struct {
-	Id         string    `bson:"_id" json:"id,omitempty"`
+	Id string `bson:"_id" json:"id,omitempty"`
+	// CreateTime is the logical time associated with this version: typically the
+	// revision/commit timestamp from git (or related metadata for patches and triggers).
+	// It is not the wall-clock time Evergreen wrote the version document; use IngestTime for that.
 	CreateTime time.Time `bson:"create_time" json:"create_time,omitempty"`
+	// IngestTime is the wall-clock time the version document was first persisted in Evergreen.
+	// For patch requesters it is copied from the patch's IngestTime; for repotracker and other
+	// paths it is set at insert. Older documents may omit this field (zero in Go / null in APIs).
+	IngestTime time.Time `bson:"ingest_time,omitempty" json:"ingest_time,omitempty"`
 	StartTime  time.Time `bson:"start_time" json:"start_time,omitempty"`
 	FinishTime time.Time `bson:"finish_time" json:"finish_time,omitempty"`
 	Revision   string    `bson:"gitspec" json:"revision,omitempty"`
@@ -221,6 +228,11 @@ func (v *Version) SetAborted(ctx context.Context, aborted bool) error {
 }
 
 func (v *Version) Insert(ctx context.Context) error {
+	// Production paths set IngestTime explicitly (e.g. from patch ingest or repotracker).
+	// Stub and test callers that omit it get a wall-clock insert time here.
+	if utility.IsZeroTime(v.IngestTime) {
+		v.IngestTime = time.Now()
+	}
 	return db.Insert(ctx, VersionCollection, v)
 }
 

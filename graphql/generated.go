@@ -1218,6 +1218,7 @@ type ComplexityRoot struct {
 		Hidden                func(childComplexity int) int
 		Id                    func(childComplexity int) int
 		IncludedLocalModules  func(childComplexity int) int
+		IngestTime            func(childComplexity int) int
 		InvalidatedByUpstream func(childComplexity int) int
 		ModuleCodeChanges     func(childComplexity int) int
 		Parameters            func(childComplexity int) int
@@ -2305,6 +2306,7 @@ type ComplexityRoot struct {
 		GitTags                  func(childComplexity int) int
 		Id                       func(childComplexity int) int
 		Ignored                  func(childComplexity int) int
+		IngestTime               func(childComplexity int) int
 		IsPatch                  func(childComplexity int) int
 		Manifest                 func(childComplexity int) int
 		Message                  func(childComplexity int) int
@@ -2341,6 +2343,7 @@ type ComplexityRoot struct {
 		FinishTime          func(childComplexity int) int
 		Id                  func(childComplexity int) int
 		Ignored             func(childComplexity int) int
+		IngestTime          func(childComplexity int) int
 		Message             func(childComplexity int) int
 		Project             func(childComplexity int) int
 		Repo                func(childComplexity int) int
@@ -7574,6 +7577,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.IncludedLocalModules(childComplexity), true
+	case "Patch.ingestTime":
+		if e.complexity.Patch.IngestTime == nil {
+			break
+		}
+
+		return e.complexity.Patch.IngestTime(childComplexity), true
 	case "Patch.invalidatedByUpstream":
 		if e.complexity.Patch.InvalidatedByUpstream == nil {
 			break
@@ -12409,6 +12418,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.Ignored(childComplexity), true
+	case "Version.ingestTime":
+		if e.complexity.Version.IngestTime == nil {
+			break
+		}
+
+		return e.complexity.Version.IngestTime(childComplexity), true
 	case "Version.isPatch":
 		if e.complexity.Version.IsPatch == nil {
 			break
@@ -12623,6 +12638,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.Ignored(childComplexity), true
+	case "VersionLite.ingestTime":
+		if e.complexity.VersionLite.IngestTime == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.IngestTime(childComplexity), true
 	case "VersionLite.message":
 		if e.complexity.VersionLite.Message == nil {
 			break
@@ -35572,6 +35593,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -35687,6 +35710,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -37211,6 +37236,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_childPatches(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Patch_ingestTime(ctx, field)
 			case "description":
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
@@ -37324,6 +37351,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_childPatches(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Patch_ingestTime(ctx, field)
 			case "description":
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
@@ -41591,6 +41620,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -43957,6 +43988,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_childPatches(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Patch_ingestTime(ctx, field)
 			case "description":
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
@@ -44033,6 +44066,35 @@ func (ec *executionContext) _Patch_createTime(ctx context.Context, field graphql
 }
 
 func (ec *executionContext) fieldContext_Patch_createTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_ingestTime(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_ingestTime,
+		func(ctx context.Context) (any, error) {
+			return obj.IngestTime, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_ingestTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Patch",
 		Field:      field,
@@ -44974,6 +45036,8 @@ func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field 
 				return ec.fieldContext_VersionLite_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_VersionLite_errors(ctx, field)
 			case "finishTime":
@@ -45055,6 +45119,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -45689,6 +45755,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_childPatches(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Patch_ingestTime(ctx, field)
 			case "description":
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
@@ -52391,6 +52459,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_childPatches(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Patch_ingestTime(ctx, field)
 			case "description":
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
@@ -54179,6 +54249,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -63828,6 +63900,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_childPatches(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Patch_ingestTime(ctx, field)
 			case "description":
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
@@ -65657,6 +65731,8 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_VersionLite_errors(ctx, field)
 			case "finishTime":
@@ -65738,6 +65814,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -71399,6 +71477,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -72827,6 +72907,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -73069,6 +73151,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -73200,6 +73284,35 @@ func (ec *executionContext) _Version_createTime(ctx context.Context, field graph
 }
 
 func (ec *executionContext) fieldContext_Version_createTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_ingestTime(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Version_ingestTime,
+		func(ctx context.Context) (any, error) {
+			return obj.IngestTime, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Version_ingestTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Version",
 		Field:      field,
@@ -73617,6 +73730,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_childPatches(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Patch_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Patch_ingestTime(ctx, field)
 			case "description":
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
@@ -73767,6 +73882,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -74700,6 +74817,35 @@ func (ec *executionContext) _VersionLite_createTime(ctx context.Context, field g
 }
 
 func (ec *executionContext) fieldContext_VersionLite_createTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VersionLite_ingestTime(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_ingestTime,
+		func(ctx context.Context) (any, error) {
+			return obj.IngestTime, nil
+		},
+		nil,
+		ec.marshalOTime2timeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_ingestTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "VersionLite",
 		Field:      field,
@@ -76018,6 +76164,8 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_cost(ctx, field)
 			case "createTime":
 				return ec.fieldContext_Version_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Version_ingestTime(ctx, field)
 			case "errors":
 				return ec.fieldContext_Version_errors(ctx, field)
 			case "externalLinksForMetadata":
@@ -97715,6 +97863,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Patch_childPatches(ctx, field, obj)
 		case "createTime":
 			out.Values[i] = ec._Patch_createTime(ctx, field, obj)
+		case "ingestTime":
+			out.Values[i] = ec._Patch_ingestTime(ctx, field, obj)
 		case "description":
 			out.Values[i] = ec._Patch_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -108177,6 +108327,8 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "ingestTime":
+			out.Values[i] = ec._Version_ingestTime(ctx, field, obj)
 		case "errors":
 			out.Values[i] = ec._Version_errors(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -108873,6 +109025,8 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "ingestTime":
+			out.Values[i] = ec._VersionLite_ingestTime(ctx, field, obj)
 		case "errors":
 			out.Values[i] = ec._VersionLite_errors(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
