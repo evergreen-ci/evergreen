@@ -5012,7 +5012,7 @@ func TestCalculateTaskCost(t *testing.T) {
 	expectedAdjusted := CalculateAdjustedTaskCost(runtimeSeconds, distroCost, financeConfig)
 	assert.Equal(t, expectedOnDemand, taskCost.OnDemandEC2Cost)
 	assert.Equal(t, expectedAdjusted, taskCost.AdjustedEC2Cost)
-	assert.Equal(t, float64(0), taskCost.S3ArtifactPutCost)
+	assert.Equal(t, float64(0), taskCost.OnDemandS3ArtifactPutCost)
 	assert.False(t, taskCost.IsZero())
 }
 
@@ -5025,7 +5025,7 @@ func TestTaskCostIsZero(t *testing.T) {
 	assert.False(t, nonZeroAdjusted.IsZero())
 	nonZeroBoth := cost.Cost{OnDemandEC2Cost: 0.1, AdjustedEC2Cost: 0.2}
 	assert.False(t, nonZeroBoth.IsZero())
-	nonZeroS3 := cost.Cost{S3ArtifactPutCost: 0.00005}
+	nonZeroS3 := cost.Cost{OnDemandS3ArtifactPutCost: 0.00005}
 	assert.False(t, nonZeroS3.IsZero())
 	nonZeroEBSThroughputOnDemand := cost.Cost{OnDemandEBSThroughputCost: 0.1}
 	assert.False(t, nonZeroEBSThroughputOnDemand.IsZero())
@@ -5129,7 +5129,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		var costCfg evergreen.CostConfig
 		require.NoError(t, costCfg.Get(ctx))
 		expectedStd, _ := s3usage.CalculateS3PutCostWithConfig(1000, &costCfg)
-		assert.InDelta(t, expectedStd, task.TaskCost.S3ArtifactPutCost, 1e-9)
+		assert.InDelta(t, expectedStd, task.TaskCost.OnDemandS3ArtifactPutCost, 1e-9)
 	})
 
 	t.Run("CalculatesEC2AndS3Costs", func(t *testing.T) {
@@ -5164,7 +5164,7 @@ func TestUpdateTaskCost(t *testing.T) {
 		assert.True(t, task.TaskCost.OnDemandEC2Cost > 0)
 		assert.True(t, task.TaskCost.AdjustedEC2Cost > 0)
 		expectedS3Std, _ := s3usage.CalculateS3PutCostWithConfig(1000, &costConfig)
-		assert.InDelta(t, expectedS3Std, task.TaskCost.S3ArtifactPutCost, 1e-9)
+		assert.InDelta(t, expectedS3Std, task.TaskCost.OnDemandS3ArtifactPutCost, 1e-9)
 	})
 
 	t.Run("SkipsUpdateWhenNoCostsCalculated", func(t *testing.T) {
@@ -5245,9 +5245,9 @@ func TestSaveS3Usage(t *testing.T) {
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
-				assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactPutCost > 0)
 				assert.Equal(t, 50, dbTask.S3Usage.Logs.PutRequests)
-				assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3LogPutCost > 0)
 			},
 		},
 		"CalculatesCostFromUsageWithDefaultExpiration": {
@@ -5270,10 +5270,10 @@ func TestSaveS3Usage(t *testing.T) {
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
-				assert.True(t, dbTask.TaskCost.S3ArtifactPutCost > 0)
-				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactPutCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactStorageCost > 0)
 				assert.Equal(t, 50, dbTask.S3Usage.Logs.PutRequests)
-				assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3LogPutCost > 0)
 			},
 		},
 		"CalculatesLogChunkCostOnly": {
@@ -5283,9 +5283,9 @@ func TestSaveS3Usage(t *testing.T) {
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
 				assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
-				assert.Equal(t, float64(0), dbTask.TaskCost.S3ArtifactPutCost)
+				assert.Equal(t, float64(0), dbTask.TaskCost.OnDemandS3ArtifactPutCost)
 				assert.Equal(t, 100, dbTask.S3Usage.Logs.PutRequests)
-				assert.True(t, dbTask.TaskCost.S3LogPutCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3LogPutCost > 0)
 			},
 		},
 		"CalculatesArtifactStorageCostWithDefaultExpiration": {
@@ -5306,7 +5306,7 @@ func TestSaveS3Usage(t *testing.T) {
 				return 0, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
-				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactStorageCost > 0)
 			},
 		},
 		"NilLookupSkipsStorageCostCalculation": {
@@ -5321,7 +5321,7 @@ func TestSaveS3Usage(t *testing.T) {
 				})
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
-				assert.Equal(t, float64(0), dbTask.TaskCost.S3ArtifactStorageCost)
+				assert.Equal(t, float64(0), dbTask.TaskCost.OnDemandS3ArtifactStorageCost)
 			},
 		},
 		"CalculatesStorageCostWithLookupMatch": {
@@ -5339,9 +5339,9 @@ func TestSaveS3Usage(t *testing.T) {
 				return 90, true
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
-				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactStorageCost > 0)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 5*1024*1024, 90, &defaultCostConfig)
-				assert.InDelta(t, expectedStd, dbTask.TaskCost.S3ArtifactStorageCost, 0.0001)
+				assert.InDelta(t, expectedStd, dbTask.TaskCost.OnDemandS3ArtifactStorageCost, 0.0001)
 				assert.InDelta(t, expectedAdj, dbTask.TaskCost.AdjustedS3ArtifactStorageCost, 0.0001)
 			},
 		},
@@ -5360,9 +5360,9 @@ func TestSaveS3Usage(t *testing.T) {
 				return 0, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
-				assert.True(t, dbTask.TaskCost.S3ArtifactStorageCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactStorageCost > 0)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 5*1024*1024, 365, &defaultCostConfig)
-				assert.InDelta(t, expectedStd, dbTask.TaskCost.S3ArtifactStorageCost, 0.0001)
+				assert.InDelta(t, expectedStd, dbTask.TaskCost.OnDemandS3ArtifactStorageCost, 0.0001)
 				assert.InDelta(t, expectedAdj, dbTask.TaskCost.AdjustedS3ArtifactStorageCost, 0.0001)
 			},
 		},
@@ -5383,9 +5383,9 @@ func TestSaveS3Usage(t *testing.T) {
 				return 60, true
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
-				assert.True(t, dbTask.TaskCost.S3LogStorageCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3LogStorageCost > 0)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 1024*1024, 60, &defaultCostConfig)
-				assert.InDelta(t, expectedStd, dbTask.TaskCost.S3LogStorageCost, 0.0001)
+				assert.InDelta(t, expectedStd, dbTask.TaskCost.OnDemandS3LogStorageCost, 0.0001)
 				assert.InDelta(t, expectedAdj, dbTask.TaskCost.AdjustedS3LogStorageCost, 0.0001)
 			},
 		},
@@ -5400,9 +5400,9 @@ func TestSaveS3Usage(t *testing.T) {
 				return 0, false
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
-				assert.True(t, dbTask.TaskCost.S3LogStorageCost > 0)
+				assert.True(t, dbTask.TaskCost.OnDemandS3LogStorageCost > 0)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 1024*1024, defaultCostConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, &defaultCostConfig)
-				assert.InDelta(t, expectedStd, dbTask.TaskCost.S3LogStorageCost, 0.0001)
+				assert.InDelta(t, expectedStd, dbTask.TaskCost.OnDemandS3LogStorageCost, 0.0001)
 				assert.InDelta(t, expectedAdj, dbTask.TaskCost.AdjustedS3LogStorageCost, 0.0001)
 			},
 		},
@@ -5416,7 +5416,7 @@ func TestSaveS3Usage(t *testing.T) {
 				return 60, true
 			},
 			assertions: func(t *testing.T, dbTask *Task) {
-				assert.Equal(t, float64(0), dbTask.TaskCost.S3LogStorageCost)
+				assert.Equal(t, float64(0), dbTask.TaskCost.OnDemandS3LogStorageCost)
 			},
 		},
 	} {

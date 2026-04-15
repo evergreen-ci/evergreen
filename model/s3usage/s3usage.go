@@ -227,9 +227,10 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 		return pricePerGBMonth / S3BytesPerGB / S3DaysPerMonth
 	}
 
-	standardCostPerByte := float64(daysInStandard)*pricePerBytePerDay(S3StandardPricePerGBMonth) +
-		float64(daysInIA)*pricePerBytePerDay(S3IAPricePerGBMonth) +
-		float64(daysInArchive)*pricePerBytePerDay(S3ArchivePricePerGBMonth)
+	standardTierCost := float64(daysInStandard) * pricePerBytePerDay(S3StandardPricePerGBMonth)
+	iaTierCost := float64(daysInIA) * pricePerBytePerDay(S3IAPricePerGBMonth)
+	archiveTierCost := float64(daysInArchive) * pricePerBytePerDay(S3ArchivePricePerGBMonth)
+	standardCostPerByte := standardTierCost + iaTierCost + archiveTierCost
 	standard = float64(uploadBytes) * standardCostPerByte
 
 	if costConfig == nil {
@@ -243,9 +244,10 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 	iaDiscount := costConfig.S3Cost.Storage.IAStorageCostDiscount
 	archiveDiscount := costConfig.S3Cost.Storage.ArchiveStorageCostDiscount
 
-	adjustedCostPerByte := float64(daysInStandard)*pricePerBytePerDay(S3StandardPricePerGBMonth)*(1-standardDiscount) +
-		float64(daysInIA)*pricePerBytePerDay(S3IAPricePerGBMonth)*(1-iaDiscount) +
-		float64(daysInArchive)*pricePerBytePerDay(S3ArchivePricePerGBMonth)*(1-archiveDiscount)
+	adjustedStandardTierCost := standardTierCost * (1 - standardDiscount)
+	adjustedIATierCost := iaTierCost * (1 - iaDiscount)
+	adjustedArchiveTierCost := archiveTierCost * (1 - archiveDiscount)
+	adjustedCostPerByte := adjustedStandardTierCost + adjustedIATierCost + adjustedArchiveTierCost
 	adjusted = float64(uploadBytes) * adjustedCostPerByte
 
 	return standard, adjusted
