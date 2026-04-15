@@ -177,18 +177,21 @@ func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMet
 	}
 }
 
-// CalculateS3PutCostWithConfig calculates the S3 PUT request cost.
-// Returns 0 if cost cannot be calculated due to missing or invalid config.
-func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
+// CalculateS3PutCostWithConfig calculates the S3 PUT request cost, returning both the standard
+// (non-discounted) and adjusted (discounted) values. If config is nil or the discount is invalid,
+// adjusted is returned as 0.
+func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) (standard, adjusted float64) {
 	if putRequests <= 0 {
-		return 0.0
+		return 0.0, 0.0
 	}
+
+	standard = float64(putRequests) * S3PutRequestCost
 
 	if costConfig == nil {
 		grip.Warning(context.Background(), message.Fields{
 			"message": "cost config is not available to calculate S3 PUT cost",
 		})
-		return 0.0
+		return standard, 0.0
 	}
 
 	discount := costConfig.S3Cost.Upload.UploadCostDiscount
@@ -197,33 +200,22 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 			"message":  "invalid S3 upload cost discount",
 			"discount": discount,
 		})
-		return 0.0
+		return standard, 0.0
 	}
 
-	return float64(putRequests) * S3PutRequestCost * (1 - discount)
+	adjusted = standard * (1 - discount)
+	return standard, adjusted
 }
 
 // CalculateS3StorageCostWithConfig calculates the S3 storage cost for uploadBytes over their retention period
 // using the bucket's Intelligent Tiering schedule. expirationDays must be positive; buckets without a
 // lifecycle expiration policy have no defined retention period and cannot have their cost calculated, so
-// this function returns 0 for them. Returns 0 if config is nil.
-func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, expirationDays int, costConfig *evergreen.CostConfig) float64 {
-	if uploadBytes <= 0 {
-		return 0.0
+// this function returns 0 for them. Returns both the standard (non-discounted) and adjusted (discounted)
+// values. If config is nil, standard is still computed but adjusted is returned as 0.
+func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, expirationDays int, costConfig *evergreen.CostConfig) (standard, adjusted float64) {
+	if uploadBytes <= 0 || expirationDays <= 0 {
+		return 0.0, 0.0
 	}
-	if expirationDays <= 0 {
-		return 0.0
-	}
-	if costConfig == nil {
-		grip.Warning(ctx, message.Fields{
-			"message": "cost config is not available to calculate S3 storage cost",
-		})
-		return 0.0
-	}
-
-	standardDiscount := costConfig.S3Cost.Storage.StandardStorageCostDiscount
-	iaDiscount := costConfig.S3Cost.Storage.IAStorageCostDiscount
-	archiveDiscount := costConfig.S3Cost.Storage.ArchiveStorageCostDiscount
 
 	// Each variable represents how many days the object spends in that Intelligent Tiering tier:
 	// Standard (days 0–30), Infrequent Access (days 30–90), Archive (days 90+).
@@ -235,11 +227,28 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 		return pricePerGBMonth / S3BytesPerGB / S3DaysPerMonth
 	}
 
-	standardCost := float64(daysInStandard) * pricePerBytePerDay(S3StandardPricePerGBMonth) * (1 - standardDiscount)
-	iaCost := float64(daysInIA) * pricePerBytePerDay(S3IAPricePerGBMonth) * (1 - iaDiscount)
-	archiveCost := float64(daysInArchive) * pricePerBytePerDay(S3ArchivePricePerGBMonth) * (1 - archiveDiscount)
+	standardCostPerByte := float64(daysInStandard)*pricePerBytePerDay(S3StandardPricePerGBMonth) +
+		float64(daysInIA)*pricePerBytePerDay(S3IAPricePerGBMonth) +
+		float64(daysInArchive)*pricePerBytePerDay(S3ArchivePricePerGBMonth)
+	standard = float64(uploadBytes) * standardCostPerByte
 
-	return float64(uploadBytes) * (standardCost + iaCost + archiveCost)
+	if costConfig == nil {
+		grip.Warning(ctx, message.Fields{
+			"message": "cost config is not available to calculate S3 storage cost",
+		})
+		return standard, 0.0
+	}
+
+	standardDiscount := costConfig.S3Cost.Storage.StandardStorageCostDiscount
+	iaDiscount := costConfig.S3Cost.Storage.IAStorageCostDiscount
+	archiveDiscount := costConfig.S3Cost.Storage.ArchiveStorageCostDiscount
+
+	adjustedCostPerByte := float64(daysInStandard)*pricePerBytePerDay(S3StandardPricePerGBMonth)*(1-standardDiscount) +
+		float64(daysInIA)*pricePerBytePerDay(S3IAPricePerGBMonth)*(1-iaDiscount) +
+		float64(daysInArchive)*pricePerBytePerDay(S3ArchivePricePerGBMonth)*(1-archiveDiscount)
+	adjusted = float64(uploadBytes) * adjustedCostPerByte
+
+	return standard, adjusted
 }
 
 // ArtifactIncrementOptions holds the parameters for incrementing artifact upload metrics.

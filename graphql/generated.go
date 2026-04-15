@@ -405,13 +405,18 @@ type ComplexityRoot struct {
 	}
 
 	Cost struct {
-		AdjustedEBSStorageCost    func(childComplexity int) int
-		AdjustedEBSThroughputCost func(childComplexity int) int
-		AdjustedEC2Cost           func(childComplexity int) int
-		OnDemandEC2Cost           func(childComplexity int) int
-		S3ArtifactPutCost         func(childComplexity int) int
-		S3ArtifactStorageCost     func(childComplexity int) int
-		S3LogPutCost              func(childComplexity int) int
+		AdjustedEBSStorageCost        func(childComplexity int) int
+		AdjustedEBSThroughputCost     func(childComplexity int) int
+		AdjustedEC2Cost               func(childComplexity int) int
+		AdjustedS3ArtifactPutCost     func(childComplexity int) int
+		AdjustedS3ArtifactStorageCost func(childComplexity int) int
+		AdjustedS3LogPutCost          func(childComplexity int) int
+		AdjustedS3LogStorageCost      func(childComplexity int) int
+		OnDemandEC2Cost               func(childComplexity int) int
+		S3ArtifactPutCost             func(childComplexity int) int
+		S3ArtifactStorageCost         func(childComplexity int) int
+		S3LogPutCost                  func(childComplexity int) int
+		S3LogStorageCost              func(childComplexity int) int
 	}
 
 	CostConfig struct {
@@ -4127,6 +4132,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.AdjustedEC2Cost(childComplexity), true
+	case "Cost.adjustedS3ArtifactPutCost":
+		if e.complexity.Cost.AdjustedS3ArtifactPutCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3ArtifactPutCost(childComplexity), true
+	case "Cost.adjustedS3ArtifactStorageCost":
+		if e.complexity.Cost.AdjustedS3ArtifactStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3ArtifactStorageCost(childComplexity), true
+	case "Cost.adjustedS3LogPutCost":
+		if e.complexity.Cost.AdjustedS3LogPutCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3LogPutCost(childComplexity), true
+	case "Cost.adjustedS3LogStorageCost":
+		if e.complexity.Cost.AdjustedS3LogStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3LogStorageCost(childComplexity), true
 	case "Cost.onDemandEC2Cost":
 		if e.complexity.Cost.OnDemandEC2Cost == nil {
 			break
@@ -4151,6 +4180,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.S3LogPutCost(childComplexity), true
+	case "Cost.s3LogStorageCost":
+		if e.complexity.Cost.S3LogStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.S3LogStorageCost(childComplexity), true
 
 	case "CostConfig.ebsCost":
 		if e.complexity.CostConfig.EBSCost == nil {
@@ -24008,35 +24043,6 @@ func (ec *executionContext) fieldContext_ContainerPoolsConfig_pools(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Cost_onDemandEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Cost_onDemandEC2Cost,
-		func(ctx context.Context) (any, error) {
-			return obj.OnDemandEC2Cost, nil
-		},
-		nil,
-		ec.marshalOFloat2float64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Cost_onDemandEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Cost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Cost_adjustedEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24054,35 +24060,6 @@ func (ec *executionContext) _Cost_adjustedEC2Cost(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_Cost_adjustedEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Cost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Cost_adjustedEBSThroughputCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Cost_adjustedEBSThroughputCost,
-		func(ctx context.Context) (any, error) {
-			return obj.AdjustedEBSThroughputCost, nil
-		},
-		nil,
-		ec.marshalOFloat2float64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Cost_adjustedEBSThroughputCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -24124,6 +24101,180 @@ func (ec *executionContext) fieldContext_Cost_adjustedEBSStorageCost(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Cost_adjustedEBSThroughputCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedEBSThroughputCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedEBSThroughputCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedEBSThroughputCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedS3ArtifactPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedS3ArtifactPutCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedS3ArtifactPutCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedS3ArtifactPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedS3ArtifactStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedS3ArtifactStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedS3ArtifactStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedS3ArtifactStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedS3LogPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedS3LogPutCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedS3LogPutCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedS3LogPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedS3LogStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedS3LogStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedS3LogStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedS3LogStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_onDemandEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_onDemandEC2Cost,
+		func(ctx context.Context) (any, error) {
+			return obj.OnDemandEC2Cost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_onDemandEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Cost_s3ArtifactPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24141,6 +24292,35 @@ func (ec *executionContext) _Cost_s3ArtifactPutCost(ctx context.Context, field g
 }
 
 func (ec *executionContext) fieldContext_Cost_s3ArtifactPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_s3ArtifactStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_s3ArtifactStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.S3ArtifactStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_s3ArtifactStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -24182,14 +24362,14 @@ func (ec *executionContext) fieldContext_Cost_s3LogPutCost(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Cost_s3ArtifactStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Cost_s3LogStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Cost_s3ArtifactStorageCost,
+		ec.fieldContext_Cost_s3LogStorageCost,
 		func(ctx context.Context) (any, error) {
-			return obj.S3ArtifactStorageCost, nil
+			return obj.S3LogStorageCost, nil
 		},
 		nil,
 		ec.marshalOFloat2float64,
@@ -24198,7 +24378,7 @@ func (ec *executionContext) _Cost_s3ArtifactStorageCost(ctx context.Context, fie
 	)
 }
 
-func (ec *executionContext) fieldContext_Cost_s3ArtifactStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Cost_s3LogStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -65382,20 +65562,30 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			case "s3ArtifactStorageCost":
 				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3LogStorageCost":
+				return ec.fieldContext_Cost_s3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -65427,20 +65617,30 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			case "s3ArtifactStorageCost":
 				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3LogStorageCost":
+				return ec.fieldContext_Cost_s3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -73162,20 +73362,30 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			case "s3ArtifactStorageCost":
 				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3LogStorageCost":
+				return ec.fieldContext_Cost_s3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -73700,20 +73910,30 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			case "s3ArtifactStorageCost":
 				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3LogStorageCost":
+				return ec.fieldContext_Cost_s3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -74662,20 +74882,30 @@ func (ec *executionContext) fieldContext_VersionLite_cost(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
+			case "onDemandEC2Cost":
+				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "s3ArtifactPutCost":
 				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
 			case "s3ArtifactStorageCost":
 				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "s3LogPutCost":
+				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
+			case "s3LogStorageCost":
+				return ec.fieldContext_Cost_s3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -91359,20 +91589,30 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Cost")
-		case "onDemandEC2Cost":
-			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
 		case "adjustedEC2Cost":
 			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
-		case "adjustedEBSThroughputCost":
-			out.Values[i] = ec._Cost_adjustedEBSThroughputCost(ctx, field, obj)
 		case "adjustedEBSStorageCost":
 			out.Values[i] = ec._Cost_adjustedEBSStorageCost(ctx, field, obj)
+		case "adjustedEBSThroughputCost":
+			out.Values[i] = ec._Cost_adjustedEBSThroughputCost(ctx, field, obj)
+		case "adjustedS3ArtifactPutCost":
+			out.Values[i] = ec._Cost_adjustedS3ArtifactPutCost(ctx, field, obj)
+		case "adjustedS3ArtifactStorageCost":
+			out.Values[i] = ec._Cost_adjustedS3ArtifactStorageCost(ctx, field, obj)
+		case "adjustedS3LogPutCost":
+			out.Values[i] = ec._Cost_adjustedS3LogPutCost(ctx, field, obj)
+		case "adjustedS3LogStorageCost":
+			out.Values[i] = ec._Cost_adjustedS3LogStorageCost(ctx, field, obj)
+		case "onDemandEC2Cost":
+			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
 		case "s3ArtifactPutCost":
 			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
-		case "s3LogPutCost":
-			out.Values[i] = ec._Cost_s3LogPutCost(ctx, field, obj)
 		case "s3ArtifactStorageCost":
 			out.Values[i] = ec._Cost_s3ArtifactStorageCost(ctx, field, obj)
+		case "s3LogPutCost":
+			out.Values[i] = ec._Cost_s3LogPutCost(ctx, field, obj)
+		case "s3LogStorageCost":
+			out.Values[i] = ec._Cost_s3LogStorageCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
