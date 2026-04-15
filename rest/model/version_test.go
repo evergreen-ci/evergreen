@@ -107,8 +107,8 @@ func TestVersionBuildFromServiceCost(t *testing.T) {
 		v := model.Version{
 			Id: "v-with-costs",
 			Cost: cost.Cost{
-				OnDemandEC2Cost:          15.0,
-				AdjustedEC2Cost:          12.0,
+				OnDemandEC2Cost:           15.0,
+				AdjustedEC2Cost:           12.0,
 				AdjustedS3ArtifactPutCost: 0.08,
 				AdjustedS3LogPutCost:      0.03,
 			},
