@@ -11,7 +11,7 @@ mutation {
           id: "checks-alias-id-1"
           alias: "__github_checks"  # evergreen.GithubChecksAlias
           gitTag: ""
-          remotePath: "evergreen.yml"
+          remotePath: ""
           task: "unit_tests"
           variant: "ubuntu1604"
           taskTags: []

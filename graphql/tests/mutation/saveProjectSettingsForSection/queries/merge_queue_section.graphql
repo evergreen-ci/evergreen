@@ -11,7 +11,7 @@ mutation {
           id: "cq-alias-id-1"
           alias: "__commit_queue"
           gitTag: ""
-          remotePath: "evergreen.yml"
+          remotePath: ""
           task: "unit_tests"
           variant: "ubuntu1604"
           taskTags: []

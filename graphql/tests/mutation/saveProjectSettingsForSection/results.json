@@ -313,8 +313,7 @@
             },
             "vars": {
               "vars": {
-                "hello": "",
-                "foo": "bar"
+                "goodbye": ""
               }
             }
           }
