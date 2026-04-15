@@ -386,7 +386,7 @@
       "collector_endpoint": "<collector_endpoint>",
       "collector_internal_endpoint": "<collector_internal_endpoint>",
       "enabled": false,
-      "trace_url_template": ""
+      "trace_url_template": "<trace_url_template>"
     },
     {
       "_id": "providers",

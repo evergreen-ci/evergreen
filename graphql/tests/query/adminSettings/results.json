@@ -420,7 +420,7 @@
               "collectorEndpoint": "\u003ccollector_endpoint\u003e",
               "collectorInternalEndpoint": "\u003ccollector_internal_endpoint\u003e",
               "collectorAPIKey": "\u003ccollector_api_key\u003e",
-              "traceUrlTemplate": null
+              "traceUrlTemplate": "\u003ctrace_url_template\u003e"
             },
             "projectCreation": {
               "totalProjectLimit": 10,
