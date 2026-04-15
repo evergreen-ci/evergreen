@@ -2853,7 +2853,7 @@ func (c *APITracerSettings) BuildFromService(h any) error {
 		c.CollectorEndpoint = &v.CollectorEndpoint
 		c.CollectorInternalEndpoint = &v.CollectorInternalEndpoint
 		c.CollectorAPIKey = &v.CollectorAPIKey
-		c.TraceURLTemplate = utility.ToStringPtr(v.TraceURLTemplate)
+		c.TraceURLTemplate = &v.TraceURLTemplate
 	default:
 		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
 	}
