@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"context"
+	"strings"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -35,6 +36,10 @@ type S3StorageCostConfig struct {
 	ArchiveStorageCostDiscount  float64 `bson:"archive_storage_cost_discount" json:"archive_storage_cost_discount" yaml:"archive_storage_cost_discount"`
 	// DefaultMaxArtifactExpirationDays is the fallback retention period used when no lifecycle rule is found for a bucket.
 	DefaultMaxArtifactExpirationDays int `bson:"default_max_artifact_expiration_days" json:"default_max_artifact_expiration_days" yaml:"default_max_artifact_expiration_days"`
+	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are owned by Devprod that we want to calculate s3 costs for.
+	DevprodOwnedAWSAccountIDs []string `bson:"devprod_owned_aws_account_ids,omitempty" json:"devprod_owned_aws_account_ids,omitempty" yaml:"devprod_owned_aws_account_ids,omitempty"`
+	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we want to calculate s3 costs for but don't have lifecycle rules for.
+	ArtifactAWSAccountsWithoutLifecycleRules []string `bson:"artifact_aws_accounts_without_lifecycle_rules,omitempty" json:"artifact_aws_accounts_without_lifecycle_rules,omitempty" yaml:"artifact_aws_accounts_without_lifecycle_rules,omitempty"`
 }
 
 // S3CostConfig represents S3 cost configuration with separate upload and storage settings.
@@ -69,11 +74,13 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			financeConfigFormulaKey:             c.FinanceFormula,
 			financeConfigSavingsPlanDiscountKey: c.SavingsPlanDiscount,
 			financeConfigOnDemandDiscountKey:    c.OnDemandDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "upload", "upload_cost_discount"):                  c.S3Cost.Upload.UploadCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "standard_storage_cost_discount"):       c.S3Cost.Storage.StandardStorageCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "i_a_storage_cost_discount"):            c.S3Cost.Storage.IAStorageCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "archive_storage_cost_discount"):        c.S3Cost.Storage.ArchiveStorageCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "default_max_artifact_expiration_days"): c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "upload", "upload_cost_discount"):                           c.S3Cost.Upload.UploadCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "standard_storage_cost_discount"):                c.S3Cost.Storage.StandardStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "i_a_storage_cost_discount"):                     c.S3Cost.Storage.IAStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "archive_storage_cost_discount"):                 c.S3Cost.Storage.ArchiveStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "default_max_artifact_expiration_days"):          c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "devprod_owned_aws_account_ids"):                 c.S3Cost.Storage.DevprodOwnedAWSAccountIDs,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "artifact_aws_accounts_without_lifecycle_rules"): c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules,
 			financeConfigEBSCostKey: c.EBSCost,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
@@ -99,8 +106,34 @@ func (c *CostConfig) ValidateAndDefault() error {
 	if c.S3Cost.Storage.DefaultMaxArtifactExpirationDays < 0 {
 		catcher.New("default max artifact expiration days must be non-negative")
 	}
+	for _, id := range c.S3Cost.Storage.DevprodOwnedAWSAccountIDs {
+		if err := validateAWSAccountID(id, "devprod owned AWS account ID"); err != nil {
+			catcher.Add(err)
+		}
+	}
+	for _, id := range c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules {
+		if err := validateAWSAccountID(id, "artifact AWS account without lifecycle rules"); err != nil {
+			catcher.Add(err)
+		}
+	}
 
 	return catcher.Resolve()
+}
+
+func validateAWSAccountID(id, fieldLabel string) error {
+	s := strings.TrimSpace(id)
+	if s == "" {
+		return errors.Errorf("%s cannot be empty", fieldLabel)
+	}
+	if len(s) != 12 {
+		return errors.Errorf("%s must be a 12-digit AWS account ID", fieldLabel)
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return errors.Errorf("%s must contain only digits", fieldLabel)
+		}
+	}
+	return nil
 }
 
 // IsConfigured returns true if any finance config field is set.

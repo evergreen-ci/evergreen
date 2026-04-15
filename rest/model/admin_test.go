@@ -655,6 +655,23 @@ func TestAPIS3StorageCostConfig(t *testing.T) {
 			assert.Equal(t, 0.25, svc.StandardStorageCostDiscount)
 			assert.Equal(t, 0.35, svc.IAStorageCostDiscount)
 		})
+
+		t.Run("AwsAccountListsRoundTrip", func(t *testing.T) {
+			api := APIS3StorageCostConfig{
+				DevprodOwnedAwsAccountIds:                []string{"123456789012"},
+				ArtifactAwsAccountsWithoutLifecycleRules: []string{"210987654321"},
+			}
+			svcInterface, err := api.ToService()
+			require.NoError(t, err)
+			svc := svcInterface.(evergreen.S3StorageCostConfig)
+			assert.Equal(t, []string{"123456789012"}, svc.DevprodOwnedAWSAccountIDs)
+			assert.Equal(t, []string{"210987654321"}, svc.ArtifactAWSAccountsWithoutLifecycleRules)
+
+			var out APIS3StorageCostConfig
+			require.NoError(t, out.BuildFromService(svc))
+			assert.Equal(t, api.DevprodOwnedAwsAccountIds, out.DevprodOwnedAwsAccountIds)
+			assert.Equal(t, api.ArtifactAwsAccountsWithoutLifecycleRules, out.ArtifactAwsAccountsWithoutLifecycleRules)
+		})
 	})
 }
 

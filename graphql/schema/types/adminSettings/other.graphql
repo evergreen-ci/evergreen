@@ -227,6 +227,8 @@ input S3StorageCostConfigInput {
     iAStorageCostDiscount: Float
     archiveStorageCostDiscount: Float
     defaultMaxArtifactExpirationDays: Int
+    devprodOwnedAwsAccountIds: [String!]
+    artifactAwsAccountsWithoutLifecycleRules: [String!]
 }
 
 type S3StorageCostConfig {
@@ -234,6 +236,8 @@ type S3StorageCostConfig {
     iAStorageCostDiscount: Float
     archiveStorageCostDiscount: Float
     defaultMaxArtifactExpirationDays: Int
+    devprodOwnedAwsAccountIds: [String!]
+    artifactAwsAccountsWithoutLifecycleRules: [String!]
 }
 
 input S3CostConfigInput {

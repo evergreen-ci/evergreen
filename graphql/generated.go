@@ -1678,10 +1678,12 @@ type ComplexityRoot struct {
 	}
 
 	S3StorageCostConfig struct {
-		ArchiveStorageCostDiscount       func(childComplexity int) int
-		DefaultMaxArtifactExpirationDays func(childComplexity int) int
-		IAStorageCostDiscount            func(childComplexity int) int
-		StandardStorageCostDiscount      func(childComplexity int) int
+		ArchiveStorageCostDiscount               func(childComplexity int) int
+		ArtifactAwsAccountsWithoutLifecycleRules func(childComplexity int) int
+		DefaultMaxArtifactExpirationDays         func(childComplexity int) int
+		DevprodOwnedAwsAccountIds                func(childComplexity int) int
+		IAStorageCostDiscount                    func(childComplexity int) int
+		StandardStorageCostDiscount              func(childComplexity int) int
 	}
 
 	S3UploadCostConfig struct {
@@ -9805,12 +9807,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.S3StorageCostConfig.ArchiveStorageCostDiscount(childComplexity), true
+	case "S3StorageCostConfig.artifactAwsAccountsWithoutLifecycleRules":
+		if e.complexity.S3StorageCostConfig.ArtifactAwsAccountsWithoutLifecycleRules == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.ArtifactAwsAccountsWithoutLifecycleRules(childComplexity), true
 	case "S3StorageCostConfig.defaultMaxArtifactExpirationDays":
 		if e.complexity.S3StorageCostConfig.DefaultMaxArtifactExpirationDays == nil {
 			break
 		}
 
 		return e.complexity.S3StorageCostConfig.DefaultMaxArtifactExpirationDays(childComplexity), true
+	case "S3StorageCostConfig.devprodOwnedAwsAccountIds":
+		if e.complexity.S3StorageCostConfig.DevprodOwnedAwsAccountIds == nil {
+			break
+		}
+
+		return e.complexity.S3StorageCostConfig.DevprodOwnedAwsAccountIds(childComplexity), true
 	case "S3StorageCostConfig.iAStorageCostDiscount":
 		if e.complexity.S3StorageCostConfig.IAStorageCostDiscount == nil {
 			break
@@ -57075,6 +57089,10 @@ func (ec *executionContext) fieldContext_S3CostConfig_storage(_ context.Context,
 				return ec.fieldContext_S3StorageCostConfig_archiveStorageCostDiscount(ctx, field)
 			case "defaultMaxArtifactExpirationDays":
 				return ec.fieldContext_S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx, field)
+			case "devprodOwnedAwsAccountIds":
+				return ec.fieldContext_S3StorageCostConfig_devprodOwnedAwsAccountIds(ctx, field)
+			case "artifactAwsAccountsWithoutLifecycleRules":
+				return ec.fieldContext_S3StorageCostConfig_artifactAwsAccountsWithoutLifecycleRules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type S3StorageCostConfig", field.Name)
 		},
@@ -57293,6 +57311,64 @@ func (ec *executionContext) fieldContext_S3StorageCostConfig_defaultMaxArtifactE
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_devprodOwnedAwsAccountIds(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_devprodOwnedAwsAccountIds,
+		func(ctx context.Context) (any, error) {
+			return obj.DevprodOwnedAwsAccountIds, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_devprodOwnedAwsAccountIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _S3StorageCostConfig_artifactAwsAccountsWithoutLifecycleRules(ctx context.Context, field graphql.CollectedField, obj *model.APIS3StorageCostConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_S3StorageCostConfig_artifactAwsAccountsWithoutLifecycleRules,
+		func(ctx context.Context) (any, error) {
+			return obj.ArtifactAwsAccountsWithoutLifecycleRules, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_S3StorageCostConfig_artifactAwsAccountsWithoutLifecycleRules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "S3StorageCostConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -86287,7 +86363,7 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount", "archiveStorageCostDiscount", "defaultMaxArtifactExpirationDays"}
+	fieldsInOrder := [...]string{"standardStorageCostDiscount", "iAStorageCostDiscount", "archiveStorageCostDiscount", "defaultMaxArtifactExpirationDays", "devprodOwnedAwsAccountIds", "artifactAwsAccountsWithoutLifecycleRules"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86322,6 +86398,20 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 				return it, err
 			}
 			it.DefaultMaxArtifactExpirationDays = data
+		case "devprodOwnedAwsAccountIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("devprodOwnedAwsAccountIds"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DevprodOwnedAwsAccountIds = data
+		case "artifactAwsAccountsWithoutLifecycleRules":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("artifactAwsAccountsWithoutLifecycleRules"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ArtifactAwsAccountsWithoutLifecycleRules = data
 		}
 	}
 
@@ -102359,6 +102449,10 @@ func (ec *executionContext) _S3StorageCostConfig(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._S3StorageCostConfig_archiveStorageCostDiscount(ctx, field, obj)
 		case "defaultMaxArtifactExpirationDays":
 			out.Values[i] = ec._S3StorageCostConfig_defaultMaxArtifactExpirationDays(ctx, field, obj)
+		case "devprodOwnedAwsAccountIds":
+			out.Values[i] = ec._S3StorageCostConfig_devprodOwnedAwsAccountIds(ctx, field, obj)
+		case "artifactAwsAccountsWithoutLifecycleRules":
+			out.Values[i] = ec._S3StorageCostConfig_artifactAwsAccountsWithoutLifecycleRules(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
