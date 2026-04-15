@@ -1,0 +1,23 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectId: "sandbox_project_id"
+      projectRef: {
+        id: "sandbox_project_id"
+        gitTagVersionsEnabled: true
+        gitTagAuthorizedUsers: ["user1", "user2"]
+        gitTagAuthorizedTeams: ["team1"]
+      }
+    }
+    section: GIT_TAGS
+  ) {
+    projectRef {
+      gitTagVersionsEnabled ## changed
+      gitTagAuthorizedUsers ## changed
+      gitTagAuthorizedTeams ## changed
+    }
+    vars {
+      vars ## should be unchanged
+    }
+  }
+}

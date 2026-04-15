@@ -1,3 +1,4 @@
+# TODO DEVPROD-31534: Remove old test
 mutation {
   saveProjectSettingsForSection(
     projectSettings: {
