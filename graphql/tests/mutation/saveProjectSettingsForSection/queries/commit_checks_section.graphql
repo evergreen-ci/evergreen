@@ -6,6 +6,18 @@ mutation {
         id: "sandbox_project_id"
         githubChecksEnabled: true
       }
+      aliases: [
+        {
+          id: "checks-alias-id-1"
+          alias: "__github_checks"  # evergreen.GithubChecksAlias
+          gitTag: ""
+          remotePath: "evergreen.yml"
+          task: "unit_tests"
+          variant: "ubuntu1604"
+          taskTags: []
+          variantTags: []
+        }
+      ]
     }
     section: COMMIT_CHECKS
   ) {

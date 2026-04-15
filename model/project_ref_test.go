@@ -1432,8 +1432,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 
 			assert.True(t, pRefFromDb.IsPRTestingEnabled())
-			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
-			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+			assert.False(t, pRefFromDb.IsGithubChecksEnabled())
+			assert.Equal(t, []string{"anna"}, pRefFromDb.GitTagAuthorizedUsers)
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
@@ -1450,8 +1450,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 
-			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.True(t, pRefFromDb.IsPRTestingEnabled())
+			assert.False(t, pRefFromDb.IsGithubChecksEnabled())
 			assert.Equal(t, []string{"anna"}, pRefFromDb.GitTagAuthorizedUsers)
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
