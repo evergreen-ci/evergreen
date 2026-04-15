@@ -73,6 +73,7 @@ query Other {
       collectorEndpoint
       collectorInternalEndpoint
       collectorAPIKey
+      traceUrlTemplate
     }
     projectCreation {
       totalProjectLimit

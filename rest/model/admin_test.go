@@ -209,6 +209,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Tracer.Enabled, *apiSettings.Tracer.Enabled)
 	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
 	assert.Equal(testSettings.Tracer.CollectorInternalEndpoint, *apiSettings.Tracer.CollectorInternalEndpoint)
+	assert.Equal(testSettings.Tracer.TraceURLTemplate, utility.FromStringPtr(apiSettings.Tracer.TraceURLTemplate))
 	assert.Equal(testSettings.GitHubCheckRun.CheckRunLimit, *apiSettings.GitHubCheckRun.CheckRunLimit)
 	assert.Equal(testSettings.Sage.BaseURL, utility.FromStringPtr(apiSettings.Sage.BaseURL))
 
@@ -323,6 +324,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Tracer.Enabled, dbSettings.Tracer.Enabled)
 	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
 	assert.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, dbSettings.Tracer.CollectorInternalEndpoint)
+	assert.EqualValues(testSettings.Tracer.TraceURLTemplate, dbSettings.Tracer.TraceURLTemplate)
 	assert.EqualValues(testSettings.GitHubCheckRun.CheckRunLimit, dbSettings.GitHubCheckRun.CheckRunLimit)
 	assert.EqualValues(testSettings.Sage.BaseURL, dbSettings.Sage.BaseURL)
 }

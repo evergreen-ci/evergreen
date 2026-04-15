@@ -2173,6 +2173,7 @@ type ComplexityRoot struct {
 		CollectorEndpoint         func(childComplexity int) int
 		CollectorInternalEndpoint func(childComplexity int) int
 		Enabled                   func(childComplexity int) int
+		TraceURLTemplate          func(childComplexity int) int
 	}
 
 	TriggerAlias struct {
@@ -11839,6 +11840,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TracerSettings.Enabled(childComplexity), true
+	case "TracerSettings.traceUrlTemplate":
+		if e.complexity.TracerSettings.TraceURLTemplate == nil {
+			break
+		}
+
+		return e.complexity.TracerSettings.TraceURLTemplate(childComplexity), true
 
 	case "TriggerAlias.alias":
 		if e.complexity.TriggerAlias.Alias == nil {
@@ -19959,6 +19966,8 @@ func (ec *executionContext) fieldContext_AdminSettings_tracer(_ context.Context,
 				return ec.fieldContext_TracerSettings_collectorInternalEndpoint(ctx, field)
 			case "collectorAPIKey":
 				return ec.fieldContext_TracerSettings_collectorAPIKey(ctx, field)
+			case "traceUrlTemplate":
+				return ec.fieldContext_TracerSettings_traceUrlTemplate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TracerSettings", field.Name)
 		},
@@ -70107,6 +70116,35 @@ func (ec *executionContext) fieldContext_TracerSettings_collectorAPIKey(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _TracerSettings_traceUrlTemplate(ctx context.Context, field graphql.CollectedField, obj *model.APITracerSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TracerSettings_traceUrlTemplate,
+		func(ctx context.Context) (any, error) {
+			return obj.TraceURLTemplate, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TracerSettings_traceUrlTemplate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TracerSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TriggerAlias_alias(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -88370,7 +88408,7 @@ func (ec *executionContext) unmarshalInputTracerSettingsInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "collectorEndpoint", "collectorInternalEndpoint", "collectorAPIKey"}
+	fieldsInOrder := [...]string{"enabled", "collectorEndpoint", "collectorInternalEndpoint", "collectorAPIKey", "traceUrlTemplate"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88422,6 +88460,13 @@ func (ec *executionContext) unmarshalInputTracerSettingsInput(ctx context.Contex
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		case "traceUrlTemplate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("traceUrlTemplate"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TraceURLTemplate = data
 		}
 	}
 
@@ -107166,6 +107211,8 @@ func (ec *executionContext) _TracerSettings(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._TracerSettings_collectorInternalEndpoint(ctx, field, obj)
 		case "collectorAPIKey":
 			out.Values[i] = ec._TracerSettings_collectorAPIKey(ctx, field, obj)
+		case "traceUrlTemplate":
+			out.Values[i] = ec._TracerSettings_traceUrlTemplate(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
