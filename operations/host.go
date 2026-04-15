@@ -18,7 +18,6 @@ func Host() cli.Command {
 			hostTerminate(),
 			hostProvision(),
 			hostSetup(),
-			hostFetch(),
 			hostSSH(),
 			hostRunCommand(),
 			hostRsync(),

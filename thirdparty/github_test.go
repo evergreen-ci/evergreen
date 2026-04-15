@@ -422,23 +422,47 @@ func (s *githubSuite) TestGitHubUserPermissionLevel() {
 	s.False(hasPermission)
 }
 
-func (s *githubSuite) TestGetGithubPullRequestDiff() {
-	p := GithubPatch{
-		PRNumber:   448,
-		BaseOwner:  "evergreen-ci",
-		BaseRepo:   "evergreen",
-		BaseBranch: "main",
-	}
-
-	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, p)
-	s.NoError(err)
-	s.Len(summaries, 2)
-	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
-}
-
 func (s *githubSuite) TestGetBranchProtectionRules() {
 	_, err := GetEvergreenBranchProtectionRules(s.ctx, "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
+}
+
+func TestGetGithubPullRequestPatch(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config)
+
+	t.Run("PR448", func(t *testing.T) {
+		diff, summaries, err := GetGithubPullRequestPatch(t.Context(), GithubPatch{
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			// Main hash for PR 448.
+			BaseHash: "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
+			// Head hash for PR 448.
+			HeadHash: "729b1ab0e21514fb1af39fc298e3fae9b480d568",
+		})
+		require.NoError(t, err)
+		assert.Len(t, summaries, 2)
+		assert.Contains(t, diff, "diff --git a/cli/host.go b/cli/host.go")
+	})
+
+	t.Run("PR9880BinaryPatch", func(t *testing.T) {
+		diff, summaries, err := GetGithubPullRequestPatch(t.Context(), GithubPatch{
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			// Main hash for PR 9880.
+			BaseHash: "cd147d8cbb698549a5bce79302075b86b029acd1",
+			// Head hash for PR 9880.
+			HeadHash: "1869c8add1cd54a76dd9fb52d6d7b8f9924bc3e9",
+		})
+		require.NoError(t, err)
+		assert.Len(t, summaries, 7)
+		// These are the headers that indicate a binary file is included in the patch.
+		assert.Contains(t, diff, "GIT binary patch")
+		assert.Contains(t, diff, "literal 1006867")
+		// This is the header that indicates a binary file is in the diff but not included
+		// in the patch.
+		assert.NotContains(t, diff, "Binary files /dev/null and b/docs/images/run-every-mainline-commit-project-setting.png differ")
+	})
 }
 
 func TestVerifyGithubAPILimitHeader(t *testing.T) {

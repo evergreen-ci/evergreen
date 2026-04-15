@@ -1,0 +1,15 @@
+{
+  task(taskId: "taskity_task_2") {
+    id
+    version {
+      id
+      status
+      taskStatusStats {
+        counts {
+          status
+          count
+        }
+      }
+    }
+  }
+}

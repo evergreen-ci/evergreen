@@ -256,6 +256,8 @@ func handleTerminatedHostSpawnedByTask(ctx context.Context, h *host.Host) error 
 			"host_id":        h.Id,
 			"task_id":        h.SpawnOptions.TaskID,
 			"task_execution": h.SpawnOptions.TaskExecutionNumber,
+			"build_id":       h.SpawnOptions.BuildID,
+			"project_id":     h.SpawnOptions.ProjectID,
 		})
 
 		catcher := grip.NewBasicCatcher()
@@ -271,6 +273,8 @@ func handleTerminatedHostSpawnedByTask(ctx context.Context, h *host.Host) error 
 		"new_host_id":          intent.Id,
 		"task_id":              h.SpawnOptions.TaskID,
 		"task_execution":       h.SpawnOptions.TaskExecutionNumber,
+		"build_id":             h.SpawnOptions.BuildID,
+		"project_id":           h.SpawnOptions.ProjectID,
 	})
 
 	return nil

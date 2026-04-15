@@ -1018,7 +1018,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestPatch(ctx, patchDoc.GithubPatchData)
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
@@ -1172,7 +1172,19 @@ func (j *patchIntentProcessor) getChangedFilesForGithubMerge(ctx context.Context
 
 // makeMergeQueueDescription returns a new description for a merge queue patch using the merge group.
 func makeMergeQueueDescription(mergeGroup thirdparty.GithubMergeGroup) string {
-	return "GitHub Merge Queue: " + mergeGroup.HeadCommit + " (" + mergeGroup.HeadSHA[0:7] + ")"
+	headShort := mergeGroup.HeadSHA
+	if len(headShort) > 7 {
+		headShort = headShort[:7]
+	}
+	desc := "GitHub Merge Queue: " + mergeGroup.HeadCommit + " (" + headShort + ")"
+	if mergeGroup.BaseSHA != "" {
+		baseShort := mergeGroup.BaseSHA
+		if len(baseShort) > 7 {
+			baseShort = baseShort[:7]
+		}
+		desc += " [merge-base " + baseShort + "]"
+	}
+	return desc
 }
 
 func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {

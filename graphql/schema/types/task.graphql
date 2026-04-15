@@ -116,6 +116,7 @@ type Task {
   nextTaskFailing: Task
   nextTaskPassing: Task
   order: Int!
+  invalidatedByUpstream: Boolean
   patch: Patch
   patchNumber: Int
   """

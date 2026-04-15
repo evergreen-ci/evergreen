@@ -2258,6 +2258,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			projectRefPatchingDisabledKey:        p.PatchingDisabled,
 			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
 			projectRefDebugSpawnHostsDisabledKey: p.DebugSpawnHostsDisabled,
+			projectRefRunEveryMainlineCommitKey:  p.RunEveryMainlineCommit,
 		}
 		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
 		if p.TracksPushEvents != nil {
@@ -2314,7 +2315,6 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
-					projectRefRunEveryMainlineCommitKey: p.RunEveryMainlineCommit,
 				},
 			})
 	case ProjectPageNotificationsSection:

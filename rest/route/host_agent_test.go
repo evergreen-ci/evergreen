@@ -1058,6 +1058,78 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
 		},
+		"ExecutionTaskAlreadyFinishedUpdatesDisplayTask": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			// Simulate the case where a previous endTask call for ET2 successfully
+			// marked it "succeeded" and cleared the host's RunningTask, but the
+			// display task update computed the wrong status and left the display
+			// task stuck in "running". On the agent's retry, the handler should
+			// use the early return path (RunningTask == "") but still update the
+			// display task because ET2 is already finished.
+			et1 := task.Task{
+				Id:            "et1",
+				DisplayName:   "execTask1",
+				Status:        evergreen.TaskSucceeded,
+				Activated:     true,
+				Secret:        taskSecret,
+				Project:       projectId,
+				BuildId:       buildID,
+				Version:       versionId,
+				DisplayTaskId: utility.ToStringPtr("dt1"),
+			}
+			require.NoError(t, et1.Insert(t.Context()))
+			et2 := task.Task{
+				Id:            "et2",
+				DisplayName:   "execTask2",
+				Status:        evergreen.TaskSucceeded,
+				Activated:     true,
+				Secret:        taskSecret,
+				Project:       projectId,
+				BuildId:       buildID,
+				Version:       versionId,
+				DisplayTaskId: utility.ToStringPtr("dt1"),
+			}
+			require.NoError(t, et2.Insert(t.Context()))
+			displayTask := task.Task{
+				Id:             "dt1",
+				DisplayName:    "displayTask",
+				Status:         evergreen.TaskStarted,
+				Activated:      true,
+				Secret:         taskSecret,
+				Project:        projectId,
+				BuildId:        buildID,
+				Version:        versionId,
+				DisplayOnly:    true,
+				ExecutionTasks: []string{et1.Id, et2.Id},
+			}
+			require.NoError(t, displayTask.Insert(t.Context()))
+
+			// Host with no running task triggers the early return path.
+			hostWithNoTask := host.Host{
+				Id:            "h-no-task",
+				Secret:        hostSecret,
+				RunningTask:   "",
+				Status:        evergreen.HostRunning,
+				AgentRevision: evergreen.AgentVersion,
+			}
+			require.NoError(t, hostWithNoTask.Insert(ctx))
+
+			handler.taskID = et2.Id
+			handler.hostID = hostWithNoTask.Id
+			handler.details = apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}
+
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
+			require.True(t, taskResp.ShouldExit)
+
+			dbDisplayTask, err := task.FindOneId(ctx, displayTask.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDisplayTask)
+			assert.Equal(t, evergreen.TaskSucceeded, dbDisplayTask.Status)
+			assert.Equal(t, evergreen.TaskSucceeded, dbDisplayTask.DisplayStatusCache)
+		},
 		"SkipDecommissioningRecentlyProvisionedDynamicHostWithFailures": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)

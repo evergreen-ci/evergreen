@@ -156,8 +156,6 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			cleanupWhyIsMyDataMissingFile(ctx, wd)
-
 			if shouldFetchSource {
 				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
 					return err
@@ -179,14 +177,6 @@ func Fetch() cli.Command {
 			}
 			return nil
 		},
-	}
-}
-
-func cleanupWhyIsMyDataMissingFile(ctx context.Context, dir string) {
-	filePath := filepath.Join(dir, evergreen.WhyIsMyDataMissingName)
-	err := os.Remove(filePath)
-	if err != nil && !os.IsNotExist(err) {
-		grip.Warningf(ctx, "could not remove %s: %v", filePath, err)
 	}
 }
 

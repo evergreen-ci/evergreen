@@ -56,16 +56,18 @@ type APIPatch struct {
 	// List of documents of available tasks and associated build variant
 	VariantsTasks []VariantTask `json:"variants_tasks"`
 	// Whether the patch has been finalized and activated
-	Activated            bool                 `json:"activated"`
-	Alias                *string              `json:"alias,omitempty"`
-	GithubPatchData      APIGithubPatch       `json:"github_patch_data"`
-	ModuleCodeChanges    []APIModulePatch     `json:"module_code_changes"`
-	Parameters           []APIParameter       `json:"parameters"`
-	ProjectStorageMethod *string              `json:"project_storage_method,omitempty"`
-	ChildPatches         []APIPatch           `json:"child_patches"`
-	ChildPatchAliases    []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
-	Requester            *string              `json:"requester"`
-	MergedFrom           *string              `json:"merged_from"`
+	Activated bool `json:"activated"`
+	// Whether the patch was invalidated because an item ahead of it in the merge queue failed.
+	InvalidatedByUpstream bool                 `json:"invalidated_by_upstream"`
+	Alias                 *string              `json:"alias,omitempty"`
+	GithubPatchData       APIGithubPatch       `json:"github_patch_data"`
+	ModuleCodeChanges     []APIModulePatch     `json:"module_code_changes"`
+	Parameters            []APIParameter       `json:"parameters"`
+	ProjectStorageMethod  *string              `json:"project_storage_method,omitempty"`
+	ChildPatches          []APIPatch           `json:"child_patches"`
+	ChildPatchAliases     []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
+	Requester             *string              `json:"requester"`
+	MergedFrom            *string              `json:"merged_from"`
 
 	LocalModuleIncludes []APILocalModuleInclude `json:"local_module_includes,omitempty"`
 }
@@ -305,6 +307,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 
 	apiPatch.GithubPatchData = APIGithubPatch{}
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
+	apiPatch.InvalidatedByUpstream = p.GithubMergeData.InvalidatedByUpstream
 }
 
 func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
@@ -485,6 +488,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	}
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
+	res.GithubMergeData.InvalidatedByUpstream = apiPatch.InvalidatedByUpstream
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))
 	return res, catcher.Resolve()
 }

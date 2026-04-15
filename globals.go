@@ -191,8 +191,6 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	WhyIsMyDataMissingName = "whyIsTheDataMissing.txt"
-
 	// Env vars
 	EvergreenHome           = "EVGHOME"
 	MongodbURL              = "MONGO_URL"
@@ -260,7 +258,6 @@ const (
 	TempSetupScriptName           = "setup-temp.sh"
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
-	SpawnhostFetchScriptName      = ".evergreen-spawnhost-fetch.sh"
 
 	PlannerVersionTunable = "tunable"
 
@@ -296,6 +293,10 @@ const (
 	TagExpireOn          = "expire-on"
 	TagAllowRemoteAccess = "AllowRemoteAccess"
 	TagIsDebug           = "IsDebug"
+	TagTaskID            = "task-id"
+	TagTaskExecution     = "task-execution"
+	TagBuildID           = "build-id"
+	TagProject           = "project"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
@@ -541,6 +542,7 @@ const (
 	VersionFinishTimeOtelAttribute            = "evergreen.version.finish_time"
 	VersionAuthorOtelAttribute                = "evergreen.version.author"
 	VersionBranchOtelAttribute                = "evergreen.version.branch"
+	VersionHighestExecutionTaskOtelAttribute  = "evergreen.version.highest_execution_task"
 	VersionMakespanSecondsOtelAttribute       = "evergreen.version.makespan_seconds"
 	VersionTimeTakenSecondsOtelAttribute      = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute                 = "evergreen.version.pr_num"

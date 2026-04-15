@@ -1289,6 +1289,17 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			"host_id":                 currentHost.Id,
 			"distro":                  currentHost.Distro.Id,
 		})
+
+		// Attempt to update the display task in case this was only partially handled.
+		if t.IsPartOfDisplay(ctx) && t.IsFinished() {
+			if err = model.UpdateDisplayTaskForTask(ctx, t); err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"message":         "failed to update display task for finished execution task when host was not running task",
+					"task_id":         t.Id,
+					"display_task_id": t.DisplayTaskId,
+				}))
+			}
+		}
 		endTaskResp.ShouldExit = true
 		return gimlet.NewJSONResponse(endTaskResp)
 	}

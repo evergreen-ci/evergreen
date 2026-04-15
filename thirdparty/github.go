@@ -189,6 +189,10 @@ type GithubMergeGroup struct {
 	// so there are as many commits as there are PRs in the merge group. This is
 	// only the SHA of the first commit in the merge group.
 	HeadSHA string `bson:"head_sha"`
+	// BaseSHA is the merge base commit SHA for the merge group (GitHub's base_sha).
+	// It identifies which point on the base branch this merge group was built from,
+	// which helps distinguish merge groups that contain different sets of PRs.
+	BaseSHA string `bson:"base_sha,omitempty"`
 	// HeadCommit is the title of the commit at the head of the merge group. For
 	// each PR in the merge group, GitHub merges the commits from that PR
 	// together, so there are as many commits as there are PRs in the merge
@@ -1535,15 +1539,16 @@ func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNum
 	return pr, nil
 }
 
-// GetGithubPullRequestDiff downloads a raw diff from a Github Pull Request.
-// This can fail if the PR is too large (e.g. greater than 300 files). See
-// GetGitHubPullRequestFiles.
-func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
-	caller := "GetGithubPullRequestDiff"
+// GetGithubPullRequestPatch downloads the pull request diff using GitHub's
+// compare commits API (merge_base...head). This includes per-file patch data
+// that the pull request raw diff endpoint omits (e.g. binary files).
+func GetGithubPullRequestPatch(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
+	caller := "GetGithubPullRequestPatch"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, gh.BaseOwner),
 		attribute.String(githubRepoAttribute, gh.BaseRepo),
+		attribute.String(githubRefAttribute, gh.HeadHash),
 	))
 	defer span.End()
 
@@ -1555,14 +1560,18 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
 	defer githubClient.Close()
 
-	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
+	diff, resp, err := githubClient.Repositories.CompareCommitsRaw(
+		ctx, gh.BaseOwner, gh.BaseRepo, gh.BaseHash, gh.HeadHash,
+		github.RawOptions{Type: github.Patch},
+	)
 	if resp != nil {
-		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+		resp.Body.Close()
 	}
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrap(err, "failed to get pull request diff")
 	}
+
 	summaries, err := GetPatchSummaries(diff)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to get patch summary")
