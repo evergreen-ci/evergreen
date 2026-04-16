@@ -578,6 +578,87 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 
 }
 
+func TestProjectVarsClear(t *testing.T) {
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
+	})
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"DeletesAllExistingVars": func(t *testing.T) {
+			pRef := ProjectRef{
+				Id: "123",
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			vars := &ProjectVars{
+				Id:            pRef.Id,
+				Vars:          map[string]string{"a": "1", "b": "2", "c": "3"},
+				PrivateVars:   map[string]bool{"b": true},
+				AdminOnlyVars: map[string]bool{"c": true},
+			}
+			assert.NoError(t, vars.Insert(t.Context()))
+
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Len(t, dbVars.Vars, 3)
+			assert.Equal(t, "1", dbVars.Vars["a"])
+			assert.Equal(t, "2", dbVars.Vars["b"])
+			assert.Equal(t, "3", dbVars.Vars["c"])
+
+			assert.True(t, dbVars.PrivateVars["b"])
+			assert.True(t, dbVars.AdminOnlyVars["c"])
+
+			checkParametersMatchVars(t.Context(), t, dbVars.Parameters, dbVars.Vars)
+			checkParametersNamespacedByProject(t, *dbVars)
+
+			require.NoError(t, vars.Clear(t.Context()))
+
+			dbVars, err = FindOneProjectVars(t.Context(), vars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Empty(t, dbVars.Vars)
+			assert.Empty(t, dbVars.PrivateVars)
+			assert.Empty(t, dbVars.AdminOnlyVars)
+			checkParametersMatchVars(t.Context(), t, dbVars.Parameters, dbVars.Vars)
+		},
+		"NoopsWithNoVars": func(t *testing.T) {
+			pRef := ProjectRef{
+				Id: "123",
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			vars := &ProjectVars{
+				Id:            pRef.Id,
+				Vars:          map[string]string{},
+				PrivateVars:   map[string]bool{},
+				AdminOnlyVars: map[string]bool{},
+			}
+			assert.NoError(t, vars.Insert(t.Context()))
+
+			require.NoError(t, vars.Clear(t.Context()))
+
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Empty(t, dbVars.Vars)
+			assert.Empty(t, dbVars.PrivateVars)
+			assert.Empty(t, dbVars.AdminOnlyVars)
+			assert.Empty(t, dbVars.Parameters)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
+
+			tCase(t)
+		})
+	}
+
+}
+
 func TestRedactPrivateVars(t *testing.T) {
 	assert := assert.New(t)
 
