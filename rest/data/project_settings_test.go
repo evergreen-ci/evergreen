@@ -1048,11 +1048,15 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				[]string{"team1"},
 			)
 
+			gitTagAlias := restModel.APIProjectAlias{
+				Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
+				GitTag:     utility.ToStringPtr("v.*"),
+				RemotePath: utility.ToStringPtr("evergreen.yml"),
+			}
+
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
-				Aliases: []restModel.APIProjectAlias{
-					makeInternalAlias(evergreen.GitTagAlias),
-				},
+				Aliases:    []restModel.APIProjectAlias{gitTagAlias},
 			}
 
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGitTagsSection, false, "me")
