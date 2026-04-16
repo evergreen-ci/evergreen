@@ -1004,6 +1004,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					{Alias: utility.ToStringPtr(evergreen.GithubPRAlias)},
+				},
 			}
 
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePullRequestsSection, false, "me")
@@ -1037,6 +1040,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					{Alias: utility.ToStringPtr(evergreen.GitTagAlias)},
+				},
 			}
 
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGitTagsSection, false, "me")
@@ -1063,6 +1069,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					{Alias: utility.ToStringPtr(evergreen.CommitQueueAlias)},
+				},
 			}
 
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageMergeQueueSection, false, "me")
@@ -1087,6 +1096,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					{Alias: utility.ToStringPtr(evergreen.GithubChecksAlias)},
+				},
 			}
 
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageCommitChecksSection, false, "me")

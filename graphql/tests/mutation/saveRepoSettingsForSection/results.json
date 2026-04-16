@@ -83,7 +83,7 @@
                 "hello": ""
               },
               "privateVars": [
-                "hello"
+                "goodbye"
               ]
             }
           }
@@ -110,7 +110,7 @@
                 "hello": ""
               },
               "privateVars": [
-                "hello"
+                "goodbye"
               ]
             }
           }
@@ -132,7 +132,7 @@
                 "hello": ""
               },
               "privateVars": [
-                "hello"
+                "goodbye"
               ]
             }
           }
@@ -152,7 +152,7 @@
                 "hello": ""
               },
               "privateVars": [
-                "hello"
+                "goodbye"
               ]
             }
           }
