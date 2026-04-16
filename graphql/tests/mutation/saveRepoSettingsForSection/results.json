@@ -80,7 +80,7 @@
             },
             "vars": {
               "vars": {
-                "hello": ""
+                "goodbye": ""
               },
               "privateVars": [
                 "goodbye"
@@ -107,7 +107,7 @@
             },
             "vars": {
               "vars": {
-                "hello": ""
+                "goodbye": ""
               },
               "privateVars": [
                 "goodbye"
@@ -129,7 +129,7 @@
             },
             "vars": {
               "vars": {
-                "hello": ""
+                "goodbye": ""
               },
               "privateVars": [
                 "goodbye"
@@ -149,7 +149,7 @@
             },
             "vars": {
               "vars": {
-                "hello": ""
+                "goodbye": ""
               },
               "privateVars": [
                 "goodbye"

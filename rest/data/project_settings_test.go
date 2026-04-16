@@ -253,6 +253,14 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 	}
 }
 
+func makeInternalAlias(alias string) restModel.APIProjectAlias {
+	return restModel.APIProjectAlias{
+		Alias:   utility.ToStringPtr(alias),
+		Variant: utility.ToStringPtr(".*"),
+		Task:    utility.ToStringPtr(".*"),
+	}
+}
+
 func TestSaveProjectSettingsForSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1005,7 +1013,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 				Aliases: []restModel.APIProjectAlias{
-					{Alias: utility.ToStringPtr(evergreen.GithubPRAlias)},
+					makeInternalAlias(evergreen.GithubPRAlias),
 				},
 			}
 
@@ -1041,7 +1049,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 				Aliases: []restModel.APIProjectAlias{
-					{Alias: utility.ToStringPtr(evergreen.GitTagAlias)},
+					makeInternalAlias(evergreen.GitTagAlias),
 				},
 			}
 
@@ -1070,7 +1078,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 				Aliases: []restModel.APIProjectAlias{
-					{Alias: utility.ToStringPtr(evergreen.CommitQueueAlias)},
+					makeInternalAlias(evergreen.CommitQueueAlias),
 				},
 			}
 
@@ -1097,7 +1105,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 				Aliases: []restModel.APIProjectAlias{
-					{Alias: utility.ToStringPtr(evergreen.GithubChecksAlias)},
+					makeInternalAlias(evergreen.GithubChecksAlias),
 				},
 			}
 
