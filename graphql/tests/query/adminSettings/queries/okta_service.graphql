@@ -4,7 +4,9 @@ query Auth {
       audience
       clientId
       clientSecret
+      headerName
       issuer
+      keysetURL
       scopes
     }
   }

@@ -192,6 +192,8 @@ func MockConfig() *evergreen.Settings {
 			Scopes:       []string{"scope1", "scope2"},
 			Audience:     "audience",
 			Issuer:       "issuer",
+			KeySetURL:    "https://example.com/keys",
+			HeaderName:   "okta_service_auth_header",
 		},
 		AWSInstanceRole: "role",
 		Banner:          "banner",

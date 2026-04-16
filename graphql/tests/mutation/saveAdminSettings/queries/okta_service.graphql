@@ -5,7 +5,9 @@ mutation {
         audience: "audience"
         clientId: "service-id"
         clientSecret: "service-secret"
+        headerName: "okta-auth-header"
         issuer: "issuer"
+        keysetURL: "https://example.com/keys"
         scopes: ["scope1", "scope2"]
       }
     }
@@ -13,7 +15,9 @@ mutation {
     oktaServiceConfig {
       audience
       clientId
+      headerName
       issuer
+      keysetURL
       scopes
     }
   }

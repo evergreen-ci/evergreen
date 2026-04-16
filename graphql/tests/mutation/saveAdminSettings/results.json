@@ -237,7 +237,9 @@
             "oktaServiceConfig": {
               "audience": "audience",
               "clientId": "service-id",
+              "headerName": "okta-auth-header",
               "issuer": "issuer",
+              "keysetURL": "https://example.com/keys",
               "scopes": ["scope1", "scope2"]
             }
           }

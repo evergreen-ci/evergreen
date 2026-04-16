@@ -1153,7 +1153,9 @@ type ComplexityRoot struct {
 		Audience     func(childComplexity int) int
 		ClientID     func(childComplexity int) int
 		ClientSecret func(childComplexity int) int
+		HeaderName   func(childComplexity int) int
 		Issuer       func(childComplexity int) int
+		KeySetURL    func(childComplexity int) int
 		Scopes       func(childComplexity int) int
 	}
 
@@ -7338,12 +7340,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OktaServiceConfig.ClientSecret(childComplexity), true
+	case "OktaServiceConfig.headerName":
+		if e.complexity.OktaServiceConfig.HeaderName == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.HeaderName(childComplexity), true
 	case "OktaServiceConfig.issuer":
 		if e.complexity.OktaServiceConfig.Issuer == nil {
 			break
 		}
 
 		return e.complexity.OktaServiceConfig.Issuer(childComplexity), true
+	case "OktaServiceConfig.keysetURL":
+		if e.complexity.OktaServiceConfig.KeySetURL == nil {
+			break
+		}
+
+		return e.complexity.OktaServiceConfig.KeySetURL(childComplexity), true
 	case "OktaServiceConfig.scopes":
 		if e.complexity.OktaServiceConfig.Scopes == nil {
 			break
@@ -18313,8 +18327,12 @@ func (ec *executionContext) fieldContext_AdminSettings_oktaServiceConfig(_ conte
 				return ec.fieldContext_OktaServiceConfig_clientId(ctx, field)
 			case "clientSecret":
 				return ec.fieldContext_OktaServiceConfig_clientSecret(ctx, field)
+			case "headerName":
+				return ec.fieldContext_OktaServiceConfig_headerName(ctx, field)
 			case "issuer":
 				return ec.fieldContext_OktaServiceConfig_issuer(ctx, field)
+			case "keysetURL":
+				return ec.fieldContext_OktaServiceConfig_keysetURL(ctx, field)
 			case "scopes":
 				return ec.fieldContext_OktaServiceConfig_scopes(ctx, field)
 			}
@@ -43050,6 +43068,35 @@ func (ec *executionContext) fieldContext_OktaServiceConfig_clientSecret(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _OktaServiceConfig_headerName(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_headerName,
+		func(ctx context.Context) (any, error) {
+			return obj.HeaderName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_headerName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OktaServiceConfig_issuer(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -43067,6 +43114,35 @@ func (ec *executionContext) _OktaServiceConfig_issuer(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_OktaServiceConfig_issuer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OktaServiceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OktaServiceConfig_keysetURL(ctx context.Context, field graphql.CollectedField, obj *model.APIOktaServiceConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OktaServiceConfig_keysetURL,
+		func(ctx context.Context) (any, error) {
+			return obj.KeySetURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OktaServiceConfig_keysetURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "OktaServiceConfig",
 		Field:      field,
@@ -83692,7 +83768,7 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"audience", "clientId", "clientSecret", "issuer", "scopes"}
+	fieldsInOrder := [...]string{"audience", "clientId", "clientSecret", "headerName", "issuer", "keysetURL", "scopes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83754,6 +83830,13 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		case "headerName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HeaderName = data
 		case "issuer":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("issuer"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -83761,6 +83844,13 @@ func (ec *executionContext) unmarshalInputOktaServiceConfigInput(ctx context.Con
 				return it, err
 			}
 			it.Issuer = data
+		case "keysetURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keysetURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeySetURL = data
 		case "scopes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -97271,8 +97361,12 @@ func (ec *executionContext) _OktaServiceConfig(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._OktaServiceConfig_clientId(ctx, field, obj)
 		case "clientSecret":
 			out.Values[i] = ec._OktaServiceConfig_clientSecret(ctx, field, obj)
+		case "headerName":
+			out.Values[i] = ec._OktaServiceConfig_headerName(ctx, field, obj)
 		case "issuer":
 			out.Values[i] = ec._OktaServiceConfig_issuer(ctx, field, obj)
+		case "keysetURL":
+			out.Values[i] = ec._OktaServiceConfig_keysetURL(ctx, field, obj)
 		case "scopes":
 			out.Values[i] = ec._OktaServiceConfig_scopes(ctx, field, obj)
 		default:

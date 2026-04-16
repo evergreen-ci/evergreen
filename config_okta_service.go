@@ -17,6 +17,8 @@ type OktaServiceConfig struct {
 	Scopes       []string `bson:"scopes" json:"scopes" yaml:"scopes"`
 	Audience     string   `bson:"audience" json:"audience" yaml:"audience"`
 	Issuer       string   `bson:"issuer" json:"issuer" yaml:"issuer"`
+	KeySetURL    string   `bson:"keyset_url" json:"keyset_url" yaml:"keyset_url"`
+	HeaderName   string   `bson:"header_name" json:"header_name" yaml:"header_name"`
 }
 
 func (c *OktaServiceConfig) SectionId() string { return "okta_service" }
@@ -33,6 +35,8 @@ func (c *OktaServiceConfig) Set(ctx context.Context) error {
 			oktaServiceScopesKey:       c.Scopes,
 			oktaServiceAudienceKey:     c.Audience,
 			oktaServiceIssuerKey:       c.Issuer,
+			oktaServiceKeySetURLKey:    c.KeySetURL,
+			oktaServiceHeaderNameKey:   c.HeaderName,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

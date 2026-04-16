@@ -121,6 +121,8 @@ var (
 	oktaServiceScopesKey       = bsonutil.MustHaveTag(OktaServiceConfig{}, "Scopes")
 	oktaServiceAudienceKey     = bsonutil.MustHaveTag(OktaServiceConfig{}, "Audience")
 	oktaServiceIssuerKey       = bsonutil.MustHaveTag(OktaServiceConfig{}, "Issuer")
+	oktaServiceKeySetURLKey    = bsonutil.MustHaveTag(OktaServiceConfig{}, "KeySetURL")
+	oktaServiceHeaderNameKey   = bsonutil.MustHaveTag(OktaServiceConfig{}, "HeaderName")
 
 	tracerEnabledKey                   = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
 	tracerCollectorEndpointKey         = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")

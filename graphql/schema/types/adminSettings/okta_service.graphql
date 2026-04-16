@@ -2,7 +2,9 @@ type OktaServiceConfig {
   audience: String
   clientId: String @requireAdmin
   clientSecret: String @requireAdmin
+  headerName: String
   issuer: String
+  keysetURL: String
   scopes: [String!]
 }
 
@@ -10,6 +12,8 @@ input OktaServiceConfigInput {
   audience: String
   clientId: String @redactSecrets
   clientSecret: String @redactSecrets
+  headerName: String
   issuer: String
+  keysetURL: String
   scopes: [String!]
 }

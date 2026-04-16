@@ -157,7 +157,9 @@
               "audience": "audience",
               "clientId": "service-id",
               "clientSecret": "service-secret",
+              "headerName": "\u003cheader_name\u003e",
               "issuer": "issuer",
+              "keysetURL": "\u003ckeyset_url\u003e",
               "scopes": ["scope1", "scope2"]
             }
           }

@@ -62,6 +62,8 @@
       "client_id": "service-id",
       "client_secret": "service-secret",
       "issuer": "issuer",
+      "keyset_url": "<keyset_url>",
+      "header_name": "<header_name>",
       "scopes": ["scope1", "scope2"]
     },
     {
