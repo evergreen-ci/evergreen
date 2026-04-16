@@ -1004,6 +1004,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
 
 			// Apply changes from the PULL_REQUESTS section.
 			apiProjectRef.PRTestingEnabled = utility.TruePtr()
@@ -1036,6 +1037,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
 
 			// Apply changes from the GIT_TAGS section.
 			apiProjectRef.GitTagVersionsEnabled = utility.TruePtr()
@@ -1071,6 +1073,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
 
 			// Apply changes from the MERGE_QUEUE section.
 			apiProjectRef.CommitQueue.Enabled = utility.TruePtr()
@@ -1098,6 +1101,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
 
 			// Apply changes from the COMMIT_CHECKS section.
 			apiProjectRef.GithubChecksEnabled = utility.TruePtr()
