@@ -303,8 +303,8 @@ func GetAWSKeyForProject(ctx context.Context, projectId string) (*AWSSSHKey, err
 // variables as parameters in Parameter Store.
 func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, error) {
 	// Ignore the context cancellation to ensure that the parameters are synced
-	// into Parameter Store and updated in the DB. These two operations should
-	// be as atomic as possible.
+	// into Parameter Store and updated in the DB. The Parameter Store and DB
+	// updates should be as atomic as possible.
 	ctx = context.WithoutCancel(ctx)
 
 	before, err := FindOneProjectVars(ctx, projectVars.Id)
@@ -325,11 +325,12 @@ func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, er
 	paramMappingsToDelete := getParamMappingsToDelete(before.Parameters, varsToDelete)
 
 	// Update the DB with the final parameter state.
-	// This must happen before deleting any parameters from Parameter Store for
-	// correctness. If the order of operations were inverted (i.e. deleting from
-	// Parameter Store, then updating the DB), then there would be a risk that
-	// Upsert is interrupted partway through, which could result in the DB
-	// holding some lingering references to parameters that don't exist anymore.
+	// The DB update must happen before deleting any parameters from Parameter
+	// Store for correctness. If the order of operations were inverted (i.e.
+	// deleting from Parameter Store, then updating the DB), then there would be
+	// a risk that the Parameter Store deletion is interrupted partway through,
+	// which could result in the DB holding some lingering references to
+	// parameters that don't exist anymore.
 	projectVars.Parameters = getUpdatedParamMappings(before.Parameters, paramMappingsToUpsert, paramMappingsToDelete)
 	changeInfo, err := projectVars.upsertDB(ctx)
 	if err != nil {
@@ -537,8 +538,8 @@ func insertParameterStore(ctx context.Context, vars *ProjectVars) (*ParameterMap
 // including those that were not explicitly modified.
 func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete []string) (*adb.ChangeInfo, error) {
 	// Ignore the context cancellation to ensure that the parameters are synced
-	// into Parameter Store and updated in the DB. These two operations should
-	// be as atomic as possible.
+	// into Parameter Store and updated in the DB. The Parameter Store and DB
+	// updates should be as atomic as possible.
 	ctx = context.WithoutCancel(ctx)
 
 	before, err := FindOneProjectVars(ctx, projectVars.Id)
@@ -679,8 +680,8 @@ func (projectVars *ProjectVars) findAndModifyDB(ctx context.Context, varsToDelet
 // Clear clears all variables for a project.
 func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	// Ignore the context cancellation to ensure that the parameters are deleted
-	// from Parameter Store and the DB. These two operations should be as atomic
-	// as possible.
+	// from Parameter Store and the DB. The Parameter Store and DB updates
+	// should be as atomic as possible.
 	ctx = context.WithoutCancel(ctx)
 
 	before, err := FindOneProjectVars(ctx, projectVars.Id)
