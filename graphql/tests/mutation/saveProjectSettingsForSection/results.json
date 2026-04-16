@@ -288,8 +288,7 @@
             },
             "vars": {
               "vars": {
-                "hello": "",
-                "foo": "bar"
+                "goodbye": ""
               }
             }
           }
@@ -332,8 +331,7 @@
             },
             "vars": {
               "vars": {
-                "hello": "",
-                "foo": "bar"
+                "goodbye": ""
               }
             }
           }
@@ -350,8 +348,7 @@
             },
             "vars": {
               "vars": {
-                "hello": "",
-                "foo": "bar"
+                "goodbye": ""
               }
             }
           }

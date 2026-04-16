@@ -1,9 +1,9 @@
 mutation {
-  saveProjectSettingsForSection(
-    projectSettings: {
-      projectId: "sandbox_project_id"
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
       projectRef: {
-        id: "sandbox_project_id"
+        id: "sandbox_repo_id"
         commitQueue: { enabled: true }
       }
       aliases: [
