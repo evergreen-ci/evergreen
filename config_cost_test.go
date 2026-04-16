@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -307,7 +308,8 @@ func TestCostConfigSetAndGet(t *testing.T) {
 	t.Run("SetAndGetS3ArtifactAccountLists", func(t *testing.T) {
 		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
 		t.Cleanup(func() {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
+			// Use a non-test context: t.Context() is canceled before cleanup runs.
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(context.Background()))
 		})
 
 		original := CostConfig{
