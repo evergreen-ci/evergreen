@@ -833,6 +833,7 @@ func (s *AdminSuite) TestTracerConfig() {
 		Enabled:                   true,
 		CollectorEndpoint:         "localhost:4316",
 		CollectorInternalEndpoint: "svc.cluster.local:4317",
+		TraceURLTemplate:          "https://tracing.example.com/trace?trace_id=%s",
 	}
 
 	err := config.Set(ctx)

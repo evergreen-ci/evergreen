@@ -201,6 +201,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
+	s.EqualValues(testSettings.Tracer.TraceURLTemplate, settingsFromConnector.Tracer.TraceURLTemplate)
 
 	// Check that secrets are stored in the parameter manager.
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
@@ -388,6 +389,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
+	s.EqualValues(testSettings.Tracer.TraceURLTemplate, settingsFromConnector.Tracer.TraceURLTemplate)
 }
 
 func (s *AdminDataSuite) TestRestart() {

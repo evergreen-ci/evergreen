@@ -75,6 +75,7 @@ mutation SaveAdminSettingsOther {
         collectorEndpoint: "https://collector.example.com"
         collectorInternalEndpoint: "https://internal-collector.example.com"
         collectorAPIKey: "test-api-key"
+        traceUrlTemplate: "https://tracing.example.com/trace?trace_id=%s"
       }
       projectCreation: {
         totalProjectLimit: 100
@@ -170,6 +171,7 @@ mutation SaveAdminSettingsOther {
       collectorEndpoint
       collectorInternalEndpoint
       collectorAPIKey
+      traceUrlTemplate
     }
     projectCreation {
       totalProjectLimit

@@ -405,13 +405,14 @@ type ComplexityRoot struct {
 	}
 
 	Cost struct {
-		AdjustedEBSStorageCost    func(childComplexity int) int
-		AdjustedEBSThroughputCost func(childComplexity int) int
-		AdjustedEC2Cost           func(childComplexity int) int
-		OnDemandEC2Cost           func(childComplexity int) int
-		S3ArtifactPutCost         func(childComplexity int) int
-		S3ArtifactStorageCost     func(childComplexity int) int
-		S3LogPutCost              func(childComplexity int) int
+		AdjustedEBSStorageCost        func(childComplexity int) int
+		AdjustedEBSThroughputCost     func(childComplexity int) int
+		AdjustedEC2Cost               func(childComplexity int) int
+		AdjustedS3ArtifactPutCost     func(childComplexity int) int
+		AdjustedS3ArtifactStorageCost func(childComplexity int) int
+		AdjustedS3LogPutCost          func(childComplexity int) int
+		AdjustedS3LogStorageCost      func(childComplexity int) int
+		OnDemandEC2Cost               func(childComplexity int) int
 	}
 
 	CostConfig struct {
@@ -2175,6 +2176,7 @@ type ComplexityRoot struct {
 		CollectorEndpoint         func(childComplexity int) int
 		CollectorInternalEndpoint func(childComplexity int) int
 		Enabled                   func(childComplexity int) int
+		TraceURLTemplate          func(childComplexity int) int
 	}
 
 	TriggerAlias struct {
@@ -4128,30 +4130,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.AdjustedEC2Cost(childComplexity), true
+	case "Cost.adjustedS3ArtifactPutCost":
+		if e.complexity.Cost.AdjustedS3ArtifactPutCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3ArtifactPutCost(childComplexity), true
+	case "Cost.adjustedS3ArtifactStorageCost":
+		if e.complexity.Cost.AdjustedS3ArtifactStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3ArtifactStorageCost(childComplexity), true
+	case "Cost.adjustedS3LogPutCost":
+		if e.complexity.Cost.AdjustedS3LogPutCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3LogPutCost(childComplexity), true
+	case "Cost.adjustedS3LogStorageCost":
+		if e.complexity.Cost.AdjustedS3LogStorageCost == nil {
+			break
+		}
+
+		return e.complexity.Cost.AdjustedS3LogStorageCost(childComplexity), true
 	case "Cost.onDemandEC2Cost":
 		if e.complexity.Cost.OnDemandEC2Cost == nil {
 			break
 		}
 
 		return e.complexity.Cost.OnDemandEC2Cost(childComplexity), true
-	case "Cost.s3ArtifactPutCost":
-		if e.complexity.Cost.S3ArtifactPutCost == nil {
-			break
-		}
-
-		return e.complexity.Cost.S3ArtifactPutCost(childComplexity), true
-	case "Cost.s3ArtifactStorageCost":
-		if e.complexity.Cost.S3ArtifactStorageCost == nil {
-			break
-		}
-
-		return e.complexity.Cost.S3ArtifactStorageCost(childComplexity), true
-	case "Cost.s3LogPutCost":
-		if e.complexity.Cost.S3LogPutCost == nil {
-			break
-		}
-
-		return e.complexity.Cost.S3LogPutCost(childComplexity), true
 
 	case "CostConfig.ebsCost":
 		if e.complexity.CostConfig.EBSCost == nil {
@@ -11853,6 +11861,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TracerSettings.Enabled(childComplexity), true
+	case "TracerSettings.traceUrlTemplate":
+		if e.complexity.TracerSettings.TraceURLTemplate == nil {
+			break
+		}
+
+		return e.complexity.TracerSettings.TraceURLTemplate(childComplexity), true
 
 	case "TriggerAlias.alias":
 		if e.complexity.TriggerAlias.Alias == nil {
@@ -19973,6 +19987,8 @@ func (ec *executionContext) fieldContext_AdminSettings_tracer(_ context.Context,
 				return ec.fieldContext_TracerSettings_collectorInternalEndpoint(ctx, field)
 			case "collectorAPIKey":
 				return ec.fieldContext_TracerSettings_collectorAPIKey(ctx, field)
+			case "traceUrlTemplate":
+				return ec.fieldContext_TracerSettings_traceUrlTemplate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TracerSettings", field.Name)
 		},
@@ -24071,35 +24087,6 @@ func (ec *executionContext) fieldContext_Cost_adjustedEC2Cost(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _Cost_adjustedEBSThroughputCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Cost_adjustedEBSThroughputCost,
-		func(ctx context.Context) (any, error) {
-			return obj.AdjustedEBSThroughputCost, nil
-		},
-		nil,
-		ec.marshalOFloat2float64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Cost_adjustedEBSThroughputCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Cost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Cost_adjustedEBSStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24129,14 +24116,14 @@ func (ec *executionContext) fieldContext_Cost_adjustedEBSStorageCost(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Cost_s3ArtifactPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Cost_adjustedEBSThroughputCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Cost_s3ArtifactPutCost,
+		ec.fieldContext_Cost_adjustedEBSThroughputCost,
 		func(ctx context.Context) (any, error) {
-			return obj.S3ArtifactPutCost, nil
+			return obj.AdjustedEBSThroughputCost, nil
 		},
 		nil,
 		ec.marshalOFloat2float64,
@@ -24145,7 +24132,7 @@ func (ec *executionContext) _Cost_s3ArtifactPutCost(ctx context.Context, field g
 	)
 }
 
-func (ec *executionContext) fieldContext_Cost_s3ArtifactPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Cost_adjustedEBSThroughputCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -24158,14 +24145,14 @@ func (ec *executionContext) fieldContext_Cost_s3ArtifactPutCost(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Cost_s3LogPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Cost_adjustedS3ArtifactPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Cost_s3LogPutCost,
+		ec.fieldContext_Cost_adjustedS3ArtifactPutCost,
 		func(ctx context.Context) (any, error) {
-			return obj.S3LogPutCost, nil
+			return obj.AdjustedS3ArtifactPutCost, nil
 		},
 		nil,
 		ec.marshalOFloat2float64,
@@ -24174,7 +24161,7 @@ func (ec *executionContext) _Cost_s3LogPutCost(ctx context.Context, field graphq
 	)
 }
 
-func (ec *executionContext) fieldContext_Cost_s3LogPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Cost_adjustedS3ArtifactPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -24187,14 +24174,14 @@ func (ec *executionContext) fieldContext_Cost_s3LogPutCost(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Cost_s3ArtifactStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+func (ec *executionContext) _Cost_adjustedS3ArtifactStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Cost_s3ArtifactStorageCost,
+		ec.fieldContext_Cost_adjustedS3ArtifactStorageCost,
 		func(ctx context.Context) (any, error) {
-			return obj.S3ArtifactStorageCost, nil
+			return obj.AdjustedS3ArtifactStorageCost, nil
 		},
 		nil,
 		ec.marshalOFloat2float64,
@@ -24203,7 +24190,65 @@ func (ec *executionContext) _Cost_s3ArtifactStorageCost(ctx context.Context, fie
 	)
 }
 
-func (ec *executionContext) fieldContext_Cost_s3ArtifactStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Cost_adjustedS3ArtifactStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedS3LogPutCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedS3LogPutCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedS3LogPutCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedS3LogPutCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Cost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Cost_adjustedS3LogStorageCost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Cost_adjustedS3LogStorageCost,
+		func(ctx context.Context) (any, error) {
+			return obj.AdjustedS3LogStorageCost, nil
+		},
+		nil,
+		ec.marshalOFloat2float64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Cost_adjustedS3LogStorageCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -65453,16 +65498,18 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "s3ArtifactPutCost":
-				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
-			case "s3ArtifactStorageCost":
-				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -65498,16 +65545,18 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "s3ArtifactPutCost":
-				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
-			case "s3ArtifactStorageCost":
-				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -70183,6 +70232,35 @@ func (ec *executionContext) fieldContext_TracerSettings_collectorAPIKey(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _TracerSettings_traceUrlTemplate(ctx context.Context, field graphql.CollectedField, obj *model.APITracerSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TracerSettings_traceUrlTemplate,
+		func(ctx context.Context) (any, error) {
+			return obj.TraceURLTemplate, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TracerSettings_traceUrlTemplate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TracerSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TriggerAlias_alias(ctx context.Context, field graphql.CollectedField, obj *model.APITriggerDefinition) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -73204,16 +73282,18 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "s3ArtifactPutCost":
-				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
-			case "s3ArtifactStorageCost":
-				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -73742,16 +73822,18 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "s3ArtifactPutCost":
-				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
-			case "s3ArtifactStorageCost":
-				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -74704,16 +74786,18 @@ func (ec *executionContext) fieldContext_VersionLite_cost(_ context.Context, fie
 				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
-			case "adjustedEBSThroughputCost":
-				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
 			case "adjustedEBSStorageCost":
 				return ec.fieldContext_Cost_adjustedEBSStorageCost(ctx, field)
-			case "s3ArtifactPutCost":
-				return ec.fieldContext_Cost_s3ArtifactPutCost(ctx, field)
-			case "s3LogPutCost":
-				return ec.fieldContext_Cost_s3LogPutCost(ctx, field)
-			case "s3ArtifactStorageCost":
-				return ec.fieldContext_Cost_s3ArtifactStorageCost(ctx, field)
+			case "adjustedEBSThroughputCost":
+				return ec.fieldContext_Cost_adjustedEBSThroughputCost(ctx, field)
+			case "adjustedS3ArtifactPutCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactPutCost(ctx, field)
+			case "adjustedS3ArtifactStorageCost":
+				return ec.fieldContext_Cost_adjustedS3ArtifactStorageCost(ctx, field)
+			case "adjustedS3LogPutCost":
+				return ec.fieldContext_Cost_adjustedS3LogPutCost(ctx, field)
+			case "adjustedS3LogStorageCost":
+				return ec.fieldContext_Cost_adjustedS3LogStorageCost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Cost", field.Name)
 		},
@@ -88460,7 +88544,7 @@ func (ec *executionContext) unmarshalInputTracerSettingsInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "collectorEndpoint", "collectorInternalEndpoint", "collectorAPIKey"}
+	fieldsInOrder := [...]string{"enabled", "collectorEndpoint", "collectorInternalEndpoint", "collectorAPIKey", "traceUrlTemplate"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88512,6 +88596,13 @@ func (ec *executionContext) unmarshalInputTracerSettingsInput(ctx context.Contex
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
+		case "traceUrlTemplate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("traceUrlTemplate"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TraceURLTemplate = data
 		}
 	}
 
@@ -91408,16 +91499,18 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
 		case "adjustedEC2Cost":
 			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
-		case "adjustedEBSThroughputCost":
-			out.Values[i] = ec._Cost_adjustedEBSThroughputCost(ctx, field, obj)
 		case "adjustedEBSStorageCost":
 			out.Values[i] = ec._Cost_adjustedEBSStorageCost(ctx, field, obj)
-		case "s3ArtifactPutCost":
-			out.Values[i] = ec._Cost_s3ArtifactPutCost(ctx, field, obj)
-		case "s3LogPutCost":
-			out.Values[i] = ec._Cost_s3LogPutCost(ctx, field, obj)
-		case "s3ArtifactStorageCost":
-			out.Values[i] = ec._Cost_s3ArtifactStorageCost(ctx, field, obj)
+		case "adjustedEBSThroughputCost":
+			out.Values[i] = ec._Cost_adjustedEBSThroughputCost(ctx, field, obj)
+		case "adjustedS3ArtifactPutCost":
+			out.Values[i] = ec._Cost_adjustedS3ArtifactPutCost(ctx, field, obj)
+		case "adjustedS3ArtifactStorageCost":
+			out.Values[i] = ec._Cost_adjustedS3ArtifactStorageCost(ctx, field, obj)
+		case "adjustedS3LogPutCost":
+			out.Values[i] = ec._Cost_adjustedS3LogPutCost(ctx, field, obj)
+		case "adjustedS3LogStorageCost":
+			out.Values[i] = ec._Cost_adjustedS3LogStorageCost(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -107260,6 +107353,8 @@ func (ec *executionContext) _TracerSettings(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._TracerSettings_collectorInternalEndpoint(ctx, field, obj)
 		case "collectorAPIKey":
 			out.Values[i] = ec._TracerSettings_collectorAPIKey(ctx, field, obj)
+		case "traceUrlTemplate":
+			out.Values[i] = ec._TracerSettings_traceUrlTemplate(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

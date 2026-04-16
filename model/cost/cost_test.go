@@ -29,13 +29,13 @@ func TestCostIsZero(t *testing.T) {
 		assert.False(t, cost.IsZero())
 	})
 
-	t.Run("NonZeroS3ArtifactPutCost", func(t *testing.T) {
-		cost := Cost{S3ArtifactPutCost: 0.00005}
+	t.Run("NonZeroOnDemandS3ArtifactPutCost", func(t *testing.T) {
+		cost := Cost{OnDemandS3ArtifactPutCost: 0.00005}
 		assert.False(t, cost.IsZero())
 	})
 
-	t.Run("NonZeroS3LogPutCost", func(t *testing.T) {
-		cost := Cost{S3LogPutCost: 0.00003}
+	t.Run("NonZeroOnDemandS3LogPutCost", func(t *testing.T) {
+		cost := Cost{OnDemandS3LogPutCost: 0.00003}
 		assert.False(t, cost.IsZero())
 	})
 }

@@ -2843,6 +2843,7 @@ type APITracerSettings struct {
 	CollectorEndpoint         *string `json:"collector_endpoint"`
 	CollectorInternalEndpoint *string `json:"collector_internal_endpoint"`
 	CollectorAPIKey           *string `json:"collector_api_key"`
+	TraceURLTemplate          *string `json:"trace_url_template"`
 }
 
 func (c *APITracerSettings) BuildFromService(h any) error {
@@ -2852,6 +2853,7 @@ func (c *APITracerSettings) BuildFromService(h any) error {
 		c.CollectorEndpoint = &v.CollectorEndpoint
 		c.CollectorInternalEndpoint = &v.CollectorInternalEndpoint
 		c.CollectorAPIKey = &v.CollectorAPIKey
+		c.TraceURLTemplate = &v.TraceURLTemplate
 	default:
 		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
 	}
@@ -2864,6 +2866,7 @@ func (c *APITracerSettings) ToService() (any, error) {
 		CollectorEndpoint:         utility.FromStringPtr(c.CollectorEndpoint),
 		CollectorInternalEndpoint: utility.FromStringPtr(c.CollectorInternalEndpoint),
 		CollectorAPIKey:           utility.FromStringPtr(c.CollectorAPIKey),
+		TraceURLTemplate:          utility.FromStringPtr(c.TraceURLTemplate),
 	}
 
 	return config, nil
