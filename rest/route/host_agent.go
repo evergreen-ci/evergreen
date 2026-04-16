@@ -1289,6 +1289,21 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			"host_id":                 currentHost.Id,
 			"distro":                  currentHost.Distro.Id,
 		})
+
+		// Attempt to update statuses in case this was only partially handled.
+		catcher := grip.NewBasicCatcher()
+		if t.IsPartOfDisplay(ctx) && t.IsFinished() {
+			catcher.Add(model.UpdateDisplayTaskForTask(ctx, t))
+		}
+		catcher.Add(model.UpdateBuildAndVersionStatusForTask(ctx, t))
+		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
+			"message":         "failed to update statuses when host was not running task",
+			"task_id":         t.Id,
+			"build_id":        t.BuildId,
+			"version_id":      t.Version,
+			"project_id":      t.Project,
+			"display_task_id": t.DisplayTaskId,
+		}))
 		endTaskResp.ShouldExit = true
 		return gimlet.NewJSONResponse(endTaskResp)
 	}

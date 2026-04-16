@@ -770,7 +770,12 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	if err := t.SaveS3Usage(ctx, lookup); err != nil {
+	logBucketName := ""
+	if t.TaskOutputInfo != nil {
+		logBucketName = t.TaskOutputInfo.TaskLogs.BucketConfig.Name
+	}
+
+	if err := t.SaveS3Usage(ctx, lookup, logBucketName); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
@@ -783,8 +788,8 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var avgFilePutCost, maxFilePutCost, minFilePutCost float64
 	if t.S3Usage.Artifacts.Count > 0 && t.S3Usage.Artifacts.PutRequests > 0 {
-		costPerPut := t.TaskCost.S3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
-		avgFilePutCost = t.TaskCost.S3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
+		costPerPut := t.TaskCost.OnDemandS3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
+		avgFilePutCost = t.TaskCost.OnDemandS3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
 		maxFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		minFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMinPutRequests)
 	}
@@ -794,11 +799,16 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		attribute.Int(evergreen.S3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
 		attribute.Int64(evergreen.S3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
 		attribute.Int(evergreen.S3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
-		attribute.Float64(evergreen.S3ArtifactPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
-		attribute.Float64(evergreen.S3ArtifactStorageCostOtelAttribute, t.TaskCost.S3ArtifactStorageCost),
+		attribute.Float64(evergreen.OnDemandS3ArtifactPutCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactPutCost),
+		attribute.Float64(evergreen.AdjustedS3ArtifactPutCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactPutCost),
+		attribute.Float64(evergreen.OnDemandS3ArtifactStorageCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactStorageCost),
+		attribute.Float64(evergreen.AdjustedS3ArtifactStorageCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactStorageCost),
 		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
 		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
-		attribute.Float64(evergreen.S3LogPutCostOtelAttribute, t.TaskCost.S3LogPutCost),
+		attribute.Float64(evergreen.OnDemandS3LogPutCostOtelAttribute, t.TaskCost.OnDemandS3LogPutCost),
+		attribute.Float64(evergreen.AdjustedS3LogPutCostOtelAttribute, t.TaskCost.AdjustedS3LogPutCost),
+		attribute.Float64(evergreen.OnDemandS3LogStorageCostOtelAttribute, t.TaskCost.OnDemandS3LogStorageCost),
+		attribute.Float64(evergreen.AdjustedS3LogStorageCostOtelAttribute, t.TaskCost.AdjustedS3LogStorageCost),
 		attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
 		attribute.Float64(evergreen.S3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
 		attribute.Float64(evergreen.S3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
@@ -1935,10 +1945,14 @@ func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
+	usr := gimlet.GetUser(ctx)
+	isUserRequest := usr != nil
+
 	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, h.hostID, cloud.AssumeRoleOptions{
 		RoleARN:         h.body.RoleARN,
 		Policy:          h.body.Policy,
 		DurationSeconds: h.body.DurationSeconds,
+		UseDebug:        isUserRequest,
 	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))

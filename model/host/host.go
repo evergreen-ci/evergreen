@@ -322,6 +322,9 @@ type SpawnOptions struct {
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
 
+	// ProjectID is the ID of the project that's running the task.
+	ProjectID string `bson:"project_id,omitempty" json:"project_id,omitempty"`
+
 	// Retries is the number of times Evergreen should try to spawn this host.
 	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
 

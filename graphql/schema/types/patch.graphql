@@ -99,6 +99,7 @@ type Patch {
   variantsTasks: [VariantTask!]!
   version: VersionLite
   versionFull: Version
+  invalidatedByUpstream: Boolean!
 }
 
 type ChildPatchAlias {

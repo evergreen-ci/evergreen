@@ -7,9 +7,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 const spawnHostTerminationJobName = "spawnhost-termination"
@@ -67,5 +70,34 @@ func (j *spawnHostTerminationJob) Run(ctx context.Context) {
 	if err := j.CloudHostModification.modifyHost(ctx, terminateCloudHost); err != nil {
 		j.AddError(err)
 		return
+	}
+
+	h := j.CloudHostModification.host
+	if h != nil && h.IsDebug {
+		fields := message.Fields{
+			"message":       "debug spawn host terminated",
+			"dashboard":     "debug spawn hosts",
+			"host_id":       h.Id,
+			"host_tag":      h.Tag,
+			"distro":        h.Distro.Id,
+			"user":          h.StartedBy,
+			"instance_type": h.InstanceType,
+			"source":        string(j.CloudHostModification.Source),
+			"created_at":    h.CreationTime,
+			"terminated_at": h.TerminationTime,
+		}
+		if !h.CreationTime.IsZero() && !h.TerminationTime.IsZero() {
+			fields["lifetime_secs"] = h.TerminationTime.Sub(h.CreationTime).Seconds()
+		}
+		if h.ProvisionOptions != nil {
+			fields["task_id"] = h.ProvisionOptions.TaskId
+			fields["setup_step_number"] = h.ProvisionOptions.SetupStepNumber
+		}
+		if h.ProvisionOptions != nil && h.ProvisionOptions.TaskId != "" {
+			if t, err := task.FindOneId(ctx, h.ProvisionOptions.TaskId); err == nil && t != nil {
+				fields["project"] = t.Project
+			}
+		}
+		grip.Info(ctx, fields)
 	}
 }

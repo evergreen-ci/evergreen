@@ -169,6 +169,18 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	if intentHost.UserHost {
 		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
 	}
+	if intentHost.SpawnOptions.SpawnedByTask {
+		systemTags = append(systemTags, host.Tag{Key: evergreen.TagProject, Value: intentHost.SpawnOptions.ProjectID, CanBeModified: false})
+		if intentHost.SpawnOptions.TaskID != "" {
+			systemTags = append(systemTags,
+				host.Tag{Key: evergreen.TagTaskID, Value: intentHost.SpawnOptions.TaskID, CanBeModified: false},
+				host.Tag{Key: evergreen.TagTaskExecution, Value: fmt.Sprintf("%d", intentHost.SpawnOptions.TaskExecutionNumber), CanBeModified: false},
+			)
+		}
+		if intentHost.SpawnOptions.BuildID != "" {
+			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
+		}
+	}
 
 	// Add Evergreen-generated tags to host object
 	intentHost.AddTags(systemTags)

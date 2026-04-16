@@ -189,6 +189,10 @@ type GithubMergeGroup struct {
 	// so there are as many commits as there are PRs in the merge group. This is
 	// only the SHA of the first commit in the merge group.
 	HeadSHA string `bson:"head_sha"`
+	// BaseSHA is the merge base commit SHA for the merge group (GitHub's base_sha).
+	// It identifies which point on the base branch this merge group was built from,
+	// which helps distinguish merge groups that contain different sets of PRs.
+	BaseSHA string `bson:"base_sha,omitempty"`
 	// HeadCommit is the title of the commit at the head of the merge group. For
 	// each PR in the merge group, GitHub merges the commits from that PR
 	// together, so there are as many commits as there are PRs in the merge

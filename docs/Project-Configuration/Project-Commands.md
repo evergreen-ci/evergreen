@@ -1291,6 +1291,8 @@ Parameters:
 - `require_checksum_sha256`: optional base64-encoded sha256 checksum
   to verify the downloaded file against. If the checksum does not match,
   the command will fail.
+- `version_id`: optional S3 object version ID. When set, the download
+  will fetch this specific version of the object rather than the latest version.
 - `optional`: boolean: if set, won't error if the file isn't found or there's an error with downloading.
 
 ## s3.put

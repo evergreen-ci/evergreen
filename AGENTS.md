@@ -125,6 +125,7 @@ The Evergreen codebase has automated tests defined in `self-tests.yml`, which it
   test functions if they're already structured with GoConvey or testify test suites.
 * Prefer not to use `assert.New`/`require.New` if possible because they're difficult to use for nested tests or test
   case lists.
+* Use `t.Cleanup` to do deferred cleanup at the end of tests.
 
 ## Pull Requests
 

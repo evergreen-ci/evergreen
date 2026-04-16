@@ -33,11 +33,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	OutputBufferSize       = 1000
-	whyIsMyDataMissingText = `The task data has not been fetched yet.
-To fetch the task data, run: "evergreen host fetch"`
-)
+const OutputBufferSize = 1000
 
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
