@@ -100,9 +100,9 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 
 	if settings.OktaServiceConfig.Issuer != "" {
 		uis.umconf.OIDCConfigs = append(uis.umconf.OIDCConfigs, &gimlet.OIDCConfig{
-			KeysetURL:  settings.AuthConfig.Kanopy.KeysetURL,
+			KeysetURL:  settings.OktaServiceConfig.KeySetURL,
 			Issuer:     settings.OktaServiceConfig.Issuer,
-			HeaderName: settings.AuthConfig.Kanopy.HeaderName,
+			HeaderName: settings.OktaServiceConfig.HeaderName,
 			DisplayNameFromID: func(id string) string {
 				return cases.Title(language.English).String(strings.Join(strings.Split(id, "."), " "))
 			},
