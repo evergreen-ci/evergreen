@@ -93,7 +93,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	if flags.HostAllocatorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     hostAllocatorJobName,
 			"message": "host allocation is disabled",
 		})
@@ -195,7 +195,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":             hostAllocatorJobName,
 		"distro":             j.DistroID,
 		"single_task_distro": distro.SingleTaskDistro,
@@ -210,7 +210,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	//////////////////////
 
 	numIntentHosts, err := host.CountIntentHosts(ctx)
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"runner":   hostAllocatorJobName,
 		"instance": j.ID(),
 		"distro":   j.DistroID,
@@ -218,7 +218,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}))
 
 	if numIntentHosts > maxIntentHosts {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"runner":    hostAllocatorJobName,
 			"instance":  j.ID(),
 			"distro":    j.DistroID,
@@ -236,7 +236,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":             hostAllocatorJobName,
 		"distro":             distro.Id,
 		"single_task_distro": distro.SingleTaskDistro,
@@ -336,7 +336,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                            "distro-scheduler-report",
 		"job_type":                           hostAllocatorJobName,
 		"distro":                             distro.Id,
@@ -413,7 +413,7 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 		}
 		err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewHostDrawdownJob(j.env, drawdownInfo, utility.RoundPartOfMinute(1).Format(TSFormat)))
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":  "could not enqueue job to draw down hosts",
 				"instance": j.ID(),
 				"distro":   distro.Id,
@@ -466,7 +466,7 @@ func (j *hostAllocatorJob) saveHostStats(ctx context.Context, d *distro.Distro, 
 
 	hs := hoststat.NewHostStat(d.Id, numUpHosts)
 	if err := hs.Insert(ctx); err != nil && !db.IsDuplicateKey(err) {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "could not insert latest host stat data for distro",
 			"distro":    d.Id,
 			"num_hosts": numUpHosts,

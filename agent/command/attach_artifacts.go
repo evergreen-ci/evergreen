@@ -73,7 +73,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	if len(c.Files) == 0 {
 		err = errors.New("expanded file specification had no items")
 		if c.Optional {
-			logger.Task().Error(err)
+			logger.Task().Error(ctx, err)
 			return nil
 		}
 		return err
@@ -106,11 +106,11 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	}
 
 	if missedSegments > 0 {
-		logger.Task().Noticef("Encountered %d empty file definitions.", missedSegments)
+		logger.Task().Noticef(ctx, "Encountered %d empty file definitions.", missedSegments)
 	}
 
 	if len(files) == 0 {
-		logger.Task().Warning("No artifacts defined.")
+		logger.Task().Warning(ctx, "No artifacts defined.")
 		return nil
 	}
 
@@ -119,7 +119,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return errors.Wrap(err, "attach artifacts failed")
 	}
 
-	logger.Task().Infof("'%s' attached %d resources to task.", c.Name(), len(files))
+	logger.Task().Infof(ctx, "'%s' attached %d resources to task.", c.Name(), len(files))
 	return nil
 }
 

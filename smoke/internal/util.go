@@ -88,16 +88,16 @@ func GetAPIParamsFromEnv(t *testing.T, evgHome string) APIParams {
 func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 	const attempts = 10
 	for i := 0; i < attempts; i++ {
-		grip.Infof("Checking if Evergreen is up. (%d/%d)", i, attempts)
+		grip.Infof(t.Context(), "Checking if Evergreen is up. (%d/%d)", i, attempts)
 		resp, err := client.Get(appServerURL)
 		if err != nil {
-			grip.Error(errors.Wrap(err, "connecting to Evergreen"))
+			grip.Error(t.Context(), errors.Wrap(err, "connecting to Evergreen"))
 			time.Sleep(time.Second)
 			continue
 		}
 		resp.Body.Close()
 
-		grip.Info("Evergreen is up.")
+		grip.Info(t.Context(), "Evergreen is up.")
 
 		return
 	}
@@ -109,7 +109,7 @@ func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 // succeeded, and performed the expected operations based on the task log
 // contents.
 func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams, client *http.Client, mode globals.Mode, tasks []string) {
-	grip.Infof("Checking task status and task logs for tasks: %s", strings.Join(tasks, ", "))
+	grip.Infof(ctx, "Checking task status and task logs for tasks: %s", strings.Join(tasks, ", "))
 
 	const maxTaskCheckAttempts = 40
 	nextTaskToCheckIdx := 0
@@ -127,7 +127,7 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 	// server, agent, or smoke configuration files), these checks can fail.
 
 	for _, taskID := range tasks[nextTaskToCheckIdx:] {
-		grip.Infof("Checking %d remaining task(s). (%d/%d)", len(tasks)-nextTaskToCheckIdx, attempt, maxTaskCheckAttempts)
+		grip.Infof(ctx, "Checking %d remaining task(s). (%d/%d)", len(tasks)-nextTaskToCheckIdx, attempt, maxTaskCheckAttempts)
 
 		task, err := getTaskInfo(ctx, params, client, taskID)
 		require.NoError(t, err, "should be able to get task info")
@@ -140,7 +140,7 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 				require.NoError(t, err, "should be able to get task info")
 
 				if !evergreen.IsFinishedTaskStatus(task.Status) {
-					grip.Infof("Found task '%s' is not yet finished and has display status '%s' (expected '%s').", taskID, task.DisplayStatus, evergreen.TaskSucceeded)
+					grip.Infof(ctx, "Found task '%s' is not yet finished and has display status '%s' (expected '%s').", taskID, task.DisplayStatus, evergreen.TaskSucceeded)
 					attempt++
 					continue
 				}
@@ -148,7 +148,7 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 				assert.Equal(t, evergreen.TaskSucceeded, task.Status, "task must succeed")
 				getAndCheckTaskLog(ctx, t, params, client, mode, *task)
 
-				grip.Infof("Successfully checked task '%s'", taskID)
+				grip.Infof(ctx, "Successfully checked task '%s'", taskID)
 
 				nextTaskToCheckIdx = nextTaskToCheckIdx + 1
 
@@ -158,7 +158,7 @@ func CheckTaskStatusAndLogs(ctx context.Context, t *testing.T, params APIParams,
 	}
 
 	if nextTaskToCheckIdx >= len(tasks) {
-		grip.Infof("Successfully checked %d %s task(s) and their task logs.", len(tasks), string(mode))
+		grip.Infof(ctx, "Successfully checked %d %s task(s) and their task logs.", len(tasks), string(mode))
 		return
 	}
 
@@ -180,7 +180,7 @@ type smokeAPITask struct {
 // getTaskInfo gets basic information about the current status and task logs for
 // the given task ID from the REST API.
 func getTaskInfo(ctx context.Context, params APIParams, client *http.Client, taskID string) (*smokeAPITask, error) {
-	grip.Infof("Checking information for task '%s'.", taskID)
+	grip.Infof(ctx, "Checking information for task '%s'.", taskID)
 
 	body, err := MakeSmokeRequest(ctx, params, http.MethodGet, client, fmt.Sprintf("/rest/v2/tasks/%s", taskID))
 	if err != nil {
@@ -202,16 +202,16 @@ func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, cli
 	// retry for *slightly* delayed logger closing
 	const taskLogCheckAttempts = 3
 	for i := 0; i < taskLogCheckAttempts; i++ {
-		grip.Infof("Checking for task log from URL %s. (%d/%d)", task.Logs["task_log"], i+1, taskLogCheckAttempts)
+		grip.Infof(ctx, "Checking for task log from URL %s. (%d/%d)", task.Logs["task_log"], i+1, taskLogCheckAttempts)
 		body, err := MakeSmokeRequest(ctx, params, http.MethodGet, client, task.Logs["task_log"]+"&text=true")
 		if err != nil {
-			grip.Error(errors.Wrap(err, "getting task log data"))
+			grip.Error(ctx, errors.Wrap(err, "getting task log data"))
 			continue
 		}
 
 		checkTaskLogContent(t, task.DisplayName, body, mode)
 
-		grip.Infof("Successfully checked task logs for task '%s'", task.DisplayName)
+		grip.Infof(ctx, "Successfully checked task logs for task '%s'", task.DisplayName)
 
 		return
 	}
@@ -222,7 +222,7 @@ func getAndCheckTaskLog(ctx context.Context, t *testing.T, params APIParams, cli
 // checkTaskLogContent compares the expected result of running the smoke test
 // project YAML (project.yml) against the actual task log's text.
 func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode globals.Mode) {
-	grip.Infof("Checking task logs for task named '%s'", taskName)
+	grip.Infof(t.Context(), "Checking task logs for task named '%s'", taskName)
 
 	page := string(body)
 
@@ -279,7 +279,7 @@ func checkTaskLogContent(t *testing.T, taskName string, body []byte, mode global
 // MakeSmokeRequest sends an authenticated smoke request to the smoke test app
 // server.
 func MakeSmokeRequest(ctx context.Context, params APIParams, method string, client *http.Client, url string) ([]byte, error) {
-	grip.Infof("Getting endpoint '%s'", url)
+	grip.Infof(ctx, "Getting endpoint '%s'", url)
 
 	if !strings.HasPrefix(url, params.AppServerURL) {
 		url = strings.Join([]string{strings.TrimSuffix(params.AppServerURL, "/"), strings.TrimPrefix(url, "/")}, "/")
@@ -313,7 +313,7 @@ func MakeSmokeRequest(ctx context.Context, params APIParams, method string, clie
 // indicates the process name so that it can be tracked in output logs. The
 // given wd is used as the working directory for the command.
 func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...string) (jasper.Process, error) {
-	grip.Infof("Running command: %s", append([]string{bin}, cmdParts...))
+	grip.Infof(ctx, "Running command: %s", append([]string{bin}, cmdParts...))
 
 	cmdSender := send.NewWriterSender(send.MakeNative())
 	cmdSender.SetName(name)
@@ -336,7 +336,7 @@ func SmokeRunBinary(ctx context.Context, name, wd, bin string, cmdParts ...strin
 
 // StartAppServer starts the smoke test app server.
 func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.Process {
-	grip.Info("Starting smoke test app server.")
+	grip.Info(ctx, "Starting smoke test app server.")
 
 	appServerCmd, err := SmokeRunBinary(ctx,
 		"smoke-app-server",
@@ -351,7 +351,7 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.
 	)
 	require.NoError(t, err, "should have started Evergreen smoke test app server")
 
-	grip.Info("Successfully started smoke test app server.")
+	grip.Info(ctx, "Successfully started smoke test app server.")
 
 	return appServerCmd
 }
@@ -359,7 +359,7 @@ func StartAppServer(ctx context.Context, t *testing.T, params APIParams) jasper.
 // StartAgent starts the smoke test agent with the given execution mode and
 // ID.
 func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode globals.Mode, execModeID, execModeSecret string) jasper.Process {
-	grip.Info("Starting smoke test agent.")
+	grip.Info(ctx, "Starting smoke test agent.")
 
 	agentCmd, err := SmokeRunBinary(ctx,
 		"smoke-agent",
@@ -377,7 +377,7 @@ func StartAgent(ctx context.Context, t *testing.T, params APIParams, mode global
 	)
 	require.NoError(t, err, "should have started Evergreen agent")
 
-	grip.Info("Successfully started smoke test agent.")
+	grip.Info(ctx, "Successfully started smoke test agent.")
 
 	return agentCmd
 }

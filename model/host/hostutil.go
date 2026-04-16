@@ -29,14 +29,11 @@ import (
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	OutputBufferSize       = 1000
-	whyIsMyDataMissingText = `The task data has not been fetched yet.
-To fetch the task data, run: "evergreen host fetch"`
-)
+const OutputBufferSize = 1000
 
 // SetupCommand returns the command to run the host setup script.
 func (h *Host) SetupCommand() string {
@@ -432,28 +429,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if err != nil {
 				return "", errors.Wrap(err, "constructing Jasper command to fetch task data")
 			}
-			if !h.ProvisionOptions.UseOAuth {
-				// The legacy approach is to run `evergreen fetch` directly here with
-				// static credentials.
-				postFetchClient += " && " + getTaskDataCmd
-			} else {
-				// Escape single quotes in the command.
-				// This is done by closing the single quoted string, starting a
-				// double quoted string, having it's content be a single quote, then
-				// closing the double quoted string, and reopening the original
-				// single quoted string.
-				getTaskDataCmd := strings.ReplaceAll(getTaskDataCmd, "'", `'"'"'`)
-				// We write the command to a script because the user hasn't authenticated on this host yet.
-				// When the user SSH's in later, they have to run the script by running `evergreen host fetch`.
-				scriptPath := filepath.Join(h.Distro.HomeDir(), evergreen.SpawnhostFetchScriptName)
-				postFetchClient += " && " + fmt.Sprintf("echo '%s' > %s && chmod +x %s", getTaskDataCmd, scriptPath, scriptPath)
-
-				// Users might forget to run `evergreen host fetch`, so we add a note to
-				// where it usually is to remind them.
-				dataMissingFile := filepath.Join(h.Distro.WorkDir, evergreen.WhyIsMyDataMissingName)
-				postFetchClient += fmt.Sprintf(" && mkdir -p %s && chmod 777 %s ", h.Distro.WorkDir, h.Distro.WorkDir)
-				postFetchClient += fmt.Sprintf(" && echo '%s' >> %s && chmod 777 %s", whyIsMyDataMissingText, dataMissingFile, dataMissingFile)
-			}
+			postFetchClient += " && " + getTaskDataCmd
 		}
 	}
 
@@ -693,7 +669,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return nil, errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -741,7 +717,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 		return "", errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -764,7 +740,7 @@ func (h *Host) GetJasperProcess(ctx context.Context, env evergreen.Environment, 
 		return false, "", errors.Wrap(err, "getting Jasper client")
 	}
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -896,7 +872,7 @@ func (h *Host) withTaggedProcs(ctx context.Context, env evergreen.Environment, t
 	}
 
 	defer func() {
-		grip.Warning(message.WrapError(client.CloseConnection(), message.Fields{
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
 			"message": "could not close connection to Jasper",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -922,7 +898,7 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 	)
 
 	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
-		grip.WarningWhen(len(procs) > 1, message.Fields{
+		grip.WarningWhen(ctx, len(procs) > 1, message.Fields{
 			"message":   "host is attempting to fetch task data multiple times",
 			"num_procs": len(procs),
 			"host_id":   h.Id,
@@ -984,7 +960,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 				catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "signalling agent monitor process with ID '%s'", proc.ID())
 			}
 		}
-		grip.WarningWhen(numRunning > 1, message.Fields{
+		grip.WarningWhen(ctx, numRunning > 1, message.Fields{
 			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -1147,10 +1123,11 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		TaskID        string `yaml:"task_id,omitempty"`
 		ProjectID     string `yaml:"project_id,omitempty"`
 		OAuth         struct {
-			Issuer          string `yaml:"issuer"`
-			ClientID        string `yaml:"client_id"`
-			ConnectorID     string `yaml:"connector_id"`
-			DoNotUseBrowser bool   `yaml:"do_not_use_browser"`
+			Issuer               string        `yaml:"issuer"`
+			ClientID             string        `yaml:"client_id"`
+			ConnectorID          string        `yaml:"connector_id"`
+			DoNotUseBrowser      bool          `yaml:"do_not_use_browser"`
+			SpawnHostAccessToken *oauth2.Token `yaml:"spawn_host_access_token,omitempty"`
 		} `yaml:"oauth,omitempty"`
 	}{
 		User: owner.Id,
@@ -1186,11 +1163,12 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 			conf.OAuth.DoNotUseBrowser = true
 		}
 	}
-
-	if h.ProvisionOptions != nil && !h.ProvisionOptions.UseOAuth {
-		// If the host is not using OAuth, set the API key for the owner.
-		// We always set the 'user' field since it helps scripts identify
-		// which user is associated with the host.
+	if accessToken := owner.TokenExchangeToken; accessToken != nil {
+		conf.OAuth.SpawnHostAccessToken = accessToken
+		// We do not need to remove the access token from the user's document because
+		// it automatically expires and other hosts may need to use it.
+	} else {
+		// If there is no access token, default to using the user's API key.
 		conf.APIKey = owner.APIKey
 	}
 
@@ -1273,7 +1251,7 @@ func (h *Host) SetUserDataHostProvisioned(ctx context.Context) error {
 		return errors.Wrap(err, "marking host as done provisioning itself and now running")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":              "host successfully provisioned",
 		"host_id":              h.Id,
 		"distro":               h.Distro.Id,

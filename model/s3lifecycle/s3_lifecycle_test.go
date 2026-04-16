@@ -123,51 +123,6 @@ func TestFindByBucketAndPrefix(t *testing.T) {
 	assert.ErrorContains(t, err, "bucket name cannot be empty")
 }
 
-func TestFindMatchingRuleForFileKey(t *testing.T) {
-	require.NoError(t, db.Clear(Collection))
-
-	rules := []S3LifecycleRuleDoc{
-		{BucketName: "mciuploads", FilterPrefix: "sandbox/", BucketType: BucketTypeUserSpecified, RuleID: "sandbox-rule", RuleStatus: "Enabled", ExpirationDays: ptr(30)},
-		{BucketName: "mciuploads", FilterPrefix: "lifecycle/sandbox/", BucketType: BucketTypeUserSpecified, RuleID: "lifecycle-sandbox-rule", RuleStatus: "Enabled", ExpirationDays: ptr(7)},
-		{BucketName: "mciuploads", FilterPrefix: "", BucketType: BucketTypeUserSpecified, RuleID: "default-rule", RuleStatus: "Enabled", ExpirationDays: ptr(90)},
-		{BucketName: "mciuploads", FilterPrefix: "disabled/", BucketType: BucketTypeUserSpecified, RuleID: "disabled-rule", RuleStatus: "Disabled", ExpirationDays: ptr(1)},
-	}
-	for _, rule := range rules {
-		r := rule
-		require.NoError(t, (&r).Upsert(t.Context()))
-	}
-
-	tests := []struct {
-		bucket, fileKey, wantPrefix, wantRuleID string
-		wantDays                                *int
-	}{
-		{"mciuploads", "sandbox/myfile.txt", "sandbox/", "sandbox-rule", ptr(30)},
-		{"mciuploads", "lifecycle/sandbox/myfile.txt", "lifecycle/sandbox/", "lifecycle-sandbox-rule", ptr(7)},
-		{"mciuploads", "other/myfile.txt", "", "default-rule", ptr(90)},
-		{"mciuploads", "disabled/myfile.txt", "", "default-rule", ptr(90)}, // skips disabled
-		{"non-existent", "myfile.txt", "", "", nil},
-	}
-
-	for _, tt := range tests {
-		found, err := FindMatchingRuleForFileKey(t.Context(), tt.bucket, tt.fileKey)
-		require.NoError(t, err)
-		if tt.wantRuleID == "" {
-			assert.Nil(t, found)
-		} else {
-			require.NotNil(t, found)
-			assert.Equal(t, tt.wantPrefix, found.FilterPrefix)
-			assert.Equal(t, tt.wantRuleID, found.RuleID)
-			assert.Equal(t, tt.wantDays, found.ExpirationDays)
-		}
-	}
-
-	_, err := FindMatchingRuleForFileKey(t.Context(), "", "myfile.txt")
-	assert.ErrorContains(t, err, "bucket name cannot be empty")
-
-	_, err = FindMatchingRuleForFileKey(t.Context(), "mciuploads", "")
-	assert.ErrorContains(t, err, "file key cannot be empty")
-}
-
 func TestFindAllRulesForBucket(t *testing.T) {
 	require.NoError(t, db.Clear(Collection))
 
@@ -206,6 +161,39 @@ func TestFindAllRulesForBucket(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestFindAllRules(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.Clear(Collection))
+
+	rules := []S3LifecycleRuleDoc{
+		{BucketName: "bucket1", FilterPrefix: "sandbox/", BucketType: BucketTypeUserSpecified, RuleID: "rule1", RuleStatus: "Enabled"},
+		{BucketName: "bucket1", FilterPrefix: "logs/", BucketType: BucketTypeUserSpecified, RuleID: "rule2", RuleStatus: "Enabled"},
+		{BucketName: "bucket2", FilterPrefix: "", BucketType: BucketTypeAdminManaged, RuleID: "rule3", RuleStatus: "Enabled"},
+	}
+	for _, rule := range rules {
+		r := rule
+		require.NoError(t, (&r).Upsert(ctx))
+	}
+
+	found, err := FindAllRules(ctx)
+	require.NoError(t, err)
+	assert.Len(t, found, 3)
+
+	bucketNames := map[string]bool{}
+	for _, r := range found {
+		bucketNames[r.BucketName] = true
+	}
+	assert.True(t, bucketNames["bucket1"])
+	assert.True(t, bucketNames["bucket2"])
+}
+
+func TestFindAllRulesEmptyCollection(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	found, err := FindAllRules(t.Context())
+	require.NoError(t, err)
+	assert.Empty(t, found)
 }
 
 func TestDiscoverAdminManagedBuckets(t *testing.T) {

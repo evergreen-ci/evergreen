@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -28,28 +29,28 @@ import (
 // task within and a temporary directory within that new directory. If taskDir
 // is specified, it will create that task directory; otherwise, it will create
 // a new task directory based on the current task data.
-func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
+func (a *Agent) createTaskDirectory(ctx context.Context, tc *taskContext, taskDir string) (string, error) {
 	if taskDir == "" {
 		var err error
 		taskDir, err = a.generateTaskDirectoryName(tc)
 		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "generating task directory name"))
+			tc.logger.Execution().Error(ctx, errors.Wrap(err, "generating task directory name"))
 			return "", err
 		}
 	}
 
-	tc.logger.Execution().Infof("Making task directory '%s' for task execution.", taskDir)
+	tc.logger.Execution().Infof(ctx, "Making task directory '%s' for task execution.", taskDir)
 
 	if err := os.MkdirAll(taskDir, 0777); err != nil {
-		tc.logger.Execution().Error(errors.Wrapf(err, "creating task directory '%s'", taskDir))
+		tc.logger.Execution().Error(ctx, errors.Wrapf(err, "creating task directory '%s'", taskDir))
 		return "", err
 	}
 
 	tmpDir := filepath.Join(taskDir, "tmp")
-	tc.logger.Execution().Infof("Making task temporary directory '%s' for task execution.", tmpDir)
+	tc.logger.Execution().Infof(ctx, "Making task temporary directory '%s' for task execution.", tmpDir)
 
 	if err := os.MkdirAll(tmpDir, 0777); err != nil {
-		tc.logger.Execution().Warning(errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
+		tc.logger.Execution().Warning(ctx, errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
 	}
 
 	return taskDir, nil
@@ -133,35 +134,37 @@ func (a *Agent) generateTaskDirectoryHash(toHash string) (string, error) {
 // because leaving the task directory behind could impact later tasks.
 func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
-		grip.Info("Task directory is not set, not removing.")
+		grip.Info(ctx, "Task directory is not set, not removing.")
 		return
 	}
 
 	dir := tc.taskConfig.WorkDir
 
-	grip.Infof("Deleting task directory '%s' for completed task.", dir)
+	grip.Infof(ctx, "Deleting task directory '%s' for completed task.", dir)
 
 	// Removing long relative paths hangs on Windows https://github.com/golang/go/issues/36375,
 	// so we have to convert to an absolute path before removing.
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
+		grip.Critical(ctx, errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
 	if err := a.removeAllAndCheck(ctx, abs); err != nil {
-		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
+		grip.Critical(ctx, errors.Wrapf(err, "removing task directory '%s'", dir))
 	} else {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "Successfully deleted directory for completed task.",
 			"directory": tc.taskConfig.WorkDir,
 		})
 	}
 }
 
+const maxRemovalAttempts = 5
+
 // removeAllAndCheck removes the directory and checks the data directory
 // usage afterwards. If the data directory is unhealthy, the host is disabled.
 func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
-	removeErr := a.removeAll(dir)
+	removeErr := a.removeAll(ctx, dir)
 	if removeErr == nil {
 		return nil
 	}
@@ -169,7 +172,7 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 	checkCtx, checkCancel := context.WithTimeout(ctx, time.Minute)
 	defer checkCancel()
 	if err := a.checkDataDirectoryHealth(checkCtx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":               "failed to check data directory usage",
 			"unremovable_directory": dir,
 		}))
@@ -181,16 +184,95 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 // removeAll is the same as os.RemoveAll, but recursively changes permissions
 // for subdirectories and contents before removing. The permissions change fixes
 // an issue where some files may be marked read-only, which prevents
-// os.RemoveAll from deleting them.
-func (a *Agent) removeAll(dir string) error {
-	grip.Error(errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
+// os.RemoveAll from deleting them. Removal is retried to handle background
+// processes that may still be writing to the directory. If all retries are
+// exhausted, it falls back to privileged removal to handle root-owned files
+// left behind by containerized workloads.
+func (a *Agent) removeAll(ctx context.Context, dir string) error {
+	grip.Error(ctx, errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		grip.Error(errors.Wrapf(os.Chmod(path, 0777), "changing permission before removal for path '%s'", path))
+		grip.Error(ctx, errors.Wrapf(os.Chmod(path, 0777), "changing permission before removal for path '%s'", path))
 		return nil
 	}), "recursively walking through path to change permissions"))
-	return os.RemoveAll(dir)
+
+	err := utility.Retry(ctx, func() (bool, error) {
+		if err := os.RemoveAll(dir); err != nil {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":   "failed to remove task directory, will retry",
+				"directory": dir,
+			}))
+			return true, err
+		}
+		return false, nil
+	}, utility.RetryOptions{
+		MaxAttempts: maxRemovalAttempts,
+		MinDelay:    time.Second,
+	})
+	if err == nil {
+		return nil
+	}
+
+	mounts := activeMountsUnder(ctx, dir)
+	logRemovalFailureDiagnostics(ctx, dir, mounts)
+
+	// Bind mounts left behind by containers prevent removal even with elevated
+	// privileges, so unmount before attempting privileged removal.
+	if len(mounts) > 0 {
+		grip.Warningf(ctx, "Detected %d active mount(s) under task directory '%s', attempting to unmount before removal.", len(mounts), dir)
+		if err := exec.Command("sudo", "umount", "-R", dir).Run(); err != nil {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":   "failed to unmount task directory, will still attempt privileged removal",
+				"directory": dir,
+			}))
+		}
+	}
+
+	// Fall back to privileged removal for files that the agent user cannot
+	// remove (e.g., root-owned files written by containers into the task
+	// directory via bind mounts).
+	grip.Warningf(ctx, "Standard removal of task directory '%s' failed, attempting privileged removal.", dir)
+	return errors.Wrapf(exec.Command("sudo", "rm", "-rf", dir).Run(), "privileged removal of task directory '%s' failed", dir)
+}
+
+// logRemovalFailureDiagnostics logs remaining file metadata and active mounts
+// when removal fails, to identify whether containerized workloads left behind
+// bind mounts or root-owned files that prevented cleanup.
+func logRemovalFailureDiagnostics(ctx context.Context, dir string, mounts []string) {
+	type fileInfo struct {
+		Path  string `json:"path"`
+		Mode  string `json:"mode"`
+		IsDir bool   `json:"is_dir"`
+		Size  int64  `json:"size"`
+	}
+
+	var remaining []fileInfo
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			remaining = append(remaining, fileInfo{Path: path, IsDir: d.IsDir()})
+			return nil
+		}
+		remaining = append(remaining, fileInfo{
+			Path:  path,
+			Mode:  info.Mode().String(),
+			IsDir: d.IsDir(),
+			Size:  info.Size(),
+		})
+		return nil
+	})
+
+	grip.Warning(ctx, message.Fields{
+		"message":         "files remaining in task directory after failed removal",
+		"directory":       dir,
+		"remaining_count": len(remaining),
+		"active_mounts":   mounts,
+		"files":           remaining,
+	})
 }
 
 // tryCleanupDirectory is a very conservative function that attempts
@@ -228,18 +310,18 @@ func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 
 	// Don't run in a development environment
 	if _, err = os.Stat(filepath.Join(dir, ".git")); !os.IsNotExist(err) {
-		grip.Notice("Refusing to clean a directory that contains '.git'.")
+		grip.Notice(ctx, "Refusing to clean a directory that contains '.git'.")
 		return
 	}
 
 	usr, err := user.Current()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "getting current user"))
+		grip.Warning(ctx, errors.Wrap(err, "getting current user"))
 		return
 	}
 
 	if strings.HasPrefix(dir, usr.HomeDir) || strings.Contains(dir, "cygwin") {
-		grip.Notice("Not cleaning up directory, because it is in the home directory.")
+		grip.Notice(ctx, "Not cleaning up directory, because it is in the home directory.")
 		return
 	}
 
@@ -269,10 +351,10 @@ func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 		return
 	}
 
-	grip.Infof("Attempting to clean up directory '%s'.", dir)
+	grip.Infof(ctx, "Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
 		if err = a.removeAllAndCheck(ctx, p); err != nil {
-			grip.Critical(errors.Wrapf(err, "removing path '%s'", p))
+			grip.Critical(ctx, errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}
 }
@@ -305,14 +387,14 @@ func (a *Agent) checkDataDirectoryHealthWithUsage(ctx context.Context, usage *di
 
 // SetHomeDirectory sets the agent's home directory to the user's home directory
 // if it is not already set.
-func (a *Agent) SetHomeDirectory() {
+func (a *Agent) SetHomeDirectory(ctx context.Context) {
 	if a.opts.HomeDirectory != "" {
 		return
 	}
 
 	userHome, err := util.GetUserHome()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "setting the agent's home directory"))
+		grip.Warning(ctx, errors.Wrap(err, "setting the agent's home directory"))
 	}
 
 	a.opts.HomeDirectory = userHome

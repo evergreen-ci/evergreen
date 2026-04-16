@@ -101,7 +101,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if !j.host.IsEphemeral() {
-		grip.Notice(message.Fields{
+		grip.Notice(ctx, message.Fields{
 			"job":      j.ID(),
 			"host_id":  j.HostID,
 			"job_type": j.Type().Name,
@@ -119,14 +119,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		var idle bool
 		idle, err = j.host.IsIdleParent(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "checking if host is an idle parent",
 				"host_id": j.host.Id,
 				"job":     j.ID(),
 			}))
 		}
 		if !idle {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"job":      j.ID(),
 				"host_id":  j.HostID,
 				"job_type": j.Type().Name,
@@ -146,7 +146,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// we may be running these jobs on hosts that are already
 	// terminated.
-	grip.InfoWhen(j.host.Status == evergreen.HostTerminated, message.Fields{
+	grip.InfoWhen(ctx, j.host.Status == evergreen.HostTerminated, message.Fields{
 		"host_id":  j.host.Id,
 		"provider": j.host.Distro.Provider,
 		"job_type": j.Type().Name,
@@ -172,7 +172,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			return
 		}
 	default:
-		grip.WarningWhen(host.IsIntentHostId(j.host.Id), message.Fields{
+		grip.WarningWhen(ctx, host.IsIntentHostId(j.host.Id), message.Fields{
 			"message":     "Intent host has a status that should not be possible when preparing to terminate it. This is potentially a host lifecycle logical error.",
 			"host_id":     j.host.Id,
 			"host_status": j.host.Status,
@@ -185,7 +185,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// clear the running task of the host in case one has been assigned.
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
-			grip.Warning(message.Fields{
+			grip.Warning(ctx, message.Fields{
 				"message":        "Host has running task; clearing before terminating",
 				"job":            j.ID(),
 				"job_type":       j.Type().Name,
@@ -241,7 +241,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	prevStatus := j.host.Status
 	if prevStatus != evergreen.HostTerminated {
 		if err = j.host.SetDecommissioned(ctx, evergreen.User, j.TerminateIfBusy, "host will be terminated shortly, preventing task dispatch"); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"host_id":  j.host.Id,
 				"provider": j.host.Distro.Provider,
 				"job_type": j.Type().Name,
@@ -264,7 +264,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// check if running task has been assigned since status changed
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
-			grip.Warning(message.Fields{
+			grip.Warning(ctx, message.Fields{
 				"message":        "Host has running task; clearing before terminating",
 				"job":            j.ID(),
 				"job_type":       j.Type().Name,
@@ -306,7 +306,26 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	lastIdle, err := j.incrementIdleTime(ctx)
 	j.AddError(err)
 
-	terminationMessage := message.Fields{
+	j.logTerminationStats(ctx, lastIdle)
+
+	if j.host.StartedBy == evergreen.User && j.host.TaskCount == 0 {
+		grip.Info(ctx, message.Fields{
+			"message":          "task host ran no tasks before it was terminated",
+			"status":           prevStatus,
+			"host_id":          j.HostID,
+			"host_tag":         j.host.Tag,
+			"distro":           j.host.Distro.Id,
+			"uptime_secs":      time.Since(j.host.StartTime).Seconds(),
+			"provider":         j.host.Provider,
+			"spawn_host":       j.host.StartedBy != evergreen.User,
+			"is_ec2_host":      cloud.IsEC2InstanceID(j.HostID),
+			"agent_start_time": j.host.AgentStartTime,
+		})
+	}
+}
+
+func (j *hostTerminationJob) logTerminationStats(ctx context.Context, lastIdle time.Duration) {
+	msg := message.Fields{
 		"message":            "host successfully terminated",
 		"host_id":            j.host.Id,
 		"distro":             j.host.Distro.Id,
@@ -323,22 +342,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"creation_time":      j.host.CreationTime,
 		"started_by":         j.host.StartedBy,
 		"user_host":          j.host.UserHost,
+		"spawned_by_task":    j.host.SpawnOptions.SpawnedByTask,
 	}
-	if !utility.IsZeroTime(j.host.BillingStartTime) {
-		terminationMessage["total_billable_secs"] = j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
-	}
-	var instanceType string
-	if evergreen.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
-		var ok bool
-		instanceType, ok = j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
-		if ok {
-			terminationMessage["instance_type"] = instanceType
-		}
-	}
-	grip.Info(terminationMessage)
-
-	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(
+	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
 		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
 		attribute.Float64(fmt.Sprintf("%s.idle_secs", hostTerminationAttributePrefix), j.host.TotalIdleTime.Seconds()),
@@ -348,28 +354,40 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		attribute.String(fmt.Sprintf("%s.started_by", hostTerminationAttributePrefix), j.host.StartedBy),
 		attribute.Bool(fmt.Sprintf("%s.user_host", hostTerminationAttributePrefix), j.host.UserHost),
 		attribute.Int(fmt.Sprintf("%s.task_count", hostTerminationAttributePrefix), j.host.TaskCount),
-	)
-	if !utility.IsZeroTime(j.host.BillingStartTime) {
-		span.SetAttributes(attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()))
-	}
-	if instanceType != "" {
-		span.SetAttributes(attribute.String(fmt.Sprintf("%s.instance_type", hostTerminationAttributePrefix), instanceType))
+		attribute.Bool(fmt.Sprintf("%s.spawned_by_task", hostTerminationAttributePrefix), j.host.SpawnOptions.SpawnedByTask),
 	}
 
-	if j.host.StartedBy == evergreen.User && j.host.TaskCount == 0 {
-		grip.Info(message.Fields{
-			"message":          "task host ran no tasks before it was terminated",
-			"status":           prevStatus,
-			"host_id":          j.HostID,
-			"host_tag":         j.host.Tag,
-			"distro":           j.host.Distro.Id,
-			"uptime_secs":      time.Since(j.host.StartTime).Seconds(),
-			"provider":         j.host.Provider,
-			"spawn_host":       j.host.StartedBy != evergreen.User,
-			"is_ec2_host":      cloud.IsEC2InstanceID(j.HostID),
-			"agent_start_time": j.host.AgentStartTime,
-		})
+	if !utility.IsZeroTime(j.host.BillingStartTime) {
+		billableSecs := j.host.TerminationTime.Sub(j.host.BillingStartTime).Seconds()
+		msg["total_billable_secs"] = billableSecs
+		attrs = append(attrs, attribute.Float64(fmt.Sprintf("%s.billable_secs", hostTerminationAttributePrefix), billableSecs))
 	}
+	if j.host.SpawnOptions.SpawnedByTask {
+		msg["spawned_by_project"] = j.host.SpawnOptions.ProjectID
+		attrs = append(attrs, attribute.String(fmt.Sprintf("%s.spawned_by_project", hostTerminationAttributePrefix), j.host.SpawnOptions.ProjectID))
+		if j.host.SpawnOptions.TaskID != "" {
+			msg["spawned_by_task_id"] = j.host.SpawnOptions.TaskID
+			msg["spawned_by_task_execution"] = j.host.SpawnOptions.TaskExecutionNumber
+			attrs = append(attrs,
+				attribute.String(fmt.Sprintf("%s.spawned_by_task_id", hostTerminationAttributePrefix), j.host.SpawnOptions.TaskID),
+				attribute.Int64(fmt.Sprintf("%s.spawned_by_task_execution", hostTerminationAttributePrefix), int64(j.host.SpawnOptions.TaskExecutionNumber)),
+			)
+		}
+		if j.host.SpawnOptions.BuildID != "" {
+			msg["spawned_by_build_id"] = j.host.SpawnOptions.BuildID
+			attrs = append(attrs, attribute.String(fmt.Sprintf("%s.spawned_by_build_id", hostTerminationAttributePrefix), j.host.SpawnOptions.BuildID))
+		}
+	}
+	if evergreen.IsEc2Provider(j.host.Distro.Provider) && len(j.host.Distro.ProviderSettingsList) > 0 {
+		instanceType, ok := j.host.Distro.ProviderSettingsList[0].Lookup("instance_type").StringValueOK()
+		if ok {
+			msg["instance_type"] = instanceType
+			attrs = append(attrs, attribute.String(fmt.Sprintf("%s.instance_type", hostTerminationAttributePrefix), instanceType))
+		}
+	}
+
+	grip.Info(ctx, msg)
+	trace.SpanFromContext(ctx).SetAttributes(attrs...)
 }
 
 func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) (time.Duration, error) {
@@ -400,7 +418,7 @@ func (j *hostTerminationJob) cleanupIntentHost(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "getting cloud host for intent host")
 		}
-		grip.Error(message.WrapError(cloudHost.CleanupIP(ctx), message.Fields{
+		grip.Error(ctx, message.WrapError(cloudHost.CleanupIP(ctx), message.Fields{
 			"message":        "could not clean up IP resources for intent host",
 			"host_id":        j.host.Id,
 			"allocation_id":  j.host.IPAllocationID,
@@ -443,7 +461,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) err
 	}
 
 	if cloudInfo.Status == cloud.StatusTerminated {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":             "host is already terminated in the cloud, setting the host status to terminated",
 			"cloud_status":        cloudInfo.Status,
 			"cloud_status_reason": cloudInfo.StateReason,

@@ -62,7 +62,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	}
 
 	if flags.SchedulerDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"distro":   j.DistroID,
 			"job":      j.ID(),
@@ -105,7 +105,7 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"runner":        scheduler.RunnerName,
 		"distro":        j.DistroID,
 		"alias":         true,

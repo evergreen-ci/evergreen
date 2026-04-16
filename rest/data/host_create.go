@@ -29,7 +29,6 @@ import (
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
 func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
-	env := evergreen.GetEnvironment()
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "finding task '%s'", taskID).Error()}
@@ -60,20 +59,6 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 			if p != nil {
 				hosts[idx].Host = p.Host
 				hosts[idx].IP = p.IP
-			}
-			// update port binding if instance status not yet called
-			if h.NeedsPortBindings() {
-				mgrOpts, err := cloud.GetManagerOptions(h.Distro)
-				if err != nil {
-					return nil, errors.Wrapf(err, "getting cloud manager options for distro '%s'", h.Distro.Id)
-				}
-				mgr, err := cloud.GetManager(ctx, env, mgrOpts)
-				if err != nil {
-					return nil, errors.Wrap(err, "getting cloud manager")
-				}
-				if err = mgr.SetPortMappings(ctx, &hosts[idx], p); err != nil {
-					return nil, errors.Wrapf(err, "getting status for container '%s'", h.Id)
-				}
 			}
 		}
 	}
@@ -316,7 +301,7 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, pu
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
 	event.LogHostCreated(ctx, intent.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "intent host created",
 		"host_id":  intent.Id,
 		"host_tag": intent.Tag,
@@ -359,6 +344,7 @@ func getHostCreationOptions(ctx context.Context, d distro.Distro, taskID, userID
 			options.SpawnOptions.TaskID = taskID
 			options.SpawnOptions.TaskExecutionNumber = t.Execution
 		}
+		options.SpawnOptions.ProjectID = t.Project
 		options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(createHost.TeardownTimeoutSecs) * time.Second)
 		options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(createHost.SetupTimeoutSecs) * time.Second)
 		options.SpawnOptions.Retries = createHost.Retries

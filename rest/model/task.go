@@ -78,7 +78,10 @@ type APITask struct {
 	// The status of this task that is displayed in the UI (possible values are
 	// "will-run", "unscheduled", "blocked", "dispatched", "started", "success",
 	// "failed", "aborted", "system-failed", "system-unresponsive",
-	// "system-timed-out", "task-timed-out", "known-issue")
+	// "system-timed-out", "task-timed-out", "known-issue").
+	// Populated from the task's DisplayStatusCache field in the DB. The BSON field
+	// name differs (display_status_cache vs display_status) to avoid breaking existing
+	// workflows; do not change the BSON tag.
 	DisplayStatus *string `json:"display_status"`
 	// Object containing additional information about the status
 	Details ApiTaskEndDetail `json:"status_details"`
@@ -364,7 +367,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Execution:               t.Execution,
 		Order:                   t.RevisionOrderNumber,
 		Status:                  utility.ToStringPtr(t.Status),
-		DisplayStatus:           utility.ToStringPtr(t.GetDisplayStatus()),
+		DisplayStatus:           utility.ToStringPtr(t.DisplayStatusCache),
 		ExpectedDuration:        NewAPIDuration(t.ExpectedDuration),
 		GenerateTask:            t.GenerateTask,
 		GeneratedBy:             t.GeneratedBy,

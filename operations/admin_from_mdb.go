@@ -116,7 +116,7 @@ func toMdbForLocal() cli.Command {
 					docs = append(docs, doc)
 				}
 				_, _ = coll.InsertMany(ctx, docs)
-				grip.Infof("inserted %d docs into collection '%s'", len(docs), header.Name)
+				grip.Infof(ctx, "inserted %d docs into collection '%s'", len(docs), header.Name)
 			}
 
 			return nil
@@ -254,7 +254,7 @@ func processCollection(ctx context.Context, collBuf *bytes.Buffer, client *mongo
 		return errors.Wrap(err, "finding documents")
 	}
 	defer func() {
-		grip.Error(cursor.Close(ctx))
+		grip.Error(ctx, cursor.Close(ctx))
 	}()
 
 	count := 0
@@ -267,7 +267,7 @@ func processCollection(ctx context.Context, collBuf *bytes.Buffer, client *mongo
 		count++
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"count":      count,
 		"collection": collection,
 		"database":   dbName,

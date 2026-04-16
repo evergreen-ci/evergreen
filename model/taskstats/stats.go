@@ -112,7 +112,7 @@ type GenerateStatsOptions struct {
 // for the given project, requester, day, and tasks specified. The day covered
 // is the UTC day corresponding to the given day parameter.
 func GenerateStats(ctx context.Context, opts GenerateStatsOptions) error {
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   "generating daily task stats",
 		"project":   opts.ProjectID,
 		"requester": opts.Requester,
@@ -149,7 +149,7 @@ type FindStatsToUpdateOptions struct {
 // tasks finishing between the given start and end times. The results are
 // ordered are ordered by first by date, then requester.
 func FindStatsToUpdate(ctx context.Context, opts FindStatsToUpdateOptions) ([]StatsToUpdate, error) {
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "finding tasks that need their stats updated",
 		"project": opts.ProjectID,
 		"start":   opts.Start,

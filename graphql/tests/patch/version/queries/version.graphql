@@ -3,5 +3,15 @@
     versionFull {
       id
     }
+    version {
+      id
+      status
+      taskStatusStats {
+        counts {
+          status
+          count
+        }
+      }
+    }
   }
 }

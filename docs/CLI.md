@@ -27,7 +27,7 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
 
 To start authenticating via OAuth, you will need to comment out or delete the `api_key` field from your `~/.evergreen.yml` file.
 
-After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli).
+After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
 ## Basic Patch Usage
 
@@ -686,9 +686,13 @@ api:
 
 The "url" keys in each list item should contain the appropriate URL to the binary for each architecture. The "latest*revision" key should contain the githash that was used to build the binary. It should match the output of `evergreen version` for \_all* the binaries at the URLs listed in order for auto-updates to be successful.
 
+### Task Debugger
+
+For debugging task commands on spawn hosts, see the [Task Debugger documentation](Hosts/Debug-Spawn-Hosts.md).
+
 ### Notifications
 
-The Evergreen CLI has the ability to send slack and email notifications for scripting. These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
+The Evergreen CLI has the ability to send slack and email notifications for scripting. **Email is limited to service users.** These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
 
 ```bash
 # Send a Slack message

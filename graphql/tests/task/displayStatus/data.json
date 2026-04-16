@@ -76,6 +76,7 @@
             "order": 2567,
             "r": "github_pull_request",
             "status": "failed",
+            "display_status_cache": "known-issue",
             "time_taken": {
                 "$numberLong": "22722855668"
             },

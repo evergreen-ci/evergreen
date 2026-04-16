@@ -33,6 +33,7 @@ func NewConfigSections() ConfigSections {
 		&ContainerPoolsConfig{},
 		&CostConfig{},
 		&DebugSpawnHostsConfig{},
+		&DiagnosticsConfig{},
 		&FWSConfig{},
 		&GraphiteConfig{},
 		&HostInitConfig{},

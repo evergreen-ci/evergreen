@@ -86,7 +86,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		grip.Error(errors.Wrap(err, "otel error"))
+		grip.Error(ctx, errors.Wrap(err, "otel error"))
 	}))
 
 	a.tracer = tp.Tracer(packageName)
@@ -127,7 +127,7 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 	)
 
 	return func(ctx context.Context) {
-		grip.Error(errors.Wrap(meterProvider.Shutdown(ctx), "doing meter provider"))
+		grip.Error(ctx, errors.Wrap(meterProvider.Shutdown(ctx), "doing meter provider"))
 	}, errors.Wrap(instrumentMeter(ctx, meterProvider.Meter(packageName)), "instrumenting meter")
 }
 
@@ -556,7 +556,7 @@ func hostResource(ctx context.Context) *resource.Resource {
 	)
 
 	mergedResource, err := addEnvironmentAttributes(ctx, r)
-	grip.Error(errors.Wrap(err, "adding environment attributes"))
+	grip.Error(ctx, errors.Wrap(err, "adding environment attributes"))
 	if err == nil {
 		r = mergedResource
 	}

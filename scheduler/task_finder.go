@@ -55,7 +55,7 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 	for _, t := range undispatchedTasks {
 		ref, ok := projectRefCache[t.Project]
 		if !ok {
-			grip.Notice(message.Fields{
+			grip.Notice(ctx, message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
 				"planner": d.PlannerSettings.Version,
@@ -72,7 +72,7 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 		}
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
-			grip.Notice(message.Fields{
+			grip.Notice(ctx, message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
 				"outcome": "skipping",
@@ -86,7 +86,7 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 		if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
 			depsMet, err := t.DependenciesMet(ctx, dependencyCaches)
 			if err != nil {
-				grip.Warning(message.Fields{
+				grip.Warning(ctx, message.Fields{
 					"runner":  RunnerName,
 					"message": "error checking dependencies for task",
 					"outcome": "skipping",
@@ -150,7 +150,7 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 	for _, t := range undispatchedTasks {
 		ref, ok := projectRefCache[t.Project]
 		if !ok {
-			grip.Notice(message.Fields{
+			grip.Notice(ctx, message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
 				"planner": d.PlannerSettings.Version,
@@ -167,7 +167,7 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 		}
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
-			grip.Notice(message.Fields{
+			grip.Notice(ctx, message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
 				"outcome": "skipping",
@@ -188,7 +188,7 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 		runnabletasks = append(runnabletasks, t)
 
 	}
-	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+	grip.Info(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 		"runner":            RunnerName,
 		"schedulable_tasks": len(undispatchedTasks),
 	}))
@@ -252,7 +252,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 	for _, t := range undispatchedTasks {
 		ref, ok := projectRefCache[t.Project]
 		if !ok {
-			grip.Notice(message.Fields{
+			grip.Notice(ctx, message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
 				"outcome": "skipping",
@@ -269,7 +269,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 		}
 
 		if len(d.ValidProjects) > 0 && !utility.StringSliceContains(d.ValidProjects, ref.Id) {
-			grip.Notice(message.Fields{
+			grip.Notice(ctx, message.Fields{
 				"runner":  RunnerName,
 				"message": "project is not valid for distro",
 				"outcome": "skipping",
@@ -293,7 +293,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 		}
 		runnabletasks = append(runnabletasks, t)
 	}
-	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+	grip.Info(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 		"runner":            RunnerName,
 		"planner":           d.PlannerSettings.Version,
 		"schedulable_tasks": len(undispatchedTasks),

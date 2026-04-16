@@ -65,7 +65,14 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
+
+	// dependencyResolutionTimeout is the maximum time allowed for recursive
+	// dependency resolution.
+	dependencyResolutionTimeout = 10 * time.Minute
 )
+
+// maxDependencyDepth is the maximum recursion depth for dependency traversal.
+var maxDependencyDepth = 500
 
 var (
 	// A regex that matches either / or \ for splitting directory paths
@@ -578,7 +585,7 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
 		if d.TaskId == t.Id {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "task is attempting to add a dependency on itself, skipping this dependency",
 				"task_id": t.Id,
 				"stack":   string(debug.Stack()),
@@ -648,7 +655,7 @@ func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (
 				DependenciesMetTimeKey: t.DependenciesMetTime,
 			},
 		})
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message": "task.DependenciesMet() failed to update task",
 		"task_id": t.Id}))
 
@@ -1285,7 +1292,7 @@ func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, e
 	}
 	if task.RevisionOrderNumber >= upperBoundTask.RevisionOrderNumber ||
 		task.RevisionOrderNumber <= lowerBoundTask.RevisionOrderNumber {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                 "found midway task is out of bounds",
 			"t1_id":                   t1Id,
 			"t1_order_number":         t1.RevisionOrderNumber,
@@ -1390,7 +1397,7 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 	default:
 		event.LogTaskFinished(ctx, t.Id, t.Execution, evergreen.TaskSystemFailed)
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "marking task system failed",
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
@@ -1619,7 +1626,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		if t.Archived {
 			execTasks, err := FindByExecutionTasksAndMaxExecution(ctx, t.ExecutionTasks, t.Execution, bson.E{Key: "$or", Value: hasResults})
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "getting execution tasks for archived display task",
 				}))
 			}
@@ -1630,7 +1637,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 			query["$or"] = hasResults
 			execTasksWithResults, err := Count(ctx, db.Query(query))
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "getting count of execution tasks with results for display task",
 				}))
 			}
@@ -1682,7 +1689,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -1905,7 +1912,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDsToActivate,
 		"caller":   caller,
@@ -1922,7 +1929,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 			taskIds = append(taskIds, t.Id)
 		}
 		panicErr := recovery.HandlePanicWithError(recover(), nil, "problem adding edge")
-		grip.Error(message.WrapError(panicErr, message.Fields{
+		grip.Error(context.Background(), message.WrapError(panicErr, message.Fields{
 			"function":       "topologicalSort",
 			"from_task":      fromTask,
 			"to_task":        toTask,
@@ -2023,7 +2030,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -2083,7 +2090,7 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 	for _, t := range tasksToUpdate {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
+	grip.Error(ctx, message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDsToUpdate,
 		"caller":   caller,
@@ -2117,7 +2124,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":   "marking task finished",
 		"task_id":   t.Id,
 		"execution": t.Execution,
@@ -2125,7 +2132,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 		"details":   t.Details,
 	})
 	if detail.IsEmpty() {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":   "detail status was empty, setting to failed",
 			"task_id":   t.Id,
 			"execution": t.Execution,
@@ -2139,7 +2146,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 
 	// Calculate EC2 runtime costs now that we have the actual runtime.
 	if err := t.UpdateTaskCost(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "failed to calculate task cost",
 			"task_id":   t.Id,
 			"execution": t.Execution,
@@ -2171,7 +2178,7 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
-// the statuses assigned during the addDisplayStatus aggregation step.
+// the statuses assigned by DisplayStatusExpression / addDisplayStatusCache.
 func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
@@ -2464,9 +2471,24 @@ func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGe
 // that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
 // depCache should originally be nil. We assume there are no dependency cycles.
 func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[string]Task) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if depCache == nil {
 		depCache = make(map[string]Task)
 	}
+
+	return getRecursiveDependenciesUpHelper(ctx, tasks, depCache, 0)
+}
+
+func getRecursiveDependenciesUpHelper(ctx context.Context, tasks []Task, depCache map[string]Task, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
 	for _, t := range tasks {
 		depCache[t.Id] = t
 	}
@@ -2503,7 +2525,7 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
 
-	recursiveDeps, err := GetRecursiveDependenciesUp(ctx, deps, depCache)
+	recursiveDeps, err := getRecursiveDependenciesUpHelper(ctx, deps, depCache, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2515,9 +2537,24 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 // taskMap should originally be nil.
 // We assume there are no dependency cycles.
 func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap map[string]bool) ([]Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, dependencyResolutionTimeout)
+	defer cancel()
+
 	if taskMap == nil {
 		taskMap = make(map[string]bool)
 	}
+
+	return getRecursiveDependenciesDownHelper(ctx, tasks, taskMap, 0)
+}
+
+func getRecursiveDependenciesDownHelper(ctx context.Context, tasks []string, taskMap map[string]bool, depth int) ([]Task, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Wrapf(err, "dependency resolution cancelled or timed out at depth %d", depth)
+	}
+	if depth >= maxDependencyDepth {
+		return nil, errors.Errorf("dependency resolution exceeded maximum depth of %d", maxDependencyDepth)
+	}
+
 	for _, t := range tasks {
 		taskMap[t] = true
 	}
@@ -2539,7 +2576,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 		}
 	}
 
-	// everything is aleady in the map or nothing depends on tasks
+	// everything is already in the map or nothing depends on tasks
 	if len(newDeps) == 0 {
 		return nil, nil
 	}
@@ -2548,7 +2585,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	for _, t := range newDeps {
 		newDepIDs = append(newDepIDs, t.Id)
 	}
-	recurseTasks, err := getRecursiveDependenciesDown(ctx, newDepIDs, taskMap)
+	recurseTasks, err := getRecursiveDependenciesDownHelper(ctx, newDepIDs, taskMap, depth+1)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2624,7 +2661,7 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
-	grip.ErrorWhen(len(updatedTasks) != len(tasks), message.Fields{
+	grip.ErrorWhen(ctx, len(updatedTasks) != len(tasks), message.Fields{
 		"message":            "successfully updated dependencies for tasks but the subsequent query for updated tasks returned a different number of tasks than expected (which may cause bugs blocking other tasks)",
 		"expected_num_tasks": len(tasks),
 		"actual_num_tasks":   len(updatedTasks),
@@ -2931,7 +2968,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			execTaskIds = append(execTaskIds, t.ExecutionTasks...)
 			for _, et := range execTasks {
 				if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, et.Status) {
-					grip.Debug(message.Fields{
+					grip.Debug(ctx, message.Fields{
 						"message":   "execution task is in incomplete state, skipping archiving",
 						"task_id":   et.Id,
 						"execution": et.Execution,
@@ -3359,7 +3396,7 @@ func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
 	if t.DisplayTaskId == nil {
 		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":        "unable to get display task",
 				"execution_task": t.Id,
 			}))
@@ -3406,7 +3443,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	}
 
 	if t.DisplayTaskId == nil {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "missing display task ID",
 			"task_id": t.Id,
 			"dt_id":   dtId,
@@ -3414,7 +3451,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 		})
 		// Cache display task ID for future use. If we couldn't find the display task,
 		// we cache the empty string to show that it doesn't exist.
-		grip.Error(message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
+		grip.Error(ctx, message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{
 			"message":         "failed to cache display task ID for task",
 			"task_id":         t.Id,
 			"display_task_id": dtId,
@@ -3484,7 +3521,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
 
 		if err := t.cacheExpectedDuration(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"task":    t.Id,
 				"message": "caching expected duration",
 			}))
@@ -3497,7 +3534,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
 			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
-		grip.Notice(message.WrapError(err, message.Fields{
+		grip.Notice(ctx, message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
 			"id":        t.Id,
 			"project":   t.Project,
@@ -3524,7 +3561,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 		return util.DurationStats{Average: avg, StdDev: stdDev}, true
 	}
 
-	grip.Error(message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
+	grip.Error(ctx, message.WrapError(t.DurationPrediction.SetRefresher(refresher), message.Fields{
 		"message": "problem setting cached value refresher",
 		"cause":   "programmer error",
 	}))
@@ -3532,7 +3569,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 	stats, ok := t.DurationPrediction.Get()
 	if ok {
 		if err := t.cacheExpectedDuration(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"task":    t.Id,
 				"message": "caching expected duration",
 			}))
@@ -3774,7 +3811,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
 		if depID == t.Id {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "task is attempting to add a dependency on itself, skipping this dependency",
 				"task_id": t.Id,
 				"stack":   string(debug.Stack()),
@@ -4075,13 +4112,16 @@ func CalculateTaskCost(runtimeSeconds float64, distroCostData distro.CostData, f
 	}
 }
 
-// EBS GP3 throughput pricing constants (us-east-1 rates).
+// EBS GP3 pricing constants (us-east-1 rates).
 // Pricing is standardized to us-east-1 and does not account for regional variations.
+// GP2 volumes use GP3 pricing; price differences are ignored.
 const (
 	// GP3FreeThroughputMBps is the free throughput tier for GP3 volumes (125 MB/s).
 	GP3FreeThroughputMBps = 125
 	// GP3ThroughputPricePerMBpsMonth is the price per MB/s-month above the free tier.
 	GP3ThroughputPricePerMBpsMonth = 0.04
+	// GP3StoragePricePerGBMonth is the on-demand price per GB-month for EBS storage (us-east-1).
+	GP3StoragePricePerGBMonth = 0.08
 	// SecondsPerMonth is 2,592,000 (60 * 60 * 24 * 30) and is used to convert monthly pricing to per-second pricing.
 	SecondsPerMonth = 60 * 60 * 24 * 30
 )
@@ -4107,8 +4147,8 @@ func calculateBillableThroughput(totalThroughput int32) int32 {
 }
 
 // CalculateEBSThroughputOnDemandCost calculates the raw on-demand cost for EBS GP3 throughput.
-// Pricing based on us-east-1 rates: $0.04 per MB/s-month above 125 MB/s baseline.
-// Does not apply discount; use CalculateEBSThroughputAdjustedCost for discounted cost.
+// Pricing is based on us-east-1 rates: $0.04 per MB/s-month above the 125 MB/s baseline.
+// It does not apply a discount; use CalculateEBSThroughputAdjustedCost for the discounted cost.
 func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
 	if runtimeSeconds <= 0 {
 		return 0
@@ -4128,7 +4168,7 @@ func CalculateEBSThroughputOnDemandCost(runtimeSeconds float64, mountPoints []ec
 }
 
 // CalculateEBSThroughputAdjustedCost calculates the adjusted cost for EBS GP3 throughput.
-// Applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+// It applies the discount: adjusted = on_demand * (1 - EBSDiscount).
 func CalculateEBSThroughputAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
 	onDemandCost := CalculateEBSThroughputOnDemandCost(runtimeSeconds, mountPoints)
 	return onDemandCost * (1 - ebsConfig.EBSDiscount)
@@ -4141,7 +4181,7 @@ func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig eve
 	}
 	mountPoints, err := ec2settings.MountPointsForDistro(d, getHostRegionForTask(ctx, t))
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":   "failed to extract mount points from distro",
 			"task_id":   t.Id,
 			"distro_id": t.DistroId,
@@ -4161,6 +4201,51 @@ func (t *Task) calculateEBSThroughputCost(ctx context.Context, financeConfig eve
 		mountPoints,
 		financeConfig.EBSCost,
 	)
+	t.TaskCost.OnDemandEBSStorageCost = CalculateEBSStorageOnDemandCost(
+		runtimeSeconds,
+		mountPoints,
+	)
+	t.TaskCost.AdjustedEBSStorageCost = CalculateEBSStorageAdjustedCost(
+		runtimeSeconds,
+		mountPoints,
+		financeConfig.EBSCost,
+	)
+}
+
+// calculateTotalVolumeSize sums each volume's size in GB across mount points.
+// GP3 pricing standardization applies only in the cost calculation.
+func calculateTotalVolumeSize(mountPoints []ec2mount.MountPoint) int32 {
+	var totalSize int32
+	for _, mp := range mountPoints {
+		if mp.Size <= 0 {
+			continue
+		}
+		totalSize += mp.Size
+	}
+	return totalSize
+}
+
+// CalculateEBSStorageOnDemandCost calculates the raw on-demand cost for EBS storage.
+// Pricing is based on us-east-1 rates: $0.08 per GB-month (GP3); GP2 volumes use the same rate in this model.
+// It does not apply a discount; use CalculateEBSStorageAdjustedCost for the discounted cost.
+func CalculateEBSStorageOnDemandCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint) float64 {
+	if runtimeSeconds <= 0 {
+		return 0
+	}
+
+	totalSize := calculateTotalVolumeSize(mountPoints)
+	if totalSize == 0 {
+		return 0
+	}
+
+	return (float64(totalSize) * GP3StoragePricePerGBMonth / SecondsPerMonth) * runtimeSeconds
+}
+
+// CalculateEBSStorageAdjustedCost calculates the adjusted EBS storage cost.
+// It applies the discount: adjusted = on_demand * (1 - EBSDiscount).
+func CalculateEBSStorageAdjustedCost(runtimeSeconds float64, mountPoints []ec2mount.MountPoint, ebsConfig evergreen.EBSCostConfig) float64 {
+	onDemandCost := CalculateEBSStorageOnDemandCost(runtimeSeconds, mountPoints)
+	return onDemandCost * (1 - ebsConfig.EBSDiscount)
 }
 
 func (t *Task) getFinanceConfigAndDistro(ctx context.Context) (evergreen.CostConfig, distro.CostData, *distro.Distro, error) {
@@ -4217,7 +4302,10 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		t.calculateRuntimeCost(financeConfig, costData)
 		t.calculateEBSThroughputCost(ctx, financeConfig, d)
 	}
-	t.calculateS3PutCosts(ctx)
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err == nil {
+		t.calculateS3PutCosts(costConfig)
+	}
 
 	if t.TaskCost.IsZero() {
 		return nil
@@ -4235,38 +4323,66 @@ func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 
-// SaveS3Usage persists the task's S3 usage metrics and calculates S3 PUT costs.
-func (t *Task) SaveS3Usage(ctx context.Context) error {
-	t.calculateS3PutCosts(ctx)
+// bucketExpirationLookup resolves the S3 lifecycle expiration days for a given artifact file.
+type bucketExpirationLookup func(ctx context.Context, bucket, fileKey string) (days int, found bool)
+
+// SaveS3Usage persists the task's S3 usage metrics and calculates S3 costs.
+func (t *Task) SaveS3Usage(ctx context.Context, lookup bucketExpirationLookup) error {
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		return errors.Wrap(err, "getting cost config")
+	}
+
+	t.calculateS3PutCosts(costConfig)
+	t.setS3StorageCosts(ctx, lookup, costConfig)
 
 	setFields := bson.M{
 		S3UsageKey: t.S3Usage,
-		bsonutil.GetDottedKeyName(TaskCostKey, "s3_artifact_put_cost"): t.TaskCost.S3ArtifactPutCost,
-		bsonutil.GetDottedKeyName(TaskCostKey, "s3_log_put_cost"):      t.TaskCost.S3LogPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3ArtifactPutCostKey):     t.TaskCost.S3ArtifactPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3LogPutCostKey):          t.TaskCost.S3LogPutCost,
+		bsonutil.GetDottedKeyName(TaskCostKey, cost.S3ArtifactStorageCostKey): t.TaskCost.S3ArtifactStorageCost,
 	}
 
 	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{"$set": setFields})
 }
 
-// calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
-func (t *Task) calculateS3PutCosts(ctx context.Context) {
-	if t.S3Usage.Artifacts.PutRequests <= 0 && t.S3Usage.Logs.PutRequests <= 0 {
-		return
+// resolveArtifactExpirationDays looks up the expiration days for an artifact, falling back to DefaultMaxArtifactExpirationDays if no matching rule is found.
+func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (days int, found bool) {
+	if lookup != nil {
+		if days, ok := lookup(ctx, bucket, fileKey); ok {
+			return days, true
+		}
 	}
+	return costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, false
+}
 
-	costConfig := &evergreen.CostConfig{}
-	if err := costConfig.Get(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "could not get cost config to calculate S3 PUT costs",
-			"task_id": t.Id,
-		}))
-		return
-	}
+// calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
+func (t *Task) calculateS3PutCosts(costConfig *evergreen.CostConfig) {
 	if t.S3Usage.Artifacts.PutRequests > 0 {
 		t.TaskCost.S3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
 	}
 	if t.S3Usage.Logs.PutRequests > 0 {
 		t.TaskCost.S3LogPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Logs.PutRequests, costConfig)
+	}
+}
+
+// setS3StorageCosts calculates and sets the task's S3 artifact storage cost. Skipped if the lifecycle rules lookup is nil.
+func (t *Task) setS3StorageCosts(ctx context.Context, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) {
+	if lookup == nil {
+		return
+	}
+	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
+		for _, fileEntry := range bucketEntry.Files {
+			days, found := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
+			if !found {
+				grip.Info(ctx, message.Fields{
+					"message": "no S3 lifecycle rule found for artifact bucket, using default expiration days",
+					"bucket":  bucketEntry.Bucket,
+					"task_id": t.Id,
+				})
+			}
+			t.TaskCost.S3ArtifactStorageCost += s3usage.CalculateS3StorageCostWithConfig(ctx, fileEntry.Bytes, days, costConfig)
+		}
 	}
 }
 
@@ -4348,8 +4464,8 @@ func allObjectsExistInBucket(ctx context.Context, bucket pail.Bucket, keys []str
 
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket.
 func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
-	if output.TestLogs.BucketConfig != output.TaskLogs.BucketConfig {
-		// test logs and task logs will always be in the same bucket
+	if output.TestLogs.BucketConfig.Name != output.TaskLogs.BucketConfig.Name {
+		// moveLogsByNamesToBucket uses one source bucket for task and test log keys; names must agree.
 		return errors.New("test log and task log buckets do not match")
 	}
 	failedCfg := settings.Buckets.LogBucketFailedTasks
@@ -4392,14 +4508,14 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		// Verify whether the objects actually exist in the failed bucket before updating the DB.
 		// If they do, update the DB to fix the inconsistency. If not, return the error for retry.
 		if isContextError(moveErr) {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "failed_bucket_move: move timed out or canceled, verifying objects in destination",
 				"task_id":   t.Id,
 				"execution": t.Execution,
 				"key_count": len(allKeys),
 			})
 			if allObjectsExistInBucket(ctx, failedBucket, allKeys) {
-				grip.Info(message.Fields{
+				grip.Info(ctx, message.Fields{
 					"message":   "failed_bucket_move: all objects found in failed bucket, updating DB to fix inconsistency",
 					"task_id":   t.Id,
 					"execution": t.Execution,
@@ -4415,7 +4531,7 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 				}
 				return nil
 			}
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "failed_bucket_move: not all objects in failed bucket, returning error for retry",
 				"task_id":   t.Id,
 				"execution": t.Execution,

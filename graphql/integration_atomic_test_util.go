@@ -151,13 +151,13 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 					var actual bytes.Buffer
 					err = json.Indent(&actual, b, "", "  ")
 					if err != nil {
-						grip.Error(errors.Wrap(err, "actual value was not json"))
+						grip.Error(ctx, errors.Wrap(err, "actual value was not json"))
 						return
 					}
-					grip.Info("=== expected ===")
-					grip.Info(string(testCase.Result))
-					grip.Info("=== actual ===")
-					grip.Info(actual.Bytes())
+					grip.Info(ctx, "=== expected ===")
+					grip.Info(ctx, string(testCase.Result))
+					grip.Info(ctx, "=== actual ===")
+					grip.Info(ctx, actual.Bytes())
 				}
 			}
 			name := testCase.QueryFile
@@ -369,10 +369,11 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Name:  "superuser",
 		Scope: superUserScope.ID,
 		Permissions: map[string]int{
-			evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value,
-			evergreen.PermissionProjectCreate: evergreen.ProjectCreate.Value,
-			evergreen.PermissionDistroCreate:  evergreen.DistroCreate.Value,
-			evergreen.PermissionRoleModify:    evergreen.RoleModify.Value,
+			evergreen.PermissionAdminSettings:     evergreen.AdminSettingsEdit.Value,
+			evergreen.PermissionProjectCreate:     evergreen.ProjectCreate.Value,
+			evergreen.PermissionDistroCreate:      evergreen.DistroCreate.Value,
+			evergreen.PermissionRoleModify:        evergreen.RoleModify.Value,
+			evergreen.PermissionNotificationsSend: evergreen.NotificationsSend.Value,
 		},
 	}
 	err = roleManager.UpdateRole(t.Context(), superUserRole)

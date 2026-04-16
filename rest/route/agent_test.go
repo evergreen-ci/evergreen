@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -204,11 +205,15 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			rh.taskID = "t2"
-			resp := rh.Run(ctx)
+			foundTask, err := task.FindOneId(ctx, "t2")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp := rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId(ctx, "t2")
+			foundTask, err = task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -221,7 +226,11 @@ func TestMarkTaskForReset(t *testing.T) {
 			}))
 			require.NoError(t, foundTask.Archive(ctx))
 			require.NoError(t, foundTask.Reset(ctx, ""))
-			resp = rh.Run(ctx)
+			foundTask, err = task.FindOneId(ctx, "t2")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 
@@ -235,7 +244,11 @@ func TestMarkTaskForReset(t *testing.T) {
 		},
 		"RunSucceedsWithDisplayTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			rh.taskID = "et1"
-			resp := rh.Run(ctx)
+			et1Task, err := task.FindOneId(ctx, "et1")
+			require.NoError(t, err)
+			require.NotNil(t, et1Task)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, et1Task)
+			resp := rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -249,7 +262,11 @@ func TestMarkTaskForReset(t *testing.T) {
 			// Should not error if another execution task tries to mark the display task for restart
 			// before the display task has finished
 			rh.taskID = "et2"
-			resp = rh.Run(ctx)
+			et2Task, err := task.FindOneId(ctx, "et2")
+			require.NoError(t, err)
+			require.NotNil(t, et2Task)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, et2Task)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -263,7 +280,11 @@ func TestMarkTaskForReset(t *testing.T) {
 		"SuccessfullyChecksMaxRestartLimit": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			// Should succeed normally for first task
 			rh.taskID = "t2"
-			resp := rh.Run(ctx)
+			t2Task, err := task.FindOneId(ctx, "t2")
+			require.NoError(t, err)
+			require.NotNil(t, t2Task)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, t2Task)
+			resp := rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -276,7 +297,11 @@ func TestMarkTaskForReset(t *testing.T) {
 
 			// Should fail on second task since a limit is in place of 1
 			rh.taskID = "t3"
-			resp = rh.Run(ctx)
+			t3Task, err := task.FindOneId(ctx, "t3")
+			require.NoError(t, err)
+			require.NotNil(t, t3Task)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, t3Task)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusInternalServerError, resp.Status())
 			require.NotNil(t, resp.Data())
@@ -290,7 +315,11 @@ func TestMarkTaskForReset(t *testing.T) {
 			}
 			require.NoError(t, pRef.Replace(t.Context()))
 			rh.taskID = "t4"
-			resp = rh.Run(ctx)
+			t4Task, err := task.FindOneId(ctx, "t4")
+			require.NoError(t, err)
+			require.NotNil(t, t4Task)
+			taskCtx = context.WithValue(ctx, model.ApiTaskKey, t4Task)
+			resp = rh.Run(taskCtx)
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -492,7 +521,11 @@ func TestDownstreamParams(t *testing.T) {
 	r.downstreamParams = parameters
 	require.True(t, ok)
 
-	resp := r.Run(ctx)
+	foundTask, err := task.FindOneId(ctx, "task1")
+	require.NoError(t, err)
+	require.NotNil(t, foundTask)
+	taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+	resp := r.Run(taskCtx)
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -1024,7 +1057,11 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 			handler := makeStartTask(env).(*startTaskHandler)
 			require.NoError(t, handler.Parse(ctx, req))
 
-			resp := handler.Run(ctx)
+			foundTask, err := task.FindOneId(ctx, "test-task-id")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+			resp := handler.Run(taskCtx)
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
@@ -1042,72 +1079,123 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 
 func TestReportS3Usage(t *testing.T) {
 	ctx := t.Context()
-
-	t.Run("TaskNotFound", func(t *testing.T) {
-		require.NoError(t, db.Clear(task.Collection))
-		handler := makeReportS3Usage().(*reportS3UsageHandler)
-		handler.taskID = "nonexistent"
-		handler.s3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10}},
-		}
-		resp := handler.Run(ctx)
-		assert.Equal(t, http.StatusNotFound, resp.Status())
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
 	})
 
-	t.Run("SavesArtifactAndLogUsage", func(t *testing.T) {
-		require.NoError(t, db.Clear(task.Collection))
-		tk := task.Task{Id: "t1", Status: evergreen.TaskStarted}
-		require.NoError(t, tk.Insert(ctx))
-
-		handler := makeReportS3Usage().(*reportS3UsageHandler)
-		handler.taskID = "t1"
-		handler.s3Usage = s3usage.S3Usage{
-			Artifacts: s3usage.ArtifactMetrics{
-				S3UploadMetrics: s3usage.S3UploadMetrics{
-					PutRequests: 50,
-					UploadBytes: 2048,
+	for name, tc := range map[string]struct {
+		insertTask *task.Task
+		s3Usage    s3usage.S3Usage
+		wantStatus int
+		assertions func(*testing.T, *task.Task)
+	}{
+		"SavesArtifactAndLogUsage": {
+			insertTask: &task.Task{Id: "t1", Status: evergreen.TaskStarted},
+			s3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 50, UploadBytes: 2048},
+					Count:           5,
 				},
-				Count: 5,
+				Logs: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 4096},
 			},
-			Logs: s3usage.S3UploadMetrics{
-				PutRequests: 10,
-				UploadBytes: 4096,
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				assert.Equal(t, 50, dbTask.S3Usage.Artifacts.PutRequests)
+				assert.Equal(t, int64(2048), dbTask.S3Usage.Artifacts.UploadBytes)
+				assert.Equal(t, 5, dbTask.S3Usage.Artifacts.Count)
+				assert.Equal(t, 10, dbTask.S3Usage.Logs.PutRequests)
+				assert.Equal(t, int64(4096), dbTask.S3Usage.Logs.UploadBytes)
 			},
-		}
-		resp := handler.Run(ctx)
-		assert.Equal(t, http.StatusOK, resp.Status())
+		},
+		"SavesLogOnlyUsage": {
+			insertTask: &task.Task{Id: "t2", Status: evergreen.TaskStarted},
+			s3Usage: s3usage.S3Usage{
+				Logs: s3usage.S3UploadMetrics{PutRequests: 25, UploadBytes: 8192},
+			},
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
+				assert.Equal(t, 25, dbTask.S3Usage.Logs.PutRequests)
+				assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
+			require.NoError(t, tc.insertTask.Insert(ctx))
 
-		dbTask, err := task.FindOneId(ctx, "t1")
-		require.NoError(t, err)
-		require.NotNil(t, dbTask)
-		assert.Equal(t, 50, dbTask.S3Usage.Artifacts.PutRequests)
-		assert.Equal(t, int64(2048), dbTask.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 5, dbTask.S3Usage.Artifacts.Count)
-		assert.Equal(t, 10, dbTask.S3Usage.Logs.PutRequests)
-		assert.Equal(t, int64(4096), dbTask.S3Usage.Logs.UploadBytes)
+			foundTask, err := task.FindOneId(ctx, tc.insertTask.Id)
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			taskCtx := context.WithValue(ctx, model.ApiTaskKey, foundTask)
+
+			handler := makeReportS3Usage().(*reportS3UsageHandler)
+			handler.taskID = tc.insertTask.Id
+			handler.s3Usage = tc.s3Usage
+			resp := handler.Run(taskCtx)
+			assert.Equal(t, tc.wantStatus, resp.Status())
+
+			if tc.assertions != nil {
+				dbTask, err := task.FindOneId(ctx, tc.insertTask.Id)
+				require.NoError(t, err)
+				require.NotNil(t, dbTask)
+				tc.assertions(t, dbTask)
+			}
+		})
+	}
+}
+
+func TestFindExpirationDaysForFileKey(t *testing.T) {
+	enabled := "Enabled"
+	disabled := "Disabled"
+	days90 := 90
+	days30 := 30
+
+	t.Run("NoRulesShouldReturnNotFound", func(t *testing.T) {
+		_, ok := findExpirationDaysForFileKey(nil, "logs/build/output.txt")
+		assert.False(t, ok)
 	})
 
-	t.Run("SavesLogOnlyUsage", func(t *testing.T) {
-		require.NoError(t, db.Clear(task.Collection))
-		tk := task.Task{Id: "t2", Status: evergreen.TaskStarted}
-		require.NoError(t, tk.Insert(ctx))
-
-		handler := makeReportS3Usage().(*reportS3UsageHandler)
-		handler.taskID = "t2"
-		handler.s3Usage = s3usage.S3Usage{
-			Logs: s3usage.S3UploadMetrics{
-				PutRequests: 25,
-				UploadBytes: 8192,
-			},
+	t.Run("NoMatchingPrefixShouldReturnNotFound", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "sandbox/", RuleStatus: enabled, ExpirationDays: &days90},
 		}
-		resp := handler.Run(ctx)
-		assert.Equal(t, http.StatusOK, resp.Status())
+		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.False(t, ok)
+	})
 
-		dbTask, err := task.FindOneId(ctx, "t2")
-		require.NoError(t, err)
-		require.NotNil(t, dbTask)
-		assert.Equal(t, 0, dbTask.S3Usage.Artifacts.PutRequests)
-		assert.Equal(t, 25, dbTask.S3Usage.Logs.PutRequests)
-		assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
+	t.Run("MatchingPrefixShouldReturnDays", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
+		}
+		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.True(t, ok)
+		assert.Equal(t, 90, days)
+	})
+
+	t.Run("MostSpecificPrefixShouldWin", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
+			{FilterPrefix: "logs/build/", RuleStatus: enabled, ExpirationDays: &days30},
+		}
+		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.True(t, ok)
+		assert.Equal(t, 30, days)
+	})
+
+	t.Run("DisabledRuleShouldBeIgnored", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: disabled, ExpirationDays: &days90},
+		}
+		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.False(t, ok)
+	})
+
+	t.Run("NilExpirationDaysShouldReturnNotFound", func(t *testing.T) {
+		rules := []s3lifecycle.S3LifecycleRuleDoc{
+			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: nil},
+		}
+		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+		assert.False(t, ok)
 	})
 }

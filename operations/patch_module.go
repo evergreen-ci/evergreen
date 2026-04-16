@@ -88,7 +88,7 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return err
 			}
-			if err := addModuleToPatch(params, args, conf, existingPatch, module, ""); err != nil {
+			if err := addModuleToPatch(ctx, params, args, conf, existingPatch, module, ""); err != nil {
 				return err
 			}
 			if params.Finalize {
@@ -97,18 +97,18 @@ func PatchSetModule() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(patchID); err != nil {
+					if err = ac.FinalizePatch(ctx, patchID); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 					}
 				}
-				grip.Info("Patch finalized.")
+				grip.Info(ctx, "Patch finalized.")
 			}
 			return nil
 		},
 	}
 }
 
-func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
+func addModuleToPatch(ctx context.Context, params *patchParams, args cli.Args, conf *ClientSettings,
 	p *patch.Patch, module *model.Module, modulePath string) error {
 	patchId := p.Id.Hex()
 
@@ -138,9 +138,9 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	}
 
 	if !params.SkipConfirm {
-		grip.Infof("Using branch '%s' for module '%s'.", module.Branch, module.Name)
+		grip.Infof(ctx, "Using branch '%s' for module '%s'.", module.Branch, module.Name)
 		if diffData.patchSummary != "" {
-			grip.Info(diffData.patchSummary)
+			grip.Info(ctx, diffData.patchSummary)
 		}
 		if len(diffData.fullPatch) > 0 {
 			if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {
@@ -162,11 +162,11 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	if err != nil {
 		return errors.Wrap(err, "setting up legacy Evergreen client")
 	}
-	err = ac.UpdatePatchModule(moduleParams)
+	err = ac.UpdatePatchModule(ctx, moduleParams)
 	if err != nil {
 		return err
 	}
-	grip.Infof("Module '%s' updated, base commit is '%s' (and will override the manifest).", module.Name, diffData.base)
+	grip.Infof(ctx, "Module '%s' updated, base commit is '%s' (and will override the manifest).", module.Name, diffData.base)
 	return nil
 }
 

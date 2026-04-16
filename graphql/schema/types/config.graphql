@@ -68,6 +68,7 @@ input AdminSettingsInput {
   containerPools: ContainerPoolsConfigInput
   cost: CostConfigInput
   debugSpawnHosts: DebugSpawnHostsConfigInput
+  diagnostics: DiagnosticsConfigInput
   disabledGQLQueries: [String!]
   domainName: String
   expansions: StringMap
@@ -95,7 +96,6 @@ input AdminSettingsInput {
   repotracker: RepotrackerConfigInput
   runtimeEnvironments: RuntimeEnvironmentConfigInput
   scheduler: SchedulerConfigInput
-  serviceFlags: ServiceFlagsInput
   shutdownWaitSeconds: Int
   singleTaskDistro: SingleTaskDistroConfigInput
   slack: SlackConfigInput
@@ -125,6 +125,7 @@ type AdminSettings {
   containerPools: ContainerPoolsConfig
   cost: CostConfig
   debugSpawnHosts: DebugSpawnHostsConfig
+  diagnostics: DiagnosticsConfig
   disabledGQLQueries: [String!]!
   domainName: String
   expansions: StringMap
@@ -152,7 +153,6 @@ type AdminSettings {
   repotracker: RepotrackerConfig
   runtimeEnvironments: RuntimeEnvironmentConfig
   scheduler: SchedulerConfig
-  serviceFlags: ServiceFlags
   serviceFlagsList: [ServiceFlag!]
   shutdownWaitSeconds: Int
   singleTaskDistro: SingleTaskDistroConfig

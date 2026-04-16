@@ -107,7 +107,7 @@ func DiscoverAdminManagedBuckets(ctx context.Context, settings *evergreen.Settin
 func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, client cloud.S3LifecycleClient) bool {
 	existingRules, err := FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "error checking for existing bucket lifecycle rules",
 			"bucket":  bucketName,
 		}))
@@ -118,7 +118,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		return false
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "discovering lifecycle rules for new bucket",
 		"bucket":  bucketName,
 		"project": projectID,
@@ -126,7 +126,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 
 	awsRules, err := client.GetBucketLifecycleConfiguration(ctx, bucketName, region, roleARN, externalID)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to discover bucket lifecycle rules",
 			"bucket":  bucketName,
 			"project": projectID,
@@ -151,7 +151,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		}
 
 		if err := doc.Upsert(ctx); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to cache lifecycle rule",
 				"bucket":  bucketName,
 				"prefix":  awsRule.Prefix,
@@ -159,7 +159,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":     "successfully cached lifecycle rules for bucket",
 		"bucket":      bucketName,
 		"rules_count": len(awsRules),
@@ -269,31 +269,6 @@ func FindByBucketAndPrefix(ctx context.Context, bucketName, filterPrefix string)
 	return doc, errors.Wrapf(err, "finding lifecycle rule for bucket '%s' prefix '%s'", bucketName, filterPrefix)
 }
 
-// FindMatchingRuleForFileKey finds the most specific enabled lifecycle rule using longest-prefix matching.
-// Tries progressively shorter prefixes until a match is found (O(depth) indexed queries).
-func FindMatchingRuleForFileKey(ctx context.Context, bucketName, fileKey string) (*S3LifecycleRuleDoc, error) {
-	if bucketName == "" {
-		return nil, errors.New("bucket name cannot be empty")
-	}
-	if fileKey == "" {
-		return nil, errors.New("file key cannot be empty")
-	}
-
-	prefixes := pail.ExtractPrefixHierarchy(fileKey)
-
-	for _, prefix := range prefixes {
-		doc, err := FindByBucketAndPrefix(ctx, bucketName, prefix)
-		if err != nil {
-			return nil, err
-		}
-		if doc != nil && doc.RuleStatus == "Enabled" {
-			return doc, nil
-		}
-	}
-
-	return nil, nil
-}
-
 // FindAllRulesForBucket retrieves all lifecycle rules for the specified bucket.
 func FindAllRulesForBucket(ctx context.Context, bucketName string) ([]S3LifecycleRuleDoc, error) {
 	if bucketName == "" {
@@ -301,6 +276,11 @@ func FindAllRulesForBucket(ctx context.Context, bucketName string) ([]S3Lifecycl
 	}
 
 	return findS3LifecycleRules(ctx, bson.M{BucketNameKey: bucketName})
+}
+
+// FindAllRules retrieves all S3 lifecycle rules across all buckets.
+func FindAllRules(ctx context.Context) ([]S3LifecycleRuleDoc, error) {
+	return findS3LifecycleRules(ctx, bson.M{})
 }
 
 // FindDistinctBucketNames returns all unique bucket names for the given bucket type.
@@ -347,14 +327,6 @@ func Remove(ctx context.Context, bucketName, filterPrefix string) error {
 		db.Remove(ctx, Collection, bson.M{"_id": docID}),
 		"removing lifecycle rule for bucket '%s' prefix '%s'",
 		bucketName, filterPrefix,
-	)
-}
-
-// RemoveAll removes all documents from the collection. Use with caution.
-func RemoveAll(ctx context.Context) error {
-	return errors.Wrap(
-		db.RemoveAll(ctx, Collection, bson.M{}),
-		"removing all lifecycle rule documents",
 	)
 }
 

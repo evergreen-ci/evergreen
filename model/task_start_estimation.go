@@ -140,13 +140,13 @@ func createSimulatorModel(ctx context.Context, taskQueue TaskQueue, hosts []host
 			} else {
 				t, err := task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 				if err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
+					grip.Error(ctx, message.WrapError(err, message.Fields{
 						"message": "retrieving tasks for task start estimation simulator",
 					}))
 					return &estimator
 				}
 				if t == nil {
-					grip.Error(message.Fields{
+					grip.Error(ctx, message.Fields{
 						"message":        "task does not exist, can't estimate its duration",
 						"task_id":        h.RunningTask,
 						"task_execution": h.RunningTaskExecution,

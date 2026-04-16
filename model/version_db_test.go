@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -51,14 +50,10 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 }
 
 func TestRestartVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Insert data for the test paths.
-	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
-	}()
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, task.OldCollection))
+	})
 
 	versionID := "version0"
 	versions := []*Version{
@@ -85,14 +80,14 @@ func TestRestartVersion(t *testing.T) {
 		require.NoError(t, item.Insert(t.Context()))
 	}
 	for _, item := range builds {
-		require.NoError(t, item.Insert(ctx))
+		require.NoError(t, item.Insert(t.Context()))
 	}
 
-	require.NoError(t, RestartVersion(ctx, versionID, nil, true, "caller"))
+	require.NoError(t, RestartVersion(t.Context(), versionID, nil, true, "caller"))
 
 	// Check that completed non-execution tasks are reset.
 	for _, taskID := range []string{"task0", "display1"} {
-		tsk, err := task.FindOneId(ctx, taskID)
+		tsk, err := task.FindOneId(t.Context(), taskID)
 		require.NoError(t, err)
 
 		assert.Equal(t, evergreen.TaskUndispatched, tsk.Status)
@@ -100,7 +95,7 @@ func TestRestartVersion(t *testing.T) {
 
 	// Check that completed execution tasks are neither aborted nor reset.
 	for _, taskID := range []string{"exec00", "exec01", "exec11"} {
-		tsk, err := task.FindOneId(ctx, taskID)
+		tsk, err := task.FindOneId(t.Context(), taskID)
 		require.NoError(t, err)
 
 		assert.Contains(t, evergreen.TaskCompletedStatuses, tsk.Status)
@@ -111,7 +106,7 @@ func TestRestartVersion(t *testing.T) {
 
 	// Check that in-progress tasks are aborted and marked for reset.
 	for _, taskID := range []string{"task1", "display0", "exec00", "exec10"} {
-		tsk, err := task.FindOneId(ctx, taskID)
+		tsk, err := task.FindOneId(t.Context(), taskID)
 		require.NoError(t, err)
 
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, tsk.Status) {
@@ -130,7 +125,7 @@ func TestRestartVersion(t *testing.T) {
 
 	// Build status for all builds containing the tasks that we touched
 	// should be updated.
-	b, err := build.FindOneId(ctx, buildID)
+	b, err := build.FindOneId(t.Context(), buildID)
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.BuildStarted, b.Status)
 	assert.Equal(t, "caller", b.ActivatedBy)
@@ -145,9 +140,9 @@ func TestFindVersionByIdFail(t *testing.T) {
 }
 
 func TestGetVersionAuthorID(t *testing.T) {
-	defer func() {
+	t.Cleanup(func() {
 		assert.NoError(t, db.ClearCollections(VersionCollection))
-	}()
+	})
 
 	for name, test := range map[string]func(*testing.T){
 		"HasAuthorID": func(t *testing.T) {
@@ -676,4 +671,95 @@ func TestVersionsAllUnactivatedNonIgnored(t *testing.T) {
 		foundIds[v.Id] = true
 	}
 	assert.False(t, foundIds["future-version"], "Should not include version created after ts (race condition protection)")
+}
+
+func TestGetHighestTaskExecution(t *testing.T) {
+	const versionID = "version_get_highest_execution_task"
+
+	require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+	})
+
+	tests := []struct {
+		name  string
+		setup func(t *testing.T)
+		want  int
+	}{
+		{
+			name: "EmptyVersionReturnsZero",
+			setup: func(t *testing.T) {
+				require.NoError(t, (&Version{Id: versionID}).Insert(t.Context()))
+			},
+			want: 0,
+		},
+		{
+			name: "SingleTaskExecutionZeroReturnsZero",
+			setup: func(t *testing.T) {
+				require.NoError(t, (&Version{Id: versionID}).Insert(t.Context()))
+				require.NoError(t, (&task.Task{
+					Id:        "exec_task_0",
+					Version:   versionID,
+					Execution: 0,
+					Status:    evergreen.TaskUndispatched,
+				}).Insert(t.Context()))
+			},
+			want: 0,
+		},
+		{
+			name: "ReturnsMaxExecutionAcrossTasks",
+			setup: func(t *testing.T) {
+				require.NoError(t, (&Version{Id: versionID}).Insert(t.Context()))
+				for _, tc := range []struct {
+					id        string
+					execution int
+				}{
+					{"exec_task_a", 0},
+					{"exec_task_b", 3},
+					{"exec_task_c", 1},
+				} {
+					require.NoError(t, (&task.Task{
+						Id:        tc.id,
+						Version:   versionID,
+						Execution: tc.execution,
+						Status:    evergreen.TaskUndispatched,
+					}).Insert(t.Context()))
+				}
+			},
+			want: 3,
+		},
+		{
+			name: "IgnoresTasksFromOtherVersions",
+			setup: func(t *testing.T) {
+				const otherVersionID = "other_version_get_highest_execution"
+				require.NoError(t, (&Version{Id: versionID}).Insert(t.Context()))
+				require.NoError(t, (&Version{Id: otherVersionID}).Insert(t.Context()))
+				require.NoError(t, (&task.Task{
+					Id:        "exec_in_target",
+					Version:   versionID,
+					Execution: 2,
+					Status:    evergreen.TaskUndispatched,
+				}).Insert(t.Context()))
+				require.NoError(t, (&task.Task{
+					Id:        "exec_in_other_version",
+					Version:   otherVersionID,
+					Execution: 50,
+					Status:    evergreen.TaskUndispatched,
+				}).Insert(t.Context()))
+			},
+			want: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
+			tt.setup(t)
+
+			v := &Version{Id: versionID}
+			got, err := v.GetHighestTaskExecution(t.Context())
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

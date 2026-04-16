@@ -89,7 +89,7 @@ func (j *hostIPAssociationJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "getting cloud host for host '%s'", j.host.Id))
 		return
 	}
-	if err := cloudHost.AssociateIP(ctx, j.host); err != nil {
+	if err := cloudHost.AssociateIP(ctx); err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "associating IP for host '%s'", j.host.Id))
 		return
 	}
@@ -104,7 +104,7 @@ func (j *hostIPAssociationJob) Run(ctx context.Context) {
 	if !utility.IsZeroTime(j.host.BillingStartTime) {
 		msg["time_since_host_billing_started_secs"] = time.Since(j.host.BillingStartTime).Seconds()
 	}
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 }
 
 func (j *hostIPAssociationJob) populate(ctx context.Context) error {

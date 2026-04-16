@@ -82,7 +82,7 @@ func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, err
 			foundTaskIds = append(foundTaskIds, ft.Id)
 		}
 		missingTaskIds, _ := utility.StringSliceSymmetricDifference(taskIDs, foundTaskIds)
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":       "could not find all tasks",
 			"function":      "findAllTasksByIds",
 			"missing_tasks": missingTaskIds,
@@ -309,7 +309,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 
 // getTask returns the task with the given id and execution number
 func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, execution)
+	dbTask, err := task.FindByIdExecution(ctx, taskID, execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
@@ -432,7 +432,7 @@ func canRestartTask(ctx context.Context, t *task.Task) bool {
 	}
 	// It is possible to restart blocked display tasks. Later tasks in a display task could be blocked on
 	// earlier tasks in the display task, in which case restarting the entire display task may unblock them.
-	return (t.DisplayStatus == evergreen.TaskStatusBlocked && t.DisplayOnly) ||
+	return (t.GetDisplayStatus() == evergreen.TaskStatusBlocked && t.DisplayOnly) ||
 		!utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status)
 }
 
@@ -441,7 +441,7 @@ func canScheduleTask(ctx context.Context, t *task.Task) bool {
 	if t.IsPartOfDisplay(ctx) || t.Aborted {
 		return false
 	}
-	if t.DisplayStatus != evergreen.TaskUnscheduled {
+	if t.GetDisplayStatus() != evergreen.TaskUnscheduled {
 		return false
 	}
 	return true
@@ -565,14 +565,14 @@ func getAPIVolumeList(volumes []host.Volume) ([]*restModel.APIVolume, error) {
 func mustHaveUser(ctx context.Context) *user.DBUser {
 	u := gimlet.GetUser(ctx)
 	if u == nil {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": "no user attached to request expecting user",
 		})
 		return &user.DBUser{}
 	}
 	usr, valid := u.(*user.DBUser)
 	if !valid {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message": "invalid user attached to request expecting user",
 		})
 		return &user.DBUser{}
@@ -743,7 +743,7 @@ func groupProjects(ctx context.Context, projects []model.ProjectRef, onlyDefault
 			}
 
 			if repoRef == nil {
-				grip.Error(message.Fields{
+				grip.Error(ctx, message.Fields{
 					"message":     "repoRef not found",
 					"repo_ref_id": repoRefId,
 					"project":     project,
@@ -839,7 +839,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		HomeVolumeSize:       utility.FromIntPtr(spawnHostInput.HomeVolumeSize),
 		HomeVolumeID:         utility.FromStringPtr(spawnHostInput.VolumeID),
 		Expiration:           spawnHostInput.Expiration,
-		UseOAuth:             utility.FromBoolPtr(spawnHostInput.UseOAuth),
 	}
 	if spawnHostInput.SleepSchedule != nil {
 		options.SleepScheduleOptions = host.SleepScheduleOptions{

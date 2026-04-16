@@ -168,7 +168,7 @@ func newStreamingSender(name string, channel StreamChannel, sw *streamWriter) *s
 	return s
 }
 
-func (s *streamingSender) Send(m message.Composer) {
+func (s *streamingSender) Send(_ context.Context, m message.Composer) {
 	if !m.Loggable() {
 		return
 	}
@@ -202,7 +202,9 @@ func (p *streamingLoggerProducer) StreamWriter() *streamWriter {
 	return p.sw
 }
 
-func (p *streamingLoggerProducer) Flush(_ context.Context) error { return nil }
+func (p *streamingLoggerProducer) Flush(ctx context.Context) error {
+	return p.sender.Flush(ctx)
+}
 
 func (p *streamingLoggerProducer) Close() error {
 	p.mu.Lock()

@@ -51,23 +51,3 @@ func (in KeyValuePairSlice) NestedMap() (map[string]map[string]string, error) {
 	}
 	return out, nil
 }
-
-func MakeKeyValuePair(in map[string]string) KeyValuePairSlice {
-	out := KeyValuePairSlice{}
-	for k, v := range in {
-		out = append(out, KeyValuePair{Key: k, Value: v})
-	}
-	return out
-}
-
-func MakeNestedKeyValuePair(in map[string]map[string]string) KeyValuePairSlice {
-	out := KeyValuePairSlice{}
-	for k1, v1 := range in {
-		tempKvSlice := KeyValuePairSlice{}
-		for k2, v2 := range v1 {
-			tempKvSlice = append(tempKvSlice, KeyValuePair{Key: k2, Value: v2})
-		}
-		out = append(out, KeyValuePair{Key: k1, Value: tempKvSlice})
-	}
-	return out
-}

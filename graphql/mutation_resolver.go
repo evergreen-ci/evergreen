@@ -69,12 +69,12 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding issue: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // EditAnnotationNote is the resolver for the editAnnotationNote field.
@@ -103,12 +103,12 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving issue to suspected issues: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("moving suspected issue to issues: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // RemoveAnnotationIssue is the resolver for the removeAnnotationIssue field.
@@ -123,12 +123,12 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting issue: %s", err.Error()))
 		}
 		return true, nil
-	} else {
-		if err := annotations.RemoveSuspectedIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting suspected issue: %s", err.Error()))
-		}
-		return true, nil
 	}
+
+	if err := annotations.RemoveSuspectedIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting suspected issue: %s", err.Error()))
+	}
+	return true, nil
 }
 
 // SetAnnotationMetadataLinks is the resolver for the setAnnotationMetadataLinks field.
@@ -531,6 +531,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.Co
 
 	}
 	if err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message":     "project was partially copied",
+			"old_project": project.ProjectIdToCopy,
+			"new_project": project.NewProjectIdentifier,
+		}))
 		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
 		// https://github.com/99designs/gqlgen/issues/1191
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
@@ -971,7 +976,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	if err != nil {
 		if httpStatus == http.StatusInternalServerError {
 			var parsedUrl, _ = url.Parse("/graphql/query")
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"method":  "POST",
 				"url":     parsedUrl,
 				"code":    httpStatus,
@@ -1112,7 +1117,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if err := model.ResetTaskOrDisplayTask(ctx, evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("restarting task '%s': %s", taskID, err.Error()))
 	}
-	t, err = task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, nil)
+	t, err = task.FindByIdExecution(ctx, taskID, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}

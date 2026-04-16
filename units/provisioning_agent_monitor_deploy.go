@@ -99,7 +99,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.AgentStartDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"host_id":  j.HostID,
 			"job":      j.ID(),
@@ -114,7 +114,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	}
 
 	if j.hostDown() {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"host_id": j.host.Id,
 			"status":  j.host.Status,
 			"message": "host already down, not attempting to deploy agent monitor",
@@ -127,7 +127,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	}
 
 	if err = j.host.UpdateLastCommunicated(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "could not update host communication time",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -140,7 +140,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			return
 		}
 		event.LogHostAgentMonitorDeployFailed(ctx, j.host.Id, j.Error())
-		grip.Error(message.WrapError(j.Error(), message.Fields{
+		grip.Error(ctx, message.WrapError(j.Error(), message.Fields{
 			"message":  "agent monitor deploy failed",
 			"host_id":  j.host.Id,
 			"host_tag": j.host.Tag,
@@ -174,7 +174,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 	if alive {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "not deploying a new agent monitor because it is still alive",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -228,7 +228,7 @@ func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, er
 				numRunning++
 			}
 		}
-		grip.WarningWhen(numRunning > 1, message.Fields{
+		grip.WarningWhen(ctx, numRunning > 1, message.Fields{
 			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -242,7 +242,7 @@ func (j *agentMonitorDeployJob) checkAgentMonitor(ctx context.Context) (bool, er
 
 // fetchClient fetches the client on the host through the host's Jasper service.
 func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "fetching latest Evergreen binary for agent monitor",
 		"host_id":       j.host.Id,
 		"distro":        j.host.Distro.Id,
@@ -275,7 +275,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "error fetching agent monitor binary on host",
 			"host_id":       j.host.Id,
 			"distro":        j.host.Distro.Id,
@@ -299,7 +299,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 		return nil
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "running setup script on host",
 		"host_id":       j.host.Id,
 		"distro":        j.host.Distro.Id,
@@ -313,7 +313,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		reason := "running setup script on host"
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": reason,
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -339,9 +339,9 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 		}
 	}
 
-	grip.Info(j.deployMessage())
+	grip.Info(ctx, j.deployMessage())
 	if _, err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -351,7 +351,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	}
 
 	event.LogHostAgentMonitorDeployed(ctx, j.host.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "agent monitor deployed",
 		"host_id":       j.host.Id,
 		"host_tag":      j.host.Tag,

@@ -52,7 +52,7 @@ func (j *restartTasksJob) Run(ctx context.Context) {
 		return
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":         "tasks successfully restarted",
 		"num":             len(results.ItemsRestarted),
 		"tasks_restarted": results.ItemsRestarted,

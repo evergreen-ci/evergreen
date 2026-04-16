@@ -38,9 +38,6 @@ type Manager interface {
 	// Gets the state of an instance
 	GetInstanceState(context.Context, *host.Host) (CloudInstanceState, error)
 
-	// SetPortMappings sets the port mappings for the container
-	SetPortMappings(context.Context, *host.Host, *host.Host) error
-
 	// TerminateInstance destroys the host in the underlying provider and cleans
 	// up IP resources associated with the host, if any (see CleanupIP).
 	TerminateInstance(context.Context, *host.Host, string, string) error
@@ -195,7 +192,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	if len(d.ProviderSettingsList) > 1 {
 		if evergreen.IsEc2Provider(d.Provider) {
 			// this shouldn't ever happen, but if it does we want to continue so we don't inadvertently block task queues
-			grip.Error(message.Fields{
+			grip.Error(context.Background(), message.Fields{
 				"message":           "distro should be modified to have only one provider settings",
 				"provider_settings": d.ProviderSettingsList,
 				"distro":            d.Id,

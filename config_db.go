@@ -94,6 +94,11 @@ var (
 	s3LifecycleSyncDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "S3LifecycleSyncDisabled")
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
+	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
+
+	// DiagnosticsConfig keys
+	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")
+	diagnosticsS3PrefixKey     = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3Prefix")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
@@ -113,6 +118,9 @@ var (
 
 	oktaServiceClientIDKey     = bsonutil.MustHaveTag(OktaServiceConfig{}, "ClientID")
 	oktaServiceClientSecretKey = bsonutil.MustHaveTag(OktaServiceConfig{}, "ClientSecret")
+	oktaServiceScopesKey       = bsonutil.MustHaveTag(OktaServiceConfig{}, "Scopes")
+	oktaServiceAudienceKey     = bsonutil.MustHaveTag(OktaServiceConfig{}, "Audience")
+	oktaServiceIssuerKey       = bsonutil.MustHaveTag(OktaServiceConfig{}, "Issuer")
 
 	tracerEnabledKey                   = bsonutil.MustHaveTag(TracerConfig{}, "Enabled")
 	tracerCollectorEndpointKey         = bsonutil.MustHaveTag(TracerConfig{}, "CollectorEndpoint")

@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -494,7 +495,7 @@ func (r *taskResolver) Generator(ctx context.Context, obj *restModel.APITask) (*
 	if obj.GeneratedBy == "" {
 		return nil, nil
 	}
-	generator, err := task.FindOneIdWithoutGeneratedJSON(ctx, obj.GeneratedBy)
+	generator, err := task.FindOneId(ctx, obj.GeneratedBy)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
@@ -604,6 +605,21 @@ func (r *taskResolver) NextTaskPassing(ctx context.Context, obj *restModel.APITa
 	}
 
 	return tsk, nil
+}
+
+// InvalidatedByUpstream is the resolver for the invalidatedByUpstream field.
+func (r *taskResolver) InvalidatedByUpstream(ctx context.Context, obj *restModel.APITask) (*bool, error) {
+	if !evergreen.IsGithubMergeQueueRequester(utility.FromStringPtr(obj.Requester)) {
+		return nil, nil
+	}
+	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+	}
+	if apiPatch == nil {
+		return nil, nil
+	}
+	return &apiPatch.InvalidatedByUpstream, nil
 }
 
 // Patch is the resolver for the patch field.
@@ -822,16 +838,31 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 	return stats.TotalCount, nil
 }
 
-// VersionMetadata is the resolver for the versionMetadata field.
-func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
+// Version is the resolver for the version field.
+func (r *taskResolver) Version(ctx context.Context, obj *restModel.APITask) (*model.Version, error) {
 	versionID := utility.FromStringPtr(obj.Version)
-	apiVersion, err := GetVersion(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
 	}
-	if apiVersion == nil {
+	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
+	return v, nil
+}
+
+// VersionMetadata is the resolver for the versionMetadata field.
+func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
+	versionID := utility.FromStringPtr(obj.Version)
+	v, err := loaders.GetVersion(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
+	}
+	apiVersion := &restModel.APIVersion{}
+	apiVersion.BuildFromService(ctx, *v)
 	return apiVersion, nil
 }
 

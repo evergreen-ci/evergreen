@@ -62,7 +62,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.S3LifecycleSyncDisabled {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "S3 lifecycle sync is disabled, skipping project buckets sync",
 			"job_id":  j.ID(),
 		})
@@ -77,7 +77,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 	}
 
 	if len(bucketNames) == 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "no project buckets found to sync",
 			"job_id":  j.ID(),
 		})
@@ -91,7 +91,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 
 	for _, bucketName := range bucketNames {
 		if err := j.syncBucket(ctx, client, bucketName); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to sync bucket",
 				"bucket":  bucketName,
 				"job_id":  j.ID(),
@@ -113,7 +113,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 	if len(failedBuckets) > 0 {
 		msg["failed_buckets"] = failedBuckets
 	}
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 }
 
 func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, client cloud.S3LifecycleClient, bucketName string) error {
@@ -124,7 +124,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 	}
 
 	if len(existingRules) == 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "no existing rules found for bucket, skipping sync",
 			"bucket":  bucketName,
 			"job_id":  j.ID(),
@@ -150,7 +150,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 			}
 		}
 		if len(failedPrefixes) > 0 {
-			grip.Warning(message.WrapError(lastUpdateErr, message.Fields{
+			grip.Warning(ctx, message.WrapError(lastUpdateErr, message.Fields{
 				"message":         "failed to update sync error for rules",
 				"bucket":          bucketName,
 				"failed_prefixes": failedPrefixes,
@@ -168,7 +168,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 		doc := convertPailRuleToDoc(bucketName, region, awsRule, existingRules)
 
 		if err := doc.Upsert(ctx); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to upsert lifecycle rule",
 				"bucket":  bucketName,
 				"prefix":  awsRule.Prefix,
@@ -179,7 +179,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 			continue
 		}
 
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "upserted lifecycle rule",
 			"bucket":  bucketName,
 			"prefix":  awsRule.Prefix,
@@ -192,7 +192,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 	// Remove obsolete rules that no longer exist in AWS.
 	for _, existingRule := range existingRules {
 		if !awsPrefixes[existingRule.FilterPrefix] {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message": "removing obsolete lifecycle rule",
 				"bucket":  bucketName,
 				"prefix":  existingRule.FilterPrefix,
@@ -200,7 +200,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 			})
 
 			if err := s3lifecycle.Remove(ctx, bucketName, existingRule.FilterPrefix); err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"message": "failed to remove obsolete rule",
 					"bucket":  bucketName,
 					"prefix":  existingRule.FilterPrefix,
@@ -211,7 +211,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":           "successfully synced lifecycle rules for project bucket",
 		"bucket":            bucketName,
 		"num_rules_synced":  len(awsRules),

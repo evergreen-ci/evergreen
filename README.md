@@ -51,7 +51,5 @@ Setup:
 Possible Targets:
 
 - run `make build` to compile a binary for your local system.
-- run `make dist` to compile binaries for all supported systems and create a
-  _dist_ tarball with all artifacts.
 - run `make local-evergreen` to start a local Evergreen. You will need a mongod
   running, listening on 27017. To run the UI locally, see [Spruce's README](https://github.com/evergreen-ci/ui/tree/main/apps/spruce#running-locally).

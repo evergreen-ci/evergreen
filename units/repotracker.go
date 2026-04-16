@@ -68,7 +68,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		return
 	}
 	if flags.RepotrackerDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     repotrackerJobName,
 			"id":      j.ID(),
 			"message": "repotracker is disabled",
@@ -99,7 +99,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 	}
 
 	if err = repotracker.CollectRevisionsForProject(ctx, settings, *ref); err != nil {
-		grip.Info(message.WrapError(err, message.Fields{
+		grip.Info(ctx, message.WrapError(err, message.Fields{
 			"job":     repotrackerJobName,
 			"job_id":  j.ID(),
 			"project": j.ProjectID,

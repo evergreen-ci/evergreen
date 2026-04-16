@@ -189,12 +189,6 @@ var (
 		},
 	}
 
-	addDisplayStatus = bson.M{
-		"$addFields": bson.M{
-			DisplayStatusKey: DisplayStatusExpression,
-		},
-	}
-
 	addDisplayStatusCache = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusCacheKey: DisplayStatusExpression,
@@ -546,18 +540,6 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 	}
 }
 
-func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
-	return bson.M{
-		VersionKey: bson.M{
-			"$in": versions,
-		},
-		DisplayNameKey: bson.M{
-			"$in": displayNames,
-		},
-		BuildVariantKey: buildVariant,
-	}
-}
-
 func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) (bson.M, []string) {
 	return bson.M{
 		BuildVariantKey: buildVariant,
@@ -643,18 +625,6 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 		}
 	}
 	return query
-}
-
-func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
-		StatusKey: bson.M{
-			"$in": statuses,
-		},
-		ProjectKey: project,
-	}
 }
 
 func ByExecutionTask(taskId string) bson.M {
@@ -1278,11 +1248,27 @@ func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	return task, err
 }
 
-// FindOneId returns a single task with the given ID.
+// FindOneId returns a single task with the given ID, excluding the
+// GeneratedJSONAsString field which can be very large. Use
+// FindOneIdWithGeneratedJSON if the generated JSON is needed.
 func FindOneId(ctx context.Context, id string) (*Task, error) {
-	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
+	task := &Task{}
+	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
+	err := db.FindOneQ(ctx, Collection, query, task)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding task by ID")
+	}
+	return task, nil
+}
 
-	return task, errors.Wrap(err, "finding task by ID")
+// FindOneIdWithGeneratedJSON returns a single task with the given ID,
+// including the GeneratedJSONAsString field.
+func FindOneIdWithGeneratedJSON(ctx context.Context, id string) (*Task, error) {
+	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
+	return task, errors.Wrap(err, "finding task by ID with generated JSON")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
@@ -1311,58 +1297,6 @@ func FindOneIdAndExecution(ctx context.Context, id string, execution int) (*Task
 	}
 
 	return task, nil
-}
-
-// FindOneIdAndExecutionWithDisplayStatus returns a single task with the given
-// ID and execution, with display statuses added.
-func FindOneIdAndExecutionWithDisplayStatus(ctx context.Context, id string, execution *int) (*Task, error) {
-	tasks := []Task{}
-	match := bson.M{
-		IdKey: id,
-	}
-	if execution != nil {
-		match[ExecutionKey] = *execution
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-		addDisplayStatus,
-	}
-	if err := Aggregate(ctx, pipeline, &tasks); err != nil {
-		return nil, errors.Wrap(err, "finding task")
-	}
-	if len(tasks) != 0 {
-		t := tasks[0]
-		return &t, nil
-	}
-
-	return findOneOldByIdAndExecutionWithDisplayStatus(ctx, id, execution)
-}
-
-// findOneOldByIdAndExecutionWithDisplayStatus returns a single task with the
-// given ID and execution from the old tasks collection, with display statuses
-// added.
-func findOneOldByIdAndExecutionWithDisplayStatus(ctx context.Context, id string, execution *int) (*Task, error) {
-	tasks := []Task{}
-	match := bson.M{
-		OldTaskIdKey: id,
-	}
-	if execution != nil {
-		match[ExecutionKey] = *execution
-	}
-	pipeline := []bson.M{
-		{"$match": match},
-		addDisplayStatus,
-	}
-
-	if err := db.Aggregate(ctx, OldCollection, pipeline, &tasks); err != nil {
-		return nil, errors.Wrap(err, "finding task")
-	}
-	if len(tasks) != 0 {
-		t := tasks[0]
-		return &t, nil
-	}
-
-	return nil, errors.New("task not found")
 }
 
 // FindOneOld returns a single task from the old tasks collection that
@@ -1426,24 +1360,6 @@ func FindOneIdWithFields(ctx context.Context, id string, projected ...string) (*
 	return task, nil
 }
 
-// FindOneIdWithoutGeneratedJSON returns a single task with the given ID,
-// excluding the GeneratedJSONAsString field which can be very large.
-func FindOneIdWithoutGeneratedJSON(ctx context.Context, id string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{IdKey: id}).Project(bson.M{GeneratedJSONAsStringKey: 0})
-
-	err := db.FindOneQ(ctx, Collection, query, task)
-
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task by ID without generated JSON")
-	}
-
-	return task, nil
-}
-
 // findAllTaskIDs returns a list of task IDs associated with the given query.
 func findAllTaskIDs(ctx context.Context, q db.Q) ([]string, error) {
 	tasks := []Task{}
@@ -1487,17 +1403,6 @@ func FindAllTaskIDsFromVersion(ctx context.Context, versionId string) ([]string,
 func FindAllTaskIDsFromBuild(ctx context.Context, buildId string) ([]string, error) {
 	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
 	return findAllTaskIDs(ctx, q)
-}
-
-// FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
-func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId string) ([]Task, error) {
-	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
-	tasks := []Task{}
-	err := db.FindAllQ(ctx, Collection, q, &tasks)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
-	}
-	return tasks, nil
 }
 
 // FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
@@ -1593,7 +1498,7 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
-	query := db.Query(filter)
+	query := db.Query(filter).Project(bson.M{GeneratedJSONAsStringKey: 0})
 	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
@@ -2125,8 +2030,41 @@ type GroupedTaskStatusCount struct {
 	StatusCounts []*StatusCount `bson:"status_counts"`
 }
 
-func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+// GetTaskStatsByVersion returns aggregate task status counts for a version
+// using a lean pipeline that references display_status_cache directly.
+func GetTaskStatsByVersion(ctx context.Context, versionID string, includeNeverActivated bool) (*TaskStats, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetTaskStatsByVersion")})
+
+	match := bson.M{
+		VersionKey:       versionID,
+		DisplayTaskIdKey: "",
+	}
+	if !includeNeverActivated {
+		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
+	}
+
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$group": bson.M{"_id": "$" + DisplayStatusCacheKey, "count": bson.M{"$sum": 1}}},
+		{"$sort": bson.M{"_id": 1}},
+		{"$project": bson.M{"status": "$_id", "count": 1}},
+	}
+
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating task stats for version")
+	}
+	var counts []StatusCount
+	if err := cursor.All(ctx, &counts); err != nil {
+		return nil, errors.Wrap(err, "decoding task stats for version")
+	}
+
+	return &TaskStats{Counts: counts}, nil
+}
+
+func GetFilteredTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksByVersionOptions) (*TaskStats, error) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetFilteredTaskStatsByVersion")})
 
 	pipeline, err := getTasksByVersionPipeline(versionID, opts)
 	if err != nil {
@@ -2174,6 +2112,13 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 			"count":  1,
 		}},
 	}
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			DisplayStatusKey:    1,
+			ExpectedDurationKey: 1,
+			StartTimeKey:        1,
+		},
+	})
 	facet := bson.M{"$facet": bson.M{
 		"counts": groupPipeline,
 		"eta":    maxEtaPipeline,
@@ -2307,75 +2252,6 @@ func GetGroupedTaskStatsByVersion(ctx context.Context, versionID string, opts Ge
 
 }
 
-// GetBaseStatusesForActivatedTasks returns the base statuses for activated tasks on a version.
-func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, baseVersionID string) ([]string, error) {
-	pipeline := []bson.M{}
-	taskField := "tasks"
-
-	// Fetch all activated tasks from version, and all tasks from base version
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{
-			"$or": []bson.M{
-				{VersionKey: baseVersionID},
-				{VersionKey: versionID, ActivatedTimeKey: bson.M{"$ne": utility.ZeroTime}},
-			},
-		}})
-	// Add display status
-	pipeline = append(pipeline, addDisplayStatus)
-	// Group by display name and build variant, and keep track of DisplayStatus and Version fields
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": bson.M{DisplayNameKey: "$" + DisplayNameKey, BuildVariantKey: "$" + BuildVariantKey},
-			taskField: bson.M{"$push": bson.M{
-				DisplayStatusKey: "$" + DisplayStatusKey,
-				VersionKey:       "$" + VersionKey,
-			}},
-		},
-	})
-	// Only keep records that exist both on the version & base version (i.e. there are 2 copies)
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{taskField: bson.M{"$size": 2}},
-	})
-	// Unwind to put tasks into a state where it's easier to filter
-	pipeline = append(pipeline, bson.M{
-		"$unwind": bson.M{
-			"path": "$" + taskField,
-		},
-	})
-	// Filter out tasks that aren't from base version
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{bsonutil.GetDottedKeyName(taskField, VersionKey): baseVersionID},
-	})
-	// Group to Get rid of duplicate statuses
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),
-		},
-	})
-	// Sort to guarantee order
-	pipeline = append(pipeline, bson.M{
-		"$sort": bson.D{
-			bson.E{Key: "_id", Value: 1},
-		},
-	})
-
-	res := []map[string]string{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, err
-	}
-	err = cursor.All(ctx, &res)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating base task statuses")
-	}
-	statuses := []string{}
-	for _, r := range res {
-		statuses = append(statuses, r["_id"])
-	}
-	return statuses, nil
-}
-
 type HasMatchingTasksOptions struct {
 	TaskNames                  []string
 	Variants                   []string
@@ -2453,7 +2329,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 
 	// Filter on task name if it exists
 	nonEmptyTaskNames := utility.FilterSlice(opts.TaskNames, func(s string) bool { return s != "" })
-	if len(nonEmptyTaskNames) > 0 {
+	hasTaskNameFilter := len(nonEmptyTaskNames) > 0
+	if hasTaskNameFilter {
 		taskNamesAsRegex := strings.Join(nonEmptyTaskNames, "|")
 		match[DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 	}
@@ -2467,14 +2344,31 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	}
 
 	if !opts.IncludeExecutionTasks {
-		pipeline = append(pipeline, bson.M{
+		// When filtering by task name, include execution tasks that match the filter
+		// in addition to display tasks and tasks that aren't part of a display task.
+		// This allows users to find execution tasks by name even when they're grouped
+		// under a display task.
+		executionTaskFilter := bson.M{
 			"$match": bson.M{
 				"$or": []bson.M{
 					{DisplayTaskIdKey: ""},
 					{DisplayOnlyKey: true},
 				},
 			},
-		})
+		}
+		if hasTaskNameFilter {
+			// If there's a task name filter, also include execution tasks that match the filter
+			executionTaskFilter = bson.M{
+				"$match": bson.M{
+					"$or": []bson.M{
+						{DisplayTaskIdKey: ""},
+						{DisplayOnlyKey: true},
+						{DisplayNameKey: bson.M{"$regex": strings.Join(nonEmptyTaskNames, "|"), "$options": "i"}},
+					},
+				},
+			}
+		}
+		pipeline = append(pipeline, executionTaskFilter)
 	}
 	// Filter on Build Variants matching on display name or variant name if it exists
 	nonEmptyVariants := utility.FilterSlice(opts.Variants, func(s string) bool { return s != "" })
@@ -2490,10 +2384,13 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		pipeline = append(pipeline, bson.M{"$match": match})
 	}
 
-	// Add a field for the display status of each task
-	pipeline = append(pipeline,
-		addDisplayStatus,
-	)
+	// Alias the persisted display_status_cache as display_status so downstream
+	// stages can reference DisplayStatusKey without recomputing via $switch.
+	pipeline = append(pipeline, bson.M{
+		"$addFields": bson.M{
+			DisplayStatusKey: "$" + DisplayStatusCacheKey,
+		},
+	})
 
 	if shouldPopulateBaseTask {
 		// First group by variant and task name to group all tasks and their base tasks together
@@ -2882,7 +2779,7 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	predictions := make(map[string]CostPredictionResult)
 	for result := range resultChan {
 		if result.err != nil {
-			grip.Warning(message.WrapError(result.err, message.Fields{
+			grip.Warning(ctx, message.WrapError(result.err, message.Fields{
 				"message": "error computing cost prediction for task, using zero prediction",
 				"task_id": result.taskID,
 			}))

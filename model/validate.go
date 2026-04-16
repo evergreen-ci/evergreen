@@ -15,12 +15,15 @@ import (
 type (
 	apiTaskKey    int
 	apiProjectKey int
+	apiHostKey    int
 )
 
 const (
 	ApiTaskKey apiTaskKey = 0
 
 	ApiProjectKey apiProjectKey = 0
+
+	ApiHostKey apiHostKey = 0
 )
 
 // ValidateTask ensures that a task ID is set and corresponds to a task in the
@@ -105,7 +108,7 @@ func badHostTaskRelationship(ctx context.Context, h *host.Host, t *task.Task) bo
 		}
 		nextTask, err := task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":        "problem finding task",
 				"task":           h.RunningTask,
 				"task_execution": h.RunningTaskExecution,

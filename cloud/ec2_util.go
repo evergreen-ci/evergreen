@@ -39,14 +39,6 @@ const (
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 	ec2TemplateNotFound     = "InvalidLaunchTemplateId.NotFound"
 
-	// EC2InsufficientAddressCapacity means that there are no IP addresses
-	// available to allocate.
-	EC2InsufficientAddressCapacity = "InsufficientAddressCapacity"
-	// ec2InsufficientAddressCapacity means that the account has reached its
-	// limit on the number of elastic IPs it can allocate.
-	EC2AddressLimitExceeded = "AddressLimitExceeded"
-	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
-	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
 
 	r53InvalidInput       = "InvalidInput"
@@ -118,7 +110,7 @@ func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
 	case types.InstanceStateNameTerminated, types.InstanceStateNameShuttingDown:
 		return StatusTerminated
 	default:
-		grip.Error(message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"message": "got an unknown EC2 state name",
 			"status":  ec2State.Name,
 		})
@@ -176,6 +168,18 @@ func makeTags(intentHost *host.Host) []host.Tag {
 
 	if intentHost.UserHost {
 		systemTags = append(systemTags, host.Tag{Key: "mode", Value: "testing", CanBeModified: false})
+	}
+	if intentHost.SpawnOptions.SpawnedByTask {
+		systemTags = append(systemTags, host.Tag{Key: evergreen.TagProject, Value: intentHost.SpawnOptions.ProjectID, CanBeModified: false})
+		if intentHost.SpawnOptions.TaskID != "" {
+			systemTags = append(systemTags,
+				host.Tag{Key: evergreen.TagTaskID, Value: intentHost.SpawnOptions.TaskID, CanBeModified: false},
+				host.Tag{Key: evergreen.TagTaskExecution, Value: fmt.Sprintf("%d", intentHost.SpawnOptions.TaskExecutionNumber), CanBeModified: false},
+			)
+		}
+		if intentHost.SpawnOptions.BuildID != "" {
+			systemTags = append(systemTags, host.Tag{Key: evergreen.TagBuildID, Value: intentHost.SpawnOptions.BuildID, CanBeModified: false})
+		}
 	}
 
 	// Add Evergreen-generated tags to host object
@@ -293,7 +297,7 @@ func validateUserDataSize(userData, distroID string) error {
 		return nil
 	}
 	err := errors.New("user data size limit exceeded")
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(context.Background(), message.WrapError(err, message.Fields{
 		"size":     len(userData),
 		"max_size": userDataSizeLimit,
 		"distro":   distroID,
@@ -326,7 +330,7 @@ func cacheAllHostData(ctx context.Context, env evergreen.Environment, client AWS
 		if h.NoExpiration {
 			// This is not a bulk operation for convenience because it's assumed
 			// that the number of unexpirable hosts is small.
-			grip.Error(message.WrapError(setHostPersistentDNSName(ctx, env, h, utility.FromStringPtr(instance.PublicIpAddress), client), message.Fields{
+			grip.Error(ctx, message.WrapError(setHostPersistentDNSName(ctx, env, h, utility.FromStringPtr(instance.PublicIpAddress), client), message.Fields{
 				"message":    "could not update host's persistent DNS name",
 				"op":         "upsert",
 				"dashboard":  "evergreen sleep schedule health",

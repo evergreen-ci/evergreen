@@ -5,7 +5,6 @@ mutation {
       projectRef: {
         id: "sandbox_repo_id"
         commitQueue: { enabled: true }
-        runEveryMainlineCommit: true
       }
       aliases: [
         {
@@ -26,7 +25,6 @@ mutation {
       commitQueue {
         enabled
       }
-      runEveryMainlineCommit
     }
     vars {
       ## should be unchanged

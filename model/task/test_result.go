@@ -15,12 +15,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
-	"github.com/fraugster/parquet-go/parquetschema"
-	"github.com/fraugster/parquet-go/parquetschema/autoschema"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 )
 
@@ -29,16 +26,6 @@ const (
 	TestResultServiceEvergreen = 1
 	TestResultServiceLocal     = 2
 )
-
-var ParquetTestResultsSchemaDef *parquetschema.SchemaDefinition
-
-func init() {
-	var err error
-	ParquetTestResultsSchemaDef, err = autoschema.GenerateSchema(new(testresult.ParquetTestResults))
-	if err != nil {
-		panic(errors.Wrap(err, "generating Parquet test results schema definition"))
-	}
-}
 
 // TestResultOutput is the versioned entry point for coordinating persistent
 // storage of a task run's test result data.
@@ -301,6 +288,27 @@ func filterTestResults(results []testresult.TestResult, opts *FilterOptions) ([]
 	return filteredResults, nil
 }
 
+// testStatusSortRank returns a numeric rank for a test status to enable
+// semantic sorting. Failure statuses (including timeouts) are ranked
+// lowest so they sort first in ascending order.
+func testStatusSortRank(status string) int {
+	switch status {
+	case evergreen.TestFailedStatus:
+		return 1
+	case evergreen.TestSilentlyFailedStatus:
+		return 2
+	case evergreen.TestTimedOutStatus:
+		return 3
+	case evergreen.TestSkippedStatus:
+		return 4
+	case evergreen.TestSucceededStatus:
+		return 5
+	default:
+		// Unknown statuses are treated as failures and sorted near the top.
+		return 3
+	}
+}
+
 func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseStatusMap map[string]string) {
 	sort.SliceStable(results, func(i, j int) bool {
 		for _, sortBy := range opts.Sort {
@@ -330,21 +338,25 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 				}
 				return results[i].GetDisplayTestName() < results[j].GetDisplayTestName()
 			case testresult.SortByStatusKey:
-				if results[i].Status == results[j].Status {
+				rankI := testStatusSortRank(results[i].Status)
+				rankJ := testStatusSortRank(results[j].Status)
+				if rankI == rankJ {
 					continue
 				}
 				if sortBy.OrderDSC {
-					return results[i].Status > results[j].Status
+					return rankI > rankJ
 				}
-				return results[i].Status < results[j].Status
+				return rankI < rankJ
 			case testresult.SortByBaseStatusKey:
-				if baseStatusMap[results[i].GetDisplayTestName()] == baseStatusMap[results[j].GetDisplayTestName()] {
+				rankI := testStatusSortRank(baseStatusMap[results[i].GetDisplayTestName()])
+				rankJ := testStatusSortRank(baseStatusMap[results[j].GetDisplayTestName()])
+				if rankI == rankJ {
 					continue
 				}
 				if sortBy.OrderDSC {
-					return baseStatusMap[results[i].GetDisplayTestName()] > baseStatusMap[results[j].GetDisplayTestName()]
+					return rankI > rankJ
 				}
-				return baseStatusMap[results[i].GetDisplayTestName()] < baseStatusMap[results[j].GetDisplayTestName()]
+				return rankI < rankJ
 			}
 		}
 
@@ -365,7 +377,7 @@ func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials everg
 	}
 	defer func() {
 		err = r.Close()
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":        "closing test results bucket reader",
 			"test_result_id": t.ID,
 			"task_id":        t.Info.TaskID,
@@ -378,34 +390,9 @@ func (o TestResultOutput) DownloadParquet(ctx context.Context, credentials everg
 		return nil, errors.Wrap(err, "reading Parquet test results")
 	}
 
-	fr, err := goparquet.NewFileReader(bytes.NewReader(data))
+	parquetResults, err := parquet.Read[testresult.ParquetTestResults](bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return nil, errors.Wrap(err, "creating Parquet reader")
-	}
-	pr := floor.NewReader(fr)
-	defer func() {
-		err = pr.Close()
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":        "closing Parquet test results reader",
-			"test_result_id": t.ID,
-			"task_id":        t.Info.TaskID,
-			"execution":      t.Info.Execution,
-			"project":        t.Info.Project,
-		}))
-	}()
-
-	var parquetResults []testresult.ParquetTestResults
-	for pr.Next() {
-		row := testresult.ParquetTestResults{}
-		if err := pr.Scan(&row); err != nil {
-			return nil, errors.Wrap(err, "reading Parquet test results row")
-		}
-
-		parquetResults = append(parquetResults, row)
-	}
-
-	if err := pr.Err(); err != nil {
-		return nil, errors.Wrap(err, "reading Parquet test results rows")
+		return nil, errors.Wrap(err, "reading Parquet test results")
 	}
 
 	var results []testresult.TestResult

@@ -14,9 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	goparquet "github.com/fraugster/parquet-go"
-	"github.com/fraugster/parquet-go/floor"
 	"github.com/mongodb/grip/sometimes"
+	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -198,7 +197,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 			{
 				TaskID:        "task1",
 				TestName:      "A test",
-				Status:        "Pass",
+				Status:        "pass",
 				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 1, time.UTC),
 				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 12, 0, time.UTC),
 			},
@@ -206,7 +205,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 				TaskID:          "task1",
 				TestName:        "B test",
 				DisplayTestName: "Display",
-				Status:          "Fail",
+				Status:          "fail",
 				TestStartTime:   time.Date(1996, time.August, 31, 12, 5, 10, 3, time.UTC),
 				TestEndTime:     time.Date(1996, time.August, 31, 12, 5, 16, 0, time.UTC),
 			},
@@ -214,14 +213,14 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 				TaskID:          "task1",
 				TestName:        "C test",
 				DisplayTestName: "B",
-				Status:          "Fail",
+				Status:          "fail",
 				TestStartTime:   time.Date(1996, time.August, 31, 12, 5, 10, 2, time.UTC),
 				TestEndTime:     time.Date(1996, time.August, 31, 12, 5, 15, 0, time.UTC),
 			},
 			{
 				TaskID:        "task1",
 				TestName:      "D test",
-				Status:        "Pass",
+				Status:        "pass",
 				TestStartTime: time.Date(1996, time.August, 31, 12, 5, 10, 4, time.UTC),
 				TestEndTime:   time.Date(1996, time.August, 31, 12, 5, 11, 0, time.UTC),
 				GroupID:       "llama",
@@ -251,30 +250,29 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.TestResultsPrefix, testresult.PartitionKey(tr.CreatedAt, tr.Info.Project, tr.ID)))
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(ParquetTestResultsSchemaDef)))
 
 	baseResults := []testresult.TestResult{
 		{
 			TaskID:   baseTask.Id,
 			TestName: "A test",
-			Status:   "Pass",
+			Status:   "pass",
 		},
 		{
 			TaskID:          baseTask.Id,
 			TestName:        "B test",
 			DisplayTestName: "Display",
-			Status:          "Fail",
+			Status:          "fail",
 		},
 		{
 			TaskID:          baseTask.Id,
 			TestName:        "C test",
 			DisplayTestName: "B",
-			Status:          "Pass",
+			Status:          "pass",
 		},
 		{
 			TaskID:   baseTask.Id,
 			TestName: "D test",
-			Status:   "Fail",
+			Status:   "fail",
 		},
 	}
 
@@ -309,8 +307,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 		}
 	}
 
-	require.NoError(t, pw.Write(savedParquet))
-	require.NoError(t, pw.Close())
+	require.NoError(t, parquet.Write(w, []testresult.ParquetTestResults{savedParquet}))
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, baseResults, tr.ID)))
 
@@ -410,7 +407,7 @@ func TestEvergreenFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name:            "StatusFilter",
-			opts:            &FilterOptions{Statuses: []string{"Fail"}},
+			opts:            &FilterOptions{Statuses: []string{"fail"}},
 			expectedResults: results[1:3],
 			expectedCount:   2,
 		},
@@ -739,9 +736,7 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
 
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(ParquetTestResultsSchemaDef)))
-	require.NoError(t, pw.Write(savedParquet))
-	require.NoError(t, pw.Close())
+	require.NoError(t, parquet.Write(w, []testresult.ParquetTestResults{savedParquet}))
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
 	require.NoError(t, svc.AppendTestResultMetadata(resultTestutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults

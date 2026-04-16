@@ -7,7 +7,10 @@
           "repoSettings": {
             "vars": {
               "vars": { "hello": "", "foo": "bar" },
-              "privateVars": ["hello"]
+              "privateVars": ["hello"],
+              "varsDescriptions": {
+                "hello": "i am a repo variable"
+              }
             }
           }
         }

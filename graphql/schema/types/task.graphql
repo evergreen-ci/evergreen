@@ -108,15 +108,20 @@ type Task {
   latestExecution: Int!
   logs: TaskLogLinks!
   minQueuePosition: Int!
-  """nextTask may be in-progress"""
+  """
+  nextTask may be in-progress
+  """
   nextTask: Task
   nextTaskCompleted: Task
   nextTaskFailing: Task
   nextTaskPassing: Task
   order: Int!
+  invalidatedByUpstream: Boolean
   patch: Patch
   patchNumber: Int
-  """prevTask may be in-progress"""
+  """
+  prevTask may be in-progress
+  """
   prevTask: Task
   prevTaskCompleted: Task
   prevTaskFailing: Task
@@ -150,6 +155,7 @@ type Task {
   testSelectionEnabled: Boolean!
   timeTaken: Duration
   totalTestCount: Int!
+  version: VersionLite!
   versionMetadata: Version!
 }
 
@@ -257,6 +263,12 @@ type File {
   name: String!
   urlParsley: String
   visibility: String!
+  associatedLinks: [AssociatedLink!]!
+}
+
+type AssociatedLink {
+  name: String!
+  link: String!
 }
 
 """
@@ -323,8 +335,11 @@ Cost represents the cost breakdown for a task or version.
 type Cost {
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
+  adjustedEBSThroughputCost: Float
+  adjustedEBSStorageCost: Float
   s3ArtifactPutCost: Float
   s3LogPutCost: Float
+  s3ArtifactStorageCost: Float
 }
 
 input QuarantineTestInput {

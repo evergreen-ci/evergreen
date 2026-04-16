@@ -60,7 +60,7 @@ func (j *hostStatsCollector) Run(ctx context.Context) {
 	}
 
 	if flags.BackgroundStatsDisabled {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"mode":     "degraded",
 			"job":      j.ID(),
 			"job_type": j.Type().Name,
@@ -119,14 +119,14 @@ func (j *hostStatsCollector) statsByDistro(ctx context.Context) error {
 		return err
 	}
 
-	j.logger.Info(message.Fields{
+	j.logger.Info(ctx, message.Fields{
 		"report":        "host stats by distro",
 		"hosts_total":   stats.count,
 		"running_tasks": stats.tasks,
 		"data":          stats.hosts,
 	})
 
-	j.logger.WarningWhen(stats.excess > 0, message.Fields{
+	j.logger.WarningWhen(ctx, stats.excess > 0, message.Fields{
 		"report": "maxHosts exceeded",
 		"data":   stats.hosts.MaxHostsExceeded(),
 		"total":  stats.excess,
@@ -141,7 +141,7 @@ func (j *hostStatsCollector) statsByProvider(ctx context.Context) error {
 		return errors.Wrap(err, "getting host stats by provider")
 	}
 
-	j.logger.Info(message.Fields{
+	j.logger.Info(ctx, message.Fields{
 		"report":    "host stats by provider",
 		"providers": providers,
 	})

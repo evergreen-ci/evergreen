@@ -266,20 +266,3 @@ func (g *DependencyGraph) TopologicalStableSort() ([]TaskNode, error) {
 
 	return sortedTasks, nil
 }
-
-// reachableFromNode returns all the dependencies recursively depended on by start.
-// In the case of a transposed graph it returns all the dependencies recursively depending on start.
-// The start node is not included in the result.
-func (g *DependencyGraph) reachableFromNode(start TaskNode) []TaskNode {
-	var reachable []TaskNode
-	traversal := traverse.DepthFirst{
-		Visit: func(node graph.Node) {
-			if g.nodesToTasks[node] != start {
-				reachable = append(reachable, g.nodesToTasks[node])
-			}
-		},
-	}
-	_ = traversal.Walk(g.graph, g.tasksToNodes[start], nil)
-
-	return reachable
-}
