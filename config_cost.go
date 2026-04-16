@@ -60,6 +60,18 @@ var (
 	financeConfigOnDemandDiscountKey    = bsonutil.MustHaveTag(CostConfig{}, "OnDemandDiscount")
 	financeConfigS3CostKey              = bsonutil.MustHaveTag(CostConfig{}, "S3Cost")
 	financeConfigEBSCostKey             = bsonutil.MustHaveTag(CostConfig{}, "EBSCost")
+
+	s3CostConfigUploadKey  = bsonutil.MustHaveTag(S3CostConfig{}, "Upload")
+	s3CostConfigStorageKey = bsonutil.MustHaveTag(S3CostConfig{}, "Storage")
+
+	s3UploadCostUploadCostDiscountKey = bsonutil.MustHaveTag(S3UploadCostConfig{}, "UploadCostDiscount")
+
+	s3StorageCostStandardStorageCostDiscountKey              = bsonutil.MustHaveTag(S3StorageCostConfig{}, "StandardStorageCostDiscount")
+	s3StorageCostIAStorageCostDiscountKey                    = bsonutil.MustHaveTag(S3StorageCostConfig{}, "IAStorageCostDiscount")
+	s3StorageCostArchiveStorageCostDiscountKey               = bsonutil.MustHaveTag(S3StorageCostConfig{}, "ArchiveStorageCostDiscount")
+	s3StorageCostDefaultMaxArtifactExpirationDaysKey         = bsonutil.MustHaveTag(S3StorageCostConfig{}, "DefaultMaxArtifactExpirationDays")
+	s3StorageCostDevprodOwnedAWSAccountIDsKey                = bsonutil.MustHaveTag(S3StorageCostConfig{}, "DevprodOwnedAWSAccountIDs")
+	s3StorageCostArtifactAWSAccountsWithoutLifecycleRulesKey = bsonutil.MustHaveTag(S3StorageCostConfig{}, "ArtifactAWSAccountsWithoutLifecycleRules")
 )
 
 func (*CostConfig) SectionId() string { return "cost" }
@@ -74,13 +86,13 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			financeConfigFormulaKey:             c.FinanceFormula,
 			financeConfigSavingsPlanDiscountKey: c.SavingsPlanDiscount,
 			financeConfigOnDemandDiscountKey:    c.OnDemandDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "upload", "upload_cost_discount"):                           c.S3Cost.Upload.UploadCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "standard_storage_cost_discount"):                c.S3Cost.Storage.StandardStorageCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "i_a_storage_cost_discount"):                     c.S3Cost.Storage.IAStorageCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "archive_storage_cost_discount"):                 c.S3Cost.Storage.ArchiveStorageCostDiscount,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "default_max_artifact_expiration_days"):          c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "devprod_owned_aws_account_ids"):                 c.S3Cost.Storage.DevprodOwnedAWSAccountIDs,
-			bsonutil.GetDottedKeyName(financeConfigS3CostKey, "storage", "artifact_aws_accounts_without_lifecycle_rules"): c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigUploadKey, s3UploadCostUploadCostDiscountKey):                         c.S3Cost.Upload.UploadCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostStandardStorageCostDiscountKey):              c.S3Cost.Storage.StandardStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostIAStorageCostDiscountKey):                    c.S3Cost.Storage.IAStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostArchiveStorageCostDiscountKey):               c.S3Cost.Storage.ArchiveStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostDefaultMaxArtifactExpirationDaysKey):         c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostDevprodOwnedAWSAccountIDsKey):                c.S3Cost.Storage.DevprodOwnedAWSAccountIDs,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostArtifactAWSAccountsWithoutLifecycleRulesKey): c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules,
 			financeConfigEBSCostKey: c.EBSCost,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
@@ -107,14 +119,10 @@ func (c *CostConfig) ValidateAndDefault() error {
 		catcher.New("default max artifact expiration days must be non-negative")
 	}
 	for _, id := range c.S3Cost.Storage.DevprodOwnedAWSAccountIDs {
-		if err := validateAWSAccountID(id, "devprod owned AWS account ID"); err != nil {
-			catcher.Add(err)
-		}
+		catcher.Add(validateAWSAccountID(id, "devprod owned AWS account ID"))
 	}
 	for _, id := range c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules {
-		if err := validateAWSAccountID(id, "artifact AWS account without lifecycle rules"); err != nil {
-			catcher.Add(err)
-		}
+		catcher.Add(validateAWSAccountID(id, "artifact AWS account without lifecycle rules"))
 	}
 
 	return catcher.Resolve()

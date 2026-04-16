@@ -1681,7 +1681,7 @@ type ComplexityRoot struct {
 		ArchiveStorageCostDiscount               func(childComplexity int) int
 		ArtifactAwsAccountsWithoutLifecycleRules func(childComplexity int) int
 		DefaultMaxArtifactExpirationDays         func(childComplexity int) int
-		DevprodOwnedAwsAccountIds                func(childComplexity int) int
+		DevprodOwnedAWSAccountIds                func(childComplexity int) int
 		IAStorageCostDiscount                    func(childComplexity int) int
 		StandardStorageCostDiscount              func(childComplexity int) int
 	}
@@ -9820,11 +9820,11 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.S3StorageCostConfig.DefaultMaxArtifactExpirationDays(childComplexity), true
 	case "S3StorageCostConfig.devprodOwnedAwsAccountIds":
-		if e.complexity.S3StorageCostConfig.DevprodOwnedAwsAccountIds == nil {
+		if e.complexity.S3StorageCostConfig.DevprodOwnedAWSAccountIds == nil {
 			break
 		}
 
-		return e.complexity.S3StorageCostConfig.DevprodOwnedAwsAccountIds(childComplexity), true
+		return e.complexity.S3StorageCostConfig.DevprodOwnedAWSAccountIds(childComplexity), true
 	case "S3StorageCostConfig.iAStorageCostDiscount":
 		if e.complexity.S3StorageCostConfig.IAStorageCostDiscount == nil {
 			break
@@ -57323,7 +57323,7 @@ func (ec *executionContext) _S3StorageCostConfig_devprodOwnedAwsAccountIds(ctx c
 		field,
 		ec.fieldContext_S3StorageCostConfig_devprodOwnedAwsAccountIds,
 		func(ctx context.Context) (any, error) {
-			return obj.DevprodOwnedAwsAccountIds, nil
+			return obj.DevprodOwnedAWSAccountIds, nil
 		},
 		nil,
 		ec.marshalOString2ᚕstringᚄ,
@@ -86404,7 +86404,7 @@ func (ec *executionContext) unmarshalInputS3StorageCostConfigInput(ctx context.C
 			if err != nil {
 				return it, err
 			}
-			it.DevprodOwnedAwsAccountIds = data
+			it.DevprodOwnedAWSAccountIds = data
 		case "artifactAwsAccountsWithoutLifecycleRules":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("artifactAwsAccountsWithoutLifecycleRules"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)

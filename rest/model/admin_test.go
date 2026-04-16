@@ -658,7 +658,7 @@ func TestAPIS3StorageCostConfig(t *testing.T) {
 
 		t.Run("AwsAccountListsRoundTrip", func(t *testing.T) {
 			api := APIS3StorageCostConfig{
-				DevprodOwnedAwsAccountIds:                []string{"123456789012"},
+				DevprodOwnedAWSAccountIds:                []string{"123456789012"},
 				ArtifactAwsAccountsWithoutLifecycleRules: []string{"210987654321"},
 			}
 			svcInterface, err := api.ToService()
@@ -669,7 +669,7 @@ func TestAPIS3StorageCostConfig(t *testing.T) {
 
 			var out APIS3StorageCostConfig
 			require.NoError(t, out.BuildFromService(svc))
-			assert.Equal(t, api.DevprodOwnedAwsAccountIds, out.DevprodOwnedAwsAccountIds)
+			assert.Equal(t, api.DevprodOwnedAWSAccountIds, out.DevprodOwnedAWSAccountIds)
 			assert.Equal(t, api.ArtifactAwsAccountsWithoutLifecycleRules, out.ArtifactAwsAccountsWithoutLifecycleRules)
 		})
 	})

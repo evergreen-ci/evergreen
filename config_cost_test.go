@@ -306,9 +306,9 @@ func TestCostConfigSetAndGet(t *testing.T) {
 
 	t.Run("SetAndGetS3ArtifactAccountLists", func(t *testing.T) {
 		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
-		defer func() {
+		t.Cleanup(func() {
 			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
-		}()
+		})
 
 		original := CostConfig{
 			S3Cost: S3CostConfig{

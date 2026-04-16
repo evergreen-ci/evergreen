@@ -3191,7 +3191,7 @@ type APIS3StorageCostConfig struct {
 	IAStorageCostDiscount                    float64  `json:"i_a_storage_cost_discount"`
 	ArchiveStorageCostDiscount               float64  `json:"archive_storage_cost_discount"`
 	DefaultMaxArtifactExpirationDays         int      `json:"default_max_artifact_expiration_days"`
-	DevprodOwnedAwsAccountIds                []string `json:"devprod_owned_aws_account_ids"`
+	DevprodOwnedAWSAccountIds                []string `json:"devprod_owned_aws_account_ids"`
 	ArtifactAwsAccountsWithoutLifecycleRules []string `json:"artifact_aws_accounts_without_lifecycle_rules"`
 }
 
@@ -3202,7 +3202,7 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 		a.IAStorageCostDiscount = v.IAStorageCostDiscount
 		a.ArchiveStorageCostDiscount = v.ArchiveStorageCostDiscount
 		a.DefaultMaxArtifactExpirationDays = v.DefaultMaxArtifactExpirationDays
-		a.DevprodOwnedAwsAccountIds = v.DevprodOwnedAWSAccountIDs
+		a.DevprodOwnedAWSAccountIds = v.DevprodOwnedAWSAccountIDs
 		a.ArtifactAwsAccountsWithoutLifecycleRules = v.ArtifactAWSAccountsWithoutLifecycleRules
 		return nil
 	default:
@@ -3216,7 +3216,7 @@ func (a *APIS3StorageCostConfig) ToService() (any, error) {
 		IAStorageCostDiscount:                    a.IAStorageCostDiscount,
 		ArchiveStorageCostDiscount:               a.ArchiveStorageCostDiscount,
 		DefaultMaxArtifactExpirationDays:         a.DefaultMaxArtifactExpirationDays,
-		DevprodOwnedAWSAccountIDs:                a.DevprodOwnedAwsAccountIds,
+		DevprodOwnedAWSAccountIDs:                a.DevprodOwnedAWSAccountIds,
 		ArtifactAWSAccountsWithoutLifecycleRules: a.ArtifactAwsAccountsWithoutLifecycleRules,
 	}, nil
 }
