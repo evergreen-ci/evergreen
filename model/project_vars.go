@@ -250,12 +250,6 @@ func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars,
 
 // CopyProjectVars copies the variables for the first project to the second
 func CopyProjectVars(ctx context.Context, oldProjectId, newProjectId string) error {
-	// kim: NOTE: this is implementation for REST route project copy.
-	// kim: NOTE: Splunk logs: https://mongodb.splunkcloud.com/en-US/app/search/search?earliest=1774018800&latest=1774022400&q=search%20index%3Devergreen%20%2Fcopy&display.page.search.mode=fast&dispatch.sample_ratio=1&display.general.type=events&display.page.search.tab=events&workload_pool=&display.events.timelineEarliestTime=1774020840&display.events.timelineLatestTime=1774020900&sid=1776268615.249437
-	// kim: NOTE: this FindOneProjectVars passed, which means that for the old
-	// project to be copied, there were either no project vars at this moment,
-	// or the project vars were in a valid state (i.e. the project vars were
-	// valid in the old "mms" project).
 	vars, err := FindOneProjectVars(ctx, oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding variables for project '%s'", oldProjectId)
