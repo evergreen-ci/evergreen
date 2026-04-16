@@ -333,6 +333,7 @@ type TaskOwnerTeam {
 Cost represents the cost breakdown for a task or version.
 """
 type Cost {
+  onDemandEC2Cost: Float
   adjustedEC2Cost: Float
   adjustedEBSStorageCost: Float
   adjustedEBSThroughputCost: Float
@@ -340,7 +341,6 @@ type Cost {
   adjustedS3ArtifactStorageCost: Float
   adjustedS3LogPutCost: Float
   adjustedS3LogStorageCost: Float
-  onDemandEC2Cost: Float
 }
 
 input QuarantineTestInput {
