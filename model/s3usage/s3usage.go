@@ -44,8 +44,10 @@ type S3UploadMetrics struct {
 
 // BucketFileMetrics groups per-file byte metrics for a single S3 bucket.
 type BucketFileMetrics struct {
-	Bucket string      `bson:"bucket" json:"bucket"`
-	Files  []FileBytes `bson:"files" json:"files"`
+	Bucket string `bson:"bucket" json:"bucket"`
+	// AWSRoleARN is the IAM role ARN used for artifact uploads (when assume-role is configured).
+	AWSRoleARN string      `bson:"aws_role_arn,omitempty" json:"aws_role_arn,omitempty"`
+	Files      []FileBytes `bson:"files" json:"files"`
 }
 
 // FileBytes tracks bytes uploaded for a single S3 file key.
@@ -261,11 +263,19 @@ type ArtifactIncrementOptions struct {
 	MaxPuts     int
 	MinPuts     int
 	Bucket      string
+	AWSRoleARN  string
 	Files       []FileMetrics
+	// DevprodOwnedAWSAccountIDs, when non-empty, restricts recording to uploads whose AWSRoleARN
+	// resolves to an account ID in this list.
+	DevprodOwnedAWSAccountIDs []string
 }
 
 // IncrementArtifacts updates aggregate artifact upload metrics after an s3.put command.
 func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
+	if !evergreen.IsDevprodOwnedArtifactIAMRole(opts.AWSRoleARN, opts.DevprodOwnedAWSAccountIDs) {
+		return
+	}
+
 	s.Artifacts.PutRequests += opts.PutRequests
 	s.Artifacts.UploadBytes += opts.UploadBytes
 	s.Artifacts.Count += opts.FileCount
@@ -279,13 +289,16 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 
 	var bucketEntry *BucketFileMetrics
 	for i := range s.Artifacts.BytesByBucketAndKey {
-		if s.Artifacts.BytesByBucketAndKey[i].Bucket == opts.Bucket {
+		if s.Artifacts.BytesByBucketAndKey[i].Bucket == opts.Bucket && s.Artifacts.BytesByBucketAndKey[i].AWSRoleARN == opts.AWSRoleARN {
 			bucketEntry = &s.Artifacts.BytesByBucketAndKey[i]
 			break
 		}
 	}
 	if bucketEntry == nil {
-		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{Bucket: opts.Bucket})
+		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{
+			Bucket:     opts.Bucket,
+			AWSRoleARN: opts.AWSRoleARN,
+		})
 		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}
 	for _, f := range opts.Files {

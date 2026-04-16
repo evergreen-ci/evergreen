@@ -577,13 +577,15 @@ retryLoop:
 
 	maxPuts, minPuts := computePerFileExtremes(uploadedFiles)
 	conf.S3Usage.IncrementArtifacts(s3usage.ArtifactIncrementOptions{
-		PutRequests: totalPutRequests,
-		UploadBytes: totalFileSize,
-		FileCount:   len(uploadedFiles),
-		MaxPuts:     maxPuts,
-		MinPuts:     minPuts,
-		Bucket:      s3pc.Bucket,
-		Files:       uploadedFiles,
+		PutRequests:               totalPutRequests,
+		UploadBytes:               totalFileSize,
+		FileCount:                 len(uploadedFiles),
+		MaxPuts:                   maxPuts,
+		MinPuts:                   minPuts,
+		Bucket:                    s3pc.Bucket,
+		AWSRoleARN:                s3pc.getRoleARN(),
+		Files:                     uploadedFiles,
+		DevprodOwnedAWSAccountIDs: conf.DevprodOwnedAWSAccountIDs,
 	})
 
 	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles))

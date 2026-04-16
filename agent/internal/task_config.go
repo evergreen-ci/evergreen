@@ -68,6 +68,9 @@ type TaskConfig struct {
 	TaskOutput         evergreen.S3Credentials
 	ModulePaths        map[string]string
 	S3Usage            *s3usage.S3Usage
+	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
+	// owned by Devprod that we want to calculate s3 costs for.
+	DevprodOwnedAWSAccountIDs []string
 	// HasTestResults is true if the task has sent at least one test result.
 	HasTestResults bool
 	// HasFailingTestResult is true if the task has sent at least one test
@@ -265,6 +268,10 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		taskConfig.PatchOrVersionDescription = opts.Patch.Description
 	} else if opts.Version != nil {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message
+	}
+
+	if opts.ExpansionsAndVars != nil {
+		taskConfig.DevprodOwnedAWSAccountIDs = opts.ExpansionsAndVars.DevprodOwnedAWSAccountIDs
 	}
 
 	if opts.ExpansionsAndVars != nil && opts.ExpansionsAndVars.Expansions != nil {

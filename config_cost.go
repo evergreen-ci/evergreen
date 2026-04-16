@@ -2,8 +2,10 @@ package evergreen
 
 import (
 	"context"
+	"slices"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -142,6 +144,23 @@ func validateAWSAccountID(id, fieldLabel string) error {
 		}
 	}
 	return nil
+}
+
+// IsInDevProdOwnedAccountList reports whether an account ID is in the list of devprod owned account IDs.
+func IsInDevProdOwnedAccountList(accountID string, list []string) bool {
+	return slices.ContainsFunc(list, func(id string) bool {
+		return strings.TrimSpace(id) == accountID
+	})
+}
+
+// IsDevprodOwnedArtifactIAMRole reports whether an IAM role ARN belongs to an account in the list
+// of devprod owned account IDs.
+func IsDevprodOwnedArtifactIAMRole(awsRoleARN string, devprodOwnedAWSAccountIDs []string) bool {
+	if len(devprodOwnedAWSAccountIDs) == 0 {
+		return true
+	}
+	acctID, ok := util.AWSAccountIDFromIAMARN(awsRoleARN)
+	return ok && IsInDevProdOwnedAccountList(acctID, devprodOwnedAWSAccountIDs)
 }
 
 // IsConfigured returns true if any finance config field is set.
