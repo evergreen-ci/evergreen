@@ -99,6 +99,7 @@ type Mutation {
   
   # test
   quarantineTest(opts: QuarantineTestInput!): QuarantineTestPayload!
+  unquarantineTest(opts: UnquarantineTestInput!): UnquarantineTestPayload!
 
   # user
   addFavoriteProject(opts: AddFavoriteProjectInput!): Project!

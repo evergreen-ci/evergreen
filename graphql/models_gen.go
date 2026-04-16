@@ -691,6 +691,15 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+type UnquarantineTestInput struct {
+	TaskID   string `json:"taskId"`
+	TestName string `json:"testName"`
+}
+
+type UnquarantineTestPayload struct {
+	Success bool `json:"success"`
+}
+
 type UpdateBetaFeaturesInput struct {
 	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures"`
 }
