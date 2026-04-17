@@ -2400,7 +2400,6 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 				"$set": bson.M{
 					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
 					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
-					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
 				},
 			})
