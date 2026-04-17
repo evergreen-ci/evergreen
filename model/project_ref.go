@@ -252,10 +252,10 @@ func (p *ProjectRef) GetGitHubAppAuthForAPI(ctx context.Context) (*githubapp.Git
 	return appAuth, nil
 }
 
-// GetGitHubAppAuthForProject retrieves the GitHub app auth for a project.
+// getGitHubAppAuthForProject retrieves the GitHub app auth for a project.
 // Returns nil (not an error) if the project ref or app auth cannot be found,
 // allowing callers to fall back to the internal app.
-func GetGitHubAppAuthForProject(ctx context.Context, projectID string) *githubapp.GithubAppAuth {
+func getGitHubAppAuthForProject(ctx context.Context, projectID string) *githubapp.GithubAppAuth {
 	pRef, _ := FindMergedProjectRef(ctx, projectID, "", false)
 	if pRef == nil {
 		return nil
@@ -270,6 +270,25 @@ func GetGitHubAppAuthForProject(ctx context.Context, projectID string) *githubap
 		return nil
 	}
 	return ghAppAuth
+}
+
+// GetAndValidateCheckRunGitHubAppAuth returns the GitHub app auth for the task's project, if available. Returns an error
+// if the project doesn't have a GitHub App configured and has more check runs configured than is allowed.
+func GetAndValidateCheckRunGitHubAppAuth(ctx context.Context, t *task.Task) (*githubapp.GithubAppAuth, error) {
+	ghAppAuth := getGitHubAppAuthForProject(ctx, t.Project)
+	if ghAppAuth != nil {
+		return ghAppAuth, nil
+	}
+	p, err := FindProjectFromVersionID(ctx, t.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading project config for check run operation")
+	}
+	checkRunCount := p.CountCheckRuns()
+	// Returning no error and no auth is the signal to fall back to the internal app.
+	if checkRunCount < CheckRunGitHubAppAuthThreshold {
+		return nil, nil
+	}
+	return nil, errors.Errorf("project '%s' does not have a GitHub app configured and has more than %d check runs configured", t.Project, CheckRunGitHubAppAuthThreshold)
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
