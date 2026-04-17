@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/taskexec"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -47,7 +48,7 @@ func getRootContext(c *cli.Context) *cli.Context {
 
 // getDaemonDir returns the full path to the daemon directory
 func getDaemonDir() (string, error) {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := util.GetUserHome()
 	if err != nil {
 		return "", errors.Wrap(err, "getting user home directory")
 	}

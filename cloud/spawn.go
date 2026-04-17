@@ -26,6 +26,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const debugProjectConfigDir = "debug_project_config"
+
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
 	DistroId              string
@@ -282,7 +284,7 @@ func generateConfigScript(ctx context.Context, taskID string, settings *evergree
 		return "", "", errors.Errorf("project ref not found for task '%s'", taskID)
 	}
 
-	configPath := filepath.Join(homeDir, pRef.RemotePath)
+	configPath := filepath.Join(homeDir, debugProjectConfigDir, pRef.RemotePath)
 
 	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
