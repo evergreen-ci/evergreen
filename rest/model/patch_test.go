@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -102,6 +103,54 @@ func TestAPIPatch(t *testing.T) {
 	assert.NotZero(a.GithubPatchData)
 	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
+}
+
+func TestAPIPatchBuildFromServiceVersionCost(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection))
+
+	v := model.Version{
+		Id: "version_with_cost",
+		Cost: cost.Cost{
+			AdjustedEC2Cost:           10,
+			AdjustedS3ArtifactPutCost: 0.5,
+		},
+		PredictedCost: cost.Cost{
+			AdjustedEC2Cost: 2,
+		},
+	}
+	require.NoError(t, v.Insert(ctx))
+
+	pRef := model.ProjectRef{
+		Id:         "mci",
+		Identifier: "evergreen",
+		Branch:     "main",
+	}
+	require.NoError(t, pRef.Insert(ctx))
+
+	p := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Description: "test",
+		Project:     pRef.Id,
+		Branch:      pRef.Branch,
+		Githash:     "hash",
+		PatchNumber: 1,
+		Author:      "root",
+		Version:     v.Id,
+		Status:      evergreen.VersionCreated,
+		CreateTime:  time.Now(),
+		Patches:     []patch.ModulePatch{{}},
+	}
+
+	var api APIPatch
+	require.NoError(t, api.BuildFromService(ctx, p, nil))
+
+	require.NotNil(t, api.Cost)
+	require.NotNil(t, api.CostTotal)
+	assert.InDelta(t, 10.5, *api.CostTotal, 0.001)
+	require.NotNil(t, api.PredictedCost)
+	require.NotNil(t, api.PredictedCostTotal)
+	assert.InDelta(t, 2.0, *api.PredictedCostTotal, 0.001)
 }
 
 func TestAPIPatchBuildModuleChanges(t *testing.T) {

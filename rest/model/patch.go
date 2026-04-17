@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -40,6 +41,14 @@ type APIPatch struct {
 	// Author of the patch
 	Author  *string `json:"author"`
 	Version *string `json:"version"`
+	// Aggregated actual cost of the patch's version (empty until the patch is finalized to a version with cost data).
+	Cost *cost.Cost `json:"cost,omitempty"`
+	// CostTotal is the sum of all adjusted cost components in Cost.
+	CostTotal *float64 `json:"cost_total,omitempty"`
+	// Aggregated predicted cost of the patch's version.
+	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
+	// PredictedCostTotal is the sum of all adjusted cost components in PredictedCost.
+	PredictedCostTotal *float64 `json:"predicted_cost_total,omitempty"`
 	// Status of patch (possible values are "created", "started", "success", or "failed")
 	Status *string `json:"status"`
 	// Time patch was created
@@ -166,6 +175,7 @@ type APIPatchArgs struct {
 // If args are set, includes identifier, branch, and/or child patches from the DB, if applicable.
 func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, args *APIPatchArgs) error {
 	apiPatch.buildBasePatch(p)
+	apiPatch.populateCostFromVersion(ctx, p.Version)
 
 	projectIdentifier := p.Project
 	if args != nil {
@@ -311,6 +321,35 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.GithubPatchData = APIGithubPatch{}
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 	apiPatch.InvalidatedByUpstream = p.GithubMergeData.InvalidatedByUpstream
+}
+
+// populateCostFromVersion loads aggregated cost fields from the version document referenced by the patch.
+func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID string) {
+	if versionID == "" {
+		return
+	}
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+			"message":  "could not load version for patch cost",
+			"version":  versionID,
+			"patch_id": utility.FromStringPtr(apiPatch.Id),
+		}))
+		return
+	}
+	if v == nil {
+		return
+	}
+	if !v.Cost.IsZero() {
+		versionCost := v.Cost
+		apiPatch.Cost = &versionCost
+		apiPatch.CostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(versionCost))
+	}
+	if !v.PredictedCost.IsZero() {
+		predictedCost := v.PredictedCost
+		apiPatch.PredictedCost = &predictedCost
+		apiPatch.PredictedCostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(predictedCost))
+	}
 }
 
 func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {

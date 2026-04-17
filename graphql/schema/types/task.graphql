@@ -149,7 +149,11 @@ type Task {
   stepbackInfo: StepbackInfo
   taskLogs: TaskLogs!
   taskCost: Cost
+  """Sum of adjusted cost components in taskCost; excludes on-demand components."""
+  taskCostTotal: Float
   predictedTaskCost: Cost
+  """Sum of adjusted cost components in predictedTaskCost."""
+  predictedTaskCostTotal: Float
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   testSelectionEnabled: Boolean!

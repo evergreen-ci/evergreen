@@ -8,6 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCostTotalAdjusted(t *testing.T) {
+	c := Cost{
+		AdjustedEC2Cost:               1,
+		AdjustedEBSThroughputCost:     2,
+		AdjustedEBSStorageCost:        4,
+		AdjustedS3ArtifactPutCost:     0.1,
+		AdjustedS3LogPutCost:          0.2,
+		AdjustedS3ArtifactStorageCost: 0.3,
+		AdjustedS3LogStorageCost:      0.4,
+		OnDemandEC2Cost:               100,
+	}
+	assert.InDelta(t, 8.0, c.TotalAdjusted(), 1e-9)
+}
+
 func TestCostIsZero(t *testing.T) {
 	t.Run("ZeroValues", func(t *testing.T) {
 		cost := Cost{}
