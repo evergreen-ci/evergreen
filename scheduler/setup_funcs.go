@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sort"
 	"sync"
 
@@ -41,12 +40,18 @@ func cacheExpectedDurations(ctx context.Context, comparator *CmpBasedTaskCompara
 	}
 	close(work)
 
+	const maxExpectedDurationWorkers = 4
+	numWorkers := min(maxExpectedDurationWorkers, len(comparator.tasks))
 	wg := &sync.WaitGroup{}
-	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for t := range work {
+				if ctx.Err() != nil {
+					output <- t
+					continue
+				}
 				_ = t.FetchExpectedDuration(ctx)
 				output <- t
 			}
