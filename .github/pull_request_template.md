@@ -13,7 +13,7 @@ Remember to add or edit docs in the docs/ directory if relevant.
 <!-- If you're editing docs only and are making structural changes (for example, adding links or new pages), create a patch for the Pine tasks to ensure our changes are compatible-->
 
 <!-- 
-Also please briefly consider before putting up for review (or mention in the PR description):
+Before putting up for review, briefly consider (or mention in the PR description):
 
 * Usability
     * Does it fulfill the user's need?
@@ -28,6 +28,8 @@ Also please briefly consider before putting up for review (or mention in the PR 
 * Code health
     * Does it follow Evergreen's conventions/style?
     * Is it readable, easy to understand, and maintainable?
+    * Remember to clean up any leftover TODOs or temporary debugging code/comments!
+* Security - Does this change have any security implications?
 * Backward compatibility
     * Does it break existing behavior or APIs?
     * Do we need to send out comms to users?
