@@ -248,7 +248,7 @@ func validateDebugSpawnHost(ctx context.Context, conf *ClientSettings) error {
 		return errors.Errorf("project '%s' not found", conf.ProjectID)
 	}
 
-	debugSpawnHostsDisabled := utility.FromBoolPtr(project.DebugSpawnHostsDisabled)
+	debugSpawnHostsDisabled := utility.FromBoolTPtr(project.DebugSpawnHostsDisabled)
 	if debugSpawnHostsDisabled {
 		return errors.Errorf("debug spawn hosts are disabled for project '%s'", conf.ProjectID)
 	}
