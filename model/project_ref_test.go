@@ -1406,76 +1406,80 @@ func TestDefaultRepoBySection(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPagePullRequestsSection, "me"))
-
 			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			require.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 
+			// These should be cleared so we default to repo.
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.ManualPRTestingEnabled)
-			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
-			assert.Equal(t, []string{"anna"}, pRefFromDb.GitTagAuthorizedUsers)
-
+			
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 1)
-			assert.NotContains(t, evergreen.InternalAliases, aliases)
+			assert.Len(t, aliases, 4)
+			for _, a := range aliases {
+				assert.NotEqual(t, evergreen.GithubPRAlias, a.Alias)
+			}
 		},
 		ProjectPageGitTagsSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGitTagsSection, "me"))
-
 			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			require.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 
-			assert.True(t, pRefFromDb.IsPRTestingEnabled())
-			assert.False(t, pRefFromDb.IsGithubChecksEnabled())
+			// These should be cleared so we default to repo.
+			assert.Nil(t, pRefFromDb.GitTagVersionsEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedTeams)
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 1)
-			assert.NotContains(t, evergreen.InternalAliases, aliases)
+			assert.Len(t, aliases, 4)
+			for _, a := range aliases {
+				assert.NotEqual(t, evergreen.GitTagAlias, a.Alias)
+			}
 		},
 		ProjectPageMergeQueueSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageMergeQueueSection, "me"))
-
 			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			require.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 
-			assert.True(t, pRefFromDb.IsPRTestingEnabled())
-			assert.False(t, pRefFromDb.IsGithubChecksEnabled())
+			// These should be cleared so we default to repo.
+			assert.False(t, pRefFromDb.CommitQueue.IsEnabled())
+			assert.Nil(t, pRefFromDb.CommitQueue.Enabled)
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 1)
-			assert.NotContains(t, evergreen.InternalAliases, aliases)
+			assert.Len(t, aliases, 4)
+			for _, a := range aliases {
+				assert.NotEqual(t, evergreen.CommitQueueAlias, a.Alias)
+			}
 		},
 		ProjectPageCommitChecksSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageCommitChecksSection, "me"))
-
 			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			require.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 
-			assert.True(t, pRefFromDb.IsPRTestingEnabled())
-			assert.False(t, pRefFromDb.IsGithubChecksEnabled()) // stays false
-			assert.Equal(t, []string{"anna"}, pRefFromDb.GitTagAuthorizedUsers)
+			// These should be cleared so we default to repo.
+			assert.Nil(t, pRefFromDb.IsGithubChecksEnabled())
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 1)
-			assert.NotContains(t, evergreen.InternalAliases, aliases)
+			assert.Len(t, aliases, 4)
+			for _, a := range aliases {
+				assert.NotEqual(t, evergreen.GithubChecksAlias, a.Alias)
+			}
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageNotificationsSection, "me"))
