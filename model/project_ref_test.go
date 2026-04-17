@@ -1413,13 +1413,12 @@ func TestDefaultRepoBySection(t *testing.T) {
 			// These should be cleared so we default to repo.
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.ManualPRTestingEnabled)
-			
+
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
 			assert.Len(t, aliases, 4)
-			for _, a := range aliases {
-				assert.NotEqual(t, evergreen.GithubPRAlias, a.Alias)
-			}
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
 		},
 		ProjectPageGitTagsSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
@@ -1437,10 +1436,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 4)
-			for _, a := range aliases {
-				assert.NotEqual(t, evergreen.GitTagAlias, a.Alias)
-			}
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
 		},
 		ProjectPageMergeQueueSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
@@ -1457,10 +1454,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 4)
-			for _, a := range aliases {
-				assert.NotEqual(t, evergreen.CommitQueueAlias, a.Alias)
-			}
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
 		},
 		ProjectPageCommitChecksSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
@@ -1472,14 +1467,12 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 
 			// These should be cleared so we default to repo.
-			assert.Nil(t, pRefFromDb.IsGithubChecksEnabled())
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 4)
-			for _, a := range aliases {
-				assert.NotEqual(t, evergreen.GithubChecksAlias, a.Alias)
-			}
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageNotificationsSection, "me"))
