@@ -1416,7 +1416,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)
-			assert.Len(t, aliases, 4)
 			require.Len(t, aliases, 1)
 			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
 		},
