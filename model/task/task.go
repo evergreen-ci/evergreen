@@ -4384,8 +4384,8 @@ func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey, awsRole
 	}
 
 	if lookup != nil {
-		if d, ok := lookup(ctx, bucket, fileKey); ok {
-			return d, false, true
+		if days, ok := lookup(ctx, bucket, fileKey); ok {
+			return days, false, true
 		}
 	}
 
