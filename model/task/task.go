@@ -4433,12 +4433,8 @@ func (t *Task) ComputePredictedCostForWeek(ctx context.Context) (CostPredictionR
 		return CostPredictionResult{}, nil
 	}
 
-	result := results[0]
 	return CostPredictionResult{
-		PredictedCost: cost.Cost{
-			OnDemandEC2Cost: result.AvgOnDemandCost,
-			AdjustedEC2Cost: result.AvgAdjustedCost,
-		},
+		PredictedCost: results[0].toCost(),
 	}, nil
 }
 
