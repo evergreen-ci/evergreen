@@ -288,8 +288,10 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 	u := &DBUser{}
 	env := evergreen.GetEnvironment()
 	setFields := bson.M{
-		DispNameKey:     displayName,
 		EmailAddressKey: email,
+	}
+	if displayName != "" {
+		setFields[DispNameKey] = displayName
 	}
 	if accessToken != "" {
 		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
@@ -305,8 +307,13 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 	if len(roles) > 0 {
 		setOnInsertFields[RolesKey] = roles
 	}
+	filter := bson.M{IdKey: userId}
+	// If the userId is empty, we use the email address as the filter.
+	if userId == "" {
+		filter = bson.M{EmailAddressKey: email}
+	}
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
-		bson.M{IdKey: userId},
+		filter,
 		bson.M{
 			"$set":         setFields,
 			"$setOnInsert": setOnInsertFields,

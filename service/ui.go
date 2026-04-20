@@ -98,17 +98,6 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 		})
 	}
 
-	if settings.OktaServiceConfig.Issuer != "" {
-		uis.umconf.OIDCConfigs = append(uis.umconf.OIDCConfigs, &gimlet.OIDCConfig{
-			KeysetURL:  settings.OktaServiceConfig.KeySetURL,
-			Issuer:     settings.OktaServiceConfig.Issuer,
-			HeaderName: settings.OktaServiceConfig.HeaderName,
-			DisplayNameFromID: func(id string) string {
-				return cases.Title(language.English).String(strings.Join(strings.Split(id, "."), " "))
-			},
-		})
-	}
-
 	if err := uis.umconf.Validate(); err != nil {
 		return nil, errors.Wrap(err, "programmer error; invalid user middleware configuration")
 	}
