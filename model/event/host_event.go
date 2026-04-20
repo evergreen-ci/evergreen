@@ -328,7 +328,7 @@ func LogAlertableInstanceTypeWarningSent(ctx context.Context, hostID string) {
 }
 
 func LogHostScriptExecuted(ctx context.Context, hostID string, logs string) {
-	LogHostEvent(ctx, hostID, EventHostScriptExecuted, HostEventData{Logs: logs})
+	LogHostEvent(ctx, hostID, EventHostScriptExecuted, HostEventData{Logs: logs, Successful: true})
 }
 
 func LogHostScriptExecuteFailed(ctx context.Context, hostID, logs string, err error) {
