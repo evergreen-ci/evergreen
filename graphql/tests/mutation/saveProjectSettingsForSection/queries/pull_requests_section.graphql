@@ -1,33 +1,32 @@
-# TODO DEVPROD-31534: Remove old test
 mutation {
   saveProjectSettingsForSection(
     projectSettings: {
       projectId: "sandbox_project_id"
       projectRef: {
         id: "sandbox_project_id"
-        commitQueue: {
-          enabled: true
-        }
+        prTestingEnabled: true
+        manualPrTestingEnabled: true
+        oldestAllowedMergeBase: "meow"
       }
       aliases: [
         {
-          id: "5ffe393097b1d3759dd3c1aa"
-          alias: "__commit_queue"
+          id: "pr-alias-id-1"
+          alias: "__github"
+          gitTag: ""
+          remotePath: ""
           task: "unit_tests"
           variant: "ubuntu1604"
-          gitTag: ""
           taskTags: []
           variantTags: []
-          remotePath: ""
         }
       ]
     }
-    section: GITHUB_AND_COMMIT_QUEUE
+    section: PULL_REQUESTS
   ) {
     projectRef {
-      commitQueue {
-        enabled ## unchanged
-      }
+      prTestingEnabled ## changed
+      manualPrTestingEnabled ## changed
+      oldestAllowedMergeBase ## changed
     }
     vars {
       vars ## should be unchanged

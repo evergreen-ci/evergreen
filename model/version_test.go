@@ -729,8 +729,11 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		// Insert tasks using BSON directly to avoid import cycle
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t1", "version": "v1", "display_only": false,
-			"cost":           bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05, "on_demand_s3_log_put_cost": 0.02},
-			"predicted_cost": bson.M{"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4},
+			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05, "on_demand_s3_log_put_cost": 0.02},
+			"predicted_cost": bson.M{
+				"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4,
+				"adjusted_s3_artifact_put_cost": 0.10, "adjusted_s3_log_put_cost": 0.04,
+			},
 			"s3_usage": bson.M{
 				"artifacts": bson.M{"put_requests": 100, "upload_bytes": int64(5000), "count": 10},
 				"logs":      bson.M{"put_requests": 20, "upload_bytes": int64(1000)},
@@ -738,8 +741,11 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		}))
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t2", "version": "v1", "display_only": false,
-			"cost":           bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03, "on_demand_s3_log_put_cost": 0.01},
-			"predicted_cost": bson.M{"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6},
+			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03, "on_demand_s3_log_put_cost": 0.01},
+			"predicted_cost": bson.M{
+				"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6,
+				"adjusted_s3_artifact_put_cost": 0.20, "adjusted_s3_log_put_cost": 0.02,
+			},
 			"s3_usage": bson.M{
 				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
 				"logs":      bson.M{"put_requests": 10, "upload_bytes": int64(500)},
@@ -754,6 +760,8 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.InDelta(t, 0.03, v.Cost.OnDemandS3LogPutCost, 0.001)
 		assert.InDelta(t, 5.0, v.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, v.PredictedCost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 0.30, v.PredictedCost.AdjustedS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.06, v.PredictedCost.AdjustedS3LogPutCost, 0.001)
 		assert.Equal(t, 150, v.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(8000), v.S3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 15, v.S3Usage.Artifacts.Count)

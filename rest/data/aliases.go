@@ -161,9 +161,22 @@ func validateFeaturesHaveAliases(ctx context.Context, originalProjectRef *model.
 	return catcher.Resolve()
 }
 
+func isGithubAliasSection(section model.ProjectPageSection) bool {
+	switch section {
+	case model.ProjectPageGithubAndCQSection, // TODO DEVPROD-31534: remove GithubAndCQSection
+		model.ProjectPagePullRequestsSection,
+		model.ProjectPageMergeQueueSection,
+		model.ProjectPageCommitChecksSection,
+		model.ProjectPageGitTagsSection:
+		return true
+	default:
+		return false
+	}
+}
+
 func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) bool {
 	// if we're updating internal aliases, skip non-internal aliases
-	if section == model.ProjectPageGithubAndCQSection && model.IsPatchAlias(alias) {
+	if isGithubAliasSection(section) && model.IsPatchAlias(alias) {
 		return true
 	}
 	// if we're updating patch aliases, skip internal aliases

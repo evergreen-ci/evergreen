@@ -277,13 +277,19 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 	newInternalAlias := restModel.APIProjectAlias{
 		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
-		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), //internal alias shouldn't be added
+		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), // internal alias
 		Variant: utility.ToStringPtr("var"),
 		Task:    utility.ToStringPtr("task"),
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	modified, err := updateAliasesForSection(
+		a.T().Context(),
+		"project_id",
+		updatedAliases,
+		originalAliases,
+		model.ProjectPagePatchAliasSection,
+	)
 	a.NoError(err)
 	a.True(modified)
 
@@ -298,12 +304,40 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
-	a.NoError(err)
-	a.True(modified)
-	aliasesFromDb, err = model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
-	a.NoError(err)
-	a.Len(aliasesFromDb, 4) // adds internal alias
+	// All GitHub alias sections should add the internal alias
+	githubSections := []model.ProjectPageSection{
+		model.ProjectPageGithubAndCQSection, // TODO DEVPROD-31534: Delete this test
+		model.ProjectPagePullRequestsSection,
+		model.ProjectPageGitTagsSection,
+		model.ProjectPageMergeQueueSection,
+		model.ProjectPageCommitChecksSection,
+	}
+
+	for _, section := range githubSections {
+		a.Run(string(section), func() {
+			modified, err := updateAliasesForSection(
+				a.T().Context(),
+				"project_id",
+				updatedAliases,
+				originalAliases,
+				section,
+			)
+			a.NoError(err)
+			a.True(modified)
+
+			aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+			a.NoError(err)
+			a.Len(aliasesFromDb, 4) // net count stays the same (one removed, one added)
+
+			foundChecks := false
+			for _, alias := range aliasesFromDb {
+				if alias.Alias == evergreen.GithubChecksAlias {
+					foundChecks = true
+				}
+			}
+			a.True(foundChecks, "expected %s to be present after updating section %s", evergreen.GithubChecksAlias, section)
+		})
+	}
 }
 
 func TestValidateFeaturesHaveAliases(t *testing.T) {

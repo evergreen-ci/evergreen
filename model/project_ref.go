@@ -680,20 +680,25 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
-	ProjectPageGeneralSection           = "GENERAL"
-	ProjectPageAccessSection            = "ACCESS"
-	ProjectPageVariablesSection         = "VARIABLES"
-	ProjectPageNotificationsSection     = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection        = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection      = "WORKSTATION"
-	ProjectPageTriggersSection          = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection    = "PERIODIC_BUILDS"
-	ProjectPagePluginSection            = "PLUGINS"
-	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
-	ProjectPageTestSelectionSection     = "TEST_SELECTION"
+	ProjectPageGeneralSection         = "GENERAL"
+	ProjectPageAccessSection          = "ACCESS"
+	ProjectPageVariablesSection       = "VARIABLES"
+	ProjectPageNotificationsSection   = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection    = "WORKSTATION"
+	ProjectPageTriggersSection        = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
+	ProjectPagePluginSection          = "PLUGINS"
+	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
+	ProjectPageTestSelectionSection   = "TEST_SELECTION"
+	// TODO DEVPROD-31534: deprecate this section
 	ProjectPageGithubAndCQSection       = "GITHUB_AND_COMMIT_QUEUE"
 	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
 	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
+	ProjectPagePullRequestsSection      = "PULL_REQUESTS"
+	ProjectPageGitTagsSection           = "GIT_TAGS"
+	ProjectPageMergeQueueSection        = "MERGE_QUEUE"
+	ProjectPageCommitChecksSection      = "COMMIT_CHECKS"
 )
 
 const (
@@ -2321,6 +2326,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefAdminsKey:     p.Admins,
 				},
 			})
+	// TODO DEVPROD-31534: deprecate this section
 	case ProjectPageGithubAndCQSection:
 		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2406,6 +2412,42 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					projectRefGitHubDynamicTokenPermissionGroupsKey: p.GitHubDynamicTokenPermissionGroups,
 				},
 			})
+	case ProjectPagePullRequestsSection:
+		err = db.Update(ctx, coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
+					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
+					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
+				},
+			})
+	case ProjectPageGitTagsSection:
+		err = db.Update(ctx, coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefGitTagVersionsEnabledKey: p.GitTagVersionsEnabled,
+					ProjectRefGitTagAuthorizedUsersKey: p.GitTagAuthorizedUsers,
+					ProjectRefGitTagAuthorizedTeamsKey: p.GitTagAuthorizedTeams,
+				},
+			})
+	case ProjectPageMergeQueueSection:
+		err = db.Update(ctx, coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefCommitQueueKey: p.CommitQueue,
+				},
+			})
+	case ProjectPageCommitChecksSection:
+		err = db.Update(ctx, coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefGithubChecksEnabledKey: p.GithubChecksEnabled,
+				},
+			})
 	case ProjectPageVariablesSection:
 		// this section doesn't modify the project/repo ref
 		return false, nil
@@ -2452,7 +2494,8 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 			modified = true
 		}
 		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
-	case ProjectPageGithubAndCQSection:
+	// TODO DEVPROD-31534: remove GithubAndCQSection
+	case ProjectPageGithubAndCQSection, ProjectPagePullRequestsSection, ProjectPageGitTagsSection, ProjectPageMergeQueueSection, ProjectPageCommitChecksSection:
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
