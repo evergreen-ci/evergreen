@@ -51,6 +51,8 @@ type Cost struct {
 	OnDemandS3LogStorageCost float64 `bson:"on_demand_s3_log_storage_cost,omitempty" json:"-"`
 	// AdjustedS3LogStorageCost is the adjusted (discounted) S3 storage cost for log bytes over their retention period.
 	AdjustedS3LogStorageCost float64 `bson:"adjusted_s3_log_storage_cost,omitempty" json:"adjusted_s3_log_storage_cost,omitempty"`
+	// ChildPatchesTotalCost is the total cost for child patches.
+	ChildPatchesTotalCost float64 `bson:"-" json:"child_patches_total_cost,omitempty"`
 }
 
 // TotalAdjusted returns the sum of every adjusted component in this value, excluding on-demand fields,
@@ -62,7 +64,8 @@ func (c Cost) TotalAdjusted() float64 {
 		c.AdjustedS3ArtifactPutCost +
 		c.AdjustedS3LogPutCost +
 		c.AdjustedS3ArtifactStorageCost +
-		c.AdjustedS3LogStorageCost
+		c.AdjustedS3LogStorageCost +
+		c.ChildPatchesTotalCost
 }
 
 // IsZero returns true if all cost components are zero.
@@ -80,5 +83,6 @@ func (c Cost) IsZero() bool {
 		c.AdjustedS3ArtifactPutCost == 0 &&
 		c.AdjustedS3LogPutCost == 0 &&
 		c.AdjustedS3ArtifactStorageCost == 0 &&
-		c.AdjustedS3LogStorageCost == 0
+		c.AdjustedS3LogStorageCost == 0 &&
+		c.ChildPatchesTotalCost == 0
 }

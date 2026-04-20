@@ -20,6 +20,10 @@ func TestCostTotalAdjusted(t *testing.T) {
 		OnDemandEC2Cost:               100,
 	}
 	assert.InDelta(t, 8.0, c.TotalAdjusted(), 1e-9)
+
+	withChildren := c
+	withChildren.ChildPatchesTotalCost = 2
+	assert.InDelta(t, 10.0, withChildren.TotalAdjusted(), 1e-9)
 }
 
 func TestCostIsZero(t *testing.T) {
@@ -50,6 +54,11 @@ func TestCostIsZero(t *testing.T) {
 
 	t.Run("NonZeroOnDemandS3LogPutCost", func(t *testing.T) {
 		cost := Cost{OnDemandS3LogPutCost: 0.00003}
+		assert.False(t, cost.IsZero())
+	})
+
+	t.Run("NonZeroChildPatchesTotalCost", func(t *testing.T) {
+		cost := Cost{ChildPatchesTotalCost: 1.0}
 		assert.False(t, cost.IsZero())
 	})
 }

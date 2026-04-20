@@ -335,6 +335,7 @@ Cost represents the cost breakdown for a task or version.
 type Cost {
   """Sum of adjusted cost components; excludes on-demand components."""
   total: Float
+  childPatchesTotalCost: Float
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
   adjustedEBSStorageCost: Float
