@@ -727,4 +727,3 @@ func (i *APIGeneratedTaskInfo) BuildFromService(dbInfo task.GeneratedTaskInfo) {
 type APINumTasksToFinalize struct {
 	NumTasksToFinalize *int `json:"num_tasks_to_finalize"`
 }
-
