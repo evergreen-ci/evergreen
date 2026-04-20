@@ -189,6 +189,7 @@ input TracerSettingsInput {
   collectorEndpoint: String
   collectorInternalEndpoint: String
   collectorAPIKey: String @redactSecrets
+  traceUrlTemplate: String
 }
 
 type TracerSettings {
@@ -196,6 +197,7 @@ type TracerSettings {
   collectorEndpoint: String
   collectorInternalEndpoint: String
   collectorAPIKey: String @requireAdmin
+  traceUrlTemplate: String
 }
 
 input CostConfigInput {
@@ -227,6 +229,8 @@ input S3StorageCostConfigInput {
     iAStorageCostDiscount: Float
     archiveStorageCostDiscount: Float
     defaultMaxArtifactExpirationDays: Int
+    devprodOwnedAwsAccountIds: [String!]
+    artifactAwsAccountsWithoutLifecycleRules: [String!]
 }
 
 type S3StorageCostConfig {
@@ -234,6 +238,8 @@ type S3StorageCostConfig {
     iAStorageCostDiscount: Float
     archiveStorageCostDiscount: Float
     defaultMaxArtifactExpirationDays: Int
+    devprodOwnedAwsAccountIds: [String!]
+    artifactAwsAccountsWithoutLifecycleRules: [String!]
 }
 
 input S3CostConfigInput {

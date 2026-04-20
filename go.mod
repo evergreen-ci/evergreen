@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20260326190628-51c8dde3a7f5
 	github.com/mongodb/anser v0.0.0-20260326191204-f2d0a92e3f0a
-	github.com/mongodb/grip v0.0.0-20260325175240-dee15316ed15
+	github.com/mongodb/grip v0.0.0-20260416142205-66006126eeab
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
@@ -42,7 +42,7 @@ require (
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.17
-	github.com/vektah/gqlparser/v2 v2.5.31
+	github.com/vektah/gqlparser/v2 v2.5.32
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.64.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.64.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.64.0

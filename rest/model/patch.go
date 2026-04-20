@@ -44,6 +44,8 @@ type APIPatch struct {
 	Status *string `json:"status"`
 	// Time patch was created
 	CreateTime *time.Time `json:"create_time"`
+	// Time the patch document was first persisted in Evergreen
+	IngestTime *time.Time `json:"ingest_time,omitempty"`
 	// Time patch started to run
 	StartTime *time.Time `json:"start_time"`
 	// Time at patch completion
@@ -232,6 +234,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.Version = utility.ToStringPtr(p.Version)
 	apiPatch.Hidden = p.Hidden
 	apiPatch.CreateTime = ToTimePtr(p.CreateTime)
+	apiPatch.IngestTime = ToTimePtr(p.IngestTime)
 	apiPatch.StartTime = ToTimePtr(p.StartTime)
 	apiPatch.FinishTime = ToTimePtr(p.FinishTime)
 	apiPatch.MergedFrom = utility.ToStringPtr(p.MergedFrom)

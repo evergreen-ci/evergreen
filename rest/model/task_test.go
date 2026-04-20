@@ -43,7 +43,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					Revision:      utility.ToStringPtr("testRevision"),
 					ProjectId:     utility.ToStringPtr("testProject"),
 					Priority:      100,
-					TaskCost:      &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25, S3ArtifactPutCost: 0.00005},
+					TaskCost:      &cost.Cost{OnDemandEC2Cost: 3.25, AdjustedEC2Cost: 5.25, AdjustedS3ArtifactPutCost: 0.00005},
 					S3Usage:       &s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 5000}, Count: 3}},
 					Execution:     2,
 					Activated:     true,

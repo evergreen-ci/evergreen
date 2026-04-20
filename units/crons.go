@@ -922,6 +922,7 @@ const defaultRetryFailedLogMoveMaxJobsPerRun = 50
 const retryFailedLogMoveFindMinLimit = 500
 const retryFailedLogMoveFindMaxLimit = 5000
 const retryFailedLogMoveCandidateMultiplier = 50
+const retryFailedLogMoveFindTimeout = 20 * time.Minute
 
 // PopulateRetryFailedLogMoveJobs finds failed tasks whose logs are still in the regular
 // bucket (move job failed or never ran) and enqueues one move-logs-to-failed-bucket job per task.
@@ -966,7 +967,9 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		query := db.Query(filter).WithFields(
 			task.IdKey, task.ProjectKey, task.FinishTimeKey, task.TaskOutputInfoKey,
 		).Sort([]string{"-" + task.FinishTimeKey}).Limit(queryLimit)
-		tasks, err := task.FindAll(ctx, query)
+		findCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), retryFailedLogMoveFindTimeout)
+		defer cancel()
+		tasks, err := task.FindAll(findCtx, query)
 		if err != nil {
 			return errors.Wrap(err, "finding failed tasks whose logs need moving")
 		}

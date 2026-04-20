@@ -149,7 +149,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
-		OldestAllowedMergeBase: "0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f",
+		OldestAllowedMergeBase: "536cde7f7b29f7e117371a48a3e59540a44af1ac",
 	}).Insert(s.ctx))
 
 	s.NoError((&model.ProjectRef{
@@ -194,12 +194,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Variant:   "^ubuntu2004$",
 		Task:      "^bynntask$",
 	}).Upsert(s.ctx))
-	s.NoError((&model.ProjectAlias{
-		ProjectID: "commit-queue-sandbox",
-		Alias:     evergreen.GithubPRAlias,
-		Variant:   "ubuntu.*",
-		Task:      "unit_tests",
-	}).Upsert(s.ctx))
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert(s.ctx))
 	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert(s.ctx))
@@ -230,10 +224,9 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		BaseOwner:  "evergreen-ci",
 		BaseRepo:   "evergreen",
 		BaseBranch: "main",
-		BaseHash:   "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
 		HeadOwner:  "richardsamuels",
 		HeadRepo:   "evergreen",
-		HeadHash:   "729b1ab0e21514fb1af39fc298e3fae9b480d568",
+		HeadHash:   "something",
 		Author:     "richardsamuels",
 	}
 	s.desc = "Test!"
@@ -1206,31 +1199,31 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 
 func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	pr := &github.PullRequest{
-		Title:  github.Ptr("Test title"),
-		Number: github.Ptr(816),
+		Title: utility.ToStringPtr("Test title"),
 		Base: &github.PullRequestBranch{
-			SHA: github.Ptr("0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f"),
+			SHA: github.String("ed42b5e51e81724c5258686a0b9d515a99696eac"),
 			Repo: &github.Repository{
-				FullName: github.Ptr("evergreen-ci/commit-queue-sandbox"),
+				FullName: utility.ToStringPtr("evergreen-ci/commit-queue-sandbox"),
 			},
-			Ref: github.Ptr("main"),
+			Ref: utility.ToStringPtr("main"),
 		},
 		Head: &github.PullRequestBranch{
-			SHA: github.Ptr("69145f9bcac5c5f5d2b6de76c78e5b717f993097"),
+			SHA: github.String("ed42b5e51e81724c5258686a0b9d515a99696eac"),
 			Repo: &github.Repository{
-				FullName: github.Ptr("minnakt/commit-queue-sandbox"),
+				FullName: utility.ToStringPtr("evergreen-ci/DEVPROD-123"),
 			},
-			Ref: github.Ptr("refresh-statuses"),
+			Ref: utility.ToStringPtr("abc"),
 		},
 		User: &github.User{
 			ID:    github.Int64(1),
-			Login: github.Ptr("abc"),
+			Login: utility.ToStringPtr("abc"),
 		},
-		MergeCommitSHA: github.Ptr("abcdef"),
+		Number:         github.Int(1),
+		MergeCommitSHA: github.String("abcdef"),
 	}
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	// SHA 0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f is newer than the oldest allowed merge base and should be accepted
-	intent, err := patch.NewGithubIntent(s.ctx, "id", "auto", "", "", "0f8c636e54e61f50c02bd2a9cf178ef7b8623e8f", pr)
+	// SHA ed42b5e51e81724c5258686a0b9d515a99696eac is newer than the oldest allowed merge base and should be accepted
+	intent, err := patch.NewGithubIntent(s.ctx, "id", "auto", "", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1242,8 +1235,8 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 
 	s.Equal("main", patchDoc.Branch)
 
-	// SHA 6e8cd5c8e8fe18e38b1dc9a609465a732d29fb99 is older than the oldest allowed merge base and should be rejected
-	intent, err = patch.NewGithubIntent(s.ctx, "another_id", "auto", "", "", "6e8cd5c8e8fe18e38b1dc9a609465a732d29fb99", pr)
+	// SHA 4aa79c5e7ef7af351764b843a2c05fab98c23881 is older than the oldest allowed merge base and should be rejected
+	intent, err = patch.NewGithubIntent(s.ctx, "another_id", "auto", "", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1262,7 +1255,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestPatch(s.ctx, s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)
@@ -1330,7 +1323,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestPatch(s.ctx, s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)
@@ -1541,7 +1534,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", "350449672ccb53725cc59f01c674ef885f29babb", "hadjri/evergreen", "e32a76f1bc3b16bdc014e9f739565c6b42eed355", "octocat", "title1"))
+	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))

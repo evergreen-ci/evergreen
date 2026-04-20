@@ -209,6 +209,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Tracer.Enabled, *apiSettings.Tracer.Enabled)
 	assert.Equal(testSettings.Tracer.CollectorEndpoint, *apiSettings.Tracer.CollectorEndpoint)
 	assert.Equal(testSettings.Tracer.CollectorInternalEndpoint, *apiSettings.Tracer.CollectorInternalEndpoint)
+	assert.Equal(testSettings.Tracer.TraceURLTemplate, utility.FromStringPtr(apiSettings.Tracer.TraceURLTemplate))
 	assert.Equal(testSettings.GitHubCheckRun.CheckRunLimit, *apiSettings.GitHubCheckRun.CheckRunLimit)
 	assert.Equal(testSettings.Sage.BaseURL, utility.FromStringPtr(apiSettings.Sage.BaseURL))
 
@@ -323,6 +324,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Tracer.Enabled, dbSettings.Tracer.Enabled)
 	assert.EqualValues(testSettings.Tracer.CollectorEndpoint, dbSettings.Tracer.CollectorEndpoint)
 	assert.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, dbSettings.Tracer.CollectorInternalEndpoint)
+	assert.EqualValues(testSettings.Tracer.TraceURLTemplate, dbSettings.Tracer.TraceURLTemplate)
 	assert.EqualValues(testSettings.GitHubCheckRun.CheckRunLimit, dbSettings.GitHubCheckRun.CheckRunLimit)
 	assert.EqualValues(testSettings.Sage.BaseURL, dbSettings.Sage.BaseURL)
 }
@@ -654,6 +656,23 @@ func TestAPIS3StorageCostConfig(t *testing.T) {
 			svc := svcInterface.(evergreen.S3StorageCostConfig)
 			assert.Equal(t, 0.25, svc.StandardStorageCostDiscount)
 			assert.Equal(t, 0.35, svc.IAStorageCostDiscount)
+		})
+
+		t.Run("AwsAccountListsRoundTrip", func(t *testing.T) {
+			api := APIS3StorageCostConfig{
+				DevprodOwnedAWSAccountIds:                []string{"123456789012"},
+				ArtifactAwsAccountsWithoutLifecycleRules: []string{"210987654321"},
+			}
+			svcInterface, err := api.ToService()
+			require.NoError(t, err)
+			svc := svcInterface.(evergreen.S3StorageCostConfig)
+			assert.Equal(t, []string{"123456789012"}, svc.DevprodOwnedAWSAccountIDs)
+			assert.Equal(t, []string{"210987654321"}, svc.ArtifactAWSAccountsWithoutLifecycleRules)
+
+			var out APIS3StorageCostConfig
+			require.NoError(t, out.BuildFromService(svc))
+			assert.Equal(t, api.DevprodOwnedAWSAccountIds, out.DevprodOwnedAWSAccountIds)
+			assert.Equal(t, api.ArtifactAwsAccountsWithoutLifecycleRules, out.ArtifactAwsAccountsWithoutLifecycleRules)
 		})
 	})
 }

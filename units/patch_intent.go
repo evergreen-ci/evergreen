@@ -421,10 +421,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if patchDoc.IsGithubPRPatch() {
 		numCheckRuns := patchedProject.GetNumCheckRunsFromVariantTasks(patchDoc.VariantsTasks)
-		checkRunLimit := j.env.Settings().GitHubCheckRun.CheckRunLimit
-		if numCheckRuns > checkRunLimit {
+		if err := model.VerifyCheckRunLimit(numCheckRuns, j.env.Settings().GitHubCheckRun.CheckRunLimit, pref.HasGitHubAppAuth(ctx)); err != nil {
 			j.gitHubError = checkRunLimitExceeded
-			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
+			return err
 		}
 		catcher.Wrap(j.createGitHubSubscriptions(ctx, patchDoc), "creating GitHub PR patch subscriptions")
 	}
@@ -1018,7 +1017,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestPatch(ctx, patchDoc.GithubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {

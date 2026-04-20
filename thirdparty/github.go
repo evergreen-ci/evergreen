@@ -1539,16 +1539,15 @@ func GetGithubPullRequest(ctx context.Context, baseOwner, baseRepo string, prNum
 	return pr, nil
 }
 
-// GetGithubPullRequestPatch downloads the pull request diff using GitHub's
-// compare commits API (merge_base...head). This includes per-file patch data
-// that the pull request raw diff endpoint omits (e.g. binary files).
-func GetGithubPullRequestPatch(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
-	caller := "GetGithubPullRequestPatch"
+// GetGithubPullRequestDiff downloads a raw diff from a Github Pull Request.
+// This can fail if the PR is too large (e.g. greater than 300 files). See
+// GetGitHubPullRequestFiles.
+func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Summary, error) {
+	caller := "GetGithubPullRequestDiff"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, gh.BaseOwner),
 		attribute.String(githubRepoAttribute, gh.BaseRepo),
-		attribute.String(githubRefAttribute, gh.HeadHash),
 	))
 	defer span.End()
 
@@ -1560,18 +1559,14 @@ func GetGithubPullRequestPatch(ctx context.Context, gh GithubPatch) (string, []S
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
 	defer githubClient.Close()
 
-	diff, resp, err := githubClient.Repositories.CompareCommitsRaw(
-		ctx, gh.BaseOwner, gh.BaseRepo, gh.BaseHash, gh.HeadHash,
-		github.RawOptions{Type: github.Patch},
-	)
+	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
 	if resp != nil {
+		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		resp.Body.Close()
 	}
 	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to get pull request diff")
+		return "", nil, err
 	}
-
 	summaries, err := GetPatchSummaries(diff)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to get patch summary")

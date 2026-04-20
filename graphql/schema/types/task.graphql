@@ -335,11 +335,12 @@ Cost represents the cost breakdown for a task or version.
 type Cost {
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
-  adjustedEBSThroughputCost: Float
   adjustedEBSStorageCost: Float
-  s3ArtifactPutCost: Float
-  s3LogPutCost: Float
-  s3ArtifactStorageCost: Float
+  adjustedEBSThroughputCost: Float
+  adjustedS3ArtifactPutCost: Float
+  adjustedS3ArtifactStorageCost: Float
+  adjustedS3LogPutCost: Float
+  adjustedS3LogStorageCost: Float
 }
 
 input QuarantineTestInput {
