@@ -132,14 +132,12 @@ func TestVersionBuildFromServiceCost(t *testing.T) {
 		assert.InDelta(t, 12.0, apiVersion.Cost.AdjustedEC2Cost, 0.01)
 		assert.InDelta(t, 0.08, apiVersion.Cost.AdjustedS3ArtifactPutCost, 0.001)
 		assert.InDelta(t, 0.03, apiVersion.Cost.AdjustedS3LogPutCost, 0.001)
-		require.NotNil(t, apiVersion.CostTotal)
-		assert.InDelta(t, 12.0+0.08+0.03, *apiVersion.CostTotal, 0.001)
+		assert.InDelta(t, 12.0+0.08+0.03, apiVersion.Cost.Total, 0.001)
 
 		require.NotNil(t, apiVersion.PredictedCost)
 		assert.InDelta(t, 5.0, apiVersion.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, apiVersion.PredictedCost.AdjustedEC2Cost, 0.01)
-		require.NotNil(t, apiVersion.PredictedCostTotal)
-		assert.InDelta(t, 4.0, *apiVersion.PredictedCostTotal, 0.01)
+		assert.InDelta(t, 4.0, apiVersion.PredictedCost.Total, 0.01)
 	})
 
 	t.Run("ZeroCostIsNil", func(t *testing.T) {
@@ -211,8 +209,8 @@ func TestAPITaskBuildFromServiceSetsCostTotals(t *testing.T) {
 	}
 	var api APITask
 	require.NoError(t, api.BuildFromService(t.Context(), tsk, nil))
-	require.NotNil(t, api.TaskCostTotal)
-	require.NotNil(t, api.PredictedTaskCostTotal)
-	assert.InDelta(t, 10.05, *api.TaskCostTotal, 0.0001)
-	assert.InDelta(t, 3.0, *api.PredictedTaskCostTotal, 0.0001)
+	require.NotNil(t, api.TaskCost)
+	require.NotNil(t, api.PredictedTaskCost)
+	assert.InDelta(t, 10.05, api.TaskCost.Total, 0.0001)
+	assert.InDelta(t, 3.0, api.PredictedTaskCost.Total, 0.0001)
 }

@@ -901,6 +901,9 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPodTaskContainerCreationOptions
   Cost:
     model: github.com/evergreen-ci/evergreen/model/cost.Cost
+    fields:
+      total:
+        resolver: true
   TaskEndDetail:
     model: github.com/evergreen-ci/evergreen/rest/model.ApiTaskEndDetail
   TaskEventLogData:

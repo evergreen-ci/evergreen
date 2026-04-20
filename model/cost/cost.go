@@ -21,6 +21,8 @@ var (
 
 // Cost represents a cost breakdown for tasks and versions
 type Cost struct {
+	// Total is the sum of adjusted cost components.
+	Total float64 `bson:"-" json:"total,omitempty"`
 	// OnDemandEC2Cost is the cost calculated using only on-demand rates.
 	OnDemandEC2Cost float64 `bson:"on_demand_ec2_cost,omitempty" json:"on_demand_ec2_cost,omitempty"`
 	// AdjustedEC2Cost is the cost calculated using the finance formula with savings plan and on-demand components.

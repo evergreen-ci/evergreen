@@ -61,12 +61,8 @@ type APIVersion struct {
 	Ignored *bool `json:"ignored"`
 	// Aggregated actual cost of all tasks in the version
 	Cost *cost.Cost `json:"cost,omitempty"`
-	// CostTotal is the sum of all adjusted cost components in Cost (convenience for clients).
-	CostTotal *float64 `json:"cost_total,omitempty"`
 	// Aggregated predicted cost of all tasks in the version
 	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
-	// PredictedCostTotal is the sum of all adjusted cost components in PredictedCost.
-	PredictedCostTotal *float64 `json:"predicted_cost_total,omitempty"`
 	// Aggregated S3 upload metrics across all tasks in the version
 	S3Usage *APIVersionS3Usage `json:"s3_usage,omitempty"`
 }
@@ -156,13 +152,13 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 
 	if !v.Cost.IsZero() {
 		versionCost := v.Cost
+		versionCost.Total = versionCost.TotalAdjusted()
 		apiVersion.Cost = &versionCost
-		apiVersion.CostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(versionCost))
 	}
 	if !v.PredictedCost.IsZero() {
 		predictedCost := v.PredictedCost
+		predictedCost.Total = predictedCost.TotalAdjusted()
 		apiVersion.PredictedCost = &predictedCost
-		apiVersion.PredictedCostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(predictedCost))
 	}
 	if !v.S3Usage.IsZero() {
 		apiVersion.S3Usage = &APIVersionS3Usage{

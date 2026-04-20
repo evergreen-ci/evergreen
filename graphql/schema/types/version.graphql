@@ -60,8 +60,6 @@ type Version {
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
   childVersions: [Version!]
   cost: Cost
-  """Sum of adjusted cost components in cost; excludes on-demand components."""
-  costTotal: Float
   createTime: Time!
   ingestTime: Time
   errors: [String!]!
@@ -77,8 +75,6 @@ type Version {
   parameters: [Parameter!]!
   patch: Patch
   predictedCost: Cost
-  """Sum of adjusted cost components in predictedCost."""
-  predictedCostTotal: Float
   previousVersion: Version
   project: String!
   projectIdentifier: String!

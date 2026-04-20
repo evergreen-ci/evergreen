@@ -149,11 +149,7 @@ type Task {
   stepbackInfo: StepbackInfo
   taskLogs: TaskLogs!
   taskCost: Cost
-  """Sum of adjusted cost components in taskCost; excludes on-demand components."""
-  taskCostTotal: Float
   predictedTaskCost: Cost
-  """Sum of adjusted cost components in predictedTaskCost."""
-  predictedTaskCostTotal: Float
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   testSelectionEnabled: Boolean!
@@ -337,6 +333,8 @@ type TaskOwnerTeam {
 Cost represents the cost breakdown for a task or version.
 """
 type Cost {
+  """Sum of adjusted cost components; excludes on-demand components."""
+  total: Float
   onDemandEC2Cost: Float
   adjustedEC2Cost: Float
   adjustedEBSStorageCost: Float

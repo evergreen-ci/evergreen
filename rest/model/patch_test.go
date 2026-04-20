@@ -146,11 +146,9 @@ func TestAPIPatchBuildFromServiceVersionCost(t *testing.T) {
 	require.NoError(t, api.BuildFromService(ctx, p, nil))
 
 	require.NotNil(t, api.Cost)
-	require.NotNil(t, api.CostTotal)
-	assert.InDelta(t, 10.5, *api.CostTotal, 0.001)
+	assert.InDelta(t, 10.5, api.Cost.Total, 0.001)
 	require.NotNil(t, api.PredictedCost)
-	require.NotNil(t, api.PredictedCostTotal)
-	assert.InDelta(t, 2.0, *api.PredictedCostTotal, 0.001)
+	assert.InDelta(t, 2.0, api.PredictedCost.Total, 0.001)
 }
 
 func TestAPIPatchBuildModuleChanges(t *testing.T) {
