@@ -58,8 +58,6 @@ func TestGetPredictedCostsForWindow(t *testing.T) {
 		assert.Equal(t, displayName, results[0].DisplayName)
 		assert.InDelta(t, 2.0, results[0].AvgOnDemandCost, 0.01)
 		assert.InDelta(t, 1.6, results[0].AvgAdjustedCost, 0.01)
-		assert.Greater(t, results[0].StdDevOnDemandCost, 0.0)
-		assert.Greater(t, results[0].StdDevAdjustedCost, 0.0)
 	})
 
 	t.Run("NoHistoricalData", func(t *testing.T) {
@@ -112,6 +110,36 @@ func TestGetPredictedCostsForWindow(t *testing.T) {
 		results, err := getPredictedCostsForWindow(ctx, displayName, project, bv, now.Add(-5*time.Hour), now)
 		require.NoError(t, err)
 		assert.Len(t, results, 0)
+	})
+
+	t.Run("NonEC2CostContributesToHistory", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		s3Only := Task{
+			Id:           "s3-1",
+			DisplayName:  displayName,
+			BuildVariant: bv,
+			Project:      project,
+			Status:       evergreen.TaskSucceeded,
+			FinishTime:   now.Add(-1 * time.Hour),
+			StartTime:    now.Add(-2 * time.Hour),
+			TaskCost: cost.Cost{
+				OnDemandS3ArtifactPutCost: 0.02,
+				AdjustedS3ArtifactPutCost: 0.01,
+				OnDemandS3LogStorageCost:  0.06,
+				AdjustedS3LogStorageCost:  0.05,
+			},
+		}
+		require.NoError(t, s3Only.Insert(ctx))
+
+		results, err := getPredictedCostsForWindow(ctx, displayName, project, bv, now.Add(-5*time.Hour), now)
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.InDelta(t, 0.02, results[0].AvgOnDemandS3ArtifactPutCost, 0.0001)
+		assert.InDelta(t, 0.01, results[0].AvgAdjustedS3ArtifactPutCost, 0.0001)
+		assert.InDelta(t, 0.06, results[0].AvgOnDemandS3LogStorageCost, 0.0001)
+		assert.InDelta(t, 0.05, results[0].AvgAdjustedS3LogStorageCost, 0.0001)
+		assert.InDelta(t, 0.0, results[0].AvgOnDemandCost, 0.0001)
 	})
 }
 

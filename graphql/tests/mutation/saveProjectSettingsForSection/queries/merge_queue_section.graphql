@@ -1,32 +1,29 @@
-# TODO DEVPROD-31534: Remove old test
 mutation {
   saveProjectSettingsForSection(
     projectSettings: {
       projectId: "sandbox_project_id"
       projectRef: {
         id: "sandbox_project_id"
-        commitQueue: {
-          enabled: true
-        }
+        commitQueue: { enabled: true }
       }
       aliases: [
         {
-          id: "5ffe393097b1d3759dd3c1aa"
+          id: "cq-alias-id-1"
           alias: "__commit_queue"
+          gitTag: ""
+          remotePath: ""
           task: "unit_tests"
           variant: "ubuntu1604"
-          gitTag: ""
           taskTags: []
           variantTags: []
-          remotePath: ""
         }
       ]
     }
-    section: GITHUB_AND_COMMIT_QUEUE
+    section: MERGE_QUEUE
   ) {
     projectRef {
       commitQueue {
-        enabled ## unchanged
+        enabled ## changed
       }
     }
     vars {

@@ -16,7 +16,7 @@ import (
 )
 
 const schedulerJobName = "distro-scheduler"
-const maxDistroSchedulerTime = time.Minute
+const maxDistroSchedulerTime = 5 * time.Minute
 
 func init() {
 	registry.AddJobType(schedulerJobName, func() amboy.Job {

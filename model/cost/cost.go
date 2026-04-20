@@ -51,6 +51,18 @@ type Cost struct {
 	AdjustedS3LogStorageCost float64 `bson:"adjusted_s3_log_storage_cost,omitempty" json:"adjusted_s3_log_storage_cost,omitempty"`
 }
 
+// TotalAdjusted returns the sum of every adjusted component in this value, excluding on-demand fields,
+// which are an alternate pricing view of the same usage.
+func (c Cost) TotalAdjusted() float64 {
+	return c.AdjustedEC2Cost +
+		c.AdjustedEBSThroughputCost +
+		c.AdjustedEBSStorageCost +
+		c.AdjustedS3ArtifactPutCost +
+		c.AdjustedS3LogPutCost +
+		c.AdjustedS3ArtifactStorageCost +
+		c.AdjustedS3LogStorageCost
+}
+
 // IsZero returns true if all cost components are zero.
 func (c Cost) IsZero() bool {
 	return c.OnDemandEC2Cost == 0 &&

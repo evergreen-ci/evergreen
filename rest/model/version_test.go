@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/s3usage"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,10 +132,14 @@ func TestVersionBuildFromServiceCost(t *testing.T) {
 		assert.InDelta(t, 12.0, apiVersion.Cost.AdjustedEC2Cost, 0.01)
 		assert.InDelta(t, 0.08, apiVersion.Cost.AdjustedS3ArtifactPutCost, 0.001)
 		assert.InDelta(t, 0.03, apiVersion.Cost.AdjustedS3LogPutCost, 0.001)
+		require.NotNil(t, apiVersion.CostTotal)
+		assert.InDelta(t, 12.0+0.08+0.03, *apiVersion.CostTotal, 0.001)
 
 		require.NotNil(t, apiVersion.PredictedCost)
 		assert.InDelta(t, 5.0, apiVersion.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, apiVersion.PredictedCost.AdjustedEC2Cost, 0.01)
+		require.NotNil(t, apiVersion.PredictedCostTotal)
+		assert.InDelta(t, 4.0, *apiVersion.PredictedCostTotal, 0.01)
 	})
 
 	t.Run("ZeroCostIsNil", func(t *testing.T) {
@@ -192,4 +197,22 @@ func TestVersionBuildFromServiceS3Usage(t *testing.T) {
 
 		assert.Nil(t, apiVersion.S3Usage)
 	})
+}
+
+func TestAPITaskBuildFromServiceSetsCostTotals(t *testing.T) {
+	tsk := &task.Task{
+		TaskCost: cost.Cost{
+			AdjustedEC2Cost:           10.0,
+			AdjustedS3ArtifactPutCost: 0.05,
+		},
+		PredictedTaskCost: cost.Cost{
+			AdjustedEC2Cost: 3.0,
+		},
+	}
+	var api APITask
+	require.NoError(t, api.BuildFromService(t.Context(), tsk, nil))
+	require.NotNil(t, api.TaskCostTotal)
+	require.NotNil(t, api.PredictedTaskCostTotal)
+	assert.InDelta(t, 10.05, *api.TaskCostTotal, 0.0001)
+	assert.InDelta(t, 3.0, *api.PredictedTaskCostTotal, 0.0001)
 }

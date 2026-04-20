@@ -1380,6 +1380,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Empty(t, varsFromDb.PrivateVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
+		// TODO DEVPROD-31534: remove GithubAndCQSection
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
@@ -1399,6 +1400,78 @@ func TestDefaultRepoBySection(t *testing.T) {
 			for _, a := range aliases {
 				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
 			}
+		},
+		ProjectPagePullRequestsSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPagePullRequestsSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
+			assert.Nil(t, pRefFromDb.PRTestingEnabled)
+			assert.Nil(t, pRefFromDb.ManualPRTestingEnabled)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
+		},
+		ProjectPageGitTagsSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGitTagsSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
+			assert.Nil(t, pRefFromDb.GitTagVersionsEnabled)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedTeams)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
+		},
+		ProjectPageMergeQueueSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageMergeQueueSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
+			assert.False(t, pRefFromDb.CommitQueue.IsEnabled())
+			assert.Nil(t, pRefFromDb.CommitQueue.Enabled)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
+		},
+		ProjectPageCommitChecksSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageCommitChecksSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageNotificationsSection, "me"))
