@@ -93,7 +93,7 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 }
 
 func uploadTestResults(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {
-	createdAt := conf.Task.CreateTime
+	createdAt := time.Now()
 	info := makeTestResultsInfo(conf.Task, conf.DisplayTaskInfo)
 	newResults := makeTestResults(&conf.Task, results)
 	key := testresult.PartitionKey(createdAt, info.Project, info.ID())
