@@ -304,38 +304,122 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	// All GitHub alias sections should add the internal alias
-	githubSections := []model.ProjectPageSection{
-		model.ProjectPageGithubAndCQSection, // TODO DEVPROD-31534: Delete this test
-		model.ProjectPagePullRequestsSection,
-		model.ProjectPageGitTagsSection,
-		model.ProjectPageMergeQueueSection,
-		model.ProjectPageCommitChecksSection,
+	// TODO DEVPROD-31534: Delete this test case
+	// The legacy combined GitHub + CQ section should still operate on all internal aliases.
+	a.Run(string(model.ProjectPageGithubAndCQSection), func() {
+		modified, err := updateAliasesForSection(
+			a.T().Context(),
+			"project_id",
+			updatedAliases,
+			originalAliases,
+			model.ProjectPageGithubAndCQSection,
+		)
+		a.NoError(err)
+		a.True(modified)
+
+		aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+		a.NoError(err)
+		a.Len(aliasesFromDb, 4) // net count stays the same (one removed, one added)
+
+		foundChecks := false
+		for _, alias := range aliasesFromDb {
+			if alias.Alias == evergreen.GithubChecksAlias {
+				foundChecks = true
+			}
+		}
+		a.True(
+			foundChecks,
+			"expected %s to be present after updating section %s",
+			evergreen.GithubChecksAlias,
+			model.ProjectPageGithubAndCQSection,
+		)
+	})
+}
+
+func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
+	originalAliases, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+	a.NoError(err)
+	a.Len(originalAliases, 4)
+
+	type githubSectionCase struct {
+		section       model.ProjectPageSection
+		internalAlias string
 	}
 
-	for _, section := range githubSections {
-		a.Run(string(section), func() {
+	cases := []githubSectionCase{
+		{
+			section:       model.ProjectPagePullRequestsSection,
+			internalAlias: evergreen.GithubPRAlias,
+		},
+		{
+			section:       model.ProjectPageGitTagsSection,
+			internalAlias: evergreen.GitTagAlias,
+		},
+		{
+			section:       model.ProjectPageMergeQueueSection,
+			internalAlias: evergreen.CommitQueueAlias,
+		},
+		{
+			section:       model.ProjectPageCommitChecksSection,
+			internalAlias: evergreen.GithubChecksAlias,
+		},
+	}
+
+	for _, tc := range cases {
+		a.Run(string(tc.section), func() {
+			aliasToKeep := restModel.APIProjectAlias{}
+			aliasToKeep.BuildFromService(originalAliases[0])
+
+			aliasToModify := restModel.APIProjectAlias{}
+			aliasToModify.BuildFromService(originalAliases[1])
+			aliasToModify.Alias = utility.ToStringPtr("this is a new alias")
+
+			newAlias := restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr("patchAlias"),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			}
+			newInternalAlias := restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(tc.internalAlias), // section-specific internal alias
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			}
+
+			updatedAliases := []restModel.APIProjectAlias{
+				aliasToKeep,
+				aliasToModify,
+				newAlias,
+				newInternalAlias,
+			}
+
 			modified, err := updateAliasesForSection(
 				a.T().Context(),
 				"project_id",
 				updatedAliases,
 				originalAliases,
-				section,
+				tc.section,
 			)
 			a.NoError(err)
 			a.True(modified)
 
 			aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 			a.NoError(err)
-			a.Len(aliasesFromDb, 4) // net count stays the same (one removed, one added)
 
-			foundChecks := false
+			foundInternal := false
+			foundCommitQueue := false
 			for _, alias := range aliasesFromDb {
-				if alias.Alias == evergreen.GithubChecksAlias {
-					foundChecks = true
+				if alias.Alias == tc.internalAlias {
+					foundInternal = true
+				}
+				if alias.Alias == evergreen.CommitQueueAlias {
+					foundCommitQueue = true
 				}
 			}
-			a.True(foundChecks, "expected %s to be present after updating section %s", evergreen.GithubChecksAlias, section)
+
+			a.True(foundInternal, "expected %s to be present after updating section %s", tc.internalAlias, tc.section)
+			a.True(foundCommitQueue, "expected commit queue alias to remain after updating section %s", tc.section)
 		})
 	}
 }
