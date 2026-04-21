@@ -557,7 +557,6 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 	}
 	if !projectRef.UseRepoSettings() {
 		// Default values so the UI understands what to do with nil values.
-		res.ProjectRef.DefaultTrueUnsetBooleans()
 		res.ProjectRef.DefaultUnsetBooleans()
 	}
 	return res, nil
@@ -595,7 +594,6 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 	}
 
 	// Default values so the UI understands what to do with nil values.
-	res.ProjectRef.DefaultTrueUnsetBooleans()
 	res.ProjectRef.DefaultUnsetBooleans()
 	return res, nil
 }

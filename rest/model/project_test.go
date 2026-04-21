@@ -33,7 +33,6 @@ func TestRepoBuildFromService(t *testing.T) {
 	require.NotNil(t, apiRef)
 	assert.Nil(t, apiRef.GitTagVersionsEnabled)
 
-	apiRef.DefaultTrueUnsetBooleans()
 	apiRef.DefaultUnsetBooleans()
 	assert.True(t, *apiRef.GithubChecksEnabled)
 	assert.False(t, *apiRef.PRTestingEnabled)
@@ -54,12 +53,12 @@ func TestRepoBuildFromService(t *testing.T) {
 	assert.True(t, *apiRef.RunEveryMainlineCommit)
 }
 
-func TestDefaultTrueUnsetBooleans(t *testing.T) {
-	t.Run("NilFieldDefaultsToTrue", func(t *testing.T) {
+func TestDefaultUnsetBooleansDebugSpawnHostsDisabled(t *testing.T) {
+	t.Run("NilDefaultsToTrue", func(t *testing.T) {
 		apiRef := &APIProjectRef{}
 		assert.Nil(t, apiRef.DebugSpawnHostsDisabled)
 
-		apiRef.DefaultTrueUnsetBooleans()
+		apiRef.DefaultUnsetBooleans()
 
 		require.NotNil(t, apiRef.DebugSpawnHostsDisabled)
 		assert.True(t, *apiRef.DebugSpawnHostsDisabled)
@@ -70,7 +69,7 @@ func TestDefaultTrueUnsetBooleans(t *testing.T) {
 			DebugSpawnHostsDisabled: utility.FalsePtr(),
 		}
 
-		apiRef.DefaultTrueUnsetBooleans()
+		apiRef.DefaultUnsetBooleans()
 
 		require.NotNil(t, apiRef.DebugSpawnHostsDisabled)
 		assert.False(t, *apiRef.DebugSpawnHostsDisabled)
@@ -81,7 +80,7 @@ func TestDefaultTrueUnsetBooleans(t *testing.T) {
 			DebugSpawnHostsDisabled: utility.TruePtr(),
 		}
 
-		apiRef.DefaultTrueUnsetBooleans()
+		apiRef.DefaultUnsetBooleans()
 
 		require.NotNil(t, apiRef.DebugSpawnHostsDisabled)
 		assert.True(t, *apiRef.DebugSpawnHostsDisabled)

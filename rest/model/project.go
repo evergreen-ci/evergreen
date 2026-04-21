@@ -887,17 +887,11 @@ func (p *APIProjectRef) BuildFromService(ctx context.Context, projectRef model.P
 	return nil
 }
 
-// DefaultTrueUnsetBooleans sets *bool fields that should default to true
-// when unset. Call before DefaultUnsetBooleans so reflection-based
-// defaulting does not override these fields with false.
-func (pRef *APIProjectRef) DefaultTrueUnsetBooleans() {
+// DefaultUnsetBooleans is used to set booleans to their default value.
+func (pRef *APIProjectRef) DefaultUnsetBooleans() {
 	if pRef.DebugSpawnHostsDisabled == nil {
 		pRef.DebugSpawnHostsDisabled = utility.TruePtr()
 	}
-}
-
-// DefaultUnsetBooleans is used to set booleans to their default value.
-func (pRef *APIProjectRef) DefaultUnsetBooleans() {
 	reflected := reflect.ValueOf(pRef).Elem()
 	recursivelyDefaultBooleans(reflected)
 }
