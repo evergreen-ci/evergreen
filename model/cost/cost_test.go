@@ -71,3 +71,14 @@ func TestCostJSONIncludesEBSThroughputFieldsWhenZero(t *testing.T) {
 	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_throughput_cost"])
 	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_storage_cost"])
 }
+
+func TestCostJSONSerializesTotalWhenSet(t *testing.T) {
+	c := Cost{OnDemandEC2Cost: 1, AdjustedEC2Cost: 0.5}
+	c.Total = c.TotalAdjusted()
+	data, err := json.Marshal(c)
+	require.NoError(t, err)
+	var m map[string]interface{}
+	require.NoError(t, json.Unmarshal(data, &m))
+	assert.InDelta(t, 0.5, m["total"], 1e-9)
+	assert.InDelta(t, 1.0, m["on_demand_ec2_cost"], 1e-9)
+}

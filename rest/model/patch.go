@@ -43,12 +43,8 @@ type APIPatch struct {
 	Version *string `json:"version"`
 	// Aggregated actual cost of the patch's version (empty until the patch is finalized to a version with cost data).
 	Cost *cost.Cost `json:"cost,omitempty"`
-	// CostTotal is the sum of all adjusted cost components in Cost.
-	CostTotal *float64 `json:"cost_total,omitempty"`
 	// Aggregated predicted cost of the patch's version.
 	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
-	// PredictedCostTotal is the sum of all adjusted cost components in PredictedCost.
-	PredictedCostTotal *float64 `json:"predicted_cost_total,omitempty"`
 	// Status of patch (possible values are "created", "started", "success", or "failed")
 	Status *string `json:"status"`
 	// Time patch was created
@@ -342,13 +338,13 @@ func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID
 	}
 	if !v.Cost.IsZero() {
 		versionCost := v.Cost
+		versionCost.Total = versionCost.TotalAdjusted()
 		apiPatch.Cost = &versionCost
-		apiPatch.CostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(versionCost))
 	}
 	if !v.PredictedCost.IsZero() {
 		predictedCost := v.PredictedCost
+		predictedCost.Total = predictedCost.TotalAdjusted()
 		apiPatch.PredictedCost = &predictedCost
-		apiPatch.PredictedCostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(predictedCost))
 	}
 }
 

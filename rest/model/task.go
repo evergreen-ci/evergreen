@@ -93,12 +93,8 @@ type APITask struct {
 	TimeTaken APIDuration `json:"time_taken_ms"`
 	// Cost breakdown for running this task
 	TaskCost *cost.Cost `json:"task_cost,omitempty"`
-	// TaskCostTotal is the sum of all adjusted cost components in TaskCost (convenience for clients).
-	TaskCostTotal *float64 `json:"task_cost_total,omitempty"`
 	// Predicted cost breakdown based on historical task costs
 	PredictedTaskCost *cost.Cost `json:"predicted_task_cost,omitempty"`
-	// PredictedTaskCostTotal is the sum of all adjusted cost components in PredictedTaskCost.
-	PredictedTaskCostTotal *float64 `json:"predicted_task_cost_total,omitempty"`
 	// S3 API usage metrics for this task
 	S3Usage *s3usage.S3Usage `json:"s3_usage,omitempty"`
 	// Number of milliseconds expected for this task to execute
@@ -412,15 +408,15 @@ func (at *APITask) buildTask(t *task.Task) error {
 
 	if !t.TaskCost.IsZero() {
 		taskCost := t.TaskCost
+		taskCost.Total = taskCost.TotalAdjusted()
 		at.TaskCost = &taskCost
-		at.TaskCostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(taskCost))
 	}
 
 	// Populate expected cost fields if they exist (not zero)
 	if !t.PredictedTaskCost.IsZero() {
 		predictedCost := t.PredictedTaskCost
+		predictedCost.Total = predictedCost.TotalAdjusted()
 		at.PredictedTaskCost = &predictedCost
-		at.PredictedTaskCostTotal = utility.ToFloat64Ptr(TotalAdjustedCost(predictedCost))
 	}
 
 	if !t.S3Usage.IsZero() {
@@ -606,6 +602,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 
 	if at.TaskCost != nil {
 		st.TaskCost = *at.TaskCost
+		st.TaskCost.Total = 0
 	}
 
 	if at.S3Usage != nil {
@@ -729,9 +726,4 @@ func (i *APIGeneratedTaskInfo) BuildFromService(dbInfo task.GeneratedTaskInfo) {
 // APINumTasksToFinalize contains information on the number of tasks a generator is set to finalize.
 type APINumTasksToFinalize struct {
 	NumTasksToFinalize *int `json:"num_tasks_to_finalize"`
-}
-
-// TotalAdjustedCost returns the sum of all adjusted cost components.
-func TotalAdjustedCost(c cost.Cost) float64 {
-	return c.TotalAdjusted()
 }

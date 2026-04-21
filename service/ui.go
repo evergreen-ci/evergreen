@@ -88,14 +88,14 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 	}
 
 	if settings.AuthConfig.Kanopy != nil {
-		uis.umconf.OIDC = &gimlet.OIDCConfig{
+		uis.umconf.OIDCConfigs = append(uis.umconf.OIDCConfigs, &gimlet.OIDCConfig{
 			KeysetURL:  settings.AuthConfig.Kanopy.KeysetURL,
 			Issuer:     settings.AuthConfig.Kanopy.Issuer,
 			HeaderName: settings.AuthConfig.Kanopy.HeaderName,
 			DisplayNameFromID: func(id string) string {
 				return cases.Title(language.English).String(strings.Join(strings.Split(id, "."), " "))
 			},
-		}
+		})
 	}
 
 	if err := uis.umconf.Validate(); err != nil {
