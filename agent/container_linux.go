@@ -31,7 +31,7 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	}
 	conf.ContainerID = tc.ID
 	a.currentContainer = tc
-	grip.Infof("Started isolation container '%s' (image=%s) for task '%s'.", tc.Name, ci.Image, conf.Task.Id)
+	grip.Infof(ctx, "Started isolation container '%s' (image=%s) for task '%s'.", tc.Name, ci.Image, conf.Task.Id)
 	return nil
 }
 
@@ -41,7 +41,7 @@ func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig)
 		return
 	}
 	if err := a.currentContainer.Destroy(ctx); err != nil {
-		grip.Warningf("Failed to destroy isolation container for task '%s': %s", conf.Task.Id, err)
+		grip.Warningf(ctx, "Failed to destroy isolation container for task '%s': %s", conf.Task.Id, err)
 	}
 	a.currentContainer = nil
 	conf.ContainerID = ""
