@@ -325,6 +325,7 @@
               { "alias": "__commit_queue" },
               { "alias": "test" },
               { "alias": "test2" },
+              { "alias": "__github" },
               { "alias": "__git_tag" }
             ]
           }
@@ -347,9 +348,11 @@
               }
             },
             "aliases": [
-              { "alias": "__commit_queue" },
               { "alias": "test" },
-              { "alias": "test2" }
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" }
             ]
           }
         }
@@ -369,9 +372,11 @@
               }
             },
             "aliases": [
-              { "alias": "__commit_queue" },
               { "alias": "test" },
               { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" },
               { "alias": "__github_checks" }
             ]
           }
