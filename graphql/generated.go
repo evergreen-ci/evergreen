@@ -1923,6 +1923,7 @@ type ComplexityRoot struct {
 		Id                      func(childComplexity int) int
 		ImageID                 func(childComplexity int) int
 		IngestTime              func(childComplexity int) int
+		IsAutomaticRestart      func(childComplexity int) int
 		InvalidatedByUpstream   func(childComplexity int) int
 		IsPerfPluginEnabled     func(childComplexity int) int
 		LatestExecution         func(childComplexity int) int
@@ -10801,6 +10802,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.IngestTime(childComplexity), true
+	case "Task.isAutomaticRestart":
+		if e.complexity.Task.IsAutomaticRestart == nil {
+			break
+		}
+
+		return e.complexity.Task.IsAutomaticRestart(childComplexity), true
 	case "Task.invalidatedByUpstream":
 		if e.complexity.Task.InvalidatedByUpstream == nil {
 			break
@@ -20307,6 +20314,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -29142,6 +29151,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -32643,6 +32654,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -35377,6 +35390,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -39369,6 +39384,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -39592,6 +39609,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -39815,6 +39834,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -40038,6 +40059,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -40261,6 +40284,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -40484,6 +40509,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -40707,6 +40734,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -41955,6 +41984,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -53614,6 +53645,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -53837,6 +53870,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -61310,6 +61345,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -62108,6 +62145,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -62507,6 +62546,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -62927,6 +62968,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -63380,6 +63423,8 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -63591,6 +63636,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -63802,6 +63849,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -64013,6 +64062,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -64108,6 +64159,35 @@ func (ec *executionContext) fieldContext_Task_order(_ context.Context, field gra
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_isAutomaticRestart(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_isAutomaticRestart,
+		func(ctx context.Context) (any, error) {
+			return obj.IsAutomaticRestart, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_isAutomaticRestart(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -64418,6 +64498,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -64629,6 +64711,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -64840,6 +64924,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -65051,6 +65137,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -67382,6 +67470,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -71598,6 +71688,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -75837,6 +75929,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "invalidatedByUpstream":
 				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
 			case "patch":
@@ -105471,6 +105565,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "order":
 			out.Values[i] = ec._Task_order(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "isAutomaticRestart":
+			out.Values[i] = ec._Task_isAutomaticRestart(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

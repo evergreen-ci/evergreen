@@ -104,6 +104,7 @@ type Task {
   hostId: String
   imageId: String!
   ingestTime: Time
+  isAutomaticRestart: Boolean!
   isPerfPluginEnabled: Boolean!
   latestExecution: Int!
   logs: TaskLogLinks!
