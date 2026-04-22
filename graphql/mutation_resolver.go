@@ -645,7 +645,28 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVa
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	projectId := utility.FromStringPtr(projectSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
-	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
+
+	var pageSection model.ProjectPageSection
+	switch section {
+	// TODO DEVPROD-31534: Remove GithubAndCommitQueueSection
+	case ProjectSettingsSectionGithubAndCommitQueue:
+		pageSection = model.ProjectPageGithubAndCQSection
+	case ProjectSettingsSectionPullRequests:
+		pageSection = model.ProjectPagePullRequestsSection
+	case ProjectSettingsSectionGitTags:
+		pageSection = model.ProjectPageGitTagsSection
+	case ProjectSettingsSectionMergeQueue:
+		pageSection = model.ProjectPageMergeQueueSection
+	case ProjectSettingsSectionCommitChecks:
+		pageSection = model.ProjectPageCommitChecksSection
+	case ProjectSettingsSectionPatchAliases:
+		pageSection = model.ProjectPagePatchAliasSection
+	default:
+		// Fallback to the previous behavior for any older/unknown values.
+		pageSection = model.ProjectPageSection(section)
+	}
+
+	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, pageSection, false, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
