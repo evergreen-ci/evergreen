@@ -720,7 +720,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}()
 
 	if err := a.maybeStartContainer(tskCtx, tc.taskConfig); err != nil {
-		tc.logger.Execution().Errorf("Failed to start isolation container, task will run without isolation: %s", err)
+		tc.logger.Execution().Errorf(ctx, "Failed to start isolation container, task will run without isolation: %s", err)
 		// Do not fail the task — degrade gracefully.
 	}
 	defer a.destroyContainer(ctx, tc.taskConfig)

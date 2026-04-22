@@ -625,7 +625,7 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		Mountpoints:         foundHost.Distro.Mountpoints,
 		ExecUser:            foundHost.Distro.ExecUser,
 	}
-	if ci := host.Distro.BootstrapSettings.ContainerIsolation; ci.Enabled {
+	if ci := foundHost.Distro.BootstrapSettings.ContainerIsolation; ci.Enabled {
 		dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
 			Image:    ci.Image,
 			MemoryMB: ci.MemoryMB,
