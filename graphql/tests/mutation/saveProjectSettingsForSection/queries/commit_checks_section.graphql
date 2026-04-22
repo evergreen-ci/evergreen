@@ -28,7 +28,6 @@ mutation {
       vars ## should be unchanged
     }
     aliases {
-      id
       alias
     }
   }
