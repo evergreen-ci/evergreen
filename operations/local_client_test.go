@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/mux"
+	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -48,7 +49,11 @@ func TestGetDaemonURL(t *testing.T) {
 	origHome := os.Getenv(homeEnvVar)
 	err = os.Setenv(homeEnvVar, tempDir)
 	require.NoError(t, err)
-	defer os.Setenv(homeEnvVar, origHome)
+	homedir.Reset()
+	defer func() {
+		os.Setenv(homeEnvVar, origHome)
+		homedir.Reset()
+	}()
 
 	daemonDir := filepath.Join(tempDir, ".evergreen-local")
 	err = os.MkdirAll(daemonDir, 0755)
@@ -237,7 +242,11 @@ func TestWriteDaemonInfo(t *testing.T) {
 	origHome := os.Getenv(homeEnvVar)
 	err = os.Setenv(homeEnvVar, tempDir)
 	require.NoError(t, err)
-	defer os.Setenv(homeEnvVar, origHome)
+	homedir.Reset()
+	defer func() {
+		os.Setenv(homeEnvVar, origHome)
+		homedir.Reset()
+	}()
 
 	daemon := newLocalDaemonREST(9090, &ClientSettings{})
 	err = daemon.writeDaemonInfo()
@@ -318,7 +327,11 @@ func TestJumpToCmd(t *testing.T) {
 		origHome := os.Getenv(homeEnvVar)
 		err = os.Setenv(homeEnvVar, tempDir)
 		require.NoError(t, err)
-		defer os.Setenv(homeEnvVar, origHome)
+		homedir.Reset()
+		defer func() {
+			os.Setenv(homeEnvVar, origHome)
+			homedir.Reset()
+		}()
 
 		daemonDir := filepath.Join(tempDir, ".evergreen-local")
 		err = os.MkdirAll(daemonDir, 0755)
@@ -377,7 +390,11 @@ func TestSelectTaskCmd(t *testing.T) {
 		origHome := os.Getenv(homeEnvVar)
 		err = os.Setenv(homeEnvVar, tempDir)
 		require.NoError(t, err)
-		defer os.Setenv(homeEnvVar, origHome)
+		homedir.Reset()
+		defer func() {
+			os.Setenv(homeEnvVar, origHome)
+			homedir.Reset()
+		}()
 
 		daemonDir := filepath.Join(tempDir, ".evergreen-local")
 		err = os.MkdirAll(daemonDir, 0755)
