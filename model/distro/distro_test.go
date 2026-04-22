@@ -741,11 +741,11 @@ func TestContainerIsolationSettingsValidation(t *testing.T) {
 			Arch: "linux_amd64",
 			BootstrapSettings: BootstrapSettings{
 				Method:                BootstrapMethodSSH,
-				Communication:        CommunicationMethodSSH,
-				ClientDir:            "/home/agent",
-				JasperBinaryDir:      "/home/agent",
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
 				JasperCredentialsPath: "/home/agent/creds",
-				ShellPath:            "/bin/bash",
+				ShellPath:             "/bin/bash",
 				ContainerIsolation: ContainerIsolationSettings{
 					Enabled: true,
 					Image:   "ubuntu:22.04",
@@ -761,11 +761,11 @@ func TestContainerIsolationSettingsValidation(t *testing.T) {
 			Arch: "linux_amd64",
 			BootstrapSettings: BootstrapSettings{
 				Method:                BootstrapMethodSSH,
-				Communication:        CommunicationMethodSSH,
-				ClientDir:            "/home/agent",
-				JasperBinaryDir:      "/home/agent",
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
 				JasperCredentialsPath: "/home/agent/creds",
-				ShellPath:            "/bin/bash",
+				ShellPath:             "/bin/bash",
 				ContainerIsolation: ContainerIsolationSettings{
 					Enabled: true,
 				},

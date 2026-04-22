@@ -129,10 +129,10 @@ type BootstrapSettings struct {
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
+	Env                 []EnvVar                   `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits      ResourceLimits             `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
 	ContainerIsolation  ContainerIsolationSettings `bson:"container_isolation,omitempty" json:"container_isolation,omitempty" mapstructure:"container_isolation,omitempty"`
-	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
+	PreconditionScripts []PreconditionScript       `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
