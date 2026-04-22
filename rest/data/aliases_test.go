@@ -387,6 +387,13 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 				Task:    utility.ToStringPtr("task"),
 			}
 
+			if tc.section == model.ProjectPageGitTagsSection {
+				newInternalAlias.Variant = nil
+				newInternalAlias.Task = nil
+				newInternalAlias.GitTag = utility.ToStringPtr(`^v[0-9]+.[0-9]+.[0-9]+$`)
+				newInternalAlias.RemotePath = utility.ToStringPtr("evergreen.yml")
+			}
+
 			updatedAliases := []restModel.APIProjectAlias{
 				aliasToKeep,
 				aliasToModify,
