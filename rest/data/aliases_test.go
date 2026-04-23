@@ -343,25 +343,45 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 
 	type githubSectionCase struct {
 		section       model.ProjectPageSection
-		internalAlias string
+		internalAlias restModel.APIProjectAlias
 	}
 
 	cases := []githubSectionCase{
 		{
-			section:       model.ProjectPagePullRequestsSection,
-			internalAlias: evergreen.GithubPRAlias,
+			section: model.ProjectPagePullRequestsSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.GithubPRAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
 		},
 		{
-			section:       model.ProjectPageGitTagsSection,
-			internalAlias: evergreen.GitTagAlias,
+			section: model.ProjectPageGitTagsSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:         utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
+				GitTag:     utility.ToStringPtr(`^v[0-9]+.[0-9]+.[0-9]+$`),
+				RemotePath: utility.ToStringPtr("evergreen.yml"),
+			},
 		},
 		{
-			section:       model.ProjectPageMergeQueueSection,
-			internalAlias: evergreen.CommitQueueAlias,
+			section: model.ProjectPageMergeQueueSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
 		},
 		{
-			section:       model.ProjectPageCommitChecksSection,
-			internalAlias: evergreen.GithubChecksAlias,
+			section: model.ProjectPageCommitChecksSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
 		},
 	}
 
@@ -380,20 +400,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 				Variant: utility.ToStringPtr("var"),
 				Task:    utility.ToStringPtr("task"),
 			}
-			newInternalAlias := restModel.APIProjectAlias{
-				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
-				Alias:   utility.ToStringPtr(tc.internalAlias), // section-specific internal alias
-				Variant: utility.ToStringPtr("var"),
-				Task:    utility.ToStringPtr("task"),
-			}
-
-			if tc.section == model.ProjectPageGitTagsSection {
-				newInternalAlias.Variant = nil
-				newInternalAlias.Task = nil
-				newInternalAlias.GitTag = utility.ToStringPtr(`^v[0-9]+.[0-9]+.[0-9]+$`)
-				newInternalAlias.RemotePath = utility.ToStringPtr("evergreen.yml")
-			}
-
+			newInternalAlias := tc.internalAlias
 			updatedAliases := []restModel.APIProjectAlias{
 				aliasToKeep,
 				aliasToModify,
@@ -416,11 +423,12 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 
 			foundInternal := false
 			foundCommitQueue := false
+			internalAliasName := utility.FromStringPtr(tc.internalAlias.Alias)
 			for _, alias := range aliasesFromDb {
-				if alias.Alias == tc.internalAlias {
+				switch alias.Alias {
+				case internalAliasName:
 					foundInternal = true
-				}
-				if alias.Alias == evergreen.CommitQueueAlias {
+				case evergreen.CommitQueueAlias:
 					foundCommitQueue = true
 				}
 			}

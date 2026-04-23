@@ -165,10 +165,7 @@ func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) b
 	switch section {
 	// TODO DEVPROD-31534: remove GithubAndCQSection
 	case model.ProjectPageGithubAndCQSection:
-		if model.IsPatchAlias(alias) {
-			return true
-		}
-		return false
+		return model.IsPatchAlias(alias)
 	case model.ProjectPagePullRequestsSection:
 		return alias != evergreen.GithubPRAlias
 	case model.ProjectPageMergeQueueSection:
@@ -178,10 +175,7 @@ func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) b
 	case model.ProjectPageCommitChecksSection:
 		return alias != evergreen.GithubChecksAlias
 	case model.ProjectPagePatchAliasSection:
-		if !model.IsPatchAlias(alias) {
-			return true
-		}
-		return false
+		return model.IsPatchAlias(alias)
 	default:
 		return true
 	}
