@@ -424,8 +424,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 			foundInternal := false
 			internalAliasName := utility.FromStringPtr(tc.internalAlias.Alias)
 			for _, alias := range aliasesFromDb {
-				switch alias.Alias {
-				case internalAliasName:
+				if alias.Alias == internalAliasName {
 					foundInternal = true
 				}
 			}
