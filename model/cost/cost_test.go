@@ -8,6 +8,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSumPerChildVersionAdjustedTotals(t *testing.T) {
+	one := Cost{AdjustedEC2Cost: 1.0}
+	two := Cost{AdjustedEBSStorageCost: 2.0}
+	three := Cost{AdjustedS3LogPutCost: 0.5}
+	t.Run("IndicesAndNils", func(t *testing.T) {
+		a, p := SumPerChildVersionAdjustedTotals(3, func(i int) (actual, predicted *Cost) {
+			switch i {
+			case 0:
+				return &one, &two
+			case 1:
+				return &two, nil
+			case 2:
+				return nil, &three
+			}
+			return nil, nil
+		})
+		// 1+2+0 actual; 2+0+0.5 predicted
+		assert.InDelta(t, 3.0, a, 1e-9)
+		assert.InDelta(t, 2.5, p, 1e-9)
+	})
+	t.Run("NZero", func(t *testing.T) {
+		a, p := SumPerChildVersionAdjustedTotals(0, func(int) (actual, predicted *Cost) {
+			return nil, nil
+		})
+		assert.InDelta(t, 0, a, 1e-9)
+		assert.InDelta(t, 0, p, 1e-9)
+	})
+}
+
 func TestCostTotalAdjusted(t *testing.T) {
 	c := Cost{
 		AdjustedEC2Cost:               1,

@@ -68,6 +68,20 @@ func (c Cost) TotalAdjusted() float64 {
 		c.ChildPatchesTotalCost
 }
 
+// SumPerChildVersionAdjustedTotals sums actual and predicted adjusted costs for n children;
+func SumPerChildVersionAdjustedTotals(n int, childAt func(int) (actual, predicted *Cost)) (sumActual, sumPred float64) {
+	for i := 0; i < n; i++ {
+		actual, predicted := childAt(i)
+		if actual != nil {
+			sumActual += actual.TotalAdjusted()
+		}
+		if predicted != nil {
+			sumPred += predicted.TotalAdjusted()
+		}
+	}
+	return
+}
+
 // IsZero returns true if all cost components are zero.
 func (c Cost) IsZero() bool {
 	return c.OnDemandEC2Cost == 0 &&

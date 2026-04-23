@@ -385,15 +385,9 @@ func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks,
 }
 
 func addChildPatchesCostToParent(apiPatch *APIPatch, childPatches []APIPatch) {
-	var actualSum, predictedSum float64
-	for _, c := range childPatches {
-		if c.Cost != nil {
-			actualSum += c.Cost.TotalAdjusted()
-		}
-		if c.PredictedCost != nil {
-			predictedSum += c.PredictedCost.TotalAdjusted()
-		}
-	}
+	actualSum, predictedSum := cost.SumPerChildVersionAdjustedTotals(len(childPatches), func(i int) (actual, predicted *cost.Cost) {
+		return childPatches[i].Cost, childPatches[i].PredictedCost
+	})
 	merge := func(dest **cost.Cost, sum float64) {
 		if sum == 0 {
 			return
