@@ -175,7 +175,7 @@ func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) b
 	case model.ProjectPageCommitChecksSection:
 		return alias != evergreen.GithubChecksAlias
 	case model.ProjectPagePatchAliasSection:
-		return model.IsPatchAlias(alias)
+		return !model.IsPatchAlias(alias)
 	default:
 		return true
 	}
