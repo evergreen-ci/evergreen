@@ -366,7 +366,7 @@ evergreen debug select "%s"
 evergreen debug run-until %s
 
 if [ $? -eq 0 ]; then
-  echo "Debug setup script completed successfully (ran until step %s)."
+  echo "Debug setup script completed successfully (ran up to but not including step %s)."
 else
   echo "ERROR: Debug setup script failed during execution."
 fi

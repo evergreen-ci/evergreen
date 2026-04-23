@@ -159,7 +159,7 @@ func Debug() cli.Command {
 			},
 			{
 				Name:      "run-until",
-				Usage:     "Run until a specific step",
+				Usage:     "Run up to but not including a specific step",
 				ArgsUsage: "<step_number>",
 				Action:    runUntilCmd,
 			},
