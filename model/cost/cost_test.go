@@ -8,6 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCostTotalAdjusted(t *testing.T) {
+	c := Cost{
+		AdjustedEC2Cost:               1,
+		AdjustedEBSThroughputCost:     2,
+		AdjustedEBSStorageCost:        4,
+		AdjustedS3ArtifactPutCost:     0.1,
+		AdjustedS3LogPutCost:          0.2,
+		AdjustedS3ArtifactStorageCost: 0.3,
+		AdjustedS3LogStorageCost:      0.4,
+		OnDemandEC2Cost:               100,
+	}
+	assert.InDelta(t, 8.0, c.TotalAdjusted(), 1e-9)
+}
+
 func TestCostIsZero(t *testing.T) {
 	t.Run("ZeroValues", func(t *testing.T) {
 		cost := Cost{}
@@ -56,4 +70,15 @@ func TestCostJSONIncludesEBSThroughputFieldsWhenZero(t *testing.T) {
 	assert.Contains(t, unmarshaled, "adjusted_ebs_storage_cost")
 	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_throughput_cost"])
 	assert.Equal(t, 0.0, unmarshaled["adjusted_ebs_storage_cost"])
+}
+
+func TestCostJSONSerializesTotalWhenSet(t *testing.T) {
+	c := Cost{OnDemandEC2Cost: 1, AdjustedEC2Cost: 0.5}
+	c.Total = c.TotalAdjusted()
+	data, err := json.Marshal(c)
+	require.NoError(t, err)
+	var m map[string]interface{}
+	require.NoError(t, json.Unmarshal(data, &m))
+	assert.InDelta(t, 0.5, m["total"], 1e-9)
+	assert.InDelta(t, 1.0, m["on_demand_ec2_cost"], 1e-9)
 }

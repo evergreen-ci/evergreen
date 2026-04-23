@@ -63,13 +63,18 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 	cookieStore.Options.HttpOnly = true
 	cookieStore.Options.Secure = true
 
+	jiraHandler, err := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating jira handler")
+	}
+
 	uis := &UIServer{
 		Settings:    *settings,
 		env:         env,
 		queue:       queue,
 		Home:        home,
 		CookieStore: cookieStore,
-		jiraHandler: thirdparty.NewJiraHandler(*settings.Jira.Export()),
+		jiraHandler: jiraHandler,
 		umconf: gimlet.UserMiddlewareConfiguration{
 			HeaderKeyName:                   evergreen.APIKeyHeader,
 			HeaderUserName:                  evergreen.APIUserHeader,
@@ -83,14 +88,14 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 	}
 
 	if settings.AuthConfig.Kanopy != nil {
-		uis.umconf.OIDC = &gimlet.OIDCConfig{
+		uis.umconf.OIDCConfigs = append(uis.umconf.OIDCConfigs, &gimlet.OIDCConfig{
 			KeysetURL:  settings.AuthConfig.Kanopy.KeysetURL,
 			Issuer:     settings.AuthConfig.Kanopy.Issuer,
 			HeaderName: settings.AuthConfig.Kanopy.HeaderName,
 			DisplayNameFromID: func(id string) string {
 				return cases.Title(language.English).String(strings.Join(strings.Split(id, "."), " "))
 			},
-		}
+		})
 	}
 
 	if err := uis.umconf.Validate(); err != nil {

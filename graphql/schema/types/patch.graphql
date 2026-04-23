@@ -100,6 +100,10 @@ type Patch {
   variantsTasks: [VariantTask!]!
   version: VersionLite
   versionFull: Version
+  """Aggregated actual cost for the patch's version, when cost data exists."""
+  cost: Cost
+  """Aggregated predicted cost for the patch's version."""
+  predictedCost: Cost
   invalidatedByUpstream: Boolean!
 }
 

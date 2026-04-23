@@ -650,8 +650,13 @@ func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (
 	}
 
 	t.setDependenciesMetTime()
+	// Use a detached context for this non-critical cache write so it can
+	// succeed even if the caller's context (e.g. the scheduler deadline)
+	// has expired.
+	writeCtx, writeCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer writeCancel()
 	err = UpdateOne(
-		ctx,
+		writeCtx,
 		bson.M{IdKey: t.Id},
 		bson.M{
 			"$set": bson.M{
@@ -3535,7 +3540,7 @@ func (t *Task) FetchExpectedDuration(ctx context.Context) util.DurationStats {
 
 	refresher := func(previous util.DurationStats) (util.DurationStats, bool) {
 		defaultVal := util.DurationStats{Average: defaultTaskDuration, StdDev: 0}
-		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant,
+		vals, err := getExpectedDurationsForWindow(ctx, t.DisplayName, t.Project, t.BuildVariant,
 			time.Now().Add(-taskCompletionEstimateWindow), time.Now())
 		grip.Notice(ctx, message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,

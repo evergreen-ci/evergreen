@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -19,6 +20,14 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 )
+
+// Total is the field resolver for Cost.total.
+func (r *costResolver) Total(ctx context.Context, obj *cost.Cost) (*float64, error) {
+	if obj == nil {
+		return nil, nil
+	}
+	return utility.ToFloat64Ptr(obj.TotalAdjusted()), nil
+}
 
 // AbortInfo is the resolver for the abortInfo field.
 func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*AbortInfo, error) {
@@ -866,7 +875,11 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	return apiVersion, nil
 }
 
+// Cost returns CostResolver implementation.
+func (r *Resolver) Cost() CostResolver { return &costResolver{r} }
+
 // Task returns TaskResolver implementation.
 func (r *Resolver) Task() TaskResolver { return &taskResolver{r} }
 
+type costResolver struct{ *Resolver }
 type taskResolver struct{ *Resolver }

@@ -253,6 +253,14 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 	}
 }
 
+func makeInternalAlias(alias string) restModel.APIProjectAlias {
+	return restModel.APIProjectAlias{
+		Alias:   utility.ToStringPtr(alias),
+		Variant: utility.ToStringPtr(".*"),
+		Task:    utility.ToStringPtr(".*"),
+	}
+}
+
 func TestSaveProjectSettingsForSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -389,6 +397,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 		},
+		// TODO DEVPROD-31534: remove this test after removing the GithubAndCQSection
 		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
 			conflictingRef := model.ProjectRef{
 				Identifier:          "conflicting-project",
@@ -986,6 +995,137 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, projectFromDB)
 			assert.Equal(t, true, utility.FromBoolPtr(projectFromDB.TestSelection.Allowed))
 			assert.Equal(t, false, utility.FromBoolPtr(projectFromDB.TestSelection.DefaultEnabled))
+		},
+		model.ProjectPagePullRequestsSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for the PR flags.
+			ref.PRTestingEnabled = nil
+			ref.ManualPRTestingEnabled = nil
+			ref.OldestAllowedMergeBase = ""
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the PULL_REQUESTS section.
+			apiProjectRef.PRTestingEnabled = utility.TruePtr()
+			apiProjectRef.ManualPRTestingEnabled = utility.TruePtr()
+			apiProjectRef.OldestAllowedMergeBase = utility.ToStringPtr("deadbeef")
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					makeInternalAlias(evergreen.GithubPRAlias),
+				},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePullRequestsSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.PRTestingEnabled))
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.ManualPRTestingEnabled))
+			assert.Equal(t, "deadbeef", pRefFromDB.OldestAllowedMergeBase)
+		},
+		model.ProjectPageGitTagsSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for git tag settings.
+			ref.GitTagVersionsEnabled = nil
+			ref.GitTagAuthorizedUsers = nil
+			ref.GitTagAuthorizedTeams = nil
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the GIT_TAGS section.
+			apiProjectRef.GitTagVersionsEnabled = utility.TruePtr()
+			apiProjectRef.GitTagAuthorizedUsers = utility.ToStringPtrSlice(
+				[]string{"user1", "user2"},
+			)
+			apiProjectRef.GitTagAuthorizedTeams = utility.ToStringPtrSlice(
+				[]string{"team1"},
+			)
+
+			gitTagAlias := restModel.APIProjectAlias{
+				Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
+				GitTag:     utility.ToStringPtr("v.*"),
+				RemotePath: utility.ToStringPtr("evergreen.yml"),
+			}
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases:    []restModel.APIProjectAlias{gitTagAlias},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGitTagsSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.GitTagVersionsEnabled))
+			assert.Equal(t, []string{"user1", "user2"}, pRefFromDB.GitTagAuthorizedUsers)
+			assert.Equal(t, []string{"team1"}, pRefFromDB.GitTagAuthorizedTeams)
+		},
+		model.ProjectPageMergeQueueSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for the commit queue.
+			ref.CommitQueue.Enabled = utility.FalsePtr()
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the MERGE_QUEUE section.
+			apiProjectRef.CommitQueue.Enabled = utility.TruePtr()
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					makeInternalAlias(evergreen.CommitQueueAlias),
+				},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageMergeQueueSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.CommitQueue.Enabled))
+		},
+		model.ProjectPageCommitChecksSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for commit checks.
+			ref.GithubChecksEnabled = nil
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the COMMIT_CHECKS section.
+			apiProjectRef.GithubChecksEnabled = utility.TruePtr()
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					makeInternalAlias(evergreen.GithubChecksAlias),
+				},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageCommitChecksSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.GithubChecksEnabled))
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection,

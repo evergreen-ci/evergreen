@@ -62,7 +62,7 @@ func TestExpectedDuration(t *testing.T) {
 	}
 	assert.NoError(t4.Insert(t.Context()))
 
-	results, err := getExpectedDurationsForWindow("", project, bv, now.Add(-1*time.Hour), now)
+	results, err := getExpectedDurationsForWindow(t.Context(), "", project, bv, now.Add(-1*time.Hour), now)
 	assert.NoError(err)
 	//nolint:testifylint // We expect it to be exactly equal.
 	assert.EqualValues(25*time.Minute, results[0].ExpectedDuration)

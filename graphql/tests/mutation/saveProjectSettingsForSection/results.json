@@ -275,6 +275,85 @@
           }
         }
       }
+    },
+    {
+      "query_file": "pull_requests_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "prTestingEnabled": true,
+              "manualPrTestingEnabled": true,
+              "oldestAllowedMergeBase": "meow"
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "git_tags_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "gitTagVersionsEnabled": true,
+              "gitTagAuthorizedUsers": [
+                "user1",
+                "user2"
+              ],
+              "gitTagAuthorizedTeams": [
+                "team1"
+              ]
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "merge_queue_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "commitQueue": {
+                "enabled": true
+              }
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "commit_checks_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "githubChecksEnabled": true
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

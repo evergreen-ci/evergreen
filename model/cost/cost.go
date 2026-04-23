@@ -21,6 +21,8 @@ var (
 
 // Cost represents a cost breakdown for tasks and versions
 type Cost struct {
+	// Total is the sum of adjusted cost components.
+	Total float64 `bson:"-" json:"total,omitempty"`
 	// OnDemandEC2Cost is the cost calculated using only on-demand rates.
 	OnDemandEC2Cost float64 `bson:"on_demand_ec2_cost,omitempty" json:"on_demand_ec2_cost,omitempty"`
 	// AdjustedEC2Cost is the cost calculated using the finance formula with savings plan and on-demand components.
@@ -49,6 +51,18 @@ type Cost struct {
 	OnDemandS3LogStorageCost float64 `bson:"on_demand_s3_log_storage_cost,omitempty" json:"-"`
 	// AdjustedS3LogStorageCost is the adjusted (discounted) S3 storage cost for log bytes over their retention period.
 	AdjustedS3LogStorageCost float64 `bson:"adjusted_s3_log_storage_cost,omitempty" json:"adjusted_s3_log_storage_cost,omitempty"`
+}
+
+// TotalAdjusted returns the sum of every adjusted component in this value, excluding on-demand fields,
+// which are an alternate pricing view of the same usage.
+func (c Cost) TotalAdjusted() float64 {
+	return c.AdjustedEC2Cost +
+		c.AdjustedEBSThroughputCost +
+		c.AdjustedEBSStorageCost +
+		c.AdjustedS3ArtifactPutCost +
+		c.AdjustedS3LogPutCost +
+		c.AdjustedS3ArtifactStorageCost +
+		c.AdjustedS3LogStorageCost
 }
 
 // IsZero returns true if all cost components are zero.
