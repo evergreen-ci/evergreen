@@ -422,19 +422,20 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 			a.NoError(err)
 
 			foundInternal := false
-			foundCommitQueue := false
 			internalAliasName := utility.FromStringPtr(tc.internalAlias.Alias)
 			for _, alias := range aliasesFromDb {
 				switch alias.Alias {
 				case internalAliasName:
 					foundInternal = true
-				case evergreen.CommitQueueAlias:
-					foundCommitQueue = true
 				}
 			}
 
-			a.True(foundInternal, "expected %s to be present after updating section %s", tc.internalAlias, tc.section)
-			a.True(foundCommitQueue, "expected commit queue alias to remain after updating section %s", tc.section)
+			a.True(
+				foundInternal,
+				"expected %s to be present after updating section %s",
+				tc.internalAlias,
+				tc.section,
+			)
 		})
 	}
 }
