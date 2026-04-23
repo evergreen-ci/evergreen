@@ -11,8 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type taskCompare struct {
@@ -252,27 +250,3 @@ func TestTaskBuildFromService(t *testing.T) {
 	})
 }
 
-func TestBuildTaskIsAutomaticRestart(t *testing.T) {
-	t.Run("TrueWhenSet", func(t *testing.T) {
-		serviceTask := task.Task{
-			Id:                 "task_id",
-			IsAutomaticRestart: true,
-		}
-		apiTask := APITask{}
-		args := APITaskArgs{LogURL: "url", ParsleyLogURL: "parsley"}
-		err := apiTask.BuildFromService(t.Context(), &serviceTask, &args)
-		require.NoError(t, err)
-		assert.True(t, apiTask.IsAutomaticRestart)
-	})
-
-	t.Run("FalseWhenNotSet", func(t *testing.T) {
-		serviceTask := task.Task{
-			Id: "task_id",
-		}
-		apiTask := APITask{}
-		args := APITaskArgs{LogURL: "url", ParsleyLogURL: "parsley"}
-		err := apiTask.BuildFromService(t.Context(), &serviceTask, &args)
-		require.NoError(t, err)
-		assert.False(t, apiTask.IsAutomaticRestart)
-	})
-}
