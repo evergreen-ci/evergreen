@@ -498,3 +498,4 @@ When investigating issues, check the following:
 1. Output from `evergreen debug daemon status`
 2. Relevant daemon logs from `~/.evergreen-local/daemon.log`
 3. Relevant execution logs from `evergreen debug logs`
+4. Relevant execution logs from the setup phase from `evergreen debug logs --setup`
