@@ -164,6 +164,8 @@ func (p *APIParameter) BuildFromService(param *patch.Parameter) {
 type APIPatchArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeChildPatches      bool
+	// SkipVersionCost omits DB lookups to load Cost/PredictedCost from the version document.
+	SkipVersionCost bool
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -171,7 +173,10 @@ type APIPatchArgs struct {
 // If args are set, includes identifier, branch, and/or child patches from the DB, if applicable.
 func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, args *APIPatchArgs) error {
 	apiPatch.buildBasePatch(p)
-	apiPatch.populateCostFromVersion(ctx, p.Version)
+	shouldLoadVersionCost := args == nil || !args.SkipVersionCost
+	if shouldLoadVersionCost {
+		apiPatch.populateCostFromVersion(ctx, p.Version)
+	}
 
 	projectIdentifier := p.Project
 	if args != nil {
