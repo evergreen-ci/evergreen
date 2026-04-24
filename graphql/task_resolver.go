@@ -26,7 +26,7 @@ func (r *costResolver) Total(ctx context.Context, obj *cost.Cost) (*float64, err
 	if obj == nil {
 		return nil, nil
 	}
-	return utility.ToFloat64Ptr(obj.TotalAdjusted()), nil
+	return utility.ToFloat64Ptr(cost.RoundCost(obj.TotalAdjusted())), nil
 }
 
 // AbortInfo is the resolver for the abortInfo field.

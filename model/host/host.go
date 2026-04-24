@@ -295,7 +295,8 @@ type ProvisionOptions struct {
 	SetupScript string `bson:"setup_script" json:"setup_script"`
 
 	// SetupStepNumber, if set, indicates the step number that the debug host
-	// should run until after initializing the daemon. Accepts step notation (e.g., "5" or "5.1")
+	// should run up to (exclusive) after initializing the daemon. The specified
+	// step will not be executed. Accepts step notation (e.g., "5" or "5.1").
 	SetupStepNumber string `bson:"setup_step_number,omitempty" json:"setup_step_number,omitempty"`
 }
 

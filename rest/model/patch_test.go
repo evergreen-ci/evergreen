@@ -105,6 +105,69 @@ func TestAPIPatch(t *testing.T) {
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
 }
 
+func TestAddChildPatchesCostToParent(t *testing.T) {
+	t.Run("emptyLeavesCostsNil", func(t *testing.T) {
+		api := APIPatch{}
+		addChildPatchesCostToParent(&api, nil)
+		assert.Nil(t, api.Cost)
+		assert.Nil(t, api.PredictedCost)
+	})
+
+	t.Run("sumsActualAndPredictedAcrossChildren", func(t *testing.T) {
+		api := APIPatch{}
+		children := []APIPatch{
+			{
+				Cost:          &cost.Cost{AdjustedEC2Cost: 1},
+				PredictedCost: &cost.Cost{AdjustedEC2Cost: 10},
+			},
+			{
+				Cost:          &cost.Cost{AdjustedS3LogPutCost: 2},
+				PredictedCost: &cost.Cost{AdjustedS3LogPutCost: 3},
+			},
+		}
+		addChildPatchesCostToParent(&api, children)
+		require.NotNil(t, api.Cost)
+		assert.InDelta(t, 3.0, api.Cost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 3.0, api.Cost.Total, 1e-9)
+		require.NotNil(t, api.PredictedCost)
+		assert.InDelta(t, 13.0, api.PredictedCost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 13.0, api.PredictedCost.Total, 1e-9)
+	})
+
+	t.Run("mergesIntoExistingParentCost", func(t *testing.T) {
+		api := APIPatch{
+			Cost: &cost.Cost{AdjustedEC2Cost: 5},
+		}
+		addChildPatchesCostToParent(&api, []APIPatch{
+			{Cost: &cost.Cost{AdjustedEC2Cost: 2}},
+		})
+		require.NotNil(t, api.Cost)
+		assert.InDelta(t, 2.0, api.Cost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 7.0, api.Cost.Total, 1e-9)
+	})
+
+	t.Run("predictedOnlyWhenNoActual", func(t *testing.T) {
+		api := APIPatch{}
+		addChildPatchesCostToParent(&api, []APIPatch{
+			{PredictedCost: &cost.Cost{AdjustedEC2Cost: 4}},
+		})
+		assert.Nil(t, api.Cost)
+		require.NotNil(t, api.PredictedCost)
+		assert.InDelta(t, 4.0, api.PredictedCost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 4.0, api.PredictedCost.Total, 1e-9)
+	})
+
+	t.Run("allNilChildCostsLeavesParentNil", func(t *testing.T) {
+		api := APIPatch{}
+		addChildPatchesCostToParent(&api, []APIPatch{
+			{},
+			{Cost: nil, PredictedCost: nil},
+		})
+		assert.Nil(t, api.Cost)
+		assert.Nil(t, api.PredictedCost)
+	})
+}
+
 func TestAPIPatchBuildFromServiceVersionCost(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection))
