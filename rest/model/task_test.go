@@ -249,4 +249,3 @@ func TestTaskBuildFromService(t *testing.T) {
 		})
 	})
 }
-
