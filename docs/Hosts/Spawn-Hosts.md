@@ -48,7 +48,7 @@ Alternately, for a task that ran on a distro where spawning is enabled, you will
 
 Clicking it will pre-populate the spawn host page with a request to spawn a host of that distro. You will have to complete an short authentication step to finish spawning the host.
 
-![spawn_host_modal.mp4](../images/spawnhost_flow.mp4)
+Watch the demo [here](../images/spawnhost_flow.mp4).
 
 Artifacts are placed in /data/mci.
 
