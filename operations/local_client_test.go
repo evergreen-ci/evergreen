@@ -22,8 +22,7 @@ import (
 )
 
 // setHomeDir overrides all environment variables that home directory lookups
-// may consult (HOME, USERPROFILE) and resets the go-homedir cache. It returns
-// a cleanup function that restores the original values.
+// may consult (HOME, USERPROFILE) and resets the homedir cache.
 func setHomeDir(t *testing.T, dir string) {
 	envVars := []string{"HOME", "USERPROFILE"}
 	originals := make(map[string]string, len(envVars))
