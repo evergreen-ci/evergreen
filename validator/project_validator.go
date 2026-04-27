@@ -170,7 +170,6 @@ var projectMixedValidators = []projectValidator{
 
 var projectAliasWarningValidators = []projectAliasValidator{
 	validateAliasCoverage,
-	validateCheckRuns,
 }
 
 // Functions used to validate a project configuration that requires additional
@@ -612,44 +611,6 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 	return aliasNeedsVariant, aliasNeedsTask, nil
 }
 
-// validateCheckRuns returns warnings if PR aliases are going to violate check run rules for the given config.
-func validateCheckRuns(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	errs := ValidationErrors{}
-	aliasMap := map[string][]model.ProjectAlias{} // map of alias name to aliases
-	for _, a := range aliases {
-		if _, ok := aliasMap[a.Alias]; !ok {
-			aliasMap[a.Alias] = []model.ProjectAlias{}
-		}
-		aliasMap[a.Alias] = append(aliasMap[a.Alias], a)
-	}
-
-	tvPairs, err := p.BuildProjectTVPairsWithAlias(aliasMap[evergreen.GithubPRAlias], evergreen.GithubPRRequester)
-	if err != nil {
-		errs = append(errs, ValidationError{
-			Message: "problem getting task variant pairs for PR aliases",
-			Level:   Warning,
-		})
-		return errs
-	}
-	tvPairs.ExecTasks, err = model.IncludeDependencies(p, tvPairs.ExecTasks, evergreen.GithubPRRequester, nil)
-	if err != nil {
-		errs = append(errs, ValidationError{
-			Message: "problem adding dependencies to PR alias tasks",
-			Level:   Warning,
-		})
-		return errs
-	}
-	numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(&tvPairs)
-	checkRunLimit := evergreen.GetEnvironment().Settings().GitHubCheckRun.CheckRunLimit
-	if numCheckRuns > checkRunLimit {
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit),
-			Level:   Warning,
-		})
-	}
-	return errs
-}
-
 func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgName string) (bool, error) {
 	tg := p.FindTaskGroup(tgName)
 	if tg == nil {
@@ -1072,18 +1033,19 @@ func validateReferentialIntegrity(ctx context.Context, settings *evergreen.Setti
 	return validationErrs
 }
 
+// validateGitHubAppCheckRuns returns warnings if the project has more check runs configured than allowed (which varies depending on GitHub App setup).
 func validateGitHubAppCheckRuns(ctx context.Context, settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
-	if ref.HasGitHubAppAuth(ctx) {
+	numCheckRuns := p.CountCheckRuns()
+	if numCheckRuns == 0 {
 		return errs
 	}
-	if !p.HasCheckRuns() {
-		return errs
+	if err := model.VerifyCheckRunLimit(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, ref.HasGitHubAppAuth(ctx)); err != nil {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("check runs will be skipped; %s", err.Error()),
+			Level:   Warning,
+		})
 	}
-	errs = append(errs, ValidationError{
-		Message: "project has check runs but no GitHub app is configured for the project",
-		Level:   Warning,
-	})
 	return errs
 }
 

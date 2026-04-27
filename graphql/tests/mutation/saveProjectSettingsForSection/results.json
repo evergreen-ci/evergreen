@@ -275,6 +275,113 @@
           }
         }
       }
+    },
+    {
+      "query_file": "pull_requests_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "prTestingEnabled": true,
+              "manualPrTestingEnabled": true,
+              "oldestAllowedMergeBase": "meow"
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "__commit_queue" },
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "git_tags_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "gitTagVersionsEnabled": true,
+              "gitTagAuthorizedUsers": [
+                "user1",
+                "user2"
+              ],
+              "gitTagAuthorizedTeams": [
+                "team1"
+              ]
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "__commit_queue" },
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "merge_queue_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "commitQueue": {
+                "enabled": true
+              }
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "commit_checks_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "githubChecksEnabled": true
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" },
+              { "alias": "__github_checks" }
+            ]
+          }
+        }
+      }
     }
   ]
 }

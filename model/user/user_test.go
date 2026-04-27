@@ -775,6 +775,15 @@ func TestGetOrCreateUser(t *testing.T) {
 			require.NotZero(t, dbUser)
 			checkUser(t, dbUser, id, name, email, accessToken, refreshToken)
 			assert.Equal(t, apiKey, dbUser.GetAPIKey())
+
+			t.Run("GetsUserWithJustEmail", func(t *testing.T) {
+				// Only include the email.
+				user, err = GetOrCreateUser(t.Context(), "", "", email, "", "", nil)
+				require.NoError(t, err)
+
+				checkUser(t, user, id, name, email, accessToken, refreshToken)
+				assert.Equal(t, apiKey, user.GetAPIKey())
+			})
 		},
 		"UpdateAlwaysSetsName": func(t *testing.T) {
 			user, err := GetOrCreateUser(t.Context(), id, name, email, accessToken, refreshToken, nil)

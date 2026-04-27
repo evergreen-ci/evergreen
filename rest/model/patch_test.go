@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -102,6 +103,115 @@ func TestAPIPatch(t *testing.T) {
 	assert.NotZero(a.GithubPatchData)
 	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
+}
+
+func TestAddChildPatchesCostToParent(t *testing.T) {
+	t.Run("emptyLeavesCostsNil", func(t *testing.T) {
+		api := APIPatch{}
+		addChildPatchesCostToParent(&api, nil)
+		assert.Nil(t, api.Cost)
+		assert.Nil(t, api.PredictedCost)
+	})
+
+	t.Run("sumsActualAndPredictedAcrossChildren", func(t *testing.T) {
+		api := APIPatch{}
+		children := []APIPatch{
+			{
+				Cost:          &cost.Cost{AdjustedEC2Cost: 1},
+				PredictedCost: &cost.Cost{AdjustedEC2Cost: 10},
+			},
+			{
+				Cost:          &cost.Cost{AdjustedS3LogPutCost: 2},
+				PredictedCost: &cost.Cost{AdjustedS3LogPutCost: 3},
+			},
+		}
+		addChildPatchesCostToParent(&api, children)
+		require.NotNil(t, api.Cost)
+		assert.InDelta(t, 3.0, api.Cost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 3.0, api.Cost.Total, 1e-9)
+		require.NotNil(t, api.PredictedCost)
+		assert.InDelta(t, 13.0, api.PredictedCost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 13.0, api.PredictedCost.Total, 1e-9)
+	})
+
+	t.Run("mergesIntoExistingParentCost", func(t *testing.T) {
+		api := APIPatch{
+			Cost: &cost.Cost{AdjustedEC2Cost: 5},
+		}
+		addChildPatchesCostToParent(&api, []APIPatch{
+			{Cost: &cost.Cost{AdjustedEC2Cost: 2}},
+		})
+		require.NotNil(t, api.Cost)
+		assert.InDelta(t, 2.0, api.Cost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 7.0, api.Cost.Total, 1e-9)
+	})
+
+	t.Run("predictedOnlyWhenNoActual", func(t *testing.T) {
+		api := APIPatch{}
+		addChildPatchesCostToParent(&api, []APIPatch{
+			{PredictedCost: &cost.Cost{AdjustedEC2Cost: 4}},
+		})
+		assert.Nil(t, api.Cost)
+		require.NotNil(t, api.PredictedCost)
+		assert.InDelta(t, 4.0, api.PredictedCost.ChildPatchesTotalCost, 1e-9)
+		assert.InDelta(t, 4.0, api.PredictedCost.Total, 1e-9)
+	})
+
+	t.Run("allNilChildCostsLeavesParentNil", func(t *testing.T) {
+		api := APIPatch{}
+		addChildPatchesCostToParent(&api, []APIPatch{
+			{},
+			{Cost: nil, PredictedCost: nil},
+		})
+		assert.Nil(t, api.Cost)
+		assert.Nil(t, api.PredictedCost)
+	})
+}
+
+func TestAPIPatchBuildFromServiceVersionCost(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection))
+
+	v := model.Version{
+		Id: "version_with_cost",
+		Cost: cost.Cost{
+			AdjustedEC2Cost:           10,
+			AdjustedS3ArtifactPutCost: 0.5,
+		},
+		PredictedCost: cost.Cost{
+			AdjustedEC2Cost: 2,
+		},
+	}
+	require.NoError(t, v.Insert(ctx))
+
+	pRef := model.ProjectRef{
+		Id:         "mci",
+		Identifier: "evergreen",
+		Branch:     "main",
+	}
+	require.NoError(t, pRef.Insert(ctx))
+
+	p := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Description: "test",
+		Project:     pRef.Id,
+		Branch:      pRef.Branch,
+		Githash:     "hash",
+		PatchNumber: 1,
+		Author:      "root",
+		Version:     v.Id,
+		Status:      evergreen.VersionCreated,
+		CreateTime:  time.Now(),
+		Patches:     []patch.ModulePatch{{}},
+	}
+
+	var api APIPatch
+	require.NoError(t, api.BuildFromService(ctx, p, nil))
+
+	require.NotNil(t, api.Cost)
+	assert.InDelta(t, 10.5, api.Cost.Total, 0.001)
+	require.NotNil(t, api.PredictedCost)
+	assert.InDelta(t, 2.0, api.PredictedCost.Total, 0.001)
 }
 
 func TestAPIPatchBuildModuleChanges(t *testing.T) {

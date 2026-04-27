@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
@@ -714,6 +715,263 @@ func TestUpsertCheckRunParse(t *testing.T) {
 
 	assert.Equal(t, "This is my report", utility.FromStringPtr(r.checkRunOutput.Title))
 	assert.Len(t, r.checkRunOutput.Annotations, 1)
+}
+
+func TestGetCheckRunGitHubAppAuth(t *testing.T) {
+	require.NoError(t, db.ClearCollections(
+		model.VersionCollection, model.ParserProjectCollection,
+		githubapp.GitHubAppAuthCollection, model.ProjectRefCollection,
+		fakeparameter.Collection,
+	))
+
+	const (
+		projectID     = "proj"
+		fewVersionID  = "aaaaaaaaaaff001122334400"
+		manyVersionID = "aaaaaaaaaaff001122334401"
+	)
+
+	require.NoError(t, (&model.Version{Id: fewVersionID}).Insert(t.Context()))
+	require.NoError(t, (&model.Version{Id: manyVersionID}).Insert(t.Context()))
+
+	fewCheckRunYAML := `
+buildvariants:
+  - name: bv
+    tasks:
+      - name: task1
+        create_check_run:
+          path_to_outputs: output.json
+tasks:
+  - name: task1
+    commands: []
+`
+	var fewProj model.Project
+	ppFew, err := model.LoadProjectInto(t.Context(), []byte(fewCheckRunYAML), nil, projectID, &fewProj)
+	require.NoError(t, err)
+	ppFew.Id = fewVersionID
+	require.NoError(t, ppFew.Insert(t.Context()))
+
+	manyCheckRunYAML := `
+buildvariants:
+  - name: bv
+    tasks:
+      - name: task0
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task1
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task2
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task3
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task4
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task5
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task6
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task7
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task8
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task9
+        create_check_run:
+          path_to_outputs: output.json
+tasks:
+  - name: task0
+    commands: []
+  - name: task1
+    commands: []
+  - name: task2
+    commands: []
+  - name: task3
+    commands: []
+  - name: task4
+    commands: []
+  - name: task5
+    commands: []
+  - name: task6
+    commands: []
+  - name: task7
+    commands: []
+  - name: task8
+    commands: []
+  - name: task9
+    commands: []
+`
+	var manyProj model.Project
+	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj)
+	require.NoError(t, err)
+	ppMany.Id = manyVersionID
+	require.NoError(t, ppMany.Insert(t.Context()))
+
+	// Project ref needed for GetAndValidateCheckRunGitHubAppAuth to find a ref and check auth.
+	require.NoError(t, (&model.ProjectRef{Id: projectID}).Insert(t.Context()))
+
+	fewTask := task.Task{Project: projectID, Version: fewVersionID}
+	manyTask := task.Task{Project: projectID, Version: manyVersionID}
+	noVersionTask := task.Task{Project: projectID, Version: "nonexistent_version"}
+
+	t.Run("AuthExistsShouldProceed", func(t *testing.T) {
+		require.NoError(t, githubapp.UpsertGitHubAppAuth(t.Context(), &githubapp.GithubAppAuth{
+			Id: projectID, AppID: 12345, PrivateKey: []byte("fake-private-key"),
+		}))
+		t.Cleanup(func() {
+			require.NoError(t, db.ClearCollections(githubapp.GitHubAppAuthCollection, fakeparameter.Collection))
+		})
+
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &fewTask)
+		require.NotNil(t, auth)
+		assert.NoError(t, err)
+	})
+	t.Run("FewCheckRunsNoAuthShouldProceedWithNilAuth", func(t *testing.T) {
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &fewTask)
+		assert.Nil(t, auth)
+		assert.NoError(t, err)
+	})
+	t.Run("ManyCheckRunsNoAuthShouldError", func(t *testing.T) {
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &manyTask)
+		assert.Nil(t, auth)
+		assert.Error(t, err)
+	})
+	t.Run("ProjectConfigNotFoundShouldError", func(t *testing.T) {
+		auth, err := model.GetAndValidateCheckRunGitHubAppAuth(t.Context(), &noVersionTask)
+		assert.Nil(t, auth)
+		assert.Error(t, err)
+	})
+}
+
+func TestCheckRunHandlerRun(t *testing.T) {
+	const (
+		projectID     = "proj"
+		versionID     = "aaaaaaaaaaff001122334455"
+		manyVersionID = "aaaaaaaaaaff001122334456"
+	)
+	require.NoError(t, db.ClearCollections(
+		task.Collection, patch.Collection,
+		model.VersionCollection, model.ParserProjectCollection,
+		githubapp.GitHubAppAuthCollection, model.ProjectRefCollection,
+	))
+
+	p := patch.Patch{
+		Id:      patch.NewId(versionID),
+		Version: versionID,
+	}
+	require.NoError(t, p.Insert(t.Context()))
+	pMany := patch.Patch{
+		Id:      patch.NewId(manyVersionID),
+		Version: manyVersionID,
+	}
+	require.NoError(t, pMany.Insert(t.Context()))
+
+	require.NoError(t, (&model.Version{Id: versionID}).Insert(t.Context()))
+	require.NoError(t, (&model.Version{Id: manyVersionID}).Insert(t.Context()))
+	require.NoError(t, (&model.ProjectRef{Id: projectID}).Insert(t.Context()))
+
+	// Parser project with >= threshold check runs so the handler returns an error when no auth.
+	manyCheckRunYAML := `
+buildvariants:
+  - name: bv
+    tasks:
+      - name: task0
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task1
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task2
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task3
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task4
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task5
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task6
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task7
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task8
+        create_check_run:
+          path_to_outputs: output.json
+      - name: task9
+        create_check_run:
+          path_to_outputs: output.json
+tasks:
+  - name: task0
+    commands: []
+  - name: task1
+    commands: []
+  - name: task2
+    commands: []
+  - name: task3
+    commands: []
+  - name: task4
+    commands: []
+  - name: task5
+    commands: []
+  - name: task6
+    commands: []
+  - name: task7
+    commands: []
+  - name: task8
+    commands: []
+  - name: task9
+    commands: []
+`
+	var manyProj model.Project
+	ppMany, err := model.LoadProjectInto(t.Context(), []byte(manyCheckRunYAML), nil, projectID, &manyProj)
+	require.NoError(t, err)
+	ppMany.Id = manyVersionID
+	require.NoError(t, ppMany.Insert(t.Context()))
+
+	t.Run("NonGitHubPRRequesterShouldSkip", func(t *testing.T) {
+		t1 := task.Task{
+			Id:        "t1_non_pr",
+			Project:   projectID,
+			Version:   versionID,
+			Requester: evergreen.RepotrackerVersionRequester,
+		}
+		require.NoError(t, t1.Insert(t.Context()))
+		t.Cleanup(func() { require.NoError(t, db.Clear(task.Collection)) })
+
+		h := &checkRunHandler{}
+		taskCtx := context.WithValue(t.Context(), model.ApiTaskKey, &t1)
+		resp := h.Run(taskCtx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		assert.Contains(t, fmt.Sprintf("%v", resp.Data()), "requester is not a github patch")
+	})
+	t.Run("ManyCheckRunsNoAuthShouldReturnError", func(t *testing.T) {
+		t2 := task.Task{
+			Id:        "t2_many_no_auth",
+			Project:   projectID,
+			Version:   manyVersionID,
+			Requester: evergreen.GithubPRRequester,
+		}
+		require.NoError(t, t2.Insert(t.Context()))
+		defer func() { require.NoError(t, db.Clear(task.Collection)) }()
+
+		h := &checkRunHandler{}
+		taskCtx := context.WithValue(t.Context(), model.ApiTaskKey, &t2)
+		resp := h.Run(taskCtx)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusBadRequest, resp.Status())
+		assert.Contains(t, fmt.Sprintf("%v", resp.Data()), "does not have a GitHub app configured")
+	})
 }
 
 func TestCreateGitHubDynamicAccessToken(t *testing.T) {

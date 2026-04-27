@@ -737,7 +737,7 @@ func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pRef, err := model.FindBranchProjectRef(ctx, projectID)
+	pRef, err := model.FindMergedProjectRef(ctx, projectID, "", false)
 	if err != nil {
 		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

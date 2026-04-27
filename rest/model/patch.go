@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -40,6 +41,10 @@ type APIPatch struct {
 	// Author of the patch
 	Author  *string `json:"author"`
 	Version *string `json:"version"`
+	// Aggregated actual cost of the patch's version (empty until the patch is finalized to a version with cost data).
+	Cost *cost.Cost `json:"cost,omitempty"`
+	// Aggregated predicted cost of the patch's version.
+	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
 	// Status of patch (possible values are "created", "started", "success", or "failed")
 	Status *string `json:"status"`
 	// Time patch was created
@@ -166,6 +171,7 @@ type APIPatchArgs struct {
 // If args are set, includes identifier, branch, and/or child patches from the DB, if applicable.
 func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, args *APIPatchArgs) error {
 	apiPatch.buildBasePatch(p)
+	apiPatch.populateCostFromVersion(ctx, p.Version)
 
 	projectIdentifier := p.Project
 	if args != nil {
@@ -180,16 +186,12 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
-		err := apiPatch.buildChildPatches(ctx, p)
+		childPatchDocs, err := apiPatch.buildChildPatches(ctx, p)
 		if err != nil {
 			return err
 		}
-		if p.IsParent() && len(p.Triggers.ChildPatches) > 0 {
-			childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
-			if err != nil {
-				return errors.Wrap(err, "getting child patches for time calculations")
-			}
-			for _, childPatch := range childPatches {
+		if p.IsParent() && len(childPatchDocs) > 0 {
+			for _, childPatch := range childPatchDocs {
 				if !childPatch.StartTime.IsZero() && childPatch.StartTime.Before(utility.FromTimePtr(apiPatch.StartTime)) {
 					apiPatch.StartTime = ToTimePtr(childPatch.StartTime)
 				}
@@ -313,13 +315,42 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.InvalidatedByUpstream = p.GithubMergeData.InvalidatedByUpstream
 }
 
-func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
+// populateCostFromVersion loads aggregated cost fields from the version document referenced by the patch.
+func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID string) {
+	if versionID == "" {
+		return
+	}
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+			"message":  "could not load version for patch cost",
+			"version":  versionID,
+			"patch_id": utility.FromStringPtr(apiPatch.Id),
+		}))
+		return
+	}
+	if v == nil {
+		return
+	}
+	if !v.Cost.IsZero() {
+		versionCost := v.Cost
+		versionCost.Total = versionCost.TotalAdjusted()
+		apiPatch.Cost = &versionCost
+	}
+	if !v.PredictedCost.IsZero() {
+		predictedCost := v.PredictedCost
+		predictedCost.Total = predictedCost.TotalAdjusted()
+		apiPatch.PredictedCost = &predictedCost
+	}
+}
+
+func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, []patch.Patch, error) {
 	if len(p.Triggers.ChildPatches) <= 0 {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting child patches")
+		return nil, nil, nil, errors.Wrap(err, "getting child patches")
 	}
 	downstreamTasks := []DownstreamTasks{}
 	apiChildPatches := []APIPatch{}
@@ -345,23 +376,42 @@ func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks,
 		apiPatch := APIPatch{}
 		err = apiPatch.BuildFromService(ctx, childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "converting child patch to API model")
+			return nil, nil, nil, errors.Wrap(err, "converting child patch to API model")
 		}
 		downstreamTasks = append(downstreamTasks, dt)
 		apiChildPatches = append(apiChildPatches, apiPatch)
 	}
-	return downstreamTasks, apiChildPatches, nil
+	return downstreamTasks, apiChildPatches, childPatches, nil
 }
 
-func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) error {
-	downstreamTasks, childPatches, err := getChildPatchesData(ctx, p)
+func addChildPatchesCostToParent(apiPatch *APIPatch, childPatches []APIPatch) {
+	actualSum, predictedSum := cost.SumPerChildVersionAdjustedTotals(len(childPatches), func(i int) (actual, predicted *cost.Cost) {
+		return childPatches[i].Cost, childPatches[i].PredictedCost
+	})
+	merge := func(dest **cost.Cost, sum float64) {
+		if sum == 0 {
+			return
+		}
+		if *dest == nil {
+			*dest = &cost.Cost{}
+		}
+		(*dest).ChildPatchesTotalCost = sum
+		(*dest).Total = (*dest).TotalAdjusted()
+	}
+	merge(&apiPatch.Cost, actualSum)
+	merge(&apiPatch.PredictedCost, predictedSum)
+}
+
+func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) ([]patch.Patch, error) {
+	downstreamTasks, childPatches, childPatchDocs, err := getChildPatchesData(ctx, p)
 	if err != nil {
-		return errors.Wrap(err, "getting downstream tasks")
+		return nil, errors.Wrap(err, "getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
+	addChildPatchesCostToParent(apiPatch, childPatches)
 	if len(childPatches) == 0 {
-		return nil
+		return childPatchDocs, nil
 	}
 	// set the patch status to the collective status between the parent and child patches
 	// Also correlate each child patch ID with the alias that invoked it
@@ -381,7 +431,7 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 	apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatusFromPatchStatuses(allStatuses))
 	apiPatch.ChildPatchAliases = childPatchAliases
 
-	return nil
+	return childPatchDocs, nil
 }
 
 func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {

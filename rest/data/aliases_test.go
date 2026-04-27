@@ -277,13 +277,19 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 	newInternalAlias := restModel.APIProjectAlias{
 		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
-		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), //internal alias shouldn't be added
+		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), // internal alias
 		Variant: utility.ToStringPtr("var"),
 		Task:    utility.ToStringPtr("task"),
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	modified, err := updateAliasesForSection(
+		a.T().Context(),
+		"project_id",
+		updatedAliases,
+		originalAliases,
+		model.ProjectPagePatchAliasSection,
+	)
 	a.NoError(err)
 	a.True(modified)
 
@@ -298,12 +304,139 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
+	// TODO DEVPROD-31534: Delete this test case
+	// The legacy combined GitHub + CQ section should still operate on all internal aliases.
+	a.Run(string(model.ProjectPageGithubAndCQSection), func() {
+		modified, err := updateAliasesForSection(
+			a.T().Context(),
+			"project_id",
+			updatedAliases,
+			originalAliases,
+			model.ProjectPageGithubAndCQSection,
+		)
+		a.NoError(err)
+		a.True(modified)
+
+		aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+		a.NoError(err)
+		a.Len(aliasesFromDb, 4) // net count stays the same (one removed, one added)
+
+		foundChecks := false
+		for _, alias := range aliasesFromDb {
+			if alias.Alias == evergreen.GithubChecksAlias {
+				foundChecks = true
+			}
+		}
+		a.True(
+			foundChecks,
+			"expected %s to be present after updating section %s",
+			evergreen.GithubChecksAlias,
+			model.ProjectPageGithubAndCQSection,
+		)
+	})
+}
+
+func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
+	originalAliases, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
-	a.True(modified)
-	aliasesFromDb, err = model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
-	a.NoError(err)
-	a.Len(aliasesFromDb, 4) // adds internal alias
+	a.Len(originalAliases, 4)
+
+	type githubSectionCase struct {
+		section       model.ProjectPageSection
+		internalAlias restModel.APIProjectAlias
+	}
+
+	cases := []githubSectionCase{
+		{
+			section: model.ProjectPagePullRequestsSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.GithubPRAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
+		},
+		{
+			section: model.ProjectPageGitTagsSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:         utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
+				GitTag:     utility.ToStringPtr(`^v[0-9]+.[0-9]+.[0-9]+$`),
+				RemotePath: utility.ToStringPtr("evergreen.yml"),
+			},
+		},
+		{
+			section: model.ProjectPageMergeQueueSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
+		},
+		{
+			section: model.ProjectPageCommitChecksSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		a.Run(string(tc.section), func() {
+			aliasToKeep := restModel.APIProjectAlias{}
+			aliasToKeep.BuildFromService(originalAliases[0])
+
+			aliasToModify := restModel.APIProjectAlias{}
+			aliasToModify.BuildFromService(originalAliases[1])
+			aliasToModify.Alias = utility.ToStringPtr("this is a new alias")
+
+			newAlias := restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr("patchAlias"),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			}
+			newInternalAlias := tc.internalAlias
+			updatedAliases := []restModel.APIProjectAlias{
+				aliasToKeep,
+				aliasToModify,
+				newAlias,
+				newInternalAlias,
+			}
+
+			modified, err := updateAliasesForSection(
+				a.T().Context(),
+				"project_id",
+				updatedAliases,
+				originalAliases,
+				tc.section,
+			)
+			a.NoError(err)
+			a.True(modified)
+
+			aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+			a.NoError(err)
+
+			foundInternal := false
+			internalAliasName := utility.FromStringPtr(tc.internalAlias.Alias)
+			for _, alias := range aliasesFromDb {
+				if alias.Alias == internalAliasName {
+					foundInternal = true
+				}
+			}
+
+			a.True(
+				foundInternal,
+				"expected %s to be present after updating section %s",
+				tc.internalAlias,
+				tc.section,
+			)
+		})
+	}
 }
 
 func TestValidateFeaturesHaveAliases(t *testing.T) {

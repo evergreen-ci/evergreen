@@ -1,6 +1,6 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.25.0
+go 1.24.9
 
 require (
 	github.com/99designs/gqlgen v0.17.86
@@ -17,7 +17,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
-	github.com/evergreen-ci/gimlet v0.0.0-20260326192822-ba1f9242291b
+	github.com/evergreen-ci/gimlet v0.0.0-20260420181614-abe39e3a6fa7
 	github.com/evergreen-ci/pail v0.0.0-20260413131233-e5084eca59ac
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
@@ -55,10 +55,10 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0
 	go.opentelemetry.io/proto/otlp v1.9.0
-	golang.org/x/crypto v0.50.0
+	golang.org/x/crypto v0.48.0
 	golang.org/x/oauth2 v0.34.0
-	golang.org/x/text v0.36.0
-	golang.org/x/tools v0.43.0 // indirect
+	golang.org/x/text v0.34.0
+	golang.org/x/tools v0.41.0 // indirect
 	gonum.org/v1/gonum v0.17.0
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
@@ -144,7 +144,7 @@ require (
 	github.com/square/certstrap v1.3.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
-	github.com/trivago/tgo v1.0.7 // indirect
+	github.com/trivago/tgo v1.0.7
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
@@ -154,10 +154,10 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib v1.36.0 // indirect
-	golang.org/x/mod v0.34.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/mod v0.32.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/sync v0.19.0
+	golang.org/x/sys v0.41.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
@@ -167,7 +167,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.4
-	github.com/bradleyfalzon/ghinstallation/v2 v2.18.0
+	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
 	github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c
@@ -198,8 +198,8 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-github/v73 v73.0.0 // indirect
+	github.com/google/go-github/v75 v75.0.0 // indirect
 	github.com/google/go-github/v79 v79.0.0 // indirect
-	github.com/google/go-github/v84 v84.0.0 // indirect
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.1.6 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
