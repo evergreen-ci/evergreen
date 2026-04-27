@@ -439,6 +439,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 	}
 }
 
+// TODO DEVPROD-31534: Remove legacy test, see TestValidateFeaturesHaveAliasesForGithubSections
 func TestValidateFeaturesHaveAliases(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
 
