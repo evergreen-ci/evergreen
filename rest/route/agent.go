@@ -1575,6 +1575,12 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 	}
 	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, opts)
 	if err != nil {
+		if errors.Is(err, githubapp.ErrGitHubAppNotInstalled) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("no GitHub App installation for '%s/%s'", g.owner, g.repo),
+			})
+		}
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}
 	if token == "" {

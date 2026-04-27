@@ -30,7 +30,9 @@ const (
 )
 
 var (
-	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
+	// ErrGitHubAppNotInstalled is returned when the Evergreen GitHub App has no
+	// installation for the requested owner/repo.
+	ErrGitHubAppNotInstalled = errors.New("GitHub app is not installed")
 )
 
 // GitHubAppInstallation holds information about a GitHub app, notably its
@@ -232,7 +234,7 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 			return 0, errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 		}
 		if resp.StatusCode == http.StatusNotFound {
-			return 0, errors.Wrapf(gitHubAppNotInstalledError, "installation id for '%s/%s' not found", owner, repo)
+			return 0, errors.Wrapf(ErrGitHubAppNotInstalled, "installation id for '%s/%s' not found", owner, repo)
 		}
 		return 0, errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 	}

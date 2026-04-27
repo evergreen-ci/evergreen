@@ -59,7 +59,7 @@ type GitGetProjectSuite struct {
 	taskConfig6 *internal.TaskConfig     // GitHub merge queue
 	modelData7  *modelutil.TestModelData // Multiple modules (parallelized)
 	taskConfig7 *internal.TaskConfig     // Multiple modules (parallelized)
-	modelData8  *modelutil.TestModelData // Wiki module: clones mongodb/mongo.wiki
+	modelData8  *modelutil.TestModelData // Wiki module: clones evergreen-ci/evergreen.wiki
 	taskConfig8 *internal.TaskConfig     // Wiki module
 
 	comm   *client.Mock
@@ -102,7 +102,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
 	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
-	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "wiki_mongo_module.yml")
+	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "wiki_module.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -174,7 +174,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig8.Expansions.Put("prefixpath", "hello")
 	s.taskConfig8.NewExpansions = agentutil.NewDynamicExpansions(s.taskConfig8.Expansions)
-	s.taskConfig8.BuildVariant.Modules = []string{"mongo-wiki"}
+	s.taskConfig8.BuildVariant.Modules = []string{"evergreen-wiki"}
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 	s.comm.CreateInstallationTokenFail = false
@@ -826,11 +826,7 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	s.Equal("hello/module-2", conf.ModulePaths["sample-2"])
 }
 
-// TestWikiModuleClonesMongoDBWiki runs git.get_project against a real project YAML with
-// module repo mongodb/mongo.wiki and verifies the wiki is cloned at remote HEAD (network).
-// Run only this test, with creds, e.g.:
-// SETTINGS_OVERRIDE=creds.yml make test-agent-command RUN_TEST=TestGitGetProjectSuite/TestWikiModuleClonesMongoDBWiki
-func (s *GitGetProjectSuite) TestWikiModuleClonesMongoDBWiki() {
+func (s *GitGetProjectSuite) TestCloningWikiModule() {
 	if testing.Short() {
 		s.T().Skip("skipping network integration test in short mode")
 	}
@@ -846,7 +842,7 @@ func (s *GitGetProjectSuite) TestWikiModuleClonesMongoDBWiki() {
 	s.taskConfig8.Task.Requester = evergreen.PatchVersionRequester
 	s.comm.GetTaskPatchResponse = &patch.Patch{
 		Patches: []patch.ModulePatch{
-			{ModuleName: "mongo-wiki", Githash: ignoredPatchHash},
+			{ModuleName: "evergreen-wiki", Githash: ignoredPatchHash},
 		},
 	}
 
@@ -863,7 +859,7 @@ func (s *GitGetProjectSuite) TestWikiModuleClonesMongoDBWiki() {
 		}
 	}
 
-	wikiDir := filepath.Join(conf.WorkDir, "src", "hello", "w", "mongo-wiki")
+	wikiDir := filepath.Join(conf.WorkDir, "src", "hello", "w", "evergreen-wiki")
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = wikiDir
 	var out bytes.Buffer
@@ -875,7 +871,7 @@ func (s *GitGetProjectSuite) TestWikiModuleClonesMongoDBWiki() {
 	s.NotEqual(ignoredPatchHash, ref, "set-module must not pin wiki revision")
 	s.NotEqual(ignoredYAMLRef, ref, "YAML ref must not pin wiki revision")
 	s.NoError(logger.Close())
-	s.Equal("hello/w", conf.ModulePaths["mongo-wiki"])
+	s.Equal("hello/w", conf.ModulePaths["evergreen-wiki"])
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
