@@ -168,6 +168,7 @@ func validateFeaturesHaveAliases(
 		if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
 			catcher.Errorf(msg, "GitHub checks")
 		}
+	// TODO DEVPROD-31532: no need for this once we remove GithubAndCQSection
 	default:
 		if newProjectRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
 			catcher.Errorf(msg, "PR testing")
