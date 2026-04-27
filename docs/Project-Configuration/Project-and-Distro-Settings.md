@@ -168,7 +168,7 @@ Options:
   visible on the projects page or by API routes. Note that private
   variables may still be accessible on [debug spawn hosts](../Hosts/Debug-Spawn-Hosts.md) by users,
   since these hosts run tasks on behalf of the user, which requires fetching expansions as part of that
-  process. For truly sensitive values, use **admin only** instead, as these will be restricted even on debug spawn hosts.
+  process. For values that must not be accessible even on debug hosts, use **admin only** instead, as these will be restricted even on debug spawn hosts.
   Additionally, private variables will be redacted from task logs. After
   saving them, private variables cannot be retrieved.
 - Checking **admin only** restricts the variable so it is only available
