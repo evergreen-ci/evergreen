@@ -148,6 +148,20 @@ func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, d
 		// Routes have returned an invalid body for some distros. See DEVPROD-7885.
 		RetryOnInvalidBody: true,
 		RetryOn413:         info.retryOn413,
+		OnRetry: func(fa utility.FailedAttempt) {
+			fields := message.Fields{
+				"message": "retrying Evergreen API request",
+				"attempt": fa.Attempt,
+				"delay":   fa.Delay.String(),
+				"method":  info.method,
+				"path":    info.path,
+				"error":   fa.Err,
+			}
+			if fa.Response != nil {
+				fields["status_code"] = fa.Response.StatusCode
+			}
+			grip.Warning(ctx, fields)
+		},
 	}
 	resp, err := utility.RetryRequest(ctx, r, opts)
 	if err != nil && resp != nil && resp.StatusCode == 400 {

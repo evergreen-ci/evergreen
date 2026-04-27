@@ -238,3 +238,5 @@ require (
 )
 
 tool github.com/99designs/gqlgen
+
+replace github.com/evergreen-ci/utility => github.com/zackarysantana/utility v0.0.0-20260427222747-125402ebb6b9
