@@ -168,8 +168,8 @@ func TestAddChildPatchesCostToParent(t *testing.T) {
 	})
 }
 
-// TestAPIPatchBuildFromServiceSkipsVersionCostWithNoDB make sure that when SkipVersionCost is true, the version cost is not populated.
-func TestAPIPatchBuildFromServiceSkipsVersionCostWithNoDB(t *testing.T) {
+// TestAPIPatchBuildFromServiceOmitsVersionCostWithoutOptIn ensures version cost is not loaded unless IncludeVersionCost is set.
+func TestAPIPatchBuildFromServiceOmitsVersionCostWithoutOptIn(t *testing.T) {
 	p := patch.Patch{
 		Id:          mgobson.NewObjectId(),
 		Description: "x",
@@ -182,7 +182,7 @@ func TestAPIPatchBuildFromServiceSkipsVersionCostWithNoDB(t *testing.T) {
 		Patches:     []patch.ModulePatch{{}},
 	}
 	var api APIPatch
-	err := api.BuildFromService(t.Context(), p, &APIPatchArgs{SkipVersionCost: true})
+	err := api.BuildFromService(t.Context(), p, &APIPatchArgs{})
 	require.NoError(t, err)
 	assert.Nil(t, api.Cost)
 	assert.Nil(t, api.PredictedCost)
@@ -226,7 +226,7 @@ func TestAPIPatchBuildFromServiceVersionCost(t *testing.T) {
 	}
 
 	var api APIPatch
-	require.NoError(t, api.BuildFromService(ctx, p, nil))
+	require.NoError(t, api.BuildFromService(ctx, p, &APIPatchArgs{IncludeVersionCost: true}))
 
 	require.NotNil(t, api.Cost)
 	assert.InDelta(t, 10.5, api.Cost.Total, 0.001)

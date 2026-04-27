@@ -626,7 +626,7 @@ func getJSONPatchDisplay(ctx context.Context, params outputPatchParams) (string,
 	display := []restModel.APIPatch{}
 	for _, p := range params.patches {
 		api := restModel.APIPatch{}
-		err := api.BuildFromService(ctx, p, &restModel.APIPatchArgs{SkipVersionCost: true})
+		err := api.BuildFromService(ctx, p, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "converting patch to API model")
 		}

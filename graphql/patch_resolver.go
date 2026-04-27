@@ -393,7 +393,9 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		if err := apiPatch.BuildFromService(ctx, p, nil); err != nil {
+		if err := apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
+			IncludeVersionCost: true,
+		}); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)

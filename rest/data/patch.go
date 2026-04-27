@@ -50,6 +50,7 @@ func FindPatchesByProject(ctx context.Context, projectId string, ts time.Time, l
 		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
+			IncludeVersionCost:       true,
 		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
@@ -81,6 +82,7 @@ func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, er
 	err = apiPatch.BuildFromService(ctx, *p, &restModel.APIPatchArgs{
 		IncludeChildPatches:      true,
 		IncludeProjectIdentifier: true,
+		IncludeVersionCost:       true,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
@@ -192,6 +194,7 @@ func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int
 		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
+			IncludeVersionCost:       true,
 		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
