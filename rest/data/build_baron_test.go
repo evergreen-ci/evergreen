@@ -68,7 +68,7 @@ func TestMakeJiraTicket(t *testing.T) {
 	}
 
 	t.Run("MakeJiraNotificationSucceedsWithDefaultIssueType", func(t *testing.T) {
-		n0, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{project: "EVG"})
+		n0, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{project: "EVG"}, "testuser")
 		assert.NoError(t, err)
 		require.NotNil(t, n0)
 		checkNotificationCreated(t, n0, event.JIRAIssueSubscriber{
@@ -77,7 +77,7 @@ func TestMakeJiraTicket(t *testing.T) {
 		})
 
 		// test that creating another ticket creates another notification
-		n1, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{project: "EVG"})
+		n1, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{project: "EVG"}, "testuser")
 		assert.NoError(t, err)
 		require.NotNil(t, n1)
 		assert.NotEqual(t, n1.ID, n0.ID)
@@ -90,7 +90,7 @@ func TestMakeJiraTicket(t *testing.T) {
 		n, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{
 			project:   "EVG",
 			issueType: "Bug",
-		})
+		}, "testuser")
 		assert.NoError(t, err)
 		require.NotZero(t, n)
 		checkNotificationCreated(t, n, event.JIRAIssueSubscriber{
@@ -99,9 +99,17 @@ func TestMakeJiraTicket(t *testing.T) {
 		})
 	})
 	t.Run("MakeJiraNotificationFailsWithoutProject", func(t *testing.T) {
-		n, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{})
+		n, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{}, "testuser")
 		assert.Error(t, err)
 		assert.Zero(t, n)
+	})
+	t.Run("MakeJiraNotificationStoresCreatedByInMetadata", func(t *testing.T) {
+		n, err := makeJiraNotification(ctx, &evgSettings, &t1, jiraTicketOptions{project: "EVG"}, "admin.user")
+		require.NoError(t, err)
+		require.NotNil(t, n)
+		assert.Equal(t, "admin.user", n.Metadata.CreatedBy)
+		assert.Equal(t, t1.Id, n.Metadata.TaskID)
+		assert.Equal(t, t1.Execution, n.Metadata.TaskExecution)
 	})
 
 }
