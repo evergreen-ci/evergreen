@@ -497,6 +497,16 @@ The GitHub App used for private clones must be installed on the **parent** repos
 
 Wiki modules are intended for use with **git.get_project** cloning. [Includes](#include) that pull project YAML from a module repository are not supported for wikis unless separately implemented.
 
+Example `modules` entry using a wiki repository:
+
+```yaml
+modules:
+  - name: product-wiki
+    owner: mongodb
+    repo: mongo.wiki
+    prefix: src/wiki
+```
+
 ### Pre and Post
 
 All projects can have a `pre` and `post` field which define a list of commands
