@@ -6,7 +6,6 @@ tasks:
       - command: git.get_project
         params:
           directory: src
-          token: ${github}
 
 # Official MongoDB product wiki: https://github.com/mongodb/mongo.wiki
 # branch/ref are ignored; Evergreen always clones default-branch HEAD.
