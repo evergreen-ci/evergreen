@@ -926,3 +926,17 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.InDelta(t, 0.21, v.Cost.AdjustedS3LogStorageCost, 0.001)
 	})
 }
+
+func TestGetManifestModuleWiki(t *testing.T) {
+	ctx := t.Context()
+	pRef := &ProjectRef{Owner: "foo", Repo: "bar"}
+	mod := Module{Name: "w", Owner: "myorg", Repo: "service.wiki", Branch: "master"}
+	m, err := getManifestModule(ctx, pRef, mod, evergreen.RepotrackerVersionRequester, "abc123")
+	require.NoError(t, err)
+	require.NotNil(t, m)
+	assert.Equal(t, "myorg", m.Owner)
+	assert.Equal(t, "service.wiki", m.Repo)
+	assert.Empty(t, m.Revision)
+	assert.Equal(t, "master", m.Branch)
+	assert.Empty(t, m.URL)
+}

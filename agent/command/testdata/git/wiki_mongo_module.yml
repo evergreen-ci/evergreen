@@ -1,0 +1,29 @@
+batch_time: 180
+
+tasks:
+  - name: testtask1
+    commands:
+      - command: git.get_project
+        params:
+          directory: src
+          token: ${github}
+
+# Official MongoDB product wiki: https://github.com/mongodb/mongo.wiki
+# branch/ref are ignored; Evergreen always clones default-branch HEAD.
+modules:
+  - name: mongo-wiki
+    owner: mongodb
+    repo: mongo.wiki
+    branch: main
+    ref: 0000000000000000000000000000000000000001
+    prefix: ${prefixpath}/w
+
+buildvariants:
+  - name: linux-64
+    display_name: Linux 64-bit
+    modules:
+      - mongo-wiki
+    test_flags: --continue-on-failure
+    expansions:
+      blah: "blah"
+    push: true

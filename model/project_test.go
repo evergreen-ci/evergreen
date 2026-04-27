@@ -2049,6 +2049,16 @@ func TestModuleList(t *testing.T) {
 	assert.False(projModules.IsIdentical(manifest4))
 }
 
+func TestWikiModuleRepoHelpers(t *testing.T) {
+	assert.True(t, IsWikiModuleRepo("mongo.wiki"))
+	assert.True(t, IsWikiModuleRepo("mongo.wiki.git"))
+	assert.False(t, IsWikiModuleRepo("mongo"))
+	assert.False(t, IsWikiModuleRepo("wiki"))
+	assert.Equal(t, "mongo", ParentRepoForGitHubAppToken("mongo.wiki"))
+	assert.Equal(t, "mongo", ParentRepoForGitHubAppToken("mongo.wiki.git"))
+	assert.Equal(t, "other", ParentRepoForGitHubAppToken("other"))
+}
+
 func TestInjectTaskGroupInfo(t *testing.T) {
 	tg := TaskGroup{
 		Name:     "group-one",

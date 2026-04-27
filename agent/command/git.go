@@ -161,6 +161,29 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	}, nil
 }
 
+// getCloneCommandForWikiModule runs a plain git clone to opts.dir. GitHub
+// wikis are cloned at the remote default branch (HEAD) only; branch, ref,
+// depth, and submodules are not used.
+func (opts cloneOpts) getCloneCommandForWikiModule() ([]string, error) {
+	if err := opts.validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid clone command options")
+	}
+
+	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
+	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
+	if opts.useVerbose {
+		clone = fmt.Sprintf("GIT_TRACE=1 %s", clone)
+	}
+
+	return []string{
+		"set +o xtrace",
+		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
+		clone,
+		"set -o xtrace",
+		fmt.Sprintf("cd %s", opts.dir),
+	}, nil
+}
+
 func moduleRevExpansionName(name string) string { return fmt.Sprintf("%s_rev", name) }
 
 func loadModulesManifestInToExpansions(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig) error {
@@ -261,6 +284,15 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	if opts.dir == "" {
 		return nil, errors.New("empty clone path")
 	}
+	if model.IsWikiModuleRepo(opts.repo) {
+		cloneCmd, err := opts.getCloneCommandForWikiModule()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting command to clone wiki")
+		}
+		gitCommands = append(gitCommands, cloneCmd...)
+		return gitCommands, nil
+	}
+
 	if ref == "" && !isGitHubPRModulePatch(conf, modulePatch) {
 		return nil, errors.New("empty ref/branch to check out")
 	}
@@ -478,45 +510,54 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	moduleBase := filepath.ToSlash(filepath.Join(conf.ModulePaths[module.Name], module.Name))
 
+	owner, repo, err := module.GetOwnerAndRepo()
+	if err != nil {
+		return errors.Wrapf(err, "getting owner and repo for '%s'", moduleName)
+	}
+	wiki := model.IsWikiModuleRepo(repo)
+
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
 	// We ignore set-module changes for commit queue and GitHub merge queue, since we should verify HEAD before merging.
+	// GitHub wikis are always cloned at remote HEAD; ref, set-module, manifest, and command params are ignored.
 	var modulePatch *patch.ModulePatch
 	var revision string
-	if p != nil {
-		modulePatch := p.FindModule(moduleName)
-		if modulePatch != nil {
-			if conf.Task.Requester == evergreen.GithubMergeRequester {
-				revision = module.Branch
-				c.logModuleRevision(ctx, logger, revision, moduleName, "defaulting to HEAD for merge")
-			} else {
-				revision = modulePatch.Githash
-				if revision != "" {
-					c.logModuleRevision(ctx, logger, revision, moduleName, "specified in set-module")
+	if !wiki {
+		if p != nil {
+			modulePatch = p.FindModule(moduleName)
+			if modulePatch != nil {
+				if conf.Task.Requester == evergreen.GithubMergeRequester {
+					revision = module.Branch
+					c.logModuleRevision(ctx, logger, revision, moduleName, "defaulting to HEAD for merge")
+				} else {
+					revision = modulePatch.Githash
+					if revision != "" {
+						c.logModuleRevision(ctx, logger, revision, moduleName, "specified in set-module")
+					}
 				}
 			}
 		}
-	}
-	if revision == "" {
-		revision = c.Revisions[moduleName]
-		if revision != "" {
-			c.logModuleRevision(ctx, logger, revision, moduleName, "specified as parameter to git.get_project")
+		if revision == "" {
+			revision = c.Revisions[moduleName]
+			if revision != "" {
+				c.logModuleRevision(ctx, logger, revision, moduleName, "specified as parameter to git.get_project")
+			}
 		}
-	}
-	if revision == "" {
-		revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
-		if revision != "" {
-			c.logModuleRevision(ctx, logger, revision, moduleName, "from manifest")
+		if revision == "" {
+			revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
+			if revision != "" {
+				c.logModuleRevision(ctx, logger, revision, moduleName, "from manifest")
+			}
 		}
-	}
-	// if there is no revision, then use the revision from the module, then branch name
-	if revision == "" {
-		if module.Ref != "" {
-			revision = module.Ref
-			c.logModuleRevision(ctx, logger, revision, moduleName, "ref field in config file")
-		} else {
-			revision = module.Branch
-			c.logModuleRevision(ctx, logger, revision, moduleName, "branch field in config file")
+		// if there is no revision, then use the revision from the module, then branch name
+		if revision == "" {
+			if module.Ref != "" {
+				revision = module.Ref
+				c.logModuleRevision(ctx, logger, revision, moduleName, "ref field in config file")
+			} else {
+				revision = module.Branch
+				c.logModuleRevision(ctx, logger, revision, moduleName, "branch field in config file")
+			}
 		}
 	}
 
@@ -529,11 +570,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// and repo from the string and save it to clone options so that the an https cloning link
 	// can be constructed manually by opts.setLocation.
 	// This is a temporary workaround which will be removed once users have switched over.
-	owner, repo, err := module.GetOwnerAndRepo()
-	if err != nil {
-		return errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
-	}
-
 	opts.owner = owner
 	opts.repo = repo
 	if strings.Contains(module.Repo, "git@github.com:") {
@@ -541,7 +577,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			" to https format. Please update your project config.", module.Repo)
 	}
 
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), opts.owner, opts.repo)
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, model.ParentRepoForGitHubAppToken(repo))
 	if err != nil {
 		return errors.Wrap(err, "creating app token")
 	}
