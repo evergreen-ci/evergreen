@@ -556,7 +556,8 @@ func TestValidateFeaturesHaveAliasesForGithubSections(t *testing.T) {
 			expectErr:      true,
 			wantSubstrings: []string{"Git tag"},
 			notSubstrings:  []string{"PR testing", "Commit queue", "GitHub checks"},
-		}, {
+		},
+		{
 			name:    "Commit checks tab passes with only GitHub checks alias",
 			section: model.ProjectPageCommitChecksSection,
 			aliases: makeAliases(evergreen.GithubChecksAlias),
