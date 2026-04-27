@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 )
@@ -101,7 +102,9 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 		conf.TestResultsCreatedAt = createdAt
 	}
 	if time.Since(conf.TestResultsCreatedAt) > maxTestResultsInterval {
-		return false, errors.Errorf("cannot append test results more than %s after the first upload", maxTestResultsInterval)
+		err := errors.Errorf("cannot append test results more than %s after the first upload", maxTestResultsInterval)
+		grip.Alert(ctx, err)
+		return false, err
 	}
 	info := makeTestResultsInfo(conf.Task, conf.DisplayTaskInfo)
 	newResults := makeTestResults(&conf.Task, results)
