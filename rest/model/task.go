@@ -130,6 +130,7 @@ type APITask struct {
 	BaseTask             APIBaseTaskInfo `json:"base_task"`
 	ResetWhenFinished    bool            `json:"reset_when_finished"`
 	HasAnnotations       bool            `json:"has_annotations"`
+	IsAutomaticRestart   bool            `json:"is_automatic_restart"`
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
@@ -390,6 +391,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 			PRClosed:   t.AbortInfo.PRClosed,
 		},
 		HasAnnotations:       t.HasAnnotations,
+		IsAutomaticRestart:   t.IsAutomaticRestart,
 		TestSelectionEnabled: t.TestSelectionEnabled,
 	}
 

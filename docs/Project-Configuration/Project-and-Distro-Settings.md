@@ -165,9 +165,12 @@ file via an expansion.
 Options:
 
 - Checking **private** makes the variable redacted so the value won't be
-  visible on the projects page or by API routes. Additionally, private
-  variables will be redacted from task logs. After saving them, private
-  variables cannot be retrieved.
+  visible on the projects page or by API routes. Note that private
+  variables may still be accessible on [debug spawn hosts](../Hosts/Debug-Spawn-Hosts.md) by users,
+  since these hosts run tasks on behalf of the user, which requires fetching expansions as part of that
+  process. For values that must not be accessible even on debug hosts, use **admin only** instead, as these will be restricted even on debug spawn hosts.
+  Additionally, private variables will be redacted from task logs. After
+  saving them, private variables cannot be retrieved.
 - Checking **admin only** restricts the variable so it is only available
   to tasks in mainline commits, periodic builds, or trigger versions, or
   to tasks activated by a project admin.

@@ -2,6 +2,7 @@ package util
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -74,4 +75,21 @@ func AZToRegion(az string) string {
 		return ""
 	}
 	return az[:len(az)-1]
+}
+
+// AWSAccountIDFromIAMARN returns the 12-digit AWS account ID from a standard IAM ARN
+// (for example arn:aws:iam::123456789012:role/name or ...:root).
+func AWSAccountIDFromIAMARN(arn string) (accountID string, ok bool) {
+	parts := strings.Split(arn, ":")
+	if len(parts) < 6 || parts[0] != "arn" || parts[1] != "aws" || parts[2] != "iam" {
+		return "", false
+	}
+	acct := parts[4]
+	if len(acct) != 12 {
+		return "", false
+	}
+	if _, err := strconv.ParseUint(acct, 10, 64); err != nil {
+		return "", false
+	}
+	return acct, true
 }

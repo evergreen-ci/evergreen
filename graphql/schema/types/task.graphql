@@ -104,6 +104,7 @@ type Task {
   hostId: String
   imageId: String!
   ingestTime: Time
+  isAutomaticRestart: Boolean!
   isPerfPluginEnabled: Boolean!
   latestExecution: Int!
   logs: TaskLogLinks!
@@ -336,7 +337,6 @@ type Cost {
   """Sum of adjusted cost components; excludes on-demand components."""
   total: Float
   childPatchesTotalCost: Float
-  onDemandEC2Cost: Float
   adjustedEC2Cost: Float
   adjustedEBSStorageCost: Float
   adjustedEBSThroughputCost: Float

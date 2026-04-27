@@ -4379,17 +4379,27 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 	}
 }
 
-// resolveArtifactExpirationDays looks up the expiration days for an artifact, falling back to DefaultMaxArtifactExpirationDays if no matching rule is found.
-func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (days int, found bool) {
+// resolveArtifactExpirationDays looks up the expiration days for an artifact. Non-Devprod-owned IAM roles are
+// skipped here as well as in s3usage.IncrementArtifacts so persisted usage and pricing stay aligned even for
+// older rows or config drift. When no lifecycle rule matches, DefaultMaxArtifactExpirationDays is used.
+func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey, awsRoleARN string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (days int, skipCost bool, usedLookup bool) {
+	storage := costConfig.S3Cost.Storage
+	if !evergreen.IsDevprodOwnedArtifactIAMRole(awsRoleARN, storage.DevprodOwnedAWSAccountIDs) {
+		return 0, true, false
+	}
+
 	if lookup != nil {
 		if days, ok := lookup(ctx, bucket, fileKey); ok {
-			return days, true
+			return days, false, true
 		}
 	}
-	return costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, false
+
+	return storage.DefaultMaxArtifactExpirationDays, false, false
 }
 
 // calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
+// Artifact PUT counts exclude non-DevProd-owned uploads when the allowlist is configured; that filtering
+// happens in s3usage.S3Usage.IncrementArtifacts (agent s3.put), so aggregates here already match priced PUTs.
 func (t *Task) calculateS3PutCosts(costConfig *evergreen.CostConfig) {
 	if t.S3Usage.Artifacts.PutRequests > 0 {
 		t.TaskCost.OnDemandS3ArtifactPutCost, t.TaskCost.AdjustedS3ArtifactPutCost = s3usage.CalculateS3PutCostWithConfig(t.S3Usage.Artifacts.PutRequests, costConfig)
@@ -4406,8 +4416,11 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	}
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
 		for _, fileEntry := range bucketEntry.Files {
-			days, found := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
-			if !found {
+			days, skipCost, usedLookup := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, bucketEntry.AWSRoleARN, lookup, costConfig)
+			if skipCost {
+				continue
+			}
+			if !usedLookup {
 				grip.Info(ctx, message.Fields{
 					"message": "no S3 lifecycle rule found for artifact bucket, using default expiration days",
 					"bucket":  bucketEntry.Bucket,

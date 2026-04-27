@@ -397,7 +397,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, err
 		}
 
-		if err = validateFeaturesHaveAliases(ctx, mergedBeforeRef, mergedSection, changes.Aliases); err != nil {
+		if err = validateFeaturesHaveAliases(ctx, mergedBeforeRef, mergedSection, changes.Aliases, section); err != nil {
 			return nil, err
 		}
 		if err = mergedSection.ValidateGitHubPermissionGroupsByRequester(); err != nil {

@@ -873,6 +873,8 @@ models:
         resolver: true
       estimatedStart:
         resolver: true
+      taskCost:
+        resolver: true
       executionSteps:
         resolver: true
       executionTasksFull:

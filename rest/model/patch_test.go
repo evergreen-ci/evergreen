@@ -168,6 +168,26 @@ func TestAddChildPatchesCostToParent(t *testing.T) {
 	})
 }
 
+// TestAPIPatchBuildFromServiceOmitsVersionCostWithoutOptIn ensures version cost is not loaded unless IncludeVersionCost is set.
+func TestAPIPatchBuildFromServiceOmitsVersionCostWithoutOptIn(t *testing.T) {
+	p := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Description: "x",
+		Project:     "mci",
+		Branch:      "main",
+		Githash:     "g",
+		Author:      "a",
+		PatchNumber: 1,
+		Version:     "version-id-would-need-DB",
+		Patches:     []patch.ModulePatch{{}},
+	}
+	var api APIPatch
+	err := api.BuildFromService(t.Context(), p, &APIPatchArgs{})
+	require.NoError(t, err)
+	assert.Nil(t, api.Cost)
+	assert.Nil(t, api.PredictedCost)
+}
+
 func TestAPIPatchBuildFromServiceVersionCost(t *testing.T) {
 	ctx := t.Context()
 	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection))
@@ -206,7 +226,7 @@ func TestAPIPatchBuildFromServiceVersionCost(t *testing.T) {
 	}
 
 	var api APIPatch
-	require.NoError(t, api.BuildFromService(ctx, p, nil))
+	require.NoError(t, api.BuildFromService(ctx, p, &APIPatchArgs{IncludeVersionCost: true}))
 
 	require.NotNil(t, api.Cost)
 	assert.InDelta(t, 10.5, api.Cost.Total, 0.001)

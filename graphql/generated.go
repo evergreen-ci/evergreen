@@ -414,7 +414,6 @@ type ComplexityRoot struct {
 		AdjustedS3LogPutCost          func(childComplexity int) int
 		AdjustedS3LogStorageCost      func(childComplexity int) int
 		ChildPatchesTotalCost         func(childComplexity int) int
-		OnDemandEC2Cost               func(childComplexity int) int
 		Total                         func(childComplexity int) int
 	}
 
@@ -1925,6 +1924,7 @@ type ComplexityRoot struct {
 		ImageID                 func(childComplexity int) int
 		IngestTime              func(childComplexity int) int
 		InvalidatedByUpstream   func(childComplexity int) int
+		IsAutomaticRestart      func(childComplexity int) int
 		IsPerfPluginEnabled     func(childComplexity int) int
 		LatestExecution         func(childComplexity int) int
 		Logs                    func(childComplexity int) int
@@ -2763,6 +2763,7 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
+	TaskCost(ctx context.Context, obj *model.APITask) (*cost.Cost, error)
 
 	TaskOwnerTeam(ctx context.Context, obj *model.APITask) (*TaskOwnerTeam, error)
 	Tests(ctx context.Context, obj *model.APITask, opts *TestFilterOptions) (*TaskTestResult, error)
@@ -4171,12 +4172,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Cost.ChildPatchesTotalCost(childComplexity), true
-	case "Cost.onDemandEC2Cost":
-		if e.complexity.Cost.OnDemandEC2Cost == nil {
-			break
-		}
-
-		return e.complexity.Cost.OnDemandEC2Cost(childComplexity), true
 	case "Cost.total":
 		if e.complexity.Cost.Total == nil {
 			break
@@ -10814,6 +10809,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.InvalidatedByUpstream(childComplexity), true
+	case "Task.isAutomaticRestart":
+		if e.complexity.Task.IsAutomaticRestart == nil {
+			break
+		}
+
+		return e.complexity.Task.IsAutomaticRestart(childComplexity), true
 	case "Task.isPerfPluginEnabled":
 		if e.complexity.Task.IsPerfPluginEnabled == nil {
 			break
@@ -20296,6 +20297,8 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -24128,35 +24131,6 @@ func (ec *executionContext) _Cost_childPatchesTotalCost(ctx context.Context, fie
 }
 
 func (ec *executionContext) fieldContext_Cost_childPatchesTotalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Cost",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Cost_onDemandEC2Cost(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Cost_onDemandEC2Cost,
-		func(ctx context.Context) (any, error) {
-			return obj.OnDemandEC2Cost, nil
-		},
-		nil,
-		ec.marshalOFloat2float64,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Cost_onDemandEC2Cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Cost",
 		Field:      field,
@@ -29160,6 +29134,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -32661,6 +32637,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -35395,6 +35373,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -39387,6 +39367,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -39610,6 +39592,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -39833,6 +39817,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -40056,6 +40042,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -40279,6 +40267,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -40502,6 +40492,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -40725,6 +40717,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -41973,6 +41967,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -45370,8 +45366,6 @@ func (ec *executionContext) fieldContext_Patch_cost(_ context.Context, field gra
 				return ec.fieldContext_Cost_total(ctx, field)
 			case "childPatchesTotalCost":
 				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "adjustedEBSStorageCost":
@@ -45421,8 +45415,6 @@ func (ec *executionContext) fieldContext_Patch_predictedCost(_ context.Context, 
 				return ec.fieldContext_Cost_total(ctx, field)
 			case "childPatchesTotalCost":
 				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "adjustedEBSStorageCost":
@@ -53636,6 +53628,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -53859,6 +53853,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -61332,6 +61328,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -62130,6 +62128,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -62529,6 +62529,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -62949,6 +62951,8 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -63149,6 +63153,35 @@ func (ec *executionContext) fieldContext_Task_ingestTime(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_isAutomaticRestart(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Task_isAutomaticRestart,
+		func(ctx context.Context) (any, error) {
+			return obj.IsAutomaticRestart, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Task_isAutomaticRestart(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -63402,6 +63435,8 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -63613,6 +63648,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -63824,6 +63861,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -64035,6 +64074,8 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -64440,6 +64481,8 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -64651,6 +64694,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -64862,6 +64907,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -65073,6 +65120,8 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -65767,7 +65816,7 @@ func (ec *executionContext) _Task_taskCost(ctx context.Context, field graphql.Co
 		field,
 		ec.fieldContext_Task_taskCost,
 		func(ctx context.Context) (any, error) {
-			return obj.TaskCost, nil
+			return ec.resolvers.Task().TaskCost(ctx, obj)
 		},
 		nil,
 		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
@@ -65780,16 +65829,14 @@ func (ec *executionContext) fieldContext_Task_taskCost(_ context.Context, field 
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "total":
 				return ec.fieldContext_Cost_total(ctx, field)
 			case "childPatchesTotalCost":
 				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "adjustedEBSStorageCost":
@@ -65839,8 +65886,6 @@ func (ec *executionContext) fieldContext_Task_predictedTaskCost(_ context.Contex
 				return ec.fieldContext_Cost_total(ctx, field)
 			case "childPatchesTotalCost":
 				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "adjustedEBSStorageCost":
@@ -67408,6 +67453,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -71624,6 +71671,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -73590,8 +73639,6 @@ func (ec *executionContext) fieldContext_Version_cost(_ context.Context, field g
 				return ec.fieldContext_Cost_total(ctx, field)
 			case "childPatchesTotalCost":
 				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "adjustedEBSStorageCost":
@@ -74169,8 +74216,6 @@ func (ec *executionContext) fieldContext_Version_predictedCost(_ context.Context
 				return ec.fieldContext_Cost_total(ctx, field)
 			case "childPatchesTotalCost":
 				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "adjustedEBSStorageCost":
@@ -75139,8 +75184,6 @@ func (ec *executionContext) fieldContext_VersionLite_cost(_ context.Context, fie
 				return ec.fieldContext_Cost_total(ctx, field)
 			case "childPatchesTotalCost":
 				return ec.fieldContext_Cost_childPatchesTotalCost(ctx, field)
-			case "onDemandEC2Cost":
-				return ec.fieldContext_Cost_onDemandEC2Cost(ctx, field)
 			case "adjustedEC2Cost":
 				return ec.fieldContext_Cost_adjustedEC2Cost(ctx, field)
 			case "adjustedEBSStorageCost":
@@ -75869,6 +75912,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
@@ -91918,8 +91963,6 @@ func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "childPatchesTotalCost":
 			out.Values[i] = ec._Cost_childPatchesTotalCost(ctx, field, obj)
-		case "onDemandEC2Cost":
-			out.Values[i] = ec._Cost_onDemandEC2Cost(ctx, field, obj)
 		case "adjustedEC2Cost":
 			out.Values[i] = ec._Cost_adjustedEC2Cost(ctx, field, obj)
 		case "adjustedEBSStorageCost":
@@ -105276,6 +105319,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "ingestTime":
 			out.Values[i] = ec._Task_ingestTime(ctx, field, obj)
+		case "isAutomaticRestart":
+			out.Values[i] = ec._Task_isAutomaticRestart(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "isPerfPluginEnabled":
 			field := field
 
@@ -105932,7 +105980,38 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "taskCost":
-			out.Values[i] = ec._Task_taskCost(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_taskCost(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "predictedTaskCost":
 			out.Values[i] = ec._Task_predictedTaskCost(ctx, field, obj)
 		case "taskOwnerTeam":

@@ -408,6 +408,13 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.Parameters[param.Key] = param.Value
 	}
 
+	var costCfg evergreen.CostConfig
+	if err := costCfg.Get(ctx); err != nil {
+		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
+	} else {
+		res.DevprodOwnedAWSAccountIDs = costCfg.S3Cost.Storage.DevprodOwnedAWSAccountIDs
+	}
+
 	return gimlet.NewJSONResponse(res)
 }
 

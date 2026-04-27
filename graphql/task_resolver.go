@@ -742,6 +742,24 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	return &TaskLogs{TaskID: utility.FromStringPtr(obj.Id), Execution: obj.Execution}, nil
 }
 
+// TaskCost is the field resolver for Task.taskCost. It applies RoundCost to all
+// adjusted fields so the GraphQL API returns clean values without floating-point noise.
+func (r *taskResolver) TaskCost(ctx context.Context, obj *restModel.APITask) (*cost.Cost, error) {
+	if obj.TaskCost == nil {
+		return nil, nil
+	}
+	rounded := cost.Cost{
+		AdjustedEC2Cost:               cost.RoundCost(obj.TaskCost.AdjustedEC2Cost),
+		AdjustedEBSThroughputCost:     cost.RoundCost(obj.TaskCost.AdjustedEBSThroughputCost),
+		AdjustedEBSStorageCost:        cost.RoundCost(obj.TaskCost.AdjustedEBSStorageCost),
+		AdjustedS3ArtifactPutCost:     cost.RoundCost(obj.TaskCost.AdjustedS3ArtifactPutCost),
+		AdjustedS3LogPutCost:          cost.RoundCost(obj.TaskCost.AdjustedS3LogPutCost),
+		AdjustedS3ArtifactStorageCost: cost.RoundCost(obj.TaskCost.AdjustedS3ArtifactStorageCost),
+		AdjustedS3LogStorageCost:      cost.RoundCost(obj.TaskCost.AdjustedS3LogStorageCost),
+	}
+	return &rounded, nil
+}
+
 // TaskOwnerTeam is the resolver for the taskOwnerTeam field.
 func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
 	fwsBaseURL := evergreen.GetEnvironment().Settings().FWS.URL
