@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -17,6 +18,16 @@ const (
 	WorkDirInContainer = "/work"
 )
 
+// Mount is a host→container bind mount layered on top of the workdir mount.
+// Used by the GOAL-279 design's host-bind toolchain delivery (e.g. host /opt
+// mounted read-only into the container) so toolchains live on the host and
+// are not baked into the image.
+type Mount struct {
+	Source   string // Absolute host path.
+	Target   string // Absolute container path.
+	ReadOnly bool
+}
+
 // Config holds the parameters for creating a task isolation container.
 type Config struct {
 	Image    string
@@ -24,6 +35,10 @@ type Config struct {
 	TaskID   string
 	MemoryMB int64 // 0 means no limit.
 	CPUs     int64 // 0 means no limit. In units of whole CPUs.
+
+	// ExtraMounts are additional host→container bind mounts layered on top
+	// of the workdir mount. Sources and targets must be absolute paths.
+	ExtraMounts []Mount
 }
 
 func (c Config) Validate() error {
@@ -35,6 +50,14 @@ func (c Config) Validate() error {
 	}
 	if c.TaskID == "" {
 		return errors.New("task ID is required")
+	}
+	for i, m := range c.ExtraMounts {
+		if !filepath.IsAbs(m.Source) {
+			return errors.Errorf("extra mount %d source must be absolute, got %q", i, m.Source)
+		}
+		if !filepath.IsAbs(m.Target) {
+			return errors.Errorf("extra mount %d target must be absolute, got %q", i, m.Target)
+		}
 	}
 	return nil
 }
@@ -77,13 +100,23 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		Tty:        false,
 	}
 
+	mounts := []mount.Mount{{
+		Type:   mount.TypeBind,
+		Source: cfg.WorkDir,
+		Target: WorkDirInContainer,
+	}}
+	for _, m := range cfg.ExtraMounts {
+		mounts = append(mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   m.Source,
+			Target:   m.Target,
+			ReadOnly: m.ReadOnly,
+		})
+	}
+
 	hostCfg := &container.HostConfig{
-		Init: boolPtr(true),
-		Mounts: []mount.Mount{{
-			Type:   mount.TypeBind,
-			Source: cfg.WorkDir,
-			Target: WorkDirInContainer,
-		}},
+		Init:   boolPtr(true),
+		Mounts: mounts,
 	}
 
 	if cfg.MemoryMB > 0 {
