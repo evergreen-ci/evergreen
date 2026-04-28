@@ -404,7 +404,10 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
+			IncludeProjectIdentifier: true,
+			IncludeVersionCost:       true,
+		})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id, err.Error()))
 		}

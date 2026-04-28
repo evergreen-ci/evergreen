@@ -290,7 +290,13 @@
               "vars": {
                 "goodbye": ""
               }
-            }
+            },
+            "aliases": [
+              { "alias": "__commit_queue" },
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" }
+            ]
           }
         }
       }
@@ -314,7 +320,14 @@
               "vars": {
                 "goodbye": ""
               }
-            }
+            },
+            "aliases": [
+              { "alias": "__commit_queue" },
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" }
+            ]
           }
         }
       }
@@ -333,7 +346,14 @@
               "vars": {
                 "goodbye": ""
               }
-            }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" }
+            ]
           }
         }
       }
@@ -350,7 +370,15 @@
               "vars": {
                 "goodbye": ""
               }
-            }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" },
+              { "alias": "__github_checks" }
+            ]
           }
         }
       }

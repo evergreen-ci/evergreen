@@ -29,5 +29,8 @@ mutation {
     vars {
       vars ## should be unchanged
     }
+    aliases {
+      alias
+    }
   }
 }

@@ -20,13 +20,17 @@ type Loaders struct {
 	VersionLoader *dataloadgen.Loader[string, *model.Version]
 }
 
+// loaderWait is how long each dataloader waits for additional keys before
+// firing its batch. dataloadgen sets a default of 16ms which is a bit high.
+const loaderWait = 5 * time.Millisecond
+
 // New instantiates data loaders for the middleware.
 func New() *Loaders {
 	ur := &userReader{}
 	vr := &versionReader{}
 	return &Loaders{
-		UserLoader:    dataloadgen.NewMappedLoader(ur.getUsers, dataloadgen.WithWait(time.Millisecond)),
-		VersionLoader: dataloadgen.NewMappedLoader(vr.getVersions, dataloadgen.WithWait(time.Millisecond)),
+		UserLoader:    dataloadgen.NewMappedLoader(ur.getUsers, dataloadgen.WithWait(loaderWait)),
+		VersionLoader: dataloadgen.NewMappedLoader(vr.getVersions, dataloadgen.WithWait(loaderWait)),
 	}
 }
 

@@ -1021,7 +1021,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			}
 			taskIDsAttempted = append(taskIDsAttempted, t.Id)
 			sourceCfg := output.TaskLogs.BucketConfig
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerWeeklyRetry)), "enqueueing move logs job for task '%s'", t.Id)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerHourlyRetry)), "enqueueing move logs job for task '%s'", t.Id)
 		}
 
 		grip.Info(ctx, message.Fields{

@@ -148,6 +148,22 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 	})
 }
 
+func TestAWSAccountIDMatchesConfiguredList(t *testing.T) {
+	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{"123456789012"}))
+	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{" 123456789012 "}))
+	assert.False(t, IsInDevProdOwnedAccountList("123456789012", []string{"999999999999"}))
+	assert.False(t, IsInDevProdOwnedAccountList("123456789012", nil))
+}
+
+func TestIsDevprodOwnedArtifactIAMRole(t *testing.T) {
+	role123 := "arn:aws:iam::123456789012:role/r"
+	assert.True(t, IsDevprodOwnedArtifactIAMRole(role123, nil))
+	assert.True(t, IsDevprodOwnedArtifactIAMRole(role123, []string{}))
+	assert.True(t, IsDevprodOwnedArtifactIAMRole(role123, []string{"123456789012"}))
+	assert.False(t, IsDevprodOwnedArtifactIAMRole(role123, []string{"999999999999"}))
+	assert.False(t, IsDevprodOwnedArtifactIAMRole("", []string{"123456789012"}))
+}
+
 func TestCostConfigIsConfigured(t *testing.T) {
 	t.Run("EmptyConfig", func(t *testing.T) {
 		c := CostConfig{}

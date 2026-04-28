@@ -274,6 +274,62 @@ func TestGetVersion(t *testing.T) {
 	})
 }
 
+func TestPreloadVersions(t *testing.T) {
+	require.NoError(t, db.Clear(model.VersionCollection))
+
+	testVersions := []model.Version{
+		{Id: "preload1", Revision: "rev1", Author: "author1"},
+		{Id: "preload2", Revision: "rev2", Author: "author2"},
+		{Id: "preload3", Revision: "rev3", Author: "author3"},
+	}
+	for _, v := range testVersions {
+		require.NoError(t, v.Insert(t.Context()))
+	}
+
+	t.Run("EmptySliceIsNoOp", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadVersions(ctx, nil)
+			PreloadVersions(ctx, []string{})
+		})
+	})
+
+	t.Run("PrimesCacheSoLaterLoadsSkipDB", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		PreloadVersions(ctx, []string{"preload1", "preload2", "preload3"})
+
+		// Once preloaded the values should live in the dataloader's thunk cache.
+		// Drop the underlying collection to prove subsequent GetVersion calls
+		// don't hit MongoDB.
+		require.NoError(t, db.Clear(model.VersionCollection))
+
+		for _, id := range []string{"preload1", "preload2", "preload3"} {
+			result, err := GetVersion(ctx, id)
+			require.NoError(t, err)
+			require.NotNil(t, result, "expected cached version '%s'", id)
+			assert.Equal(t, id, result.Id)
+		}
+	})
+
+	t.Run("DuplicateIDsAreDeduped", func(t *testing.T) {
+		require.NoError(t, db.Clear(model.VersionCollection))
+		for _, v := range testVersions {
+			require.NoError(t, v.Insert(t.Context()))
+		}
+
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadVersions(ctx, []string{"preload1", "preload1", "preload2"})
+		})
+
+		result, err := GetVersion(ctx, "preload1")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "preload1", result.Id)
+	})
+}
+
 func TestMiddleware(t *testing.T) {
 	t.Run("InjectsLoadersIntoContext", func(t *testing.T) {
 		var capturedCtx context.Context

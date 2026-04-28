@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -1282,13 +1283,18 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 	}
 
 	apiTasks := []*restModel.APITask{}
+	versionIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, apiTask)
+		if t.Version != "" {
+			versionIDs = append(versionIDs, t.Version)
+		}
 	}
+	loaders.PreloadVersions(ctx, versionIDs)
 
 	latestTask, err := model.GetLatestMainlineTask(ctx, opts)
 	if err != nil {
