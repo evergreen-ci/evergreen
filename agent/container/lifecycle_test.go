@@ -46,3 +46,34 @@ func TestContainerName(t *testing.T) {
 	name := cfg.containerName()
 	assert.Equal(t, "evergreen-task-abc123_def456_24_08_01_12_00_00", name)
 }
+
+func TestExtraMountsValidation(t *testing.T) {
+	base := Config{
+		Image:   "ubuntu:22.04",
+		WorkDir: "/tmp/work",
+		TaskID:  "task123",
+	}
+
+	t.Run("EmptyExtraMounts", func(t *testing.T) {
+		cfg := base
+		assert.NoError(t, cfg.Validate())
+	})
+
+	t.Run("AbsoluteReadOnlyMount", func(t *testing.T) {
+		cfg := base
+		cfg.ExtraMounts = []Mount{{Source: "/opt", Target: "/opt", ReadOnly: true}}
+		assert.NoError(t, cfg.Validate())
+	})
+
+	t.Run("RelativeSourceRejected", func(t *testing.T) {
+		cfg := base
+		cfg.ExtraMounts = []Mount{{Source: "opt", Target: "/opt"}}
+		assert.ErrorContains(t, cfg.Validate(), "source must be absolute")
+	})
+
+	t.Run("RelativeTargetRejected", func(t *testing.T) {
+		cfg := base
+		cfg.ExtraMounts = []Mount{{Source: "/opt", Target: "opt"}}
+		assert.ErrorContains(t, cfg.Validate(), "target must be absolute")
+	})
+}
