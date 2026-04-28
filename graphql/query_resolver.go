@@ -1346,11 +1346,11 @@ func (r *queryResolver) TaskHistoryByCreateTime(ctx context.Context, options Tas
 	}
 
 	if options.CursorParams.Direction == TaskHistoryDirectionBefore {
-		opts.UpperBound = &taskCreateTime
+		opts.UpperBound = utility.ToTimePtr(taskCreateTime)
 		opts.IncludeUpperBound = includeCursor
 	}
 	if options.CursorParams.Direction == TaskHistoryDirectionAfter {
-		opts.LowerBound = &taskCreateTime
+		opts.LowerBound = utility.ToTimePtr(taskCreateTime)
 		opts.IncludeLowerBound = includeCursor
 	}
 
@@ -1366,13 +1366,18 @@ func (r *queryResolver) TaskHistoryByCreateTime(ctx context.Context, options Tas
 	}
 
 	apiTasks := []*restModel.APITask{}
+	versionIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, apiTask)
+		if t.Version != "" {
+			versionIDs = append(versionIDs, t.Version)
+		}
 	}
+	loaders.PreloadVersions(ctx, versionIDs)
 
 	latestTask, err := model.GetLatestMainlineTaskByCreateTime(ctx, opts)
 	if err != nil {
