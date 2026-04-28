@@ -2128,6 +2128,7 @@ type ComplexityRoot struct {
 
 	TestLog struct {
 		LineNum       func(childComplexity int) int
+		LogsToMerge   func(childComplexity int) int
 		RenderingType func(childComplexity int) int
 		TestName      func(childComplexity int) int
 		URL           func(childComplexity int) int
@@ -11682,6 +11683,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TestLog.LineNum(childComplexity), true
+	case "TestLog.logsToMerge":
+		if e.complexity.TestLog.LogsToMerge == nil {
+			break
+		}
+
+		return e.complexity.TestLog.LogsToMerge(childComplexity), true
 	case "TestLog.renderingType":
 		if e.complexity.TestLog.RenderingType == nil {
 			break
@@ -69503,6 +69510,93 @@ func (ec *executionContext) fieldContext_TestLog_lineNum(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _TestLog_logsToMerge(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestLog_logsToMerge,
+		func(ctx context.Context) (any, error) {
+			return obj.LogsToMerge, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestLog_logsToMerge(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestLog_renderingType(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestLog_renderingType,
+		func(ctx context.Context) (any, error) {
+			return obj.RenderingType, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestLog_renderingType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestLog_testName(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestLog_testName,
+		func(ctx context.Context) (any, error) {
+			return obj.TestName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestLog_testName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TestLog_url(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -69578,64 +69672,6 @@ func (ec *executionContext) _TestLog_urlRaw(ctx context.Context, field graphql.C
 }
 
 func (ec *executionContext) fieldContext_TestLog_urlRaw(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TestLog",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TestLog_renderingType(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TestLog_renderingType,
-		func(ctx context.Context) (any, error) {
-			return obj.RenderingType, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TestLog_renderingType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TestLog",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TestLog_testName(ctx context.Context, field graphql.CollectedField, obj *model.TestLogs) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TestLog_testName,
-		func(ctx context.Context) (any, error) {
-			return obj.TestName, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_TestLog_testName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TestLog",
 		Field:      field,
@@ -69906,16 +69942,18 @@ func (ec *executionContext) fieldContext_TestResult_logs(_ context.Context, fiel
 			switch field.Name {
 			case "lineNum":
 				return ec.fieldContext_TestLog_lineNum(ctx, field)
+			case "logsToMerge":
+				return ec.fieldContext_TestLog_logsToMerge(ctx, field)
+			case "renderingType":
+				return ec.fieldContext_TestLog_renderingType(ctx, field)
+			case "testName":
+				return ec.fieldContext_TestLog_testName(ctx, field)
 			case "url":
 				return ec.fieldContext_TestLog_url(ctx, field)
 			case "urlParsley":
 				return ec.fieldContext_TestLog_urlParsley(ctx, field)
 			case "urlRaw":
 				return ec.fieldContext_TestLog_urlRaw(ctx, field)
-			case "renderingType":
-				return ec.fieldContext_TestLog_renderingType(ctx, field)
-			case "testName":
-				return ec.fieldContext_TestLog_testName(ctx, field)
 			case "version":
 				return ec.fieldContext_TestLog_version(ctx, field)
 			}
@@ -107454,16 +107492,18 @@ func (ec *executionContext) _TestLog(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = graphql.MarshalString("TestLog")
 		case "lineNum":
 			out.Values[i] = ec._TestLog_lineNum(ctx, field, obj)
+		case "logsToMerge":
+			out.Values[i] = ec._TestLog_logsToMerge(ctx, field, obj)
+		case "renderingType":
+			out.Values[i] = ec._TestLog_renderingType(ctx, field, obj)
+		case "testName":
+			out.Values[i] = ec._TestLog_testName(ctx, field, obj)
 		case "url":
 			out.Values[i] = ec._TestLog_url(ctx, field, obj)
 		case "urlParsley":
 			out.Values[i] = ec._TestLog_urlParsley(ctx, field, obj)
 		case "urlRaw":
 			out.Values[i] = ec._TestLog_urlRaw(ctx, field, obj)
-		case "renderingType":
-			out.Values[i] = ec._TestLog_renderingType(ctx, field, obj)
-		case "testName":
-			out.Values[i] = ec._TestLog_testName(ctx, field, obj)
 		case "version":
 			out.Values[i] = ec._TestLog_version(ctx, field, obj)
 		default:

@@ -504,6 +504,27 @@
           }
         }
       }
+    },
+    {
+      "query_file": "logs_to_merge.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "logs_to_merge_task",
+            "execution": 0,
+            "tests": {
+              "testResults": [
+                {
+                  "id": "TestLogsToMerge",
+                  "logs": {
+                    "logsToMerge": ["job1", "job2"]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }
