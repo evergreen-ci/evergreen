@@ -67809,6 +67809,8 @@ func (ec *executionContext) fieldContext_TaskHistoryByCreateTime_tasks(_ context
 				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
 			case "isPerfPluginEnabled":
 				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
 			case "latestExecution":
