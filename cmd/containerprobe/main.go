@@ -1,7 +1,8 @@
 // containerprobe exercises agent/container.CreateAndStart end-to-end against
-// a local Docker daemon, then runs the GOAL-279 PoC success criteria
+// a local Docker daemon, then runs the GOAL-279 v2 PoC success criteria
 // against the resulting container so reviewers can see real evidence
-// that the per-task isolation mechanism works on a real distro image.
+// that the per-task isolation mechanism works on a real distro image
+// produced by the imagebuild filesystem-snapshot flow.
 //
 // Not part of any production build.
 package main
@@ -14,7 +15,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/container"
@@ -23,14 +27,12 @@ import (
 	"github.com/mongodb/jasper/options"
 )
 
-// toolchainBin is the directory inside the image where the buildhost-configuration
-// toolchain installs its compilers. v4 is the current default for ubuntu2204.
-const toolchainBin = "/opt/mongodbtoolchain/v4/bin"
-
 func main() {
 	image := flag.String("image", "evergreen-task-image/ubuntu2204:dev", "Docker image for the probe")
 	memoryMB := flag.Int64("memory-mb", 0, "Memory limit in MB (0 for none)")
 	cpus := flag.Int64("cpus", 0, "CPU limit in whole cores (0 for none)")
+	defaultOpt, _ := os.UserHomeDir()
+	optPath := flag.String("opt-path", filepath.Join(defaultOpt, "poc-opt"), "Host directory bind-mounted read-only at /opt inside the container")
 	flag.Parse()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -46,13 +48,22 @@ func main() {
 		workDir = resolved
 	}
 
+	// Auto-populate $optPath with a marker if it's empty so the harness works
+	// out of the box. Real toolchains (Go, Python, etc.) can be dropped in here
+	// later for a richer test — see the README.
+	if err := ensureOptPopulated(*optPath); err != nil {
+		log.Fatalf("populate opt-path: %v", err)
+	}
+
+	// Pre-flight criterion #3: with no /opt bind mount, ls /opt inside the
+	// image should be empty — proves imagebuild's tarSystem exclude list
+	// dropped /opt at image-build time.
+	preflight := preflightImageExcludesOpt(ctx, *image)
+
 	// In the real agent flow, the agent reads container settings from
 	// TaskConfig.Distro.ContainerIsolation (apimodels.ContainerIsolationSettings)
-	// and uses TaskConfig.WorkDir + TaskConfig.Task.Id to populate a
-	// container.Config; after CreateAndStart it sets TaskConfig.ContainerID.
-	// `agent/internal` is a Go-internal package and can't be imported from
-	// cmd/, so the harness drives container.Config directly while
-	// constructing the same DistroView shape the agent would receive.
+	// and drives a container.Config from there. The harness constructs the
+	// same DistroView shape and adds the v2-specific /opt bind mount.
 	taskID := fmt.Sprintf("probe-%d", time.Now().Unix())
 	distro := &apimodels.DistroView{
 		ContainerIsolation: &apimodels.ContainerIsolationSettings{
@@ -62,20 +73,24 @@ func main() {
 		},
 	}
 
-	fmt.Printf("→ CreateAndStart image=%s task=%s workdir=%s\n", *image, taskID, workDir)
+	fmt.Printf("→ CreateAndStart image=%s task=%s workdir=%s opt=%s\n", *image, taskID, workDir, *optPath)
 	cnt, err := container.CreateAndStart(ctx, container.Config{
 		Image:    distro.ContainerIsolation.Image,
 		WorkDir:  workDir,
 		TaskID:   taskID,
 		MemoryMB: distro.ContainerIsolation.MemoryMB,
 		CPUs:     distro.ContainerIsolation.CPUs,
+		ExtraMounts: []container.Mount{
+			{Source: *optPath, Target: "/opt", ReadOnly: true},
+		},
 	})
 	if err != nil {
 		log.Fatalf("CreateAndStart: %v", err)
 	}
 	fmt.Printf("✓ started container id=%s name=%s\n", cnt.ID[:12], cnt.Name)
 
-	results := runChecks(ctx, cnt.ID, workDir)
+	results := []checkResult{preflight}
+	results = append(results, runChecks(ctx, cnt.ID, workDir, *optPath)...)
 
 	fmt.Println("→ Destroy")
 	destroyErr := cnt.Destroy(context.Background())
@@ -105,29 +120,83 @@ type checkResult struct {
 	detail string
 }
 
-func runChecks(ctx context.Context, containerID, workDir string) []checkResult {
-	results := []checkResult{}
-	// helpers ----------------------------------------------------------------
+// getSysUID extracts the owning UID from a unix stat result. The PoC only
+// runs on macOS/Linux, so a direct *syscall.Stat_t assertion is sufficient.
+func getSysUID(fi os.FileInfo) (int, bool) {
+	s, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, false
+	}
+	return int(s.Uid), true
+}
 
-	// execIn runs argv inside the container with the toolchain on PATH and
-	// /work as the working directory. Approach B from the PoC plan: the
-	// agent's WrapWithContainer doesn't set --workdir or forward env, so
-	// we build the docker-exec args directly when those matter.
+func mark(pass bool) string {
+	if pass {
+		return "✓"
+	}
+	return "✗"
+}
+
+// ensureOptPopulated drops a small marker into optPath if it is missing or
+// empty. Lets the harness run out of the box without requiring the operator
+// to install a real toolchain first.
+func ensureOptPopulated(optPath string) error {
+	if err := os.MkdirAll(optPath, 0o755); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(optPath)
+	if err != nil {
+		return err
+	}
+	if len(entries) > 0 {
+		return nil
+	}
+	markerDir := filepath.Join(optPath, "marker", "bin")
+	if err := os.MkdirAll(markerDir, 0o755); err != nil {
+		return err
+	}
+	script := "#!/bin/sh\necho 'PoC v2 toolchain marker'\n"
+	return os.WriteFile(filepath.Join(markerDir, "version"), []byte(script), 0o755)
+}
+
+// preflightImageExcludesOpt runs `docker run --rm <image> ls /opt` and asserts
+// the output is empty (the imagebuild exclude list dropped /opt during snapshot).
+func preflightImageExcludesOpt(ctx context.Context, image string) checkResult {
+	cmd := exec.CommandContext(ctx, "docker", "run", "--rm", image, "sh", "-c", "ls /opt 2>/dev/null | head")
+	out, err := cmd.CombinedOutput()
+	output := strings.TrimSpace(string(out))
+	pass := err == nil && output == ""
+	r := checkResult{
+		name:   "image excludes /opt",
+		pass:   pass,
+		detail: fmt.Sprintf("ls /opt (no bind mount) → %q", output),
+	}
+	fmt.Printf("  %s %s — %s\n", mark(pass), r.name, r.detail)
+	return r
+}
+
+func runChecks(ctx context.Context, containerID, workDir, optPath string) []checkResult {
+	results := []checkResult{}
+	hostUID := strconv.Itoa(os.Getuid())
+
+	// execIn runs argv inside the container as root with /work as cwd.
+	// Approach B from the plan: build docker-exec args directly because
+	// agent/util.WrapWithContainer doesn't forward env or set --workdir.
 	execIn := func(argv ...string) (string, error) {
-		full := append([]string{
-			"exec",
-			"-w", container.WorkDirInContainer,
-			"-e", "PATH=" + toolchainBin + ":/usr/local/bin:/usr/bin:/bin",
-			containerID,
-		}, argv...)
+		full := append([]string{"exec", "-w", container.WorkDirInContainer, containerID}, argv...)
 		out, err := exec.CommandContext(ctx, "docker", full...).CombinedOutput()
 		return strings.TrimSpace(string(out)), err
 	}
-
-	// execViaWrapper is the same idea via the agent's WrapWithContainer
-	// helper — exercised at least once to prove the wrapper integrates
-	// with the harness. WrapWithContainer doesn't add -w or -e, so this
-	// path is suitable only for env-independent commands.
+	// execAs is the same but with -u <uid>:<gid> so the kernel sees the
+	// host's user. Used for the UID-consistency criterion.
+	execAs := func(uid string, argv ...string) (string, error) {
+		full := append([]string{"exec", "-u", uid, "-w", container.WorkDirInContainer, containerID}, argv...)
+		out, err := exec.CommandContext(ctx, "docker", full...).CombinedOutput()
+		return strings.TrimSpace(string(out)), err
+	}
+	// One demonstrative use of agent/util.WrapWithContainer to prove the
+	// wrapper integrates with downstream callers, even with its current
+	// no-env, no-workdir limitations.
 	execViaWrapper := func(argv ...string) (string, error) {
 		opts := &options.Create{Args: argv}
 		agentutil.WrapWithContainer(opts, containerID)
@@ -137,32 +206,38 @@ func runChecks(ctx context.Context, containerID, workDir string) []checkResult {
 
 	add := func(name string, pass bool, detail string) {
 		results = append(results, checkResult{name, pass, detail})
-		mark := "✗"
-		if pass {
-			mark = "✓"
-		}
-		fmt.Printf("  %s %s — %s\n", mark, name, detail)
+		fmt.Printf("  %s %s — %s\n", mark(pass), name, detail)
 	}
 
-	// 1. Distro identity (VERSION_ID="22.04")
+	// 1. Distro identity.
 	out, err := execIn("sh", "-c", "grep ^VERSION_ID= /etc/os-release")
 	add("distro identity", err == nil && strings.Contains(out, `"22.04"`), out)
 
-	// 2. Hostname isolation — container hostname should be the container ID prefix,
-	//    not the host's hostname. Use WrapWithContainer here as the wrapper-
+	// 2. Hostname isolation. Use WrapWithContainer here as the wrapper-
 	//    integration demonstration.
 	hn, err := execViaWrapper("hostname")
 	hostHN, _ := os.Hostname()
 	add("hostname isolation", err == nil && hn != "" && hn != hostHN, fmt.Sprintf("container=%q host=%q", hn, hostHN))
 
-	// 3. Toolchain availability — `which gcc` must resolve under /opt/mongodbtoolchain/.
-	whichGcc, _ := execIn("which", "gcc")
-	gccVer, gccErr := execIn("gcc", "--version")
-	gccLine := strings.SplitN(gccVer, "\n", 2)[0]
-	add("toolchain gcc on PATH", strings.HasPrefix(whichGcc, "/opt/mongodbtoolchain/") && gccErr == nil,
-		fmt.Sprintf("which=%q version=%q", whichGcc, gccLine))
+	// 4. Toolchain visible via /opt bind mount. ls /opt inside the container
+	//    should match ls $optPath on the host.
+	insideLS, _ := execIn("sh", "-c", "ls /opt | sort")
+	hostEntries := []string{}
+	if hostList, err := os.ReadDir(optPath); err == nil {
+		for _, e := range hostList {
+			hostEntries = append(hostEntries, e.Name())
+		}
+	}
+	sort.Strings(hostEntries)
+	expectedLS := strings.Join(hostEntries, "\n")
+	add("toolchain via /opt bind", insideLS == expectedLS && insideLS != "",
+		fmt.Sprintf("inside=%q host=%q", insideLS, expectedLS))
 
-	// 4. Mounted workdir, host → container.
+	// 5. /opt is read-only. touch /opt/foo should fail.
+	_, touchErr := execIn("sh", "-c", "touch /opt/foo 2>&1")
+	add("/opt is read-only", touchErr != nil, fmt.Sprintf("touch /opt/foo err=%v", touchErr))
+
+	// 6. Workdir bind, host → container.
 	hostMsg := "hello from host"
 	if err := os.WriteFile(filepath.Join(workDir, "from-host.txt"), []byte(hostMsg+"\n"), 0o644); err != nil {
 		add("host→container bind", false, "host write failed: "+err.Error())
@@ -171,7 +246,7 @@ func runChecks(ctx context.Context, containerID, workDir string) []checkResult {
 		add("host→container bind", err == nil && strings.TrimSpace(got) == hostMsg, got)
 	}
 
-	// 5. Mounted workdir, container → host.
+	// 7. Workdir bind, container → host.
 	cMsg := "hello from container"
 	_, err = execIn("sh", "-c", fmt.Sprintf("echo '%s' > %s/from-container.txt", cMsg, container.WorkDirInContainer))
 	hostRead := ""
@@ -183,37 +258,34 @@ func runChecks(ctx context.Context, containerID, workDir string) []checkResult {
 	}
 	add("container→host bind", hostRead == cMsg, hostRead)
 
-	// 6. UID/GID — harness runs container as root by default (no -u flag, no
-	//    USER directive enforced). Plan's escape hatch: assert the default
-	//    matches what buildhost-configuration would create on the host (root
-	//    is the playbook's user= var for the container variant).
-	uid, _ := execIn("id", "-u")
-	gid, _ := execIn("id", "-g")
-	add("uid/gid default user", uid == "0" && gid == "0", fmt.Sprintf("uid=%s gid=%s (image default; playbook sets user=root)", uid, gid))
+	// 8. UID/GID consistency. With `docker exec -u <hostUID>` the kernel
+	//    sees the host's UID inside the container, and a file written
+	//    under the bind-mounted workdir is owned by host UID on the host.
+	uidIn, _ := execAs(hostUID, "id", "-u")
+	_, _ = execAs(hostUID, "sh", "-c", "touch "+container.WorkDirInContainer+"/uid-probe.txt")
+	stat, statErr := os.Stat(filepath.Join(workDir, "uid-probe.txt"))
+	fileUID := -1
+	if statErr == nil {
+		if sys, ok := getSysUID(stat); ok {
+			fileUID = sys
+		}
+	}
+	uidOK := uidIn == hostUID && fileUID == os.Getuid()
+	add("uid/gid consistency", uidOK, fmt.Sprintf("hostUID=%s containerUID=%s fileOwnerUID=%d", hostUID, uidIn, fileUID))
 
-	// 7. PID isolation — `ps -ef` should show only container processes,
-	//    not host processes. The init shim from container.HostConfig.Init
-	//    means PID 1 is `docker-init`, plus our `sleep infinity`.
+	// 9. PID isolation — `ps -ef` should show only container processes.
 	psOut, _ := execIn("ps", "-ef")
 	psLines := strings.Count(psOut, "\n") + 1
-	// Heuristic: container PID namespace should have a small process count
-	// (single-digit), not hundreds like the host.
 	add("pid isolation", psLines < 25, fmt.Sprintf("%d ps lines (container ns is small)", psLines))
 
-	// 8. Network reachability — curl the public mongodb.com TLS endpoint.
-	curlOut, curlErr := execIn("curl", "-sI", "-o", "/dev/null", "-w", "%{http_code}", "https://www.mongodb.com")
-	add("network reachability", curlErr == nil && (curlOut == "200" || curlOut == "301" || curlOut == "302"), "HTTP "+curlOut)
-
-	// 9-10. Cleanup checks deferred until after Destroy — see runPostDestroyChecks.
 	return results
 }
 
 // runPostDestroyChecks verifies that Destroy actually cleaned up.
-// Criteria 9 (no orphan container) and 10 (no orphan files in host workdir).
 func runPostDestroyChecks(ctx context.Context, containerName, workDir string, destroyErr error) []checkResult {
 	var out []checkResult
 
-	// 9. No orphan container with the evergreen-task- name prefix remains.
+	// 10. No orphan container with the evergreen-task- name prefix remains.
 	psOut, psErr := exec.CommandContext(ctx, "docker", "ps", "-a",
 		"--filter", "name="+containerName,
 		"--format", "{{.Names}}").CombinedOutput()
@@ -224,16 +296,13 @@ func runPostDestroyChecks(ctx context.Context, containerName, workDir string, de
 		detail = "destroy errored: " + destroyErr.Error()
 	}
 	out = append(out, checkResult{"cleanup: no orphan container", pass, detail})
-	mark := "✗"
-	if pass {
-		mark = "✓"
-	}
-	fmt.Printf("  %s cleanup: no orphan container — %s\n", mark, detail)
+	fmt.Printf("  %s cleanup: no orphan container — %s\n", mark(pass), detail)
 
-	// 10. No orphan files in workdir beyond what the harness deliberately wrote.
+	// 11. No orphan files in workdir beyond what the harness deliberately wrote.
 	expected := map[string]bool{
 		"from-host.txt":      true,
 		"from-container.txt": true,
+		"uid-probe.txt":      true,
 	}
 	entries, err := os.ReadDir(workDir)
 	unexpected := []string{}
@@ -245,16 +314,12 @@ func runPostDestroyChecks(ctx context.Context, containerName, workDir string, de
 		}
 	}
 	pass = err == nil && len(unexpected) == 0
-	detail = fmt.Sprintf("%d entries (expected: from-host.txt, from-container.txt)", len(entries))
+	detail = fmt.Sprintf("%d entries in workdir", len(entries))
 	if len(unexpected) > 0 {
 		detail += "; unexpected: " + strings.Join(unexpected, ",")
 	}
 	out = append(out, checkResult{"cleanup: no orphan files", pass, detail})
-	mark = "✗"
-	if pass {
-		mark = "✓"
-	}
-	fmt.Printf("  %s cleanup: no orphan files — %s\n", mark, detail)
+	fmt.Printf("  %s cleanup: no orphan files — %s\n", mark(pass), detail)
 
 	return out
 }
