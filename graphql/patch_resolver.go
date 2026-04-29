@@ -314,7 +314,7 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 
 	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()), err)
 	}
 	// This is most likely a reaped user, so just return their ID
 	if dbUser == nil {
