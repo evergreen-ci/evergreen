@@ -2050,10 +2050,10 @@ func TestModuleList(t *testing.T) {
 }
 
 func TestWikiModuleRepoHelpers(t *testing.T) {
-	assert.True(t, IsWikiModuleRepo("mongo.wiki"))
-	assert.True(t, IsWikiModuleRepo("mongo.wiki.git"))
-	assert.False(t, IsWikiModuleRepo("mongo"))
-	assert.False(t, IsWikiModuleRepo("wiki"))
+	assert.True(t, IsWikiRepo("mongo.wiki"))
+	assert.True(t, IsWikiRepo("mongo.wiki.git"))
+	assert.False(t, IsWikiRepo("mongo"))
+	assert.False(t, IsWikiRepo("wiki"))
 	assert.Equal(t, "mongo", ParentRepoForGitHubAppToken("mongo.wiki"))
 	assert.Equal(t, "mongo", ParentRepoForGitHubAppToken("mongo.wiki.git"))
 	assert.Equal(t, "other", ParentRepoForGitHubAppToken("other"))

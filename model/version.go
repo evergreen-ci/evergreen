@@ -996,7 +996,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		}
 		// GitHub wikis are always cloned at default-branch HEAD. Do not reuse
 		// base manifest pins; every run must resolve via getManifestModule.
-		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil && !IsWikiModuleRepo(modRepo) {
+		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil && !IsWikiRepo(modRepo) {
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				// Use base module revision unless the YAML explicitly specifies a different ref.
 				if module.Ref == "" || module.Ref == baseModule.Revision {
@@ -1023,7 +1023,7 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 	}
 
-	if IsWikiModuleRepo(repo) {
+	if IsWikiRepo(repo) {
 		// No GitHub Commits API for wikis; clone uses HEAD only. Keep Branch
 		// in sync with project YAML for manifest identity checks.
 		return &manifest.Module{

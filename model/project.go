@@ -483,9 +483,9 @@ func (m Module) GetOwnerAndRepo() (string, string, error) {
 	return m.Owner, m.Repo, nil
 }
 
-// IsWikiModuleRepo reports whether repo names a GitHub wiki remote (e.g. "mongo.wiki").
+// IsWikiRepo reports whether repo names a GitHub wiki remote (e.g. "mongo.wiki").
 // Trailing ".git" is ignored when matching.
-func IsWikiModuleRepo(repo string) bool {
+func IsWikiRepo(repo string) bool {
 	r := strings.TrimSuffix(strings.TrimSpace(repo), ".git")
 	return strings.HasSuffix(r, ".wiki")
 }
@@ -494,7 +494,7 @@ func IsWikiModuleRepo(repo string) bool {
 // a GitHub App installation for clone tokens. Installations are on the parent
 // repository; clone URLs may still use the ".wiki" repository name.
 func ParentRepoForGitHubAppToken(repo string) string {
-	if !IsWikiModuleRepo(repo) {
+	if !IsWikiRepo(repo) {
 		return repo
 	}
 	r := strings.TrimSuffix(strings.TrimSpace(repo), ".git")

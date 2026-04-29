@@ -284,7 +284,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	if opts.dir == "" {
 		return nil, errors.New("empty clone path")
 	}
-	if model.IsWikiModuleRepo(opts.repo) {
+	if model.IsWikiRepo(opts.repo) {
 		cloneCmd, err := opts.getCloneCommandForWikiModule()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting command to clone wiki")
@@ -514,7 +514,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if err != nil {
 		return errors.Wrapf(err, "getting owner and repo for '%s'", moduleName)
 	}
-	wiki := model.IsWikiModuleRepo(repo)
+	wiki := model.IsWikiRepo(repo)
 
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
