@@ -514,7 +514,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	if err != nil {
 		return errors.Wrapf(err, "getting owner and repo for '%s'", moduleName)
 	}
-	wiki := model.IsWikiRepo(repo)
 
 	// use submodule revisions based on the main patch. If there is a need in the future,
 	// this could maybe use the most recent submodule revision of all requested patches.
@@ -522,7 +521,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	// GitHub wikis are always cloned at remote HEAD; ref, set-module, manifest, and command params are ignored.
 	var modulePatch *patch.ModulePatch
 	var revision string
-	if !wiki {
+	if !model.IsWikiRepo(repo) {
 		if p != nil {
 			modulePatch = p.FindModule(moduleName)
 			if modulePatch != nil {
