@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -484,6 +485,81 @@ func RequiresSuperUserPermission(permission string, level evergreen.PermissionLe
 	return gimlet.RequiresPermission(opts)
 }
 
+type sendNotificationMiddleware struct{}
+
+// NewSendNotificationMiddleware returns middleware that allows the request if the
+// user has the notifications send permission or is sending a Slack notification to
+// themselves (i.e. the target matches their own Slack username).
+func NewSendNotificationMiddleware() gimlet.Middleware {
+	return &sendNotificationMiddleware{}
+}
+
+func (m *sendNotificationMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	u := MustHaveUser(ctx)
+
+	if u.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionNotificationsSend,
+		RequiredLevel: evergreen.NotificationsSend.Value,
+	}) {
+		next(rw, r)
+		return
+	}
+
+	// Read and reset the body so Parse() can still consume it.
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading request body")))
+		return
+	}
+	r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
+
+	var payload restmodel.APISlack
+	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "invalid notification payload",
+		}))
+		return
+	}
+
+	if payload.Target == nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
+		return
+	}
+
+	target := utility.FromStringPtr(payload.Target)
+	slackUsername := u.Settings.SlackUsername
+	if slackUsername != "" && strings.TrimPrefix(target, "@") == slackUsername {
+		next(rw, r)
+		return
+	}
+
+	senderCheckEnabled := evergreen.GetEnvironment().Settings().ServiceFlags.SlackSenderCheckEnabled
+	grip.Debug(ctx, message.Fields{
+		"message":              "slack notification target does not match sender",
+		"sender":               u.Username(),
+		"target":               target,
+		"slack_username":       slackUsername,
+		"sender_check_enabled": senderCheckEnabled,
+	})
+
+	if !senderCheckEnabled {
+		next(rw, r)
+		return
+	}
+
+	gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+		StatusCode: http.StatusUnauthorized,
+		Message:    "not authorized",
+	}))
+}
+
 func urlVarsToProjectScopes(r *http.Request) ([]string, int, error) {
 	var err error
 	vars := gimlet.GetVars(r)
@@ -737,7 +813,7 @@ func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pRef, err := model.FindBranchProjectRef(ctx, projectID)
+	pRef, err := model.FindMergedProjectRef(ctx, projectID, "", false)
 	if err != nil {
 		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

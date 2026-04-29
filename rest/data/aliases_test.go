@@ -277,13 +277,19 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 	newInternalAlias := restModel.APIProjectAlias{
 		ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
-		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), //internal alias shouldn't be added
+		Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias), // internal alias
 		Variant: utility.ToStringPtr("var"),
 		Task:    utility.ToStringPtr("task"),
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	modified, err := updateAliasesForSection(
+		a.T().Context(),
+		"project_id",
+		updatedAliases,
+		originalAliases,
+		model.ProjectPagePatchAliasSection,
+	)
 	a.NoError(err)
 	a.True(modified)
 
@@ -298,14 +304,142 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
-	a.NoError(err)
-	a.True(modified)
-	aliasesFromDb, err = model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
-	a.NoError(err)
-	a.Len(aliasesFromDb, 4) // adds internal alias
+	// TODO DEVPROD-31534: Delete this test case
+	// The legacy combined GitHub + CQ section should still operate on all internal aliases.
+	a.Run(string(model.ProjectPageGithubAndCQSection), func() {
+		modified, err := updateAliasesForSection(
+			a.T().Context(),
+			"project_id",
+			updatedAliases,
+			originalAliases,
+			model.ProjectPageGithubAndCQSection,
+		)
+		a.NoError(err)
+		a.True(modified)
+
+		aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+		a.NoError(err)
+		a.Len(aliasesFromDb, 4) // net count stays the same (one removed, one added)
+
+		foundChecks := false
+		for _, alias := range aliasesFromDb {
+			if alias.Alias == evergreen.GithubChecksAlias {
+				foundChecks = true
+			}
+		}
+		a.True(
+			foundChecks,
+			"expected %s to be present after updating section %s",
+			evergreen.GithubChecksAlias,
+			model.ProjectPageGithubAndCQSection,
+		)
+	})
 }
 
+func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
+	originalAliases, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+	a.NoError(err)
+	a.Len(originalAliases, 4)
+
+	type githubSectionCase struct {
+		section       model.ProjectPageSection
+		internalAlias restModel.APIProjectAlias
+	}
+
+	cases := []githubSectionCase{
+		{
+			section: model.ProjectPagePullRequestsSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.GithubPRAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
+		},
+		{
+			section: model.ProjectPageGitTagsSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:         utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
+				GitTag:     utility.ToStringPtr(`^v[0-9]+.[0-9]+.[0-9]+$`),
+				RemotePath: utility.ToStringPtr("evergreen.yml"),
+			},
+		},
+		{
+			section: model.ProjectPageMergeQueueSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
+		},
+		{
+			section: model.ProjectPageCommitChecksSection,
+			internalAlias: restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr(evergreen.GithubChecksAlias),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		a.Run(string(tc.section), func() {
+			aliasToKeep := restModel.APIProjectAlias{}
+			aliasToKeep.BuildFromService(originalAliases[0])
+
+			aliasToModify := restModel.APIProjectAlias{}
+			aliasToModify.BuildFromService(originalAliases[1])
+			aliasToModify.Alias = utility.ToStringPtr("this is a new alias")
+
+			newAlias := restModel.APIProjectAlias{
+				ID:      utility.ToStringPtr(mgobson.NewObjectId().Hex()),
+				Alias:   utility.ToStringPtr("patchAlias"),
+				Variant: utility.ToStringPtr("var"),
+				Task:    utility.ToStringPtr("task"),
+			}
+			newInternalAlias := tc.internalAlias
+			updatedAliases := []restModel.APIProjectAlias{
+				aliasToKeep,
+				aliasToModify,
+				newAlias,
+				newInternalAlias,
+			}
+
+			modified, err := updateAliasesForSection(
+				a.T().Context(),
+				"project_id",
+				updatedAliases,
+				originalAliases,
+				tc.section,
+			)
+			a.NoError(err)
+			a.True(modified)
+
+			aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
+			a.NoError(err)
+
+			foundInternal := false
+			internalAliasName := utility.FromStringPtr(tc.internalAlias.Alias)
+			for _, alias := range aliasesFromDb {
+				if alias.Alias == internalAliasName {
+					foundInternal = true
+				}
+			}
+
+			a.True(
+				foundInternal,
+				"expected %s to be present after updating section %s",
+				tc.internalAlias,
+				tc.section,
+			)
+		})
+	}
+}
+
+// TODO DEVPROD-31534: Remove legacy test, see TestValidateFeaturesHaveAliasesForGithubSections
 func TestValidateFeaturesHaveAliases(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
 
@@ -326,7 +460,7 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 
 	// Errors when there aren't aliases for all enabled features.
-	err := validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
+	err := validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "GitHub checks")
 
@@ -337,16 +471,130 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 	assert.NoError(t, repoAlias1.Upsert(t.Context()))
 	// No error when there are aliases in the repo.
-	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection))
 
 	pRef.GitTagVersionsEnabled = utility.TruePtr()
 	pRef.CommitQueue.Enabled = utility.TruePtr()
-	err = validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
+	err = validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Git tag")
 	assert.Contains(t, err.Error(), "Commit queue")
 
 	// No error when version control is enabled.
 	oldPRef.VersionControlEnabled = utility.TruePtr()
-	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection))
+}
+
+func TestValidateFeaturesHaveAliasesForGithubSections(t *testing.T) {
+	oldPRef := &model.ProjectRef{
+		VersionControlEnabled: utility.FalsePtr(),
+	}
+	basePRef := &model.ProjectRef{
+		Id:                    "p1",
+		PRTestingEnabled:      utility.TruePtr(),
+		GitTagVersionsEnabled: utility.TruePtr(),
+		GithubChecksEnabled:   utility.TruePtr(),
+	}
+	basePRef.CommitQueue.Enabled = utility.TruePtr()
+
+	makeAliases := func(names ...string) []restModel.APIProjectAlias {
+		var out []restModel.APIProjectAlias
+		for _, n := range names {
+			n := n
+			out = append(out, restModel.APIProjectAlias{
+				Alias: utility.ToStringPtr(n),
+			})
+		}
+		return out
+	}
+
+	type tc struct {
+		name           string
+		section        model.ProjectPageSection
+		aliases        []restModel.APIProjectAlias
+		expectErr      bool
+		wantSubstrings []string
+		notSubstrings  []string
+	}
+
+	cases := []tc{
+		{
+			name:    "PR tab passes with only PR alias",
+			section: model.ProjectPagePullRequestsSection,
+			aliases: makeAliases(evergreen.GithubPRAlias),
+		},
+		{
+			name:           "PR tab fails without PR alias even if others present",
+			section:        model.ProjectPagePullRequestsSection,
+			aliases:        makeAliases(evergreen.GitTagAlias, evergreen.GithubChecksAlias, evergreen.CommitQueueAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"PR testing"},
+			notSubstrings:  []string{"Git tag", "Commit queue", "GitHub checks"},
+		},
+		{
+			name:    "Merge queue tab passes with only CQ alias",
+			section: model.ProjectPageMergeQueueSection,
+			aliases: makeAliases(evergreen.CommitQueueAlias),
+		},
+		{
+			name:           "Merge queue tab fails without CQ alias even if others present",
+			section:        model.ProjectPageMergeQueueSection,
+			aliases:        makeAliases(evergreen.GitTagAlias, evergreen.GithubChecksAlias, evergreen.GithubPRAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"Commit queue"},
+			notSubstrings:  []string{"PR testing", "Git tag", "GitHub checks"},
+		},
+		{
+			name:    "Git tags tab passes with only Git tag alias",
+			section: model.ProjectPageGitTagsSection,
+			aliases: makeAliases(evergreen.GitTagAlias),
+		},
+		{
+			name:           "Git tags tab fails without Git tag alias even if others present",
+			section:        model.ProjectPageGitTagsSection,
+			aliases:        makeAliases(evergreen.CommitQueueAlias, evergreen.GithubChecksAlias, evergreen.GithubPRAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"Git tag"},
+			notSubstrings:  []string{"PR testing", "Commit queue", "GitHub checks"},
+		},
+		{
+			name:    "Commit checks tab passes with only GitHub checks alias",
+			section: model.ProjectPageCommitChecksSection,
+			aliases: makeAliases(evergreen.GithubChecksAlias),
+		},
+		{
+			name:           "Commit checks tab fails without GitHub checks alias even if others present",
+			section:        model.ProjectPageCommitChecksSection,
+			aliases:        makeAliases(evergreen.CommitQueueAlias, evergreen.GitTagAlias, evergreen.GithubPRAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"GitHub checks"},
+			notSubstrings:  []string{"PR testing", "Git tag", "Commit queue"},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			pRefCopy := *basePRef
+
+			err := validateFeaturesHaveAliases(
+				t.Context(),
+				oldPRef,
+				&pRefCopy,
+				test.aliases,
+				test.section,
+			)
+
+			if test.expectErr {
+				require.Error(t, err)
+				for _, s := range test.wantSubstrings {
+					assert.Contains(t, err.Error(), s, "expected error to contain %q", s)
+				}
+				for _, s := range test.notSubstrings {
+					assert.NotContains(t, err.Error(), s, "expected error NOT to contain %q", s)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

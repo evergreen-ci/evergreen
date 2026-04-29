@@ -1,0 +1,38 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectId: "sandbox_project_id"
+      projectRef: {
+        id: "sandbox_project_id"
+        gitTagVersionsEnabled: true
+        gitTagAuthorizedUsers: ["user1", "user2"]
+        gitTagAuthorizedTeams: ["team1"]
+      }
+      aliases: [
+        {
+          id: "git-tag-alias-id-1"
+          alias: "__git_tag"
+          gitTag: "tag-1"
+          remotePath: "evergreen.yml"
+          task: ""
+          variant: ""
+          taskTags: []
+          variantTags: []
+        }
+      ]
+    }
+    section: GIT_TAGS
+  ) {
+    projectRef {
+      gitTagVersionsEnabled ## changed
+      gitTagAuthorizedUsers ## changed
+      gitTagAuthorizedTeams ## changed
+    }
+    vars {
+      vars ## should be unchanged
+    }
+    aliases {
+      alias
+    }
+  }
+}

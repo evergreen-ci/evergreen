@@ -12,8 +12,14 @@
             "revision": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
             "testSelectionEnabled": true,
             "taskCost": {
-              "onDemandEC2Cost": 1.25,
-              "adjustedEC2Cost": 0.89
+              "adjustedEC2Cost": 0.89,
+              "adjustedEBSThroughputCost": 0.05,
+              "adjustedEBSStorageCost": 0.03,
+              "adjustedS3ArtifactPutCost": 0.01,
+              "adjustedS3LogPutCost": 0.02,
+              "adjustedS3ArtifactStorageCost": 0,
+              "adjustedS3LogStorageCost": 0,
+              "total": 1
             }
           }
         }

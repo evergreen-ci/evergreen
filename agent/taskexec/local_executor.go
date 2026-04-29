@@ -245,23 +245,23 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	return nil
 }
 
-// RunUntil executes steps up until the given input index.
+// RunUntil executes steps up to but not including the given input index.
 func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	if len(e.commandBlocks) == 0 {
 		return errors.New("no commands available, please ensure a task has been selected")
 	}
 	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
-	if untilIndex >= maxIndex {
+	if untilIndex > maxIndex {
 		e.logger.Warningf(ctx, "Running until step out of range, falling back to %s", e.debugState.CommandList[maxIndex].FullStepNumber())
 		untilIndex = maxIndex
 	}
 
-	for e.debugState.CurrentStepIndex <= untilIndex {
+	for e.debugState.CurrentStepIndex < untilIndex {
 		if err := e.StepNext(ctx); err != nil {
 			e.logger.Errorf(ctx, "Step %s failed: %v", e.debugState.CommandList[e.debugState.CurrentStepIndex].FullStepNumber(), err)
 			return err
 		}
-		if e.debugState.CurrentStepIndex > untilIndex {
+		if e.debugState.CurrentStepIndex >= untilIndex {
 			break
 		}
 	}

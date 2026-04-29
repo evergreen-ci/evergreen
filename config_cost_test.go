@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -122,6 +123,45 @@ func TestCostConfigValidateAndDefault(t *testing.T) {
 		err := c.ValidateAndDefault()
 		assert.Error(t, err)
 	})
+
+	t.Run("InvalidDevprodOwnedAWSAccountID", func(t *testing.T) {
+		c := CostConfig{
+			S3Cost: S3CostConfig{
+				Storage: S3StorageCostConfig{
+					DevprodOwnedAWSAccountIDs: []string{"not-digits"},
+				},
+			},
+		}
+		assert.Error(t, c.ValidateAndDefault())
+	})
+
+	t.Run("ValidDevprodOwnedAndNoLifecycleAccountIDs", func(t *testing.T) {
+		c := CostConfig{
+			S3Cost: S3CostConfig{
+				Storage: S3StorageCostConfig{
+					DevprodOwnedAWSAccountIDs:                []string{"123456789012", " 210987654321 "},
+					ArtifactAWSAccountsWithoutLifecycleRules: []string{"123456789012"},
+				},
+			},
+		}
+		assert.NoError(t, c.ValidateAndDefault())
+	})
+}
+
+func TestAWSAccountIDMatchesConfiguredList(t *testing.T) {
+	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{"123456789012"}))
+	assert.True(t, IsInDevProdOwnedAccountList("123456789012", []string{" 123456789012 "}))
+	assert.False(t, IsInDevProdOwnedAccountList("123456789012", []string{"999999999999"}))
+	assert.False(t, IsInDevProdOwnedAccountList("123456789012", nil))
+}
+
+func TestIsDevprodOwnedArtifactIAMRole(t *testing.T) {
+	role123 := "arn:aws:iam::123456789012:role/r"
+	assert.True(t, IsDevprodOwnedArtifactIAMRole(role123, nil))
+	assert.True(t, IsDevprodOwnedArtifactIAMRole(role123, []string{}))
+	assert.True(t, IsDevprodOwnedArtifactIAMRole(role123, []string{"123456789012"}))
+	assert.False(t, IsDevprodOwnedArtifactIAMRole(role123, []string{"999999999999"}))
+	assert.False(t, IsDevprodOwnedArtifactIAMRole("", []string{"123456789012"}))
 }
 
 func TestCostConfigIsConfigured(t *testing.T) {
@@ -279,5 +319,29 @@ func TestCostConfigSetAndGet(t *testing.T) {
 		assert.Equal(t, 0.1, retrieved.S3Cost.Upload.UploadCostDiscount)
 		assert.Equal(t, 0.2, retrieved.S3Cost.Storage.StandardStorageCostDiscount)
 		assert.Equal(t, 0.0, retrieved.S3Cost.Storage.IAStorageCostDiscount)
+	})
+
+	t.Run("SetAndGetS3ArtifactAccountLists", func(t *testing.T) {
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(t.Context()))
+		t.Cleanup(func() {
+			// Use a non-test context: t.Context() is canceled before cleanup runs.
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(context.Background()))
+		})
+
+		original := CostConfig{
+			S3Cost: S3CostConfig{
+				Storage: S3StorageCostConfig{
+					DevprodOwnedAWSAccountIDs:                []string{"123456789012"},
+					ArtifactAWSAccountsWithoutLifecycleRules: []string{"210987654321"},
+				},
+			},
+		}
+		require.NoError(t, original.Set(t.Context()))
+
+		retrieved := CostConfig{}
+		require.NoError(t, retrieved.Get(t.Context()))
+
+		assert.Equal(t, []string{"123456789012"}, retrieved.S3Cost.Storage.DevprodOwnedAWSAccountIDs)
+		assert.Equal(t, []string{"210987654321"}, retrieved.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules)
 	})
 }

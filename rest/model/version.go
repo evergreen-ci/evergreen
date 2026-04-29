@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -16,6 +17,8 @@ type APIVersion struct {
 	Id *string `json:"version_id"`
 	// Time that the version was first created
 	CreateTime *time.Time `json:"create_time"`
+	// Time at which the version document was persisted in Evergreen. Will be null for versions created before this field was added.
+	IngestTime *time.Time `json:"ingest_time,omitempty"`
 	// Time at which tasks associated with this version started running
 	StartTime *time.Time `json:"start_time"`
 	// Time at which tasks associated with this version finished running
@@ -60,6 +63,21 @@ type APIVersion struct {
 	Cost *cost.Cost `json:"cost,omitempty"`
 	// Aggregated predicted cost of all tasks in the version
 	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
+	// Aggregated S3 upload metrics across all tasks in the version
+	S3Usage *APIVersionS3Usage `json:"s3_usage,omitempty"`
+}
+
+// APIVersionS3Usage holds aggregated S3 upload metrics for a version.
+// Logs only exposes puts and bytes since per-type breakdown is not aggregated at version level.
+type APIVersionS3Usage struct {
+	Artifacts s3usage.ArtifactMetrics `json:"artifacts,omitempty"`
+	Logs      APIVersionS3LogUsage    `json:"logs,omitempty"`
+}
+
+// APIVersionS3LogUsage holds aggregated S3 log upload metrics for a version.
+type APIVersionS3LogUsage struct {
+	PutRequests int   `json:"put_requests,omitempty"`
+	UploadBytes int64 `json:"upload_bytes,omitempty"`
 }
 
 type APIGitTag struct {
@@ -76,6 +94,7 @@ type buildDetail struct {
 func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Version) {
 	apiVersion.Id = utility.ToStringPtr(v.Id)
 	apiVersion.CreateTime = ToTimePtr(v.CreateTime)
+	apiVersion.IngestTime = ToTimePtr(v.IngestTime)
 	apiVersion.StartTime = ToTimePtr(v.StartTime)
 	apiVersion.FinishTime = ToTimePtr(v.FinishTime)
 	apiVersion.Revision = utility.ToStringPtr(v.Revision)
@@ -133,11 +152,22 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 
 	if !v.Cost.IsZero() {
 		versionCost := v.Cost
+		versionCost.Total = versionCost.TotalAdjusted()
 		apiVersion.Cost = &versionCost
 	}
 	if !v.PredictedCost.IsZero() {
 		predictedCost := v.PredictedCost
+		predictedCost.Total = predictedCost.TotalAdjusted()
 		apiVersion.PredictedCost = &predictedCost
+	}
+	if !v.S3Usage.IsZero() {
+		apiVersion.S3Usage = &APIVersionS3Usage{
+			Artifacts: v.S3Usage.Artifacts,
+			Logs: APIVersionS3LogUsage{
+				PutRequests: v.S3Usage.Logs.PutRequests,
+				UploadBytes: v.S3Usage.Logs.UploadBytes,
+			},
+		}
 	}
 	if apiVersion.IsPatchRequester() {
 		p, err := patch.FindOneId(ctx, v.Id)

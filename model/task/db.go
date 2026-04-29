@@ -3154,18 +3154,76 @@ func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) 
 	return nil, nil
 }
 
+// historicalTaskCostFieldKeys lists every cost field used for historical averages when predicting task costs.
+var historicalTaskCostFieldKeys = []string{
+	cost.OnDemandEC2CostKey,
+	cost.AdjustedEC2CostKey,
+	cost.OnDemandEBSThroughputCostKey,
+	cost.AdjustedEBSThroughputCostKey,
+	cost.OnDemandEBSStorageCostKey,
+	cost.AdjustedEBSStorageCostKey,
+	cost.OnDemandS3ArtifactPutCostKey,
+	cost.AdjustedS3ArtifactPutCostKey,
+	cost.OnDemandS3LogPutCostKey,
+	cost.AdjustedS3LogPutCostKey,
+	cost.OnDemandS3ArtifactStorageCostKey,
+	cost.AdjustedS3ArtifactStorageCostKey,
+	cost.OnDemandS3LogStorageCostKey,
+	cost.AdjustedS3LogStorageCostKey,
+}
+
 type predictedCostResults struct {
-	DisplayName        string  `bson:"_id"`
-	AvgOnDemandCost    float64 `bson:"avg_on_demand_cost"`
-	AvgAdjustedCost    float64 `bson:"avg_adjusted_cost"`
-	StdDevOnDemandCost float64 `bson:"std_dev_on_demand_cost"`
-	StdDevAdjustedCost float64 `bson:"std_dev_adjusted_cost"`
+	DisplayName     string  `bson:"_id"`
+	AvgOnDemandCost float64 `bson:"avg_on_demand_ec2_cost"`
+	AvgAdjustedCost float64 `bson:"avg_adjusted_ec2_cost"`
+
+	AvgOnDemandEBSThroughputCost float64 `bson:"avg_on_demand_ebs_throughput_cost"`
+	AvgAdjustedEBSThroughputCost float64 `bson:"avg_adjusted_ebs_throughput_cost"`
+	AvgOnDemandEBSStorageCost    float64 `bson:"avg_on_demand_ebs_storage_cost"`
+	AvgAdjustedEBSStorageCost    float64 `bson:"avg_adjusted_ebs_storage_cost"`
+
+	AvgOnDemandS3ArtifactPutCost float64 `bson:"avg_on_demand_s3_artifact_put_cost"`
+	AvgAdjustedS3ArtifactPutCost float64 `bson:"avg_adjusted_s3_artifact_put_cost"`
+	AvgOnDemandS3LogPutCost      float64 `bson:"avg_on_demand_s3_log_put_cost"`
+	AvgAdjustedS3LogPutCost      float64 `bson:"avg_adjusted_s3_log_put_cost"`
+
+	AvgOnDemandS3ArtifactStorageCost float64 `bson:"avg_on_demand_s3_artifact_storage_cost"`
+	AvgAdjustedS3ArtifactStorageCost float64 `bson:"avg_adjusted_s3_artifact_storage_cost"`
+	AvgOnDemandS3LogStorageCost      float64 `bson:"avg_on_demand_s3_log_storage_cost"`
+	AvgAdjustedS3LogStorageCost      float64 `bson:"avg_adjusted_s3_log_storage_cost"`
+}
+
+func (r predictedCostResults) toCost() cost.Cost {
+	return cost.Cost{
+		OnDemandEC2Cost:               r.AvgOnDemandCost,
+		AdjustedEC2Cost:               r.AvgAdjustedCost,
+		OnDemandEBSThroughputCost:     r.AvgOnDemandEBSThroughputCost,
+		AdjustedEBSThroughputCost:     r.AvgAdjustedEBSThroughputCost,
+		OnDemandEBSStorageCost:        r.AvgOnDemandEBSStorageCost,
+		AdjustedEBSStorageCost:        r.AvgAdjustedEBSStorageCost,
+		OnDemandS3ArtifactPutCost:     r.AvgOnDemandS3ArtifactPutCost,
+		AdjustedS3ArtifactPutCost:     r.AvgAdjustedS3ArtifactPutCost,
+		OnDemandS3LogPutCost:          r.AvgOnDemandS3LogPutCost,
+		AdjustedS3LogPutCost:          r.AvgAdjustedS3LogPutCost,
+		OnDemandS3ArtifactStorageCost: r.AvgOnDemandS3ArtifactStorageCost,
+		AdjustedS3ArtifactStorageCost: r.AvgAdjustedS3ArtifactStorageCost,
+		OnDemandS3LogStorageCost:      r.AvgOnDemandS3LogStorageCost,
+		AdjustedS3LogStorageCost:      r.AvgAdjustedS3LogStorageCost,
+	}
 }
 
 func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant string, start, end time.Time) ([]predictedCostResults, error) {
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
+
+	anyNonZeroCost := make([]bson.M, 0, len(historicalTaskCostFieldKeys))
+	for _, key := range historicalTaskCostFieldKeys {
+		anyNonZeroCost = append(anyNonZeroCost, bson.M{
+			bsonutil.GetDottedKeyName(TaskCostKey, key): bson.M{"$gt": 0},
+		})
+	}
+
 	match := bson.M{
 		BuildVariantKey: buildVariant,
 		ProjectKey:      project,
@@ -3179,13 +3237,20 @@ func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant
 			"$gte": start,
 			"$lte": end,
 		},
-		bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_ec2_cost"): bson.M{
-			"$gt": 0,
-		},
+		"$or": anyNonZeroCost,
 	}
 
 	if name != "" {
 		match[DisplayNameKey] = name
+	}
+
+	groupStage := bson.M{
+		"_id": fmt.Sprintf("$%s", DisplayNameKey),
+	}
+	for _, key := range historicalTaskCostFieldKeys {
+		groupStage["avg_"+key] = bson.M{
+			"$avg": fmt.Sprintf("$%s.%s", TaskCostKey, key),
+		}
 	}
 
 	pipeline := []bson.M{
@@ -3195,27 +3260,12 @@ func getPredictedCostsForWindow(ctx context.Context, name, project, buildVariant
 		{
 			"$project": bson.M{
 				DisplayNameKey: 1,
-				bsonutil.GetDottedKeyName(TaskCostKey, "on_demand_ec2_cost"): 1,
-				bsonutil.GetDottedKeyName(TaskCostKey, "adjusted_ec2_cost"):  1,
-				IdKey: 0,
+				TaskCostKey:    1,
+				IdKey:          0,
 			},
 		},
 		{
-			"$group": bson.M{
-				"_id": fmt.Sprintf("$%s", DisplayNameKey),
-				"avg_on_demand_cost": bson.M{
-					"$avg": fmt.Sprintf("$%s.on_demand_ec2_cost", TaskCostKey),
-				},
-				"avg_adjusted_cost": bson.M{
-					"$avg": fmt.Sprintf("$%s.adjusted_ec2_cost", TaskCostKey),
-				},
-				"std_dev_on_demand_cost": bson.M{
-					"$stdDevPop": fmt.Sprintf("$%s.on_demand_ec2_cost", TaskCostKey),
-				},
-				"std_dev_adjusted_cost": bson.M{
-					"$stdDevPop": fmt.Sprintf("$%s.adjusted_ec2_cost", TaskCostKey),
-				},
-			},
+			"$group": groupStage,
 		},
 	}
 

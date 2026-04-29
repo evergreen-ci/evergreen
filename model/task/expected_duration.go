@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -32,7 +33,7 @@ type expectedDurationResults struct {
 	StdDev           float64 `bson:"std_dev"`
 }
 
-func getExpectedDurationsForWindow(name, project, buildVariant string, start, end time.Time) ([]expectedDurationResults, error) {
+func getExpectedDurationsForWindow(ctx context.Context, name, project, buildVariant string, start, end time.Time) ([]expectedDurationResults, error) {
 	match := bson.M{
 		BuildVariantKey: buildVariant,
 		ProjectKey:      project,
@@ -82,8 +83,6 @@ func getExpectedDurationsForWindow(name, project, buildVariant string, start, en
 	results := []expectedDurationResults{}
 
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
-	ctx, cancel := evergreen.GetEnvironment().Context()
-	defer cancel()
 	cursor, err := coll.Aggregate(ctx, pipeline, options.Aggregate().SetHint(TaskHistoricalDataIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task average duration")

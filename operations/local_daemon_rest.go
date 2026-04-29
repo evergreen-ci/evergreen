@@ -311,7 +311,7 @@ func (d *localDaemonREST) handleListSteps(w http.ResponseWriter, r *http.Request
 	}))
 }
 
-// handleRunUntil runs until a specific step identified by step number string.
+// handleRunUntil runs up to but not including a specific step identified by step number string.
 func (d *localDaemonREST) handleRunUntil(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	stepNum := vars["step"]

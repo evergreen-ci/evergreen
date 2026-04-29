@@ -2076,6 +2076,7 @@ type APIServiceFlags struct {
 	EmailNotificationsDisabled   bool `json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
+	SlackSenderCheckEnabled      bool `json:"slack_sender_check_enabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2521,6 +2522,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
+		as.SlackSenderCheckEnabled = v.SlackSenderCheckEnabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2568,6 +2570,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
+		SlackSenderCheckEnabled:            as.SlackSenderCheckEnabled,
 	}, nil
 }
 
@@ -3190,10 +3193,12 @@ func (a *APIS3UploadCostConfig) ToService() (any, error) {
 }
 
 type APIS3StorageCostConfig struct {
-	StandardStorageCostDiscount      float64 `json:"standard_storage_cost_discount"`
-	IAStorageCostDiscount            float64 `json:"i_a_storage_cost_discount"`
-	ArchiveStorageCostDiscount       float64 `json:"archive_storage_cost_discount"`
-	DefaultMaxArtifactExpirationDays int     `json:"default_max_artifact_expiration_days"`
+	StandardStorageCostDiscount              float64  `json:"standard_storage_cost_discount"`
+	IAStorageCostDiscount                    float64  `json:"i_a_storage_cost_discount"`
+	ArchiveStorageCostDiscount               float64  `json:"archive_storage_cost_discount"`
+	DefaultMaxArtifactExpirationDays         int      `json:"default_max_artifact_expiration_days"`
+	DevprodOwnedAWSAccountIds                []string `json:"devprod_owned_aws_account_ids"`
+	ArtifactAwsAccountsWithoutLifecycleRules []string `json:"artifact_aws_accounts_without_lifecycle_rules"`
 }
 
 func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
@@ -3203,6 +3208,8 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 		a.IAStorageCostDiscount = v.IAStorageCostDiscount
 		a.ArchiveStorageCostDiscount = v.ArchiveStorageCostDiscount
 		a.DefaultMaxArtifactExpirationDays = v.DefaultMaxArtifactExpirationDays
+		a.DevprodOwnedAWSAccountIds = v.DevprodOwnedAWSAccountIDs
+		a.ArtifactAwsAccountsWithoutLifecycleRules = v.ArtifactAWSAccountsWithoutLifecycleRules
 		return nil
 	default:
 		return errors.Errorf("incorrect type %T", v)
@@ -3211,10 +3218,12 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 
 func (a *APIS3StorageCostConfig) ToService() (any, error) {
 	return evergreen.S3StorageCostConfig{
-		StandardStorageCostDiscount:      a.StandardStorageCostDiscount,
-		IAStorageCostDiscount:            a.IAStorageCostDiscount,
-		ArchiveStorageCostDiscount:       a.ArchiveStorageCostDiscount,
-		DefaultMaxArtifactExpirationDays: a.DefaultMaxArtifactExpirationDays,
+		StandardStorageCostDiscount:              a.StandardStorageCostDiscount,
+		IAStorageCostDiscount:                    a.IAStorageCostDiscount,
+		ArchiveStorageCostDiscount:               a.ArchiveStorageCostDiscount,
+		DefaultMaxArtifactExpirationDays:         a.DefaultMaxArtifactExpirationDays,
+		DevprodOwnedAWSAccountIDs:                a.DevprodOwnedAWSAccountIds,
+		ArtifactAWSAccountsWithoutLifecycleRules: a.ArtifactAwsAccountsWithoutLifecycleRules,
 	}, nil
 }
 

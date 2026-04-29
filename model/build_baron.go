@@ -26,7 +26,7 @@ func (js *JiraSuggest) GetTimeout() time.Duration {
 func (js *JiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
 	jql := t.GetJQL(js.BbProj.TicketSearchProjects)
 
-	results, err := js.JiraHandler.JQLSearch(jql, 0, 50)
+	results, err := js.JiraHandler.JQLSearch(ctx, jql, 0, 50)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +48,8 @@ type JiraSuggest struct {
 	JiraHandler thirdparty.JiraHandler
 }
 
-func (mss *MultiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, string, error) {
-	tickets, err := mss.JiraSuggester.Suggest(context.TODO(), t)
+func (mss *MultiSourceSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, string, error) {
+	tickets, err := mss.JiraSuggester.Suggest(ctx, t)
 	return tickets, jiraSource, err
 }
 
@@ -152,7 +152,10 @@ func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thir
 	}
 	bbConfig.SearchConfigured = true
 
-	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	jiraHandler, err := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	if err != nil {
+		return nil, bbConfig, errors.Wrap(err, "creating jira handler")
+	}
 	jira := &JiraSuggest{bbProj, jiraHandler}
 	multiSource := &MultiSourceSuggest{jira}
 
@@ -160,7 +163,7 @@ func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thir
 	var source string
 
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
-	tickets, source, err = multiSource.Suggest(t)
+	tickets, source, err = multiSource.Suggest(ctx, t)
 	if err != nil {
 		return nil, bbConfig, errors.Wrap(err, "searching for tickets")
 	}

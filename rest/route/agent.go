@@ -408,6 +408,13 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.Parameters[param.Key] = param.Value
 	}
 
+	var costCfg evergreen.CostConfig
+	if err := costCfg.Get(ctx); err != nil {
+		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
+	} else {
+		res.DevprodOwnedAWSAccountIDs = costCfg.S3Cost.Storage.DevprodOwnedAWSAccountIDs
+	}
+
 	return gimlet.NewJSONResponse(res)
 }
 
@@ -782,7 +789,8 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		grip.Error(ctx, errors.Wrapf(err, "finding version '%s' to update aggregate task costs", t.Version))
-	} else if v != nil && evergreen.IsFinishedVersionStatus(v.Status) {
+	} else if v != nil {
+		// For task groups, this runs once for the group rather than once per task.
 		grip.Error(ctx, errors.Wrapf(v.UpdateAggregateTaskCosts(ctx), "updating aggregate task costs for version '%s' after S3 usage report", v.Id))
 	}
 
@@ -796,22 +804,22 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	s3Attrs := []attribute.KeyValue{
 		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
-		attribute.Int(evergreen.S3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
-		attribute.Int64(evergreen.S3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
-		attribute.Int(evergreen.S3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
-		attribute.Float64(evergreen.OnDemandS3ArtifactPutCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactPutCost),
-		attribute.Float64(evergreen.AdjustedS3ArtifactPutCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactPutCost),
-		attribute.Float64(evergreen.OnDemandS3ArtifactStorageCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactStorageCost),
-		attribute.Float64(evergreen.AdjustedS3ArtifactStorageCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactStorageCost),
-		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
-		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
-		attribute.Float64(evergreen.OnDemandS3LogPutCostOtelAttribute, t.TaskCost.OnDemandS3LogPutCost),
-		attribute.Float64(evergreen.AdjustedS3LogPutCostOtelAttribute, t.TaskCost.AdjustedS3LogPutCost),
-		attribute.Float64(evergreen.OnDemandS3LogStorageCostOtelAttribute, t.TaskCost.OnDemandS3LogStorageCost),
-		attribute.Float64(evergreen.AdjustedS3LogStorageCostOtelAttribute, t.TaskCost.AdjustedS3LogStorageCost),
-		attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
-		attribute.Float64(evergreen.S3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
-		attribute.Float64(evergreen.S3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
+		attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
+		attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
+		attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
+		attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactPutCost),
+		attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactPutCost),
+		attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactStorageCost),
+		attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactStorageCost),
+		attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
+		attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
+		attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, t.TaskCost.OnDemandS3LogPutCost),
+		attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, t.TaskCost.AdjustedS3LogPutCost),
+		attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, t.TaskCost.OnDemandS3LogStorageCost),
+		attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, t.TaskCost.AdjustedS3LogStorageCost),
+		attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+		attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
+		attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
 	}
 
 	span.SetAttributes(s3Attrs...)
@@ -1652,10 +1660,13 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Get the project's GitHub app auth for check run operations.
-	// If this fails or the project doesn't have a GitHub app configured,
-	// the check run functions will fall back to using the internal app.
-	ghAppAuth := model.GetGitHubAppAuthForProject(ctx, t.Project)
-
+	ghAppAuth, err := model.GetAndValidateCheckRunGitHubAppAuth(ctx, t)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+	}
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {
 		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput, ghAppAuth)

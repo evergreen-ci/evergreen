@@ -42,3 +42,21 @@ func GetVersion(ctx context.Context, versionID string) (*model.Version, error) {
 	}
 	return result, err
 }
+
+// PreloadVersions enqueues every version ID into the dataloader's current batch
+// in a single synchronous loop, guaranteeing that subsequent GetVersion calls
+// for these IDs are served from the loader's thunk cache without any additional
+// MongoDB queries. Use this when a resolver knows up front that it will need
+// many versions whose loads would otherwise be split across multiple batches
+// due to the wait-time window (e.g. the TaskHistory resolver, where hundreds of
+// inactive tasks each request their own version).
+//
+// Errors are intentionally discarded here; per-key errors are still surfaced to
+// the individual GetVersion callers via the cached thunks.
+func PreloadVersions(ctx context.Context, versionIDs []string) {
+	if len(versionIDs) == 0 {
+		return
+	}
+	l := For(ctx)
+	_, _ = l.VersionLoader.LoadAll(ctx, versionIDs)
+}

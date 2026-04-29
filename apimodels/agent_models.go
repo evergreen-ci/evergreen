@@ -379,6 +379,9 @@ type ExpansionsAndVars struct {
 	// InternalRedactions contain Evergreen-internal values that should not be
 	// usable by the task but should still be redacted from logs.
 	InternalRedactions map[string]string `json:"internal_redactions"`
+	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
+	// owned by Devprod that we want to calculate s3 costs for.
+	DevprodOwnedAWSAccountIDs []string `json:"devprod_owned_aws_account_ids,omitempty"`
 }
 
 // CheckRunOutput represents the output for a CheckRun.

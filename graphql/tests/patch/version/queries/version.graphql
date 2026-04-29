@@ -2,6 +2,16 @@
   patch(patchId: "9e4ff3abe3c3317e352062e4") {
     versionFull {
       id
+      cost {
+        adjustedEBSStorageCost
+        adjustedEBSThroughputCost
+        adjustedEC2Cost
+        adjustedS3ArtifactPutCost
+        adjustedS3ArtifactStorageCost
+        adjustedS3LogPutCost
+        adjustedS3LogStorageCost
+        total
+      }
     }
     version {
       id

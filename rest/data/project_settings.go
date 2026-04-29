@@ -388,7 +388,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, errors.Wrapf(err, "updating project variables for project '%s'", projectId)
 		}
 		modified = true
-	case model.ProjectPageGithubAndCQSection:
+	// TODO DEVPROD-31534: remove GithubAndCQSection
+	case model.ProjectPageGithubAndCQSection, model.ProjectPagePullRequestsSection, model.ProjectPageGitTagsSection, model.ProjectPageMergeQueueSection, model.ProjectPageCommitChecksSection:
 		mergedSection.Owner = mergedBeforeRef.Owner
 		mergedSection.Repo = mergedBeforeRef.Repo
 		mergedSection.Branch = mergedBeforeRef.Branch
@@ -396,7 +397,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			return nil, err
 		}
 
-		if err = validateFeaturesHaveAliases(ctx, mergedBeforeRef, mergedSection, changes.Aliases); err != nil {
+		if err = validateFeaturesHaveAliases(ctx, mergedBeforeRef, mergedSection, changes.Aliases, section); err != nil {
 			return nil, err
 		}
 		if err = mergedSection.ValidateGitHubPermissionGroupsByRequester(); err != nil {

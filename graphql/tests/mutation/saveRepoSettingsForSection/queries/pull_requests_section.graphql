@@ -1,0 +1,36 @@
+mutation {
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
+      projectRef: {
+        id: "sandbox_repo_id"
+        prTestingEnabled: true
+        manualPrTestingEnabled: true
+        oldestAllowedMergeBase: "meow"
+      }
+      aliases: [
+        {
+          id: "pr-alias-id-1"
+          alias: "__github"
+          gitTag: ""
+          remotePath: ""
+          task: "unit_tests"
+          variant: "ubuntu1604"
+          taskTags: []
+          variantTags: []
+        }
+      ]
+    }
+    section: PULL_REQUESTS
+  ) {
+    projectRef {
+      prTestingEnabled ## changed
+      manualPrTestingEnabled ## changed
+      oldestAllowedMergeBase ## changed
+    }
+    vars {
+      vars ## should be unchanged
+      privateVars
+    }
+  }
+}

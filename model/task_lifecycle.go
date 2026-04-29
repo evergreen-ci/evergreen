@@ -752,6 +752,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	// Add cost attributes to the context for otel tracing
 	if !t.TaskCost.IsZero() {
 		costAttrs := []attribute.KeyValue{
+			attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
 			attribute.Float64(evergreen.TaskOnDemandCostOtelAttribute, t.TaskCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
 			attribute.Float64(evergreen.TaskEBSOnDemandThroughputCostOtelAttribute, t.TaskCost.OnDemandEBSThroughputCost),
@@ -999,12 +1000,38 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		attrs = append(attrs,
 			attribute.Float64(evergreen.VersionOnDemandCostOtelAttribute, v.Cost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.VersionAdjustedCostOtelAttribute, v.Cost.AdjustedEC2Cost),
+			attribute.Float64(evergreen.VersionEBSOnDemandThroughputCostOtelAttribute, v.Cost.OnDemandEBSThroughputCost),
+			attribute.Float64(evergreen.VersionEBSAdjustedThroughputCostOtelAttribute, v.Cost.AdjustedEBSThroughputCost),
+			attribute.Float64(evergreen.VersionEBSOnDemandStorageCostOtelAttribute, v.Cost.OnDemandEBSStorageCost),
+			attribute.Float64(evergreen.VersionEBSAdjustedStorageCostOtelAttribute, v.Cost.AdjustedEBSStorageCost),
+			attribute.Float64(evergreen.VersionOnDemandS3ArtifactPutCostOtelAttribute, v.Cost.OnDemandS3ArtifactPutCost),
+			attribute.Float64(evergreen.VersionAdjustedS3ArtifactPutCostOtelAttribute, v.Cost.AdjustedS3ArtifactPutCost),
+			attribute.Float64(evergreen.VersionOnDemandS3ArtifactStorageCostOtelAttribute, v.Cost.OnDemandS3ArtifactStorageCost),
+			attribute.Float64(evergreen.VersionAdjustedS3ArtifactStorageCostOtelAttribute, v.Cost.AdjustedS3ArtifactStorageCost),
+			attribute.Float64(evergreen.VersionOnDemandS3LogPutCostOtelAttribute, v.Cost.OnDemandS3LogPutCost),
+			attribute.Float64(evergreen.VersionAdjustedS3LogPutCostOtelAttribute, v.Cost.AdjustedS3LogPutCost),
+			attribute.Float64(evergreen.VersionOnDemandS3LogStorageCostOtelAttribute, v.Cost.OnDemandS3LogStorageCost),
+			attribute.Float64(evergreen.VersionAdjustedS3LogStorageCostOtelAttribute, v.Cost.AdjustedS3LogStorageCost),
 		)
 	}
 	if !v.PredictedCost.IsZero() {
 		attrs = append(attrs,
 			attribute.Float64(evergreen.VersionPredictedOnDemandCostOtelAttribute, v.PredictedCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.VersionPredictedAdjustedCostOtelAttribute, v.PredictedCost.AdjustedEC2Cost),
+		)
+	}
+	if !v.S3Usage.IsZero() {
+		var avgFilePutCost float64
+		if v.S3Usage.Artifacts.Count > 0 {
+			avgFilePutCost = v.Cost.AdjustedS3ArtifactPutCost / float64(v.S3Usage.Artifacts.Count)
+		}
+		attrs = append(attrs,
+			attribute.Int(evergreen.VersionS3ArtifactPutRequestsOtelAttribute, v.S3Usage.Artifacts.PutRequests),
+			attribute.Int64(evergreen.VersionS3ArtifactUploadBytesOtelAttribute, v.S3Usage.Artifacts.UploadBytes),
+			attribute.Int(evergreen.VersionS3ArtifactCountOtelAttribute, v.S3Usage.Artifacts.Count),
+			attribute.Float64(evergreen.VersionS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+			attribute.Int(evergreen.VersionS3LogPutRequestsOtelAttribute, v.S3Usage.Logs.PutRequests),
+			attribute.Int64(evergreen.VersionS3LogUploadBytesOtelAttribute, v.S3Usage.Logs.UploadBytes),
 		)
 	}
 

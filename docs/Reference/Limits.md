@@ -39,6 +39,13 @@ time frame, they will either need to wait until that time frame has ended to
 continue scheduling tasks, or unschedule tasks to free up space in their
 scheduling quota.
 
+## Test Results Upload Time Limit
+
+All test result uploads for a single task execution must occur within 24 hours of
+the first upload. Attempts to append test results after 24 hours will be
+rejected. If a task needs to upload many test results over a long-running
+execution, please batch them into a single upload at the end of the task.
+
 ## Task Timeout Max
 
 Evergreen does not have a limit on how large task timeouts can be. For different

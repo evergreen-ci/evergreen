@@ -1,0 +1,34 @@
+mutation {
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
+      projectRef: {
+        id: "sandbox_repo_id"
+        commitQueue: { enabled: true }
+      }
+      aliases: [
+        {
+          id: "cq-alias-id-1"
+          alias: "__commit_queue"
+          gitTag: ""
+          remotePath: ""
+          task: "unit_tests"
+          variant: "ubuntu1604"
+          taskTags: []
+          variantTags: []
+        }
+      ]
+    }
+    section: MERGE_QUEUE
+  ) {
+    projectRef {
+      commitQueue {
+        enabled ## changed
+      }
+    }
+    vars {
+      vars ## should be unchanged
+      privateVars
+    }
+  }
+}

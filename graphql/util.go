@@ -795,9 +795,12 @@ func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdpa
 		}
 	}
 	settings := evergreen.GetEnvironment().Settings()
-	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	jiraHandler, err := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	if err != nil {
+		return nil, err
+	}
 	for _, ticket := range searchTickets {
-		jiraIssue, err := jiraHandler.GetJIRATicket(ticket)
+		jiraIssue, err := jiraHandler.GetIssue(ctx, ticket)
 		if err != nil {
 			return nil, err
 		}
@@ -993,6 +996,10 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 }
 
 func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]task.Task, error) {
+	if dbTask == nil {
+		return nil, nil
+	}
+
 	var (
 		baseTask *task.Task
 		tasks    []task.Task

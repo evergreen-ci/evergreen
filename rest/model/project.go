@@ -889,6 +889,10 @@ func (p *APIProjectRef) BuildFromService(ctx context.Context, projectRef model.P
 
 // DefaultUnsetBooleans is used to set booleans to their default value.
 func (pRef *APIProjectRef) DefaultUnsetBooleans() {
+	if pRef.DebugSpawnHostsDisabled == nil {
+		// DebugSpawnHostsDisabled needs to be on by default to enforce opt-in
+		pRef.DebugSpawnHostsDisabled = utility.TruePtr()
+	}
 	reflected := reflect.ValueOf(pRef).Elem()
 	recursivelyDefaultBooleans(reflected)
 }

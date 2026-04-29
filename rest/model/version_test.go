@@ -6,6 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +18,7 @@ import (
 func TestVersionBuildFromService(t *testing.T) {
 	assert := assert.New(t)
 
-	time := time.Now()
+	ts := time.Now()
 	versionId := "versionId"
 	revision := "revision"
 	author := "author"
@@ -52,11 +54,13 @@ func TestVersionBuildFromService(t *testing.T) {
 		Tag:    "my-triggered-tag",
 		Pusher: "pusher",
 	}
+	ingestTs := ts.Add(time.Minute)
 	v := model.Version{
 		Id:                versionId,
-		CreateTime:        time,
-		StartTime:         time,
-		FinishTime:        time,
+		CreateTime:        ts,
+		IngestTime:        ingestTs,
+		StartTime:         ts,
+		FinishTime:        ts,
 		Revision:          revision,
 		Author:            author,
 		AuthorEmail:       authorEmail,
@@ -75,9 +79,11 @@ func TestVersionBuildFromService(t *testing.T) {
 	apiVersion.BuildFromService(t.Context(), v)
 	// Each field should be as expected
 	assert.Equal(apiVersion.Id, utility.ToStringPtr(versionId))
-	assert.Equal(*apiVersion.CreateTime, time)
-	assert.Equal(*apiVersion.StartTime, time)
-	assert.Equal(*apiVersion.FinishTime, time)
+	assert.Equal(*apiVersion.CreateTime, ts)
+	require.NotNil(t, apiVersion.IngestTime)
+	assert.Equal(*apiVersion.IngestTime, ingestTs)
+	assert.Equal(*apiVersion.StartTime, ts)
+	assert.Equal(*apiVersion.FinishTime, ts)
 	assert.Equal(apiVersion.Revision, utility.ToStringPtr(revision))
 	assert.Equal(apiVersion.Author, utility.ToStringPtr(author))
 	assert.Equal(apiVersion.AuthorEmail, utility.ToStringPtr(authorEmail))
@@ -126,10 +132,12 @@ func TestVersionBuildFromServiceCost(t *testing.T) {
 		assert.InDelta(t, 12.0, apiVersion.Cost.AdjustedEC2Cost, 0.01)
 		assert.InDelta(t, 0.08, apiVersion.Cost.AdjustedS3ArtifactPutCost, 0.001)
 		assert.InDelta(t, 0.03, apiVersion.Cost.AdjustedS3LogPutCost, 0.001)
+		assert.InDelta(t, 12.0+0.08+0.03, apiVersion.Cost.Total, 0.001)
 
 		require.NotNil(t, apiVersion.PredictedCost)
 		assert.InDelta(t, 5.0, apiVersion.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, apiVersion.PredictedCost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 4.0, apiVersion.PredictedCost.Total, 0.01)
 	})
 
 	t.Run("ZeroCostIsNil", func(t *testing.T) {
@@ -143,4 +151,66 @@ func TestVersionBuildFromServiceCost(t *testing.T) {
 		assert.Nil(t, apiVersion.Cost)
 		assert.Nil(t, apiVersion.PredictedCost)
 	})
+}
+
+func TestVersionBuildFromServiceS3Usage(t *testing.T) {
+	t.Run("PopulatedS3UsageIsExposed", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-with-s3-usage",
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 100,
+						UploadBytes: 1024 * 1024,
+					},
+					Count: 5,
+				},
+				Logs: s3usage.LogMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 50,
+						UploadBytes: 512 * 1024,
+					},
+				},
+			},
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		require.NotNil(t, apiVersion.S3Usage)
+		assert.Equal(t, 100, apiVersion.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(1024*1024), apiVersion.S3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, 5, apiVersion.S3Usage.Artifacts.Count)
+		assert.Equal(t, 50, apiVersion.S3Usage.Logs.PutRequests)
+		assert.Equal(t, int64(512*1024), apiVersion.S3Usage.Logs.UploadBytes)
+	})
+
+	t.Run("ZeroS3UsageIsNil", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-no-s3-usage",
+		}
+
+		apiVersion := &APIVersion{}
+		apiVersion.BuildFromService(t.Context(), v)
+
+		assert.Nil(t, apiVersion.S3Usage)
+	})
+}
+
+func TestAPITaskBuildFromServiceSetsCostTotals(t *testing.T) {
+	tsk := &task.Task{
+		TaskCost: cost.Cost{
+			AdjustedEC2Cost:           10.0,
+			AdjustedS3ArtifactPutCost: 0.05,
+		},
+		PredictedTaskCost: cost.Cost{
+			AdjustedEC2Cost: 3.0,
+		},
+	}
+	var api APITask
+	require.NoError(t, api.BuildFromService(t.Context(), tsk, nil))
+	require.NotNil(t, api.TaskCost)
+	require.NotNil(t, api.PredictedTaskCost)
+	assert.InDelta(t, 10.05, api.TaskCost.Total, 0.0001)
+	assert.InDelta(t, 3.0, api.PredictedTaskCost.Total, 0.0001)
 }
