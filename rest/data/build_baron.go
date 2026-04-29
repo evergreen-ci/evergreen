@@ -159,8 +159,7 @@ func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *
 	if err != nil {
 		return nil, err
 	}
-	n.SetTaskMetadata(t.Id, t.Execution)
-	n.Metadata.CreatedBy = username
+	n.SetTaskMetadata(t.Id, t.Execution, username)
 
 	err = notification.InsertMany(ctx, *n)
 	if err != nil {

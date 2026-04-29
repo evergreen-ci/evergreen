@@ -267,9 +267,10 @@ func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 	return nil
 }
 
-func (n *Notification) SetTaskMetadata(ID string, execution int) {
+func (n *Notification) SetTaskMetadata(ID string, execution int, createdBy string) {
 	n.Metadata.TaskID = ID
 	n.Metadata.TaskExecution = execution
+	n.Metadata.CreatedBy = createdBy
 }
 
 // FormatSlackTarget uses the slackMemberId instead of the userName when possible.
