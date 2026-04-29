@@ -89,9 +89,7 @@ func (at *APITest) BuildFromService(st any) error {
 			if at.Logs.LineNum == 0 {
 				at.Logs.LineNum = int(v.LogInfo.LineNumCedar)
 			}
-			if v.LogInfo.LogsToMerge != nil {
-				at.Logs.LogsToMerge = utility.FromStringPtrSlice(v.LogInfo.LogsToMerge)
-			}
+			at.Logs.LogsToMerge = utility.FromStringPtrSlice(v.LogInfo.LogsToMerge)
 		}
 	case string:
 		at.TaskID = utility.ToStringPtr(v)
