@@ -42,7 +42,6 @@ type Environment struct {
 	DBSession               db.Session
 	EvergreenSettings       *evergreen.Settings
 	MongoClient             *mongo.Client
-	SharedDatabase          *mongo.Database
 	mu                      sync.RWMutex
 	DatabaseName            string
 	EnvContext              context.Context
@@ -261,7 +260,7 @@ func (e *Environment) CedarDB() *mongo.Database {
 }
 
 func (e *Environment) SharedDB() *mongo.Database {
-	return e.SharedDatabase
+	return nil
 }
 
 func (e *Environment) JasperManager() jasper.Manager {

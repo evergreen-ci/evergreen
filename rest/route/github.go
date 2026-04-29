@@ -138,10 +138,9 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 // not available for the owner/repo. This deduplicates event processing for
 // repos with both the GitHub app installed and a repo webhook installed.
 func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo string, fromApp bool) bool {
-	if evergreen.GetEnvironment().SharedDB() != nil {
-		// For personal staging (i.e. using a shared DB across all staging
-		// instances), only use repo webhooks and ignore GitHub app webhooks
-		// because they're more convenient.
+	if gh.settings.Ui.StagingEnvironment != "" {
+		// For personal staging, only use repo webhooks and ignore GitHub app
+		// webhooks because they're more convenient.
 		//
 		// For context, it's easier to maintain personal staging if they use
 		// only repo webhooks because Evergreen devs have direct and visible

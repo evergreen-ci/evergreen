@@ -499,38 +499,28 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 func TestShouldSkipWebhookPersonalStaging(t *testing.T) {
 	ctx := t.Context()
 
-	mockEnv := &mock.Environment{}
-	require.NoError(t, mockEnv.Configure(ctx))
-
-	originalEnv := evergreen.GetEnvironment()
-	t.Cleanup(func() { evergreen.SetEnvironment(originalEnv) })
-
-	handler := &githubHookApi{settings: mockEnv.Settings()}
-
 	for testCase, tc := range map[string]struct {
-		isPersonalStaging bool
-		fromApp           bool
-		expectSkip        bool
+		stagingEnvironment string
+		fromApp            bool
+		expectSkip         bool
 	}{
 		"PersonalStagingSkipsAppWebhook": {
-			isPersonalStaging: true,
-			fromApp:           true,
-			expectSkip:        true,
+			stagingEnvironment: "mine",
+			fromApp:            true,
+			expectSkip:         true,
 		},
 		"PersonalStagingAcceptsRepoWebhook": {
-			isPersonalStaging: true,
-			fromApp:           false,
-			expectSkip:        false,
+			stagingEnvironment: "mine",
+			fromApp:            false,
+			expectSkip:         false,
 		},
 	} {
 		t.Run(testCase, func(t *testing.T) {
-			if tc.isPersonalStaging {
-				mockEnv.SharedDatabase = mockEnv.MongoClient.Database("shared")
-			} else {
-				mockEnv.SharedDatabase = nil
+			handler := &githubHookApi{
+				settings: &evergreen.Settings{
+					Ui: evergreen.UIConfig{StagingEnvironment: tc.stagingEnvironment},
+				},
 			}
-			evergreen.SetEnvironment(mockEnv)
-
 			result := handler.shouldSkipWebhook(ctx, "owner", "repo", tc.fromApp)
 			assert.Equal(t, tc.expectSkip, result)
 		})
