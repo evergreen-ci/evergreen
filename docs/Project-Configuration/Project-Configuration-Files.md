@@ -495,7 +495,7 @@ The `${<module_name>_rev}` expansion and other manifest-based revision fields ar
 
 The GitHub App used for private clones must be installed on the **parent** repository (e.g. `org/parent`); the clone URL still uses the `parent.wiki` repository.
 
-Wiki modules are intended for use with **git.get_project** cloning. [Includes](#include) that pull project YAML from a module repository are not supported for wikis unless separately implemented.
+Wiki modules are intended for use with **git.get_project** cloning. [Includes](#include) that pull project YAML from a module repository are not supported for wikis.
 
 Example `modules` entry using a wiki repository:
 
