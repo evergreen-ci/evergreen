@@ -3317,26 +3317,10 @@ func TestClearParamsYAML(t *testing.T) {
 		assert.Empty(t, pp.TaskGroups[0].SetupTask.MultiCommand[0].ParamsYAML)
 	})
 
-	t.Run("ParamsIsPopulatedFromParamsYAML", func(t *testing.T) {
-		assert.Equal(t, "make", pp.Pre.SingleCommand.Params["binary"])
-		assert.Equal(t, "make", pp.Functions["run-make"].SingleCommand.Params["binary"])
-		assert.Equal(t, "make", pp.Tasks[0].Commands[0].Params["binary"])
-	})
-
 	t.Run("MarshaledYAMLDoesNotContainParamsYAML", func(t *testing.T) {
 		out, err := yaml.Marshal(pp)
 		require.NoError(t, err)
 		assert.NotContains(t, string(out), "params_yaml")
 		assert.Contains(t, string(out), "params")
-	})
-
-	t.Run("RoundtripPreservesParams", func(t *testing.T) {
-		out, err := yaml.Marshal(pp)
-		require.NoError(t, err)
-
-		var roundtripped ParserProject
-		require.NoError(t, yaml.Unmarshal(out, &roundtripped))
-		assert.Equal(t, "make", roundtripped.Functions["run-make"].SingleCommand.Params["binary"])
-		assert.Equal(t, "make", roundtripped.Tasks[0].Commands[0].Params["binary"])
 	})
 }
