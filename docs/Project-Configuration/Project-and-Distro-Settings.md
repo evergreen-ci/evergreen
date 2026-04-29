@@ -540,7 +540,11 @@ performance of tasks and tests.
 
 ### Project-Level Notifications
 
-Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
+Project admins can set up notifications for when some events happen within the project.
+
+Subscriptions defined at the repo level apply to all untracked branches and all branches that are attached to the repo. They do not apply to branches that are defined but unattached.
+
+Admins can set up events when:
 
 - Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR,
   periodic build).
