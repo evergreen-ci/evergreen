@@ -38,7 +38,7 @@ Exceptions to this behavior:
 
 ![shared_variables.png](../images/shared_variables.png)
 
-- **Repo-level subscriptions**": Similar to variables, it's expected that branches may need their own subscriptions in addition to what's set at the repo. Because of this, branches will consider both repo-level and branch-level subscriptions. Repo-level subscriptions apply to untracked branches as well.
+- **Repo-level subscriptions**: Similar to variables, it's expected that branches may need their own subscriptions in addition to what's set at the repo. Because of this, branches will consider both repo-level and branch-level subscriptions. Repo-level subscriptions apply to untracked branches as well.
 
 ## How to Use PR Testing for Untracked Branches
 
