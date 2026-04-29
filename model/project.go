@@ -490,17 +490,6 @@ func IsWikiRepo(repo string) bool {
 	return strings.HasSuffix(r, ".wiki")
 }
 
-// ParentRepoForGitHubAppToken returns the repository name to pass when resolving
-// a GitHub App installation for clone tokens. Installations are on the parent
-// repository; clone URLs may still use the ".wiki" repository name.
-func ParentRepoForGitHubAppToken(repo string) string {
-	if !IsWikiRepo(repo) {
-		return repo
-	}
-	r := strings.TrimSuffix(strings.TrimSpace(repo), ".git")
-	return strings.TrimSuffix(r, ".wiki")
-}
-
 type ModuleList []Module
 
 func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {

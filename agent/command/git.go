@@ -576,7 +576,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			" to https format. Please update your project config.", module.Repo)
 	}
 
-	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, model.ParentRepoForGitHubAppToken(repo))
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, conf.TaskData(), owner, parentRepoForGitHubAppToken(repo))
 	if err != nil {
 		return errors.Wrap(err, "creating app token")
 	}
@@ -885,4 +885,15 @@ func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModuleP
 
 func isGitHub(conf *internal.TaskConfig) bool {
 	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
+}
+
+// parentRepoForGitHubAppToken returns the repository name to pass when resolving
+// a GitHub App installation for clone tokens. Installations are on the parent
+// repository; clone URLs may still use the ".wiki" repository name.
+func parentRepoForGitHubAppToken(repo string) string {
+	if !model.IsWikiRepo(repo) {
+		return repo
+	}
+	r := strings.TrimSuffix(strings.TrimSpace(repo), ".git")
+	return strings.TrimSuffix(r, ".wiki")
 }

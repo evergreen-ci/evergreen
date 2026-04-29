@@ -1042,3 +1042,9 @@ func (s *GitGetProjectSuite) TestReorderPatches() {
 	s.Equal("m1", patches[1].ModuleName)
 	s.Equal("", patches[2].ModuleName)
 }
+
+func TestParentRepoForGitHubAppToken(t *testing.T) {
+	assert.Equal(t, "mongo", parentRepoForGitHubAppToken("mongo.wiki"))
+	assert.Equal(t, "mongo", parentRepoForGitHubAppToken("mongo.wiki.git"))
+	assert.Equal(t, "other", parentRepoForGitHubAppToken("other"))
+}
