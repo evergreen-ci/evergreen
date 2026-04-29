@@ -439,6 +439,7 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 	}
 }
 
+// TODO DEVPROD-31534: Remove legacy test, see TestValidateFeaturesHaveAliasesForGithubSections
 func TestValidateFeaturesHaveAliases(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
 
@@ -459,7 +460,7 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 
 	// Errors when there aren't aliases for all enabled features.
-	err := validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
+	err := validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "GitHub checks")
 
@@ -470,16 +471,130 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 	assert.NoError(t, repoAlias1.Upsert(t.Context()))
 	// No error when there are aliases in the repo.
-	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection))
 
 	pRef.GitTagVersionsEnabled = utility.TruePtr()
 	pRef.CommitQueue.Enabled = utility.TruePtr()
-	err = validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
+	err = validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Git tag")
 	assert.Contains(t, err.Error(), "Commit queue")
 
 	// No error when version control is enabled.
 	oldPRef.VersionControlEnabled = utility.TruePtr()
-	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection))
+}
+
+func TestValidateFeaturesHaveAliasesForGithubSections(t *testing.T) {
+	oldPRef := &model.ProjectRef{
+		VersionControlEnabled: utility.FalsePtr(),
+	}
+	basePRef := &model.ProjectRef{
+		Id:                    "p1",
+		PRTestingEnabled:      utility.TruePtr(),
+		GitTagVersionsEnabled: utility.TruePtr(),
+		GithubChecksEnabled:   utility.TruePtr(),
+	}
+	basePRef.CommitQueue.Enabled = utility.TruePtr()
+
+	makeAliases := func(names ...string) []restModel.APIProjectAlias {
+		var out []restModel.APIProjectAlias
+		for _, n := range names {
+			n := n
+			out = append(out, restModel.APIProjectAlias{
+				Alias: utility.ToStringPtr(n),
+			})
+		}
+		return out
+	}
+
+	type tc struct {
+		name           string
+		section        model.ProjectPageSection
+		aliases        []restModel.APIProjectAlias
+		expectErr      bool
+		wantSubstrings []string
+		notSubstrings  []string
+	}
+
+	cases := []tc{
+		{
+			name:    "PR tab passes with only PR alias",
+			section: model.ProjectPagePullRequestsSection,
+			aliases: makeAliases(evergreen.GithubPRAlias),
+		},
+		{
+			name:           "PR tab fails without PR alias even if others present",
+			section:        model.ProjectPagePullRequestsSection,
+			aliases:        makeAliases(evergreen.GitTagAlias, evergreen.GithubChecksAlias, evergreen.CommitQueueAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"PR testing"},
+			notSubstrings:  []string{"Git tag", "Commit queue", "GitHub checks"},
+		},
+		{
+			name:    "Merge queue tab passes with only CQ alias",
+			section: model.ProjectPageMergeQueueSection,
+			aliases: makeAliases(evergreen.CommitQueueAlias),
+		},
+		{
+			name:           "Merge queue tab fails without CQ alias even if others present",
+			section:        model.ProjectPageMergeQueueSection,
+			aliases:        makeAliases(evergreen.GitTagAlias, evergreen.GithubChecksAlias, evergreen.GithubPRAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"Commit queue"},
+			notSubstrings:  []string{"PR testing", "Git tag", "GitHub checks"},
+		},
+		{
+			name:    "Git tags tab passes with only Git tag alias",
+			section: model.ProjectPageGitTagsSection,
+			aliases: makeAliases(evergreen.GitTagAlias),
+		},
+		{
+			name:           "Git tags tab fails without Git tag alias even if others present",
+			section:        model.ProjectPageGitTagsSection,
+			aliases:        makeAliases(evergreen.CommitQueueAlias, evergreen.GithubChecksAlias, evergreen.GithubPRAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"Git tag"},
+			notSubstrings:  []string{"PR testing", "Commit queue", "GitHub checks"},
+		},
+		{
+			name:    "Commit checks tab passes with only GitHub checks alias",
+			section: model.ProjectPageCommitChecksSection,
+			aliases: makeAliases(evergreen.GithubChecksAlias),
+		},
+		{
+			name:           "Commit checks tab fails without GitHub checks alias even if others present",
+			section:        model.ProjectPageCommitChecksSection,
+			aliases:        makeAliases(evergreen.CommitQueueAlias, evergreen.GitTagAlias, evergreen.GithubPRAlias),
+			expectErr:      true,
+			wantSubstrings: []string{"GitHub checks"},
+			notSubstrings:  []string{"PR testing", "Git tag", "Commit queue"},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			pRefCopy := *basePRef
+
+			err := validateFeaturesHaveAliases(
+				t.Context(),
+				oldPRef,
+				&pRefCopy,
+				test.aliases,
+				test.section,
+			)
+
+			if test.expectErr {
+				require.Error(t, err)
+				for _, s := range test.wantSubstrings {
+					assert.Contains(t, err.Error(), s, "expected error to contain %q", s)
+				}
+				for _, s := range test.notSubstrings {
+					assert.NotContains(t, err.Error(), s, "expected error NOT to contain %q", s)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

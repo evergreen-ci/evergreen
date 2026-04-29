@@ -512,27 +512,27 @@ const (
 	// S3 cost tracking otel span name — shared by per-file and aggregate events
 	S3CostTrackingOtelSpanName = "s3-cost-tracking"
 
-	// S3 cost tracking otel attributes — artifact aggregates
-	S3ArtifactPutRequestsOtelAttribute         = "evergreen.task.s3_cost.artifact_put_requests"
-	S3ArtifactUploadBytesOtelAttribute         = "evergreen.task.s3_cost.artifact_upload_bytes"
-	S3ArtifactCountOtelAttribute               = "evergreen.task.s3_cost.artifact_count"
-	OnDemandS3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.on_demand_artifact_put_cost"
-	AdjustedS3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.adjusted_artifact_put_cost"
-	OnDemandS3ArtifactStorageCostOtelAttribute = "evergreen.task.s3_cost.on_demand_artifact_storage_cost"
-	AdjustedS3ArtifactStorageCostOtelAttribute = "evergreen.task.s3_cost.adjusted_artifact_storage_cost"
+	// S3 cost tracking otel attributes — task-level artifact aggregates
+	TaskS3ArtifactPutRequestsOtelAttribute         = "evergreen.task.s3_cost.artifact_put_requests"
+	TaskS3ArtifactUploadBytesOtelAttribute         = "evergreen.task.s3_cost.artifact_upload_bytes"
+	TaskS3ArtifactCountOtelAttribute               = "evergreen.task.s3_cost.artifact_count"
+	TaskOnDemandS3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.on_demand_artifact_put_cost"
+	TaskAdjustedS3ArtifactPutCostOtelAttribute     = "evergreen.task.s3_cost.adjusted_artifact_put_cost"
+	TaskOnDemandS3ArtifactStorageCostOtelAttribute = "evergreen.task.s3_cost.on_demand_artifact_storage_cost"
+	TaskAdjustedS3ArtifactStorageCostOtelAttribute = "evergreen.task.s3_cost.adjusted_artifact_storage_cost"
 
-	// S3 cost tracking otel attributes — artifact per-file statistics
-	S3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
-	S3ArtifactWithMaxPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_max_put_requests_cost"
-	S3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
+	// S3 cost tracking otel attributes — task-level artifact per-file statistics
+	TaskS3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
+	TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_max_put_requests_cost"
+	TaskS3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
 
-	// S3 cost tracking otel attributes — log aggregates
-	S3LogPutRequestsOtelAttribute         = "evergreen.task.s3_cost.log_put_requests"
-	S3LogUploadBytesOtelAttribute         = "evergreen.task.s3_cost.log_upload_bytes"
-	OnDemandS3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.on_demand_log_put_cost"
-	AdjustedS3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.adjusted_log_put_cost"
-	OnDemandS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.on_demand_log_storage_cost"
-	AdjustedS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.adjusted_log_storage_cost"
+	// S3 cost tracking otel attributes — task-level log aggregates
+	TaskS3LogPutRequestsOtelAttribute         = "evergreen.task.s3_cost.log_put_requests"
+	TaskS3LogUploadBytesOtelAttribute         = "evergreen.task.s3_cost.log_upload_bytes"
+	TaskOnDemandS3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.on_demand_log_put_cost"
+	TaskAdjustedS3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.adjusted_log_put_cost"
+	TaskOnDemandS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.on_demand_log_storage_cost"
+	TaskAdjustedS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.adjusted_log_storage_cost"
 
 	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
@@ -556,6 +556,33 @@ const (
 	VersionAdjustedCostOtelAttribute          = "evergreen.version.adjusted_cost"
 	VersionPredictedOnDemandCostOtelAttribute = "evergreen.version.predicted_on_demand_cost"
 	VersionPredictedAdjustedCostOtelAttribute = "evergreen.version.predicted_adjusted_cost"
+
+	// EBS cost otel attributes — version-level (throughput)
+	VersionEBSOnDemandThroughputCostOtelAttribute = "evergreen.version.cost.ebs.on_demand_throughput_cost"
+	VersionEBSAdjustedThroughputCostOtelAttribute = "evergreen.version.cost.ebs.adjusted_throughput_cost"
+	// EBS cost otel attributes — version-level (storage)
+	VersionEBSOnDemandStorageCostOtelAttribute = "evergreen.version.cost.ebs.on_demand_storage_cost"
+	VersionEBSAdjustedStorageCostOtelAttribute = "evergreen.version.cost.ebs.adjusted_storage_cost"
+
+	// S3 cost tracking otel attributes — version-level artifact aggregates
+	VersionS3ArtifactPutRequestsOtelAttribute         = "evergreen.version.s3_cost.artifact_put_requests"
+	VersionS3ArtifactUploadBytesOtelAttribute         = "evergreen.version.s3_cost.artifact_upload_bytes"
+	VersionS3ArtifactCountOtelAttribute               = "evergreen.version.s3_cost.artifact_count"
+	VersionOnDemandS3ArtifactPutCostOtelAttribute     = "evergreen.version.s3_cost.on_demand_artifact_put_cost"
+	VersionAdjustedS3ArtifactPutCostOtelAttribute     = "evergreen.version.s3_cost.adjusted_artifact_put_cost"
+	VersionOnDemandS3ArtifactStorageCostOtelAttribute = "evergreen.version.s3_cost.on_demand_artifact_storage_cost"
+	VersionAdjustedS3ArtifactStorageCostOtelAttribute = "evergreen.version.s3_cost.adjusted_artifact_storage_cost"
+
+	// S3 cost tracking otel attributes — version-level artifact per-file statistics
+	VersionS3ArtifactAvgFilePutCostOtelAttribute = "evergreen.version.s3_cost.artifact_avg_file_put_cost"
+
+	// S3 cost tracking otel attributes — version-level log aggregates
+	VersionS3LogPutRequestsOtelAttribute         = "evergreen.version.s3_cost.log_put_requests"
+	VersionS3LogUploadBytesOtelAttribute         = "evergreen.version.s3_cost.log_upload_bytes"
+	VersionOnDemandS3LogPutCostOtelAttribute     = "evergreen.version.s3_cost.on_demand_log_put_cost"
+	VersionAdjustedS3LogPutCostOtelAttribute     = "evergreen.version.s3_cost.adjusted_log_put_cost"
+	VersionOnDemandS3LogStorageCostOtelAttribute = "evergreen.version.s3_cost.on_demand_log_storage_cost"
+	VersionAdjustedS3LogStorageCostOtelAttribute = "evergreen.version.s3_cost.adjusted_log_storage_cost"
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"

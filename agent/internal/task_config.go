@@ -71,6 +71,10 @@ type TaskConfig struct {
 	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
 	// owned by Devprod that we want to calculate s3 costs for.
 	DevprodOwnedAWSAccountIDs []string
+	// TestResultsCreatedAt is the time the first test results were
+	// uploaded for this task execution. Subsequent uploads reuse this
+	// value to ensure all results land in the same S3 partition.
+	TestResultsCreatedAt time.Time
 	// HasTestResults is true if the task has sent at least one test result.
 	HasTestResults bool
 	// HasFailingTestResult is true if the task has sent at least one test

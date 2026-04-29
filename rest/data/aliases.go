@@ -122,7 +122,13 @@ func updateAliasesForSection(ctx context.Context, projectId string, updatedAlias
 // validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github/CQ feature.
 // Does not error if version control is enabled. To check for version control, we pass in the original project ref
 // along with the newly changed project ref because the new project ref only contains github / CQ section data.
-func validateFeaturesHaveAliases(ctx context.Context, originalProjectRef *model.ProjectRef, newProjectRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
+func validateFeaturesHaveAliases(
+	ctx context.Context,
+	originalProjectRef *model.ProjectRef,
+	newProjectRef *model.ProjectRef,
+	aliases []restModel.APIProjectAlias,
+	section model.ProjectPageSection,
+) error {
 	if originalProjectRef.IsVersionControlEnabled() {
 		return nil
 	}
@@ -140,22 +146,42 @@ func validateFeaturesHaveAliases(ctx context.Context, originalProjectRef *model.
 		for _, a := range repoAliases {
 			aliasesMap[a.Alias] = true
 		}
-
 	}
 
 	msg := "%s cannot be enabled without aliases"
 	catcher := grip.NewBasicCatcher()
-	if newProjectRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
-		catcher.Errorf(msg, "PR testing")
-	}
-	if newProjectRef.CommitQueue.IsEnabled() && !aliasesMap[evergreen.CommitQueueAlias] {
-		catcher.Errorf(msg, "Commit queue")
-	}
-	if newProjectRef.IsGitTagVersionsEnabled() && !aliasesMap[evergreen.GitTagAlias] {
-		catcher.Errorf(msg, "Git tag versions")
-	}
-	if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
-		catcher.Errorf(msg, "GitHub checks")
+
+	switch section {
+	case model.ProjectPagePullRequestsSection:
+		if newProjectRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
+			catcher.Errorf(msg, "PR testing")
+		}
+	case model.ProjectPageMergeQueueSection:
+		if newProjectRef.CommitQueue.IsEnabled() && !aliasesMap[evergreen.CommitQueueAlias] {
+			catcher.Errorf(msg, "Commit queue")
+		}
+	case model.ProjectPageGitTagsSection:
+		if newProjectRef.IsGitTagVersionsEnabled() && !aliasesMap[evergreen.GitTagAlias] {
+			catcher.Errorf(msg, "Git tag versions")
+		}
+	case model.ProjectPageCommitChecksSection:
+		if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
+			catcher.Errorf(msg, "GitHub checks")
+		}
+	// TODO DEVPROD-31532: no need for this once we remove GithubAndCQSection
+	default:
+		if newProjectRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
+			catcher.Errorf(msg, "PR testing")
+		}
+		if newProjectRef.CommitQueue.IsEnabled() && !aliasesMap[evergreen.CommitQueueAlias] {
+			catcher.Errorf(msg, "Commit queue")
+		}
+		if newProjectRef.IsGitTagVersionsEnabled() && !aliasesMap[evergreen.GitTagAlias] {
+			catcher.Errorf(msg, "Git tag versions")
+		}
+		if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
+			catcher.Errorf(msg, "GitHub checks")
+		}
 	}
 
 	return catcher.Resolve()

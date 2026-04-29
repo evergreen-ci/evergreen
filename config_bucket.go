@@ -41,10 +41,10 @@ type BucketsConfig struct {
 	LogBucketFailedTasks BucketConfig `bson:"log_bucket_failed_tasks" json:"log_bucket_failed_tasks" yaml:"log_bucket_failed_tasks"`
 	// LongRetentionProjects is the list of project IDs that require long retention.
 	LongRetentionProjects []string `bson:"long_retention_projects" json:"long_retention_projects" yaml:"long_retention_projects"`
-	// RetryFailedLogMoveLookbackMonths is how many months back the weekly cron searches
+	// RetryFailedLogMoveLookbackMonths is how many months back the hourly retry cron searches
 	// for failed tasks whose logs need moving. Default 2 when unset or 0.
 	RetryFailedLogMoveLookbackMonths int `bson:"retry_failed_log_move_lookback_months" json:"retry_failed_log_move_lookback_months" yaml:"retry_failed_log_move_lookback_months"`
-	// RetryFailedLogMoveMaxJobsPerRun caps how many move jobs the weekly cron enqueues
+	// RetryFailedLogMoveMaxJobsPerRun caps how many move jobs the hourly retry cron enqueues
 	// per run to avoid S3 rate limiting. Newest failures are prioritized. Default 50 when unset or 0.
 	RetryFailedLogMoveMaxJobsPerRun int `bson:"retry_failed_log_move_max_jobs_per_run" json:"retry_failed_log_move_max_jobs_per_run" yaml:"retry_failed_log_move_max_jobs_per_run"`
 	// TestResultsBucket is the bucket information for test results.

@@ -4,6 +4,7 @@ import "time"
 
 type PanicReport struct {
 	Version                 string
+	VersionAsNumber         int64
 	AgentVersion            string
 	BuildRevision           string
 	CurrentWorkingDirectory string

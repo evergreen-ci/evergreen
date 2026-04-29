@@ -1007,6 +1007,8 @@ models:
   Version:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVersion
     fields:
+      cost:
+        resolver: true
       status:
         resolver: true
   VersionLite:
