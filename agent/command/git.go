@@ -515,48 +515,13 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Wrapf(err, "getting owner and repo for '%s'", moduleName)
 	}
 
-	// use submodule revisions based on the main patch. If there is a need in the future,
-	// this could maybe use the most recent submodule revision of all requested patches.
-	// We ignore set-module changes for commit queue and GitHub merge queue, since we should verify HEAD before merging.
-	// GitHub wikis are always cloned at remote HEAD; ref, set-module, manifest, and command params are ignored.
-	var modulePatch *patch.ModulePatch
 	var revision string
+
+	// GitHub wikis are always cloned at remote HEAD; ref, set-module, manifest, and command params are ignored.
 	if !model.IsWikiRepo(repo) {
-		if p != nil {
-			modulePatch = p.FindModule(moduleName)
-			if modulePatch != nil {
-				if conf.Task.Requester == evergreen.GithubMergeRequester {
-					revision = module.Branch
-					c.logModuleRevision(ctx, logger, revision, moduleName, "defaulting to HEAD for merge")
-				} else {
-					revision = modulePatch.Githash
-					if revision != "" {
-						c.logModuleRevision(ctx, logger, revision, moduleName, "specified in set-module")
-					}
-				}
-			}
-		}
-		if revision == "" {
-			revision = c.Revisions[moduleName]
-			if revision != "" {
-				c.logModuleRevision(ctx, logger, revision, moduleName, "specified as parameter to git.get_project")
-			}
-		}
-		if revision == "" {
-			revision = conf.Expansions.Get(moduleRevExpansionName(moduleName))
-			if revision != "" {
-				c.logModuleRevision(ctx, logger, revision, moduleName, "from manifest")
-			}
-		}
-		// if there is no revision, then use the revision from the module, then branch name
-		if revision == "" {
-			if module.Ref != "" {
-				revision = module.Ref
-				c.logModuleRevision(ctx, logger, revision, moduleName, "ref field in config file")
-			} else {
-				revision = module.Branch
-				c.logModuleRevision(ctx, logger, revision, moduleName, "branch field in config file")
-			}
+		revision, err = c.getModuleRevision(ctx, conf, logger, p, module)
+		if err != nil {
+			return errors.Wrapf(err, "getting module revision for '%s'", moduleName)
 		}
 	}
 
@@ -588,6 +553,11 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "validating clone options")
+	}
+
+	modulePatch := p.FindModule(moduleName)
+	if modulePatch != nil {
+		return errors.New("module patch not found")
 	}
 
 	var moduleCmds []string
@@ -637,6 +607,53 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 		return err
 	})
+}
+
+// getModuleRevision returns the git ref (commit, branch name, etc.) to use for a module.
+// Sources are checked in order; the first non-empty applicable value wins:
+//
+//  1. For GitHub merge queue tasks, use the module.Branch (aka merge queue group's HEAD).
+//  2. The ref specified by set-module
+//  3. The ref specified by the parameter to git.get_project
+//  4. The revision specified by the manifest expansion
+//  5. module.Ref from project config.
+//  6. module.Branch from project config.
+//
+// Wiki modules should not call this function as they do not checkout a specific revision.
+func (c *gitFetchProject) getModuleRevision(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, p *patch.Patch, module *model.Module) (string, error) {
+	if p != nil {
+		modulePatch := p.FindModule(module.Name)
+		if modulePatch != nil {
+			if conf.Task.Requester == evergreen.GithubMergeRequester {
+				c.logModuleRevision(ctx, logger, module.Branch, module.Name, "defaulting to HEAD for merge")
+				return module.Branch, nil
+			} else {
+				if revision := modulePatch.Githash; revision != "" {
+					c.logModuleRevision(ctx, logger, revision, module.Name, "specified in set-module")
+					return revision, nil
+				}
+			}
+		}
+	}
+
+	if revision := c.Revisions[module.Name]; revision != "" {
+		c.logModuleRevision(ctx, logger, revision, module.Name, "specified as parameter to git.get_project")
+		return revision, nil
+	}
+
+	if revision := conf.Expansions.Get(moduleRevExpansionName(module.Name)); revision != "" {
+		c.logModuleRevision(ctx, logger, revision, module.Name, "from manifest")
+		return revision, nil
+	}
+
+	if revision := module.Ref; revision != "" {
+		c.logModuleRevision(ctx, logger, revision, module.Name, "ref field in config file")
+		return revision, nil
+	}
+
+	// Always fallback to the module's branch.
+	c.logModuleRevision(ctx, logger, module.Branch, module.Name, "branch field in config file")
+	return module.Branch, nil
 }
 
 func (c *gitFetchProject) fetch(ctx context.Context,
