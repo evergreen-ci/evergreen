@@ -49,7 +49,9 @@ make lint-<package>  # Lint a specific package.
 make lint-evergreen  # Lint the top-level evergreen package (special case).
 ```
 
-After making changes, always run `goimports -w <file>` on every modified `.go` file, then run `make lint-<package>` for each affected package and verify there are no new errors beyond any pre-existing golangci-lint toolchain crashes.
+After making changes, run `make lint-<package>` for each affected package and verify there are no new errors beyond any pre-existing golangci-lint toolchain crashes.
+
+Adding a `ServiceFlags` field requires running `make test-service-graphql`.
 
 ### CI Self-Tests
 
