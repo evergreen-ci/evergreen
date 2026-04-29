@@ -307,6 +307,7 @@ func clone(ctx context.Context, opts cloneOptions) error {
 		return err
 	}
 
+	// If the module is a wiki, we do not support other clone options.
 	if opts.wikiModule {
 		if opts.isAppToken {
 			if err = resetGitRemoteToSSH(opts.owner, opts.repository, opts.rootDir); err != nil {
