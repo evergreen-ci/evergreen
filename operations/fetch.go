@@ -416,7 +416,7 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 		}
 
 		if model.IsWikiRepo(repo) {
-			fmt.Printf("Fetching wiki module %v at default branch (HEAD only)\n", moduleName)
+			fmt.Printf("Fetching wiki module %s at default branch (HEAD only)\n", moduleName)
 			err = clone(ctx, cloneOptions{
 				owner:      owner,
 				repository: repo,
