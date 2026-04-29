@@ -2025,11 +2025,10 @@ func preGeneratedParserProjectId(originalId string) string {
 	return fmt.Sprintf("%s_%s", "pre_generation", originalId)
 }
 
-// ClearParamsYAML resolves and removes the params_yaml field from all
-// commands in the parser project. This is used when serializing the project
+// ClearParamsYAML resolves and removes the params_yaml (which is a DB-only field)
+// from all commands in the parser project. This is used when serializing the project
 // to a human-editable YAML file (e.g. for debug spawn hosts) so that only
-// the params map is present. Without this, params_yaml takes precedence
-// over params during deserialization, silently discarding user edits.
+// the params map is present.
 func (pp *ParserProject) ClearParamsYAML() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(clearCommandSetParamsYAML(pp.Pre))
