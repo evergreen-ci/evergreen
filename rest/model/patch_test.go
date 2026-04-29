@@ -232,6 +232,74 @@ func TestGithubPatch(t *testing.T) {
 	assert.Equal("octocat", utility.FromStringPtr(a.Author))
 }
 
+func TestAPIGithubMergeGroup(t *testing.T) {
+	baseTime := time.Now().Truncate(time.Millisecond)
+	mg := thirdparty.GithubMergeGroup{
+		Org:                   "evergreen-ci",
+		Repo:                  "evergreen",
+		BaseBranch:            "main",
+		HeadBranch:            "gh-readonly-queue/main/pr-1-abc",
+		HeadSHA:               "abc123",
+		BaseSHA:               "def456",
+		HeadCommit:            "Merge pr #1",
+		HeadCommitDate:        baseTime,
+		RemovedFromQueueAt:    baseTime.Add(time.Hour),
+		RemovalReason:         "merged",
+		GitRefNotFound:        true,
+		InvalidatedByUpstream: false,
+	}
+
+	t.Run("BuildFromServiceRoundTrips", func(t *testing.T) {
+		a := APIGithubMergeGroup{}
+		a.BuildFromService(mg)
+
+		assert.Equal(t, mg.Org, utility.FromStringPtr(a.Org))
+		assert.Equal(t, mg.Repo, utility.FromStringPtr(a.Repo))
+		assert.Equal(t, mg.BaseBranch, utility.FromStringPtr(a.BaseBranch))
+		assert.Equal(t, mg.HeadBranch, utility.FromStringPtr(a.HeadBranch))
+		assert.Equal(t, mg.HeadSHA, utility.FromStringPtr(a.HeadSHA))
+		assert.Equal(t, mg.BaseSHA, utility.FromStringPtr(a.BaseSHA))
+		assert.Equal(t, mg.HeadCommit, utility.FromStringPtr(a.HeadCommit))
+		require.NotNil(t, a.HeadCommitDate)
+		assert.Equal(t, mg.HeadCommitDate, *a.HeadCommitDate)
+		require.NotNil(t, a.RemovedFromQueueAt)
+		assert.Equal(t, mg.RemovedFromQueueAt, *a.RemovedFromQueueAt)
+		assert.Equal(t, mg.RemovalReason, utility.FromStringPtr(a.RemovalReason))
+		assert.Equal(t, mg.GitRefNotFound, a.GitRefNotFound)
+		assert.Equal(t, mg.InvalidatedByUpstream, a.InvalidatedByUpstream)
+
+		svc := a.ToService()
+		assert.Equal(t, mg, svc)
+	})
+
+	t.Run("ZeroTimeFieldsAreNil", func(t *testing.T) {
+		a := APIGithubMergeGroup{}
+		a.BuildFromService(thirdparty.GithubMergeGroup{HeadSHA: "abc"})
+		assert.Nil(t, a.HeadCommitDate)
+		assert.Nil(t, a.RemovedFromQueueAt)
+	})
+
+	t.Run("APIPatchIncludesGithubMergeData", func(t *testing.T) {
+		p := patch.Patch{
+			Id:              mgobson.NewObjectId(),
+			GithubMergeData: mg,
+		}
+		a := APIPatch{}
+		require.NoError(t, a.BuildFromService(t.Context(), p, nil))
+
+		assert.Equal(t, mg.Org, utility.FromStringPtr(a.GithubMergeData.Org))
+		assert.Equal(t, mg.HeadSHA, utility.FromStringPtr(a.GithubMergeData.HeadSHA))
+		assert.Equal(t, mg.RemovalReason, utility.FromStringPtr(a.GithubMergeData.RemovalReason))
+		assert.Equal(t, mg.InvalidatedByUpstream, a.GithubMergeData.InvalidatedByUpstream)
+		// InvalidatedByUpstream is also mirrored in the top-level field for backward compatibility.
+		assert.Equal(t, mg.InvalidatedByUpstream, a.InvalidatedByUpstream)
+
+		svc, err := a.ToService()
+		require.NoError(t, err)
+		assert.Equal(t, mg, svc.GithubMergeData)
+	})
+}
+
 func TestDownstreamTasks(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(patch.Collection, model.ProjectRefCollection))
