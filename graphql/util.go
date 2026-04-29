@@ -996,6 +996,10 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 }
 
 func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]task.Task, error) {
+	if dbTask == nil {
+		return nil, nil
+	}
+
 	var (
 		baseTask *task.Task
 		tasks    []task.Task
