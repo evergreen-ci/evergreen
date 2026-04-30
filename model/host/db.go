@@ -303,7 +303,7 @@ func CountActiveHostsInDistro(ctx context.Context, distroID string) (int, error)
 // CountHostsCanRunTasksByDistro returns the number of hosts per distro that
 // can accept and run tasks, using a single aggregation over all distros at
 // once. The returned map is keyed by distro ID.
-func CountHostsCanRunTasksByDistro(ctx context.Context) (map[string]int, error) {
+func CountHostsCanRunTasksByDistro(ctx context.Context, env evergreen.Environment) (map[string]int, error) {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 
@@ -328,7 +328,7 @@ func CountHostsCanRunTasksByDistro(ctx context.Context) (map[string]int, error) 
 		},
 	}
 
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating hosts that can run tasks by distro")
 	}

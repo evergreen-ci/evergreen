@@ -442,7 +442,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching all task queues: %s", err.Error()))
 	}
 
-	countsByDistro, err := host.CountHostsCanRunTasksByDistro(ctx)
+	countsByDistro, err := host.CountHostsCanRunTasksByDistro(ctx, evergreen.GetEnvironment())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host counts by distro: %s", err.Error()))
 	}
