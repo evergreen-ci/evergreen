@@ -321,14 +321,6 @@ func CountActiveHostsInDistro(ctx context.Context, distroID string) (int, error)
 	return num, errors.Wrap(err, "counting active task hosts in distro")
 }
 
-// CountHostsCanRunTasks returns the number of hosts that can accept
-// and run tasks for a given distro. This number is surfaced on the
-// task queue.
-func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
-	return num, errors.Wrap(err, "counting hosts that can run tasks")
-}
-
 // CountHostsCanRunTasksByDistro returns the number of hosts per distro that
 // can accept and run tasks, using a single aggregation over all distros at
 // once. The returned map is keyed by distro ID.
