@@ -1345,13 +1345,15 @@ func (r *queryResolver) TaskHistoryByCreateTime(ctx context.Context, options Tas
 		Limit:        options.Limit,
 	}
 
-	if options.CursorParams.Direction == TaskHistoryDirectionBefore {
+	switch options.CursorParams.Direction {
+	case TaskHistoryDirectionBefore:
 		opts.UpperBound = utility.ToTimePtr(taskCreateTime)
 		opts.IncludeUpperBound = includeCursor
-	}
-	if options.CursorParams.Direction == TaskHistoryDirectionAfter {
+	case TaskHistoryDirectionAfter:
 		opts.LowerBound = utility.ToTimePtr(taskCreateTime)
 		opts.IncludeLowerBound = includeCursor
+	default:
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid cursor direction: %s", options.CursorParams.Direction))
 	}
 
 	if options.Date != nil {
