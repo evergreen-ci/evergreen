@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func init() {
@@ -375,6 +376,24 @@ func TestIsBatchError(t *testing.T) {
 
 	t.Run("ReturnsFalseForNil", func(t *testing.T) {
 		assert.False(t, IsBatchError(nil))
+	})
+
+	// Resolvers wrap the dataloader error in a *gqlerror.Error before returning
+	// it to gqlgen. IsBatchError must reach through gqlerror's Unwrap so the
+	// GraphQL error presenter skips re-logging every field that shares a
+	// failed batch.
+	t.Run("ReturnsTrueThroughGqlerrorUnwrap", func(t *testing.T) {
+		batchErr := &batchError{err: assert.AnError}
+		gqlErr := &gqlerror.Error{
+			Message: "fetching version 'v1' for task 't1': some cause",
+			Err:     batchErr,
+		}
+		assert.True(t, IsBatchError(gqlErr))
+	})
+
+	t.Run("ReturnsFalseForGqlerrorWithoutCause", func(t *testing.T) {
+		gqlErr := &gqlerror.Error{Message: "fetching version 'v1': some cause"}
+		assert.False(t, IsBatchError(gqlErr))
 	})
 }
 
