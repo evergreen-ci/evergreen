@@ -312,7 +312,9 @@ func CountHostsCanRunTasksByDistro(ctx context.Context, env evergreen.Environmen
 			"$match": bson.M{
 				StartedByKey: evergreen.User,
 				"$or": []bson.M{
-					{StatusKey: evergreen.HostRunning},
+					{
+						StatusKey: evergreen.HostRunning,
+					},
 					{
 						StatusKey:    evergreen.HostStarting,
 						bootstrapKey: distro.BootstrapMethodUserData,
@@ -328,7 +330,7 @@ func CountHostsCanRunTasksByDistro(ctx context.Context, env evergreen.Environmen
 		},
 	}
 
-	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(StartedByStatusIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating hosts that can run tasks by distro")
 	}
