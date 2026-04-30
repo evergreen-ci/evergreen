@@ -1063,3 +1063,89 @@ func TestByUnterminatedSpawnHostsWithInstanceTypes(t *testing.T) {
 		assert.Contains(t, []string{"user-spawn-m5-large", "user-spawn-m5-xlarge", "user-spawn-c5-large", "user-spawn-no-instance-type"}, h.Id)
 	}
 }
+
+func TestCountHostsCanRunTasksByDistro(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"ReturnsEmptyMapForNoHosts": func(ctx context.Context, t *testing.T) {
+			counts, err := CountHostsCanRunTasksByDistro(ctx)
+			require.NoError(t, err)
+			assert.Empty(t, counts)
+		},
+		"CountsRunningHostsPerDistro": func(ctx context.Context, t *testing.T) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h3 := Host{Id: "h3", Distro: distro.Distro{Id: "d2"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2, h3))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, 2, counts["d1"])
+			assert.Equal(t, 1, counts["d2"])
+		},
+		"CountsStartingUserDataHostsButNotOtherStartingHosts": func(ctx context.Context, t *testing.T) {
+			h1 := Host{
+				Id: "h1",
+				Distro: distro.Distro{
+					Id:                "d1",
+					BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodUserData},
+				},
+				Status:    evergreen.HostStarting,
+				StartedBy: evergreen.User,
+			}
+			h2 := Host{
+				Id: "h2",
+				Distro: distro.Distro{
+					Id:                "d1",
+					BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodSSH},
+				},
+				Status:    evergreen.HostStarting,
+				StartedBy: evergreen.User,
+			}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, 1, counts["d1"])
+		},
+		"ExcludesTerminatedAndOtherNonQualifyingStatuses": func(ctx context.Context, t *testing.T) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostTerminated, StartedBy: evergreen.User}
+			h3 := Host{Id: "h3", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostStopping, StartedBy: evergreen.User}
+			h4 := Host{Id: "h4", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostBuilding, StartedBy: evergreen.User}
+			h5 := Host{Id: "h5", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostProvisioning, StartedBy: evergreen.User}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2, h3, h4, h5))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, 1, counts["d1"])
+		},
+		"ExcludesHostsNotStartedByEvergreenUser": func(ctx context.Context, t *testing.T) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: "testuser"}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, 1, counts["d1"])
+		},
+		"OmitsDistrosWithNoQualifyingHosts": func(ctx context.Context, t *testing.T) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d2"}, Status: evergreen.HostTerminated, StartedBy: evergreen.User}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, 1, counts["d1"])
+			assert.Zero(t, counts["d2"])
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			setupDistroIdStatusIndex(t)
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
+			tCase(t.Context(), t)
+		})
+	}
+}

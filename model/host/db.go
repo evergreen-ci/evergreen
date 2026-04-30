@@ -329,6 +329,55 @@ func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
+// CountHostsCanRunTasksByDistro returns the number of hosts per distro that
+// can accept and run tasks, using a single aggregation over all distros at
+// once. The returned map is keyed by distro ID.
+func CountHostsCanRunTasksByDistro(ctx context.Context) (map[string]int, error) {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				StartedByKey: evergreen.User,
+				"$or": []bson.M{
+					{StatusKey: evergreen.HostRunning},
+					{
+						StatusKey:    evergreen.HostStarting,
+						bootstrapKey: distro.BootstrapMethodUserData,
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":   "$" + distroIDKey,
+				"count": bson.M{"$sum": 1},
+			},
+		},
+	}
+
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating hosts that can run tasks by distro")
+	}
+
+	type distroHostCount struct {
+		DistroID string `bson:"_id"`
+		Count    int    `bson:"count"`
+	}
+	var results []distroHostCount
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "reading host counts by distro")
+	}
+
+	counts := make(map[string]int, len(results))
+	for _, r := range results {
+		counts[r.DistroID] = r.Count
+	}
+	return counts, nil
+}
+
 // CountHostsCanOrWillRunTasksInDistro counts all task hosts in a distro that
 // can run or will eventually run tasks.
 func CountHostsCanOrWillRunTasksInDistro(ctx context.Context, distroID string) (int, error) {
