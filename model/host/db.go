@@ -256,27 +256,6 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 	return idlehostsByDistroID, nil
 }
 
-// hostsCanRunTasksQuery produces a query that returns all hosts
-// that are capable of accepting and running tasks.
-func hostsCanRunTasksQuery(distroID string) bson.M {
-	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-
-	return bson.M{
-		distroIDKey:  distroID,
-		StartedByKey: evergreen.User,
-		"$or": []bson.M{
-			{
-				StatusKey: evergreen.HostRunning,
-			},
-			{
-				StatusKey:    evergreen.HostStarting,
-				bootstrapKey: distro.BootstrapMethodUserData,
-			},
-		},
-	}
-}
-
 func idleStartedTaskHostsQuery(distroID string) bson.M {
 	query := bson.M{
 		StatusKey:      bson.M{"$in": evergreen.StartedHostStatus},
