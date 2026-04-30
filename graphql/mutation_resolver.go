@@ -646,8 +646,21 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVa
 
 // SaveProjectSettingsForSection is the resolver for the saveProjectSettingsForSection field.
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
-	projectId := utility.FromStringPtr(projectSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
+	// projectSettings.Id is authorized by @requireProjectAccess; projectRef.Id
+	// Don't use projectSettings.ProjectRef.Id
+	projectId := utility.FromStringPtr(projectSettings.Id)
+	if innerId := utility.FromStringPtr(projectSettings.ProjectRef.Id); innerId != projectId {
+		grip.Warning(ctx, message.Fields{
+			"message":          "projectId argument does not match projectRef.id; using authorized projectId for write",
+			"resolver":         "saveProjectSettingsForSection",
+			"user":             usr.Username(),
+			"auth_project_id":  projectId,
+			"input_project_id": innerId,
+			"section":          section,
+		})
+		projectSettings.ProjectRef.Id = utility.ToStringPtr(projectId)
+	}
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
@@ -657,9 +670,22 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 
 // SaveRepoSettingsForSection is the resolver for the saveRepoSettingsForSection field.
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
-	projectId := utility.FromStringPtr(repoSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
-	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
+	// projectSettings.Id is authorized by @requireProjectAccess; projectRef.Id
+	// Don't use projectSettings.ProjectRef.Id
+	repoId := utility.FromStringPtr(repoSettings.Id)
+	if innerId := utility.FromStringPtr(repoSettings.ProjectRef.Id); innerId != repoId {
+		grip.Warning(ctx, message.Fields{
+			"message":       "repoId argument does not match projectRef.id; using authorized repoId for write",
+			"resolver":      "saveRepoSettingsForSection",
+			"user":          usr.Username(),
+			"auth_repo_id":  repoId,
+			"input_repo_id": innerId,
+			"section":       section,
+		})
+		repoSettings.ProjectRef.Id = utility.ToStringPtr(repoId)
+	}
+	changes, err := data.SaveProjectSettingsForSection(ctx, repoId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}

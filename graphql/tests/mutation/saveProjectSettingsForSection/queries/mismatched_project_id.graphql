@@ -1,0 +1,21 @@
+## Regression test: when projectId and projectRef.id diverge, the resolver
+## must force the write to the authorized projectId so an authorized id
+## cannot be used to modify a different project. The response's projectRef.id
+## should reflect the authorized project, proving the override took effect.
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectId: "sandbox_project_id"
+      projectRef: { id: "spruce" }
+      vars: { vars: { mismatch_test: "value" } }
+    }
+    section: VARIABLES
+  ) {
+    projectRef {
+      id
+    }
+    vars {
+      vars
+    }
+  }
+}
