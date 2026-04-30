@@ -1,5 +1,7 @@
 # Task Debugger
 
+Watch the demo [here](../images/Recreatable_Tasks_Demo.mp4).
+
 > **Notice:**
 > The task debugger is currently in **beta**. Features and behavior may change.
 
