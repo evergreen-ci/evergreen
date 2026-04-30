@@ -77,6 +77,7 @@ type APIPatch struct {
 	MergedFrom            *string              `json:"merged_from"`
 
 	LocalModuleIncludes []APILocalModuleInclude `json:"local_module_includes,omitempty"`
+	S3Usage             *APIVersionS3Usage      `json:"s3_usage,omitempty"`
 }
 
 type DownstreamTasks struct {
@@ -345,6 +346,15 @@ func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID
 		predictedCost := v.PredictedCost
 		predictedCost.Total = predictedCost.TotalAdjusted()
 		apiPatch.PredictedCost = &predictedCost
+	}
+	if !v.S3Usage.IsZero() {
+		apiPatch.S3Usage = &APIVersionS3Usage{
+			Artifacts: v.S3Usage.Artifacts,
+			Logs: APIVersionS3LogUsage{
+				PutRequests: v.S3Usage.Logs.PutRequests,
+				UploadBytes: v.S3Usage.Logs.UploadBytes,
+			},
+		}
 	}
 }
 

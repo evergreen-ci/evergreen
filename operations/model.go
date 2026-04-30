@@ -385,24 +385,28 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 }
 
 func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
-	layout := "2006-01-02"
-	// Extract just the date portion if the string is long enough.
-	// This allows values such as "2024-08-10a" to be parsed as "2024-08-10"
-	if len(dateString1) >= 10 {
-		dateString1 = dateString1[:10]
-	}
-	if len(dateString2) >= 10 {
-		dateString2 = dateString2[:10]
-	}
-	t1, err := time.Parse(layout, dateString1)
+	t1, err := ParseDateVersionString(dateString1)
 	if err != nil {
 		return false, fmt.Errorf("error parsing first date '%s': %w", dateString1, err)
 	}
-	t2, err := time.Parse(layout, dateString2)
+	t2, err := ParseDateVersionString(dateString2)
 	if err != nil {
 		return false, fmt.Errorf("error parsing second date '%s': %w", dateString2, err)
 	}
 	return t1.Before(t2), nil
+}
+
+// ParseDateVersionString parses a date string into a time.Time object.
+// The date string is expected to be in the format YYYY-MM-DD, this is
+// how we format our ClientVersion and AgentVersion.
+func ParseDateVersionString(dateString string) (time.Time, error) {
+	layout := "2006-01-02"
+	// Extract just the date portion if the string is long enough.
+	// This allows values such as "2024-08-10a" to be parsed as "2024-08-10"
+	if len(dateString) >= 10 {
+		dateString = dateString[:10]
+	}
+	return time.Parse(layout, dateString)
 }
 
 func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {

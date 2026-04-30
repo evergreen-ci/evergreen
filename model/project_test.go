@@ -2049,6 +2049,13 @@ func TestModuleList(t *testing.T) {
 	assert.False(projModules.IsIdentical(manifest4))
 }
 
+func TestIsWikiRepo(t *testing.T) {
+	assert.True(t, IsWikiRepo("mongo.wiki"))
+	assert.True(t, IsWikiRepo("mongo.wiki.git"))
+	assert.False(t, IsWikiRepo("mongo"))
+	assert.False(t, IsWikiRepo("wiki"))
+}
+
 func TestInjectTaskGroupInfo(t *testing.T) {
 	tg := TaskGroup{
 		Name:     "group-one",
