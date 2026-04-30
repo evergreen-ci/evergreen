@@ -393,76 +393,72 @@ func FindTasksForHistoryByCreateTime(ctx context.Context, opts FindTaskHistoryBy
 	return tasks, nil
 }
 
-// GetLatestMainlineTaskByCreateTime returns the most recent task by create_time matching the given parameters.
-func GetLatestMainlineTaskByCreateTime(ctx context.Context, opts FindTaskHistoryByCreateTimeOptions) (*task.Task, error) {
+// getMainlineTaskByCreateTime returns the most recent or oldest task by create_time matching the given parameters.
+// When sortDesc is true, returns the most recent task; otherwise returns the oldest task.
+func getMainlineTaskByCreateTime(ctx context.Context, opts FindTaskHistoryByCreateTimeOptions, sortDesc bool) (*task.Task, error) {
 	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
 		TaskName:     opts.TaskName,
 		BuildVariant: opts.BuildVariant,
 		ProjectId:    opts.ProjectId,
 	})
-	q := db.Query(filter).Sort([]string{"-" + task.CreateTimeKey}).Limit(1)
-	mostRecentTask, err := task.FindOne(ctx, q)
+	sortField := task.CreateTimeKey
+	if sortDesc {
+		sortField = "-" + task.CreateTimeKey
+	}
+	q := db.Query(filter).Sort([]string{sortField}).Limit(1)
+	found, err := task.FindOne(ctx, q)
 	if err != nil {
 		return nil, err
 	}
-	if mostRecentTask == nil {
+	if found == nil {
 		return nil, errors.New("task not found on project history")
 	}
-	return mostRecentTask, nil
+	return found, nil
+}
+
+// GetLatestMainlineTaskByCreateTime returns the most recent task by create_time matching the given parameters.
+func GetLatestMainlineTaskByCreateTime(ctx context.Context, opts FindTaskHistoryByCreateTimeOptions) (*task.Task, error) {
+	return getMainlineTaskByCreateTime(ctx, opts, true)
 }
 
 // GetOldestMainlineTaskByCreateTime returns the oldest task by create_time matching the given parameters.
 func GetOldestMainlineTaskByCreateTime(ctx context.Context, opts FindTaskHistoryByCreateTimeOptions) (*task.Task, error) {
+	return getMainlineTaskByCreateTime(ctx, opts, false)
+}
+
+// getAdjacentActiveMainlineTaskByCreateTime returns the nearest active mainline task by create_time in the given
+// direction. When newer is true, it returns the next newer task; when false, the next older task.
+func getAdjacentActiveMainlineTaskByCreateTime(ctx context.Context, t task.Task, newer bool) (*task.Task, error) {
 	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
-		TaskName:     opts.TaskName,
-		BuildVariant: opts.BuildVariant,
-		ProjectId:    opts.ProjectId,
+		TaskName:     t.DisplayName,
+		BuildVariant: t.BuildVariant,
+		ProjectId:    t.Project,
 	})
-	q := db.Query(filter).Sort([]string{task.CreateTimeKey}).Limit(1)
-	oldestTask, err := task.FindOne(ctx, q)
+	filter[task.ActivatedKey] = true
+
+	op := "$lt"
+	sortField := "-" + task.CreateTimeKey
+	if newer {
+		op = "$gt"
+		sortField = task.CreateTimeKey
+	}
+	filter[task.CreateTimeKey] = bson.M{op: t.CreateTime}
+	q := db.Query(filter).Sort([]string{sortField}).Limit(1)
+
+	found, err := task.FindOne(ctx, q)
 	if err != nil {
 		return nil, err
 	}
-	if oldestTask == nil {
-		return nil, errors.New("task not found on project history")
-	}
-	return oldestTask, nil
+	// The result can be nil if no adjacent task exists.
+	return found, nil
 }
 
 // getNewerActiveMainlineTaskByCreateTime returns the next newer active mainline task by create_time.
 func getNewerActiveMainlineTaskByCreateTime(ctx context.Context, t task.Task) (*task.Task, error) {
-	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
-		TaskName:     t.DisplayName,
-		BuildVariant: t.BuildVariant,
-		ProjectId:    t.Project,
-	})
-	filter[task.ActivatedKey] = true
-	filter[task.CreateTimeKey] = bson.M{"$gt": t.CreateTime}
-	q := db.Query(filter).Sort([]string{task.CreateTimeKey}).Limit(1)
-
-	newerActiveTask, err := task.FindOne(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-	// newerActiveTask can be nil, since it may not exist.
-	return newerActiveTask, nil
+	return getAdjacentActiveMainlineTaskByCreateTime(ctx, t, true)
 }
 
 // getOlderActiveMainlineTaskByCreateTime returns the next older active mainline task by create_time.
 func getOlderActiveMainlineTaskByCreateTime(ctx context.Context, t task.Task) (*task.Task, error) {
-	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
-		TaskName:     t.DisplayName,
-		BuildVariant: t.BuildVariant,
-		ProjectId:    t.Project,
-	})
-	filter[task.ActivatedKey] = true
-	filter[task.CreateTimeKey] = bson.M{"$lt": t.CreateTime}
-	q := db.Query(filter).Sort([]string{"-" + task.CreateTimeKey}).Limit(1)
-
-	olderActiveTask, err := task.FindOne(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-	// olderActiveTask can be nil, since it may not exist.
-	return olderActiveTask, nil
+	return getAdjacentActiveMainlineTaskByCreateTime(ctx, t, false)
 }
