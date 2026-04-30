@@ -1,6 +1,3 @@
-## Regression test: when repoId and projectRef.id diverge, the resolver
-## must force the write to the authorized repoId. The response's projectRef.id
-## should reflect the authorized repo, proving the override took effect.
 mutation {
   saveRepoSettingsForSection(
     repoSettings: {
