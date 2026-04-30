@@ -482,6 +482,31 @@ Fields:
 - `auto_update`: if true, the latest revision for the module will be
   dynamically retrieved for each Github PR, CLI patch, and periodic build submission
 
+#### Wiki modules
+
+A module whose `repo` is a [GitHub wiki](https://docs.github.com/en/communities/documenting-your-project-with-wikis/about-wikis) (repository name `parent.wiki` for the `parent` repository) is cloned **only** at the remote’s **default branch (HEAD)**. Evergreen does not pin wikis to a specific commit, mainline time, or patch selection.
+
+The following are **ignored** for wiki modules (they still apply to normal modules):
+
+- `branch`, `ref`, and `auto_update` for the purpose of choosing a revision
+- `revisions` on [`git.get_project`](../Project-Commands#gitgetproject), the version manifest, and [evergreen set-module](../CLI/#operating-on-existing-patches)
+
+The `${<module_name>_rev}` expansion and other manifest-based revision fields are **empty** and not useful for wikis.
+
+The GitHub App used for private clones must be installed on the **parent** repository (e.g. `org/parent`); the clone URL still uses the `parent.wiki` repository.
+
+Wiki modules are intended for use with **git.get_project** cloning. [Includes](#include) that pull project YAML from a module repository are not supported for wikis.
+
+Example `modules` entry using a wiki repository:
+
+```yaml
+modules:
+  - name: product-wiki
+    owner: mongodb
+    repo: mongo.wiki
+    prefix: src/wiki
+```
+
 ### Pre and Post
 
 All projects can have a `pre` and `post` field which define a list of commands

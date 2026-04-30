@@ -589,6 +589,16 @@ type TaskHistory struct {
 	Pagination *TaskHistoryPagination `json:"pagination"`
 }
 
+type TaskHistoryByCreateTime struct {
+	Tasks      []*model.APITask                   `json:"tasks"`
+	Pagination *TaskHistoryByCreateTimePagination `json:"pagination"`
+}
+
+type TaskHistoryByCreateTimePagination struct {
+	MostRecentTaskCreateTime time.Time `json:"mostRecentTaskCreateTime"`
+	OldestTaskCreateTime     time.Time `json:"oldestTaskCreateTime"`
+}
+
 type TaskHistoryOpts struct {
 	ProjectIdentifier string        `json:"projectIdentifier"`
 	TaskName          string        `json:"taskName"`

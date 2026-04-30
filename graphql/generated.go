@@ -1545,6 +1545,7 @@ type ComplexityRoot struct {
 		Task                     func(childComplexity int, taskID string, execution *int) int
 		TaskAllExecutions        func(childComplexity int, taskID string) int
 		TaskHistory              func(childComplexity int, options TaskHistoryOpts) int
+		TaskHistoryByCreateTime  func(childComplexity int, options TaskHistoryOpts) int
 		TaskNamesForBuildVariant func(childComplexity int, projectIdentifier string, buildVariant string) int
 		TaskQueueDistros         func(childComplexity int) int
 		TaskTestSample           func(childComplexity int, versionID string, taskIds []string, filters []*TestFilter) int
@@ -2023,6 +2024,16 @@ type ComplexityRoot struct {
 	TaskHistory struct {
 		Pagination func(childComplexity int) int
 		Tasks      func(childComplexity int) int
+	}
+
+	TaskHistoryByCreateTime struct {
+		Pagination func(childComplexity int) int
+		Tasks      func(childComplexity int) int
+	}
+
+	TaskHistoryByCreateTimePagination struct {
+		MostRecentTaskCreateTime func(childComplexity int) int
+		OldestTaskCreateTime     func(childComplexity int) int
 	}
 
 	TaskHistoryPagination struct {
@@ -2679,6 +2690,7 @@ type QueryResolver interface {
 	TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error)
 	Waterfall(ctx context.Context, options WaterfallOptions) (*Waterfall, error)
 	TaskHistory(ctx context.Context, options TaskHistoryOpts) (*TaskHistory, error)
+	TaskHistoryByCreateTime(ctx context.Context, options TaskHistoryOpts) (*TaskHistoryByCreateTime, error)
 	HasVersion(ctx context.Context, patchID string) (bool, error)
 	Version(ctx context.Context, versionID string) (*model.APIVersion, error)
 	Image(ctx context.Context, imageID string) (*model.APIImage, error)
@@ -9260,6 +9272,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.TaskHistory(childComplexity, args["options"].(TaskHistoryOpts)), true
+	case "Query.taskHistoryByCreateTime":
+		if e.complexity.Query.TaskHistoryByCreateTime == nil {
+			break
+		}
+
+		args, err := ec.field_Query_taskHistoryByCreateTime_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TaskHistoryByCreateTime(childComplexity, args["options"].(TaskHistoryOpts)), true
 	case "Query.taskNamesForBuildVariant":
 		if e.complexity.Query.TaskNamesForBuildVariant == nil {
 			break
@@ -11291,6 +11314,32 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskHistory.Tasks(childComplexity), true
+
+	case "TaskHistoryByCreateTime.pagination":
+		if e.complexity.TaskHistoryByCreateTime.Pagination == nil {
+			break
+		}
+
+		return e.complexity.TaskHistoryByCreateTime.Pagination(childComplexity), true
+	case "TaskHistoryByCreateTime.tasks":
+		if e.complexity.TaskHistoryByCreateTime.Tasks == nil {
+			break
+		}
+
+		return e.complexity.TaskHistoryByCreateTime.Tasks(childComplexity), true
+
+	case "TaskHistoryByCreateTimePagination.mostRecentTaskCreateTime":
+		if e.complexity.TaskHistoryByCreateTimePagination.MostRecentTaskCreateTime == nil {
+			break
+		}
+
+		return e.complexity.TaskHistoryByCreateTimePagination.MostRecentTaskCreateTime(childComplexity), true
+	case "TaskHistoryByCreateTimePagination.oldestTaskCreateTime":
+		if e.complexity.TaskHistoryByCreateTimePagination.OldestTaskCreateTime == nil {
+			break
+		}
+
+		return e.complexity.TaskHistoryByCreateTimePagination.OldestTaskCreateTime(childComplexity), true
 
 	case "TaskHistoryPagination.mostRecentTaskOrder":
 		if e.complexity.TaskHistoryPagination.MostRecentTaskOrder == nil {
@@ -16680,6 +16729,17 @@ func (ec *executionContext) field_Query_taskAllExecutions_argsTaskID(
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 	}
+}
+
+func (ec *executionContext) field_Query_taskHistoryByCreateTime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "options", ec.unmarshalNTaskHistoryOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryOpts)
+	if err != nil {
+		return nil, err
+	}
+	args["options"] = arg0
+	return args, nil
 }
 
 func (ec *executionContext) field_Query_taskHistory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -54427,6 +54487,53 @@ func (ec *executionContext) fieldContext_Query_taskHistory(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_taskHistoryByCreateTime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_taskHistoryByCreateTime,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().TaskHistoryByCreateTime(ctx, fc.Args["options"].(TaskHistoryOpts))
+		},
+		nil,
+		ec.marshalNTaskHistoryByCreateTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryByCreateTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_taskHistoryByCreateTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "tasks":
+				return ec.fieldContext_TaskHistoryByCreateTime_tasks(ctx, field)
+			case "pagination":
+				return ec.fieldContext_TaskHistoryByCreateTime_pagination(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskHistoryByCreateTime", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_taskHistoryByCreateTime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_hasVersion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -67582,6 +67689,312 @@ func (ec *executionContext) fieldContext_TaskHistory_pagination(_ context.Contex
 				return ec.fieldContext_TaskHistoryPagination_oldestTaskOrder(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskHistoryPagination", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHistoryByCreateTime_tasks(ctx context.Context, field graphql.CollectedField, obj *TaskHistoryByCreateTime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHistoryByCreateTime_tasks,
+		func(ctx context.Context) (any, error) {
+			return obj.Tasks, nil
+		},
+		nil,
+		ec.marshalNTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHistoryByCreateTime_tasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHistoryByCreateTime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "errors":
+				return ec.fieldContext_Task_errors(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionSteps":
+				return ec.fieldContext_Task_executionSteps(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "generator":
+				return ec.fieldContext_Task_generator(ctx, field)
+			case "hasTestResults":
+				return ec.fieldContext_Task_hasTestResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isAutomaticRestart":
+				return ec.fieldContext_Task_isAutomaticRestart(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "nextTask":
+				return ec.fieldContext_Task_nextTask(ctx, field)
+			case "nextTaskCompleted":
+				return ec.fieldContext_Task_nextTaskCompleted(ctx, field)
+			case "nextTaskFailing":
+				return ec.fieldContext_Task_nextTaskFailing(ctx, field)
+			case "nextTaskPassing":
+				return ec.fieldContext_Task_nextTaskPassing(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "invalidatedByUpstream":
+				return ec.fieldContext_Task_invalidatedByUpstream(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "prevTask":
+				return ec.fieldContext_Task_prevTask(ctx, field)
+			case "prevTaskCompleted":
+				return ec.fieldContext_Task_prevTaskCompleted(ctx, field)
+			case "prevTaskFailing":
+				return ec.fieldContext_Task_prevTaskFailing(ctx, field)
+			case "prevTaskPassing":
+				return ec.fieldContext_Task_prevTaskPassing(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskCost":
+				return ec.fieldContext_Task_taskCost(ctx, field)
+			case "predictedTaskCost":
+				return ec.fieldContext_Task_predictedTaskCost(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "testSelectionEnabled":
+				return ec.fieldContext_Task_testSelectionEnabled(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "version":
+				return ec.fieldContext_Task_version(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHistoryByCreateTime_pagination(ctx context.Context, field graphql.CollectedField, obj *TaskHistoryByCreateTime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHistoryByCreateTime_pagination,
+		func(ctx context.Context) (any, error) {
+			return obj.Pagination, nil
+		},
+		nil,
+		ec.marshalNTaskHistoryByCreateTimePagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryByCreateTimePagination,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHistoryByCreateTime_pagination(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHistoryByCreateTime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mostRecentTaskCreateTime":
+				return ec.fieldContext_TaskHistoryByCreateTimePagination_mostRecentTaskCreateTime(ctx, field)
+			case "oldestTaskCreateTime":
+				return ec.fieldContext_TaskHistoryByCreateTimePagination_oldestTaskCreateTime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskHistoryByCreateTimePagination", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHistoryByCreateTimePagination_mostRecentTaskCreateTime(ctx context.Context, field graphql.CollectedField, obj *TaskHistoryByCreateTimePagination) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHistoryByCreateTimePagination_mostRecentTaskCreateTime,
+		func(ctx context.Context) (any, error) {
+			return obj.MostRecentTaskCreateTime, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHistoryByCreateTimePagination_mostRecentTaskCreateTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHistoryByCreateTimePagination",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskHistoryByCreateTimePagination_oldestTaskCreateTime(ctx context.Context, field graphql.CollectedField, obj *TaskHistoryByCreateTimePagination) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskHistoryByCreateTimePagination_oldestTaskCreateTime,
+		func(ctx context.Context) (any, error) {
+			return obj.OldestTaskCreateTime, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskHistoryByCreateTimePagination_oldestTaskCreateTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskHistoryByCreateTimePagination",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -101925,6 +102338,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "taskHistoryByCreateTime":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_taskHistoryByCreateTime(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "hasVersion":
 			field := field
 
@@ -106609,6 +107044,94 @@ func (ec *executionContext) _TaskHistory(ctx context.Context, sel ast.SelectionS
 			}
 		case "pagination":
 			out.Values[i] = ec._TaskHistory_pagination(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var taskHistoryByCreateTimeImplementors = []string{"TaskHistoryByCreateTime"}
+
+func (ec *executionContext) _TaskHistoryByCreateTime(ctx context.Context, sel ast.SelectionSet, obj *TaskHistoryByCreateTime) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskHistoryByCreateTimeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskHistoryByCreateTime")
+		case "tasks":
+			out.Values[i] = ec._TaskHistoryByCreateTime_tasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pagination":
+			out.Values[i] = ec._TaskHistoryByCreateTime_pagination(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var taskHistoryByCreateTimePaginationImplementors = []string{"TaskHistoryByCreateTimePagination"}
+
+func (ec *executionContext) _TaskHistoryByCreateTimePagination(ctx context.Context, sel ast.SelectionSet, obj *TaskHistoryByCreateTimePagination) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskHistoryByCreateTimePaginationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskHistoryByCreateTimePagination")
+		case "mostRecentTaskCreateTime":
+			out.Values[i] = ec._TaskHistoryByCreateTimePagination_mostRecentTaskCreateTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "oldestTaskCreateTime":
+			out.Values[i] = ec._TaskHistoryByCreateTimePagination_oldestTaskCreateTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -115942,6 +116465,30 @@ func (ec *executionContext) marshalNTaskHistory2ᚖgithubᚗcomᚋevergreenᚑci
 		return graphql.Null
 	}
 	return ec._TaskHistory(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTaskHistoryByCreateTime2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryByCreateTime(ctx context.Context, sel ast.SelectionSet, v TaskHistoryByCreateTime) graphql.Marshaler {
+	return ec._TaskHistoryByCreateTime(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTaskHistoryByCreateTime2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryByCreateTime(ctx context.Context, sel ast.SelectionSet, v *TaskHistoryByCreateTime) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TaskHistoryByCreateTime(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTaskHistoryByCreateTimePagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryByCreateTimePagination(ctx context.Context, sel ast.SelectionSet, v *TaskHistoryByCreateTimePagination) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TaskHistoryByCreateTimePagination(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNTaskHistoryDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryDirection(ctx context.Context, v any) (TaskHistoryDirection, error) {
