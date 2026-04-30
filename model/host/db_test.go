@@ -812,12 +812,6 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 	}
 }
 
-func setupDistroIdStatusIndex(t *testing.T) {
-	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
-		Keys: DistroIdStatusIndex,
-	}))
-}
-
 func TestFindByTemporaryExemptionsExpiringBetween(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -980,11 +974,18 @@ func TestByUnterminatedSpawnHostsWithInstanceTypes(t *testing.T) {
 	}
 }
 
+func setupDistroIdStatusIndex(t *testing.T) {
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
+		Keys: DistroIdStatusIndex,
+	}))
+}
+
 func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"ReturnsEmptyMapForNoHosts": func(ctx context.Context, t *testing.T) {
 			counts, err := CountHostsCanRunTasksByDistro(ctx)
 			require.NoError(t, err)
+			require.NotNil(t, counts)
 			assert.Empty(t, counts)
 		},
 		"CountsRunningHostsPerDistro": func(ctx context.Context, t *testing.T) {
@@ -995,6 +996,7 @@ func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 
 			counts, err := CountHostsCanRunTasksByDistro(ctx)
 			require.NoError(t, err)
+			require.NotNil(t, counts)
 			assert.Equal(t, 2, counts["d1"])
 			assert.Equal(t, 1, counts["d2"])
 		},
@@ -1021,6 +1023,7 @@ func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 
 			counts, err := CountHostsCanRunTasksByDistro(ctx)
 			require.NoError(t, err)
+			require.NotNil(t, counts)
 			assert.Equal(t, 1, counts["d1"])
 		},
 		"ExcludesTerminatedAndOtherNonQualifyingStatuses": func(ctx context.Context, t *testing.T) {
@@ -1033,6 +1036,7 @@ func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 
 			counts, err := CountHostsCanRunTasksByDistro(ctx)
 			require.NoError(t, err)
+			require.NotNil(t, counts)
 			assert.Equal(t, 1, counts["d1"])
 		},
 		"ExcludesHostsNotStartedByEvergreenUser": func(ctx context.Context, t *testing.T) {
@@ -1042,6 +1046,7 @@ func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 
 			counts, err := CountHostsCanRunTasksByDistro(ctx)
 			require.NoError(t, err)
+			require.NotNil(t, counts)
 			assert.Equal(t, 1, counts["d1"])
 		},
 		"OmitsDistrosWithNoQualifyingHosts": func(ctx context.Context, t *testing.T) {
@@ -1051,6 +1056,7 @@ func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 
 			counts, err := CountHostsCanRunTasksByDistro(ctx)
 			require.NoError(t, err)
+			require.NotNil(t, counts)
 			assert.Equal(t, 1, counts["d1"])
 			assert.Zero(t, counts["d2"])
 		},
