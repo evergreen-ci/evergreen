@@ -17,7 +17,7 @@ func TestNewMoveLogsToFailedBucketJob(t *testing.T) {
 	sourceCfg := evergreen.BucketConfig{Name: "test-source-bucket", Type: "s3"}
 
 	t.Run("DefaultTimeout", func(t *testing.T) {
-		job := NewMoveLogsToFailedBucketJob(env, "task-123", "2025-01-16", sourceCfg, MoveLogsTriggerTaskEnd)
+		job := NewMoveLogsToFailedBucketJob(env, "task-123", "2025-01-16", sourceCfg, MoveLogsTriggerTaskEnd, false)
 		require.NotNil(t, job)
 
 		moveJob, ok := job.(*moveLogsToFailedBucketJob)
@@ -31,7 +31,7 @@ func TestNewMoveLogsToFailedBucketJob(t *testing.T) {
 
 	t.Run("CustomTimeout", func(t *testing.T) {
 		customTimeout := 60 * time.Minute
-		job := NewMoveLogsToFailedBucketJob(env, "task-456", "2025-01-16", sourceCfg, MoveLogsTriggerTaskEnd, customTimeout)
+		job := NewMoveLogsToFailedBucketJob(env, "task-456", "2025-01-16", sourceCfg, MoveLogsTriggerTaskEnd, false, customTimeout)
 		require.NotNil(t, job)
 
 		moveJob, ok := job.(*moveLogsToFailedBucketJob)

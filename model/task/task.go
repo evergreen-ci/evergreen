@@ -4507,9 +4507,16 @@ func allObjectsExistInBucket(ctx context.Context, bucket pail.Bucket, keys []str
 }
 
 // setOutputBucketConfig sets both task and test log bucket configs in memory and persists them.
-func (t *Task) setOutputBucketConfig(ctx context.Context, cfg evergreen.BucketConfig) error {
+func (t *Task) setOutputBucketConfig(ctx context.Context, cfg evergreen.BucketConfig, runInOldTaskCollection bool) error {
 	t.TaskOutputInfo.TaskLogs.BucketConfig = cfg
 	t.TaskOutputInfo.TestLogs.BucketConfig = cfg
+	if runInOldTaskCollection {
+		return errors.Wrap(updateOneOld(
+			ctx,
+			bson.M{IdKey: t.Id},
+			bson.M{"$set": bson.M{TaskOutputInfoKey: t.TaskOutputInfo}},
+		), "updating task output bucket config")
+	}
 	return errors.Wrap(UpdateOne(
 		ctx,
 		bson.M{IdKey: t.Id},
@@ -4518,7 +4525,7 @@ func (t *Task) setOutputBucketConfig(ctx context.Context, cfg evergreen.BucketCo
 }
 
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket.
-func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
+func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig, runInOldTaskCollection bool) error {
 	if output.TestLogs.BucketConfig.Name != output.TaskLogs.BucketConfig.Name {
 		// moveLogsByNamesToBucket uses one source bucket for task and test log keys; names must agree.
 		return errors.New("test log and task log buckets do not match")
@@ -4539,13 +4546,21 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 
 	logService := log.NewLogServiceV0(srcBucket)
 
+	// use OldTaskId because S3 log keys were written using that ID
+	logTaskID := t.Id
+	if runInOldTaskCollection && t.OldTaskId != "" {
+		logTaskID = t.OldTaskId
+	}
+
+	logTask := *t
+	logTask.Id = logTaskID
 	logNames := make([]string, 0, 4)
 	// add task logs
 	for _, logType := range []TaskLogType{TaskLogTypeAgent, TaskLogTypeSystem, TaskLogTypeTask} {
-		logNames = append(logNames, getLogName(*t, logType, output.TaskLogs.ID()))
+		logNames = append(logNames, getLogName(logTask, logType, output.TaskLogs.ID()))
 	}
 	// add test logs
-	logNames = append(logNames, fmt.Sprintf("%s/%s/%d/%s", t.Project, t.Id, t.Execution, output.TestLogs.ID()))
+	logNames = append(logNames, fmt.Sprintf("%s/%s/%d/%s", t.Project, logTaskID, t.Execution, output.TestLogs.ID()))
 
 	keys, err := logService.GetChunkKeys(ctx, logNames)
 	if err != nil {
@@ -4575,7 +4590,7 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 					"task_id":   t.Id,
 					"execution": t.Execution,
 				})
-				if updateErr := t.setOutputBucketConfig(ctx, failedCfg); updateErr != nil {
+				if updateErr := t.setOutputBucketConfig(ctx, failedCfg, runInOldTaskCollection); updateErr != nil {
 					return errors.Wrap(moveErr, "moving logs to failed bucket")
 				}
 				return nil
@@ -4590,12 +4605,12 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		return errors.Wrap(moveErr, "moving logs to failed bucket")
 	}
 
-	return errors.Wrapf(t.setOutputBucketConfig(ctx, failedCfg), "updating task output for task %s", t.Id)
+	return errors.Wrapf(t.setOutputBucketConfig(ctx, failedCfg, runInOldTaskCollection), "updating task output for task %s", t.Id)
 }
 
 // MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
 // using the provided source bucket config
-func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings, sourceBucketCfg evergreen.BucketConfig) error {
+func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *evergreen.Settings, sourceBucketCfg evergreen.BucketConfig, runInOldTaskCollection bool) error {
 	if t.UsesLongRetentionBucket(settings) {
 		return nil
 	}
@@ -4604,7 +4619,7 @@ func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *
 		return nil
 	}
 
-	return t.moveLogsByNamesToBucket(ctx, settings, output, &sourceBucketCfg)
+	return t.moveLogsByNamesToBucket(ctx, settings, output, &sourceBucketCfg, runInOldTaskCollection)
 }
 
 // RevertBucketConfigToSource updates the task's DB bucket config back to sourceBucketCfg.
@@ -4612,7 +4627,7 @@ func (t *Task) RevertBucketConfigToSource(ctx context.Context, sourceBucketCfg e
 	if t.TaskOutputInfo == nil {
 		return nil
 	}
-	return t.setOutputBucketConfig(ctx, sourceBucketCfg)
+	return t.setOutputBucketConfig(ctx, sourceBucketCfg, false)
 }
 
 // RevertBucketConfigToSourceIfLogsExist checks whether the task's log files are still in sourceBucketCfg.

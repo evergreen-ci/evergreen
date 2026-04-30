@@ -45,8 +45,10 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	runInOldTaskCollection := true
 	ops := []amboy.QueueOperation{
-		PopulateRetryFailedLogMoveJobs(j.env),
+		PopulateRetryFailedLogMoveJobs(j.env, runInOldTaskCollection),
+		PopulateRetryFailedLogMoveJobs(j.env, !runInOldTaskCollection),
 		PopulateCacheHistoricalTaskDataJob(2),
 		PopulateTaskHostExpirationExtendJob(),
 		PopulateSpawnhostExpirationCheckJob(),

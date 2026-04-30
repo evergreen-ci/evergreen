@@ -41,6 +41,8 @@ type moveLogsToFailedBucketJob struct {
 	// Trigger records why the job was enqueued.
 	Trigger string        `bson:"trigger,omitempty"`
 	Timeout time.Duration `bson:"timeout,omitempty"`
+	// RunInOldTaskCollection uses old_tasks for lookup and updates instead of tasks.
+	RunInOldTaskCollection bool `bson:"run_in_old_task_collection,omitempty" json:"run_in_old_task_collection,omitempty"`
 
 	env evergreen.Environment
 }
@@ -58,13 +60,14 @@ func makeMoveLogsToFailedBucketJob() *moveLogsToFailedBucketJob {
 }
 
 // NewMoveLogsToFailedBucketJob creates a job that moves a task's logs to the failed bucket.
-// Pass an optional timeout as the last argument to override the default (e.g. NewMoveLogsToFailedBucketJob(env, taskID, ts, sourceCfg, 60*time.Minute)).
-func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig, trigger string, timeout ...time.Duration) amboy.Job {
+// Pass an optional timeout as the last argument to override the default (e.g. NewMoveLogsToFailedBucketJob(env, taskID, ts, sourceCfg, trigger, false, 60*time.Minute)).
+func NewMoveLogsToFailedBucketJob(env evergreen.Environment, taskID, ts string, sourceBucketCfg evergreen.BucketConfig, trigger string, runInOldTaskCollection bool, timeout ...time.Duration) amboy.Job {
 	j := makeMoveLogsToFailedBucketJob()
 	j.env = env
 	j.TaskID = taskID
 	j.SourceBucketCfg = sourceBucketCfg
 	j.Trigger = trigger
+	j.RunInOldTaskCollection = runInOldTaskCollection
 	if len(timeout) > 0 {
 		j.Timeout = timeout[0]
 	}
@@ -103,7 +106,13 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 	if j.Timeout > 0 {
 		timeout = j.Timeout
 	}
-	t, err := task.FindOneId(ctx, j.TaskID)
+	var t *task.Task
+	var err error
+	if j.RunInOldTaskCollection {
+		t, err = task.FindOneOldId(ctx, j.TaskID)
+	} else {
+		t, err = task.FindOneId(ctx, j.TaskID)
+	}
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding task '%s'", j.TaskID))
 		return
@@ -118,7 +127,7 @@ func (j *moveLogsToFailedBucketJob) Run(ctx context.Context) {
 	// Use the source bucket config captured when the job was created rather than the one on
 	// the task config because that has already been updated to the failed bucket so that future
 	// logs are written there directly.
-	if err := t.MoveTestAndTaskLogsToFailedBucket(fetchContext, j.env.Settings(), j.SourceBucketCfg); err != nil {
+	if err := t.MoveTestAndTaskLogsToFailedBucket(fetchContext, j.env.Settings(), j.SourceBucketCfg, j.RunInOldTaskCollection); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":   "moving logs to failed bucket",
 			"task_id":   t.Id,

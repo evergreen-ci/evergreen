@@ -947,7 +947,7 @@ const retryFailedLogMoveLogTaskIDCap = 200
 // PopulateRetryFailedLogMoveJobs finds failed tasks whose logs are still in the regular
 // bucket (move job failed or never ran) and enqueues one move-logs-to-failed-bucket job per task.
 // Caps enqueued jobs per run to avoid S3 rate limiting; newest failures are prioritized.
-func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskCollection bool) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		settings := env.Settings()
 		failedBucketCfg := settings.Buckets.LogBucketFailedTasks
@@ -989,7 +989,13 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		).Sort([]string{"-" + task.FinishTimeKey}).Limit(queryLimit)
 		findCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), retryFailedLogMoveFindTimeout)
 		defer cancel()
-		tasks, err := task.FindAll(findCtx, query)
+		var tasks []task.Task
+		var err error
+		if runInOldTaskCollection {
+			tasks, err = task.FindAllOld(findCtx, query)
+		} else {
+			tasks, err = task.FindAll(findCtx, query)
+		}
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":          "retry failed log move jobs: finding candidate tasks failed",
@@ -1015,14 +1021,15 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 
 		if len(toRetry) == 0 {
 			grip.Info(ctx, message.Fields{
-				"message":                 "retry failed log move jobs",
-				"tasks_found":             0,
-				"tasks_queried":           len(tasks),
-				"task_ids_all_candidates": []string{},
-				"task_ids_attempt":        []string{},
-				"lookback_months":         lookbackMonths,
-				"max_jobs_per_run":        maxJobs,
-				"query_limit":             queryLimit,
+				"message":                    "retry failed log move jobs",
+				"run_in_old_task_collection": runInOldTaskCollection,
+				"tasks_found":                0,
+				"tasks_queried":              len(tasks),
+				"task_ids_all_candidates":    []string{},
+				"task_ids_attempt":           []string{},
+				"lookback_months":            lookbackMonths,
+				"max_jobs_per_run":           maxJobs,
+				"query_limit":                queryLimit,
 			})
 			return nil
 		}
@@ -1049,7 +1056,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			}
 			taskIDsAttempted = append(taskIDsAttempted, t.Id)
 			sourceCfg := output.TaskLogs.BucketConfig
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerHourlyRetry)), "enqueueing move logs job for task '%s'", t.Id)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerHourlyRetry, runInOldTaskCollection)), "enqueueing move logs job for task '%s'", t.Id)
 		}
 
 		// Truncate copies of taskIDsAllCandidates and taskIDsAttempted to retryFailedLogMoveLogTaskIDCap
@@ -1070,6 +1077,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		err = catcher.Resolve()
 		fields := message.Fields{
 			"message":                        "retry failed log move jobs",
+			"run_in_old_task_collection":     runInOldTaskCollection,
 			"tasks_found":                    tasksFound,
 			"tasks_queried":                  len(tasks),
 			"task_ids_all_candidates":        logCandidates,
