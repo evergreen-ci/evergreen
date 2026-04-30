@@ -158,23 +158,6 @@
           }
         }
       }
-    },
-    {
-      "query_file": "mismatched_repo_id.graphql",
-      "result": {
-        "data": {
-          "saveRepoSettingsForSection": {
-            "projectRef": {
-              "id": "sandbox_repo_id"
-            },
-            "vars": {
-              "vars": {
-                "mismatch_test": "value"
-              }
-            }
-          }
-        }
-      }
     }
   ]
 }

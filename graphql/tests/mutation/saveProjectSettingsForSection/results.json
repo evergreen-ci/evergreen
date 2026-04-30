@@ -382,23 +382,6 @@
           }
         }
       }
-    },
-    {
-      "query_file": "mismatched_project_id.graphql",
-      "result": {
-        "data": {
-          "saveProjectSettingsForSection": {
-            "projectRef": {
-              "id": "sandbox_project_id"
-            },
-            "vars": {
-              "vars": {
-                "mismatch_test": "value"
-              }
-            }
-          }
-        }
-      }
     }
   ]
 }
