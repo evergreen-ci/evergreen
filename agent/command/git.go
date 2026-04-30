@@ -555,8 +555,13 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Wrap(err, "validating clone options")
 	}
 
+	var modulePatch *patch.ModulePatch
+	if p != nil {
+		modulePatch = p.FindModule(moduleName)
+	}
+
 	var moduleCmds []string
-	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, p.FindModule(moduleName))
+	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
 	if err != nil {
 		return err
 	}
