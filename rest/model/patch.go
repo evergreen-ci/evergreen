@@ -641,12 +641,8 @@ func (g *APIGithubMergeGroup) ToService() thirdparty.GithubMergeGroup {
 	res.HeadSHA = utility.FromStringPtr(g.HeadSHA)
 	res.BaseSHA = utility.FromStringPtr(g.BaseSHA)
 	res.HeadCommit = utility.FromStringPtr(g.HeadCommit)
-	if g.HeadCommitDate != nil {
-		res.HeadCommitDate = *g.HeadCommitDate
-	}
-	if g.RemovedFromQueueAt != nil {
-		res.RemovedFromQueueAt = *g.RemovedFromQueueAt
-	}
+	res.HeadCommitDate = utility.FromTimePtr(g.HeadCommitDate)
+	res.RemovedFromQueueAt = utility.FromTimePtr(g.RemovedFromQueueAt)
 	res.RemovalReason = utility.FromStringPtr(g.RemovalReason)
 	res.GitRefNotFound = g.GitRefNotFound
 	res.InvalidatedByUpstream = g.InvalidatedByUpstream
