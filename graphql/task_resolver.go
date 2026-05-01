@@ -19,8 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 )
 
 // Total is the field resolver for Cost.total.
@@ -832,6 +830,10 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for APITask '%s': %s", dbTask.Id, err.Error()))
 	}
 
+	// Decorate TestResults with quarantine status before the build loop;
+	// BuildFromService reads the stamped field.
+	data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results)
+
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
 	for i, t := range taskResults.Results {
 		apiTest := &restModel.APITest{}
@@ -843,35 +845,6 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 		}
 
 		apiResults[i] = apiTest
-	}
-
-	// Decorate results with quarantine status in a single batched call.
-	// Skip display tasks — their tests come from multiple execution tasks,
-	// so a single task-keyed call cannot resolve them.
-	// Failures are logged but not surfaced, since quarantine state is
-	// supplementary and shouldn't block rendering test results.
-	if obj.TestSelectionEnabled && !obj.DisplayOnly && len(apiResults) > 0 {
-		testNames := make([]string, 0, len(apiResults))
-		for _, t := range apiResults {
-			testNames = append(testNames, utility.FromStringPtr(t.TestFile))
-		}
-		projectID := utility.FromStringPtr(obj.ProjectId)
-		buildVariant := utility.FromStringPtr(obj.BuildVariant)
-		taskName := utility.FromStringPtr(obj.DisplayName)
-		statuses, err := data.GetTestsQuarantineStatus(ctx, projectID, buildVariant, taskName, testNames)
-		if err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":       "fetching test quarantine statuses",
-				"task_id":       taskID,
-				"project_id":    projectID,
-				"build_variant": buildVariant,
-				"task_name":     taskName,
-			}))
-		} else {
-			for _, t := range apiResults {
-				t.IsManuallyQuarantined = statuses[utility.FromStringPtr(t.TestFile)]
-			}
-		}
 	}
 
 	return &TaskTestResult{

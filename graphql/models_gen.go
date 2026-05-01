@@ -433,10 +433,6 @@ type QuarantineTestInput struct {
 	TestName string `json:"testName"`
 }
 
-type QuarantineTestPayload struct {
-	Success bool `json:"success"`
-}
-
 type Query struct {
 }
 
@@ -694,10 +690,6 @@ type TestSortOptions struct {
 type UnquarantineTestInput struct {
 	TaskID   string `json:"taskId"`
 	TestName string `json:"testName"`
-}
-
-type UnquarantineTestPayload struct {
-	Success bool `json:"success"`
 }
 
 type UpdateBetaFeaturesInput struct {

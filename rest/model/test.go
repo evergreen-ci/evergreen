@@ -70,6 +70,7 @@ func (at *APITest) BuildFromService(st any) error {
 		at.StartTime = utility.ToTimePtr(v.TestStartTime)
 		at.EndTime = utility.ToTimePtr(v.TestEndTime)
 		at.Duration = v.Duration().Seconds()
+		at.IsManuallyQuarantined = v.IsManuallyQuarantined
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{

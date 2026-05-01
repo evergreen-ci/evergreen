@@ -1,11 +1,6 @@
 {
   "tasks": [
     {
-      "_id": "no_permissions",
-      "execution": 1,
-      "branch": "evergreen"
-    },
-    {
       "_id": "display_task",
       "execution": 1,
       "branch": "sandbox_project_id",
@@ -14,10 +9,6 @@
     }
   ],
   "project_ref": [
-    {
-      "_id": "evergreen",
-      "identifier": "evergreen"
-    },
     {
       "_id": "sandbox_project_id",
       "identifier": "sandbox"

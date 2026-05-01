@@ -145,6 +145,8 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 	}
 
+	data.DecorateQuarantineStatus(ctx, tgh.task, results.Results)
+
 	var nextKey string
 	if tgh.key*tgh.limit < utility.FromIntPtr(results.Stats.FilteredCount) {
 		nextKey = fmt.Sprintf("%d", tgh.key+1)

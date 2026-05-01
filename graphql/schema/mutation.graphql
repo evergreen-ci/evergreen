@@ -98,8 +98,8 @@ type Mutation {
   unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
   
   # test
-  quarantineTest(opts: QuarantineTestInput!): QuarantineTestPayload!
-  unquarantineTest(opts: UnquarantineTestInput!): UnquarantineTestPayload!
+  quarantineTest(opts: QuarantineTestInput!): TestResult!
+  unquarantineTest(opts: UnquarantineTestInput!): TestResult!
 
   # user
   addFavoriteProject(opts: AddFavoriteProjectInput!): Project!

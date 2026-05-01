@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -1522,4 +1523,54 @@ func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
 		}
 	}
 	return nil, false
+}
+
+// setTestQuarantineState fetches the task, validates it can be modified, and
+// updates the quarantine state for testName. Shared between QuarantineTest and
+// UnquarantineTest.
+func setTestQuarantineState(ctx context.Context, taskID, testName string, shouldQuarantine bool) (*restModel.APITest, error) {
+	verb, verbIng := "quarantine", "quarantining"
+	if !shouldQuarantine {
+		verb, verbIng = "unquarantine", "unquarantining"
+	}
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	if t.DisplayOnly {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot %s tests for display tasks, select an execution task instead", verb))
+	}
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, shouldQuarantine); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("%s test '%s' on task '%s' on build variant '%s' on project '%s': %s", verbIng, testName, taskID, t.BuildVariant, t.Project, err.Error()))
+	}
+	return buildQuarantineMutationResponse(ctx, t, testName, shouldQuarantine)
+}
+
+// buildQuarantineMutationResponse loads the test result for testName on t,
+// builds an APITest response, and adds its quarantine state. Shared between
+// QuarantineTest and UnquarantineTest.
+func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName string, isQuarantined bool) (*restModel.APITest, error) {
+	// FilterOptions.TestName is a regex; anchor and escape so a literal test name matches exactly one test.
+	taskResults, err := t.GetTestResults(ctx, evergreen.GetEnvironment(), &task.FilterOptions{TestName: "^" + regexp.QuoteMeta(testName) + "$"})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for task '%s': %s", t.Id, err.Error()))
+	}
+	if len(taskResults.Results) == 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("test '%s' not found on task '%s'", testName, t.Id))
+	}
+	tr := taskResults.Results[0]
+	// We just set the state, so stamp the known value on the result before
+	// translating. No need to round-trip through TSS to confirm.
+	tr.IsManuallyQuarantined = isQuarantined
+	apiTest := &restModel.APITest{}
+	if err = apiTest.BuildFromService(tr.TaskID); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if err = apiTest.BuildFromService(&tr); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return apiTest, nil
 }
