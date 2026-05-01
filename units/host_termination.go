@@ -195,10 +195,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			if err := model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host); err != nil {
-				j.AddError(errors.Wrapf(err, "clearing stranded task '%s' execution '%d' from host '%s'", j.host.RunningTask, j.host.RunningTaskExecution, j.host.Id))
-				return
-			}
+			j.AddError(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host))
 		} else {
 			return
 		}
@@ -277,10 +274,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task_execution": j.host.RunningTaskExecution,
 			})
 
-			if err := model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host); err != nil {
-				j.AddError(errors.Wrapf(err, "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
-				return
-			}
+			j.AddError(errors.Wrapf(model.ClearAndResetStrandedHostTask(ctx, j.env.Settings(), j.host), "fixing stranded task '%s' execution '%d'", j.host.RunningTask, j.host.RunningTaskExecution))
 		} else {
 			return
 		}
