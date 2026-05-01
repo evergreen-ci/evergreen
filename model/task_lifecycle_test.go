@@ -4246,6 +4246,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.VersionCreated, foundVersion.Status)
 
 	h.RunningTask = "unschedulableTask"
+	assert.NoError(h.UpdateRunningTask(ctx, evergreen.GetEnvironment(), &tasks[2]))
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 
 	unschedulableTask, err := task.FindOne(ctx, db.Query(task.ById("unschedulableTask")))
@@ -4273,6 +4274,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	h.RunningTask = "t2"
 	assert.NoError(resetTask(ctx, "t2", ""))
+	assert.NoError(h.UpdateRunningTask(ctx, evergreen.GetEnvironment(), &tasks[1]))
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 	foundTask, err := task.FindOne(ctx, db.Query(task.ById("t2")))
 	require.NoError(t, err)
