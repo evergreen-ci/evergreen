@@ -119,7 +119,9 @@ func TestLogManyTestEvents(t *testing.T) {
 }
 
 func TestLogJiraIssueCreatedWithUserID(t *testing.T) {
-	require.NoError(t, db.ClearCollections(EventCollection))
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(EventCollection))
+	})
 
 	taskID := "task_123"
 	execution := 1
