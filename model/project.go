@@ -483,6 +483,13 @@ func (m Module) GetOwnerAndRepo() (string, string, error) {
 	return m.Owner, m.Repo, nil
 }
 
+// IsWikiRepo reports whether repo names a GitHub wiki remote (e.g. "mongo.wiki").
+// Trailing ".git" is ignored when matching.
+func IsWikiRepo(repo string) bool {
+	r := strings.TrimSuffix(strings.TrimSpace(repo), ".git")
+	return strings.HasSuffix(r, ".wiki")
+}
+
 type ModuleList []Module
 
 func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {

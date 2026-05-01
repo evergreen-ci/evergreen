@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -207,7 +208,6 @@ func TestAPIPatchBuildModuleChanges(t *testing.T) {
 	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[1].DiffLink), "commit_number=1"), -1)
 	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[2].DiffLink), "commit_number=2"), -1)
 	assert.NotEqual(t, strings.Index(utility.FromStringPtr(a.ModuleCodeChanges[0].FileDiffs[3].DiffLink), "commit_number=3"), -1)
-
 }
 
 func TestGithubPatch(t *testing.T) {
@@ -279,6 +279,65 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
 	assert.Len(a.DownstreamTasks[0].Tasks, 2)
 	assert.Len(a.DownstreamTasks[0].VariantTasks, 1)
+}
+
+func TestPopulateCostFromVersionS3Usage(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.VersionCollection))
+	t.Cleanup(func() { db.ClearCollections(model.VersionCollection) }) //nolint:errcheck
+
+	t.Run("PopulatesS3UsageWhenVersionHasData", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-s3-patch",
+			S3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 42,
+						UploadBytes: 2048,
+					},
+					Count: 3,
+				},
+				Logs: s3usage.LogMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{
+						PutRequests: 10,
+						UploadBytes: 512,
+					},
+				},
+			},
+		}
+		require.NoError(t, v.Insert(t.Context()))
+
+		p := patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Version: v.Id,
+		}
+		apiPatch := APIPatch{}
+		err := apiPatch.BuildFromService(t.Context(), p, &APIPatchArgs{IncludeVersionCost: true})
+		require.NoError(t, err)
+
+		require.NotNil(t, apiPatch.S3Usage)
+		assert.Equal(t, 42, apiPatch.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(2048), apiPatch.S3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, 3, apiPatch.S3Usage.Artifacts.Count)
+		assert.Equal(t, 10, apiPatch.S3Usage.Logs.PutRequests)
+		assert.Equal(t, int64(512), apiPatch.S3Usage.Logs.UploadBytes)
+	})
+
+	t.Run("NilS3UsageWhenVersionHasNone", func(t *testing.T) {
+		v := model.Version{
+			Id: "v-no-s3-patch",
+		}
+		require.NoError(t, v.Insert(t.Context()))
+
+		p := patch.Patch{
+			Id:      mgobson.NewObjectId(),
+			Version: v.Id,
+		}
+		apiPatch := APIPatch{}
+		err := apiPatch.BuildFromService(t.Context(), p, &APIPatchArgs{IncludeVersionCost: true})
+		require.NoError(t, err)
+
+		assert.Nil(t, apiPatch.S3Usage)
+	})
 }
 
 func TestPreselectedDisplayTasks(t *testing.T) {

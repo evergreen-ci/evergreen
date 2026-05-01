@@ -47,6 +47,8 @@ type TestLogs struct {
 	TestName      *string `json:"log_test_name"`
 	RenderingType *string `json:"rendering_type"`
 	Version       int32   `json:"version"`
+	// Logs to merge (used for resmoke test results that have multiple log files).
+	LogsToMerge []string `json:"logs_to_merge,omitempty"`
 }
 
 func (at *APITest) BuildFromService(st any) error {
@@ -87,6 +89,7 @@ func (at *APITest) BuildFromService(st any) error {
 			if at.Logs.LineNum == 0 {
 				at.Logs.LineNum = int(v.LogInfo.LineNumCedar)
 			}
+			at.Logs.LogsToMerge = utility.FromStringPtrSlice(v.LogInfo.LogsToMerge)
 		}
 	case string:
 		at.TaskID = utility.ToStringPtr(v)

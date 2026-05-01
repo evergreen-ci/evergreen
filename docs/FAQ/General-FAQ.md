@@ -21,7 +21,7 @@ Some Caveats to be aware of:
 - **Cron**: Activates a task on an existing mainline version at a specified time or interval. All cron schedules run in UTC timezone regardless of your local timezone.
 - **Periodic Builds**: Creates a new version that runs at a specified time or interval, regardless if the project has had any commits.
 
-For more on their differences and examples, see [controlling when tasks run](Project-Configuration/Controlling-when-tasks-run).
+For more on their differences and examples, see [controlling when tasks run](../Project-Configuration/Controlling-when-tasks-run).
 
 ## Why am I seeing a 'fatal: ...no merge base' error?
 

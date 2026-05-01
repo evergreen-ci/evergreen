@@ -814,7 +814,10 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	taskID := utility.FromStringPtr(obj.Id)
 	dbTask, err := task.FindOneIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()), err)
+	}
+	if dbTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' with execution %d not found", taskID, obj.Execution))
 	}
 
 	filterOpts, err := convertTestFilterOptions(ctx, dbTask, opts)
@@ -870,7 +873,7 @@ func (r *taskResolver) Version(ctx context.Context, obj *restModel.APITask) (*mo
 	versionID := utility.FromStringPtr(obj.Version)
 	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()), err)
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
@@ -883,7 +886,7 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	versionID := utility.FromStringPtr(obj.Version)
 	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()), err)
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))

@@ -93,6 +93,7 @@ type Query {
   
   # task history
   taskHistory(options: TaskHistoryOpts!): TaskHistory!
+  taskHistoryByCreateTime(options: TaskHistoryOpts!): TaskHistoryByCreateTime!
 
   # version
   hasVersion(patchId: String!): Boolean!
