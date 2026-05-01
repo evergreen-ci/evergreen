@@ -303,37 +303,6 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 			a.Equal("this is a new alias", alias.Alias)
 		}
 	}
-
-	// TODO DEVPROD-31534: Delete this test case
-	// The legacy combined GitHub + CQ section should still operate on all internal aliases.
-	a.Run(string(model.ProjectPageGithubAndCQSection), func() {
-		modified, err := updateAliasesForSection(
-			a.T().Context(),
-			"project_id",
-			updatedAliases,
-			originalAliases,
-			model.ProjectPageGithubAndCQSection,
-		)
-		a.NoError(err)
-		a.True(modified)
-
-		aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
-		a.NoError(err)
-		a.Len(aliasesFromDb, 4) // net count stays the same (one removed, one added)
-
-		foundChecks := false
-		for _, alias := range aliasesFromDb {
-			if alias.Alias == evergreen.GithubChecksAlias {
-				foundChecks = true
-			}
-		}
-		a.True(
-			foundChecks,
-			"expected %s to be present after updating section %s",
-			evergreen.GithubChecksAlias,
-			model.ProjectPageGithubAndCQSection,
-		)
-	})
 }
 
 func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
@@ -437,52 +406,6 @@ func (a *AliasSuite) TestUpdateAliasesForGithubSections() {
 			)
 		})
 	}
-}
-
-// TODO DEVPROD-31534: Remove legacy test, see TestValidateFeaturesHaveAliasesForGithubSections
-func TestValidateFeaturesHaveAliases(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(model.ProjectAliasCollection))
-
-	oldPRef := &model.ProjectRef{
-		VersionControlEnabled: utility.FalsePtr(),
-	}
-
-	pRef := &model.ProjectRef{
-		Id:                  "p1",
-		PRTestingEnabled:    utility.TruePtr(),
-		GithubChecksEnabled: utility.TruePtr(),
-	}
-
-	aliases := []restModel.APIProjectAlias{
-		{
-			Alias: utility.ToStringPtr(evergreen.GithubPRAlias),
-		},
-	}
-
-	// Errors when there aren't aliases for all enabled features.
-	err := validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "GitHub checks")
-
-	pRef.RepoRefId = "r1"
-	repoAlias1 := model.ProjectAlias{
-		ProjectID: pRef.RepoRefId,
-		Alias:     evergreen.GithubChecksAlias,
-	}
-	assert.NoError(t, repoAlias1.Upsert(t.Context()))
-	// No error when there are aliases in the repo.
-	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection))
-
-	pRef.GitTagVersionsEnabled = utility.TruePtr()
-	pRef.CommitQueue.Enabled = utility.TruePtr()
-	err = validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Git tag")
-	assert.Contains(t, err.Error(), "Commit queue")
-
-	// No error when version control is enabled.
-	oldPRef.VersionControlEnabled = utility.TruePtr()
-	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases, model.ProjectPageGithubAndCQSection))
 }
 
 func TestValidateFeaturesHaveAliasesForGithubSections(t *testing.T) {

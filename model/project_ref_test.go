@@ -1380,27 +1380,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Empty(t, varsFromDb.PrivateVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
-		// TODO DEVPROD-31534: remove GithubAndCQSection
-		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
-			assert.NoError(t, err)
-			assert.Len(t, aliases, 5)
-			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubAndCQSection, "me"))
-
-			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
-			assert.NoError(t, err)
-			assert.NotNil(t, pRefFromDb)
-			assert.Nil(t, pRefFromDb.PRTestingEnabled)
-			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
-			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
-			assert.NoError(t, err)
-			assert.Len(t, aliases, 1)
-			// assert that only patch aliases are left
-			for _, a := range aliases {
-				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
-			}
-		},
 		ProjectPagePullRequestsSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			require.NoError(t, err)

@@ -397,38 +397,6 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
 		},
-		// TODO DEVPROD-31534: remove this test after removing the GithubAndCQSection
-		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
-			conflictingRef := model.ProjectRef{
-				Identifier:          "conflicting-project",
-				Owner:               ref.Owner,
-				Repo:                ref.Repo,
-				Branch:              ref.Branch,
-				Enabled:             true,
-				PRTestingEnabled:    utility.TruePtr(),
-				GithubChecksEnabled: utility.TruePtr(),
-				CommitQueue: model.CommitQueueParams{
-					Enabled: utility.TruePtr(),
-				},
-			}
-			assert.NoError(t, conflictingRef.Insert(t.Context()))
-
-			changes := model.ProjectRef{
-				Id:                  ref.Id,
-				PRTestingEnabled:    nil,
-				GithubChecksEnabled: utility.FalsePtr(),
-			}
-			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), changes))
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-			}
-			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project)")
-			assert.NotContains(t, err.Error(), "the commit queue")
-			assert.NotContains(t, err.Error(), "commit checks")
-		},
 		model.ProjectPageGithubPermissionsSection: func(t *testing.T, ref model.ProjectRef) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
