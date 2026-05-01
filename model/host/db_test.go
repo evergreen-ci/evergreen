@@ -975,12 +975,6 @@ func TestByUnterminatedSpawnHostsWithInstanceTypes(t *testing.T) {
 	}
 }
 
-func setupDistroIdStatusIndex(t *testing.T) {
-	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
-		Keys: DistroIdStatusIndex,
-	}))
-}
-
 func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
 		"ReturnsEmptyMapForNoHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
@@ -1064,7 +1058,9 @@ func TestCountHostsCanRunTasksByDistro(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
-			setupDistroIdStatusIndex(t)
+			require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
+				Keys: StartedByStatusIndex,
+			}))
 			t.Cleanup(func() {
 				assert.NoError(t, db.ClearCollections(Collection))
 			})
