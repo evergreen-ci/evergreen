@@ -4228,6 +4228,11 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 
+	dbHost, err := host.FindOneId(ctx, h.Id)
+	require.NoError(t, err)
+	assert.False(utility.IsZeroTime(dbHost.LastTaskCompletedTime))
+	assert.Equal("t", dbHost.LastTask)
+
 	runningTask, err := task.FindOne(ctx, db.Query(task.ById("t")))
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
