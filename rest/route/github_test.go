@@ -496,6 +496,59 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 	}
 }
 
+func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
+	ctx := t.Context()
+	assert.NoError(t, db.ClearCollections(patch.Collection, model.VersionCollection, model.ProjectRefCollection))
+
+	org := "mongodb"
+	repo := "mongo"
+	headSHA := "abc123"
+	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	versionID := "version1"
+	reason := "dequeued"
+
+	assert.NoError(t, db.Insert(ctx, model.VersionCollection, bson.M{
+		"_id":    versionID,
+		"status": evergreen.VersionStarted,
+	}))
+
+	patchDoc := patch.Patch{
+		Id: mgobson.NewObjectId(),
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			Org:     org,
+			Repo:    repo,
+			HeadSHA: headSHA,
+		},
+		Version: versionID,
+		Status:  evergreen.VersionStarted,
+	}
+	assert.NoError(t, db.Insert(ctx, patch.Collection, patchDoc))
+
+	gh := &githubHookApi{
+		msgID:     "test-msg-id",
+		eventType: "merge_group",
+	}
+
+	event := &github.MergeGroupEvent{
+		Org:  &github.Organization{Login: &org},
+		Repo: &github.Repository{Name: &repo},
+		MergeGroup: &github.MergeGroup{
+			HeadSHA: &headSHA,
+			HeadRef: &headRef,
+		},
+		Reason: &reason,
+	}
+
+	resp := gh.handleMergeGroupDestroyed(ctx, event)
+	require.NotNil(t, resp)
+	assert.Equal(t, 200, resp.Status())
+
+	v, err := model.VersionFindOneId(ctx, versionID)
+	assert.NoError(t, err)
+	require.NotNil(t, v)
+	assert.False(t, utility.FromBoolPtr(v.Activated))
+}
+
 func TestShouldSkipWebhookPersonalStaging(t *testing.T) {
 	ctx := t.Context()
 

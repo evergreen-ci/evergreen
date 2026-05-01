@@ -589,7 +589,8 @@ func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github
 	return nil
 }
 
-// handleMergeGroupDestroyed processes a "destroyed" MergeGroupEvent.
+// handleMergeGroupDestroyed processes a "destroyed" MergeGroupEvent. It marks
+// merge queue patches as removed from the queue and cancels their tasks.
 func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *github.MergeGroupEvent) gimlet.Responder {
 	org := event.GetOrg().GetLogin()
 	repo := event.GetRepo().GetName()
@@ -607,7 +608,7 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 		"message":  "merge group destroyed",
 	})
 
-	updatedPatchIDs, err := patch.MarkMergeQueuePatchesRemovedFromQueue(ctx, org, repo, headSHA, reason)
+	updatedPatches, err := patch.MarkMergeQueuePatchesRemovedFromQueue(ctx, org, repo, headSHA, reason)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
@@ -622,7 +623,38 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "marking patches as removed from queue"))
 	}
 
+	updatedPatchIDs := make([]string, 0, len(updatedPatches))
+	for _, p := range updatedPatches {
+		updatedPatchIDs = append(updatedPatchIDs, p.Id.Hex())
+	}
+
 	model.EmitMergeQueueDestroyedSpans(ctx, updatedPatchIDs, org, repo, headSHA, event.GetMergeGroup().GetHeadRef(), reason)
+
+	catcher := grip.NewSimpleCatcher()
+	for i := range updatedPatches {
+		p := &updatedPatches[i]
+		if p.Version == "" {
+			continue
+		}
+		err := model.CancelPatch(ctx, p, task.AbortInfo{User: evergreen.GithubMergeUser})
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      org,
+			"repo":     repo,
+			"head_sha": headSHA,
+			"reason":   reason,
+			"patch_id": p.Id.Hex(),
+			"version":  p.Version,
+			"message":  "error cancelling merge queue patch",
+		}))
+		catcher.Add(err)
+	}
+
+	if catcher.HasErrors() {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(catcher.Resolve(), "cancelling merge queue patches"))
+	}
 
 	logFields := message.Fields{
 		"source":   "GitHub hook",
@@ -634,8 +666,8 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 		"reason":   reason,
 	}
 
-	if len(updatedPatchIDs) > 0 {
-		logFields["patches_updated"] = len(updatedPatchIDs)
+	if len(updatedPatches) > 0 {
+		logFields["patches_updated"] = len(updatedPatches)
 		logFields["message"] = "successfully processed merge group destroyed event"
 	} else {
 		logFields["message"] = "no patches updated when marking merge group as removed"
