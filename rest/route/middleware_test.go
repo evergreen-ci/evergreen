@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -223,6 +224,103 @@ func TestNotificationSendMiddleware(t *testing.T) {
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, r, checkPermission)
+	assert.Equal(t, http.StatusOK, rw.Code)
+}
+
+func TestSendNotificationMiddleware(t *testing.T) {
+	require.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+
+	adminRole := gimlet.Role{
+		ID:          "notification_send",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{evergreen.PermissionNotificationsSend: evergreen.NotificationsSend.Value},
+	}
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{evergreen.SuperUserPermissionsID},
+	}
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(t.Context(), adminRole))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(t.Context(), superUserScope))
+
+	mw := NewSendNotificationMiddleware()
+	opCtx := model.Context{}
+
+	makeRequest := func(target string) *http.Request {
+		body := strings.NewReader(`{"target":"` + target + `"}`)
+		r, err := http.NewRequest(http.MethodPost, "/notifications/slack", body)
+		require.NoError(t, err)
+		return r
+	}
+
+	serveMiddleware := func(rw http.ResponseWriter, r *http.Request) {
+		mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+	}
+
+	// Superuser with notification_send role can send to any target.
+	r := makeRequest("@other.user")
+	ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "superuser", SystemRoles: []string{"notification_send"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw := httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusOK, rw.Code)
+
+	// Regular user sending to themselves (target matches their Slack username).
+	r = makeRequest("@myslack")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "self.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusOK, rw.Code)
+
+	// Regular user sending to a different Slack username gets 401 (check enabled).
+	evergreen.GetEnvironment().Settings().ServiceFlags.SlackSenderCheckEnabled = true
+	t.Cleanup(func() {
+		evergreen.GetEnvironment().Settings().ServiceFlags.SlackSenderCheckEnabled = false
+	})
+	r = makeRequest("@someone.else")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "other.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+
+	// Regular user with no Slack username set gets 401 (check enabled).
+	r = makeRequest("@myslack")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "no.slack.user"})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+
+	// A correctly-formatted email body on the email route returns 401 for a regular user.
+	body := strings.NewReader(`{"recipients":["someone@example.com"],"subject":"hi"}`)
+	r, err := http.NewRequest(http.MethodPost, "/notifications/email", body)
+	require.NoError(t, err)
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "self.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+
+	// With the check disabled, a regular user sending to a different Slack username is allowed through.
+	evergreen.GetEnvironment().Settings().ServiceFlags.SlackSenderCheckEnabled = false
+	r = makeRequest("@someone.else")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "other.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusOK, rw.Code)
+
+	// With the check disabled, a regular user with no Slack username set is allowed through.
+	r = makeRequest("@myslack")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "no.slack.user"})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
 	assert.Equal(t, http.StatusOK, rw.Code)
 }
 

@@ -51,6 +51,7 @@ type ServiceFlags struct {
 	EmailNotificationsDisabled   bool `bson:"email_notifications_disabled" json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `bson:"webhook_notifications_disabled" json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+	SlackSenderCheckEnabled      bool `bson:"slack_sender_check_enabled" json:"slack_sender_check_enabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -100,6 +101,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
+			slackSenderCheckEnabledKey:            c.SlackSenderCheckEnabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

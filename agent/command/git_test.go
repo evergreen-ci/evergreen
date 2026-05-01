@@ -33,6 +33,8 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -57,6 +59,8 @@ type GitGetProjectSuite struct {
 	taskConfig6 *internal.TaskConfig     // GitHub merge queue
 	modelData7  *modelutil.TestModelData // Multiple modules (parallelized)
 	taskConfig7 *internal.TaskConfig     // Multiple modules (parallelized)
+	modelData8  *modelutil.TestModelData // Wiki module: clones evergreen-ci/evergreen.wiki
+	taskConfig8 *internal.TaskConfig     // Wiki module
 
 	comm   *client.Mock
 	jasper jasper.Manager
@@ -98,6 +102,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
 	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
+	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "wiki_module.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -162,6 +167,14 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig7.Expansions.Put("prefixpath", "hello")
 	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.taskConfig7.BuildVariant.Modules = []string{"sample-1", "sample-2"}
+
+	s.modelData8, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath5, modelutil.NoPatch)
+	s.Require().NoError(err)
+	s.taskConfig8, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData8)
+	s.Require().NoError(err)
+	s.taskConfig8.Expansions.Put("prefixpath", "hello")
+	s.taskConfig8.NewExpansions = agentutil.NewDynamicExpansions(s.taskConfig8.Expansions)
+	s.taskConfig8.BuildVariant.Modules = []string{"evergreen-wiki"}
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 	s.comm.CreateInstallationTokenFail = false
@@ -660,6 +673,24 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}), cmds)
 }
 
+func TestBuildModuleCloneCommandWiki(t *testing.T) {
+	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
+	conf := &internal.TaskConfig{}
+	opts := cloneOpts{
+		token: projectGitHubToken,
+		owner: "myorg",
+		repo:  "parent.wiki",
+		dir:   "wiki_dir",
+	}
+	cmds, err := c.buildModuleCloneCommand(conf, opts, "deadbeef0000", nil)
+	require.NoError(t, err)
+	joined := strings.Join(cmds, "\n")
+	assert.NotContains(t, joined, "git checkout")
+	assert.NotContains(t, joined, "deadbeef")
+	assert.Contains(t, joined, "git clone")
+	assert.Contains(t, joined, "myorg/parent.wiki")
+}
+
 func (s *GitGetProjectSuite) TestGetApplyCommand() {
 	c := &gitFetchProject{
 		Directory:      "dir",
@@ -793,6 +824,54 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	}
 	s.True(foundMsg)
 	s.Equal("hello/module-2", conf.ModulePaths["sample-2"])
+}
+
+func (s *GitGetProjectSuite) TestCloningWikiModule() {
+	if testing.Short() {
+		s.T().Skip("skipping network integration test in short mode")
+	}
+	const ignoredPatchHash = "7b817a1908f7505cb9c05ac5601d4692793e1c0a"
+	const ignoredYAMLRef = "0000000000000000000000000000000000000001"
+
+	conf := s.taskConfig8
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+
+	// set-module and YAML ref must not control the clone for wikis
+	s.modelData8.Task.Requester = evergreen.PatchVersionRequester
+	s.taskConfig8.Task.Requester = evergreen.PatchVersionRequester
+	s.comm.GetTaskPatchResponse = &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{ModuleName: "evergreen-wiki", Githash: ignoredPatchHash},
+		},
+	}
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEmpty(task.Commands)
+		for _, command := range task.Commands {
+			var pluginCmds []Command
+			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(s.ctx, s.comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	wikiDir := filepath.Join(conf.WorkDir, "src", "hello", "w", "evergreen-wiki")
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = wikiDir
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref := strings.TrimSpace(out.String())
+	s.Len(ref, 40, "wiki clone should yield a full commit SHA at HEAD")
+	s.NotEqual(ignoredPatchHash, ref, "set-module must not pin wiki revision")
+	s.NotEqual(ignoredYAMLRef, ref, "YAML ref must not pin wiki revision")
+	s.NoError(logger.Close())
+	s.Equal("hello/w", conf.ModulePaths["evergreen-wiki"])
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
@@ -962,4 +1041,10 @@ func (s *GitGetProjectSuite) TestReorderPatches() {
 	s.Equal("m0", patches[0].ModuleName)
 	s.Equal("m1", patches[1].ModuleName)
 	s.Equal("", patches[2].ModuleName)
+}
+
+func TestParentRepoForGitHubAppToken(t *testing.T) {
+	assert.Equal(t, "mongo", parentRepoForGitHubAppToken("mongo.wiki"))
+	assert.Equal(t, "mongo", parentRepoForGitHubAppToken("mongo.wiki.git"))
+	assert.Equal(t, "other", parentRepoForGitHubAppToken("other"))
 }

@@ -495,3 +495,34 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 		t.Run(testCase, test)
 	}
 }
+
+func TestShouldSkipWebhookPersonalStaging(t *testing.T) {
+	ctx := t.Context()
+
+	for testCase, tc := range map[string]struct {
+		stagingEnvironment string
+		fromApp            bool
+		expectSkip         bool
+	}{
+		"PersonalStagingSkipsAppWebhook": {
+			stagingEnvironment: "mine",
+			fromApp:            true,
+			expectSkip:         true,
+		},
+		"PersonalStagingAcceptsRepoWebhook": {
+			stagingEnvironment: "mine",
+			fromApp:            false,
+			expectSkip:         false,
+		},
+	} {
+		t.Run(testCase, func(t *testing.T) {
+			handler := &githubHookApi{
+				settings: &evergreen.Settings{
+					Ui: evergreen.UIConfig{StagingEnvironment: tc.stagingEnvironment},
+				},
+			}
+			result := handler.shouldSkipWebhook(ctx, "owner", "repo", tc.fromApp)
+			assert.Equal(t, tc.expectSkip, result)
+		})
+	}
+}

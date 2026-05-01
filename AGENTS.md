@@ -49,6 +49,10 @@ make lint-<package>  # Lint a specific package.
 make lint-evergreen  # Lint the top-level evergreen package (special case).
 ```
 
+After making changes, run `make lint-<package>` for each affected package and verify there are no new errors beyond any pre-existing golangci-lint toolchain crashes.
+
+Adding a `ServiceFlags` field requires running `make test-service-graphql`.
+
 ### CI Self-Tests
 
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
@@ -95,6 +99,9 @@ The Evergreen codebase has automated tests defined in `self-tests.yml`, which it
 **Bad:**
 `makeAwsConfig` (should be `makeAWSConfig`)
 `UserId` (should be `UserID`)
+
+### Formatting
+* In Go, when a block of variable declarations or struct fields is vertically aligned (e.g., all the type keywords or `=` signs line up), new entries must maintain that alignment within the same block. A blank line or a comment header (e.g., `// Notification Flags`) starts a new block with its own independent alignment; do not align across block boundaries.
 
 ### Code Readability and Comments
 * Write self-documenting code through clear naming and structure (such as helper functions for modularity).

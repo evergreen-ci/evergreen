@@ -692,12 +692,20 @@ For debugging task commands on spawn hosts, see the [Task Debugger documentation
 
 ### Notifications
 
-The Evergreen CLI has the ability to send slack and email notifications for scripting. **Email is limited to service users.** These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
+The Evergreen CLI has the ability to send slack and email notifications for scripting. These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
+
+#### Send a Slack message
+
+Only service users have permission to use this command, unless the target is yourself.
 
 ```bash
-# Send a Slack message
 evergreen notify slack --target <#channel or @user> --msg <message>
+```
 
-# Send an email
-evergreen notify --from <sender> --recipients <to> --subject <subject> --body <body>
+#### Send an email
+
+Only service users have permission to use this command.
+
+```bash
+evergreen notify email --from <sender> --recipients <to> --subject <subject> --body <body>
 ```
