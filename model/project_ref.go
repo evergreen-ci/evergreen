@@ -2476,6 +2476,17 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 			modified = true
 		}
 		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
+	case ProjectPagePullRequestsSection, ProjectPageGitTagsSection, ProjectPageMergeQueueSection, ProjectPageCommitChecksSection:
+		for _, a := range before.Aliases {
+			// remove only internal aliases; any alias without these labels is a patch alias
+			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
+				err = RemoveProjectAlias(ctx, a.ID.Hex())
+				if err == nil {
+					modified = true // track if any aliases here were correctly modified so we can log the changes
+				}
+				catcher.Add(err)
+			}
+		}
 	case ProjectPageNotificationsSection:
 		// handle subscriptions
 		for _, sub := range before.Subscriptions {
