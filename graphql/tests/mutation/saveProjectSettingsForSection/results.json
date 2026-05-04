@@ -75,6 +75,21 @@
       }
     },
     {
+      "query_file": "mismatched_project_id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "projectId 'sandbox_project_id' does not match projectRef.id 'spruce'",
+            "path": ["saveProjectSettingsForSection"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
       "query_file": "notifications_section.graphql",
       "result": {
         "data": {

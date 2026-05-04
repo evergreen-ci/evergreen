@@ -8,9 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -121,59 +119,6 @@ func TestSetCursorAPIKey(t *testing.T) {
 	assert.True(t, result.Success)
 	require.NotNil(t, result.KeyLastFour)
 	assert.Equal(t, "1234", *result.KeyLastFour)
-}
-
-func TestSaveProjectSettingsForSectionOverridesMismatchedID(t *testing.T) {
-	t.Run("OverridesWhenIDsDiverge", func(t *testing.T) {
-		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
-		settings := &restModel.APIProjectSettings{
-			Id: utility.ToStringPtr("authorized_project"),
-			ProjectRef: restModel.APIProjectRef{
-				Id: utility.ToStringPtr("foreign_project"),
-			},
-		}
-
-		resolver := &mutationResolver{}
-		// The data layer call will error because the project doesn't exist; we
-		// only care that the override happened beforehand.
-		_, _ = resolver.SaveProjectSettingsForSection(ctx, settings, ProjectSettingsSectionVariables)
-
-		assert.Equal(t, "authorized_project", utility.FromStringPtr(settings.ProjectRef.Id))
-	})
-
-	t.Run("LeavesIDsUntouchedWhenTheyMatch", func(t *testing.T) {
-		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
-		settings := &restModel.APIProjectSettings{
-			Id: utility.ToStringPtr("authorized_project"),
-			ProjectRef: restModel.APIProjectRef{
-				Id: utility.ToStringPtr("authorized_project"),
-			},
-		}
-
-		resolver := &mutationResolver{}
-		_, _ = resolver.SaveProjectSettingsForSection(ctx, settings, ProjectSettingsSectionVariables)
-
-		assert.Equal(t, "authorized_project", utility.FromStringPtr(settings.ProjectRef.Id))
-	})
-}
-
-// TestSaveRepoSettingsForSectionOverridesMismatchedID mirrors
-// TestSaveProjectSettingsForSectionOverridesMismatchedID for the repo path.
-func TestSaveRepoSettingsForSectionOverridesMismatchedID(t *testing.T) {
-	t.Run("OverridesWhenIDsDiverge", func(t *testing.T) {
-		ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
-		settings := &restModel.APIProjectSettings{
-			Id: utility.ToStringPtr("authorized_repo"),
-			ProjectRef: restModel.APIProjectRef{
-				Id: utility.ToStringPtr("foreign_repo"),
-			},
-		}
-
-		resolver := &mutationResolver{}
-		_, _ = resolver.SaveRepoSettingsForSection(ctx, settings, ProjectSettingsSectionVariables)
-
-		assert.Equal(t, "authorized_repo", utility.FromStringPtr(settings.ProjectRef.Id))
-	})
 }
 
 func TestDeleteCursorAPIKey(t *testing.T) {
