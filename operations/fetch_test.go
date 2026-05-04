@@ -203,7 +203,7 @@ func TestGetArtifactFolderName(t *testing.T) {
 }
 
 func TestDownloadUrls(t *testing.T) {
-	t.Run("LongRootDirName", func(t *testing.T) {
+	t.Run("LongDirName", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("artifact content"))
 		}))
