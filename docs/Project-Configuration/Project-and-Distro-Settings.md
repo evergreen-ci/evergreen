@@ -540,9 +540,11 @@ performance of tasks and tests.
 
 ### Project-Level Notifications
 
-Project admins can set up notifications for when some events happen within the project.
+Project admins can subscribe to notifications for when some events happen within the project.
 
-Subscriptions defined at the repo level apply to all untracked branches and all branches that are attached to the repo. They do not apply to branches that are defined but unattached.
+Subscriptions defined at the repo level apply to all untracked branches and all branches that are attached to the repo.
+**These are merged with project-level subscriptions**, meaning users could receive duplicate notifications if both the repo and branch
+are subscribed to the same event.
 
 Admins can set up events when:
 

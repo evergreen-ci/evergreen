@@ -1631,7 +1631,8 @@ func TestRepoProjectSubscriptionFiresForBranchTask(t *testing.T) {
 	}
 	notifications, err := NotificationsFromEvent(ctx, &e)
 	require.NoError(t, err)
-	assert.Len(t, notifications, 1)
+	require.Len(t, notifications, 1)
+	assert.Equal(t, sub.Subscriber.Type, notifications[0].Subscriber.Type)
 }
 
 func TestRepoProjectSubscriptionDoesNotFireForBranchWithoutRepo(t *testing.T) {
