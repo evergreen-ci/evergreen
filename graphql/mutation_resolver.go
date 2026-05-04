@@ -648,9 +648,13 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVa
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	usr := mustHaveUser(ctx)
 	// projectSettings.Id is authorized by @requireProjectAccess; projectRef.Id is not.
+	// Only validate when the caller explicitly supplied projectRef.id, since an
+	// omitted projectRef can't be used to spoof a different project.
 	projectId := utility.FromStringPtr(projectSettings.Id)
-	if innerId := utility.FromStringPtr(projectSettings.ProjectRef.Id); innerId != projectId {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("projectId '%s' does not match projectRef.id '%s'", projectId, innerId))
+	if projectSettings.ProjectRef.Id != nil {
+		if innerId := utility.FromStringPtr(projectSettings.ProjectRef.Id); innerId != projectId {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("projectId '%s' does not match projectRef.id '%s'", projectId, innerId))
+		}
 	}
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
@@ -663,9 +667,13 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	usr := mustHaveUser(ctx)
 	// repoSettings.Id is authorized by @requireProjectAccess; projectRef.Id is not.
+	// Only validate when the caller explicitly supplied projectRef.id, since an
+	// omitted projectRef can't be used to spoof a different repo.
 	repoId := utility.FromStringPtr(repoSettings.Id)
-	if innerId := utility.FromStringPtr(repoSettings.ProjectRef.Id); innerId != repoId {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("repoId '%s' does not match projectRef.id '%s'", repoId, innerId))
+	if repoSettings.ProjectRef.Id != nil {
+		if innerId := utility.FromStringPtr(repoSettings.ProjectRef.Id); innerId != repoId {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("repoId '%s' does not match projectRef.id '%s'", repoId, innerId))
+		}
 	}
 	changes, err := data.SaveProjectSettingsForSection(ctx, repoId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
