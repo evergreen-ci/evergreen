@@ -647,14 +647,9 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVa
 // SaveProjectSettingsForSection is the resolver for the saveProjectSettingsForSection field.
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	usr := mustHaveUser(ctx)
-	// projectSettings.Id is authorized by @requireProjectAccess; projectRef.Id is not.
-	// Only validate when the caller explicitly supplied projectRef.id, since an
-	// omitted projectRef can't be used to spoof a different project.
-	projectId := utility.FromStringPtr(projectSettings.Id)
-	if projectSettings.ProjectRef.Id != nil {
-		if innerId := utility.FromStringPtr(projectSettings.ProjectRef.Id); innerId != projectId {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("projectId '%s' does not match projectRef.id '%s'", projectId, innerId))
-		}
+	projectId, err := getAuthorizedSettingsID(ctx, projectSettings, "projectId")
+	if err != nil {
+		return nil, err
 	}
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
@@ -666,14 +661,9 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 // SaveRepoSettingsForSection is the resolver for the saveRepoSettingsForSection field.
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
 	usr := mustHaveUser(ctx)
-	// repoSettings.Id is authorized by @requireProjectAccess; projectRef.Id is not.
-	// Only validate when the caller explicitly supplied projectRef.id, since an
-	// omitted projectRef can't be used to spoof a different repo.
-	repoId := utility.FromStringPtr(repoSettings.Id)
-	if repoSettings.ProjectRef.Id != nil {
-		if innerId := utility.FromStringPtr(repoSettings.ProjectRef.Id); innerId != repoId {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("repoId '%s' does not match projectRef.id '%s'", repoId, innerId))
-		}
+	repoId, err := getAuthorizedSettingsID(ctx, repoSettings, "repoId")
+	if err != nil {
+		return nil, err
 	}
 	changes, err := data.SaveProjectSettingsForSection(ctx, repoId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
