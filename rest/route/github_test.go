@@ -505,7 +505,16 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	headSHA := "abc123"
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	versionID := "version1"
+	projectID := "my-project"
 	reason := "dequeued"
+
+	projectRef := &model.ProjectRef{
+		Id:      projectID,
+		Owner:   org,
+		Repo:    repo,
+		Enabled: true,
+	}
+	assert.NoError(t, projectRef.Insert(ctx))
 
 	assert.NoError(t, db.Insert(ctx, model.VersionCollection, bson.M{
 		"_id":    versionID,
@@ -513,7 +522,8 @@ func TestHandleMergeGroupDestroyedCancelsPatches(t *testing.T) {
 	}))
 
 	patchDoc := patch.Patch{
-		Id: mgobson.NewObjectId(),
+		Id:      mgobson.NewObjectId(),
+		Project: projectID,
 		GithubMergeData: thirdparty.GithubMergeGroup{
 			Org:     org,
 			Repo:    repo,
