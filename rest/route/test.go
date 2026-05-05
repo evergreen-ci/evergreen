@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -145,7 +147,12 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 	}
 
-	data.DecorateQuarantineStatus(ctx, tgh.task, results.Results)
+	if err := data.DecorateQuarantineStatus(ctx, tgh.task, results.Results); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "decorating test quarantine statuses",
+			"task_id": tgh.task.Id,
+		}))
+	}
 
 	var nextKey string
 	if tgh.key*tgh.limit < utility.FromIntPtr(results.Stats.FilteredCount) {

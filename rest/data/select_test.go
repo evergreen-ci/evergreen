@@ -109,7 +109,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		assert.Equal(t, map[string]bool{"test_a": true}, statuses)
 	})
 
-	t.Run("MissingTestInResponseOmittedFromMap", func(t *testing.T) {
+	t.Run("MissingTestInResponseDefaultsToFalse", func(t *testing.T) {
 		srv, _ := newServer(t, map[string]map[string]any{
 			"test_a": {"state": "manually_quarantined"},
 		})
@@ -117,9 +117,7 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 
 		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a", "test_missing"})
 		require.NoError(t, err)
-		assert.Equal(t, map[string]bool{"test_a": true}, statuses)
-		_, ok := statuses["test_missing"]
-		assert.False(t, ok, "tests absent from response should be absent from the map")
+		assert.Equal(t, map[string]bool{"test_a": true, "test_missing": false}, statuses)
 	})
 
 	t.Run("ServiceErrorReturnsWrappedError", func(t *testing.T) {

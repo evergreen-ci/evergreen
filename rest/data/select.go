@@ -10,8 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -92,13 +90,16 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 	return errors.Wrap(err, "forwarding request to test selection service")
 }
 
-// GetTestsQuarantineStatus returns a map from test name to quarantine status
-// for the given tests. Tests that are not present in the test selection
-// service response are omitted from the result rather than treated as an
-// error, so callers should treat a missing entry as "not quarantined".
-func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName string, testNames []string) (map[string]bool, error) {
+// GetTestsQuarantineStatus returns a map from each input test name to its
+// quarantine status. Tests absent from the test selection service response
+// are populated as false.
+func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName string, testNames []string) (testToQuarantineStatus map[string]bool, err error) {
+	testToQuarantineStatus = make(map[string]bool, len(testNames))
+	for _, name := range testNames {
+		testToQuarantineStatus[name] = false
+	}
 	if len(testNames) == 0 {
-		return map[string]bool{}, nil
+		return testToQuarantineStatus, nil
 	}
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
@@ -114,31 +115,25 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 		return nil, errors.Wrap(err, "forwarding request to test selection service")
 	}
 	if result == nil {
-		return nil, errors.New("empty response from test selection service")
+		return nil, errors.New("nil response from test selection service")
 	}
 
-	statuses := make(map[string]bool, len(*result))
 	for testName, stateInfo := range *result {
-		// Check OverrideState first since it takes precedence over the
-		// computed State when set.
 		if overrideState, ok := stateInfo.GetOverrideStateOk(); ok && overrideState != nil {
-			statuses[testName] = *overrideState == testselection.STATEMACHINEENUM_MANUALLY_QUARANTINED
+			testToQuarantineStatus[testName] = *overrideState == testselection.STATEMACHINEENUM_MANUALLY_QUARANTINED
 			continue
 		}
-		statuses[testName] = stateInfo.State == testselection.STATEMACHINEENUM_MANUALLY_QUARANTINED
+		testToQuarantineStatus[testName] = stateInfo.State == testselection.STATEMACHINEENUM_MANUALLY_QUARANTINED
 	}
-	return statuses, nil
+	return testToQuarantineStatus, nil
 }
 
 // DecorateQuarantineStatus populates IsManuallyQuarantined on each test result
-// in place using a single batched call to the test selection service.
-// No-ops on display tasks (their tests come from multiple execution tasks,
-// so a single task-keyed call cannot resolve them) and on tasks without test
-// selection enabled. TSS errors are logged and swallowed since quarantine
-// state is supplementary and shouldn't block the caller's response.
-func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testresult.TestResult) {
+// in place. No-ops on display tasks and on tasks without test selection
+// enabled.
+func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testresult.TestResult) error {
 	if !t.TestSelectionEnabled || t.DisplayOnly || len(results) == 0 {
-		return
+		return nil
 	}
 	testNames := make([]string, 0, len(results))
 	for _, r := range results {
@@ -146,16 +141,10 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 	}
 	statuses, err := GetTestsQuarantineStatus(ctx, t.Project, t.BuildVariant, t.DisplayName, testNames)
 	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":       "fetching test quarantine statuses",
-			"task_id":       t.Id,
-			"project_id":    t.Project,
-			"build_variant": t.BuildVariant,
-			"task_name":     t.DisplayName,
-		}))
-		return
+		return errors.Wrap(err, "fetching test quarantine statuses")
 	}
 	for i := range results {
 		results[i].IsManuallyQuarantined = statuses[results[i].GetDisplayTestName()]
 	}
+	return nil
 }

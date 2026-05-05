@@ -61,8 +61,8 @@ type TestResult struct {
 	RawLogURL   string `json:"raw_log_url" bson:"raw_log_url"`
 	LineNum     int    `json:"line_num" bson:"line_num"`
 
-	// IsManuallyQuarantined is populated by data.DecorateQuarantineStatus after
-	// fetching from the test selection service.
+	// IsManuallyQuarantined indicates whether this test is currently manually
+	// quarantined in the test selection service.
 	IsManuallyQuarantined bool `json:"-" bson:"-"`
 }
 

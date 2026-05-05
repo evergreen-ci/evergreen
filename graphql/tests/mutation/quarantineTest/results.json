@@ -21,7 +21,7 @@
         "data": null,
         "errors": [
           {
-            "message": "cannot quarantine tests for display tasks, select an execution task instead",
+            "message": "cannot modify test quarantine state on display tasks, select an execution task instead",
             "path": ["quarantineTest"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"

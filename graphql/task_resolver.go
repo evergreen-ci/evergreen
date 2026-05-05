@@ -19,6 +19,8 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Total is the field resolver for Cost.total.
@@ -830,9 +832,12 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for APITask '%s': %s", dbTask.Id, err.Error()))
 	}
 
-	// Decorate TestResults with quarantine status before the build loop;
-	// BuildFromService reads the stamped field.
-	data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results)
+	if err := data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "decorating test quarantine statuses",
+			"task_id": dbTask.Id,
+		}))
+	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
 	for i, t := range taskResults.Results {
