@@ -32,7 +32,14 @@ var (
 	VPNError = "VPN connection required: please make sure you're on the VPN and have access to Evergreen."
 )
 
-func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Request, error) {
+func (c *communicatorImpl) resolveOAuthToken(ctx context.Context) (string, error) {
+	if c.tokenSource != nil {
+		return c.tokenSource.Token(ctx)
+	}
+	return c.oauth, nil
+}
+
+func (c *communicatorImpl) newRequest(ctx context.Context, method, path string, data any) (*http.Request, error) {
 	url := c.getPath(path)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
@@ -52,10 +59,13 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		}
 	}
 
-	// The API user and key are mutually exclusive with JWT, so only set them if
-	// they are both set.
-	if c.oauth != "" {
-		r.Header.Add(evergreen.AuthorizationHeader, "Bearer "+c.oauth)
+	oauthToken, err := c.resolveOAuthToken(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving OAuth token")
+	}
+
+	if oauthToken != "" {
+		r.Header.Add(evergreen.AuthorizationHeader, "Bearer "+oauthToken)
 	} else if c.apiUser != "" && c.apiKey != "" {
 		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
@@ -68,7 +78,7 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 	return r, nil
 }
 
-func (c *communicatorImpl) createRequest(info requestInfo, data any) (*http.Request, error) {
+func (c *communicatorImpl) createRequest(ctx context.Context, info requestInfo, data any) (*http.Request, error) {
 	if info.method == http.MethodPost && data == nil {
 		return nil, errors.New("cannot make a POST request without a body")
 	}
@@ -76,7 +86,7 @@ func (c *communicatorImpl) createRequest(info requestInfo, data any) (*http.Requ
 		return nil, errors.WithStack(err)
 	}
 
-	r, err := c.newRequest(info.method, info.path, data)
+	r, err := c.newRequest(ctx, info.method, info.path, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
@@ -85,13 +95,24 @@ func (c *communicatorImpl) createRequest(info requestInfo, data any) (*http.Requ
 }
 
 func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data any) (*http.Response, error) {
-	r, err := c.createRequest(info, data)
+	r, err := c.createRequest(ctx, info, data)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	resp, err := c.doRequest(ctx, r)
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized && c.tokenSource != nil {
+		resp.Body.Close()
+		if _, refreshErr := c.tokenSource.ForceRefresh(ctx); refreshErr == nil {
+			r, err = c.createRequest(ctx, info, data)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			return c.doRequest(ctx, r)
+		}
 	}
 
 	return resp, nil
@@ -125,7 +146,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		}
 	}
 
-	r, err := c.createRequest(info, io.NopCloser(bytes.NewReader(out)))
+	r, err := c.createRequest(ctx, info, io.NopCloser(bytes.NewReader(out)))
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +161,26 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			MaxDelay:    c.timeoutMax,
 		},
 	})
+
+	if resp != nil && resp.StatusCode == http.StatusUnauthorized && c.tokenSource != nil {
+		resp.Body.Close()
+		if _, refreshErr := c.tokenSource.ForceRefresh(ctx); refreshErr == nil {
+			r, err = c.createRequest(ctx, info, io.NopCloser(bytes.NewReader(out)))
+			if err != nil {
+				return nil, err
+			}
+			r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
+			resp, err = utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
+				RetryOn413: info.retryOn413,
+				RetryOptions: utility.RetryOptions{
+					MaxAttempts: c.maxAttempts,
+					MinDelay:    c.timeoutStart,
+					MaxDelay:    c.timeoutMax,
+				},
+			})
+		}
+	}
+
 	// We return the response intentionally so that callers can read the body.
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 		return resp, util.RespError(resp, AuthError)

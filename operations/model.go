@@ -243,6 +243,17 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 			return c, errors.Wrap(err, "setting config OAuth token")
 		}
 		c.SetOAuth(s.OAuth.AccessToken)
+		c.SetOAuthTokenSource(client.NewOIDCTokenSource(
+			&oauth2.Token{
+				AccessToken: s.OAuth.AccessToken,
+				Expiry:      s.OAuth.Expiry,
+			},
+			s.OAuth.DoNotUseBrowser,
+			2*time.Minute,
+			dex.WithIssuer(s.OAuth.Issuer),
+			dex.WithClientID(s.OAuth.ClientID),
+			dex.WithConnectorID(s.OAuth.ConnectorID),
+		))
 		c.SetAPIKey("")
 		// To use OAuth tokens, we need to use the corp URL.
 		c.SetAPIServerHost(s.getApiServerHost(true))

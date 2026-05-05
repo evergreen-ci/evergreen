@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ func (s *RequestTestSuite) SetupTest() {
 }
 
 func (s *RequestTestSuite) TestNewRequest() {
-	r, err := s.evergreenREST.newRequest(http.MethodGet, "path", nil)
+	r, err := s.evergreenREST.newRequest(context.Background(), http.MethodGet, "path", nil)
 	s.NoError(err)
 	s.Equal(evergreen.ContentTypeValue, r.Header.Get(evergreen.ContentTypeHeader))
 }

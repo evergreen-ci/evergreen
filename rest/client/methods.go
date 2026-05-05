@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coreos/go-oidc"
@@ -1591,7 +1593,7 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, opts host.HostMetad
 		path:   fmt.Sprintf("/hosts/%s/is_up", c.hostID),
 	}
 	opts.HostID = c.hostID
-	r, err := c.createRequest(info, opts)
+	r, err := c.createRequest(ctx, info, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
@@ -1621,7 +1623,7 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 		method: http.MethodGet,
 		path:   fmt.Sprintf("/hosts/%s/provisioning_options", c.hostID),
 	}
-	r, err := c.createRequest(info, nil)
+	r, err := c.createRequest(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
@@ -1957,26 +1959,25 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	// We set the output to io.Discard to suppress debug logs.
 	logrus.SetOutput(io.Discard)
 
-	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
+	firstClient, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
 	if err != nil {
 		return nil, "", err
 	}
-	defer client.Close()
+	defer firstClient.Close()
 
-	// We delete the lock file to ensure that if the previous
-	// token acquisition attempt was interrupted, we can still
-	// acquire a new token.
-	tokenLockFilePath := client.TokenFilePath() + ".lock"
-	if delErr := os.RemoveAll(tokenLockFilePath); delErr != nil {
-		grip.Warning(ctx, errors.Wrapf(delErr, "removing OAuth token lock file at '%s'", tokenLockFilePath))
+	// Only remove the lock file if it's stale (owning process is no longer alive).
+	// Unconditionally removing it allows concurrent processes to race on token refresh.
+	tokenLockFilePath := firstClient.TokenFilePath() + ".lock"
+	if err := removeStaleOAuthLockFile(tokenLockFilePath); err != nil {
+		grip.Debug(ctx, errors.Wrapf(err, "checking OAuth token lock file at '%s'", tokenLockFilePath))
 	}
 
 	// This attempt tries to get a token or refreshes using the refresh token.
-	token, err := client.Token()
+	token, err := firstClient.Token()
 	// We have to explicitly check the expiry is valid because the OAuth
 	// library doesn't consider a token with a zero time expiry as expired.
 	if err == nil && token.Expiry.After(time.Now()) {
-		return token, client.TokenFilePath(), nil
+		return token, firstClient.TokenFilePath(), nil
 	}
 
 	shouldRetry := false
@@ -1995,18 +1996,20 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	}
 
 	if !shouldRetry {
-		return nil, client.TokenFilePath(), err
+		return nil, firstClient.TokenFilePath(), err
 	}
 
-	// This client prevents the Dex client from using the refresh token.
-	client, err = dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderWithoutRefresh{loader}))...)
+	// This client prevents the Dex client from using the refresh token,
+	// forcing a fresh device flow. We use a tokenLoaderNoWrite to prevent
+	// Close() from writing a token without a RefreshToken back to disk.
+	retryClient, err := dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderNoWrite{loader}))...)
 	if err != nil {
-		return nil, client.TokenFilePath(), err
+		return nil, firstClient.TokenFilePath(), err
 	}
-	defer client.Close()
+	defer retryClient.Close()
 
-	token, err = client.Token()
-	return token, client.TokenFilePath(), err
+	token, err = retryClient.Token()
+	return token, retryClient.TokenFilePath(), err
 }
 
 type tokenLoaderWithoutRefresh struct {
@@ -2021,4 +2024,65 @@ func (t *tokenLoaderWithoutRefresh) LoadToken(path string) (*oauth2.Token, error
 	// Clear the refresh token to prevent the Dex client from trying to use it.
 	token.RefreshToken = ""
 	return token, nil
+}
+
+// tokenLoaderNoWrite wraps a TokenLoader to clear the refresh token on load
+// (forcing a fresh auth flow) and no-ops on SaveToken/DeleteToken to prevent
+// Close() from writing a token without a RefreshToken back to disk.
+type tokenLoaderNoWrite struct {
+	dex.TokenLoader
+}
+
+func (t *tokenLoaderNoWrite) LoadToken(path string) (*oauth2.Token, error) {
+	token, err := t.TokenLoader.LoadToken(path)
+	if err != nil {
+		return nil, err
+	}
+	token.RefreshToken = ""
+	return token, nil
+}
+
+func (t *tokenLoaderNoWrite) SaveToken(path string, tok *oauth2.Token) error {
+	return nil
+}
+
+func (t *tokenLoaderNoWrite) DeleteToken(path string) error {
+	return nil
+}
+
+// removeStaleOAuthLockFile removes the lock file only if the process
+// that created it is no longer running. This prevents concurrent CLI
+// processes from clobbering each other's locks, which causes refresh
+// token rotation races.
+func removeStaleOAuthLockFile(lockPath string) error {
+	data, err := os.ReadFile(lockPath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	pidStr := strings.TrimSpace(string(data))
+	if pidStr == "" {
+		return os.Remove(lockPath)
+	}
+
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return os.Remove(lockPath)
+	}
+
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return os.Remove(lockPath)
+	}
+
+	// Signal 0 checks if a process exists without actually sending a signal.
+	if err := proc.Signal(syscall.Signal(0)); err != nil {
+		return os.Remove(lockPath)
+	}
+
+	// Process is still alive — do not remove the lock.
+	return nil
 }
