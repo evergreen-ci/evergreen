@@ -1000,7 +1000,7 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			grip.Info(ctx, message.Fields{
 				"message":                 "retry failed log move jobs",
 				"tasks_found":             0,
-				"mongodb_tasks_returned":  len(tasks),
+				"tasks_queried":           len(tasks),
 				"task_ids_all_candidates": []string{},
 				"task_ids_attempt":        []string{},
 				"lookback_months":         lookbackMonths,
@@ -1050,10 +1050,11 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			logAttempted = logAttempted[:retryFailedLogMoveLogTaskIDCap]
 		}
 
-		grip.Info(ctx, message.Fields{
+		err = catcher.Resolve()
+		fields := message.Fields{
 			"message":                        "retry failed log move jobs",
 			"tasks_found":                    tasksFound,
-			"mongodb_tasks_returned":         len(tasks),
+			"tasks_queried":                  len(tasks),
 			"task_ids_all_candidates":        logCandidates,
 			"task_ids_attempt":               logAttempted,
 			"task_count_attempt":             len(taskIDsAttempted),
@@ -1064,21 +1065,14 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			"task_id_log_truncated":          omittedCandidates > 0 || omittedAttempted > 0,
 			"task_id_log_omitted_candidates": omittedCandidates,
 			"task_id_log_omitted_attempt":    omittedAttempted,
-		})
-
-		if err := catcher.Resolve(); err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
-				"message":                "retry failed log move jobs: one or more enqueue operations failed",
-				"tasks_found":            tasksFound,
-				"mongodb_tasks_returned": len(tasks),
-				"task_count_attempt":     len(taskIDsAttempted),
-				"jobs_enqueued":          len(taskIDsAttempted) - catcher.Len(),
-				"enqueue_errors":         catcher.Len(),
-				"lookback_months":        lookbackMonths,
-				"max_jobs_per_run":       maxJobs,
-			}))
+		}
+		if err != nil {
+			fields["message"] = "retry failed log move jobs: one or more enqueue operations failed"
+			fields["enqueue_errors"] = catcher.Len()
+			grip.Error(ctx, message.WrapError(err, fields))
 			return err
 		}
+		grip.Info(ctx, fields)
 		return nil
 	}
 }
