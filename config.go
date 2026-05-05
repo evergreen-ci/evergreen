@@ -386,6 +386,8 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 						} else if len(param) > 0 {
 							// Update the value with the path from the parameter store if it exists.
 							fieldValue.SetString(param[0].Value)
+						} else {
+							fieldValue.SetString("")
 						}
 					}
 					// if the field is a map[string]string, store each key-value pair individually
@@ -411,6 +413,8 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 							} else if len(param) > 0 {
 								// Set the map value to the parameter store value
 								newMap.SetMapIndex(key, reflect.ValueOf(param[0].Value))
+							} else {
+								newMap.SetMapIndex(key, reflect.ValueOf(""))
 							}
 						}
 					}
