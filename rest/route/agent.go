@@ -854,11 +854,12 @@ func (h *reportHighExecTimeoutHandler) Parse(ctx context.Context, r *http.Reques
 func (h *reportHighExecTimeoutHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
 	grip.Warning(ctx, message.Fields{
-		"message":           "task dynamically set an unusually high exec timeout",
-		"task_id":           t.Id,
-		"project":           t.Project,
-		"display_name":      t.DisplayName,
-		"exec_timeout_secs": h.report.ExecTimeoutSecs,
+		"message":                          "task dynamically set an unusually high exec timeout",
+		"task_id":                          t.Id,
+		"project":                          t.Project,
+		"display_name":                     t.DisplayName,
+		"exec_timeout_secs":                h.report.ExecTimeoutSecs,
+		"threshold_high_exec_timeout_secs": int(evergreen.HighExecTimeoutThreshold.Seconds()),
 	})
 	return gimlet.NewJSONResponse(struct{}{})
 }

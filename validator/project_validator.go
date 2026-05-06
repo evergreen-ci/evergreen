@@ -1006,6 +1006,9 @@ func shouldValidateSingleTaskDistros(projectIdentifier string, singleTaskDistroA
 
 func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
+
+	highestExecTimeoutSecs := project.ExecTimeoutSecs
+
 	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
 		for _, task := range project.Tasks {
 			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
@@ -1013,28 +1016,26 @@ func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, pr
 					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
 					Level:   Error,
 				})
+				if task.ExecTimeoutSecs > highestExecTimeoutSecs {
+					highestExecTimeoutSecs = task.ExecTimeoutSecs
+				}
 			}
 		}
 	}
 
-	highExecTimeoutThresholdSecs := int(globals.HighExecTimeoutThreshold.Seconds())
-	hasHighExecTimeout := project.ExecTimeoutSecs > highExecTimeoutThresholdSecs
-	if !hasHighExecTimeout {
-		for _, task := range project.Tasks {
-			if task.ExecTimeoutSecs > highExecTimeoutThresholdSecs {
-				hasHighExecTimeout = true
-				break
-			}
-		}
-	}
-	if hasHighExecTimeout {
+	highExecTimeoutThresholdSecs := int(evergreen.HighExecTimeoutThreshold.Seconds())
+	if highestExecTimeoutSecs > highExecTimeoutThresholdSecs {
 		projectID := ""
 		if ref != nil {
 			projectID = ref.Identifier
+		} else if project != nil {
+			projectID = project.Identifier
 		}
 		grip.Warning(ctx, message.Fields{
-			"message": "project has an unusually high exec timeout defined",
-			"project": projectID,
+			"message":                          "project has an unusually high exec timeout defined",
+			"project":                          projectID,
+			"highest_exec_timeout_secs":        highestExecTimeoutSecs,
+			"threshold_high_exec_timeout_secs": highExecTimeoutThresholdSecs,
 		})
 	}
 

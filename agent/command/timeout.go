@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -74,9 +74,9 @@ func (c *timeout) Execute(ctx context.Context, comm client.Communicator, logger 
 			conf.SetExecTimeout(c.ExecTimeoutSecs)
 			logger.Execution().Infof(ctx, "Set exec timeout to %d seconds.", c.ExecTimeoutSecs)
 		}
-		if c.ExecTimeoutSecs > int(globals.HighExecTimeoutThreshold.Seconds()) {
+		if c.ExecTimeoutSecs > int(evergreen.HighExecTimeoutThreshold.Seconds()) {
 			if err := comm.ReportHighExecTimeout(ctx, conf.TaskData(), c.ExecTimeoutSecs); err != nil {
-				logger.Execution().Warningf(ctx, "Failed to report high exec timeout to app server: %s", err)
+				logger.Execution().Warningf(ctx, "Failed to report unusually high exec timeout to app server: %s", err)
 			}
 		}
 	}

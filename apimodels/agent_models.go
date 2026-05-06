@@ -407,8 +407,8 @@ type CheckRunAnnotation struct {
 	RawDetails      string `json:"raw_details,omitempty" plugin:"expand"`
 }
 
-// HighExecTimeoutReport is the payload sent by the agent when a task
-// dynamically sets an unusually high exec timeout via the timeout.update command.
+// HighExecTimeoutReport is the payload sent when a task dynamically sets an
+// unusually high exec timeout.
 type HighExecTimeoutReport struct {
 	ExecTimeoutSecs int `json:"exec_timeout_secs"`
 }
