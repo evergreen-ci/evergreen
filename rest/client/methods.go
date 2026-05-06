@@ -2024,26 +2024,6 @@ func (t *tokenLoaderWithoutRefresh) LoadToken(path string) (*oauth2.Token, error
 	return token, nil
 }
 
-// tokenLoaderNoWrite wraps a TokenLoader to prevent writing tokens back to
-// disk. This is used on the retry path to avoid overwriting the token file
-// with a token missing the RefreshToken (which would force a full re-auth).
-type tokenLoaderNoWrite struct {
-	dex.TokenLoader
-}
-
-func (t *tokenLoaderNoWrite) LoadToken(path string) (*oauth2.Token, error) {
-	token, err := t.TokenLoader.LoadToken(path)
-	if err != nil {
-		return nil, err
-	}
-	token.RefreshToken = ""
-	return token, nil
-}
-
-func (t *tokenLoaderNoWrite) SaveToken(_ string, _ *oauth2.Token) error {
-	return nil
-}
-
 // removeStaleOAuthLockFile removes the lock file only if the owning process
 // is no longer alive. This prevents concurrent CLI processes from racing to
 // refresh the same token.
