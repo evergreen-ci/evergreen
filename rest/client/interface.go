@@ -28,7 +28,6 @@ type Communicator interface {
 	SetAPIUser(string)
 	SetAPIKey(string)
 	SetOAuth(string)
-	SetOAuthTokenSource(TokenSource)
 	SetAPIServerHost(string)
 	// Client authentication methods (for hosts)
 	SetHostID(string)

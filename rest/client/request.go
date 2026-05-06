@@ -85,14 +85,6 @@ func (c *communicatorImpl) createRequest(info requestInfo, data any) (*http.Requ
 }
 
 func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data any) (*http.Response, error) {
-	if c.tokenSource != nil {
-		token, err := c.tokenSource.Token(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting OAuth token from token source")
-		}
-		c.oauth = token
-	}
-
 	r, err := c.createRequest(info, data)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -100,23 +92,6 @@ func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data a
 	resp, err := c.doRequest(ctx, r)
 	if err != nil {
 		return nil, errors.WithStack(err)
-	}
-
-	if resp.StatusCode == http.StatusUnauthorized && c.tokenSource != nil {
-		resp.Body.Close()
-		token, err := c.tokenSource.ForceRefresh(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "refreshing OAuth token after 401")
-		}
-		c.oauth = token
-		r, err = c.createRequest(info, data)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		resp, err = c.doRequest(ctx, r)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
 	}
 
 	return resp, nil
@@ -140,14 +115,6 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 }
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data any) (*http.Response, error) {
-	if c.tokenSource != nil {
-		token, err := c.tokenSource.Token(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting OAuth token from token source")
-		}
-		c.oauth = token
-	}
-
 	var err error
 
 	var out []byte
@@ -173,29 +140,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			MaxDelay:    c.timeoutMax,
 		},
 	})
-
-	if resp != nil && resp.StatusCode == http.StatusUnauthorized && c.tokenSource != nil {
-		resp.Body.Close()
-		token, refreshErr := c.tokenSource.ForceRefresh(ctx)
-		if refreshErr != nil {
-			return nil, errors.Wrap(refreshErr, "refreshing OAuth token after 401")
-		}
-		c.oauth = token
-		r, err = c.createRequest(info, io.NopCloser(bytes.NewReader(out)))
-		if err != nil {
-			return nil, err
-		}
-		r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
-		resp, err = utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
-			RetryOn413: info.retryOn413,
-			RetryOptions: utility.RetryOptions{
-				MaxAttempts: c.maxAttempts,
-				MinDelay:    c.timeoutStart,
-				MaxDelay:    c.timeoutMax,
-			},
-		})
-	}
-
 	// We return the response intentionally so that callers can read the body.
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 		return resp, util.RespError(resp, AuthError)

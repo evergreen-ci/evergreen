@@ -25,10 +25,9 @@ type communicatorImpl struct {
 	httpClient   *http.Client
 
 	// these fields have setters
-	apiUser     string
-	apiKey      string
-	oauth       string
-	tokenSource TokenSource
+	apiUser string
+	apiKey  string
+	oauth   string
 
 	hostID     string
 	hostSecret string
@@ -93,11 +92,6 @@ func (c *communicatorImpl) SetAPIKey(apiKey string) {
 // SetOAuth sets the OAuth token for authentication.
 func (c *communicatorImpl) SetOAuth(oauth string) {
 	c.oauth = oauth
-}
-
-// SetOAuthTokenSource sets a token source that provides dynamic token refresh.
-func (c *communicatorImpl) SetOAuthTokenSource(ts TokenSource) {
-	c.tokenSource = ts
 }
 
 // SetAPIServerHost sets the API server host.

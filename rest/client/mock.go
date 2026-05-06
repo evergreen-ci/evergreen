@@ -377,8 +377,6 @@ func (c *Mock) SetHostSecret(hostSecret string) {}
 
 func (c *Mock) SetOAuth(oauth string) {}
 
-func (c *Mock) SetOAuthTokenSource(_ TokenSource) {}
-
 func (c *Mock) SetAPIServerHost(serverURL string) {}
 
 func (c *Mock) IsServiceUser(context.Context, string) (bool, error) { return false, nil }
