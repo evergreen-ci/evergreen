@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -1003,7 +1004,7 @@ func shouldValidateSingleTaskDistros(projectIdentifier string, singleTaskDistroA
 	return shouldValidate, allowAll, Error, []ValidationError{}
 }
 
-func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
 	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
 		for _, task := range project.Tasks {
@@ -1015,6 +1016,28 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 			}
 		}
 	}
+
+	highExecTimeoutThresholdSecs := int(globals.HighExecTimeoutThreshold.Seconds())
+	hasHighExecTimeout := project.ExecTimeoutSecs > highExecTimeoutThresholdSecs
+	if !hasHighExecTimeout {
+		for _, task := range project.Tasks {
+			if task.ExecTimeoutSecs > highExecTimeoutThresholdSecs {
+				hasHighExecTimeout = true
+				break
+			}
+		}
+	}
+	if hasHighExecTimeout {
+		projectID := ""
+		if ref != nil {
+			projectID = ref.Identifier
+		}
+		grip.Warning(ctx, message.Fields{
+			"message": "project has an unusually high exec timeout defined",
+			"project": projectID,
+		})
+	}
+
 	return errs
 }
 

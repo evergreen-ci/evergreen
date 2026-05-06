@@ -24,6 +24,10 @@ const (
 	// only at the project and task level.
 	DefaultExecTimeout = 6 * time.Hour
 
+	// HighExecTimeoutThreshold is the exec timeout duration above which a task
+	// is considered to have an unusually long timeout and warrants alerting.
+	HighExecTimeoutThreshold = 24 * time.Hour
+
 	// DefaultHeartbeatInterval is the interval after which agent sends a
 	// heartbeat to API server.
 	DefaultHeartbeatInterval = 30 * time.Second
