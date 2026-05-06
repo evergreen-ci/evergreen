@@ -3,8 +3,10 @@ package client
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,14 +50,32 @@ func TestRemoveStaleOAuthLockFile(t *testing.T) {
 	})
 
 	t.Run("RemovesStaleLock", func(t *testing.T) {
+		cmd := exec.Command("true")
+		require.NoError(t, cmd.Run())
+		deadPID := cmd.Process.Pid
+
 		tmpDir := t.TempDir()
 		lockFilePath := filepath.Join(tmpDir, "token.json.lock")
-		require.NoError(t, os.WriteFile(lockFilePath, []byte("99999999"), 0600))
+		require.NoError(t, os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", deadPID)), 0600))
 
 		require.NoError(t, removeStaleOAuthLockFile(lockFilePath))
 
 		_, err := os.Stat(lockFilePath)
 		assert.True(t, os.IsNotExist(err), "Lock owned by dead process should be removed")
+	})
+
+	t.Run("RemovesLockOlderThanMaxAge", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		lockFilePath := filepath.Join(tmpDir, "token.json.lock")
+		require.NoError(t, os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0600))
+
+		staleTime := time.Now().Add(-(time.Hour))
+		require.NoError(t, os.Chtimes(lockFilePath, staleTime, staleTime))
+
+		require.NoError(t, removeStaleOAuthLockFile(lockFilePath))
+
+		_, err := os.Stat(lockFilePath)
+		assert.True(t, os.IsNotExist(err), "Lock older than max age should be removed regardless of PID")
 	})
 
 	t.Run("NoErrorWhenFileDoesNotExist", func(t *testing.T) {

@@ -2038,7 +2038,6 @@ func removeStaleOAuthLockFile(lockFilePath string) error {
 
 	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
 	if err != nil {
-		// Can't parse PID — likely corrupt, safe to remove.
 		return os.Remove(lockFilePath)
 	}
 
