@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"runtime/debug"
 	"slices"
 	"sort"
 	"strconv"
@@ -1008,6 +1009,7 @@ func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, pr
 	errs := ValidationErrors{}
 
 	highestExecTimeoutSecs := project.ExecTimeoutSecs
+	var highestExecTimeoutTask string
 
 	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
 		for _, task := range project.Tasks {
@@ -1018,6 +1020,7 @@ func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, pr
 				})
 				if task.ExecTimeoutSecs > highestExecTimeoutSecs {
 					highestExecTimeoutSecs = task.ExecTimeoutSecs
+					highestExecTimeoutTask = task.Name
 				}
 			}
 		}
@@ -1036,6 +1039,14 @@ func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, pr
 			"project":                          projectID,
 			"highest_exec_timeout_secs":        highestExecTimeoutSecs,
 			"threshold_high_exec_timeout_secs": highExecTimeoutThresholdSecs,
+			"highest_exec_timeout_task":        highestExecTimeoutTask,
+			// This is a little hacky, but it's hard to tell if the high exec
+			// timeout in validation comes from an actual patch/version (which
+			// should alert) or from a user running `evergreen validate` (which
+			// shouldn't alert). Adding a stacktrace makes it easier to
+			// determine the source of the high exec timeout value without
+			// changing the entire project validation interface.
+			"stack": string(debug.Stack()),
 		})
 	}
 
