@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func checkStatuses(t *testing.T, expected string, toCheck Task) {
@@ -1726,6 +1727,7 @@ func compareGroupedTaskStatusCounts(t *testing.T, expected, actual []*GroupedTas
 
 func TestHasMatchingTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
+	require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{Keys: TasksByVersionIndex}))
 	t1 := Task{
 		Id:                      "t1",
 		Version:                 "v1",
