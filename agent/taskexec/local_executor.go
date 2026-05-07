@@ -672,14 +672,11 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 		if bv == nil {
 			return errors.Errorf("build variant '%s' not found in project", variantName)
 		}
-		if _, err := bv.Get(taskName); err != nil {
-			tg = e.project.FindTaskGroupForTask(variantName, taskName)
-			if tg == nil {
+		tg = e.project.FindTaskGroupForTask(variantName, taskName)
+		if tg == nil {
+			if _, err := bv.Get(taskName); err != nil {
 				return errors.Wrapf(err, "task '%s' is not defined on build variant '%s'", taskName, variantName)
 			}
-		}
-		if tg == nil {
-			tg = e.project.FindTaskGroupForTask(variantName, taskName)
 		}
 		e.debugState.SelectedVariant = variantName
 		e.taskConfig.Expansions.Put("build_variant", variantName)
@@ -706,13 +703,25 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 				canFailTask: tg.SetupTaskCanFailTask,
 			})
 		}
-		blocks = append(blocks, executorBlock{
-			blockType: command.MainTaskBlock,
-			commands: &model.YAMLCommandSet{
-				MultiCommand: task.Commands,
-			},
-			canFailTask: true,
-		})
+	} else {
+		if e.project.Pre != nil && len(e.project.Pre.List()) > 0 {
+			blocks = append(blocks, executorBlock{
+				blockType:   command.PreBlock,
+				commands:    e.project.Pre,
+				canFailTask: e.project.PreErrorFailsTask,
+			})
+		}
+	}
+
+	blocks = append(blocks, executorBlock{
+		blockType: command.MainTaskBlock,
+		commands: &model.YAMLCommandSet{
+			MultiCommand: task.Commands,
+		},
+		canFailTask: true,
+	})
+
+	if tg != nil {
 		if tg.TeardownTask != nil && len(tg.TeardownTask.List()) > 0 {
 			blocks = append(blocks, executorBlock{
 				blockType:   command.TeardownTaskBlock,
@@ -728,20 +737,6 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 			})
 		}
 	} else {
-		if e.project.Pre != nil && len(e.project.Pre.List()) > 0 {
-			blocks = append(blocks, executorBlock{
-				blockType:   command.PreBlock,
-				commands:    e.project.Pre,
-				canFailTask: e.project.PreErrorFailsTask,
-			})
-		}
-		blocks = append(blocks, executorBlock{
-			blockType: command.MainTaskBlock,
-			commands: &model.YAMLCommandSet{
-				MultiCommand: task.Commands,
-			},
-			canFailTask: true,
-		})
 		if e.project.Post != nil && len(e.project.Post.List()) > 0 {
 			blocks = append(blocks, executorBlock{
 				blockType:   command.PostBlock,
