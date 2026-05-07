@@ -4706,6 +4706,34 @@ func TestReset(t *testing.T) {
 
 	})
 
+	// Regression test for DEVPROD-28500: when a display task is mid-restart
+	// and an execution task's dispatch races with t.Reset, the rollup can flip
+	// the display task's status from a completed state (e.g. failed) to a
+	// running state (e.g. started). Reset must still proceed because Archive
+	// has already committed CanReset=true; the status filter would otherwise
+	// silently drop the reset and strand the display task.
+	t.Run("ResetSucceedsWhenStatusIsNotCompletedButCanResetIsSet", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		t0 := Task{
+			Id:                      "t0",
+			Status:                  evergreen.TaskStarted,
+			CanReset:                true,
+			ResetFailedWhenFinished: true,
+			FinishTime:              time.Now(),
+		}
+		assert.NoError(t, t0.Insert(t.Context()))
+
+		assert.NoError(t, t0.Reset(ctx, "user"))
+		dbTask, err := FindOneId(ctx, t0.Id)
+		require.NoError(t, err)
+		require.NotNil(t, dbTask)
+		assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
+		assert.False(t, dbTask.CanReset)
+		assert.False(t, dbTask.ResetFailedWhenFinished)
+		assert.True(t, utility.IsZeroTime(dbTask.FinishTime))
+	})
+
 }
 
 func TestResetTasks(t *testing.T) {

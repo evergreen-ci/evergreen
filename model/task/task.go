@@ -2271,12 +2271,14 @@ func (t *Task) displayTaskPriority() int {
 }
 
 // Reset sets the task state to a state in which it is scheduled to re-run.
+// Removed check for task being in completed status it could cause a race
+// condition with display task status not matching because an execution task
+// may have updated a parent task's status before it got reset.
 func (t *Task) Reset(ctx context.Context, caller string) error {
 	return UpdateOne(
 		ctx,
 		bson.M{
 			IdKey:       t.Id,
-			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
 			CanResetKey: true,
 		},
 		resetTaskUpdate(t, caller, nil),

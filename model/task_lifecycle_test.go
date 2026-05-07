@@ -5236,6 +5236,147 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 	assert.True(dbTask.Activated)
 }
 
+// TestPartialResetFailedDisplayTaskRollsUpOnSecondExecutionFinish reproduces
+// DEVPROD-28500: when a failed display task is restarted with failedOnly=true,
+// only the failed execution tasks bump to a new execution; the succeeded
+// execution tasks stay at their original execution number. Once the restarted
+// execution tasks finish on the new execution, the display task should be
+// rolled up to its final status with a non-zero finish_time. The bug leaves
+// the display task stuck at status=undispatched, finish_time=0.
+func TestPartialResetFailedDisplayTaskRollsUpOnSecondExecutionFinish(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(
+		task.Collection, task.OldCollection, build.Collection,
+		VersionCollection, event.EventCollection, user.Collection,
+		ProjectRefCollection, host.Collection, ParserProjectCollection,
+	))
+
+	pRef := &ProjectRef{Id: "p"}
+	require.NoError(t, pRef.Insert(t.Context()))
+	v := &Version{Id: "v"}
+	require.NoError(t, v.Insert(t.Context()))
+	b := &build.Build{Id: "b", Version: v.Id}
+	require.NoError(t, b.Insert(t.Context()))
+	u := &user.DBUser{Id: "caller", NumScheduledPatchTasks: 50}
+	require.NoError(t, u.Insert(t.Context()))
+	h := &host.Host{Id: "h", RunningTask: ""}
+	require.NoError(t, h.Insert(t.Context()))
+
+	initialFinish := time.Now().Add(-2 * time.Hour)
+
+	// 5 execution tasks at execution 0: et0/et4 succeeded, et1/et2/et3 failed.
+	// This mirrors the production DB state observed for DEVPROD-28500.
+	for i := 0; i < 5; i++ {
+		status := evergreen.TaskFailed
+		if i == 0 || i == 4 {
+			status = evergreen.TaskSucceeded
+		}
+		et := &task.Task{
+			Id:            fmt.Sprintf("et%d", i),
+			DisplayName:   fmt.Sprintf("et%d", i),
+			DisplayTaskId: utility.ToStringPtr("dt"),
+			BuildId:       b.Id,
+			Version:       v.Id,
+			Project:       pRef.Id,
+			Status:        status,
+			Activated:     true,
+			Execution:     0,
+			StartTime:     initialFinish.Add(-10 * time.Minute),
+			FinishTime:    initialFinish,
+			DispatchTime:  initialFinish.Add(-10 * time.Minute),
+			HostId:        h.Id,
+			Requester:     evergreen.PatchVersionRequester,
+		}
+		require.NoError(t, et.Insert(t.Context()))
+	}
+
+	dt := &task.Task{
+		Id:             "dt",
+		DisplayName:    "dt",
+		DisplayOnly:    true,
+		BuildId:        b.Id,
+		Version:        v.Id,
+		Project:        pRef.Id,
+		DisplayTaskId:  utility.ToStringPtr(""),
+		ExecutionTasks: []string{"et0", "et1", "et2", "et3", "et4"},
+		Status:         evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Status: evergreen.TaskFailed,
+		},
+		Activated:    true,
+		Execution:    0,
+		StartTime:    initialFinish.Add(-10 * time.Minute),
+		FinishTime:   initialFinish,
+		DispatchTime: initialFinish.Add(-10 * time.Minute),
+		Requester:    evergreen.PatchVersionRequester,
+	}
+	require.NoError(t, dt.Insert(t.Context()))
+
+	settings := testutil.TestConfig()
+
+	// Restart only the failed execution tasks (failedOnly=true).
+	require.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, &dt.Details))
+
+	// Verify post-reset state matches the production observation:
+	// display task and failed exec tasks at execution=1, undispatched;
+	// succeeded exec tasks remain at execution=0.
+	dtAfterReset := requireTaskFromDB(ctx, t, "dt")
+	assert.Equal(t, 1, dtAfterReset.Execution, "display task should bump to execution 1")
+	assert.Equal(t, evergreen.TaskUndispatched, dtAfterReset.Status, "display task should reset to undispatched")
+	assert.True(t, utility.IsZeroTime(dtAfterReset.FinishTime), "display task finish_time should be cleared by reset")
+
+	for _, id := range []string{"et0", "et4"} {
+		et := requireTaskFromDB(ctx, t, id)
+		assert.Equal(t, 0, et.Execution, "succeeded exec task %s should remain at execution 0", id)
+		assert.Equal(t, evergreen.TaskSucceeded, et.Status, "succeeded exec task %s should keep its status", id)
+	}
+	for _, id := range []string{"et1", "et2", "et3"} {
+		et := requireTaskFromDB(ctx, t, id)
+		assert.Equal(t, 1, et.Execution, "failed exec task %s should bump to execution 1", id)
+		assert.Equal(t, evergreen.TaskUndispatched, et.Status, "failed exec task %s should reset to undispatched", id)
+	}
+
+	// Simulate the restarted exec tasks running and finishing on execution 1.
+	// Final outcomes match production: et2 succeeds, et1/et3 fail; et3 last.
+	type endEvent struct {
+		id         string
+		status     string
+		finishTime time.Time
+	}
+	rerunFinish := time.Now().Add(-1 * time.Minute)
+	rerun := []endEvent{
+		{"et2", evergreen.TaskSucceeded, rerunFinish.Add(-30 * time.Minute)},
+		{"et1", evergreen.TaskFailed, rerunFinish.Add(-15 * time.Minute)},
+		{"et3", evergreen.TaskFailed, rerunFinish}, // last to finish
+	}
+	for _, e := range rerun {
+		// MarkEnd refuses to re-mark a task whose status already equals the
+		// detail status. Promote the task to "started" first to mirror what a
+		// real agent run would do before reporting end.
+		require.NoError(t, task.UpdateOne(ctx,
+			bson.M{task.IdKey: e.id},
+			bson.M{"$set": bson.M{
+				task.StatusKey:    evergreen.TaskStarted,
+				task.StartTimeKey: e.finishTime.Add(-10 * time.Minute),
+				task.HostIdKey:    h.Id,
+			}},
+		))
+		et := requireTaskFromDB(ctx, t, e.id)
+		detail := &apimodels.TaskEndDetail{Status: e.status}
+		require.NoError(t, MarkEnd(ctx, settings, et, "caller", e.finishTime, detail))
+	}
+
+	// After the last child finishes, the display task should be rolled up to
+	// failed with finish_time == the latest child finish.
+	dtFinal := requireTaskFromDB(ctx, t, "dt")
+	assert.Equal(t, 1, dtFinal.Execution, "display task should still be at execution 1")
+	assert.Equal(t, evergreen.TaskFailed, dtFinal.Status, "display task should roll up to failed once all exec tasks finish")
+	assert.False(t, utility.IsZeroTime(dtFinal.FinishTime), "display task finish_time should be set after rollup")
+	assert.WithinDuration(t, rerunFinish, dtFinal.FinishTime, time.Second, "display task finish_time should match the latest exec task finish")
+}
+
 func TestMarkEndDeactivatesPrevious(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
