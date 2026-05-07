@@ -667,28 +667,27 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 
 // extendExpireOnByDay extends the expire-on tag on a task host by one day by
 // updating both the EC2 tag and the cached value in the database.
-func (m *ec2Manager) extendExpireOnByDay(ctx context.Context, h *host.Host) error {
-	newExpireOn, err := h.BumpExpireOnTag(ctx)
+func extendExpireOnByDay(ctx context.Context, client AWSClient, h *host.Host) error {
+	newExpireOn, err := h.NextExpireOnTagValue()
 	if err != nil {
-		return errors.Wrap(err, "bumping expire-on tag in DB")
+		return errors.Wrap(err, "computing new expire-on tag value")
 	}
 
-	if !host.IsIntentHostId(h.Id) {
-		resources, err := m.getResources(ctx, h)
-		if err != nil {
-			return errors.Wrap(err, "getting host resources")
-		}
-		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-			Resources: resources,
-			Tags: []types.Tag{
-				{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(newExpireOn)},
-			},
-		}); err != nil {
-			return errors.Wrapf(err, "updating expire-on tag on EC2 for host '%s'", h.Id)
-		}
+	volumeIDs, err := client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return errors.Wrapf(err, "getting volume IDs for host '%s'", h.Id)
+	}
+	resources := append([]string{h.Id}, volumeIDs...)
+	if _, err = client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: resources,
+		Tags: []types.Tag{
+			{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(newExpireOn)},
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "updating expire-on tag on EC2 for host '%s'", h.Id)
 	}
 
-	return nil
+	return errors.Wrap(h.BumpExpireOnTag(ctx, newExpireOn), "bumping expire-on tag in DB")
 }
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
@@ -735,7 +734,7 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		}
 	}
 	if opts.ExtendExpireOnByDay {
-		catcher.Wrap(m.extendExpireOnByDay(ctx, h), "extending expire-on tag by one day")
+		catcher.Wrap(extendExpireOnByDay(ctx, m.client, h), "extending expire-on tag by one day")
 	}
 	if opts.NewName != "" {
 		catcher.Add(h.SetDisplayName(ctx, opts.NewName))

@@ -4512,6 +4512,24 @@ func TestFindTaskHostsNearingExpiration(t *testing.T) {
 			InstanceTags: makeExpireOnTag(expiringSoon),
 			RunningTask:  "task-4",
 		},
+		{
+			// Should match: starting status with running task.
+			Id:           "starting-host",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostStarting,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-5",
+		},
+		{
+			// Should match: decommissioned but running a task to completion.
+			Id:           "decommissioned-host",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostDecommissioned,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-6",
+		},
 	}
 	for _, h := range hosts {
 		assert.NoError(t, h.Insert(ctx))
@@ -4519,9 +4537,9 @@ func TestFindTaskHostsNearingExpiration(t *testing.T) {
 
 	found, err := FindTaskHostsNearingExpiration(ctx)
 	assert.NoError(t, err)
-	require.Len(t, found, 2)
-	foundIDs := []string{found[0].Id, found[1].Id}
-	assert.ElementsMatch(t, []string{"running-task", "recent-task"}, foundIDs)
+	require.Len(t, found, 4)
+	foundIDs := []string{found[0].Id, found[1].Id, found[2].Id, found[3].Id}
+	assert.ElementsMatch(t, []string{"running-task", "recent-task", "starting-host", "decommissioned-host"}, foundIDs)
 }
 
 func TestBumpExpireOnTag(t *testing.T) {
@@ -4539,11 +4557,13 @@ func TestBumpExpireOnTag(t *testing.T) {
 		}
 		require.NoError(t, h.Insert(ctx))
 
-		newExpireOn, err := h.BumpExpireOnTag(ctx)
+		newExpireOn, err := h.NextExpireOnTagValue()
 		require.NoError(t, err)
 
 		expectedExpireOn := time.Now().AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)
 		assert.Equal(t, expectedExpireOn, newExpireOn)
+
+		require.NoError(t, h.BumpExpireOnTag(ctx, newExpireOn))
 
 		found, err := FindOneId(ctx, h.Id)
 		require.NoError(t, err)
@@ -4564,7 +4584,7 @@ func TestBumpExpireOnTag(t *testing.T) {
 		h := &Host{Id: "host-2"}
 		require.NoError(t, h.Insert(ctx))
 
-		_, err := h.BumpExpireOnTag(ctx)
+		_, err := h.NextExpireOnTagValue()
 		assert.Error(t, err)
 	})
 }

@@ -3204,11 +3204,11 @@ func FindTaskHostsNearingExpiration(ctx context.Context) ([]Host, error) {
 	query := bson.M{
 		UserHostKey:  false,
 		StartedByKey: evergreen.User,
-		StatusKey:    evergreen.HostRunning,
+		StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning, evergreen.HostDecommissioned}},
 		InstanceTagsKey: bson.M{
 			"$elemMatch": bson.M{
-				"key":   evergreen.TagExpireOn,
-				"value": bson.M{"$lte": time.Now().AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)},
+				instanceTagKeyKey:   evergreen.TagExpireOn,
+				instanceTagValueKey: bson.M{"$lte": time.Now().AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)},
 			},
 		},
 		"$or": []bson.M{
@@ -3241,9 +3241,9 @@ func makeExpireOnTag(expireOn string) Tag {
 	}
 }
 
-// BumpExpireOnTag extends the host's expire-on tag by one day, updating both
-// the in-memory host and the database. It returns the new expire-on date string.
-func (h *Host) BumpExpireOnTag(ctx context.Context) (string, error) {
+// NextExpireOnTagValue returns the expire-on tag value one day later than the
+// host's current value, without modifying any state.
+func (h *Host) NextExpireOnTagValue() (string, error) {
 	var currentExpireOn string
 	for _, tag := range h.InstanceTags {
 		if tag.Key == evergreen.TagExpireOn {
@@ -3259,10 +3259,14 @@ func (h *Host) BumpExpireOnTag(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "parsing expire-on tag value '%s' for host '%s'", currentExpireOn, h.Id)
 	}
-	newExpireOn := expireOnTime.AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)
+	return expireOnTime.AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat), nil
+}
 
+// BumpExpireOnTag updates the host's expire-on tag to the given value, updating
+// both the in-memory host and the database.
+func (h *Host) BumpExpireOnTag(ctx context.Context, newExpireOn string) error {
 	h.addTag(makeExpireOnTag(newExpireOn), true)
-	return newExpireOn, errors.Wrapf(h.SetTags(ctx), "updating expire-on tag in DB for host '%s'", h.Id)
+	return errors.Wrapf(h.SetTags(ctx), "updating expire-on tag in DB for host '%s'", h.Id)
 }
 
 // MarkShouldNotExpire marks a host as one that should not expire
