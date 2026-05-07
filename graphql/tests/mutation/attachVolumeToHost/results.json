@@ -22,7 +22,7 @@
       "result": {
         "errors": [
           {
-            "message": "must specify host ID",
+            "message": "must provide both volume ID and host ID",
             "path": ["attachVolumeToHost"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -35,7 +35,7 @@
       "result": {
         "errors": [
           {
-            "message": "must specify volume ID",
+            "message": "must provide both volume ID and host ID",
             "path": ["attachVolumeToHost"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -64,6 +64,22 @@
             "message": "volume 'vol-4db5' not found",
             "path": ["attachVolumeToHost"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "errors": [
+          {
+            "message": "not authorized to modify volume 'vol-0603934da6f024db5'",
+            "path": ["attachVolumeToHost"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
           }
         ],
         "data": null

@@ -46,6 +46,22 @@
           }
         }
       }
+    },
+    {
+      "query_file": "no_permissions_volume.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "not authorized to modify volume 'vol-two'",
+            "path": ["editSpawnHost"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

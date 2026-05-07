@@ -33,6 +33,22 @@
     {
       "query_file": "unmounted_volume_success.graphql",
       "result": { "data": { "removeVolume": true } }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "not authorized to modify volume 'vol-createdByAdmin'",
+            "path": ["removeVolume"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

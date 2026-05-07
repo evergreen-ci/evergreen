@@ -22,7 +22,7 @@
       "result": {
         "errors": [
           {
-            "message": "volume 'vol-4db5' does not exist",
+            "message": "volume 'vol-4db5' not found",
             "path": ["detachVolumeFromHost"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
@@ -51,6 +51,22 @@
             "message": "host 'not-real' for volume 'vol-two' not found",
             "path": ["detachVolumeFromHost"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "errors": [
+          {
+            "message": "not authorized to modify volume 'vol-0603934da6f024db5'",
+            "path": ["detachVolumeFromHost"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
           }
         ],
         "data": null

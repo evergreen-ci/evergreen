@@ -708,8 +708,10 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
+	if volumeAndHost.VolumeID == "" || volumeAndHost.HostID == "" {
+		return false, InputValidationError.Send(ctx, "must provide both volume ID and host ID")
+	}
 	usr := mustHaveUser(ctx)
-
 	v, err := host.FindVolumeByID(ctx, volumeAndHost.VolumeID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeAndHost.VolumeID, err.Error()))
@@ -741,6 +743,9 @@ func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost
 
 // DetachVolumeFromHost is the resolver for the detachVolumeFromHost field.
 func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
+	if volumeID == "" {
+		return false, InputValidationError.Send(ctx, "must specify volume ID")
+	}
 	usr := mustHaveUser(ctx)
 	volume, err := host.FindVolumeByID(ctx, volumeID)
 	if err != nil {
@@ -993,6 +998,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 
 // RemoveVolume is the resolver for the removeVolume field.
 func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
+	if volumeID == "" {
+		return false, InputValidationError.Send(ctx, "must specify volume ID")
+	}
 	usr := mustHaveUser(ctx)
 	v, err := host.FindVolumeByID(ctx, volumeID)
 	if err != nil {
