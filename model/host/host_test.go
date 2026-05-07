@@ -4445,8 +4445,7 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 }
 
 func TestFindTaskHostsNearingExpiration(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -4526,8 +4525,7 @@ func TestFindTaskHostsNearingExpiration(t *testing.T) {
 }
 
 func TestBumpExpireOnTag(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("BumpsTagByOneDayAndUpdateDB", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection))

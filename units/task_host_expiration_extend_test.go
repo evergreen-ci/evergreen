@@ -1,7 +1,6 @@
 package units
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -18,9 +17,7 @@ import (
 )
 
 func TestTaskHostExpirationExtendJob(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = testutil.TestSpan(ctx, t)
+	ctx := testutil.TestSpan(t.Context(), t)
 
 	config := testutil.TestConfig()
 	assert.NoError(t, evergreen.UpdateConfig(ctx, config))
