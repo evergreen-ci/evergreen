@@ -1028,15 +1028,17 @@ func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, pr
 
 	highExecTimeoutThresholdSecs := int(evergreen.HighExecTimeoutThreshold.Seconds())
 	if highestExecTimeoutSecs > highExecTimeoutThresholdSecs {
-		var projectID string
+		var projectID, projectIdentifier string
 		if ref != nil {
-			projectID = ref.Identifier
+			projectID = ref.Id
+			projectIdentifier = ref.Identifier
 		} else if project != nil {
 			projectID = project.Identifier
 		}
 		grip.Warning(ctx, message.Fields{
 			"message":                          "project has an unusually high exec timeout defined",
-			"project":                          projectID,
+			"project_id":                       projectID,
+			"project_identifier":               projectIdentifier,
 			"highest_exec_timeout_secs":        highestExecTimeoutSecs,
 			"threshold_high_exec_timeout_secs": highExecTimeoutThresholdSecs,
 			"highest_exec_timeout_task":        highestExecTimeoutTask,
