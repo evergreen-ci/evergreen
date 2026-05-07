@@ -153,7 +153,38 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	return h, nil
 }
 
-func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+func (m *ec2FleetManager) extendExpireOnByDay(ctx context.Context, h *host.Host) error {
+	newExpireOn, err := h.BumpExpireOnTag(ctx)
+	if err != nil {
+		return errors.Wrap(err, "bumping expire-on tag in DB")
+	}
+
+	if !host.IsIntentHostId(h.Id) {
+		volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+		if err != nil {
+			return errors.Wrapf(err, "getting volume IDs for host '%s'", h.Id)
+		}
+		resources := append([]string{h.Id}, volumeIDs...)
+		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: resources,
+			Tags: []types.Tag{
+				{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(newExpireOn)},
+			},
+		}); err != nil {
+			return errors.Wrapf(err, "updating expire-on tag on EC2 for host '%s'", h.Id)
+		}
+	}
+
+	return nil
+}
+
+func (m *ec2FleetManager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
+	if opts.ExtendExpireOnByDay {
+		if err := m.setupClient(ctx); err != nil {
+			return errors.Wrap(err, "creating client")
+		}
+		return errors.Wrap(m.extendExpireOnByDay(ctx, h), "extending expire-on tag by one day")
+	}
 	return errors.New("can't modify instances for EC2 fleet provider")
 }
 

@@ -468,6 +468,7 @@ type HostModifyOptions struct {
 	SleepScheduleOptions       `bson:",inline"`
 	AddHours                   time.Duration `json:"add_hours"` // duration to extend expiration
 	AddTemporaryExemptionHours int           `json:"add_temporary_exemption_hours"`
+	ExtendExpireOnByDay        bool          `json:"extend_expire_on_by_day"` // whether to extend the expire-on tag by one day
 	AttachVolume               string        `json:"attach_volume"`
 	DetachVolume               string        `json:"detach_volume"`
 	SubscriptionType           string        `json:"subscription_type"`
@@ -3196,6 +3197,29 @@ func CountIntentHosts(ctx context.Context) (int, error) {
 	return Count(ctx, query)
 }
 
+// FindTaskHostsNearingExpiration returns all task hosts whose expire-on tag is
+// within the next day and are currently running a task or completed one within
+// the last 30 minutes.
+func FindTaskHostsNearingExpiration(ctx context.Context) ([]Host, error) {
+	query := bson.M{
+		UserHostKey:  false,
+		StartedByKey: evergreen.User,
+		StatusKey:    evergreen.HostRunning,
+		InstanceTagsKey: bson.M{
+			"$elemMatch": bson.M{
+				"key":   evergreen.TagExpireOn,
+				"value": bson.M{"$lte": time.Now().AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)},
+			},
+		},
+		"$or": []bson.M{
+			{RunningTaskKey: bson.M{"$exists": true}},
+			{LTCTimeKey: bson.M{"$gte": time.Now().Add(-30 * time.Minute)}},
+		},
+	}
+
+	return Find(ctx, query)
+}
+
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
 // expire but have their expiration time within the next day and are still up.
 func FindSpawnhostsWithNoExpirationToExtend(ctx context.Context) ([]Host, error) {
@@ -3215,6 +3239,30 @@ func makeExpireOnTag(expireOn string) Tag {
 		Value:         expireOn,
 		CanBeModified: false,
 	}
+}
+
+// BumpExpireOnTag extends the host's expire-on tag by one day, updating both
+// the in-memory host and the database. It returns the new expire-on date string.
+func (h *Host) BumpExpireOnTag(ctx context.Context) (string, error) {
+	var currentExpireOn string
+	for _, tag := range h.InstanceTags {
+		if tag.Key == evergreen.TagExpireOn {
+			currentExpireOn = tag.Value
+			break
+		}
+	}
+	if currentExpireOn == "" {
+		return "", errors.Errorf("host '%s' has no expire-on tag", h.Id)
+	}
+
+	expireOnTime, err := time.ParseInLocation(evergreen.ExpireOnFormat, currentExpireOn, time.UTC)
+	if err != nil {
+		return "", errors.Wrapf(err, "parsing expire-on tag value '%s' for host '%s'", currentExpireOn, h.Id)
+	}
+	newExpireOn := expireOnTime.AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)
+
+	h.addTag(makeExpireOnTag(newExpireOn), true)
+	return newExpireOn, errors.Wrapf(h.SetTags(ctx), "updating expire-on tag in DB for host '%s'", h.Id)
 }
 
 // MarkShouldNotExpire marks a host as one that should not expire

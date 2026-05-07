@@ -665,6 +665,32 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 	return errors.Wrapf(h.SetExpirationTime(ctx, h.ExpirationTime.Add(extension)), "extending expiration time in DB for host '%s'", h.Id)
 }
 
+// extendExpireOnByDay extends the expire-on tag on a task host by one day by
+// updating both the EC2 tag and the cached value in the database.
+func (m *ec2Manager) extendExpireOnByDay(ctx context.Context, h *host.Host) error {
+	newExpireOn, err := h.BumpExpireOnTag(ctx)
+	if err != nil {
+		return errors.Wrap(err, "bumping expire-on tag in DB")
+	}
+
+	if !host.IsIntentHostId(h.Id) {
+		resources, err := m.getResources(ctx, h)
+		if err != nil {
+			return errors.Wrap(err, "getting host resources")
+		}
+		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+			Resources: resources,
+			Tags: []types.Tag{
+				{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(newExpireOn)},
+			},
+		}); err != nil {
+			return errors.Wrapf(err, "updating expire-on tag on EC2 for host '%s'", h.Id)
+		}
+	}
+
+	return nil
+}
+
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
 	if err := m.setupClient(ctx); err != nil {
@@ -707,6 +733,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		if err == nil {
 			catcher.Wrap(h.SetTemporaryExemption(ctx, exemptUntil), "setting temporary exemption")
 		}
+	}
+	if opts.ExtendExpireOnByDay {
+		catcher.Wrap(m.extendExpireOnByDay(ctx, h), "extending expire-on tag by one day")
 	}
 	if opts.NewName != "" {
 		catcher.Add(h.SetDisplayName(ctx, opts.NewName))

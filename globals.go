@@ -269,7 +269,7 @@ const (
 
 	// Spawn hosts
 	SpawnHostExpireDays              = 30
-	HostExpireDays                   = 10
+	HostExpireDays                   = 1
 	ExpireOnFormat                   = "2006-01-02"
 	DefaultMaxSpawnHostsPerUser      = 3
 	DefaultSpawnHostExpiration       = 24 * time.Hour

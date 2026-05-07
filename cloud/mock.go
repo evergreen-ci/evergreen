@@ -224,6 +224,14 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 		}
 	}
 
+	if changes.ExtendExpireOnByDay {
+		if _, err = host.BumpExpireOnTag(ctx); err != nil {
+			return errors.Wrap(err, "bumping expire-on tag in DB")
+		}
+		instance.Tags = host.InstanceTags
+		m.Instances[host.Id] = instance
+	}
+
 	return nil
 }
 
