@@ -708,6 +708,30 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
+	usr := mustHaveUser(ctx)
+
+	v, err := host.FindVolumeByID(ctx, volumeAndHost.VolumeID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeAndHost.VolumeID, err.Error()))
+	}
+	if v == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", volumeAndHost.VolumeID))
+	}
+	if ok := host.CanUpdateSpawnVolume(ctx, v, usr); !ok {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify volume '%s'", volumeAndHost.VolumeID))
+	}
+
+	h, err := host.FindOneByIdOrTag(ctx, volumeAndHost.HostID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching host '%s': %s", volumeAndHost.HostID, err.Error()))
+	}
+	if h == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", volumeAndHost.HostID))
+	}
+	if ok := host.CanUpdateSpawnHost(ctx, h, usr); !ok {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", volumeAndHost.HostID))
+	}
+
 	statusCode, err := cloud.AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
 		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
@@ -717,6 +741,17 @@ func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost
 
 // DetachVolumeFromHost is the resolver for the detachVolumeFromHost field.
 func (r *mutationResolver) DetachVolumeFromHost(ctx context.Context, volumeID string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	volume, err := host.FindVolumeByID(ctx, volumeID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
+	}
+	if volume == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", volumeID))
+	}
+	if ok := host.CanUpdateSpawnVolume(ctx, volume, usr); !ok {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify volume '%s'", volumeID))
+	}
 	statusCode, err := cloud.DetachVolume(ctx, volumeID)
 	if err != nil {
 		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
@@ -778,14 +813,18 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.DeleteInstanceTags = deletedTags
 	}
 	if spawnHost.Volume != nil {
-		v, err = host.FindVolumeByID(ctx, *spawnHost.Volume)
+		const volumeID := utility.FromStringPtr(spawnHost.Volume)
+		v, err = host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", utility.FromStringPtr(spawnHost.Volume), err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID err.Error()))
 		}
 		if v.AvailabilityZone != h.Zone {
 			return nil, InputValidationError.Send(ctx, "mounted volume and spawn host must be in the same availability zone")
 		}
-		opts.AttachVolume = *spawnHost.Volume
+		if ok := host.CanUpdateSpawnVolume(ctx, v, usr); !ok {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify volume '%s'", volumeID))
+		}
+		opts.AttachVolume = volumeID
 	}
 	if spawnHost.PublicKey != nil {
 		if h.Status != evergreen.HostRunning {
@@ -833,6 +872,17 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 // MigrateVolume is the resolver for the migrateVolume field.
 func (r *mutationResolver) MigrateVolume(ctx context.Context, volumeID string, spawnHostInput *SpawnHostInput) (bool, error) {
 	usr := mustHaveUser(ctx)
+	v, err := host.FindVolumeByID(ctx, volumeID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
+	}
+	if v == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", volumeID))
+	}
+	if ok := host.CanUpdateSpawnVolume(ctx, v, usr); !ok {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify volume '%s'", volumeID))
+	}
+
 	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
 	if err != nil {
 		return false, err
@@ -943,6 +993,18 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 
 // RemoveVolume is the resolver for the removeVolume field.
 func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (bool, error) {
+	usr := mustHaveUser(ctx)
+	v, err := host.FindVolumeByID(ctx, volumeID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
+	}
+	if v == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", volumeID))
+	}
+	if ok := host.CanUpdateSpawnVolume(ctx, v, usr); !ok {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify volume '%s'", volumeID))
+	}
+
 	statusCode, err := cloud.DeleteVolume(ctx, volumeID)
 	if err != nil {
 		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
@@ -1011,6 +1073,12 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 	if volume == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", updateVolumeInput.VolumeID))
 	}
+
+	usr := mustHaveUser(ctx)
+	if ok := host.CanUpdateSpawnVolume(ctx, volume, usr); !ok {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify volume '%s'", updateVolumeInput.VolumeID))
+	}
+
 	err = validateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
 	if err != nil {
 		return false, err

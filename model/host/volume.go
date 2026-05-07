@@ -7,6 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -254,4 +256,17 @@ func CountNoExpirationVolumesForUser(ctx context.Context, userID string) (int, e
 		VolumeNoExpirationKey: true,
 		VolumeCreatedByKey:    userID,
 	})
+}
+
+// CanUpdateSpawnVolume is a shared utility function to determine a user's permissions to modify a spawn volume.
+func CanUpdateSpawnVolume(ctx context.Context, v *Volume, usr *user.DBUser) bool {
+	if usr.Username() != v.CreatedBy {
+		return usr.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      evergreen.SuperUserPermissionsID,
+			ResourceType:  evergreen.SuperUserResourceType,
+			Permission:    evergreen.PermissionAdminSettings,
+			RequiredLevel: evergreen.AdminSettingsEdit.Value,
+		})
+	}
+	return true
 }
