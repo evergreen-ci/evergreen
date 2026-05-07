@@ -924,6 +924,9 @@ const retryFailedLogMoveFindMaxLimit = 5000
 const retryFailedLogMoveCandidateMultiplier = 50
 const retryFailedLogMoveFindTimeout = 20 * time.Minute
 
+// retryFailedLogMoveLogTaskIDCap limits how many task IDs we attach to each ID list field in logs.
+const retryFailedLogMoveLogTaskIDCap = 200
+
 // PopulateRetryFailedLogMoveJobs finds failed tasks whose logs are still in the regular
 // bucket (move job failed or never ran) and enqueues one move-logs-to-failed-bucket job per task.
 // Caps enqueued jobs per run to avoid S3 rate limiting; newest failures are prioritized.
@@ -971,6 +974,12 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 		defer cancel()
 		tasks, err := task.FindAll(findCtx, query)
 		if err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":          "retry failed log move jobs: finding candidate tasks failed",
+				"lookback_months":  lookbackMonths,
+				"max_jobs_per_run": maxJobs,
+				"query_limit":      queryLimit,
+			}))
 			return errors.Wrap(err, "finding failed tasks whose logs need moving")
 		}
 
@@ -991,10 +1000,12 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			grip.Info(ctx, message.Fields{
 				"message":                 "retry failed log move jobs",
 				"tasks_found":             0,
+				"tasks_queried":           len(tasks),
 				"task_ids_all_candidates": []string{},
 				"task_ids_attempt":        []string{},
 				"lookback_months":         lookbackMonths,
 				"max_jobs_per_run":        maxJobs,
+				"query_limit":             queryLimit,
 			})
 			return nil
 		}
@@ -1024,18 +1035,45 @@ func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperat
 			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewMoveLogsToFailedBucketJob(env, t.Id, ts, sourceCfg, MoveLogsTriggerHourlyRetry)), "enqueueing move logs job for task '%s'", t.Id)
 		}
 
-		grip.Info(ctx, message.Fields{
-			"message":                 "retry failed log move jobs",
-			"tasks_found":             tasksFound,
-			"task_ids_all_candidates": taskIDsAllCandidates,
-			"task_ids_attempt":        taskIDsAttempted,
-			"task_count_attempt":      len(taskIDsAttempted),
-			"jobs_enqueued":           len(taskIDsAttempted) - catcher.Len(),
-			"lookback_months":         lookbackMonths,
-			"max_jobs_per_run":        maxJobs,
-		})
+		// Truncate copies of taskIDsAllCandidates and taskIDsAttempted to retryFailedLogMoveLogTaskIDCap
+		// for logging; omittedCandidates and omittedAttempted store how many IDs were dropped from each copy.
+		logCandidates := taskIDsAllCandidates
+		logAttempted := taskIDsAttempted
+		omittedCandidates := 0
+		omittedAttempted := 0
+		if len(logCandidates) > retryFailedLogMoveLogTaskIDCap {
+			omittedCandidates = len(logCandidates) - retryFailedLogMoveLogTaskIDCap
+			logCandidates = logCandidates[:retryFailedLogMoveLogTaskIDCap]
+		}
+		if len(logAttempted) > retryFailedLogMoveLogTaskIDCap {
+			omittedAttempted = len(logAttempted) - retryFailedLogMoveLogTaskIDCap
+			logAttempted = logAttempted[:retryFailedLogMoveLogTaskIDCap]
+		}
 
-		return catcher.Resolve()
+		err = catcher.Resolve()
+		fields := message.Fields{
+			"message":                        "retry failed log move jobs",
+			"tasks_found":                    tasksFound,
+			"tasks_queried":                  len(tasks),
+			"task_ids_all_candidates":        logCandidates,
+			"task_ids_attempt":               logAttempted,
+			"task_count_attempt":             len(taskIDsAttempted),
+			"jobs_enqueued":                  len(taskIDsAttempted) - catcher.Len(),
+			"lookback_months":                lookbackMonths,
+			"max_jobs_per_run":               maxJobs,
+			"query_limit":                    queryLimit,
+			"task_id_log_truncated":          omittedCandidates > 0 || omittedAttempted > 0,
+			"task_id_log_omitted_candidates": omittedCandidates,
+			"task_id_log_omitted_attempt":    omittedAttempted,
+		}
+		if err != nil {
+			fields["message"] = "retry failed log move jobs: one or more enqueue operations failed"
+			fields["enqueue_errors"] = catcher.Len()
+			grip.Error(ctx, message.WrapError(err, fields))
+			return err
+		}
+		grip.Info(ctx, fields)
+		return nil
 	}
 }
 

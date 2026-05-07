@@ -624,6 +624,8 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 
 	model.EmitMergeQueueDestroyedSpans(ctx, updatedPatchIDs, org, repo, headSHA, event.GetMergeGroup().GetHeadRef(), reason)
 
+	model.EmitMergeQueueCompletionMetricsFromWebhook(ctx, updatedPatchIDs)
+
 	logFields := message.Fields{
 		"source":   "GitHub hook",
 		"msg_id":   gh.msgID,

@@ -307,10 +307,11 @@ Evergreen emits OpenTelemetry spans at key points in the merge queue lifecycle:
 
 **Latency Metrics (Patch-Level):**
 
-- `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to patch completion (when all tasks finish). Queue entry time is the head commit timestamp (when GitHub creates the merge group commit), which closely approximates when the PR entered the queue. If the head commit timestamp is unavailable, it falls back to patch creation time.
+- `evergreen.merge_queue.time_in_queue_ms` - The total time from merge queue entry to when GitHub merged or closed the PR. Queue entry time is the head commit timestamp (when GitHub creates the merge group commit), which closely approximates when the PR entered the queue. If the head commit timestamp is unavailable, it falls back to patch creation time.
 - `evergreen.merge_queue.time_to_first_task_ms` - The time from merge queue entry to when the first task in the patch starts. Queue entry time is determined the same way as `time_in_queue_ms`.
 - `evergreen.merge_queue.slowest_task_duration_ms` - The duration of the slowest task in the patch.
 - `evergreen.merge_queue.queue_entry_source` - Indicates which timestamp was used for queue entry time calculations (e.g., `time_in_queue_ms`, `time_to_first_task_ms`, `oldest_patch_age_ms`). Values are `"head_commit_date"` (preferred, when the GitHub commit timestamp is available) or `"create_time"` (fallback, when the head commit timestamp is unavailable). Use this attribute to filter metrics for consistent measurement methodology.
+- `evergreen.merge_queue.end_time_source` - Indicates which timestamp was used as the end time for `time_in_queue_ms`. Values are `"evergreen.merge_queue.github_webhook_destroyed"` (from the GitHub destroyed webhook, most accurate), `"evergreen.merge_queue.end_time_polling"` (from the GitHub PR API, used when the webhook was missed), or `"evergreen.merge_queue.evergreen_collective_finish"` (Evergreen task completion time, used when GitHub data is unavailable).
 
 **Health & Failure Metrics:**
 
