@@ -1,6 +1,7 @@
 package units
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -81,6 +82,17 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 
 	var logs string
 	if !j.host.Distro.LegacyBootstrap() {
+		scriptPath := fmt.Sprintf("/tmp/evg-execute-%s.sh", j.host.Id)
+
+		if err := j.host.WriteJasperFile(ctx, j.env, options.WriteFile{
+			Path:   scriptPath,
+			Reader: bytes.NewReader([]byte(j.Script)),
+			Perm:   0700,
+		}); err != nil {
+			j.AddError(errors.Wrap(err, "writing script to temp file on host"))
+			return
+		}
+
 		var args []string
 		if !j.host.Distro.IsWindows() && j.Sudo {
 			args = append(args, "sudo")
@@ -88,14 +100,23 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 				args = append(args, fmt.Sprintf("--user=%s", j.SudoUser))
 			}
 		}
-		// We read the shell script verbatim from stdin  (i.e. with "bash -s"
-		// instead of "bash -c") to avoid a Windows limitation on exec string length.
-		args = append(args, j.host.Distro.ShellBinary(), "-s", "-l")
-		var output []string
+		args = append(args, j.host.Distro.ShellBinary(), "-l", scriptPath)
+
 		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args:               args,
-			StandardInputBytes: []byte(j.Script),
+			Args: args,
 		})
+
+		if _, cleanupErr := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+			Args: []string{"rm", "-f", scriptPath},
+		}); cleanupErr != nil {
+			grip.Warning(ctx, message.WrapError(cleanupErr, message.Fields{
+				"message":     "could not clean up temp script file",
+				"script_path": scriptPath,
+				"host_id":     j.host.Id,
+				"job":         j.ID(),
+			}))
+		}
+
 		logs = strings.Join(output, "\n")
 		if err != nil {
 			event.LogHostScriptExecuteFailed(ctx, j.host.Id, logs, err)
