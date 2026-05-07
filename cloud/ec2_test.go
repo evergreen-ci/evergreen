@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -737,6 +738,15 @@ func (s *EC2Suite) TestModifyHostInvalidSchedule() {
 	s.Equal(originalSchedule.DailyStopTime, modifiedHost.SleepSchedule.DailyStopTime)
 	s.Equal(originalSchedule.TimeZone, modifiedHost.SleepSchedule.TimeZone)
 	s.True(temporarilyExemptUntil.Equal(modifiedHost.SleepSchedule.TemporarilyExemptUntil))
+}
+
+func (s *EC2Suite) TestGetInstanceInfoNoReservationForIntentStyleHostID() {
+	s.Require().True(host.IsIntentHostId("evg-ubuntu-1234"))
+	s.mock.RequestGetInstanceInfoError = noReservationError
+	info, err := s.impl.client.GetInstanceInfo(s.ctx, "evg-ubuntu-1234")
+	s.Nil(info)
+	s.Require().Error(err)
+	s.True(errors.Is(err, noReservationError))
 }
 
 func (s *EC2Suite) TestGetInstanceInformation() {
