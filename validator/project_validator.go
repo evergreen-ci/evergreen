@@ -1028,7 +1028,7 @@ func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, pr
 
 	highExecTimeoutThresholdSecs := int(evergreen.HighExecTimeoutThreshold.Seconds())
 	if highestExecTimeoutSecs > highExecTimeoutThresholdSecs {
-		projectID := ""
+		var projectID string
 		if ref != nil {
 			projectID = ref.Identifier
 		} else if project != nil {
