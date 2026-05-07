@@ -776,6 +776,7 @@ func (s *EC2Suite) TestTerminateInstanceIntentHostWithCloudInstance() {
 	s.Equal([]string{realInstanceID}, s.mock.TerminateInstancesInput.InstanceIds, "should terminate using the real instance ID found via tag lookup")
 
 	found, err := host.FindOne(s.ctx, host.ById(s.h.Id))
+	s.Require().NotNil(found)
 	s.Require().NoError(err)
 	s.Equal(evergreen.HostTerminated, found.Status)
 }
@@ -791,6 +792,7 @@ func (s *EC2Suite) TestTerminateInstanceIntentHostWithNoCloudInstance() {
 	s.Nil(s.mock.TerminateInstancesInput, "should not call AWS TerminateInstances when no cloud instance is found")
 
 	found, err := host.FindOne(s.ctx, host.ById(s.h.Id))
+	s.Require().NotNil(found)
 	s.Require().NoError(err)
 	s.Equal(evergreen.HostTerminated, found.Status)
 }
