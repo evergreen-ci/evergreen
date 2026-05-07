@@ -394,7 +394,6 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 
 	if s3pc.isPrivate(s3pc.Visibility) {
 		logger.Task().Infof(ctx, "Putting private files into S3.")
-
 	} else {
 		if s3pc.isMulti() {
 			logger.Task().Infof(ctx, "Putting files matching filter '%s' into path '%s' in S3 bucket '%s'.",
@@ -425,7 +424,6 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		logger.Execution().Infof(ctx, "Canceled while running command '%s': %s.", s3pc.Name(), ctx.Err())
 		return nil
 	}
-
 }
 
 // Wrapper around the Put() function to retry it.
@@ -547,13 +545,8 @@ retryLoop:
 					continue retryLoop
 				}
 
-				uploadPath := fpath
-				if s3pc.preservePath {
-					uploadPath = remoteName
-				}
-
 				uploadedFiles = append(uploadedFiles, s3usage.FileMetrics{
-					LocalPath:  uploadPath,
+					LocalPath:  fpath,
 					RemotePath: remoteName,
 				})
 

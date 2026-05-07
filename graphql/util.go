@@ -644,6 +644,21 @@ func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 	return len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0
 }
 
+// getAuthorizedSettingsID returns the project/repo ID gated by @requireProjectAccess
+// (settings.Id, mapped from the projectId/repoId GraphQL argument). If the caller also
+// supplied projectRef.id and it differs from the authorized ID, returns an
+// InputValidationError — projectRef.id is not authorized and must not be used as the
+// write key. labelName is used in the error message ("projectId" or "repoId").
+func getAuthorizedSettingsID(ctx context.Context, settings *restModel.APIProjectSettings, labelName string) (string, error) {
+	authorizedID := utility.FromStringPtr(settings.Id)
+	if settings.ProjectRef.Id != nil {
+		if innerID := utility.FromStringPtr(settings.ProjectRef.Id); innerID != authorizedID {
+			return "", InputValidationError.Send(ctx, fmt.Sprintf("%s '%s' does not match projectRef.id '%s'", labelName, authorizedID, innerID))
+		}
+	}
+	return authorizedID, nil
+}
+
 func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(ctx, projectId)
 	if err != nil {

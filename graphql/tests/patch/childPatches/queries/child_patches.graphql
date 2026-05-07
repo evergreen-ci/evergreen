@@ -5,5 +5,11 @@
       id
       projectID
     }
+    version {
+      id
+      childVersions {
+        id
+      }
+    }
   }
 }

@@ -1723,13 +1723,6 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			}
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
-
-			grip.Error(ctx, message.WrapError(emitMergeQueueCompletionMetrics(ctx, rootPatch, taskVersion, psu.patchFamilyFinishedCollectiveStatus), message.Fields{
-				"message":           "error emitting merge queue completion metrics",
-				"version_id":        taskVersion.Id,
-				"patch_id":          rootPatch.Id.Hex(),
-				"collective_status": psu.patchFamilyFinishedCollectiveStatus,
-			}))
 		}
 	}
 
@@ -1794,8 +1787,9 @@ func gatherMergeQueueTaskMetrics(tasks []task.Task) mergeQueueTaskMetrics {
 	return metrics
 }
 
-// emitMergeQueueCompletionMetrics emits OpenTelemetry metrics for merge queue version completion.
-func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Version, collectiveStatus string) error {
+// EmitMergeQueueCompletionMetrics emits the patch_completed span for a merge queue patch.
+// endTimeSource is attached as an attribute so Honeycomb dashboards can filter by accuracy.
+func EmitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Version, collectiveStatus string, endTime time.Time, endTimeSource string) error {
 	if p.Alias != evergreen.CommitQueueAlias || v.Requester != evergreen.GithubMergeRequester {
 		return nil
 	}
@@ -1812,13 +1806,6 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	if queueEntryTime.IsZero() {
 		queueEntryTime = p.CreateTime
 		queueEntrySource = "create_time"
-	}
-
-	// Calculate the collective finish time across the patch family (parent + children).
-	// This matches the API's finish_time to represent when the entire patch family completed.
-	_, collectiveFinishTime, err := p.GetCollectiveTimes(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting collective finish time for merge queue metrics")
 	}
 
 	baseAttrs := patch.BuildMergeQueueSpanAttributes(
@@ -1838,9 +1825,10 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	defer span.End()
 
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrQueueEntrySource, queueEntrySource))
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrEndTimeSource, endTimeSource))
 
-	if !collectiveFinishTime.IsZero() && !queueEntryTime.IsZero() {
-		timeInQueue := collectiveFinishTime.Sub(queueEntryTime).Milliseconds()
+	if !endTime.IsZero() && !queueEntryTime.IsZero() {
+		timeInQueue := endTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
 	}
 
@@ -1976,6 +1964,32 @@ func EmitMergeQueueDestroyedSpans(ctx context.Context, updatedPatchIDs []string,
 		)
 		_, span := tracer.Start(ctx, patch.MergeQueueDestroyedSpan, trace.WithAttributes(attrs...))
 		span.End()
+	}
+}
+
+// EmitMergeQueueCompletionMetricsFromWebhook emits the patch_completed span for merge queue patches using the webhook's removal time as the end time.
+func EmitMergeQueueCompletionMetricsFromWebhook(ctx context.Context, updatedPatchIDs []string) {
+	for _, patchID := range updatedPatchIDs {
+		p, err := patch.FindOneId(ctx, patchID)
+		if err != nil || p == nil {
+			continue
+		}
+		claimed, err := patch.ClaimMergeQueueMetricsEmit(ctx, p.Id)
+		if err != nil || !claimed {
+			continue
+		}
+		v, err := VersionFindOneId(ctx, p.Version)
+		if err != nil || v == nil {
+			_ = patch.SetMergeQueueMetricsEmitStatus(ctx, p.Id, patch.MergeQueueMetricsEmitStatusFailed)
+			continue
+		}
+		if err := EmitMergeQueueCompletionMetrics(ctx, p, v, p.Status, p.GithubMergeData.RemovedFromQueueAt, patch.MergeQueueEndTimeSourceGitHubWebhookDestroyed); err != nil {
+			_ = patch.SetMergeQueueMetricsEmitStatus(ctx, p.Id, patch.MergeQueueMetricsEmitStatusFailed)
+			grip.Debug(ctx, message.WrapError(err, message.Fields{
+				"message":  "error emitting merge queue completion metrics from webhook",
+				"patch_id": patchID,
+			}))
+		}
 	}
 }
 

@@ -77,8 +77,10 @@ type FileMetrics struct {
 	PutRequests   int
 }
 
-type S3BucketType string
-type S3UploadMethod string
+type (
+	S3BucketType   string
+	S3UploadMethod string
+)
 
 const (
 	S3PutRequestCost = 0.000005
@@ -147,7 +149,7 @@ func CalculateUploadMetrics(
 // CalculatePutRequestsWithContext returns the number of S3 PUT API calls
 // needed to upload a file based on bucket type, upload method, and file size.
 func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMethod, fileSize int64) int {
-	if fileSize <= 0 {
+	if fileSize < 0 {
 		return 0
 	}
 

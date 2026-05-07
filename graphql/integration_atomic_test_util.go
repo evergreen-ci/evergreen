@@ -524,7 +524,7 @@ func escapeGQLQuery(in string) string {
 
 // setupDBIndexes ensures that the indexes required for the tests are created.
 func setupDBIndexes() error {
-	if err := db.EnsureIndex(host.Collection, mongo.IndexModel{Keys: host.DistroIdStatusIndex}); err != nil {
+	if err := db.EnsureIndex(host.Collection, mongo.IndexModel{Keys: host.StartedByStatusIndex}); err != nil {
 		return errors.Wrap(err, "setting up host collection indexes")
 	}
 	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: model.TaskHistoryIndex}); err != nil {

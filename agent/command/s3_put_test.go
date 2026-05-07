@@ -30,17 +30,13 @@ import (
 )
 
 func TestS3PutValidateParams(t *testing.T) {
-
 	Convey("With an s3 put command", t, func() {
-
 		var cmd *s3put
 
 		Convey("when validating command params", func() {
-
 			cmd = &s3put{}
 
 			Convey("a missing aws key should cause an error", func() {
-
 				params := map[string]any{
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -55,7 +51,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "AWS key cannot be blank")
 			})
 			Convey("a defined local file and inclusion filter should cause an error", func() {
-
 				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
@@ -72,7 +67,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "local file and local files include filter cannot both be specified")
 			})
 			Convey("a defined inclusion filter with optional upload should cause an error", func() {
-
 				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
@@ -103,7 +97,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing aws secret should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"local_file":   "local",
@@ -119,7 +112,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing local file should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -135,7 +127,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing remote file should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -151,7 +142,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing bucket should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -167,7 +157,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing s3 permission should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -183,7 +172,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an invalid s3 permission should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -200,7 +188,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an expansion s3 permission should pass", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -216,7 +203,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an expansion s3 visibility should pass", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -233,7 +219,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing content type should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -249,7 +234,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an invalid visibility type should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -267,7 +251,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a valid set of params should not cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -304,7 +287,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.ParseParams(params), ShouldBeNil)
 			})
 		})
-
 	})
 }
 
@@ -325,7 +307,6 @@ func TestS3PutOptionsStorageClass(t *testing.T) {
 }
 
 func TestExpandS3PutParams(t *testing.T) {
-
 	Convey("With an s3 put command and a task config", t, func() {
 		abs, err := filepath.Abs("working_directory")
 		So(err, ShouldBeNil)
@@ -338,7 +319,6 @@ func TestExpandS3PutParams(t *testing.T) {
 
 		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
 			" contain expansions", func() {
-
 			cmd.AwsKey = "${aws_key}"
 			cmd.AwsSecret = "${aws_secret}"
 			cmd.RemoteFile = "${remote_file}"
@@ -402,9 +382,7 @@ func TestExpandS3PutParams(t *testing.T) {
 				So(cmd.expandParams(conf), ShouldNotBeNil)
 				So(cmd.skipMissing, ShouldBeFalse)
 			}
-
 		})
-
 	})
 }
 
@@ -415,8 +393,8 @@ func TestSignedUrlVisibility(t *testing.T) {
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
 	file2 := filepath.Join(tempDir, "file2")
-	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
-	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
 
 	for _, vis := range []string{"signed", "private"} {
 		s := s3put{
@@ -480,8 +458,8 @@ func TestContentTypeSaved(t *testing.T) {
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
 	file2 := filepath.Join(tempDir, "file2")
-	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
-	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
 
 	s := s3put{
 		AwsKey:        "key",
@@ -535,7 +513,6 @@ func TestContentTypeSaved(t *testing.T) {
 	for _, file := range files {
 		assert.Equal(t, file.ContentType, s.ContentType)
 	}
-
 }
 
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
@@ -549,7 +526,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			f, err := os.Create(filepath.Join(dir, "foo"))
 			require.NoError(t, err)
 			require.NoError(t, f.Close())
-			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0o755))
 			f, err = os.Create(filepath.Join(dir, "subDir", "bar"))
 			require.NoError(t, err)
 			require.NoError(t, f.Close())
@@ -571,7 +548,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				Permissions:                   string(s3Types.BucketCannedACLPublicRead),
 				RemoteFile:                    "remote",
 			}
-			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0o755))
 			opts := pail.LocalOptions{
 				Path: filepath.Join(dir, "destination"),
 			}
@@ -617,7 +594,7 @@ func TestFileUploadNaming(t *testing.T) {
 	defer cancel()
 
 	dir := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0o755))
 	f, err := os.Create(filepath.Join(dir, "subDir", "bar"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -633,7 +610,7 @@ func TestFileUploadNaming(t *testing.T) {
 		LocalFilesIncludeFilterPrefix: "",
 		RemoteFile:                    "remote",
 	}
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0o755))
 	opts := pail.LocalOptions{
 		Path: filepath.Join(dir, "destination"),
 	}
@@ -677,9 +654,9 @@ func TestPreservePath(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create the directories
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0755))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets"), 0755))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0o755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets"), 0o755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0o755))
 
 	// Create the files in in the assets directory
 	f, err := os.Create(filepath.Join(dir, "foo"))
@@ -714,7 +691,7 @@ func TestPreservePath(t *testing.T) {
 		RemoteFile:              "remote",
 		PreservePath:            "true",
 	}
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0o755))
 	opts := pail.LocalOptions{
 		Path: filepath.Join(dir, "destination"),
 	}
@@ -753,6 +730,11 @@ func TestPreservePath(t *testing.T) {
 		require.True(t, exists, item)
 	}
 
+	require.NotNil(t, conf.S3Usage)
+	// Each zero-byte file counts as 1 PUT; preserve_path uploads were previously broken because LocalPath was set to the S3 key.
+	assert.Equal(t, 6, conf.S3Usage.Artifacts.PutRequests)
+	assert.Equal(t, 6, conf.S3Usage.Artifacts.Count)
+	assert.Equal(t, int64(0), conf.S3Usage.Artifacts.UploadBytes)
 }
 
 func TestS3PutSkipExisting(t *testing.T) {
@@ -768,8 +750,8 @@ func TestS3PutSkipExisting(t *testing.T) {
 	secondFilePath := filepath.Join(temproot, "second-file.txt")
 
 	payload := []byte("hello world")
-	require.NoError(t, os.WriteFile(firstFilePath, payload, 0755))
-	require.NoError(t, os.WriteFile(secondFilePath, []byte("second file"), 0755))
+	require.NoError(t, os.WriteFile(firstFilePath, payload, 0o755))
+	require.NoError(t, os.WriteFile(secondFilePath, []byte("second file"), 0o755))
 
 	accessKeyID := settings.Expansions["aws_key"]
 	secretAccessKey := settings.Expansions["aws_secret"]
@@ -916,7 +898,7 @@ func TestReadAssociatedLinksFile(t *testing.T) {
 		}
 		data, err := json.Marshal(links)
 		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(linksFile, data, 0644))
+		require.NoError(t, os.WriteFile(linksFile, data, 0o644))
 
 		conf := &internal.TaskConfig{
 			WorkDir:    tempDir,
@@ -950,7 +932,7 @@ func TestReadAssociatedLinksFile(t *testing.T) {
 		tempDir := t.TempDir()
 		linksFile := filepath.Join(tempDir, "invalid.json")
 
-		require.NoError(t, os.WriteFile(linksFile, []byte("not valid json"), 0644))
+		require.NoError(t, os.WriteFile(linksFile, []byte("not valid json"), 0o644))
 
 		conf := &internal.TaskConfig{
 			WorkDir:    tempDir,
@@ -971,7 +953,7 @@ func TestReadAssociatedLinksFile(t *testing.T) {
 		}
 		data, err := json.Marshal(links)
 		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(linksFile, data, 0644))
+		require.NoError(t, os.WriteFile(linksFile, data, 0o644))
 
 		conf := &internal.TaskConfig{
 			WorkDir: tempDir,
@@ -994,7 +976,7 @@ func TestS3PutWithAssociatedLinks(t *testing.T) {
 
 	tempDir := t.TempDir()
 	s3PutFile := filepath.Join(tempDir, "file1")
-	require.NoError(t, os.WriteFile(s3PutFile, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(s3PutFile, []byte("content1"), 0o644))
 
 	associatedLinks := []artifact.AssociatedLink{
 		{Name: "Documentation", Link: "https://example.com/docs"},

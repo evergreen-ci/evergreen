@@ -359,7 +359,7 @@ func (t *taskTriggers) generate(ctx context.Context, sub *event.Subscription, pa
 	if err != nil {
 		return nil, errors.Wrap(err, "creating notification")
 	}
-	n.SetTaskMetadata(t.task.Id, t.task.Execution)
+	n.SetTaskMetadata(t.task.Id, t.task.Execution, "")
 
 	return n, nil
 }

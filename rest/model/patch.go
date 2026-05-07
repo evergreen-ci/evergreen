@@ -64,10 +64,12 @@ type APIPatch struct {
 	VariantsTasks []VariantTask `json:"variants_tasks"`
 	// Whether the patch has been finalized and activated
 	Activated bool `json:"activated"`
-	// Whether the patch was invalidated because an item ahead of it in the merge queue failed.
+	// InvalidatedByUpstream is whether the patch was invalidated because an item ahead of it in the merge queue failed.
+	// Repeated from GithubMergeData to preserve backwards compatibility.
 	InvalidatedByUpstream bool                 `json:"invalidated_by_upstream"`
 	Alias                 *string              `json:"alias,omitempty"`
 	GithubPatchData       APIGithubPatch       `json:"github_patch_data"`
+	GithubMergeData       APIGithubMergeGroup  `json:"github_merge_data"`
 	ModuleCodeChanges     []APIModulePatch     `json:"module_code_changes"`
 	Parameters            []APIParameter       `json:"parameters"`
 	ProjectStorageMethod  *string              `json:"project_storage_method,omitempty"`
@@ -317,6 +319,8 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 
 	apiPatch.GithubPatchData = APIGithubPatch{}
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
+	apiPatch.GithubMergeData = APIGithubMergeGroup{}
+	apiPatch.GithubMergeData.BuildFromService(p.GithubMergeData)
 	apiPatch.InvalidatedByUpstream = p.GithubMergeData.InvalidatedByUpstream
 }
 
@@ -558,7 +562,12 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	}
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
-	res.GithubMergeData.InvalidatedByUpstream = apiPatch.InvalidatedByUpstream
+	res.GithubMergeData = apiPatch.GithubMergeData.ToService()
+	// Preserve the top-level InvalidatedByUpstream for clients that set it without
+	// populating the full GithubMergeData struct.
+	if apiPatch.InvalidatedByUpstream {
+		res.GithubMergeData.InvalidatedByUpstream = true
+	}
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))
 	return res, catcher.Resolve()
 }
@@ -586,7 +595,7 @@ func (g *APIGithubPatch) BuildFromService(p thirdparty.GithubPatch) {
 	g.Author = utility.ToStringPtr(p.Author)
 }
 
-// ToService converts a service layer patch using the data from APIPatch
+// ToService converts an APIGithubPatch to a service-layer GithubPatch.
 func (g *APIGithubPatch) ToService() thirdparty.GithubPatch {
 	res := thirdparty.GithubPatch{}
 	res.PRNumber = g.PRNumber
@@ -597,5 +606,55 @@ func (g *APIGithubPatch) ToService() thirdparty.GithubPatch {
 	res.HeadBranch = utility.FromStringPtr(g.HeadBranch)
 	res.HeadHash = utility.FromStringPtr(g.HeadHash)
 	res.Author = utility.FromStringPtr(g.Author)
+	return res
+}
+
+// APIGithubMergeGroup is the REST API model for thirdparty.GithubMergeGroup.
+type APIGithubMergeGroup struct {
+	Org                   *string    `json:"org"`
+	Repo                  *string    `json:"repo"`
+	BaseBranch            *string    `json:"base_branch"`
+	HeadBranch            *string    `json:"head_branch"`
+	HeadSHA               *string    `json:"head_sha"`
+	BaseSHA               *string    `json:"base_sha"`
+	HeadCommit            *string    `json:"head_commit"`
+	HeadCommitDate        *time.Time `json:"head_commit_date"`
+	RemovedFromQueueAt    *time.Time `json:"removed_from_queue_at"`
+	RemovalReason         *string    `json:"removal_reason"`
+	GitRefNotFound        bool       `json:"git_ref_not_found"`
+	InvalidatedByUpstream bool       `json:"invalidated_by_upstream"`
+}
+
+// BuildFromService converts a service-layer GithubMergeGroup to an APIGithubMergeGroup.
+func (g *APIGithubMergeGroup) BuildFromService(mg thirdparty.GithubMergeGroup) {
+	g.Org = utility.ToStringPtr(mg.Org)
+	g.Repo = utility.ToStringPtr(mg.Repo)
+	g.BaseBranch = utility.ToStringPtr(mg.BaseBranch)
+	g.HeadBranch = utility.ToStringPtr(mg.HeadBranch)
+	g.HeadSHA = utility.ToStringPtr(mg.HeadSHA)
+	g.BaseSHA = utility.ToStringPtr(mg.BaseSHA)
+	g.HeadCommit = utility.ToStringPtr(mg.HeadCommit)
+	g.HeadCommitDate = ToTimePtr(mg.HeadCommitDate)
+	g.RemovedFromQueueAt = ToTimePtr(mg.RemovedFromQueueAt)
+	g.RemovalReason = utility.ToStringPtr(mg.RemovalReason)
+	g.GitRefNotFound = mg.GitRefNotFound
+	g.InvalidatedByUpstream = mg.InvalidatedByUpstream
+}
+
+// ToService converts an APIGithubMergeGroup to a service-layer GithubMergeGroup.
+func (g *APIGithubMergeGroup) ToService() thirdparty.GithubMergeGroup {
+	res := thirdparty.GithubMergeGroup{}
+	res.Org = utility.FromStringPtr(g.Org)
+	res.Repo = utility.FromStringPtr(g.Repo)
+	res.BaseBranch = utility.FromStringPtr(g.BaseBranch)
+	res.HeadBranch = utility.FromStringPtr(g.HeadBranch)
+	res.HeadSHA = utility.FromStringPtr(g.HeadSHA)
+	res.BaseSHA = utility.FromStringPtr(g.BaseSHA)
+	res.HeadCommit = utility.FromStringPtr(g.HeadCommit)
+	res.HeadCommitDate = utility.FromTimePtr(g.HeadCommitDate)
+	res.RemovedFromQueueAt = utility.FromTimePtr(g.RemovedFromQueueAt)
+	res.RemovalReason = utility.FromStringPtr(g.RemovalReason)
+	res.GitRefNotFound = g.GitRefNotFound
+	res.InvalidatedByUpstream = g.InvalidatedByUpstream
 	return res
 }

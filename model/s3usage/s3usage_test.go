@@ -55,7 +55,6 @@ func TestS3Usage(t *testing.T) {
 		s3Usage = S3Usage{}
 		s3Usage.Logs.UploadBytes = 100
 		assert.False(t, s3Usage.IsZero())
-
 	})
 
 	t.Run("IncrementArtifacts", func(t *testing.T) {
@@ -156,11 +155,15 @@ func TestS3Usage(t *testing.T) {
 func TestCalculatePutRequestsWithContext(t *testing.T) {
 	const MB = 1024 * 1024
 
-	t.Run("ZeroOrNegativeSize", func(t *testing.T) {
-		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 0))
+	t.Run("NegativeSizeShouldReturnZero", func(t *testing.T) {
 		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, -100))
 		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, -1*MB))
-		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 0))
+	})
+
+	t.Run("ZeroByteFileShouldReturnOnePut", func(t *testing.T) {
+		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 0))
+		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 0))
+		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 0))
 	})
 
 	t.Run("CopyMethod", func(t *testing.T) {
@@ -278,7 +281,6 @@ func TestCalculateS3PutCostWithConfig(t *testing.T) {
 		assert.InDelta(t, 0.005, standard, 0.000001)
 		assert.Equal(t, 0.0, adjusted)
 	})
-
 }
 
 func TestCalculateS3StorageCostWithConfig(t *testing.T) {

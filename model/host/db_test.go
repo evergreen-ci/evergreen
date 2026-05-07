@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -812,96 +813,6 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 	}
 }
 
-func setupDistroIdStatusIndex(t *testing.T) {
-	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
-		Keys: DistroIdStatusIndex,
-	}))
-}
-func TestCountHostsCanRunTasks(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
-	setupDistroIdStatusIndex(t)
-	d1 := distro.Distro{
-		Id: "d1",
-	}
-	h1 := Host{
-		Id:        "h1",
-		Distro:    d1,
-		Status:    evergreen.HostRunning,
-		StartedBy: evergreen.User,
-	}
-	h2 := Host{
-		Id:        "h2",
-		Distro:    d1,
-		Status:    evergreen.HostTerminated,
-		StartedBy: evergreen.User,
-	}
-	h3 := Host{
-		Id:        "h3",
-		Distro:    d1,
-		Status:    evergreen.HostStopping,
-		StartedBy: evergreen.User,
-	}
-	h4 := Host{
-		Id:        "h4",
-		Distro:    d1,
-		Status:    evergreen.HostRunning,
-		StartedBy: "testuser",
-	}
-	h5 := Host{
-		Id:        "h5",
-		Distro:    d1,
-		Status:    evergreen.HostBuilding,
-		StartedBy: evergreen.User,
-	}
-	h6 := Host{
-		Id:        "h6",
-		Distro:    d1,
-		Status:    evergreen.HostProvisionFailed,
-		StartedBy: evergreen.User,
-	}
-	h7 := Host{
-		Id:        "h7",
-		Distro:    d1,
-		Status:    evergreen.HostStopped,
-		StartedBy: evergreen.User,
-	}
-	h8 := Host{
-		Id:        "h8",
-		Distro:    d1,
-		Status:    evergreen.HostProvisioning,
-		StartedBy: evergreen.User,
-	}
-	h9 := Host{
-		Id: "h9",
-		Distro: distro.Distro{
-			Id: "d1",
-			BootstrapSettings: distro.BootstrapSettings{
-				Method: distro.BootstrapMethodUserData,
-			},
-		},
-		Status:    evergreen.HostStarting,
-		StartedBy: evergreen.User,
-	}
-	h10 := Host{
-		Id: "h10",
-		Distro: distro.Distro{
-			Id: "d1",
-			BootstrapSettings: distro.BootstrapSettings{
-				Method: distro.BootstrapMethodSSH,
-			},
-		},
-		Status:    evergreen.HostStarting,
-		StartedBy: evergreen.User,
-	}
-
-	assert.NoError(t, db.InsertMany(t.Context(), Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
-
-	ctx := context.TODO()
-	count, err := CountHostsCanRunTasks(ctx, "d1")
-	require.NoError(t, err)
-	assert.Equal(t, 2, count)
-}
-
 func TestFindByTemporaryExemptionsExpiringBetween(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
@@ -1061,5 +972,101 @@ func TestByUnterminatedSpawnHostsWithInstanceTypes(t *testing.T) {
 	assert.Len(t, foundHosts, 4)
 	for _, h := range foundHosts {
 		assert.Contains(t, []string{"user-spawn-m5-large", "user-spawn-m5-xlarge", "user-spawn-c5-large", "user-spawn-no-instance-type"}, h.Id)
+	}
+}
+
+func TestCountHostsCanRunTasksByDistro(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
+		"ReturnsEmptyMapForNoHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			counts, err := CountHostsCanRunTasksByDistro(ctx, env)
+			require.NoError(t, err)
+			require.NotNil(t, counts)
+			assert.Empty(t, counts)
+		},
+		"CountsRunningHostsPerDistro": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h3 := Host{Id: "h3", Distro: distro.Distro{Id: "d2"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2, h3))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx, env)
+			require.NoError(t, err)
+			require.NotNil(t, counts)
+			assert.Equal(t, 2, counts["d1"])
+			assert.Equal(t, 1, counts["d2"])
+		},
+		"CountsStartingUserDataHostsButNotOtherStartingHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			h1 := Host{
+				Id: "h1",
+				Distro: distro.Distro{
+					Id:                "d1",
+					BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodUserData},
+				},
+				Status:    evergreen.HostStarting,
+				StartedBy: evergreen.User,
+			}
+			h2 := Host{
+				Id: "h2",
+				Distro: distro.Distro{
+					Id:                "d1",
+					BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodSSH},
+				},
+				Status:    evergreen.HostStarting,
+				StartedBy: evergreen.User,
+			}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx, env)
+			require.NoError(t, err)
+			require.NotNil(t, counts)
+			assert.Equal(t, 1, counts["d1"])
+		},
+		"ExcludesTerminatedAndOtherNonQualifyingStatuses": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostTerminated, StartedBy: evergreen.User}
+			h3 := Host{Id: "h3", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostStopping, StartedBy: evergreen.User}
+			h4 := Host{Id: "h4", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostBuilding, StartedBy: evergreen.User}
+			h5 := Host{Id: "h5", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostProvisioning, StartedBy: evergreen.User}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2, h3, h4, h5))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx, env)
+			require.NoError(t, err)
+			require.NotNil(t, counts)
+			assert.Equal(t, 1, counts["d1"])
+		},
+		"ExcludesHostsNotStartedByEvergreenUser": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: "testuser"}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx, env)
+			require.NoError(t, err)
+			require.NotNil(t, counts)
+			assert.Equal(t, 1, counts["d1"])
+		},
+		"OmitsDistrosWithNoQualifyingHosts": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			h1 := Host{Id: "h1", Distro: distro.Distro{Id: "d1"}, Status: evergreen.HostRunning, StartedBy: evergreen.User}
+			h2 := Host{Id: "h2", Distro: distro.Distro{Id: "d2"}, Status: evergreen.HostTerminated, StartedBy: evergreen.User}
+			require.NoError(t, db.InsertMany(ctx, Collection, h1, h2))
+
+			counts, err := CountHostsCanRunTasksByDistro(ctx, env)
+			require.NoError(t, err)
+			require.NotNil(t, counts)
+			assert.Equal(t, 1, counts["d1"])
+			assert.Zero(t, counts["d2"])
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(Collection))
+			require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
+				Keys: StartedByStatusIndex,
+			}))
+			t.Cleanup(func() {
+				assert.NoError(t, db.ClearCollections(Collection))
+			})
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(t.Context()))
+			tCase(t.Context(), t, env)
+		})
 	}
 }

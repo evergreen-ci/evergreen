@@ -37,7 +37,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-05-01"
+	AgentVersion = "2026-05-01a"
 )
 
 const (
@@ -161,7 +161,8 @@ func (c *Settings) Set(ctx context.Context) error {
 			sshKey:                     c.SSH,
 			spawnhostKey:               c.Spawnhost,
 			shutdownWaitKey:            c.ShutdownWaitSeconds,
-		}}), "updating config section '%s'", c.SectionId(),
+		},
+	}), "updating config section '%s'", c.SectionId(),
 	)
 }
 
@@ -257,7 +258,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 	catcher := grip.NewSimpleCatcher()
 	baseConfig := config.Sections[ConfigDocID].(*Settings)
 	valConfig := reflect.ValueOf(*baseConfig)
-	//iterate over each field in the config struct
+	// iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
 		// retrieve the 'id' struct tag
 		sectionId := valConfig.Type().Field(i).Tag.Get("id")
@@ -519,7 +520,7 @@ func UpdateConfig(ctx context.Context, config *Settings) error {
 	catcher := grip.NewSimpleCatcher()
 	valConfig := reflect.ValueOf(*config)
 
-	//iterate over each field in the config struct
+	// iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
 		// retrieve the 'id' struct tag
 		sectionId := valConfig.Type().Field(i).Tag.Get("id")
@@ -779,7 +780,6 @@ type ReadConcern struct {
 }
 
 func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
-
 	if rc.Level == "majority" {
 		return readconcern.Majority()
 	} else if rc.Level == "local" {
@@ -789,7 +789,8 @@ func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
 	} else {
 		grip.Error(context.Background(), message.Fields{
 			"error":   "ReadConcern Level is not majority or local, setting to majority",
-			"rcLevel": rc.Level})
+			"rcLevel": rc.Level,
+		})
 		return readconcern.Majority()
 	}
 }

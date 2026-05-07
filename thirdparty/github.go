@@ -273,6 +273,15 @@ func extractPRNumberFromHeadRef(headRef string) string {
 	return parts[0]
 }
 
+// GetPullRequest fetches the GitHub PR associated with this merge group.
+func (g *GithubMergeGroup) GetPullRequest(ctx context.Context) (*github.PullRequest, error) {
+	prNum, err := strconv.Atoi(extractPRNumberFromHeadRef(g.HeadBranch))
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing PR number from HeadBranch '%s'", g.HeadBranch)
+	}
+	return GetGithubPullRequest(ctx, g.Org, g.Repo, prNum)
+}
+
 // BuildGithubHeadPRURL constructs the GitHub PR URL for the HEAD PR from a merge queue head ref.
 // For merge queue entries, this returns the HEAD PR URL, not all PRs in the merge group.
 // Returns empty string if the PR number cannot be extracted from headRef.

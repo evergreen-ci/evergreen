@@ -117,3 +117,30 @@ func TestLogManyTestEvents(t *testing.T) {
 	assert.NoError(db.FindAllQ(t.Context(), EventCollection, db.Query(bson.M{}), &events))
 	assert.Len(events, 2)
 }
+
+func TestLogJiraIssueCreatedWithUserID(t *testing.T) {
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(EventCollection))
+	})
+
+	taskID := "task_123"
+	execution := 1
+	jiraIssue := "EVG-12345"
+	userID := "admin.user"
+
+	LogJiraIssueCreated(t.Context(), taskID, execution, jiraIssue, userID)
+
+	events, err := Find(t.Context(), TaskEventsForId(taskID))
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+
+	evt := events[0]
+	assert.Equal(t, TaskJiraAlertCreated, evt.EventType)
+	assert.Equal(t, taskID, evt.ResourceId)
+
+	eventData, ok := evt.Data.(*TaskEventData)
+	require.True(t, ok)
+	assert.Equal(t, execution, eventData.Execution)
+	assert.Equal(t, jiraIssue, eventData.JiraIssue)
+	assert.Equal(t, userID, eventData.UserId)
+}

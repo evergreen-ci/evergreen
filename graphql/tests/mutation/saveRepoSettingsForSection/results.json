@@ -158,6 +158,21 @@
           }
         }
       }
+    },
+    {
+      "query_file": "mismatched_repo_id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "repoId 'sandbox_repo_id' does not match projectRef.id 'different_repo_id'",
+            "path": ["saveRepoSettingsForSection"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
     }
   ]
 }
