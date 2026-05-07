@@ -27,11 +27,11 @@ func FindOne(ctx context.Context, query db.Q) (*EC2InstanceReferencePrice, error
 // stores Linux/linux, SUSE/suse, etc.
 func ByInstanceTypeAndOS(instanceType, operatingSystem string) db.Q {
 	pattern := "^" + regexp.QuoteMeta(operatingSystem) + "$"
-	return db.Query(bson.M{
-		InstanceTypeKey: instanceType,
-		OperatingSystemKey: bson.M{
-			"$regex":   pattern,
-			"$options": "i",
-		},
+	return db.Query(bson.D{
+		{Key: InstanceTypeKey, Value: instanceType},
+		{Key: OperatingSystemKey, Value: bson.D{
+			{Key: "$regex", Value: pattern},
+			{Key: "$options", Value: "i"},
+		}},
 	})
 }
