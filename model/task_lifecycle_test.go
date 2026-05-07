@@ -4246,7 +4246,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.VersionCreated, foundVersion.Status)
 
 	h.RunningTask = "unschedulableTask"
-	assert.NoError(h.UpdateRunningTask(ctx, evergreen.GetEnvironment(), &tasks[2]))
+	h.RunningTaskExecution = 0
+	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "unschedulableTask", host.RunningTaskExecutionKey: 0}}))
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 
 	unschedulableTask, err := task.FindOne(ctx, db.Query(task.ById("unschedulableTask")))
@@ -4273,8 +4274,9 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.VersionFailed, foundVersion.Status)
 
 	h.RunningTask = "t2"
+	h.RunningTaskExecution = 0
 	assert.NoError(resetTask(ctx, "t2", ""))
-	assert.NoError(h.UpdateRunningTask(ctx, evergreen.GetEnvironment(), &tasks[1]))
+	assert.NoError(db.Update(ctx, host.Collection, bson.M{host.IdKey: h.Id}, bson.M{"$set": bson.M{host.RunningTaskKey: "t2", host.RunningTaskExecutionKey: 0}}))
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 	foundTask, err := task.FindOne(ctx, db.Query(task.ById("t2")))
 	require.NoError(t, err)
