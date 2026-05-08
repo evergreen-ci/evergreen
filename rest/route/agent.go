@@ -570,7 +570,20 @@ func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
-	foundHost := MustHaveHost(ctx)
+	foundHost := GetHost(ctx)
+	if foundHost == nil {
+		var err error
+		foundHost, err = host.FindOneId(ctx, h.hostID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s'", h.hostID))
+		}
+		if foundHost == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("host '%s' not found", h.hostID),
+			})
+		}
+	}
 
 	dv := apimodels.DistroView{
 		DisableShallowClone: foundHost.Distro.DisableShallowClone,
