@@ -2,17 +2,17 @@
 
 Evergreen tracks the infrastructure cost of every task across three categories:
 
-| Category | Description                                                                                                                                                                        |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| EC2      | The machine that runs the task. Cost is based on instance type and the task's running time. Host provisioning and teardown are not included.                                       |
-| EBS      | The disk attached to the EC2 instance. GP3 volumes can be provisioned with higher throughput than the 125 MB/s free tier; the throughput cost above that baseline is also tracked. |
-| S3       | Object storage where task artifacts and logs are uploaded. Both the upload requests (PUT costs) and the ongoing storage are tracked.                                               |
+| Category | Description                                                                                                                                                                                                     |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EC2      | The machine that runs the task. Cost is based on instance type and the task's running time. Costs on static hosts and time spent on host provisioning, host teardown, and task group teardown are not included. |
+| EBS      | The disk attached to the EC2 instance. GP3 volumes can be provisioned with higher throughput than the 125 MB/s free tier; the throughput cost above that baseline is also tracked.                              |
+| S3       | Object storage where task artifacts and logs are uploaded. Both the upload requests (PUT costs) and the ongoing storage are tracked.                                                                            |
 
 All costs displayed in Evergreen have applicable discounts applied. Discount rates, the finance formula, and other cost parameters are owned by the Financial Planning and Analysis (FP&A) team.
 
 Cost information is shown on the task, version, and patch pages in the Evergreen UI.
 
-- On task pages, the actual cost is shown once the task completes.
+- On task pages, the cost is shown once the task completes.
 - On version and patch pages, a running total of costs from completed tasks is shown throughout.
 
 Once all tasks have finished, the full cost breakdown becomes available on each page, including a link to Honeycomb for a more detailed per-component view. Cost data is also available via the REST API. See [How can I view cost data via the REST API?](#how-can-i-view-cost-data-via-the-rest-api).
@@ -37,35 +37,37 @@ All values reflect discounted costs. For field names and the full cost breakdown
 
 **Version-level fields:**
 
-Versions aggregate costs across all its tasks as they finish.
+Versions aggregate costs across all their tasks as they finish.
 
 **Patch-level fields:**
 
-Patches aggregate costs across all its tasks as they finish and also include child patch costs.
+Patches aggregate costs across all their tasks as they finish and also include child patch costs.
 
 ## How is EC2 cost calculated?
 
-EC2 is the machine that runs the task. The cost is calculated when the task finishes, using the task's running time, measured from when the task starts executing to when it finishes. Host provisioning and teardown time are not included.
+EC2 is the machine that runs the task. The cost is calculated when the task finishes, using the task's running time, measured from task start to task completion. Costs on static hosts and time spent on host provisioning, host teardown, and task group teardown are not included.
 
 The discounted cost blends a savings plan rate and the standard on-demand rate using a weighting factor:
 
 ```text
-adjusted_cost = runtime_seconds * (finance_formula * savings_plan_rate + (1 - finance_formula) * on_demand_rate) / 3600
-                                                                                                                   ^ EC2 rates are per-hour; divides to get per-second cost
+number_of_seconds_in_hour = 3,600
+cost_per_hour = (finance_formula * savings_plan_rate + (1 - finance_formula) * on_demand_rate)
+adjusted_cost = runtime_seconds * cost_per_hour / number_of_seconds_in_hour
+
 ```
 
 `finance_formula` is a ratio that controls how much of the cost is attributed to MongoDB's savings plan coverage versus the standard AWS list price. The savings plan rate and `finance_formula` are provided by the FP&A team. The on-demand rate is the standard AWS list price for the instance type.
 
 ## How is EBS cost calculated?
 
-EBS is the disk attached to the EC2 instance. Two components are tracked: throughput cost and storage cost. Both use us-east-1 rates regardless of where the task runs and are calculated when the task finishes.
+EBS is the disk attached to the EC2 instance. Two components are tracked: throughput cost and storage cost. Both use us-east-1 rates regardless of where the task runs, and both are calculated when the task finishes.
 
 ### EBS throughput cost
 
 GP3 volumes can be provisioned with higher throughput than the 125 MB/s AWS free tier. Only the throughput above that baseline is billable. If a distro has no GP3 mount points, or all volumes are at or below 125 MB/s, the throughput cost is zero.
 
 ```text
-seconds_in_30_day_month       = 2_592_000
+seconds_in_30_day_month       = 2,592,000
 billable_throughput           = total_gp3_throughput_MBps - 125
 adjusted_ebs_throughput_cost  = (billable_throughput * 0.04 / seconds_in_30_day_month) * runtime_seconds * (1 - ebs_discount)
 ```
@@ -75,11 +77,11 @@ adjusted_ebs_throughput_cost  = (billable_throughput * 0.04 / seconds_in_30_day_
 Storage cost is based on the total size of all attached volumes, prorated to the task's actual runtime.
 
 ```text
-seconds_in_30_day_month   = 2_592_000
+seconds_in_30_day_month   = 2,592,000
 adjusted_ebs_storage_cost = (volume_size_GB * 0.08 / seconds_in_30_day_month) * runtime_seconds * (1 - ebs_discount)
 ```
 
-The EBS discount rate applies to both throughput and storage.
+The EBS discount rate applies to both throughput and storage and is provided by the FP&A team.
 
 ## How is S3 cost calculated?
 
@@ -87,7 +89,7 @@ S3 is the object storage where task artifacts and logs are uploaded. Two types o
 
 ### Artifact PUT cost
 
-Each file upload makes one or more S3 PUT requests. The AWS SDK determines whether to use a single PUT or [multipart upload](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html) based on file size. PUT costs are calculated at the time of upload.
+Each file upload makes one or more S3 PUT requests. PUT costs are calculated at the time of upload.
 
 ```text
 s3_put_price                  = 0.000005  # $5 per million PUT requests (AWS standard rate)
@@ -96,7 +98,7 @@ adjusted_s3_artifact_put_cost = artifact_put_requests * s3_put_price * (1 - uplo
 
 ### Log PUT cost
 
-Task logs are uploaded to S3 as the task runs; each upload uses a single PUT request. The cost uses the same rate and discount as artifact PUT costs and is calculated as logs are uploaded.
+Task logs are uploaded to S3 as the task runs; each upload uses a single PUT request. The same rate and discount as artifact PUT costs apply.
 
 ```text
 s3_put_price             = 0.000005  # $5 per million PUT requests (AWS standard rate)
@@ -116,7 +118,7 @@ Artifact and log storage both use S3 Intelligent Tiering pricing, which automati
 The retention period is read from the bucket's S3 expiration lifecycle rule. If no expiration rule is found, Evergreen falls back to a system default retention period. Separate discounts can be configured for each tier. Costs are only calculated for DevProd-owned buckets.
 
 ```text
-size_gb          = upload_bytes / 1_073_741_824  # bytes to GB
+size_gb          = upload_bytes / 1,073,741,824  # bytes to GB
 days_in_standard = min(retention_days, 30)
 days_in_ia       = max(0, min(retention_days, 90) - 30)
 days_in_archive  = max(0, retention_days - 90)
