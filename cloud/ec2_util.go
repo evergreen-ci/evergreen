@@ -152,12 +152,12 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	// If this is a task host, use a different expiration date.
 	if !intentHost.UserHost {
 		expireDays := evergreen.HostExpireDays
-		// If we're within 20 minutes of midnight, add an extra day to avoid a race with
+		// If we're within 3 hours of midnight, add an extra day to avoid a race with
 		// the external reaper. A host created at 11:59 PM gets expire-on = tomorrow
 		// which the reaper could act on before the hourly extension job can bump the tag.
 		now := time.Now()
 		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-		if midnight.Sub(now) <= 20*time.Minute {
+		if midnight.Sub(now) <= 3*time.Hour {
 			expireDays++
 		}
 
