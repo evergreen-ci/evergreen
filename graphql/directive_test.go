@@ -241,10 +241,15 @@ func TestRequireHostAccess(t *testing.T) {
 			"unable to clear user or host collection")
 	}()
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser){
-		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"FailsWhenInputIsInvalid": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
 			obj := any(nil)
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: host not specified")
+			assert.EqualError(t, err, "input: converting args into map")
+		},
+		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": ""})
+			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
+			assert.EqualError(t, err, "input: must specify host ID(s)")
 		},
 		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
 			obj := any(map[string]any{"hostId": "a-non-existent-host-id"})

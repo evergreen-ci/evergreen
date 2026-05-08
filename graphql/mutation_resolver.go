@@ -708,9 +708,6 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 
 // AttachVolumeToHost is the resolver for the attachVolumeToHost field.
 func (r *mutationResolver) AttachVolumeToHost(ctx context.Context, volumeAndHost VolumeHost) (bool, error) {
-	if volumeAndHost.VolumeID == "" || volumeAndHost.HostID == "" {
-		return false, InputValidationError.Send(ctx, "must provide both volume ID and host ID")
-	}
 	statusCode, err := cloud.AttachVolume(ctx, volumeAndHost.VolumeID, volumeAndHost.HostID)
 	if err != nil {
 		return false, mapHTTPStatusToGqlError(ctx, statusCode, err)
