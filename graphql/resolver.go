@@ -81,7 +81,7 @@ func New(apiURL string) Config {
 		hostId, hasHostId := args["hostId"].(string)
 		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
 
-		if !hasHostId && !hasHostIds || (hostId == "" && !hasHostIds) || (!hasHostId && len(hostIdsInterface) == 0) {
+		if !hasHostId && !hasHostIds || (hasHostId && hostId == "") || (hasHostIds && len(hostIdsInterface) == 0) {
 			return nil, ResourceNotFound.Send(ctx, "must specify host ID(s)")
 		}
 
