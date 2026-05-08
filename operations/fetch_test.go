@@ -2,6 +2,9 @@ package operations
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -197,4 +200,33 @@ func TestGetArtifactFolderName(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func TestDownloadUrls(t *testing.T) {
+	t.Run("LongDirName", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("artifact content"))
+		}))
+		t.Cleanup(server.Close)
+
+		longDir := strings.Repeat("d", 200)
+		testDir := filepath.Join(t.TempDir(), longDir)
+		require.NoError(t, os.MkdirAll(testDir, 0777))
+
+		artifactSubfolder := "artifacts-patch-123_variant_mytask"
+		urls := make(chan artifactDownload, 1)
+		urls <- artifactDownload{
+			url:  server.URL + "/my-artifact.tar.gz",
+			path: artifactSubfolder,
+		}
+		close(urls)
+
+		require.NoError(t, downloadUrls(testDir, urls, 1))
+
+		expectedDir := filepath.Join(testDir, artifactSubfolder)
+		entries, err := os.ReadDir(expectedDir)
+		require.NoError(t, err, "artifact subfolder should exist under root")
+		require.Len(t, entries, 1)
+		assert.Equal(t, "my-artifact.tar.gz", entries[0].Name())
+	})
 }

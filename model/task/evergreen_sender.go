@@ -22,8 +22,8 @@ var defaultLogLineParser = func(rawLine string) (log.LogLine, error) {
 }
 
 // logLineAppender appends a chunk of lines to the underlying log store.
-// Returns the number of bytes written to storage.
-type logLineAppender func(context.Context, []log.LogLine) (int64, error)
+// Returns the number of bytes written to storage and the number of S3 PUT API calls made (including any that failed).
+type logLineAppender func(context.Context, []log.LogLine) (int64, int, error)
 
 // EvergreenSenderOptions support the use and creation of an Evergreen sender.
 type EvergreenSenderOptions struct {
@@ -243,13 +243,12 @@ func (s *evergreenSender) timedFlush() {
 }
 
 func (s *evergreenSender) flush(ctx context.Context) error {
-	uploadBytes, err := s.opts.appendLines(ctx, s.buffer)
+	uploadBytes, puts, err := s.opts.appendLines(ctx, s.buffer)
+	if s.opts.S3Usage != nil && puts > 0 {
+		s.opts.S3Usage.IncrementLogs(puts, uploadBytes, s.opts.LogType, s.opts.LogKey)
+	}
 	if err != nil {
 		return errors.Wrap(err, "appending lines to log")
-	}
-
-	if s.opts.S3Usage != nil && uploadBytes > 0 {
-		s.opts.S3Usage.IncrementLogs(1, uploadBytes, s.opts.LogType, s.opts.LogKey)
 	}
 
 	s.buffer = []log.LogLine{}

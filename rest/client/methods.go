@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coreos/go-oidc"
@@ -1963,12 +1965,11 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	}
 	defer client.Close()
 
-	// We delete the lock file to ensure that if the previous
-	// token acquisition attempt was interrupted, we can still
-	// acquire a new token.
+	// Only remove the lock file if the owning process is dead, to avoid
+	// racing with a concurrent process that is actively refreshing.
 	tokenLockFilePath := client.TokenFilePath() + ".lock"
-	if delErr := os.RemoveAll(tokenLockFilePath); delErr != nil {
-		grip.Warning(ctx, errors.Wrapf(delErr, "removing OAuth token lock file at '%s'", tokenLockFilePath))
+	if err := removeStaleOAuthLockFile(tokenLockFilePath); err != nil {
+		grip.Warning(ctx, errors.Wrapf(err, "removing stale OAuth token lock file at '%s'", tokenLockFilePath))
 	}
 
 	// This attempt tries to get a token or refreshes using the refresh token.
@@ -2021,4 +2022,34 @@ func (t *tokenLoaderWithoutRefresh) LoadToken(path string) (*oauth2.Token, error
 	// Clear the refresh token to prevent the Dex client from trying to use it.
 	token.RefreshToken = ""
 	return token, nil
+}
+
+// removeStaleOAuthLockFile removes the lock file only if the owning process
+// is no longer alive. This prevents concurrent CLI processes from racing to
+// refresh the same token.
+func removeStaleOAuthLockFile(lockFilePath string) error {
+	data, err := os.ReadFile(lockFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "reading lock file '%s'", lockFilePath)
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return os.Remove(lockFilePath)
+	}
+
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return os.Remove(lockFilePath)
+	}
+
+	// Signal 0 checks if process is alive without sending a real signal.
+	if err := proc.Signal(syscall.Signal(0)); err != nil {
+		return os.Remove(lockFilePath)
+	}
+
+	return nil
 }

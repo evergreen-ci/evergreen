@@ -158,6 +158,22 @@ func (s *githubSuite) TestGithubShouldRetry() {
 		retryFn = githubShouldRetry("", retryConfig{retry: true, ignoreCodes: []int{code}})
 		s.False(retryFn(0, req, resp, nil))
 	})
+
+	s.Run("UnauthorizedNotRetried", func() {
+		resp := &http.Response{
+			StatusCode: http.StatusUnauthorized,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
+
+		// Without ignoreCodes, 401 would fall through without retrying (no
+		// explicit retry path for it), but with ignoreCodes it is explicitly
+		// short-circuited.
+		retryFn := githubShouldRetry("", retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized}})
+		s.False(retryFn(0, req, resp, nil))
+	})
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
@@ -606,6 +622,32 @@ func TestExtractPRNumberFromHeadRef(t *testing.T) {
 			assert.Equal(t, tCase.expected, result)
 		})
 	}
+}
+
+// TestRunGitHubOpNoFallback verifies that when shouldFallback is false and the
+// external app fails, the error is returned directly without attempting the
+// internal app fallback.
+func TestRunGitHubOpNoFallback(t *testing.T) {
+	ctx := t.Context()
+
+	// An invalid private key causes token creation to fail locally, without any
+	// network calls. This simulates a failing external GitHub app.
+	invalidAuth := &githubapp.GithubAppAuth{
+		Id:         "test-project",
+		AppID:      12345,
+		PrivateKey: []byte("not-a-valid-rsa-key"),
+	}
+
+	opCalled := false
+	op := func(_ context.Context, _ *githubapp.GitHubClient) error {
+		opCalled = true
+		return nil
+	}
+
+	err := runGitHubOp(ctx, "owner", "repo", "caller", invalidAuth, false, op)
+	require.Error(t, err)
+	assert.False(t, opCalled, "op should not be called when token creation fails")
+	assert.Contains(t, err.Error(), "getting installation token with external GitHub app")
 }
 
 func TestBuildGithubHeadPRURL(t *testing.T) {
