@@ -37,6 +37,15 @@
         }
       ],
       "_id": { "$oid": "55c230e1f9f1d47716d86fc2" },
+      "distro_queue_info": {
+        "task_group_infos": [],
+        "alias_queue": false,
+        "count_over_threshold": 0,
+        "max_duration_threshold": { "$numberLong": "10000000000" },
+        "length": 3,
+        "expected_duration": { "$numberLong": "0" },
+        "created_at": { "$date": "2020-03-18T14:27:01.085Z" }
+      },
       "distro": "osx-108"
     },
     {

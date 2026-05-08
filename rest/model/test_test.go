@@ -68,15 +68,16 @@ func TestTestBuildFromService(t *testing.T) {
 			name: "Optionals",
 			io: func() (any, *APITest) {
 				input := &testresult.TestResult{
-					TaskID:          "task",
-					Execution:       1,
-					TestName:        "test_file",
-					DisplayTestName: "display",
-					GroupID:         "group",
-					Status:          "test_status",
-					LineNum:         15,
-					TestStartTime:   start,
-					TestEndTime:     end,
+					TaskID:                "task",
+					Execution:             1,
+					TestName:              "test_file",
+					DisplayTestName:       "display",
+					GroupID:               "group",
+					Status:                "test_status",
+					LineNum:               15,
+					TestStartTime:         start,
+					TestEndTime:           end,
+					IsManuallyQuarantined: true,
 					LogInfo: &testresult.TestLogInfo{
 						LineNum:       20,
 						RenderingType: utility.ToStringPtr("resmoke"),
@@ -99,9 +100,10 @@ func TestTestBuildFromService(t *testing.T) {
 						RenderingType: input.LogInfo.RenderingType,
 						Version:       input.LogInfo.Version,
 					},
-					StartTime: utility.ToTimePtr(start),
-					EndTime:   utility.ToTimePtr(end),
-					Duration:  input.Duration().Seconds(),
+					StartTime:             utility.ToTimePtr(start),
+					EndTime:               utility.ToTimePtr(end),
+					Duration:              input.Duration().Seconds(),
+					IsManuallyQuarantined: true,
 				}
 
 				return input, output

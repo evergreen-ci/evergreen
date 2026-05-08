@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -378,4 +380,109 @@ func (s *VersionSuite) TestMakeDataForPatchVersion() {
 	s.Equal(s.version.Id, data.DisplayName)
 	s.Equal(event.ObjectVersion, data.Object)
 	s.Equal("succeeded", data.PastTenseStatus)
+}
+
+func TestVersionAttributesProjectIncludesRepoID(t *testing.T) {
+	trig := &versionTriggers{
+		version: &model.Version{Identifier: "branch-project"},
+		event:   &event.EventLogEntry{},
+		repoId:  "repo-project",
+	}
+	assert.Equal(t, []string{"branch-project", "repo-project"}, trig.Attributes().Project)
+}
+
+func TestVersionAttributesProjectWithNoRepoContainsOnlyProjectID(t *testing.T) {
+	trig := &versionTriggers{
+		version: &model.Version{Identifier: "branch-project"},
+		event:   &event.EventLogEntry{},
+	}
+	assert.Equal(t, []string{"branch-project"}, trig.Attributes().Project)
+}
+
+func TestRepoProjectSubscriptionFiresForBranchVersion(t *testing.T) {
+	collections := []string{
+		model.VersionCollection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection, alertrecord.Collection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	v := model.Version{
+		Id:         "v1",
+		Identifier: "branch-project",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Status:     evergreen.VersionFailed,
+	}
+	require.NoError(t, v.Insert(ctx))
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project", RepoRefId: "repo-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
+	require.NoError(t, repoRef.Replace(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeVersion,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ID:           utility.RandomString(),
+		ResourceType: event.ResourceTypeVersion,
+		EventType:    event.VersionStateChange,
+		ResourceId:   "v1",
+		Data:         &event.VersionEventData{Status: evergreen.VersionFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	require.Len(t, notifications, 1)
+	assert.Equal(t, sub.Subscriber.Type, notifications[0].Subscriber.Type)
+}
+
+func TestRepoProjectSubscriptionDoesNotFireForBranchVersionWithoutRepo(t *testing.T) {
+	collections := []string{
+		model.VersionCollection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection, alertrecord.Collection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	v := model.Version{
+		Id:         "v1",
+		Identifier: "branch-project",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Status:     evergreen.VersionFailed,
+	}
+	require.NoError(t, v.Insert(ctx))
+	// Project ref has no RepoRefId — not attached to any repo.
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeVersion,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ID:           utility.RandomString(),
+		ResourceType: event.ResourceTypeVersion,
+		EventType:    event.VersionStateChange,
+		ResourceId:   "v1",
+		Data:         &event.VersionEventData{Status: evergreen.VersionFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	assert.Empty(t, notifications)
 }

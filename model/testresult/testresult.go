@@ -60,6 +60,10 @@ type TestResult struct {
 	LogURL      string `json:"log_url" bson:"log_url"`
 	RawLogURL   string `json:"raw_log_url" bson:"raw_log_url"`
 	LineNum     int    `json:"line_num" bson:"line_num"`
+
+	// IsManuallyQuarantined indicates whether this test is currently manually
+	// quarantined in the test selection service.
+	IsManuallyQuarantined bool `json:"-" bson:"-"`
 }
 
 // TestLogInfo describes a metadata for a test result's log stored using

@@ -640,6 +640,38 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	return versionBuilds, nil
 }
 
+// ChildVersions is the resolver for the childVersions field.
+func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Version) ([]*model.Version, error) {
+	if !evergreen.IsPatchRequester(obj.Requester) {
+		return nil, nil
+	}
+	if err := data.ValidatePatchID(obj.Id); err != nil {
+		return nil, werrors.WithStack(err)
+	}
+	foundPatch, err := patch.FindOneId(ctx, obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", obj.Id, err.Error()))
+	}
+	if foundPatch == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", obj.Id))
+	}
+	childPatchIds := foundPatch.Triggers.ChildPatches
+	if len(childPatchIds) > 0 {
+		childVersions := make([]*model.Version, 0, len(childPatchIds))
+		for _, cp := range childPatchIds {
+			v, err := loaders.GetVersion(ctx, cp)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()))
+			}
+			if v != nil {
+				childVersions = append(childVersions, v)
+			}
+		}
+		return childVersions, nil
+	}
+	return nil, nil
+}
+
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
 	projectRef, err := model.FindMergedProjectRef(ctx, obj.Identifier, obj.Id, false)

@@ -18,7 +18,7 @@ require (
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
 	github.com/evergreen-ci/gimlet v0.0.0-20260420181614-abe39e3a6fa7
-	github.com/evergreen-ci/pail v0.0.0-20260413131233-e5084eca59ac
+	github.com/evergreen-ci/pail v0.0.0-20260507160025-5cf2ef56c715
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
 	github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2
@@ -170,7 +170,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
-	github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c
+	github.com/evergreen-ci/test-selection-client v0.0.0-20260409173604-004964bcf728
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2

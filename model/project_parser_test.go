@@ -3248,3 +3248,79 @@ func TestSetupParallelGitIncludeDirs(t *testing.T) {
 		})
 	}
 }
+
+func TestClearParamsYAML(t *testing.T) {
+	paramsYAML := "binary: make\nargs:\n- test\n"
+
+	pp := &ParserProject{
+		Pre: &YAMLCommandSet{
+			SingleCommand: &PluginCommandConf{
+				Command:    "shell.exec",
+				ParamsYAML: paramsYAML,
+			},
+		},
+		Post: &YAMLCommandSet{
+			MultiCommand: []PluginCommandConf{
+				{Command: "s3.put", ParamsYAML: paramsYAML},
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"run-make": {
+				SingleCommand: &PluginCommandConf{
+					Command:    "subprocess.exec",
+					ParamsYAML: paramsYAML,
+				},
+			},
+			"multi-func": {
+				MultiCommand: []PluginCommandConf{
+					{Command: "shell.exec", ParamsYAML: paramsYAML},
+					{Command: "s3.put", ParamsYAML: paramsYAML},
+				},
+			},
+		},
+		Tasks: []parserTask{
+			{
+				Name: "my-task",
+				Commands: []PluginCommandConf{
+					{Command: "shell.exec", ParamsYAML: paramsYAML},
+				},
+			},
+		},
+		TaskGroups: []parserTaskGroup{
+			{
+				Name: "my-group",
+				SetupGroup: &YAMLCommandSet{
+					SingleCommand: &PluginCommandConf{
+						Command:    "shell.exec",
+						ParamsYAML: paramsYAML,
+					},
+				},
+				SetupTask: &YAMLCommandSet{
+					MultiCommand: []PluginCommandConf{
+						{Command: "shell.exec", ParamsYAML: paramsYAML},
+					},
+				},
+			},
+		},
+	}
+
+	require.NoError(t, pp.ClearParamsYAML())
+
+	t.Run("ParamsYAMLIsCleared", func(t *testing.T) {
+		assert.Empty(t, pp.Pre.SingleCommand.ParamsYAML)
+		assert.Empty(t, pp.Post.MultiCommand[0].ParamsYAML)
+		assert.Empty(t, pp.Functions["run-make"].SingleCommand.ParamsYAML)
+		assert.Empty(t, pp.Functions["multi-func"].MultiCommand[0].ParamsYAML)
+		assert.Empty(t, pp.Functions["multi-func"].MultiCommand[1].ParamsYAML)
+		assert.Empty(t, pp.Tasks[0].Commands[0].ParamsYAML)
+		assert.Empty(t, pp.TaskGroups[0].SetupGroup.SingleCommand.ParamsYAML)
+		assert.Empty(t, pp.TaskGroups[0].SetupTask.MultiCommand[0].ParamsYAML)
+	})
+
+	t.Run("MarshaledYAMLDoesNotContainParamsYAML", func(t *testing.T) {
+		out, err := yaml.Marshal(pp)
+		require.NoError(t, err)
+		assert.NotContains(t, string(out), "params_yaml")
+		assert.Contains(t, string(out), "params")
+	})
+}

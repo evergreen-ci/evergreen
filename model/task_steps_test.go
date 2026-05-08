@@ -21,7 +21,7 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 			},
 		}
 
-		steps, err := GetTaskExecutionSteps(project, "my_task")
+		steps, err := GetTaskExecutionSteps(project, "my_task", "")
 		require.NoError(t, err)
 		require.Len(t, steps, 2)
 
@@ -54,7 +54,7 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 			},
 		}
 
-		steps, err := GetTaskExecutionSteps(project, "my_task")
+		steps, err := GetTaskExecutionSteps(project, "my_task", "")
 		require.NoError(t, err)
 		require.Len(t, steps, 3)
 
@@ -92,7 +92,7 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 			},
 		}
 
-		steps, err := GetTaskExecutionSteps(project, "my_task")
+		steps, err := GetTaskExecutionSteps(project, "my_task", "")
 		require.NoError(t, err)
 		require.Len(t, steps, 4)
 
@@ -133,7 +133,7 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 			},
 		}
 
-		steps, err := GetTaskExecutionSteps(project, "my_task")
+		steps, err := GetTaskExecutionSteps(project, "my_task", "")
 		require.NoError(t, err)
 		require.Len(t, steps, 3)
 
@@ -150,7 +150,7 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 			},
 		}
 
-		_, err := GetTaskExecutionSteps(project, "nonexistent")
+		_, err := GetTaskExecutionSteps(project, "nonexistent", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
 	})
@@ -172,11 +172,76 @@ func TestGetTaskExecutionSteps(t *testing.T) {
 			},
 		}
 
-		steps, err := GetTaskExecutionSteps(project, "my_task")
+		steps, err := GetTaskExecutionSteps(project, "my_task", "")
 		require.NoError(t, err)
 		require.Len(t, steps, 1)
 
 		assert.Equal(t, "1", steps[0].StepNumber)
 		assert.True(t, steps[0].IsFunction)
+	})
+
+	t.Run("TaskGroupWithSetupAndTeardown", func(t *testing.T) {
+		project := &Project{
+			Pre: &YAMLCommandSet{
+				SingleCommand: &PluginCommandConf{Command: "ec2.assume_role"},
+			},
+			Post: &YAMLCommandSet{
+				SingleCommand: &PluginCommandConf{Command: "attach.results"},
+			},
+			Tasks: []ProjectTask{
+				{
+					Name:     "lint-agent",
+					Commands: []PluginCommandConf{{Command: "subprocess.exec"}},
+				},
+			},
+			TaskGroups: []TaskGroup{
+				{
+					Name: "lint-group",
+					SetupGroup: &YAMLCommandSet{
+						MultiCommand: []PluginCommandConf{
+							{Command: "git.get_project"},
+							{Command: "shell.exec"},
+						},
+					},
+					TeardownTask: &YAMLCommandSet{
+						MultiCommand: []PluginCommandConf{
+							{Command: "gotest.parse_files"},
+							{Command: "attach.xunit_results"},
+						},
+					},
+					Tasks: []string{"lint-agent"},
+				},
+			},
+			BuildVariants: []BuildVariant{
+				{
+					Name:  "lint",
+					Tasks: []BuildVariantTaskUnit{{Name: "lint-group", IsGroup: true}},
+				},
+			},
+		}
+
+		steps, err := GetTaskExecutionSteps(project, "lint-agent", "lint")
+		require.NoError(t, err)
+		require.Len(t, steps, 5)
+
+		assert.Equal(t, "setup_group:1", steps[0].StepNumber)
+		assert.Equal(t, "git.get_project", steps[0].CommandName)
+		assert.Equal(t, "setup_group", steps[0].BlockType)
+
+		assert.Equal(t, "setup_group:2", steps[1].StepNumber)
+		assert.Equal(t, "shell.exec", steps[1].CommandName)
+		assert.Equal(t, "setup_group", steps[1].BlockType)
+
+		assert.Equal(t, "1", steps[2].StepNumber)
+		assert.Equal(t, "subprocess.exec", steps[2].CommandName)
+		assert.Empty(t, steps[2].BlockType)
+
+		assert.Equal(t, "teardown_task:1", steps[3].StepNumber)
+		assert.Equal(t, "gotest.parse_files", steps[3].CommandName)
+		assert.Equal(t, "teardown_task", steps[3].BlockType)
+
+		assert.Equal(t, "teardown_task:2", steps[4].StepNumber)
+		assert.Equal(t, "attach.xunit_results", steps[4].CommandName)
+		assert.Equal(t, "teardown_task", steps[4].BlockType)
 	})
 }

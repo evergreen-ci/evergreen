@@ -194,6 +194,30 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
+		"TerminatesBuildingIntentHostWithCloudInstance": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			h.Id = h.Distro.GenerateName()
+			h.Status = evergreen.HostBuilding
+			require.NoError(t, h.Insert(ctx))
+
+			mcp.Set(h.Id, cloud.MockInstance{Status: cloud.StatusRunning})
+
+			j := NewHostTerminationJob(env, h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: reason,
+			})
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTerminationEvent(t, h.Id, reason)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+
+			cloudInstance := mcp.Get(h.Id)
+			assert.Equal(t, cloud.StatusTerminated, cloudInstance.Status, "cloud instance should be terminated")
+		},
 		"MarksBuildingIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			// The ID must be a valid intent host ID.
 			h.Id = h.Distro.GenerateName()

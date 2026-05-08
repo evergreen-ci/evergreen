@@ -442,19 +442,19 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching all task queues: %s", err.Error()))
 	}
 
-	distros := []*TaskQueueDistro{}
+	countsByDistro, err := host.CountHostsCanRunTasksByDistro(ctx, evergreen.GetEnvironment())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host counts by distro: %s", err.Error()))
+	}
 
-	for _, distro := range queues {
-		numHosts, err := host.CountHostsCanRunTasks(ctx, distro.Distro)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching associated hosts: %s", err.Error()))
-		}
-		tqd := TaskQueueDistro{
-			ID:        distro.Distro,
-			TaskCount: len(distro.Queue),
-			HostCount: numHosts,
-		}
-		distros = append(distros, &tqd)
+	distros := make([]*TaskQueueDistro, 0, len(queues))
+	for _, q := range queues {
+		hostCount := countsByDistro[q.Distro]
+		distros = append(distros, &TaskQueueDistro{
+			ID:        q.Distro,
+			TaskCount: q.DistroQueueInfo.Length,
+			HostCount: hostCount,
+		})
 	}
 
 	// sort distros by task count in descending order

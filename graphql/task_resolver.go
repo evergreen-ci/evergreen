@@ -19,6 +19,8 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Total is the field resolver for Cost.total.
@@ -389,7 +391,8 @@ func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITas
 	}
 
 	taskName := utility.FromStringPtr(obj.DisplayName)
-	steps, err := model.GetTaskExecutionSteps(project, taskName)
+	variantName := utility.FromStringPtr(obj.BuildVariant)
+	steps, err := model.GetTaskExecutionSteps(project, taskName, variantName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building execution steps: %s", err.Error()))
 	}
@@ -814,7 +817,10 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	taskID := utility.FromStringPtr(obj.Id)
 	dbTask, err := task.FindOneIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()), err)
+	}
+	if dbTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' with execution %d not found", taskID, obj.Execution))
 	}
 
 	filterOpts, err := convertTestFilterOptions(ctx, dbTask, opts)
@@ -825,6 +831,13 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	taskResults, err := dbTask.GetTestResults(ctx, evergreen.GetEnvironment(), filterOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for APITask '%s': %s", dbTask.Id, err.Error()))
+	}
+
+	if err := data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "decorating test quarantine statuses",
+			"task_id": dbTask.Id,
+		}))
 	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))

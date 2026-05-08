@@ -300,6 +300,9 @@ func generateConfigScript(ctx context.Context, taskID string, settings *evergree
 	if pp == nil {
 		return "", "", errors.Errorf("parser project not found for version '%s'", v.Id)
 	}
+	if err = pp.ClearParamsYAML(); err != nil {
+		return "", "", errors.Wrap(err, "clearing params YAML for debug config")
+	}
 	yamlBytes, err := yaml.Marshal(pp)
 	if err != nil {
 		return "", "", errors.Wrap(err, "marshalling parser project to YAML")

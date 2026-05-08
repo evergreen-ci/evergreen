@@ -109,6 +109,9 @@ The Evergreen codebase has automated tests defined in `self-tests.yml`, which it
   capitalization.
 * Inline code comments should be used intentionally. Do not write a comment if it just explains exactly what the code is
   doing. However, they can be used if they will explain the "why", such as context, intent, or non-obvious behavior.
+* Documentation comments should focus on high-level information relevant to usage, such as intent, expected
+  inputs/outputs, behavior. It is also valid to highlight hazardous gotchas to be careful about, if any. It should not
+  describe implementation details; those should be left to inline comments.
 
 **Good use of comments:**
 * Documentation for exported structs, functions, fields, and methods.
