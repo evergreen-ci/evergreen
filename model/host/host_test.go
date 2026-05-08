@@ -4530,6 +4530,16 @@ func TestFindTaskHostsNearingExpiration(t *testing.T) {
 			InstanceTags: makeExpireOnTag(expiringSoon),
 			RunningTask:  "task-6",
 		},
+		{
+			// Should not match: started less than an hour ago.
+			Id:           "new-host",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostRunning,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-7",
+			StartTime:    time.Now().Add(-30 * time.Minute),
+		},
 	}
 	for _, h := range hosts {
 		assert.NoError(t, h.Insert(ctx))
