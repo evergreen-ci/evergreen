@@ -7,7 +7,7 @@
         "errors": [
           {
             "message": "finding project for task 'nonexistent_task': task not found",
-            "path": ["quarantineTest", "opts", "taskId"],
+            "path": ["unquarantineTest", "opts", "taskId"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -22,7 +22,7 @@
         "errors": [
           {
             "message": "cannot modify test quarantine state on display tasks, select an execution task instead",
-            "path": ["quarantineTest"],
+            "path": ["unquarantineTest"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"
             }
@@ -34,11 +34,11 @@
       "query_file": "success.graphql",
       "result": {
         "data": {
-          "quarantineTest": {
+          "unquarantineTest": {
             "id": "TestFoo",
             "taskId": "quarantine_target",
             "testFile": "TestFoo",
-            "isManuallyQuarantined": true
+            "isManuallyQuarantined": false
           }
         }
       }

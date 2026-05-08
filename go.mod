@@ -170,7 +170,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
-	github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c
+	github.com/evergreen-ci/test-selection-client v0.0.0-20260409173604-004964bcf728
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2

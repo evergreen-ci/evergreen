@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2instancereferenceprice"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -241,6 +242,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HTTP status code to %d", http.StatusCreated))
 	}
+	ec2instancereferenceprice.ApplyReferenceCostDataOrWarn(ctx, newDistro)
 	if err = newDistro.Add(ctx, user); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting new distro"))
 	}
