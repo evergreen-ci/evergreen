@@ -79,15 +79,15 @@ type Mock struct {
 
 	ReportHighExecTimeoutShouldFail bool
 	ReportedHighExecTimeoutSecs     int
-	AttachedFiles           map[string][]*artifact.File
-	LogID                   string
-	LocalTestResults        []testresult.TestResult
-	HasTestResults          bool
-	ResultsFailed           bool
-	TestResultStats         testresult.TaskTestResultsStats
-	FailedTestSample        []string
-	TestLogs                []*testlog.TestLog
-	TestLogCount            int
+	AttachedFiles                   map[string][]*artifact.File
+	LogID                           string
+	LocalTestResults                []testresult.TestResult
+	HasTestResults                  bool
+	ResultsFailed                   bool
+	TestResultStats                 testresult.TaskTestResultsStats
+	FailedTestSample                []string
+	TestLogs                        []*testlog.TestLog
+	TestLogCount                    int
 
 	taskLogs   map[string][]log.LogLine
 	PatchFiles map[string]string
