@@ -711,7 +711,8 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					}
 				}
 
-				fileName := truncateFilename(filepath.Join(folder, justFile))
+				truncatedFileName := truncateFilename(justFile)
+				fileName := filepath.Join(folder, truncatedFileName)
 				fileNamesUsed.Lock()
 				for {
 					fileNamesUsed.nameCounts[fileName]++

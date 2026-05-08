@@ -1,0 +1,8 @@
+mutation {
+  unquarantineTest(opts: { taskId: "quarantine_target", testName: "TestFoo" }) {
+    id
+    taskId
+    testFile
+    isManuallyQuarantined
+  }
+}

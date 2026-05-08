@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/ec2instancereferenceprice"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -43,6 +44,8 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 			}
 		}
 	}
+
+	ec2instancereferenceprice.ApplyReferenceCostDataOrWarn(ctx, new)
 
 	if err := new.ReplaceOne(ctx); err != nil {
 		return gimlet.ErrorResponse{
@@ -154,6 +157,8 @@ func NewDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}
+
+	ec2instancereferenceprice.ApplyReferenceCostDataOrWarn(ctx, d)
 
 	vErrs, err := validator.CheckDistro(ctx, d, settings, true)
 	if err != nil {

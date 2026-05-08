@@ -157,14 +157,20 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// Intent hosts are just marked terminated in the DB without further
 	// processing, because it's not possible for an intent host to run tasks,
 	// nor is the intent host associated with any instance in the cloud that
-	// we're aware of.
+	// we're aware of. The exception is HostBuilding, where RunInstances may
+	// have already been called before the host ID was recorded.
 	switch j.host.Status {
-	case evergreen.HostUninitialized, evergreen.HostBuilding, evergreen.HostBuildingFailed, evergreen.HostDecommissioned:
-		// If the host never successfully started, this means the host is an
-		// intent host, and should be marked terminated. There's no host
-		// associated with it in the cloud provider.
+	case evergreen.HostUninitialized, evergreen.HostBuildingFailed, evergreen.HostDecommissioned:
 		if host.IsIntentHostId(j.host.Id) {
 			j.AddError(errors.Wrapf(j.cleanupIntentHost(ctx), "cleaning up intent host '%s'", j.host.Id))
+			return
+		}
+	case evergreen.HostBuilding:
+		if host.IsIntentHostId(j.host.Id) {
+			// A building intent host may already have a cloud instance if the
+			// host ID was never recorded after launch. Perform a tag-based lookup
+			// to find and terminate it.
+			j.AddError(errors.Wrapf(j.checkAndTerminateCloudHost(ctx), "terminating cloud host for building intent host '%s'", j.host.Id))
 			return
 		}
 	case evergreen.HostTerminated:
