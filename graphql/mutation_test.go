@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -145,4 +146,108 @@ func TestDeleteCursorAPIKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.True(t, result.Success)
+}
+
+func TestPromoteVarsToRepo(t *testing.T) {
+	setupPermissions(t)
+
+	t.Run("ProjectNotFound", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		usr := &user.DBUser{Id: testUser}
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		_, err := resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: "nonexistent",
+			VarNames:  []string{"var1"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("ProjectNotAttachedToRepo", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		projectRef := &model.ProjectRef{
+			Id: "project_no_repo",
+		}
+		require.NoError(t, projectRef.Insert(t.Context()))
+
+		usr := &user.DBUser{Id: testUser}
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		_, err := resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: "project_no_repo",
+			VarNames:  []string{"var1"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not attached to a repo")
+	})
+
+	t.Run("UserLacksRepoPermission", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, user.Collection))
+
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+			Id: "repo_id",
+		}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+
+		projectRef := &model.ProjectRef{
+			Id:        "project_id",
+			RepoRefId: "repo_id",
+		}
+		require.NoError(t, projectRef.Insert(t.Context()))
+
+		// Create a user without repo-level edit permission.
+		usr, err := user.GetOrCreateUser(t.Context(), "unprivileged_user", "Unprivileged User", "unpriv@test.com", "", "", []string{})
+		require.NoError(t, err)
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		_, err = resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: "project_id",
+			VarNames:  []string{"var1"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "does not have permission")
+	})
+
+	t.Run("UserWithRepoPermissionProceeds", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, user.Collection))
+
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+			Id: "repo_id",
+		}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+
+		// Use "project_id" which is already in the AllProjectsScope from setupPermissions.
+		projectRef := &model.ProjectRef{
+			Id:        "project_id",
+			RepoRefId: "repo_id",
+		}
+		require.NoError(t, projectRef.Insert(t.Context()))
+
+		// Add repo_id to the AllProjectsScope so the superuser role applies to it.
+		env := evergreen.GetEnvironment()
+		roleManager := env.RoleManager()
+		require.NoError(t, roleManager.AddResourceToScope(t.Context(), evergreen.AllProjectsScope, "repo_id"))
+
+		// Create user with superuser project access role (has ProjectSettingsEdit on AllProjectsScope).
+		usr, err := user.GetOrCreateUser(t.Context(), testUser, "Test User", "test@test.com", "", "", []string{})
+		require.NoError(t, err)
+		require.NoError(t, usr.AddRole(t.Context(), evergreen.SuperUserProjectAccessRole))
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		// This will pass the permission check but may fail in the data layer
+		// due to missing project vars or Parameter Store setup. The key assertion
+		// is that it does NOT return a permission error.
+		_, err = resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: "project_id",
+			VarNames:  []string{"var1"},
+		})
+		if err != nil {
+			assert.NotContains(t, err.Error(), "does not have permission")
+		}
+	})
 }
