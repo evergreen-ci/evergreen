@@ -119,6 +119,9 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting project variables for project '%s'", projectIdentifier)
 	}
+	if projectVars == nil {
+		return errors.Errorf("no variables found for project '%s'", projectIdentifier)
+	}
 
 	repo, err := model.GetProjectSettingsById(ctx, repoId, true)
 	if err != nil {
@@ -128,10 +131,22 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting repo variables for repo '%s'", repoId)
 	}
+	if repoVars == nil {
+		repoVars = &model.ProjectVars{}
+	}
 
 	// Add each promoted variable to existing repo vars
 	apiRepoVars := &restModel.APIProjectVars{}
 	apiRepoVars.BuildFromService(*repoVars)
+	if apiRepoVars.Vars == nil {
+		apiRepoVars.Vars = map[string]string{}
+	}
+	if apiRepoVars.PrivateVars == nil {
+		apiRepoVars.PrivateVars = map[string]bool{}
+	}
+	if apiRepoVars.AdminOnlyVars == nil {
+		apiRepoVars.AdminOnlyVars = map[string]bool{}
+	}
 	hasPromotedVars := false
 	for _, varName := range varNames {
 		// Ignore nonexistent variables
