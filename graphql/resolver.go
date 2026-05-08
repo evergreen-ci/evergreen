@@ -350,7 +350,8 @@ func New(apiURL string) Config {
 		}
 
 		volumeId, _ := args["volumeId"].(string)
-		volume, _ := args["volume"].(string) // There's one usage of "volume" as a param name so we have to consider that case here.
+		// There's one usage of "volume" as a param name so we have to consider that case here. Can be removed when DEVPROD-33014 is complete.
+		volume, _ := args["volume"].(string)
 
 		vId := util.CoalesceString(volumeId, volume)
 		if vId == "" {
