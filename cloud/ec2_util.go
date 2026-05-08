@@ -157,7 +157,7 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		// which the reaper could act on before the hourly extension job can bump the tag.
 		now := time.Now()
 		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-		if midnight.Sub(now) <= 3*time.Hour {
+		if midnight.Sub(now) <= 4*time.Hour {
 			expireDays++
 		}
 

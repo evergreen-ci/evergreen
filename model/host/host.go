@@ -3205,7 +3205,7 @@ func FindTaskHostsNearingExpiration(ctx context.Context) ([]Host, error) {
 		UserHostKey:  false,
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning, evergreen.HostDecommissioned}},
-		StartTimeKey: bson.M{"$lte": time.Now().Add(-time.Hour)},
+		StartTimeKey: bson.M{"$lte": time.Now().Add(-2 * time.Hour)},
 		InstanceTagsKey: bson.M{
 			"$elemMatch": bson.M{
 				instanceTagKeyKey:   evergreen.TagExpireOn,
