@@ -680,19 +680,17 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
-	ProjectPageGeneralSection         = "GENERAL"
-	ProjectPageAccessSection          = "ACCESS"
-	ProjectPageVariablesSection       = "VARIABLES"
-	ProjectPageNotificationsSection   = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection    = "WORKSTATION"
-	ProjectPageTriggersSection        = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
-	ProjectPagePluginSection          = "PLUGINS"
-	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
-	ProjectPageTestSelectionSection   = "TEST_SELECTION"
-	// TODO DEVPROD-31534: deprecate this section
-	ProjectPageGithubAndCQSection       = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageGeneralSection           = "GENERAL"
+	ProjectPageAccessSection            = "ACCESS"
+	ProjectPageVariablesSection         = "VARIABLES"
+	ProjectPageNotificationsSection     = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection        = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection      = "WORKSTATION"
+	ProjectPageTriggersSection          = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection    = "PERIODIC_BUILDS"
+	ProjectPagePluginSection            = "PLUGINS"
+	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
+	ProjectPageTestSelectionSection     = "TEST_SELECTION"
 	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
 	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
 	ProjectPagePullRequestsSection      = "PULL_REQUESTS"
@@ -2326,22 +2324,6 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefAdminsKey:     p.Admins,
 				},
 			})
-	// TODO DEVPROD-31534: deprecate this section
-	case ProjectPageGithubAndCQSection:
-		err = db.Update(ctx, coll,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$set": bson.M{
-					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
-					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
-					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
-					projectRefGitTagVersionsEnabledKey:  p.GitTagVersionsEnabled,
-					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
-					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
-					projectRefCommitQueueKey:            p.CommitQueue,
-					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
-				},
-			})
 	case ProjectPageNotificationsSection:
 		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2494,8 +2476,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 			modified = true
 		}
 		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
-	// TODO DEVPROD-31534: remove GithubAndCQSection
-	case ProjectPageGithubAndCQSection, ProjectPagePullRequestsSection, ProjectPageGitTagsSection, ProjectPageMergeQueueSection, ProjectPageCommitChecksSection:
+	case ProjectPagePullRequestsSection, ProjectPageGitTagsSection, ProjectPageMergeQueueSection, ProjectPageCommitChecksSection:
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {

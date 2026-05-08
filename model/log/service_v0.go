@@ -65,9 +65,9 @@ func (s *logServiceV0) Get(ctx context.Context, getOpts GetOptions) (LogIterator
 	return it, nil
 }
 
-func (s *logServiceV0) Append(ctx context.Context, logName string, sequence int, lines []LogLine) (int64, error) {
+func (s *logServiceV0) Append(ctx context.Context, logName string, sequence int, lines []LogLine) (int64, int, error) {
 	if len(lines) == 0 {
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	var rawLines []byte
@@ -76,11 +76,19 @@ func (s *logServiceV0) Append(ctx context.Context, logName string, sequence int,
 	}
 
 	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(sequence, lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
-	if err := s.bucket.Put(ctx, key, bytes.NewReader(rawLines)); err != nil {
-		return 0, errors.Wrap(err, "writing log chunk to bucket")
+	// pail.StreamPutCounter is implemented by *s3Bucket types; the fallback handles non-S3 buckets that don't track PUT counts.
+	var puts int
+	var err error
+	if pc, ok := s.bucket.(pail.StreamPutCounter); ok {
+		puts, err = pc.PutWithCount(ctx, key, bytes.NewReader(rawLines))
+	} else {
+		err = s.bucket.Put(ctx, key, bytes.NewReader(rawLines))
+	}
+	if err != nil {
+		return 0, puts, errors.Wrap(err, "writing log chunk to bucket")
 	}
 
-	return int64(len(rawLines)), nil
+	return int64(len(rawLines)), puts, nil
 }
 
 // getLogChunks maps each logical log to its chunk files stored in pail-backed

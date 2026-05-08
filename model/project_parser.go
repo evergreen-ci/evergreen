@@ -82,34 +82,36 @@ type ParserProject struct {
 	Include []parserInclude `yaml:"include,omitempty" bson:"include,omitempty"`
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
-	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	PreTimeoutSecs     *int                       `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
-	PostTimeoutSecs    *int                       `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
-	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
-	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
-	Ps                 *string                    `yaml:"ps,omitempty" bson:"ps,omitempty"`
-	Owner              *string                    `yaml:"owner,omitempty" bson:"owner,omitempty"`
-	Repo               *string                    `yaml:"repo,omitempty" bson:"repo,omitempty"`
-	RemotePath         *string                    `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
-	Branch             *string                    `yaml:"branch,omitempty" bson:"branch,omitempty"`
-	Identifier         *string                    `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
-	DisplayName        *string                    `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	CommandType        *string                    `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
-	Ignore             parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
-	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
-	CallbackTimeout    *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
-	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
-	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
-	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
-	TimeoutSecs        *int                       `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
+	Stepback           *bool   `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PreTimeoutSecs     *int    `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
+	PostTimeoutSecs    *int    `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
+	PreErrorFailsTask  *bool   `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask *bool   `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
+	OomTracker         *bool   `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
+	Ps                 *string `yaml:"ps,omitempty" bson:"ps,omitempty"`
+	Owner              *string `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo               *string `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath         *string `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	Branch             *string `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	// Identifier is the project ID (despite the name, it's not the project
+	// identifier).
+	Identifier      *string                    `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName     *string                    `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType     *string                    `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore          parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Parameters      []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	CallbackTimeout *int                       `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules         []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants   []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups      []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks           []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	TimeoutSecs     *int                       `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+	CreateTime      time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// DisableMergeQueuePathFiltering, if true, skips path filtering for merge queue versions.
 	DisableMergeQueuePathFiltering *bool `yaml:"disable_merge_queue_path_filtering,omitempty" bson:"disable_merge_queue_path_filtering,omitempty"`
@@ -596,9 +598,9 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 			return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
 		}
 	}
-	// Setting the translated project's identifier is necessary here because the
-	// version always has an identifier, but some old parser projects used to
-	// not be stored with the identifier.
+	// Setting the translated project's ID is necessary here because the version
+	// always has an identifier, but some old parser projects used to not be
+	// stored with the ID.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
 	var p *Project
 	p, err = TranslateProject(pp)

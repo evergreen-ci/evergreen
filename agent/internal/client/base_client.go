@@ -627,6 +627,21 @@ func (c *baseCommunicator) ReportS3Usage(ctx context.Context, taskData TaskData,
 	return nil
 }
 
+func (c *baseCommunicator) ReportHighExecTimeout(ctx context.Context, taskData TaskData, execTimeoutSecs int) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("high_exec_timeout")
+	body := apimodels.HighExecTimeoutReport{ExecTimeoutSecs: execTimeoutSecs}
+	resp, err := c.retryRequest(ctx, info, body)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "reporting high exec timeout").Error())
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 func (c *baseCommunicator) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
 	info := requestInfo{
 		method:   http.MethodPost,

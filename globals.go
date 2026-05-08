@@ -269,7 +269,7 @@ const (
 
 	// Spawn hosts
 	SpawnHostExpireDays              = 30
-	HostExpireDays                   = 10
+	HostExpireDays                   = 1
 	ExpireOnFormat                   = "2006-01-02"
 	DefaultMaxSpawnHostsPerUser      = 3
 	DefaultSpawnHostExpiration       = 24 * time.Hour
@@ -372,6 +372,10 @@ const (
 	// PresignMinimumValidTime is the minimum amount of time that a presigned URL
 	// should be valid for.
 	PresignMinimumValidTime = 15 * time.Minute
+
+	// HighExecTimeoutThreshold is the exec timeout duration above which a task
+	// has an unusually long timeout and warrants alerting.
+	HighExecTimeoutThreshold = 72 * time.Hour
 )
 
 var TestFailureStatuses = []string{

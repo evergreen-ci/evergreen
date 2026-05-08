@@ -119,9 +119,9 @@ func updateAliasesForSection(ctx context.Context, projectId string, updatedAlias
 	return modified, catcher.Resolve()
 }
 
-// validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github/CQ feature.
+// validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github feature.
 // Does not error if version control is enabled. To check for version control, we pass in the original project ref
-// along with the newly changed project ref because the new project ref only contains github / CQ section data.
+// along with the newly changed project ref because the new project ref only contains github section data.
 func validateFeaturesHaveAliases(
 	ctx context.Context,
 	originalProjectRef *model.ProjectRef,
@@ -168,30 +168,12 @@ func validateFeaturesHaveAliases(
 		if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
 			catcher.Errorf(msg, "GitHub checks")
 		}
-	// TODO DEVPROD-31532: no need for this once we remove GithubAndCQSection
-	default:
-		if newProjectRef.IsPRTestingEnabled() && !aliasesMap[evergreen.GithubPRAlias] {
-			catcher.Errorf(msg, "PR testing")
-		}
-		if newProjectRef.CommitQueue.IsEnabled() && !aliasesMap[evergreen.CommitQueueAlias] {
-			catcher.Errorf(msg, "Commit queue")
-		}
-		if newProjectRef.IsGitTagVersionsEnabled() && !aliasesMap[evergreen.GitTagAlias] {
-			catcher.Errorf(msg, "Git tag versions")
-		}
-		if newProjectRef.IsGithubChecksEnabled() && !aliasesMap[evergreen.GithubChecksAlias] {
-			catcher.Errorf(msg, "GitHub checks")
-		}
 	}
-
 	return catcher.Resolve()
 }
 
 func shouldSkipAliasForSection(section model.ProjectPageSection, alias string) bool {
 	switch section {
-	// TODO DEVPROD-31534: remove GithubAndCQSection
-	case model.ProjectPageGithubAndCQSection:
-		return model.IsPatchAlias(alias)
 	case model.ProjectPagePullRequestsSection:
 		return alias != evergreen.GithubPRAlias
 	case model.ProjectPageMergeQueueSection:

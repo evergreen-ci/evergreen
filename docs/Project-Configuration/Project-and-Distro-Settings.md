@@ -234,7 +234,7 @@ Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
 ### GitHub Pull Request Testing
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the GitHub "Pull Request Testing" tab.
 
 Enabling "Automated Testing" will have Evergreen automatically create a patch for
 each pull request opened in the repository as well as each subsequent
@@ -275,7 +275,7 @@ on your project's branch you want to accept as the merge base via the 'Oldest Al
 
 ### GitHub Commit Checks
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the GitHub "Commit Checks" tab.
 
 This supports GitHub checks on commits (i.e. to be visible at
 `https://github.com/<owner>/<repo>/commits`). Task/variant
@@ -296,7 +296,7 @@ Although a version gets created for every commit on a project with the repotrack
 
 ### Triggering Versions With Git Tags
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the GitHub "Git Tags" tab.
 
 This allows for versions to be created automatically from pushed git tags,
 and these versions will have the following properties:
@@ -540,7 +540,13 @@ performance of tasks and tests.
 
 ### Project-Level Notifications
 
-Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
+Project admins can subscribe to notifications for when some events happen within the project.
+
+Subscriptions defined at the repo level apply to all untracked branches and all branches that are attached to the repo.
+**These are merged with project-level subscriptions**, meaning users could receive duplicate notifications if both the repo and branch
+are subscribed to the same event.
+
+Admins can set up events when:
 
 - Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR,
   periodic build).

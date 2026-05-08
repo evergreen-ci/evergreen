@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -422,13 +423,13 @@ func TestSignedUrlVisibility(t *testing.T) {
 				LocalPath:     file1,
 				RemotePath:    remoteFile,
 				FileSizeBytes: file1Info.Size(),
-				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+				PutRequests:   1,
 			},
 			{
 				LocalPath:     file2,
 				RemotePath:    remoteFile,
 				FileSizeBytes: file2Info.Size(),
-				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+				PutRequests:   1,
 			},
 		}
 
@@ -493,13 +494,13 @@ func TestContentTypeSaved(t *testing.T) {
 			LocalPath:     file1,
 			RemotePath:    remoteFile,
 			FileSizeBytes: file1Info.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+			PutRequests:   1,
 		},
 		{
 			LocalPath:     file2,
 			RemotePath:    remoteFile,
 			FileSizeBytes: file2Info.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+			PutRequests:   1,
 		},
 	}
 
@@ -731,8 +732,8 @@ func TestPreservePath(t *testing.T) {
 	}
 
 	require.NotNil(t, conf.S3Usage)
-	// Each zero-byte file counts as 1 PUT; preserve_path uploads were previously broken because LocalPath was set to the S3 key.
-	assert.Equal(t, 6, conf.S3Usage.Artifacts.PutRequests)
+	// Local bucket does not implement PutCounter so PUT count is always 0.
+	assert.Equal(t, 0, conf.S3Usage.Artifacts.PutRequests)
 	assert.Equal(t, 6, conf.S3Usage.Artifacts.Count)
 	assert.Equal(t, int64(0), conf.S3Usage.Artifacts.UploadBytes)
 }
@@ -848,43 +849,6 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	_, err = apimodels.ReadLogToSlice(it)
 	require.NoError(t, err)
-}
-
-func TestComputePerFileExtremes(t *testing.T) {
-	t.Run("EmptyInput", func(t *testing.T) {
-		maxPuts, minPuts := computePerFileExtremes(nil)
-		assert.Zero(t, maxPuts)
-		assert.Zero(t, minPuts)
-	})
-	t.Run("SingleFile", func(t *testing.T) {
-		files := []s3usage.FileMetrics{
-			{PutRequests: 5},
-		}
-		maxPuts, minPuts := computePerFileExtremes(files)
-		assert.Equal(t, 5, maxPuts)
-		assert.Equal(t, 5, minPuts)
-	})
-	t.Run("MultipleFiles", func(t *testing.T) {
-		files := []s3usage.FileMetrics{
-			{PutRequests: 3},
-			{PutRequests: 10},
-			{PutRequests: 1},
-			{PutRequests: 7},
-		}
-		maxPuts, minPuts := computePerFileExtremes(files)
-		assert.Equal(t, 10, maxPuts)
-		assert.Equal(t, 1, minPuts)
-	})
-	t.Run("AllSameValue", func(t *testing.T) {
-		files := []s3usage.FileMetrics{
-			{PutRequests: 4},
-			{PutRequests: 4},
-			{PutRequests: 4},
-		}
-		maxPuts, minPuts := computePerFileExtremes(files)
-		assert.Equal(t, 4, maxPuts)
-		assert.Equal(t, 4, minPuts)
-	})
 }
 
 func TestReadAssociatedLinksFile(t *testing.T) {
@@ -1013,7 +977,7 @@ func TestS3PutWithAssociatedLinks(t *testing.T) {
 			LocalPath:     s3PutFile,
 			RemotePath:    remoteFile,
 			FileSizeBytes: s3PutFileInfo.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, s3PutFileInfo.Size()),
+			PutRequests:   1,
 		},
 	}
 
@@ -1028,4 +992,111 @@ func TestS3PutWithAssociatedLinks(t *testing.T) {
 	assert.Equal(t, "https://example.com/docs", files[0].AssociatedLinks[0].Link)
 	assert.Equal(t, "Coverage", files[0].AssociatedLinks[1].Name)
 	assert.Equal(t, "https://example.com/coverage", files[0].AssociatedLinks[1].Link)
+}
+
+// putCounterBucket is a minimal mock that implements pail.PutCounter so tests can
+// control the per-call PUT count and trigger retries without hitting real S3.
+type putCounterBucket struct {
+	pail.Bucket
+
+	// putsPerCall is the count returned by each UploadWithCount call.
+	putsPerCall int
+	// failUntilCall causes the first N calls to return an error.
+	failUntilCall int
+	calls         int
+}
+
+func (m *putCounterBucket) Check(_ context.Context) error { return nil }
+
+func (m *putCounterBucket) Upload(ctx context.Context, key, path string) error {
+	_, err := m.UploadWithCount(ctx, key, path)
+	return err
+}
+
+func (m *putCounterBucket) UploadWithCount(_ context.Context, _, _ string) (int, error) {
+	m.calls++
+	if m.calls <= m.failUntilCall {
+		return m.putsPerCall, errors.New("transient upload error")
+	}
+	return m.putsPerCall, nil
+}
+
+func TestPutWithRetryAccumulatesPutsFromBucket(t *testing.T) {
+	ctx := t.Context()
+	dir := t.TempDir()
+
+	localFile := filepath.Join(dir, "upload.txt")
+	require.NoError(t, os.WriteFile(localFile, []byte("data"), 0600))
+
+	mock := &putCounterBucket{putsPerCall: 3}
+	s := &s3put{
+		AwsKey:      "key",
+		AwsSecret:   "secret",
+		Bucket:      "bucket",
+		LocalFile:   localFile,
+		RemoteFile:  "remote/upload.txt",
+		ContentType: "application/octet-stream",
+		Permissions: string(s3Types.ObjectCannedACLPublicRead),
+		bucket:      mock,
+	}
+	s.workDir = dir
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
+		WorkDir:      dir,
+		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Execute(ctx, comm, logger, conf))
+	assert.Equal(t, 3, conf.S3Usage.Artifacts.PutRequests)
+	assert.Equal(t, 1, conf.S3Usage.Artifacts.Count)
+	assert.Equal(t, 3, conf.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
+	assert.Equal(t, 3, conf.S3Usage.Artifacts.ArtifactWithMinPutRequests)
+}
+
+func TestPutWithRetryAccumulatesPutsAcrossRetries(t *testing.T) {
+	ctx := t.Context()
+	dir := t.TempDir()
+
+	localFile := filepath.Join(dir, "upload.txt")
+	require.NoError(t, os.WriteFile(localFile, []byte("data"), 0600))
+
+	// Fails the first 2 attempts, succeeds on the 3rd. Each call returns 3 puts.
+	mock := &putCounterBucket{putsPerCall: 3, failUntilCall: 2}
+	s := &s3put{
+		AwsKey:      "key",
+		AwsSecret:   "secret",
+		Bucket:      "bucket",
+		LocalFile:   localFile,
+		RemoteFile:  "remote/upload.txt",
+		ContentType: "application/octet-stream",
+		Permissions: string(s3Types.ObjectCannedACLPublicRead),
+		bucket:      mock,
+	}
+	s.workDir = dir
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
+		WorkDir:      dir,
+		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Execute(ctx, comm, logger, conf))
+	// 3 attempts × 3 puts each = 9 total; all attributed to the single file.
+	assert.Equal(t, 9, conf.S3Usage.Artifacts.PutRequests)
+	assert.Equal(t, 1, conf.S3Usage.Artifacts.Count)
+	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
+	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMinPutRequests)
 }

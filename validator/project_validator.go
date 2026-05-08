@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"runtime/debug"
 	"slices"
 	"sort"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -1003,8 +1005,12 @@ func shouldValidateSingleTaskDistros(projectIdentifier string, singleTaskDistroA
 	return shouldValidate, allowAll, Error, []ValidationError{}
 }
 
-func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
+
+	highestExecTimeoutSecs := project.ExecTimeoutSecs
+	var highestExecTimeoutTask string
+
 	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
 		for _, task := range project.Tasks {
 			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
@@ -1012,9 +1018,40 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
 					Level:   Error,
 				})
+				if task.ExecTimeoutSecs > highestExecTimeoutSecs {
+					highestExecTimeoutSecs = task.ExecTimeoutSecs
+					highestExecTimeoutTask = task.Name
+				}
 			}
 		}
 	}
+
+	highExecTimeoutThresholdSecs := int(evergreen.HighExecTimeoutThreshold.Seconds())
+	if highestExecTimeoutSecs > highExecTimeoutThresholdSecs {
+		var projectID, projectIdentifier string
+		if ref != nil {
+			projectID = ref.Id
+			projectIdentifier = ref.Identifier
+		} else if project != nil {
+			projectID = project.Identifier
+		}
+		grip.Warning(ctx, message.Fields{
+			"message":                          "project has an unusually high exec timeout defined",
+			"project_id":                       projectID,
+			"project_identifier":               projectIdentifier,
+			"highest_exec_timeout_secs":        highestExecTimeoutSecs,
+			"threshold_high_exec_timeout_secs": highExecTimeoutThresholdSecs,
+			"highest_exec_timeout_task":        highestExecTimeoutTask,
+			// This is a little hacky, but it's hard to tell if the high exec
+			// timeout in validation comes from an actual patch/version (which
+			// should alert) or from a user running `evergreen validate` (which
+			// shouldn't alert). Adding a stacktrace makes it easier to
+			// determine the source of the high exec timeout value without
+			// changing the entire project validation interface.
+			"stack": string(debug.Stack()),
+		})
+	}
+
 	return errs
 }
 
