@@ -59,8 +59,8 @@
         "data": null,
         "errors": [
           {
-            "message": "not authorized to modify volume 'vol-0603934da6f024db5'",
-            "path": ["updateVolume"],
+            "message": "user 'regular_user' does not have permission to access volume 'vol-0603934da6f024db5'",
+            "path": ["updateVolume", "updateVolumeInput", "volumeId"],
             "extensions": {
               "code": "FORBIDDEN"
             }

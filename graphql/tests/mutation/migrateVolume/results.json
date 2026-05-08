@@ -7,8 +7,8 @@
         "data": null,
         "errors": [
           {
-            "message": "not authorized to modify volume 'vol-0603934fsas024db5'",
-            "path": ["migrateVolume"],
+            "message": "user 'regular_user' does not have permission to access volume 'vol-0603934fsas024db5'",
+            "path": ["migrateVolume", "volumeId"],
             "extensions": {
               "code": "FORBIDDEN"
             }

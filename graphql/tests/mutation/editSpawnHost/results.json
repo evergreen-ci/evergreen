@@ -54,8 +54,8 @@
         "data": null,
         "errors": [
           {
-            "message": "not authorized to modify volume 'vol-two'",
-            "path": ["editSpawnHost"],
+            "message": "user 'regular_user' does not have permission to access volume 'vol-two'",
+            "path": ["editSpawnHost", "spawnHost", "volume"],
             "extensions": {
               "code": "FORBIDDEN"
             }

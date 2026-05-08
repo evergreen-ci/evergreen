@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 )
@@ -123,7 +124,6 @@ func New(apiURL string) Config {
 
 		// If directive is checking for create permissions, no distro ID is required.
 		if access == DistroSettingsAccessCreate {
-
 			if user.HasDistroCreatePermission(ctx) {
 				return next(ctx)
 			}
@@ -339,6 +339,34 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
+	}
+	c.Directives.RequireVolumeAccess = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+		dbUser := mustHaveUser(ctx)
+
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "must specify volume ID")
+		}
+
+		volumeId, _ := args["volumeId"].(string)
+		volume, _ := args["volume"].(string) // There's one usage of "volume" as a param name so we have to consider that case here.
+
+		vId := util.CoalesceString(volumeId, volume)
+		if vId == "" {
+			return nil, InputValidationError.Send(ctx, "volume not specified")
+		}
+
+		v, err := host.FindVolumeByID(ctx, vId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", vId, err.Error()))
+		}
+		if v == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", vId))
+		}
+		if userHasVolumePermission(ctx, dbUser, vId, v.CreatedBy) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access volume '%s'", dbUser.Username(), vId))
 	}
 
 	return c
