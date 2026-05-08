@@ -51,9 +51,8 @@ The discounted cost blends a savings plan rate and the standard on-demand rate u
 
 ```text
 number_of_seconds_in_hour = 3,600
-cost_per_hour = (finance_formula * savings_plan_rate + (1 - finance_formula) * on_demand_rate)
-adjusted_cost = runtime_seconds * cost_per_hour / number_of_seconds_in_hour
-
+cost_per_hour             = (finance_formula * savings_plan_rate + (1 - finance_formula) * on_demand_rate)
+adjusted_cost             = runtime_seconds * cost_per_hour / number_of_seconds_in_hour
 ```
 
 `finance_formula` is a ratio that controls how much of the cost is attributed to MongoDB's savings plan coverage versus the standard AWS list price. The savings plan rate and `finance_formula` are provided by the FP&A team. The on-demand rate is the standard AWS list price for the instance type.
@@ -148,7 +147,7 @@ GET https://evergreen.mongodb.com/rest/v2/tasks/{task_id}
 GET https://evergreen.mongodb.com/rest/v2/versions/{version_id}
 ```
 
-**Patch:** Returns `cost` (aggregated discounted cost for the patch's own tasks as well as child patch costs; `child_patches_total_cost` breaks out the child share) and `s3_usage` (aggregated artifact and log upload metrics for the patch's own tasks; child patch S3 usage is not included). The [patch](../Reference/Glossary#patch-build) ID and version ID are the same value; both endpoints accept the same ID and return the same cost total.
+**Patch:** Returns `cost` (aggregated discounted cost for the patch's own tasks as well as child patch costs; `child_patches_total_cost` breaks out the child share) and `s3_usage` (aggregated artifact and log upload metrics for the patch's own tasks; child patch S3 usage is not included). The patch ID and version ID are the same value; both endpoints accept the same ID and return the same cost total.
 
 ```text
 GET https://evergreen.mongodb.com/rest/v2/patches/{patch_id}
