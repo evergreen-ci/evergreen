@@ -88684,11 +88684,28 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 			it.UseTaskConfig = data
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.VolumeID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.VolumeID = data
+			} else if tmp == nil {
+				it.VolumeID = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "useOAuth":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useOAuth"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -88746,11 +88763,33 @@ func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, 
 			it.Expiration = data
 		case "host":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal *string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.Host = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Host = data
+			} else if tmp == nil {
+				it.Host = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "noExpiration":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("noExpiration"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)

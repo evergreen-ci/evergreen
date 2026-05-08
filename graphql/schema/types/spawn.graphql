@@ -51,7 +51,7 @@ input SpawnHostInput {
   useProjectSetupScript: Boolean
   userDataScript: String
   useTaskConfig: Boolean
-  volumeId: String
+  volumeId: String @requireVolumeAccess
   useOAuth: Boolean
   isDebug: Boolean
   setupStepNumber: String
@@ -64,7 +64,7 @@ Its fields determine the properties of the volume that will be spawned.
 input SpawnVolumeInput {
   availabilityZone: String!
   expiration: Time
-  host: String
+  host: String @requireHostAccess(access: EDIT)
   noExpiration: Boolean
   size: Int!
   type: String!

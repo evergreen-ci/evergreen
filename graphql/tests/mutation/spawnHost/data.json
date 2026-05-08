@@ -111,5 +111,18 @@
       },
       "icecream_settings": {}
     }
+  ],
+  "volumes": [
+    {
+      "_id": "vol-1234",
+      "availability_zone": "us-east-1a",
+      "display_name": "test volume",
+      "size": 100,
+      "type": "gp2",
+      "status": "available",
+      "host_id": "",
+      "no_expire": false,
+      "created_by": "admin_user"
+    }
   ]
 }

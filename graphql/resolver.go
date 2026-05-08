@@ -78,7 +78,12 @@ func New(apiURL string) Config {
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
-		hostId, hasHostId := args["hostId"].(string)
+		hostIdParam, hasHostIdParam := args["hostId"].(string)
+		// There's one usage of "host" as a param name so we have to consider that case here. Can be removed when DEVPROD-33014 is complete.
+		hostParam, hasHostParam := args["host"].(string)
+		hasHostId := hasHostIdParam || hasHostParam
+		hostId := util.CoalesceString(hostIdParam, hostParam)
+
 		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
 
 		if !hasHostId && !hasHostIds || (hasHostId && hostId == "") || (hasHostIds && len(hostIdsInterface) == 0) {
@@ -349,26 +354,27 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 
-		volumeId, _ := args["volumeId"].(string)
+		volumeIdParam, hasVolumeIdParam := args["volumeId"].(string)
 		// There's one usage of "volume" as a param name so we have to consider that case here. Can be removed when DEVPROD-33014 is complete.
-		volume, _ := args["volume"].(string)
+		volumeParam, hasVolumeParam := args["volume"].(string)
+		hasVolumeId := hasVolumeIdParam || hasVolumeParam
+		volumeId := util.CoalesceString(volumeIdParam, volumeParam)
 
-		vId := util.CoalesceString(volumeId, volume)
-		if vId == "" {
+		if !hasVolumeId || volumeId == "" {
 			return nil, InputValidationError.Send(ctx, "must specify volume ID")
 		}
 
-		v, err := host.FindVolumeByID(ctx, vId)
+		v, err := host.FindVolumeByID(ctx, volumeId)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", vId, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", volumeId, err.Error()))
 		}
 		if v == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", vId))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", volumeId))
 		}
-		if userHasVolumePermission(ctx, dbUser, vId, v.CreatedBy) {
+		if userHasVolumePermission(ctx, dbUser, volumeId, v.CreatedBy) {
 			return next(ctx)
 		}
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access volume '%s'", dbUser.Username(), vId))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access volume '%s'", dbUser.Username(), volumeId))
 	}
 
 	return c
