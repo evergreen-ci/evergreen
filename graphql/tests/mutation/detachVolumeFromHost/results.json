@@ -9,7 +9,7 @@
       "result": {
         "errors": [
           {
-            "message": "volume not specified",
+            "message": "must specify volume ID",
             "path": ["detachVolumeFromHost", "volumeId"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"

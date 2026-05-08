@@ -76,12 +76,13 @@ func New(apiURL string) Config {
 	c.Directives.RequireHostAccess = func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (any, error) {
 		args, isStringMap := obj.(map[string]interface{})
 		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "host not specified")
+			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 		hostId, hasHostId := args["hostId"].(string)
 		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
-		if !hasHostId && !hasHostIds {
-			return nil, ResourceNotFound.Send(ctx, "host not specified")
+
+		if !hasHostId && !hasHostIds || (hostId == "" && !hasHostIds) || (!hasHostId && len(hostIdsInterface) == 0) {
+			return nil, ResourceNotFound.Send(ctx, "must specify host ID(s)")
 		}
 
 		hostIdsToCheck := []string{hostId}
@@ -345,7 +346,7 @@ func New(apiURL string) Config {
 
 		args, isStringMap := obj.(map[string]interface{})
 		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "must specify volume ID")
+			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 
 		volumeId, _ := args["volumeId"].(string)
@@ -353,7 +354,7 @@ func New(apiURL string) Config {
 
 		vId := util.CoalesceString(volumeId, volume)
 		if vId == "" {
-			return nil, InputValidationError.Send(ctx, "volume not specified")
+			return nil, InputValidationError.Send(ctx, "must specify volume ID")
 		}
 
 		v, err := host.FindVolumeByID(ctx, vId)
