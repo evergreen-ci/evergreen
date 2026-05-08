@@ -13,7 +13,7 @@ All costs displayed in Evergreen have applicable discounts applied. Discount rat
 Cost information is shown on the task, version, and patch pages in the Evergreen UI.
 
 - On task pages, the cost is shown once the task completes.
-- On version and patch pages, a running total of costs from completed tasks is shown throughout.
+- On version and patch pages, a running total of costs from completed tasks is shown throughout, including child patch costs.
 
 Once all tasks have finished, the full cost breakdown becomes available on each page, including a link to Honeycomb for a more detailed per-component view. Cost data is also available via the REST API. See [How can I view cost data via the REST API?](#how-can-i-view-cost-data-via-the-rest-api).
 
