@@ -824,6 +824,23 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 	}
 }
 
+func PopulateTaskHostExpirationExtendJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		hosts, err := host.FindTaskHostsNearingExpiration(ctx)
+		if err != nil {
+			return errors.Wrap(err, "finding task hosts nearing expiration")
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := utility.RoundPartOfHour(0).Format(TSFormat)
+		for _, h := range hosts {
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewTaskHostExpirationExtendJob(ts, &h)), "enqueueing task host expiration extend job for host '%s'", h.Id)
+		}
+
+		return errors.Wrap(catcher.Resolve(), "populating task host expiration extend jobs")
+	}
+}
+
 func PopulateSpawnhostExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		hosts, err := host.FindSpawnhostsWithNoExpirationToExtend(ctx)

@@ -4444,6 +4444,151 @@ func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 	assert.Equal(t, "host-1", foundHosts[0].Id)
 }
 
+func TestFindTaskHostsNearingExpiration(t *testing.T) {
+	ctx := t.Context()
+
+	require.NoError(t, db.ClearCollections(Collection))
+
+	expiringSoon := time.Now().Format(evergreen.ExpireOnFormat)
+	notExpiringSoon := time.Now().AddDate(0, 0, 5).Format(evergreen.ExpireOnFormat)
+	recentTaskTime := time.Now().Add(-15 * time.Minute)
+	oldTaskTime := time.Now().Add(-2 * time.Hour)
+
+	makeExpireOnTag := func(value string) []Tag {
+		return []Tag{{Key: evergreen.TagExpireOn, Value: value, CanBeModified: false}}
+	}
+
+	hosts := []Host{
+		{
+			// Should match: expiring soon with running task.
+			Id:           "running-task",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostRunning,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-1",
+		},
+		{
+			// Should match: expiring soon with recent task completion.
+			Id:                    "recent-task",
+			UserHost:              false,
+			StartedBy:             evergreen.User,
+			Status:                evergreen.HostRunning,
+			InstanceTags:          makeExpireOnTag(expiringSoon),
+			LastTaskCompletedTime: recentTaskTime,
+		},
+		{
+			// Should not match: expiring soon but no recent task activity.
+			Id:                    "no-recent-task",
+			UserHost:              false,
+			StartedBy:             evergreen.User,
+			Status:                evergreen.HostRunning,
+			InstanceTags:          makeExpireOnTag(expiringSoon),
+			LastTaskCompletedTime: oldTaskTime,
+		},
+		{
+			// Should not match: not expiring soon.
+			Id:           "not-expiring",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostRunning,
+			InstanceTags: makeExpireOnTag(notExpiringSoon),
+			RunningTask:  "task-2",
+		},
+		{
+			// Should not match: spawn host, not a task host.
+			Id:           "spawn-host",
+			UserHost:     true,
+			Status:       evergreen.HostRunning,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-3",
+		},
+		{
+			// Should not match: wrong status.
+			Id:           "terminated-host",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostTerminated,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-4",
+		},
+		{
+			// Should match: starting status with running task.
+			Id:           "starting-host",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostStarting,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-5",
+		},
+		{
+			// Should match: decommissioned but running a task to completion.
+			Id:           "decommissioned-host",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostDecommissioned,
+			InstanceTags: makeExpireOnTag(expiringSoon),
+			RunningTask:  "task-6",
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert(ctx))
+	}
+
+	found, err := FindTaskHostsNearingExpiration(ctx)
+	assert.NoError(t, err)
+	require.Len(t, found, 4)
+	foundIDs := []string{found[0].Id, found[1].Id, found[2].Id, found[3].Id}
+	assert.ElementsMatch(t, []string{"running-task", "recent-task", "starting-host", "decommissioned-host"}, foundIDs)
+}
+
+func TestBumpExpireOnTag(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("BumpsTagByOneDayAndUpdateDB", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		currentExpireOn := time.Now().Format(evergreen.ExpireOnFormat)
+		h := &Host{
+			Id: "host-1",
+			InstanceTags: []Tag{
+				{Key: evergreen.TagExpireOn, Value: currentExpireOn, CanBeModified: false},
+			},
+		}
+		require.NoError(t, h.Insert(ctx))
+
+		newExpireOn, err := h.NextExpireOnTagValue()
+		require.NoError(t, err)
+
+		expectedExpireOn := time.Now().AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)
+		assert.Equal(t, expectedExpireOn, newExpireOn)
+
+		require.NoError(t, h.BumpExpireOnTag(ctx, newExpireOn))
+
+		found, err := FindOneId(ctx, h.Id)
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		var gotExpireOn string
+		for _, tag := range found.InstanceTags {
+			if tag.Key == evergreen.TagExpireOn {
+				gotExpireOn = tag.Value
+				break
+			}
+		}
+		assert.Equal(t, expectedExpireOn, gotExpireOn)
+	})
+
+	t.Run("MissingTagErrors", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		h := &Host{Id: "host-2"}
+		require.NoError(t, h.Insert(ctx))
+
+		_, err := h.NextExpireOnTagValue()
+		assert.Error(t, err)
+	})
+}
+
 func TestAddVolumeToHost(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

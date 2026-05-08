@@ -2311,7 +2311,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return nil
 	}
 
-	if err = h.ClearRunningTask(ctx); err != nil {
+	if err = h.ClearRunningAndSetLastTask(ctx, t); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 

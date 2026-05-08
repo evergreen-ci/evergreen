@@ -40,29 +40,31 @@ const (
 // Project represents the fully hydrated project configuration after translating
 // the ParserProject.
 type Project struct {
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
-	PostTimeoutSecs    int                        `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
-	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
-	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
-	PS                 string                     `yaml:"ps,omitempty" bson:"ps,omitempty"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore             []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+	Stepback           bool   `yaml:"stepback,omitempty" bson:"stepback"`
+	PreTimeoutSecs     int    `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
+	PostTimeoutSecs    int    `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
+	PreErrorFailsTask  bool   `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask bool   `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
+	OomTracker         bool   `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
+	PS                 string `yaml:"ps,omitempty" bson:"ps,omitempty"`
+	// Identifier is the project ID (despite the name, it's not the project
+	// identifier).
+	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore          []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Parameters      []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules         ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	TimeoutSecs     int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
 	// DisableMergeQueuePathFiltering, if true, skips path filtering for merge queue versions.
 	DisableMergeQueuePathFiltering bool `yaml:"disable_merge_queue_path_filtering,omitempty" bson:"disable_merge_queue_path_filtering,omitempty"`

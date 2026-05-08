@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -39,7 +40,7 @@ func (c *timeout) ParseParams(params map[string]any) error {
 }
 
 // Execute updates the idle timeout.
-func (c *timeout) Execute(ctx context.Context, _ client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (c *timeout) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	// do the params parsing here rather than in ParseParams because we want
 	// to destructure only if parsing as ints fails.
 	if err := mapstructure.Decode(c.params, c); err != nil ||
@@ -72,6 +73,11 @@ func (c *timeout) Execute(ctx context.Context, _ client.Communicator, logger cli
 		} else {
 			conf.SetExecTimeout(c.ExecTimeoutSecs)
 			logger.Execution().Infof(ctx, "Set exec timeout to %d seconds.", c.ExecTimeoutSecs)
+		}
+		if c.ExecTimeoutSecs > int(evergreen.HighExecTimeoutThreshold.Seconds()) {
+			if err := comm.ReportHighExecTimeout(ctx, conf.TaskData(), c.ExecTimeoutSecs); err != nil {
+				logger.Execution().Warningf(ctx, "Failed to report unusually high exec timeout to app server: %s", err)
+			}
 		}
 	}
 	return nil
