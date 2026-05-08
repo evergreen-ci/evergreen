@@ -147,10 +147,22 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	// and if that tag is passed the reaper terminates the host. This reaping occurs to
 	// ensure that any hosts that we forget about or that fail to terminate do not stay alive
 	// forever.
-	expireOn := expireInDays(evergreen.HostExpireDays)
-	if intentHost.UserHost {
-		// If this is a spawn host, use a different expiration date.
-		expireOn = expireInDays(evergreen.SpawnHostExpireDays)
+	expireOn := expireInDays(evergreen.SpawnHostExpireDays)
+
+	// If this is a task host, use a different expiration date.
+	if !intentHost.UserHost {
+		expireDays := evergreen.HostExpireDays
+		// If we're within 3 hours of midnight, add an extra day to avoid a race with
+		// the external reaper. A host created at 11:59 PM gets expire-on = tomorrow
+		// which the reaper could act on before the hourly extension job can bump the tag.
+		now := time.Now()
+		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+		if midnight.Sub(now) <= 3*time.Hour {
+			expireDays++
+		}
+
+		expireOn = expireInDays(expireDays)
+
 	}
 
 	systemTags := []host.Tag{

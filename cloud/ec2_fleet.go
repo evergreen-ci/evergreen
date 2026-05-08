@@ -153,7 +153,13 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	return h, nil
 }
 
-func (m *ec2FleetManager) ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error {
+func (m *ec2FleetManager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
+	if opts.ExtendExpireOnByDay {
+		if err := m.setupClient(ctx); err != nil {
+			return errors.Wrap(err, "creating client")
+		}
+		return errors.Wrap(extendExpireOnByDay(ctx, m.client, h), "extending expire-on tag by one day")
+	}
 	return errors.New("can't modify instances for EC2 fleet provider")
 }
 

@@ -827,6 +827,43 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
+// POST /rest/v2/task/{task_id}/high_exec_timeout
+type reportHighExecTimeoutHandler struct {
+	taskID string
+	report apimodels.HighExecTimeoutReport
+}
+
+func makeReportHighExecTimeout() gimlet.RouteHandler {
+	return &reportHighExecTimeoutHandler{}
+}
+
+func (h *reportHighExecTimeoutHandler) Factory() gimlet.RouteHandler {
+	return &reportHighExecTimeoutHandler{}
+}
+
+func (h *reportHighExecTimeoutHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.report); err != nil {
+		return errors.Wrapf(err, "reading high exec timeout report for task '%s'", h.taskID)
+	}
+	return nil
+}
+
+func (h *reportHighExecTimeoutHandler) Run(ctx context.Context) gimlet.Responder {
+	t := MustHaveTask(ctx)
+	grip.Warning(ctx, message.Fields{
+		"message":                          "task dynamically set an unusually high exec timeout",
+		"task_id":                          t.Id,
+		"project":                          t.Project,
+		"display_name":                     t.DisplayName,
+		"exec_timeout_secs":                h.report.ExecTimeoutSecs,
+		"threshold_high_exec_timeout_secs": int(evergreen.HighExecTimeoutThreshold.Seconds()),
+	})
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
 // POST /rest/v2/task/{task_id}/set_results_info
 type setTaskResultsInfoHandler struct {
 	taskID string
