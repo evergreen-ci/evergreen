@@ -6,9 +6,13 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -145,4 +149,174 @@ func TestDeleteCursorAPIKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.True(t, result.Success)
+}
+
+func TestPromoteVarsToRepo(t *testing.T) {
+	const (
+		projectID    = "p_id"
+		repoID       = "r_id"
+		repoScopeID  = "r_id_scope"
+		repoEditRole = "edit_r_id"
+	)
+
+	// setupRepoEditRole creates a scope and role that grant
+	// PermissionProjectSettings/EDIT on the repo resource. It mirrors how
+	// setupPermissions wires admin_project for project resources, but no
+	// shared helper exposes that for repos.
+	setupRepoEditRole := func(t *testing.T) {
+		rm := evergreen.GetEnvironment().RoleManager()
+		require.NoError(t, rm.AddScope(t.Context(), gimlet.Scope{
+			ID:        repoScopeID,
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{repoID},
+		}))
+		require.NoError(t, rm.UpdateRole(t.Context(), gimlet.Role{
+			ID:    repoEditRole,
+			Scope: repoScopeID,
+			Permissions: map[string]int{
+				evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+			},
+		}))
+	}
+
+	setupFixtures := func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(
+			model.ProjectRefCollection,
+			model.RepoRefCollection,
+			model.ProjectVarsCollection,
+			fakeparameter.Collection,
+			event.EventCollection,
+		))
+		pRef := model.ProjectRef{
+			Id:         projectID,
+			Identifier: "p_identifier",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Branch:     "main",
+			Restricted: utility.FalsePtr(),
+			RepoRefId:  repoID,
+		}
+		require.NoError(t, pRef.Insert(t.Context()))
+
+		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+			Id:         repoID,
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Restricted: utility.FalsePtr(),
+		}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+
+		pVars := model.ProjectVars{
+			Id:   projectID,
+			Vars: map[string]string{"shared": "from-branch", "branch-only": "x"},
+		}
+		require.NoError(t, pVars.Insert(t.Context()))
+
+		rVars := model.ProjectVars{
+			Id:   repoID,
+			Vars: map[string]string{"shared": "from-repo"},
+		}
+		require.NoError(t, rVars.Insert(t.Context()))
+	}
+
+	t.Run("ProjectNotFound", func(t *testing.T) {
+		setupPermissions(t)
+		setupFixtures(t)
+		usr, err := setupUser(t)
+		require.NoError(t, err)
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		ok, err := resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: "does-not-exist",
+			VarNames:  []string{"shared"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+		assert.False(t, ok)
+	})
+
+	t.Run("ProjectNotAttachedToRepo", func(t *testing.T) {
+		setupPermissions(t)
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+		unattached := model.ProjectRef{
+			Id:         "unattached",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Restricted: utility.FalsePtr(),
+		}
+		require.NoError(t, unattached.Insert(t.Context()))
+
+		usr, err := setupUser(t)
+		require.NoError(t, err)
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		ok, err := resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: "unattached",
+			VarNames:  []string{"shared"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not attached to a repo")
+		assert.False(t, ok)
+	})
+
+	t.Run("UserLacksRepoEditPermissionReturnsForbidden", func(t *testing.T) {
+		setupPermissions(t)
+		setupFixtures(t)
+		setupRepoEditRole(t)
+
+		usr, err := setupUser(t)
+		require.NoError(t, err)
+		// Branch admin only — explicitly not granted the repo edit role.
+		require.NoError(t, usr.AddRole(t.Context(), "admin_project"))
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		ok, err := resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: projectID,
+			VarNames:  []string{"shared"},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "does not have permission to edit settings for repo")
+		assert.False(t, ok)
+
+		// Repo vars must be untouched.
+		repoVars, err := model.FindOneProjectVars(t.Context(), repoID)
+		require.NoError(t, err)
+		assert.Equal(t, "from-repo", repoVars.Vars["shared"])
+
+		// Branch vars must also be untouched (no deletion).
+		projVars, err := model.FindOneProjectVars(t.Context(), projectID)
+		require.NoError(t, err)
+		assert.Equal(t, "from-branch", projVars.Vars["shared"])
+	})
+
+	t.Run("UserWithRepoEditPermissionSucceeds", func(t *testing.T) {
+		setupPermissions(t)
+		setupFixtures(t)
+		setupRepoEditRole(t)
+
+		usr, err := setupUser(t)
+		require.NoError(t, err)
+		require.NoError(t, usr.AddRole(t.Context(), repoEditRole))
+		ctx := gimlet.AttachUser(t.Context(), usr)
+
+		resolver := &mutationResolver{}
+		ok, err := resolver.PromoteVarsToRepo(ctx, PromoteVarsToRepoInput{
+			ProjectID: projectID,
+			VarNames:  []string{"shared"},
+		})
+		require.NoError(t, err)
+		assert.True(t, ok)
+
+		repoVars, err := model.FindOneProjectVars(t.Context(), repoID)
+		require.NoError(t, err)
+		assert.Equal(t, "from-branch", repoVars.Vars["shared"])
+
+		projVars, err := model.FindOneProjectVars(t.Context(), projectID)
+		require.NoError(t, err)
+		assert.NotContains(t, projVars.Vars, "shared")
+		assert.Equal(t, "x", projVars.Vars["branch-only"])
+	})
 }
