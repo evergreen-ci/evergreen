@@ -3,6 +3,7 @@ package parameterstore
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -224,6 +225,9 @@ func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]P
 				missingNames = append(missingNames, name)
 			}
 		}
+		// Sort the missing names so the error message returns them in a
+		// predictable order.
+		slices.Sort(missingNames)
 
 		if len(missingNames) > 0 {
 			return nil, errors.Errorf("parameter(s) not found: %s", missingNames)

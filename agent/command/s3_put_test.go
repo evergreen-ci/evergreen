@@ -24,23 +24,20 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestS3PutValidateParams(t *testing.T) {
-
 	Convey("With an s3 put command", t, func() {
-
 		var cmd *s3put
 
 		Convey("when validating command params", func() {
-
 			cmd = &s3put{}
 
 			Convey("a missing aws key should cause an error", func() {
-
 				params := map[string]any{
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -55,7 +52,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "AWS key cannot be blank")
 			})
 			Convey("a defined local file and inclusion filter should cause an error", func() {
-
 				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
@@ -72,7 +68,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "local file and local files include filter cannot both be specified")
 			})
 			Convey("a defined inclusion filter with optional upload should cause an error", func() {
-
 				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
@@ -103,7 +98,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing aws secret should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"local_file":   "local",
@@ -119,7 +113,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing local file should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -135,7 +128,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing remote file should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -151,7 +143,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing bucket should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -167,7 +158,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing s3 permission should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -183,7 +173,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an invalid s3 permission should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -200,7 +189,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an expansion s3 permission should pass", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -216,7 +204,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an expansion s3 visibility should pass", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -233,7 +220,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a missing content type should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -249,7 +235,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("an invalid visibility type should cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -267,7 +252,6 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("a valid set of params should not cause an error", func() {
-
 				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
@@ -304,7 +288,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.ParseParams(params), ShouldBeNil)
 			})
 		})
-
 	})
 }
 
@@ -325,7 +308,6 @@ func TestS3PutOptionsStorageClass(t *testing.T) {
 }
 
 func TestExpandS3PutParams(t *testing.T) {
-
 	Convey("With an s3 put command and a task config", t, func() {
 		abs, err := filepath.Abs("working_directory")
 		So(err, ShouldBeNil)
@@ -338,7 +320,6 @@ func TestExpandS3PutParams(t *testing.T) {
 
 		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
 			" contain expansions", func() {
-
 			cmd.AwsKey = "${aws_key}"
 			cmd.AwsSecret = "${aws_secret}"
 			cmd.RemoteFile = "${remote_file}"
@@ -402,9 +383,7 @@ func TestExpandS3PutParams(t *testing.T) {
 				So(cmd.expandParams(conf), ShouldNotBeNil)
 				So(cmd.skipMissing, ShouldBeFalse)
 			}
-
 		})
-
 	})
 }
 
@@ -415,8 +394,8 @@ func TestSignedUrlVisibility(t *testing.T) {
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
 	file2 := filepath.Join(tempDir, "file2")
-	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
-	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
 
 	for _, vis := range []string{"signed", "private"} {
 		s := s3put{
@@ -444,13 +423,13 @@ func TestSignedUrlVisibility(t *testing.T) {
 				LocalPath:     file1,
 				RemotePath:    remoteFile,
 				FileSizeBytes: file1Info.Size(),
-				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+				PutRequests:   1,
 			},
 			{
 				LocalPath:     file2,
 				RemotePath:    remoteFile,
 				FileSizeBytes: file2Info.Size(),
-				PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+				PutRequests:   1,
 			},
 		}
 
@@ -480,8 +459,8 @@ func TestContentTypeSaved(t *testing.T) {
 	tempDir := t.TempDir()
 	file1 := filepath.Join(tempDir, "file1")
 	file2 := filepath.Join(tempDir, "file2")
-	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
-	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
 
 	s := s3put{
 		AwsKey:        "key",
@@ -515,13 +494,13 @@ func TestContentTypeSaved(t *testing.T) {
 			LocalPath:     file1,
 			RemotePath:    remoteFile,
 			FileSizeBytes: file1Info.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file1Info.Size()),
+			PutRequests:   1,
 		},
 		{
 			LocalPath:     file2,
 			RemotePath:    remoteFile,
 			FileSizeBytes: file2Info.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, file2Info.Size()),
+			PutRequests:   1,
 		},
 	}
 
@@ -535,7 +514,6 @@ func TestContentTypeSaved(t *testing.T) {
 	for _, file := range files {
 		assert.Equal(t, file.ContentType, s.ContentType)
 	}
-
 }
 
 func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
@@ -549,7 +527,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 			f, err := os.Create(filepath.Join(dir, "foo"))
 			require.NoError(t, err)
 			require.NoError(t, f.Close())
-			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0o755))
 			f, err = os.Create(filepath.Join(dir, "subDir", "bar"))
 			require.NoError(t, err)
 			require.NoError(t, f.Close())
@@ -571,7 +549,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				Permissions:                   string(s3Types.BucketCannedACLPublicRead),
 				RemoteFile:                    "remote",
 			}
-			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0o755))
 			opts := pail.LocalOptions{
 				Path: filepath.Join(dir, "destination"),
 			}
@@ -617,7 +595,7 @@ func TestFileUploadNaming(t *testing.T) {
 	defer cancel()
 
 	dir := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0o755))
 	f, err := os.Create(filepath.Join(dir, "subDir", "bar"))
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -633,7 +611,7 @@ func TestFileUploadNaming(t *testing.T) {
 		LocalFilesIncludeFilterPrefix: "",
 		RemoteFile:                    "remote",
 	}
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0o755))
 	opts := pail.LocalOptions{
 		Path: filepath.Join(dir, "destination"),
 	}
@@ -677,9 +655,9 @@ func TestPreservePath(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create the directories
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0755))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets"), 0755))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite"), 0o755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets"), 0o755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "myWebsite", "assets", "images"), 0o755))
 
 	// Create the files in in the assets directory
 	f, err := os.Create(filepath.Join(dir, "foo"))
@@ -714,7 +692,7 @@ func TestPreservePath(t *testing.T) {
 		RemoteFile:              "remote",
 		PreservePath:            "true",
 	}
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0o755))
 	opts := pail.LocalOptions{
 		Path: filepath.Join(dir, "destination"),
 	}
@@ -753,6 +731,11 @@ func TestPreservePath(t *testing.T) {
 		require.True(t, exists, item)
 	}
 
+	require.NotNil(t, conf.S3Usage)
+	// Local bucket does not implement PutCounter so PUT count is always 0.
+	assert.Equal(t, 0, conf.S3Usage.Artifacts.PutRequests)
+	assert.Equal(t, 6, conf.S3Usage.Artifacts.Count)
+	assert.Equal(t, int64(0), conf.S3Usage.Artifacts.UploadBytes)
 }
 
 func TestS3PutSkipExisting(t *testing.T) {
@@ -768,8 +751,8 @@ func TestS3PutSkipExisting(t *testing.T) {
 	secondFilePath := filepath.Join(temproot, "second-file.txt")
 
 	payload := []byte("hello world")
-	require.NoError(t, os.WriteFile(firstFilePath, payload, 0755))
-	require.NoError(t, os.WriteFile(secondFilePath, []byte("second file"), 0755))
+	require.NoError(t, os.WriteFile(firstFilePath, payload, 0o755))
+	require.NoError(t, os.WriteFile(secondFilePath, []byte("second file"), 0o755))
 
 	accessKeyID := settings.Expansions["aws_key"]
 	secretAccessKey := settings.Expansions["aws_secret"]
@@ -868,43 +851,6 @@ func TestS3PutSkipExisting(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestComputePerFileExtremes(t *testing.T) {
-	t.Run("EmptyInput", func(t *testing.T) {
-		maxPuts, minPuts := computePerFileExtremes(nil)
-		assert.Zero(t, maxPuts)
-		assert.Zero(t, minPuts)
-	})
-	t.Run("SingleFile", func(t *testing.T) {
-		files := []s3usage.FileMetrics{
-			{PutRequests: 5},
-		}
-		maxPuts, minPuts := computePerFileExtremes(files)
-		assert.Equal(t, 5, maxPuts)
-		assert.Equal(t, 5, minPuts)
-	})
-	t.Run("MultipleFiles", func(t *testing.T) {
-		files := []s3usage.FileMetrics{
-			{PutRequests: 3},
-			{PutRequests: 10},
-			{PutRequests: 1},
-			{PutRequests: 7},
-		}
-		maxPuts, minPuts := computePerFileExtremes(files)
-		assert.Equal(t, 10, maxPuts)
-		assert.Equal(t, 1, minPuts)
-	})
-	t.Run("AllSameValue", func(t *testing.T) {
-		files := []s3usage.FileMetrics{
-			{PutRequests: 4},
-			{PutRequests: 4},
-			{PutRequests: 4},
-		}
-		maxPuts, minPuts := computePerFileExtremes(files)
-		assert.Equal(t, 4, maxPuts)
-		assert.Equal(t, 4, minPuts)
-	})
-}
-
 func TestReadAssociatedLinksFile(t *testing.T) {
 	t.Run("ValidJSONFile", func(t *testing.T) {
 		tempDir := t.TempDir()
@@ -916,7 +862,7 @@ func TestReadAssociatedLinksFile(t *testing.T) {
 		}
 		data, err := json.Marshal(links)
 		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(linksFile, data, 0644))
+		require.NoError(t, os.WriteFile(linksFile, data, 0o644))
 
 		conf := &internal.TaskConfig{
 			WorkDir:    tempDir,
@@ -950,7 +896,7 @@ func TestReadAssociatedLinksFile(t *testing.T) {
 		tempDir := t.TempDir()
 		linksFile := filepath.Join(tempDir, "invalid.json")
 
-		require.NoError(t, os.WriteFile(linksFile, []byte("not valid json"), 0644))
+		require.NoError(t, os.WriteFile(linksFile, []byte("not valid json"), 0o644))
 
 		conf := &internal.TaskConfig{
 			WorkDir:    tempDir,
@@ -971,7 +917,7 @@ func TestReadAssociatedLinksFile(t *testing.T) {
 		}
 		data, err := json.Marshal(links)
 		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(linksFile, data, 0644))
+		require.NoError(t, os.WriteFile(linksFile, data, 0o644))
 
 		conf := &internal.TaskConfig{
 			WorkDir: tempDir,
@@ -994,7 +940,7 @@ func TestS3PutWithAssociatedLinks(t *testing.T) {
 
 	tempDir := t.TempDir()
 	s3PutFile := filepath.Join(tempDir, "file1")
-	require.NoError(t, os.WriteFile(s3PutFile, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(s3PutFile, []byte("content1"), 0o644))
 
 	associatedLinks := []artifact.AssociatedLink{
 		{Name: "Documentation", Link: "https://example.com/docs"},
@@ -1031,7 +977,7 @@ func TestS3PutWithAssociatedLinks(t *testing.T) {
 			LocalPath:     s3PutFile,
 			RemotePath:    remoteFile,
 			FileSizeBytes: s3PutFileInfo.Size(),
-			PutRequests:   s3usage.CalculatePutRequestsWithContext(s3usage.S3BucketTypeLarge, s3usage.S3UploadMethodPut, s3PutFileInfo.Size()),
+			PutRequests:   1,
 		},
 	}
 
@@ -1046,4 +992,111 @@ func TestS3PutWithAssociatedLinks(t *testing.T) {
 	assert.Equal(t, "https://example.com/docs", files[0].AssociatedLinks[0].Link)
 	assert.Equal(t, "Coverage", files[0].AssociatedLinks[1].Name)
 	assert.Equal(t, "https://example.com/coverage", files[0].AssociatedLinks[1].Link)
+}
+
+// putCounterBucket is a minimal mock that implements pail.PutCounter so tests can
+// control the per-call PUT count and trigger retries without hitting real S3.
+type putCounterBucket struct {
+	pail.Bucket
+
+	// putsPerCall is the count returned by each UploadWithCount call.
+	putsPerCall int
+	// failUntilCall causes the first N calls to return an error.
+	failUntilCall int
+	calls         int
+}
+
+func (m *putCounterBucket) Check(_ context.Context) error { return nil }
+
+func (m *putCounterBucket) Upload(ctx context.Context, key, path string) error {
+	_, err := m.UploadWithCount(ctx, key, path)
+	return err
+}
+
+func (m *putCounterBucket) UploadWithCount(_ context.Context, _, _ string) (int, error) {
+	m.calls++
+	if m.calls <= m.failUntilCall {
+		return m.putsPerCall, errors.New("transient upload error")
+	}
+	return m.putsPerCall, nil
+}
+
+func TestPutWithRetryAccumulatesPutsFromBucket(t *testing.T) {
+	ctx := t.Context()
+	dir := t.TempDir()
+
+	localFile := filepath.Join(dir, "upload.txt")
+	require.NoError(t, os.WriteFile(localFile, []byte("data"), 0600))
+
+	mock := &putCounterBucket{putsPerCall: 3}
+	s := &s3put{
+		AwsKey:      "key",
+		AwsSecret:   "secret",
+		Bucket:      "bucket",
+		LocalFile:   localFile,
+		RemoteFile:  "remote/upload.txt",
+		ContentType: "application/octet-stream",
+		Permissions: string(s3Types.ObjectCannedACLPublicRead),
+		bucket:      mock,
+	}
+	s.workDir = dir
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
+		WorkDir:      dir,
+		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Execute(ctx, comm, logger, conf))
+	assert.Equal(t, 3, conf.S3Usage.Artifacts.PutRequests)
+	assert.Equal(t, 1, conf.S3Usage.Artifacts.Count)
+	assert.Equal(t, 3, conf.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
+	assert.Equal(t, 3, conf.S3Usage.Artifacts.ArtifactWithMinPutRequests)
+}
+
+func TestPutWithRetryAccumulatesPutsAcrossRetries(t *testing.T) {
+	ctx := t.Context()
+	dir := t.TempDir()
+
+	localFile := filepath.Join(dir, "upload.txt")
+	require.NoError(t, os.WriteFile(localFile, []byte("data"), 0600))
+
+	// Fails the first 2 attempts, succeeds on the 3rd. Each call returns 3 puts.
+	mock := &putCounterBucket{putsPerCall: 3, failUntilCall: 2}
+	s := &s3put{
+		AwsKey:      "key",
+		AwsSecret:   "secret",
+		Bucket:      "bucket",
+		LocalFile:   localFile,
+		RemoteFile:  "remote/upload.txt",
+		ContentType: "application/octet-stream",
+		Permissions: string(s3Types.ObjectCannedACLPublicRead),
+		bucket:      mock,
+	}
+	s.workDir = dir
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &internal.TaskConfig{
+		Expansions:   util.Expansions{},
+		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:      model.Project{},
+		WorkDir:      dir,
+		BuildVariant: model.BuildVariant{},
+		S3Usage:      &s3usage.S3Usage{},
+	}
+	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Execute(ctx, comm, logger, conf))
+	// 3 attempts × 3 puts each = 9 total; all attributed to the single file.
+	assert.Equal(t, 9, conf.S3Usage.Artifacts.PutRequests)
+	assert.Equal(t, 1, conf.S3Usage.Artifacts.Count)
+	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
+	assert.Equal(t, 9, conf.S3Usage.Artifacts.ArtifactWithMinPutRequests)
 }

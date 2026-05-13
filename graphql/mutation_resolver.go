@@ -46,7 +46,8 @@ func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, ex
 	if err != nil {
 		return false, err
 	}
-	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution)
+	username := mustHaveUser(ctx).Username()
+	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution, username)
 	if err != nil {
 		return false, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -404,7 +405,10 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
+			IncludeProjectIdentifier: true,
+			IncludeVersionCost:       true,
+		})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id, err.Error()))
 		}
@@ -643,8 +647,11 @@ func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVa
 
 // SaveProjectSettingsForSection is the resolver for the saveProjectSettingsForSection field.
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
-	projectId := utility.FromStringPtr(projectSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
+	projectId, err := getAuthorizedSettingsID(ctx, projectSettings, "projectId")
+	if err != nil {
+		return nil, err
+	}
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
@@ -654,9 +661,12 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 
 // SaveRepoSettingsForSection is the resolver for the saveRepoSettingsForSection field.
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
-	projectId := utility.FromStringPtr(repoSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
-	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
+	repoId, err := getAuthorizedSettingsID(ctx, repoSettings, "repoId")
+	if err != nil {
+		return nil, err
+	}
+	changes, err := data.SaveProjectSettingsForSection(ctx, repoId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1180,20 +1190,13 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 // QuarantineTest is the resolver for the quarantineTest field.
-func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*QuarantineTestPayload, error) {
-	t, err := task.FindOneId(ctx, opts.TaskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", opts.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", opts.TaskID))
-	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, opts.TestName, true); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("quarantining test '%s' on task '%s' on build variant '%s' on project '%s' : %s", opts.TestName, opts.TaskID, t.BuildVariant, t.Project, err.Error()))
-	}
-	return &QuarantineTestPayload{
-		Success: true,
-	}, nil
+func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*restModel.APITest, error) {
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, true)
+}
+
+// UnquarantineTest is the resolver for the unquarantineTest field.
+func (r *mutationResolver) UnquarantineTest(ctx context.Context, opts UnquarantineTestInput) (*restModel.APITest, error) {
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, false)
 }
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.

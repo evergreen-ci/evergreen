@@ -32,7 +32,7 @@ func notificationSlack() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  joinFlagNames(targetFlagName, "t"),
-				Usage: "target of the message",
+				Usage: "target of the message (must be yourself or have special permissions)",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(msgFlagName, "m"),

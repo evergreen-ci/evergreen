@@ -49,6 +49,10 @@ make lint-<package>  # Lint a specific package.
 make lint-evergreen  # Lint the top-level evergreen package (special case).
 ```
 
+After making changes, run `make lint-<package>` for each affected package and verify there are no new errors beyond any pre-existing golangci-lint toolchain crashes.
+
+Adding a `ServiceFlags` field requires running `make test-service-graphql`.
+
 ### CI Self-Tests
 
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
@@ -96,12 +100,18 @@ The Evergreen codebase has automated tests defined in `self-tests.yml`, which it
 `makeAwsConfig` (should be `makeAWSConfig`)
 `UserId` (should be `UserID`)
 
+### Formatting
+* In Go, when a block of variable declarations or struct fields is vertically aligned (e.g., all the type keywords or `=` signs line up), new entries must maintain that alignment within the same block. A blank line or a comment header (e.g., `// Notification Flags`) starts a new block with its own independent alignment; do not align across block boundaries.
+
 ### Code Readability and Comments
 * Write self-documenting code through clear naming and structure (such as helper functions for modularity).
 * Inline code comments should be full sentences and express complete thoughts. Use proper grammar, punctuation, and
   capitalization.
 * Inline code comments should be used intentionally. Do not write a comment if it just explains exactly what the code is
   doing. However, they can be used if they will explain the "why", such as context, intent, or non-obvious behavior.
+* Documentation comments should focus on high-level information relevant to usage, such as intent, expected
+  inputs/outputs, behavior. It is also valid to highlight hazardous gotchas to be careful about, if any. It should not
+  describe implementation details; those should be left to inline comments.
 
 **Good use of comments:**
 * Documentation for exported structs, functions, fields, and methods.

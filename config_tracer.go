@@ -13,6 +13,9 @@ type TracerConfig struct {
 	CollectorEndpoint         string `yaml:"collector_endpoint" bson:"collector_endpoint" json:"collector_endpoint"`
 	CollectorAPIKey           string `yaml:"collector_api_key" bson:"collector_api_key" json:"collector_api_key"`
 	CollectorInternalEndpoint string `yaml:"collector_internal_endpoint" bson:"collector_internal_endpoint" json:"collector_internal_endpoint"`
+	// TraceURLTemplate is a fmt.Sprintf template with one %s verb for the W3C trace
+	// ID (hex).
+	TraceURLTemplate string `yaml:"trace_url_template" bson:"trace_url_template" json:"trace_url_template"`
 }
 
 // SectionId returns the ID of this config section.
@@ -31,6 +34,7 @@ func (c *TracerConfig) Set(ctx context.Context) error {
 			tracerCollectorEndpointKey:         c.CollectorEndpoint,
 			tracerCollectorInternalEndpointKey: c.CollectorInternalEndpoint,
 			tracerCollectorAPIKeyKey:           c.CollectorAPIKey,
+			tracerTraceURLTemplateKey:          c.TraceURLTemplate,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

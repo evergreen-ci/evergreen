@@ -22,26 +22,6 @@
       }
     },
     {
-      "query_file": "commit_queue_section.graphql",
-      "result": {
-        "data": {
-          "saveProjectSettingsForSection": {
-            "projectRef": {
-              "commitQueue": {
-                "enabled": true
-              }
-            },
-            "vars": {
-              "vars": {
-                "hello": "",
-                "foo": "bar"
-              }
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "vars_section.graphql",
       "result": {
         "data": {
@@ -69,6 +49,21 @@
             "path": ["saveProjectSettingsForSection"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "mismatched_project_id.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "projectId 'sandbox_project_id' does not match projectRef.id 'spruce'",
+            "path": ["saveProjectSettingsForSection"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
             }
           }
         ]
@@ -141,18 +136,6 @@
               "githubMQTriggerAliases": ["test2"]
             },
             "aliases": [
-              {
-                "id": "5ffe393097b1d3759dd3c1aa",
-                "alias": "__commit_queue",
-                "description": "",
-                "variant": "ubuntu1604",
-                "variantTags": [],
-                "task": "unit_tests",
-                "taskTags": [],
-                "gitTag": "",
-                "remotePath": "",
-                "parameters": []
-              },
               {
                 "id": "64c80057d1d6f12b0d4c69d0",
                 "alias": "test",
@@ -272,6 +255,111 @@
                 "defaultEnabled": false
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "pull_requests_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "prTestingEnabled": true,
+              "manualPrTestingEnabled": true,
+              "oldestAllowedMergeBase": "meow"
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "git_tags_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "gitTagVersionsEnabled": true,
+              "gitTagAuthorizedUsers": [
+                "user1",
+                "user2"
+              ],
+              "gitTagAuthorizedTeams": [
+                "team1"
+              ]
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "merge_queue_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "commitQueue": {
+                "enabled": true
+              }
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "commit_checks_section.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "githubChecksEnabled": true
+            },
+            "vars": {
+              "vars": {
+                "goodbye": ""
+              }
+            },
+            "aliases": [
+              { "alias": "test" },
+              { "alias": "test2" },
+              { "alias": "__github" },
+              { "alias": "__git_tag" },
+              { "alias": "__commit_queue" },
+              { "alias": "__github_checks" }
+            ]
           }
         }
       }

@@ -96,6 +96,9 @@ type SharedCommunicator interface {
 	AttachFiles(context.Context, TaskData, []*artifact.File) error
 	// ReportS3Usage reports the task's S3 usage metrics to the server.
 	ReportS3Usage(context.Context, TaskData, s3usage.S3Usage) error
+	// ReportHighExecTimeout reports to the app server that this task
+	// dynamically set an unusually high exec timeout.
+	ReportHighExecTimeout(ctx context.Context, td TaskData, execTimeoutSecs int) error
 	GetManifest(context.Context, TaskData) (*manifest.Manifest, error)
 	KeyValInc(context.Context, TaskData, *model.KeyVal) error
 

@@ -104,6 +104,7 @@ type Task {
   hostId: String
   imageId: String!
   ingestTime: Time
+  isAutomaticRestart: Boolean!
   isPerfPluginEnabled: Boolean!
   latestExecution: Int!
   logs: TaskLogLinks!
@@ -290,6 +291,7 @@ type TestResult {
   execution: Int
   exitCode: Int
   groupID: String
+  isManuallyQuarantined: Boolean!
   logs: TestLog!
   startTime: Time
   status: String!
@@ -299,11 +301,12 @@ type TestResult {
 
 type TestLog {
   lineNum: Int
+  logsToMerge: [String!]
+  renderingType: String
+  testName: String
   url: String
   urlParsley: String
   urlRaw: String
-  renderingType: String
-  testName: String
   version: Int
 }
 
@@ -333,13 +336,18 @@ type TaskOwnerTeam {
 Cost represents the cost breakdown for a task or version.
 """
 type Cost {
-  onDemandEC2Cost: Float
+  """
+  Sum of adjusted cost components; excludes on-demand components.
+  """
+  total: Float
+  childPatchesTotalCost: Float
   adjustedEC2Cost: Float
-  adjustedEBSThroughputCost: Float
   adjustedEBSStorageCost: Float
-  s3ArtifactPutCost: Float
-  s3LogPutCost: Float
-  s3ArtifactStorageCost: Float
+  adjustedEBSThroughputCost: Float
+  adjustedS3ArtifactPutCost: Float
+  adjustedS3ArtifactStorageCost: Float
+  adjustedS3LogPutCost: Float
+  adjustedS3LogStorageCost: Float
 }
 
 input QuarantineTestInput {
@@ -347,6 +355,7 @@ input QuarantineTestInput {
   testName: String!
 }
 
-type QuarantineTestPayload {
-  success: Boolean!
+input UnquarantineTestInput {
+  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  testName: String!
 }

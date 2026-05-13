@@ -2049,6 +2049,13 @@ func TestModuleList(t *testing.T) {
 	assert.False(projModules.IsIdentical(manifest4))
 }
 
+func TestIsWikiRepo(t *testing.T) {
+	assert.True(t, IsWikiRepo("mongo.wiki"))
+	assert.True(t, IsWikiRepo("mongo.wiki.git"))
+	assert.False(t, IsWikiRepo("mongo"))
+	assert.False(t, IsWikiRepo("wiki"))
+}
+
 func TestInjectTaskGroupInfo(t *testing.T) {
 	tg := TaskGroup{
 		Name:     "group-one",
@@ -3118,5 +3125,34 @@ func BenchmarkFindProjectTask(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = project.FindProjectTask("task4999")
 		}
+	})
+}
+
+func TestVerifyCheckRunLimit(t *testing.T) {
+	const settingsLimit = 5
+
+	t.Run("WithAppAuthBelowLimitShouldNotError", func(t *testing.T) {
+		assert.NoError(t, VerifyCheckRunLimit(settingsLimit-1, settingsLimit, true))
+	})
+	t.Run("WithAppAuthAtLimitShouldNotError", func(t *testing.T) {
+		assert.NoError(t, VerifyCheckRunLimit(settingsLimit, settingsLimit, true))
+	})
+	t.Run("WithAppAuthAboveLimitShouldError", func(t *testing.T) {
+		assert.Error(t, VerifyCheckRunLimit(settingsLimit+1, settingsLimit, true))
+	})
+	t.Run("WithoutAppAuthBelowThresholdShouldNotError", func(t *testing.T) {
+		assert.NoError(t, VerifyCheckRunLimit(CheckRunGitHubAppAuthThreshold-1, settingsLimit, false))
+	})
+	t.Run("WithoutAppAuthAtThresholdShouldNotError", func(t *testing.T) {
+		assert.NoError(t, VerifyCheckRunLimit(CheckRunGitHubAppAuthThreshold, settingsLimit, false))
+	})
+	t.Run("WithoutAppAuthAboveThresholdShouldError", func(t *testing.T) {
+		assert.Error(t, VerifyCheckRunLimit(CheckRunGitHubAppAuthThreshold+1, settingsLimit, false))
+	})
+	t.Run("WithoutAppAuthIgnoresSettingsLimit", func(t *testing.T) {
+		assert.NoError(t, VerifyCheckRunLimit(settingsLimit+1, settingsLimit, false))
+	})
+	t.Run("WithAppAuthIgnoresThreshold", func(t *testing.T) {
+		assert.NoError(t, VerifyCheckRunLimit(CheckRunGitHubAppAuthThreshold+1, CheckRunGitHubAppAuthThreshold+2, true))
 	})
 }

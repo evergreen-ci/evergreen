@@ -1,19 +1,46 @@
 {
   "tests": [
     {
-      "query_file": "no_permissions.graphql",
-      "test_user_id": "regular_user",
+      "query_file": "nonexistent_task.graphql",
       "result": {
         "data": null,
         "errors": [
           {
-            "message": "user 'regular_user' does not have permission to 'edit tasks' for the project 'evergreen'",
+            "message": "finding project for task 'nonexistent_task': task not found",
             "path": ["quarantineTest", "opts", "taskId"],
             "extensions": {
-              "code": "FORBIDDEN"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]
+      }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot modify test quarantine state on display tasks, select an execution task instead",
+            "path": ["quarantineTest"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "quarantineTest": {
+            "id": "TestFoo",
+            "taskId": "quarantine_target",
+            "testFile": "TestFoo",
+            "isManuallyQuarantined": true
+          }
+        }
       }
     }
   ]

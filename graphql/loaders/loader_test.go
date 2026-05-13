@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func init() {
@@ -274,6 +275,62 @@ func TestGetVersion(t *testing.T) {
 	})
 }
 
+func TestPreloadVersions(t *testing.T) {
+	require.NoError(t, db.Clear(model.VersionCollection))
+
+	testVersions := []model.Version{
+		{Id: "preload1", Revision: "rev1", Author: "author1"},
+		{Id: "preload2", Revision: "rev2", Author: "author2"},
+		{Id: "preload3", Revision: "rev3", Author: "author3"},
+	}
+	for _, v := range testVersions {
+		require.NoError(t, v.Insert(t.Context()))
+	}
+
+	t.Run("EmptySliceIsNoOp", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadVersions(ctx, nil)
+			PreloadVersions(ctx, []string{})
+		})
+	})
+
+	t.Run("PrimesCacheSoLaterLoadsSkipDB", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		PreloadVersions(ctx, []string{"preload1", "preload2", "preload3"})
+
+		// Once preloaded the values should live in the dataloader's thunk cache.
+		// Drop the underlying collection to prove subsequent GetVersion calls
+		// don't hit MongoDB.
+		require.NoError(t, db.Clear(model.VersionCollection))
+
+		for _, id := range []string{"preload1", "preload2", "preload3"} {
+			result, err := GetVersion(ctx, id)
+			require.NoError(t, err)
+			require.NotNil(t, result, "expected cached version '%s'", id)
+			assert.Equal(t, id, result.Id)
+		}
+	})
+
+	t.Run("DuplicateIDsAreDeduped", func(t *testing.T) {
+		require.NoError(t, db.Clear(model.VersionCollection))
+		for _, v := range testVersions {
+			require.NoError(t, v.Insert(t.Context()))
+		}
+
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadVersions(ctx, []string{"preload1", "preload1", "preload2"})
+		})
+
+		result, err := GetVersion(ctx, "preload1")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "preload1", result.Id)
+	})
+}
+
 func TestMiddleware(t *testing.T) {
 	t.Run("InjectsLoadersIntoContext", func(t *testing.T) {
 		var capturedCtx context.Context
@@ -319,6 +376,24 @@ func TestIsBatchError(t *testing.T) {
 
 	t.Run("ReturnsFalseForNil", func(t *testing.T) {
 		assert.False(t, IsBatchError(nil))
+	})
+
+	// Resolvers wrap the dataloader error in a *gqlerror.Error before returning
+	// it to gqlgen. IsBatchError must reach through gqlerror's Unwrap so the
+	// GraphQL error presenter skips re-logging every field that shares a
+	// failed batch.
+	t.Run("ReturnsTrueThroughGqlerrorUnwrap", func(t *testing.T) {
+		batchErr := &batchError{err: assert.AnError}
+		gqlErr := &gqlerror.Error{
+			Message: "fetching version 'v1' for task 't1': some cause",
+			Err:     batchErr,
+		}
+		assert.True(t, IsBatchError(gqlErr))
+	})
+
+	t.Run("ReturnsFalseForGqlerrorWithoutCause", func(t *testing.T) {
+		gqlErr := &gqlerror.Error{Message: "fetching version 'v1': some cause"}
+		assert.False(t, IsBatchError(gqlErr))
 	})
 }
 

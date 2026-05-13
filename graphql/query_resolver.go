@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -441,19 +442,19 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching all task queues: %s", err.Error()))
 	}
 
-	distros := []*TaskQueueDistro{}
+	countsByDistro, err := host.CountHostsCanRunTasksByDistro(ctx, evergreen.GetEnvironment())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host counts by distro: %s", err.Error()))
+	}
 
-	for _, distro := range queues {
-		numHosts, err := host.CountHostsCanRunTasks(ctx, distro.Distro)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching associated hosts: %s", err.Error()))
-		}
-		tqd := TaskQueueDistro{
-			ID:        distro.Distro,
-			TaskCount: len(distro.Queue),
-			HostCount: numHosts,
-		}
-		distros = append(distros, &tqd)
+	distros := make([]*TaskQueueDistro, 0, len(queues))
+	for _, q := range queues {
+		hostCount := countsByDistro[q.Distro]
+		distros = append(distros, &TaskQueueDistro{
+			ID:        q.Distro,
+			TaskCount: q.DistroQueueInfo.Length,
+			HostCount: hostCount,
+		})
 	}
 
 	// sort distros by task count in descending order
@@ -1282,13 +1283,18 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 	}
 
 	apiTasks := []*restModel.APITask{}
+	versionIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, apiTask)
+		if t.Version != "" {
+			versionIDs = append(versionIDs, t.Version)
+		}
 	}
+	loaders.PreloadVersions(ctx, versionIDs)
 
 	latestTask, err := model.GetLatestMainlineTask(ctx, opts)
 	if err != nil {
@@ -1305,6 +1311,91 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		Pagination: &TaskHistoryPagination{
 			MostRecentTaskOrder: latestTask.RevisionOrderNumber,
 			OldestTaskOrder:     oldestTask.RevisionOrderNumber,
+		},
+	}, nil
+}
+
+// TaskHistoryByCreateTime is the resolver for the taskHistoryByCreateTime field.
+func (r *queryResolver) TaskHistoryByCreateTime(ctx context.Context, options TaskHistoryOpts) (*TaskHistoryByCreateTime, error) {
+	if options.CursorParams == nil {
+		return nil, InputValidationError.Send(ctx, "must specify cursor params")
+	}
+
+	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
+	}
+
+	taskID := options.CursorParams.CursorID
+	includeCursor := options.CursorParams.IncludeCursor
+
+	foundTask, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if foundTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	taskCreateTime := foundTask.CreateTime
+
+	opts := model.FindTaskHistoryByCreateTimeOptions{
+		TaskName:     options.TaskName,
+		BuildVariant: options.BuildVariant,
+		ProjectId:    projectId,
+		Limit:        options.Limit,
+	}
+
+	switch options.CursorParams.Direction {
+	case TaskHistoryDirectionBefore:
+		opts.UpperBound = utility.ToTimePtr(taskCreateTime)
+		opts.IncludeUpperBound = includeCursor
+	case TaskHistoryDirectionAfter:
+		opts.LowerBound = utility.ToTimePtr(taskCreateTime)
+		opts.IncludeLowerBound = includeCursor
+	default:
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid cursor direction: %s", options.CursorParams.Direction))
+	}
+
+	if options.Date != nil {
+		opts.UpperBound = options.Date
+		opts.IncludeUpperBound = true
+		opts.LowerBound = nil
+	}
+
+	tasks, err := model.FindTasksForHistoryByCreateTime(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting history for task '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	apiTasks := []*restModel.APITask{}
+	versionIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		apiTask := &restModel.APITask{}
+		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
+		}
+		apiTasks = append(apiTasks, apiTask)
+		if t.Version != "" {
+			versionIDs = append(versionIDs, t.Version)
+		}
+	}
+	loaders.PreloadVersions(ctx, versionIDs)
+
+	latestTask, err := model.GetLatestMainlineTaskByCreateTime(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching latest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	oldestTask, err := model.GetOldestMainlineTaskByCreateTime(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	return &TaskHistoryByCreateTime{
+		Tasks: apiTasks,
+		Pagination: &TaskHistoryByCreateTimePagination{
+			MostRecentTaskCreateTime: latestTask.CreateTime,
+			OldestTaskCreateTime:     oldestTask.CreateTime,
 		},
 	}, nil
 }

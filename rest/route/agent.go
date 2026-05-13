@@ -408,6 +408,13 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.Parameters[param.Key] = param.Value
 	}
 
+	var costCfg evergreen.CostConfig
+	if err := costCfg.Get(ctx); err != nil {
+		grip.Error(ctx, errors.Wrap(err, "loading cost config for expansions_and_vars"))
+	} else {
+		res.DevprodOwnedAWSAccountIDs = costCfg.S3Cost.Storage.DevprodOwnedAWSAccountIDs
+	}
+
 	return gimlet.NewJSONResponse(res)
 }
 
@@ -770,42 +777,90 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	if err := t.SaveS3Usage(ctx, lookup); err != nil {
+	logBucketName := ""
+	if t.TaskOutputInfo != nil {
+		logBucketName = t.TaskOutputInfo.TaskLogs.BucketConfig.Name
+	}
+
+	if err := t.SaveS3Usage(ctx, lookup, logBucketName); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
 	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		grip.Error(ctx, errors.Wrapf(err, "finding version '%s' to update aggregate task costs", t.Version))
-	} else if v != nil && evergreen.IsFinishedVersionStatus(v.Status) {
+	} else if v != nil {
+		// For task groups, this runs once for the group rather than once per task.
 		grip.Error(ctx, errors.Wrapf(v.UpdateAggregateTaskCosts(ctx), "updating aggregate task costs for version '%s' after S3 usage report", v.Id))
 	}
 
 	var avgFilePutCost, maxFilePutCost, minFilePutCost float64
 	if t.S3Usage.Artifacts.Count > 0 && t.S3Usage.Artifacts.PutRequests > 0 {
-		costPerPut := t.TaskCost.S3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
-		avgFilePutCost = t.TaskCost.S3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
+		costPerPut := t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
+		avgFilePutCost = t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
 		maxFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
 		minFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMinPutRequests)
 	}
 
 	s3Attrs := []attribute.KeyValue{
 		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
-		attribute.Int(evergreen.S3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
-		attribute.Int64(evergreen.S3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
-		attribute.Int(evergreen.S3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
-		attribute.Float64(evergreen.S3ArtifactPutCostOtelAttribute, t.TaskCost.S3ArtifactPutCost),
-		attribute.Float64(evergreen.S3ArtifactStorageCostOtelAttribute, t.TaskCost.S3ArtifactStorageCost),
-		attribute.Int(evergreen.S3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
-		attribute.Int64(evergreen.S3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
-		attribute.Float64(evergreen.S3LogPutCostOtelAttribute, t.TaskCost.S3LogPutCost),
-		attribute.Float64(evergreen.S3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
-		attribute.Float64(evergreen.S3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
-		attribute.Float64(evergreen.S3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
+		attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
+		attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
+		attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
+		attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactPutCost),
+		attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactPutCost),
+		attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactStorageCost),
+		attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactStorageCost),
+		attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
+		attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
+		attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, t.TaskCost.OnDemandS3LogPutCost),
+		attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, t.TaskCost.AdjustedS3LogPutCost),
+		attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, t.TaskCost.OnDemandS3LogStorageCost),
+		attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, t.TaskCost.AdjustedS3LogStorageCost),
+		attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+		attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
+		attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
 	}
 
 	span.SetAttributes(s3Attrs...)
 
+	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// POST /rest/v2/task/{task_id}/high_exec_timeout
+type reportHighExecTimeoutHandler struct {
+	taskID string
+	report apimodels.HighExecTimeoutReport
+}
+
+func makeReportHighExecTimeout() gimlet.RouteHandler {
+	return &reportHighExecTimeoutHandler{}
+}
+
+func (h *reportHighExecTimeoutHandler) Factory() gimlet.RouteHandler {
+	return &reportHighExecTimeoutHandler{}
+}
+
+func (h *reportHighExecTimeoutHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.report); err != nil {
+		return errors.Wrapf(err, "reading high exec timeout report for task '%s'", h.taskID)
+	}
+	return nil
+}
+
+func (h *reportHighExecTimeoutHandler) Run(ctx context.Context) gimlet.Responder {
+	t := MustHaveTask(ctx)
+	grip.Warning(ctx, message.Fields{
+		"message":                          "task dynamically set an unusually high exec timeout",
+		"task_id":                          t.Id,
+		"project":                          t.Project,
+		"display_name":                     t.DisplayName,
+		"exec_timeout_secs":                h.report.ExecTimeoutSecs,
+		"threshold_high_exec_timeout_secs": int(evergreen.HighExecTimeoutThreshold.Seconds()),
+	})
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -1557,6 +1612,12 @@ func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Respon
 	}
 	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, opts)
 	if err != nil {
+		if errors.Is(err, githubapp.ErrGitHubAppNotInstalled) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("no GitHub App installation for '%s/%s'", g.owner, g.repo),
+			})
+		}
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}
 	if token == "" {
@@ -1642,10 +1703,13 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Get the project's GitHub app auth for check run operations.
-	// If this fails or the project doesn't have a GitHub app configured,
-	// the check run functions will fall back to using the internal app.
-	ghAppAuth := model.GetGitHubAppAuthForProject(ctx, t.Project)
-
+	ghAppAuth, err := model.GetAndValidateCheckRunGitHubAppAuth(ctx, t)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+	}
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {
 		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput, ghAppAuth)
@@ -1935,10 +1999,14 @@ func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
+	usr := gimlet.GetUser(ctx)
+	isUserRequest := usr != nil
+
 	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, h.hostID, cloud.AssumeRoleOptions{
 		RoleARN:         h.body.RoleARN,
 		Policy:          h.body.Policy,
 		DurationSeconds: h.body.DurationSeconds,
+		UseDebug:        isUserRequest,
 	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))

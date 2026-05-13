@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -40,10 +41,16 @@ type APIPatch struct {
 	// Author of the patch
 	Author  *string `json:"author"`
 	Version *string `json:"version"`
+	// Aggregated actual cost of the patch's version (empty until the patch is finalized to a version with cost data).
+	Cost *cost.Cost `json:"cost,omitempty"`
+	// Aggregated predicted cost of the patch's version.
+	PredictedCost *cost.Cost `json:"predicted_cost,omitempty"`
 	// Status of patch (possible values are "created", "started", "success", or "failed")
 	Status *string `json:"status"`
 	// Time patch was created
 	CreateTime *time.Time `json:"create_time"`
+	// Time the patch document was first persisted in Evergreen
+	IngestTime *time.Time `json:"ingest_time,omitempty"`
 	// Time patch started to run
 	StartTime *time.Time `json:"start_time"`
 	// Time at patch completion
@@ -57,10 +64,12 @@ type APIPatch struct {
 	VariantsTasks []VariantTask `json:"variants_tasks"`
 	// Whether the patch has been finalized and activated
 	Activated bool `json:"activated"`
-	// Whether the patch was invalidated because an item ahead of it in the merge queue failed.
+	// InvalidatedByUpstream is whether the patch was invalidated because an item ahead of it in the merge queue failed.
+	// Repeated from GithubMergeData to preserve backwards compatibility.
 	InvalidatedByUpstream bool                 `json:"invalidated_by_upstream"`
 	Alias                 *string              `json:"alias,omitempty"`
 	GithubPatchData       APIGithubPatch       `json:"github_patch_data"`
+	GithubMergeData       APIGithubMergeGroup  `json:"github_merge_data"`
 	ModuleCodeChanges     []APIModulePatch     `json:"module_code_changes"`
 	Parameters            []APIParameter       `json:"parameters"`
 	ProjectStorageMethod  *string              `json:"project_storage_method,omitempty"`
@@ -70,6 +79,7 @@ type APIPatch struct {
 	MergedFrom            *string              `json:"merged_from"`
 
 	LocalModuleIncludes []APILocalModuleInclude `json:"local_module_includes,omitempty"`
+	S3Usage             *APIVersionS3Usage      `json:"s3_usage,omitempty"`
 }
 
 type DownstreamTasks struct {
@@ -157,6 +167,8 @@ func (p *APIParameter) BuildFromService(param *patch.Parameter) {
 type APIPatchArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeChildPatches      bool
+	// IncludeVersionCost loads Cost/PredictedCost from the version document (extra DB read).
+	IncludeVersionCost bool
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -167,6 +179,9 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 
 	projectIdentifier := p.Project
 	if args != nil {
+		if args.IncludeVersionCost {
+			apiPatch.populateCostFromVersion(ctx, p.Version)
+		}
 		if args.IncludeProjectIdentifier && p.Project != "" {
 			apiPatch.GetIdentifier(ctx)
 			if apiPatch.ProjectIdentifier != nil {
@@ -178,16 +193,12 @@ func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, a
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
-		err := apiPatch.buildChildPatches(ctx, p)
+		childPatchDocs, err := apiPatch.buildChildPatches(ctx, p)
 		if err != nil {
 			return err
 		}
-		if p.IsParent() && len(p.Triggers.ChildPatches) > 0 {
-			childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
-			if err != nil {
-				return errors.Wrap(err, "getting child patches for time calculations")
-			}
-			for _, childPatch := range childPatches {
+		if p.IsParent() && len(childPatchDocs) > 0 {
+			for _, childPatch := range childPatchDocs {
 				if !childPatch.StartTime.IsZero() && childPatch.StartTime.Before(utility.FromTimePtr(apiPatch.StartTime)) {
 					apiPatch.StartTime = ToTimePtr(childPatch.StartTime)
 				}
@@ -232,6 +243,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.Version = utility.ToStringPtr(p.Version)
 	apiPatch.Hidden = p.Hidden
 	apiPatch.CreateTime = ToTimePtr(p.CreateTime)
+	apiPatch.IngestTime = ToTimePtr(p.IngestTime)
 	apiPatch.StartTime = ToTimePtr(p.StartTime)
 	apiPatch.FinishTime = ToTimePtr(p.FinishTime)
 	apiPatch.MergedFrom = utility.ToStringPtr(p.MergedFrom)
@@ -307,16 +319,56 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 
 	apiPatch.GithubPatchData = APIGithubPatch{}
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
+	apiPatch.GithubMergeData = APIGithubMergeGroup{}
+	apiPatch.GithubMergeData.BuildFromService(p.GithubMergeData)
 	apiPatch.InvalidatedByUpstream = p.GithubMergeData.InvalidatedByUpstream
 }
 
-func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
+// populateCostFromVersion loads aggregated cost fields from the version document referenced by the patch.
+func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID string) {
+	if versionID == "" {
+		return
+	}
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		grip.ErrorWhen(ctx, !errors.Is(context.Canceled, err), message.WrapError(err, message.Fields{
+			"message":  "could not load version for patch cost",
+			"version":  versionID,
+			"patch_id": utility.FromStringPtr(apiPatch.Id),
+		}))
+		return
+	}
+	if v == nil {
+		return
+	}
+	if !v.Cost.IsZero() {
+		versionCost := v.Cost
+		versionCost.Total = versionCost.TotalAdjusted()
+		apiPatch.Cost = &versionCost
+	}
+	if !v.PredictedCost.IsZero() {
+		predictedCost := v.PredictedCost
+		predictedCost.Total = predictedCost.TotalAdjusted()
+		apiPatch.PredictedCost = &predictedCost
+	}
+	if !v.S3Usage.IsZero() {
+		apiPatch.S3Usage = &APIVersionS3Usage{
+			Artifacts: v.S3Usage.Artifacts,
+			Logs: APIVersionS3LogUsage{
+				PutRequests: v.S3Usage.Logs.PutRequests,
+				UploadBytes: v.S3Usage.Logs.UploadBytes,
+			},
+		}
+	}
+}
+
+func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, []patch.Patch, error) {
 	if len(p.Triggers.ChildPatches) <= 0 {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting child patches")
+		return nil, nil, nil, errors.Wrap(err, "getting child patches")
 	}
 	downstreamTasks := []DownstreamTasks{}
 	apiChildPatches := []APIPatch{}
@@ -340,25 +392,47 @@ func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks,
 			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
-		err = apiPatch.BuildFromService(ctx, childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(ctx, childPatch, &APIPatchArgs{
+			IncludeProjectIdentifier: true,
+			IncludeVersionCost:       true,
+		})
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "converting child patch to API model")
+			return nil, nil, nil, errors.Wrap(err, "converting child patch to API model")
 		}
 		downstreamTasks = append(downstreamTasks, dt)
 		apiChildPatches = append(apiChildPatches, apiPatch)
 	}
-	return downstreamTasks, apiChildPatches, nil
+	return downstreamTasks, apiChildPatches, childPatches, nil
 }
 
-func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) error {
-	downstreamTasks, childPatches, err := getChildPatchesData(ctx, p)
+func addChildPatchesCostToParent(apiPatch *APIPatch, childPatches []APIPatch) {
+	actualSum, predictedSum := cost.SumPerChildVersionAdjustedTotals(len(childPatches), func(i int) (actual, predicted *cost.Cost) {
+		return childPatches[i].Cost, childPatches[i].PredictedCost
+	})
+	merge := func(dest **cost.Cost, sum float64) {
+		if sum == 0 {
+			return
+		}
+		if *dest == nil {
+			*dest = &cost.Cost{}
+		}
+		(*dest).ChildPatchesTotalCost = sum
+		(*dest).Total = (*dest).TotalAdjusted()
+	}
+	merge(&apiPatch.Cost, actualSum)
+	merge(&apiPatch.PredictedCost, predictedSum)
+}
+
+func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) ([]patch.Patch, error) {
+	downstreamTasks, childPatches, childPatchDocs, err := getChildPatchesData(ctx, p)
 	if err != nil {
-		return errors.Wrap(err, "getting downstream tasks")
+		return nil, errors.Wrap(err, "getting downstream tasks")
 	}
 	apiPatch.DownstreamTasks = downstreamTasks
 	apiPatch.ChildPatches = childPatches
+	addChildPatchesCostToParent(apiPatch, childPatches)
 	if len(childPatches) == 0 {
-		return nil
+		return childPatchDocs, nil
 	}
 	// set the patch status to the collective status between the parent and child patches
 	// Also correlate each child patch ID with the alias that invoked it
@@ -378,7 +452,7 @@ func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) 
 	apiPatch.Status = utility.ToStringPtr(patch.GetCollectiveStatusFromPatchStatuses(allStatuses))
 	apiPatch.ChildPatchAliases = childPatchAliases
 
-	return nil
+	return childPatchDocs, nil
 }
 
 func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
@@ -488,7 +562,12 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	}
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
-	res.GithubMergeData.InvalidatedByUpstream = apiPatch.InvalidatedByUpstream
+	res.GithubMergeData = apiPatch.GithubMergeData.ToService()
+	// Preserve the top-level InvalidatedByUpstream for clients that set it without
+	// populating the full GithubMergeData struct.
+	if apiPatch.InvalidatedByUpstream {
+		res.GithubMergeData.InvalidatedByUpstream = true
+	}
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))
 	return res, catcher.Resolve()
 }
@@ -516,7 +595,7 @@ func (g *APIGithubPatch) BuildFromService(p thirdparty.GithubPatch) {
 	g.Author = utility.ToStringPtr(p.Author)
 }
 
-// ToService converts a service layer patch using the data from APIPatch
+// ToService converts an APIGithubPatch to a service-layer GithubPatch.
 func (g *APIGithubPatch) ToService() thirdparty.GithubPatch {
 	res := thirdparty.GithubPatch{}
 	res.PRNumber = g.PRNumber
@@ -527,5 +606,55 @@ func (g *APIGithubPatch) ToService() thirdparty.GithubPatch {
 	res.HeadBranch = utility.FromStringPtr(g.HeadBranch)
 	res.HeadHash = utility.FromStringPtr(g.HeadHash)
 	res.Author = utility.FromStringPtr(g.Author)
+	return res
+}
+
+// APIGithubMergeGroup is the REST API model for thirdparty.GithubMergeGroup.
+type APIGithubMergeGroup struct {
+	Org                   *string    `json:"org"`
+	Repo                  *string    `json:"repo"`
+	BaseBranch            *string    `json:"base_branch"`
+	HeadBranch            *string    `json:"head_branch"`
+	HeadSHA               *string    `json:"head_sha"`
+	BaseSHA               *string    `json:"base_sha"`
+	HeadCommit            *string    `json:"head_commit"`
+	HeadCommitDate        *time.Time `json:"head_commit_date"`
+	RemovedFromQueueAt    *time.Time `json:"removed_from_queue_at"`
+	RemovalReason         *string    `json:"removal_reason"`
+	GitRefNotFound        bool       `json:"git_ref_not_found"`
+	InvalidatedByUpstream bool       `json:"invalidated_by_upstream"`
+}
+
+// BuildFromService converts a service-layer GithubMergeGroup to an APIGithubMergeGroup.
+func (g *APIGithubMergeGroup) BuildFromService(mg thirdparty.GithubMergeGroup) {
+	g.Org = utility.ToStringPtr(mg.Org)
+	g.Repo = utility.ToStringPtr(mg.Repo)
+	g.BaseBranch = utility.ToStringPtr(mg.BaseBranch)
+	g.HeadBranch = utility.ToStringPtr(mg.HeadBranch)
+	g.HeadSHA = utility.ToStringPtr(mg.HeadSHA)
+	g.BaseSHA = utility.ToStringPtr(mg.BaseSHA)
+	g.HeadCommit = utility.ToStringPtr(mg.HeadCommit)
+	g.HeadCommitDate = ToTimePtr(mg.HeadCommitDate)
+	g.RemovedFromQueueAt = ToTimePtr(mg.RemovedFromQueueAt)
+	g.RemovalReason = utility.ToStringPtr(mg.RemovalReason)
+	g.GitRefNotFound = mg.GitRefNotFound
+	g.InvalidatedByUpstream = mg.InvalidatedByUpstream
+}
+
+// ToService converts an APIGithubMergeGroup to a service-layer GithubMergeGroup.
+func (g *APIGithubMergeGroup) ToService() thirdparty.GithubMergeGroup {
+	res := thirdparty.GithubMergeGroup{}
+	res.Org = utility.FromStringPtr(g.Org)
+	res.Repo = utility.FromStringPtr(g.Repo)
+	res.BaseBranch = utility.FromStringPtr(g.BaseBranch)
+	res.HeadBranch = utility.FromStringPtr(g.HeadBranch)
+	res.HeadSHA = utility.FromStringPtr(g.HeadSHA)
+	res.BaseSHA = utility.FromStringPtr(g.BaseSHA)
+	res.HeadCommit = utility.FromStringPtr(g.HeadCommit)
+	res.HeadCommitDate = utility.FromTimePtr(g.HeadCommitDate)
+	res.RemovedFromQueueAt = utility.FromTimePtr(g.RemovedFromQueueAt)
+	res.RemovalReason = utility.FromStringPtr(g.RemovalReason)
+	res.GitRefNotFound = g.GitRefNotFound
+	res.InvalidatedByUpstream = g.InvalidatedByUpstream
 	return res
 }

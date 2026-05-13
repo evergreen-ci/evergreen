@@ -25,8 +25,8 @@ const (
 // MoveLogsTriggerTaskEnd is used when the app server enqueues after a failed task ends (agent path).
 const MoveLogsTriggerTaskEnd = "task_end"
 
-// MoveLogsTriggerWeeklyRetry is used by PopulateRetryFailedLogMoveJobs (weekly cron).
-const MoveLogsTriggerWeeklyRetry = "weekly_retry_failed_log_move"
+// MoveLogsTriggerHourlyRetry is used by PopulateRetryFailedLogMoveJobs (hourly remote cron).
+const MoveLogsTriggerHourlyRetry = "hourly_retry_failed_log_move"
 
 func init() {
 	registry.AddJobType(moveLogsToFailedBucketJobName, func() amboy.Job {

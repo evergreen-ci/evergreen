@@ -729,8 +729,11 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		// Insert tasks using BSON directly to avoid import cycle
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t1", "version": "v1", "display_only": false,
-			"cost":           bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "s3_artifact_put_cost": 0.05, "s3_log_put_cost": 0.02},
-			"predicted_cost": bson.M{"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4},
+			"cost": bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05, "on_demand_s3_log_put_cost": 0.02},
+			"predicted_cost": bson.M{
+				"on_demand_ec2_cost": 3.0, "adjusted_ec2_cost": 2.4,
+				"adjusted_s3_artifact_put_cost": 0.10, "adjusted_s3_log_put_cost": 0.04,
+			},
 			"s3_usage": bson.M{
 				"artifacts": bson.M{"put_requests": 100, "upload_bytes": int64(5000), "count": 10},
 				"logs":      bson.M{"put_requests": 20, "upload_bytes": int64(1000)},
@@ -738,8 +741,11 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		}))
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t2", "version": "v1", "display_only": false,
-			"cost":           bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "s3_artifact_put_cost": 0.03, "s3_log_put_cost": 0.01},
-			"predicted_cost": bson.M{"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6},
+			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03, "on_demand_s3_log_put_cost": 0.01},
+			"predicted_cost": bson.M{
+				"on_demand_ec2_cost": 2.0, "adjusted_ec2_cost": 1.6,
+				"adjusted_s3_artifact_put_cost": 0.20, "adjusted_s3_log_put_cost": 0.02,
+			},
 			"s3_usage": bson.M{
 				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
 				"logs":      bson.M{"put_requests": 10, "upload_bytes": int64(500)},
@@ -750,10 +756,12 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
-		assert.InDelta(t, 0.08, v.Cost.S3ArtifactPutCost, 0.001)
-		assert.InDelta(t, 0.03, v.Cost.S3LogPutCost, 0.001)
+		assert.InDelta(t, 0.08, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.03, v.Cost.OnDemandS3LogPutCost, 0.001)
 		assert.InDelta(t, 5.0, v.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, v.PredictedCost.AdjustedEC2Cost, 0.01)
+		assert.InDelta(t, 0.30, v.PredictedCost.AdjustedS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.06, v.PredictedCost.AdjustedS3LogPutCost, 0.001)
 		assert.Equal(t, 150, v.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(8000), v.S3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 15, v.S3Usage.Artifacts.Count)
@@ -768,12 +776,12 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t1", "version": "v2", "display_only": false,
-			"cost":     bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "s3_artifact_put_cost": 0.05},
+			"cost":     bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_artifact_put_cost": 0.05},
 			"s3_usage": bson.M{"artifacts": bson.M{"put_requests": 100}},
 		}))
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "display", "version": "v2", "display_only": true,
-			"cost":     bson.M{"on_demand_ec2_cost": 100.0, "adjusted_ec2_cost": 80.0, "s3_artifact_put_cost": 9.99},
+			"cost":     bson.M{"on_demand_ec2_cost": 100.0, "adjusted_ec2_cost": 80.0, "on_demand_s3_artifact_put_cost": 9.99},
 			"s3_usage": bson.M{"artifacts": bson.M{"put_requests": 99999}},
 		}))
 
@@ -781,7 +789,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		require.NoError(t, err)
 		assert.InDelta(t, 10.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 8.0, v.Cost.AdjustedEC2Cost, 0.01)
-		assert.InDelta(t, 0.05, v.Cost.S3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.05, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
 		assert.Equal(t, 100, v.S3Usage.Artifacts.PutRequests)
 	})
 
@@ -792,12 +800,12 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t1", "version": "v3", "display_only": false,
-			"cost":     bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "s3_log_put_cost": 0.01},
+			"cost":     bson.M{"on_demand_ec2_cost": 10.0, "adjusted_ec2_cost": 8.0, "on_demand_s3_log_put_cost": 0.01},
 			"s3_usage": bson.M{"logs": bson.M{"put_requests": 30, "upload_bytes": int64(2000)}},
 		}))
 		require.NoError(t, db.Insert(ctx, oldTaskCollection, bson.M{
 			"_id": "t1_old", "version": "v3", "display_only": false,
-			"cost":     bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "s3_log_put_cost": 0.005},
+			"cost":     bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_log_put_cost": 0.005},
 			"s3_usage": bson.M{"logs": bson.M{"put_requests": 10, "upload_bytes": int64(500)}},
 		}))
 
@@ -805,7 +813,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
-		assert.InDelta(t, 0.015, v.Cost.S3LogPutCost, 0.001)
+		assert.InDelta(t, 0.015, v.Cost.OnDemandS3LogPutCost, 0.001)
 		assert.Equal(t, 40, v.S3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(2500), v.S3Usage.Logs.UploadBytes)
 	})
@@ -821,7 +829,7 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		}))
 		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
 			"_id": "t2", "version": "v4", "display_only": false,
-			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "s3_artifact_put_cost": 0.03},
+			"cost": bson.M{"on_demand_ec2_cost": 5.0, "adjusted_ec2_cost": 4.0, "on_demand_s3_artifact_put_cost": 0.03},
 			"s3_usage": bson.M{
 				"artifacts": bson.M{"put_requests": 50, "upload_bytes": int64(3000), "count": 5},
 			},
@@ -830,11 +838,105 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		err := v.UpdateAggregateTaskCosts(ctx)
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
-		assert.InDelta(t, 0.03, v.Cost.S3ArtifactPutCost, 0.001)
-		assert.Equal(t, float64(0), v.Cost.S3LogPutCost)
+		assert.InDelta(t, 0.03, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		assert.Equal(t, float64(0), v.Cost.OnDemandS3LogPutCost)
 		assert.Equal(t, 50, v.S3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(3000), v.S3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, 5, v.S3Usage.Artifacts.Count)
 		assert.Equal(t, 0, v.S3Usage.Logs.PutRequests)
 	})
+
+	t.Run("AggregatesEBSCosts", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
+		v := &Version{Id: "v5"}
+		require.NoError(t, v.Insert(ctx))
+
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t1", "version": "v5", "display_only": false,
+			"cost": bson.M{
+				"on_demand_ec2_cost":            1.0,
+				"on_demand_ebs_throughput_cost": 0.10,
+				"adjusted_ebs_throughput_cost":  0.08,
+				"on_demand_ebs_storage_cost":    0.20,
+				"adjusted_ebs_storage_cost":     0.16,
+			},
+		}))
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t2", "version": "v5", "display_only": false,
+			"cost": bson.M{
+				"on_demand_ec2_cost":            1.0,
+				"on_demand_ebs_throughput_cost": 0.05,
+				"adjusted_ebs_throughput_cost":  0.04,
+				"on_demand_ebs_storage_cost":    0.10,
+				"adjusted_ebs_storage_cost":     0.08,
+			},
+		}))
+
+		err := v.UpdateAggregateTaskCosts(ctx)
+		require.NoError(t, err)
+		assert.InDelta(t, 0.15, v.Cost.OnDemandEBSThroughputCost, 0.001)
+		assert.InDelta(t, 0.12, v.Cost.AdjustedEBSThroughputCost, 0.001)
+		assert.InDelta(t, 0.30, v.Cost.OnDemandEBSStorageCost, 0.001)
+		assert.InDelta(t, 0.24, v.Cost.AdjustedEBSStorageCost, 0.001)
+	})
+
+	t.Run("AggregatesS3Costs", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
+		v := &Version{Id: "v6"}
+		require.NoError(t, v.Insert(ctx))
+
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t1", "version": "v6", "display_only": false,
+			"cost": bson.M{
+				"on_demand_ec2_cost":                 1.0,
+				"on_demand_s3_artifact_put_cost":     0.10,
+				"adjusted_s3_artifact_put_cost":      0.07,
+				"on_demand_s3_log_put_cost":          0.04,
+				"adjusted_s3_log_put_cost":           0.028,
+				"on_demand_s3_artifact_storage_cost": 0.50,
+				"adjusted_s3_artifact_storage_cost":  0.35,
+				"on_demand_s3_log_storage_cost":      0.20,
+				"adjusted_s3_log_storage_cost":       0.14,
+			},
+		}))
+		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
+			"_id": "t2", "version": "v6", "display_only": false,
+			"cost": bson.M{
+				"on_demand_ec2_cost":                 1.0,
+				"on_demand_s3_artifact_put_cost":     0.05,
+				"adjusted_s3_artifact_put_cost":      0.035,
+				"on_demand_s3_log_put_cost":          0.02,
+				"adjusted_s3_log_put_cost":           0.014,
+				"on_demand_s3_artifact_storage_cost": 0.25,
+				"adjusted_s3_artifact_storage_cost":  0.175,
+				"on_demand_s3_log_storage_cost":      0.10,
+				"adjusted_s3_log_storage_cost":       0.07,
+			},
+		}))
+
+		err := v.UpdateAggregateTaskCosts(ctx)
+		require.NoError(t, err)
+		assert.InDelta(t, 0.15, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.105, v.Cost.AdjustedS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.06, v.Cost.OnDemandS3LogPutCost, 0.001)
+		assert.InDelta(t, 0.042, v.Cost.AdjustedS3LogPutCost, 0.001)
+		assert.InDelta(t, 0.75, v.Cost.OnDemandS3ArtifactStorageCost, 0.001)
+		assert.InDelta(t, 0.525, v.Cost.AdjustedS3ArtifactStorageCost, 0.001)
+		assert.InDelta(t, 0.30, v.Cost.OnDemandS3LogStorageCost, 0.001)
+		assert.InDelta(t, 0.21, v.Cost.AdjustedS3LogStorageCost, 0.001)
+	})
+}
+
+func TestGetManifestModuleWiki(t *testing.T) {
+	ctx := t.Context()
+	pRef := &ProjectRef{Owner: "foo", Repo: "bar"}
+	mod := Module{Name: "w", Owner: "myorg", Repo: "service.wiki", Branch: "master"}
+	m, err := getManifestModule(ctx, pRef, mod, evergreen.RepotrackerVersionRequester, "abc123")
+	require.NoError(t, err)
+	require.NotNil(t, m)
+	assert.Equal(t, "myorg", m.Owner)
+	assert.Equal(t, "service.wiki", m.Repo)
+	assert.Empty(t, m.Revision)
+	assert.Equal(t, "master", m.Branch)
+	assert.Empty(t, m.URL)
 }

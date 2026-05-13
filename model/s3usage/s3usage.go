@@ -9,10 +9,31 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+// S3 log types for storage cost tracking.
+const (
+	LogTypeTask   = "task_log"
+	LogTypeAgent  = "agent_log"
+	LogTypeSystem = "system_log"
+)
+
+// LogTypeMetrics holds the S3 key and byte count for a single log type.
+type LogTypeMetrics struct {
+	LogKey string `bson:"log_key,omitempty" json:"log_key,omitempty"`
+	Bytes  int64  `bson:"bytes,omitempty" json:"bytes,omitempty"`
+}
+
+// LogMetrics tracks log upload metrics broken down by log type.
+type LogMetrics struct {
+	S3UploadMetrics `bson:",inline"`
+	Task            LogTypeMetrics `bson:"task_log,omitempty" json:"task_log,omitempty"`
+	Agent           LogTypeMetrics `bson:"agent_log,omitempty" json:"agent_log,omitempty"`
+	System          LogTypeMetrics `bson:"system_log,omitempty" json:"system_log,omitempty"`
+}
+
 // S3Usage tracks S3 API usage for cost calculation.
 type S3Usage struct {
 	Artifacts ArtifactMetrics `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
-	Logs      S3UploadMetrics `bson:"logs,omitempty" json:"logs,omitempty"`
+	Logs      LogMetrics      `bson:"logs,omitempty" json:"logs,omitempty"`
 }
 
 // S3UploadMetrics tracks common S3 upload metrics shared across upload types.
@@ -23,8 +44,10 @@ type S3UploadMetrics struct {
 
 // BucketFileMetrics groups per-file byte metrics for a single S3 bucket.
 type BucketFileMetrics struct {
-	Bucket string      `bson:"bucket" json:"bucket"`
-	Files  []FileBytes `bson:"files" json:"files"`
+	Bucket string `bson:"bucket" json:"bucket"`
+	// AWSRoleARN is the IAM role ARN used for artifact uploads (when assume-role is configured).
+	AWSRoleARN string      `bson:"aws_role_arn,omitempty" json:"aws_role_arn,omitempty"`
+	Files      []FileBytes `bson:"files" json:"files"`
 }
 
 // FileBytes tracks bytes uploaded for a single S3 file key.
@@ -54,8 +77,10 @@ type FileMetrics struct {
 	PutRequests   int
 }
 
-type S3BucketType string
-type S3UploadMethod string
+type (
+	S3BucketType   string
+	S3UploadMethod string
+)
 
 const (
 	S3PutRequestCost = 0.000005
@@ -80,94 +105,57 @@ const (
 	S3DaysPerMonth            = 30.0
 )
 
-// CalculateUploadMetrics populates file size and PUT requests for each uploaded file.
-// Returns the populated metrics plus aggregate totals.
-// If any file stat fails, logs a warning and uses zero values for that file.
-func CalculateUploadMetrics(
-	logger grip.Journaler,
-	files []FileMetrics,
-	bucketType S3BucketType,
-	method S3UploadMethod,
-) (populatedFiles []FileMetrics, totalSize int64, totalPuts int) {
-	populatedFiles = make([]FileMetrics, len(files))
-
-	for i, file := range files {
-		fileInfo, err := os.Stat(file.LocalPath)
-		if err != nil {
-			logger.Warningf(context.Background(), "Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
-			populatedFiles[i] = FileMetrics{
-				LocalPath:     file.LocalPath,
-				RemotePath:    file.RemotePath,
-				FileSizeBytes: 0,
-				PutRequests:   0,
-			}
-			continue
-		}
-
-		fileSize := fileInfo.Size()
-		putRequests := CalculatePutRequestsWithContext(bucketType, method, fileSize)
-
-		populatedFiles[i] = FileMetrics{
-			LocalPath:     file.LocalPath,
-			RemotePath:    file.RemotePath,
-			FileSizeBytes: fileSize,
-			PutRequests:   putRequests,
-		}
-
-		totalSize += fileSize
-		totalPuts += putRequests
+// BuildFileMetrics constructs a FileMetrics entry for a successfully uploaded file,
+// statting the file for size. If the stat fails, logs a warning and uses zero size.
+func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, puts int) (FileMetrics, int64) {
+	fileInfo, err := os.Stat(localPath)
+	var fileSize int64
+	if err != nil {
+		logger.Debugf(context.Background(), "Unable to calculate file size for '%s' after successful upload: %s. Using zero values for metadata.", localPath, err)
+	} else {
+		fileSize = fileInfo.Size()
 	}
-
-	return populatedFiles, totalSize, totalPuts
+	return FileMetrics{
+		LocalPath:     localPath,
+		RemotePath:    remotePath,
+		FileSizeBytes: fileSize,
+		PutRequests:   puts,
+	}, fileSize
 }
 
-// CalculatePutRequestsWithContext returns the number of S3 PUT API calls
-// needed to upload a file based on bucket type, upload method, and file size.
-func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMethod, fileSize int64) int {
-	if fileSize <= 0 {
-		return 0
+// ComputePerFileExtremes returns the max and min PutRequests across all uploaded files.
+func ComputePerFileExtremes(files []FileMetrics) (maxPuts, minPuts int) {
+	if len(files) == 0 {
+		return 0, 0
 	}
-
-	switch method {
-	case S3UploadMethodCopy:
-		return 1
-
-	case S3UploadMethodWriter:
-		if bucketType == S3BucketTypeSmall {
-			return 1
+	maxPuts = files[0].PutRequests
+	minPuts = files[0].PutRequests
+	for i := 1; i < len(files); i++ {
+		if files[i].PutRequests > maxPuts {
+			maxPuts = files[i].PutRequests
 		}
-		// Large bucket Writer uses multipart for all sizes, <= 5MB is simple multipart (3 PUTs)
-		if fileSize <= S3PartSize {
-			return 3
+		if files[i].PutRequests < minPuts {
+			minPuts = files[i].PutRequests
 		}
-		numParts := int((fileSize + S3PartSize - 1) / S3PartSize)
-		return 1 + numParts + 1
-
-	case S3UploadMethodPut:
-		// AWS SDK uses single PUT for < 5MB, multipart for >= 5MB
-		if fileSize < S3PartSize {
-			return 1
-		}
-		numParts := int((fileSize + S3PartSize - 1) / S3PartSize)
-		return 1 + numParts + 1
-
-	default:
-		return 0
 	}
+	return maxPuts, minPuts
 }
 
-// CalculateS3PutCostWithConfig calculates the S3 PUT request cost.
-// Returns 0 if cost cannot be calculated due to missing or invalid config.
-func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) float64 {
+// CalculateS3PutCostWithConfig calculates the S3 PUT request cost, returning both the standard
+// (non-discounted) and adjusted (discounted) values. If config is nil or the discount is invalid,
+// adjusted is returned as 0.
+func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostConfig) (standard, adjusted float64) {
 	if putRequests <= 0 {
-		return 0.0
+		return 0.0, 0.0
 	}
+
+	standard = float64(putRequests) * S3PutRequestCost
 
 	if costConfig == nil {
 		grip.Warning(context.Background(), message.Fields{
 			"message": "cost config is not available to calculate S3 PUT cost",
 		})
-		return 0.0
+		return standard, 0.0
 	}
 
 	discount := costConfig.S3Cost.Upload.UploadCostDiscount
@@ -176,33 +164,22 @@ func CalculateS3PutCostWithConfig(putRequests int, costConfig *evergreen.CostCon
 			"message":  "invalid S3 upload cost discount",
 			"discount": discount,
 		})
-		return 0.0
+		return standard, 0.0
 	}
 
-	return float64(putRequests) * S3PutRequestCost * (1 - discount)
+	adjusted = standard * (1 - discount)
+	return standard, adjusted
 }
 
 // CalculateS3StorageCostWithConfig calculates the S3 storage cost for uploadBytes over their retention period
 // using the bucket's Intelligent Tiering schedule. expirationDays must be positive; buckets without a
 // lifecycle expiration policy have no defined retention period and cannot have their cost calculated, so
-// this function returns 0 for them. Returns 0 if config is nil.
-func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, expirationDays int, costConfig *evergreen.CostConfig) float64 {
-	if uploadBytes <= 0 {
-		return 0.0
+// this function returns 0 for them. Returns both the standard (non-discounted) and adjusted (discounted)
+// values. If config is nil, standard is still computed but adjusted is returned as 0.
+func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, expirationDays int, costConfig *evergreen.CostConfig) (standard, adjusted float64) {
+	if uploadBytes <= 0 || expirationDays <= 0 {
+		return 0.0, 0.0
 	}
-	if expirationDays <= 0 {
-		return 0.0
-	}
-	if costConfig == nil {
-		grip.Warning(ctx, message.Fields{
-			"message": "cost config is not available to calculate S3 storage cost",
-		})
-		return 0.0
-	}
-
-	standardDiscount := costConfig.S3Cost.Storage.StandardStorageCostDiscount
-	iaDiscount := costConfig.S3Cost.Storage.IAStorageCostDiscount
-	archiveDiscount := costConfig.S3Cost.Storage.ArchiveStorageCostDiscount
 
 	// Each variable represents how many days the object spends in that Intelligent Tiering tier:
 	// Standard (days 0–30), Infrequent Access (days 30–90), Archive (days 90+).
@@ -214,11 +191,30 @@ func CalculateS3StorageCostWithConfig(ctx context.Context, uploadBytes int64, ex
 		return pricePerGBMonth / S3BytesPerGB / S3DaysPerMonth
 	}
 
-	standardCost := float64(daysInStandard) * pricePerBytePerDay(S3StandardPricePerGBMonth) * (1 - standardDiscount)
-	iaCost := float64(daysInIA) * pricePerBytePerDay(S3IAPricePerGBMonth) * (1 - iaDiscount)
-	archiveCost := float64(daysInArchive) * pricePerBytePerDay(S3ArchivePricePerGBMonth) * (1 - archiveDiscount)
+	standardTierCost := float64(daysInStandard) * pricePerBytePerDay(S3StandardPricePerGBMonth)
+	iaTierCost := float64(daysInIA) * pricePerBytePerDay(S3IAPricePerGBMonth)
+	archiveTierCost := float64(daysInArchive) * pricePerBytePerDay(S3ArchivePricePerGBMonth)
+	standardCostPerByte := standardTierCost + iaTierCost + archiveTierCost
+	standard = float64(uploadBytes) * standardCostPerByte
 
-	return float64(uploadBytes) * (standardCost + iaCost + archiveCost)
+	if costConfig == nil {
+		grip.Warning(ctx, message.Fields{
+			"message": "cost config is not available to calculate S3 storage cost",
+		})
+		return standard, 0.0
+	}
+
+	standardDiscount := costConfig.S3Cost.Storage.StandardStorageCostDiscount
+	iaDiscount := costConfig.S3Cost.Storage.IAStorageCostDiscount
+	archiveDiscount := costConfig.S3Cost.Storage.ArchiveStorageCostDiscount
+
+	adjustedStandardTierCost := standardTierCost * (1 - standardDiscount)
+	adjustedIATierCost := iaTierCost * (1 - iaDiscount)
+	adjustedArchiveTierCost := archiveTierCost * (1 - archiveDiscount)
+	adjustedCostPerByte := adjustedStandardTierCost + adjustedIATierCost + adjustedArchiveTierCost
+	adjusted = float64(uploadBytes) * adjustedCostPerByte
+
+	return standard, adjusted
 }
 
 // ArtifactIncrementOptions holds the parameters for incrementing artifact upload metrics.
@@ -229,11 +225,19 @@ type ArtifactIncrementOptions struct {
 	MaxPuts     int
 	MinPuts     int
 	Bucket      string
+	AWSRoleARN  string
 	Files       []FileMetrics
+	// DevprodOwnedAWSAccountIDs, when non-empty, restricts recording to uploads whose AWSRoleARN
+	// resolves to an account ID in this list.
+	DevprodOwnedAWSAccountIDs []string
 }
 
 // IncrementArtifacts updates aggregate artifact upload metrics after an s3.put command.
 func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
+	if !evergreen.IsDevprodOwnedArtifactIAMRole(opts.AWSRoleARN, opts.DevprodOwnedAWSAccountIDs) {
+		return
+	}
+
 	s.Artifacts.PutRequests += opts.PutRequests
 	s.Artifacts.UploadBytes += opts.UploadBytes
 	s.Artifacts.Count += opts.FileCount
@@ -247,13 +251,16 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 
 	var bucketEntry *BucketFileMetrics
 	for i := range s.Artifacts.BytesByBucketAndKey {
-		if s.Artifacts.BytesByBucketAndKey[i].Bucket == opts.Bucket {
+		if s.Artifacts.BytesByBucketAndKey[i].Bucket == opts.Bucket && s.Artifacts.BytesByBucketAndKey[i].AWSRoleARN == opts.AWSRoleARN {
 			bucketEntry = &s.Artifacts.BytesByBucketAndKey[i]
 			break
 		}
 	}
 	if bucketEntry == nil {
-		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{Bucket: opts.Bucket})
+		s.Artifacts.BytesByBucketAndKey = append(s.Artifacts.BytesByBucketAndKey, BucketFileMetrics{
+			Bucket:     opts.Bucket,
+			AWSRoleARN: opts.AWSRoleARN,
+		})
 		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}
 	for _, f := range opts.Files {
@@ -271,10 +278,27 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 	}
 }
 
-// IncrementLogs increments the log chunk upload metrics.
-func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64) {
+// IncrementLogs increments log upload metrics and accumulates per-type bytes for storage cost tracking.
+func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
+	switch logType {
+	case LogTypeTask:
+		s.Logs.Task.Bytes += uploadBytes
+		if logKey != "" {
+			s.Logs.Task.LogKey = logKey
+		}
+	case LogTypeAgent:
+		s.Logs.Agent.Bytes += uploadBytes
+		if logKey != "" {
+			s.Logs.Agent.LogKey = logKey
+		}
+	case LogTypeSystem:
+		s.Logs.System.Bytes += uploadBytes
+		if logKey != "" {
+			s.Logs.System.LogKey = logKey
+		}
+	}
 }
 
 // IsZero implements bsoncodec.Zeroer for BSON marshalling.

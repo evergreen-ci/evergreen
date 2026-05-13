@@ -40,29 +40,31 @@ const (
 // Project represents the fully hydrated project configuration after translating
 // the ParserProject.
 type Project struct {
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	PreTimeoutSecs     int                        `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
-	PostTimeoutSecs    int                        `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
-	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
-	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
-	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
-	PS                 string                     `yaml:"ps,omitempty" bson:"ps,omitempty"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore             []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Parameters         []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+	Stepback           bool   `yaml:"stepback,omitempty" bson:"stepback"`
+	PreTimeoutSecs     int    `yaml:"pre_timeout_secs,omitempty" bson:"pre_timeout_secs,omitempty"`
+	PostTimeoutSecs    int    `yaml:"post_timeout_secs,omitempty" bson:"post_timeout_secs,omitempty"`
+	PreErrorFailsTask  bool   `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	PostErrorFailsTask bool   `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
+	OomTracker         bool   `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
+	PS                 string `yaml:"ps,omitempty" bson:"ps,omitempty"`
+	// Identifier is the project ID (despite the name, it's not the project
+	// identifier).
+	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore          []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Parameters      []ParameterInfo            `yaml:"parameters,omitempty" bson:"parameters,omitempty"`
+	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules         ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	TimeoutSecs     int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
 	// DisableMergeQueuePathFiltering, if true, skips path filtering for merge queue versions.
 	DisableMergeQueuePathFiltering bool `yaml:"disable_merge_queue_path_filtering,omitempty" bson:"disable_merge_queue_path_filtering,omitempty"`
@@ -481,6 +483,13 @@ func (m Module) GetOwnerAndRepo() (string, string, error) {
 		return thirdparty.ParseGitUrl(m.Repo)
 	}
 	return m.Owner, m.Repo, nil
+}
+
+// IsWikiRepo reports whether repo names a GitHub wiki remote (e.g. "mongo.wiki").
+// Trailing ".git" is ignored when matching.
+func IsWikiRepo(repo string) bool {
+	r := strings.TrimSuffix(strings.TrimSpace(repo), ".git")
+	return strings.HasSuffix(r, ".wiki")
 }
 
 type ModuleList []Module
@@ -1502,16 +1511,37 @@ func (p *Project) GetNumCheckRunsFromTaskVariantPairs(variantTasks *TaskVariantP
 	return numCheckRuns
 }
 
-// HasCheckRuns returns true if the project has any check runs.
-func (p *Project) HasCheckRuns() bool {
+// CheckRunGitHubAppAuthThreshold is the minimum number of check-run-configured tasks at or
+// above which a project-level GitHub app auth is required.
+const CheckRunGitHubAppAuthThreshold = 10
+
+// CountCheckRuns returns the number of build variant tasks that have check runs configured.
+func (p *Project) CountCheckRuns() int {
+	count := 0
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
 			if t.HasCheckRun() {
-				return true
+				count++
 			}
 		}
 	}
-	return false
+	return count
+}
+
+// VerifyCheckRunLimit returns an error if numCheckRuns exceeds the applicable limit.
+// If the project has a GitHub app configured, the admin-configured settingsLimit applies.
+// If the project has no GitHub app configured, CheckRunGitHubAppAuthThreshold applies instead.
+func VerifyCheckRunLimit(numCheckRuns, settingsLimit int, hasGitHubAppAuth bool) error {
+	if hasGitHubAppAuth {
+		if numCheckRuns > settingsLimit {
+			return errors.Errorf("total number of check runs (%d) exceeds maximum limit (%d)", numCheckRuns, settingsLimit)
+		}
+		return nil
+	}
+	if numCheckRuns > CheckRunGitHubAppAuthThreshold {
+		return errors.Errorf("total number of check runs (%d) exceeds maximum limit without a configured GitHub App (%d)", numCheckRuns, CheckRunGitHubAppAuthThreshold)
+	}
+	return nil
 }
 
 func (p *Project) getNumCheckRuns(taskName, variantName string) int {

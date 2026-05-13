@@ -156,8 +156,6 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			cleanupWhyIsMyDataMissingFile(ctx, wd)
-
 			if shouldFetchSource {
 				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
 					return err
@@ -179,14 +177,6 @@ func Fetch() cli.Command {
 			}
 			return nil
 		},
-	}
-}
-
-func cleanupWhyIsMyDataMissingFile(ctx context.Context, dir string) {
-	filePath := filepath.Join(dir, evergreen.WhyIsMyDataMissingName)
-	err := os.Remove(filePath)
-	if err != nil && !os.IsNotExist(err) {
-		grip.Warningf(ctx, "could not remove %s: %v", filePath, err)
 	}
 }
 
@@ -275,6 +265,9 @@ type cloneOptions struct {
 	token      string
 	depth      uint
 	isAppToken bool
+	// wikiModule clones only the remote default branch (HEAD) with no revision checkout;
+	// branch, ref, and manifest are ignored, matching agent git.get_project.
+	wikiModule bool
 }
 
 func clone(ctx context.Context, opts cloneOptions) error {
@@ -312,6 +305,16 @@ func clone(ctx context.Context, opts cloneOptions) error {
 	err := c.Run()
 	if err != nil {
 		return err
+	}
+
+	// If the module is a wiki, we do not support other clone options.
+	if opts.wikiModule {
+		if opts.isAppToken {
+			if err = resetGitRemoteToSSH(opts.owner, opts.repository, opts.rootDir); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	// try to check out the revision we want
@@ -400,6 +403,34 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 			moduleToken = token
 		}
 
+		modulePrefix := module.Prefix
+		if task.ModulePaths != nil && task.ModulePaths[module.Name] != "" {
+			modulePrefix = task.ModulePaths[module.Name]
+		}
+
+		moduleBase := filepath.Join(cloneDir, modulePrefix, module.Name)
+
+		owner, repo, err := module.GetOwnerAndRepo()
+		if err != nil {
+			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
+		}
+
+		if model.IsWikiRepo(repo) {
+			fmt.Printf("Fetching wiki module %s at default branch (HEAD only)\n", moduleName)
+			err = clone(ctx, cloneOptions{
+				owner:      owner,
+				repository: repo,
+				rootDir:    filepath.ToSlash(moduleBase),
+				token:      moduleToken,
+				isAppToken: useAppToken,
+				wikiModule: true,
+			})
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		revision := module.Branch
 		if mfest != nil {
 			mfestModule, ok := mfest.Modules[moduleName]
@@ -411,18 +442,8 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 			}
 		}
 
-		modulePrefix := module.Prefix
-		if task.ModulePaths != nil && task.ModulePaths[module.Name] != "" {
-			modulePrefix = task.ModulePaths[module.Name]
-		}
-
-		moduleBase := filepath.Join(cloneDir, modulePrefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
 
-		owner, repo, err := module.GetOwnerAndRepo()
-		if err != nil {
-			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
-		}
 		err = clone(ctx, cloneOptions{
 			owner:      owner,
 			repository: repo,
@@ -690,7 +711,8 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					}
 				}
 
-				fileName := truncateFilename(filepath.Join(folder, justFile))
+				truncatedFileName := truncateFilename(justFile)
+				fileName := filepath.Join(folder, truncatedFileName)
 				fileNamesUsed.Lock()
 				for {
 					fileNamesUsed.nameCounts[fileName]++

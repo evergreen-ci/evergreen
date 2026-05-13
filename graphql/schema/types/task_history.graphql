@@ -28,3 +28,13 @@ type TaskHistory {
   tasks: [Task!]!
   pagination: TaskHistoryPagination!
 }
+
+type TaskHistoryByCreateTimePagination {
+  mostRecentTaskCreateTime: Time!
+  oldestTaskCreateTime: Time!
+}
+
+type TaskHistoryByCreateTime {
+  tasks: [Task!]!
+  pagination: TaskHistoryByCreateTimePagination!
+}

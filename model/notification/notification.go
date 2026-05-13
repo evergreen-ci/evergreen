@@ -59,6 +59,7 @@ type Notification struct {
 type NotificationMetadata struct {
 	TaskID        string `bson:"task_id,omitempty"`
 	TaskExecution int    `bson:"task_execution,omitempty"`
+	CreatedBy     string `bson:"created_by,omitempty"`
 }
 
 // SenderKey returns an evergreen.SenderKey to get a grip sender for this
@@ -143,7 +144,7 @@ func (n *Notification) Composer(ctx context.Context) (message.Composer, error) {
 		payload.Project = jiraIssue.Project
 		payload.Type = jiraIssue.IssueType
 		payload.Callback = func(issueKey string) {
-			event.LogJiraIssueCreated(ctx, n.Metadata.TaskID, n.Metadata.TaskExecution, issueKey)
+			event.LogJiraIssueCreated(ctx, n.Metadata.TaskID, n.Metadata.TaskExecution, issueKey, n.Metadata.CreatedBy)
 		}
 
 		return message.MakeJiraMessage(payload), nil
@@ -266,9 +267,10 @@ func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 	return nil
 }
 
-func (n *Notification) SetTaskMetadata(ID string, execution int) {
+func (n *Notification) SetTaskMetadata(ID string, execution int, createdBy string) {
 	n.Metadata.TaskID = ID
 	n.Metadata.TaskExecution = execution
+	n.Metadata.CreatedBy = createdBy
 }
 
 // FormatSlackTarget uses the slackMemberId instead of the userName when possible.

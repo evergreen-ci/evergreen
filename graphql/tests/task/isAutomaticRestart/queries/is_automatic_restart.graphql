@@ -1,0 +1,8 @@
+{
+  automaticRestartTask: task(taskId: "automatic_restart_task") {
+    isAutomaticRestart
+  }
+  regularTask: task(taskId: "regular_task") {
+    isAutomaticRestart
+  }
+}

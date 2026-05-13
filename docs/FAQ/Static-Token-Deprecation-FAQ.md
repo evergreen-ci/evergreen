@@ -35,21 +35,15 @@ If the API key belongs to a [service user](../Project-Configuration/Project-and-
 
 ## Will spawn hosts be affected?
 
-Yes, please see the documentation on [spawn hosts and the Evergreen CLI](../Hosts/Spawn-Hosts.md#evergreen-cli).
-
-For spawn hosts that should fetch task binaries and artifacts automatically, after SSHing into the host you will need to run:
-
-```sh
-evergreen host fetch
-```
+Yes, spawn hosts that load task data will require an additional authentication step. Check out the documentation for [spawning a host from a task](../Hosts/Spawn-Hosts.md#spawning-a-host-from-a-task) for more information.
 
 ## How often will I be asked to click on a link to authenticate?
 
 Please see [here](https://kanopy.corp.mongodb.com/docs/corpsecure/auth_flow/#refresh-token).
 
-## What if I am in an enviornment where I cannot open a browser to authenticate?
+## What if I am in an environment where I cannot open a browser to authenticate?
 
-Please follow the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli).
+Please follow the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
 ## Why did I have to wait a while for the CLI command to load after authenticating?
 

@@ -274,11 +274,18 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 
 	newTVPairs, activationInfo := g.GetNewTasksAndActivationInfo(ctx, v, p)
 
+	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
+	if err != nil {
+		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", p.Identifier)
+	}
+
 	if v.Requester == evergreen.GithubPRRequester {
 		numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(newTVPairs)
-		checkRunLimit := settings.GitHubCheckRun.CheckRunLimit
-		if numCheckRuns > checkRunLimit {
-			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
+		if err := VerifyCheckRunLimit(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, projectRef.HasGitHubAppAuth(ctx)); err != nil {
+			return err
 		}
 	}
 
@@ -298,15 +305,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		} else {
 			newTVPairsForNewVariants.DisplayTasks = append(newTVPairsForNewVariants.DisplayTasks, dispTask)
 		}
-	}
-
-	// This will only be populated for patches, not mainline commits.
-	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
-	if err != nil {
-		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
-	}
-	if projectRef == nil {
-		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
 	// Compile a lookup table of task IDs for all tasks to be created, both in
@@ -338,6 +336,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
+	// This will only be populated for patches, not mainline commits.
 	if evergreen.IsPatchRequester(v.Requester) {
 		patchDoc, err := patch.FindOneId(ctx, v.Id)
 		if err != nil {

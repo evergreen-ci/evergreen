@@ -47,7 +47,6 @@ func (j *cronsRemoteWeekJob) Run(ctx context.Context) {
 
 	ops := []amboy.QueueOperation{
 		PopulateS3LifecycleSyncProjectBucketsJob(),
-		PopulateRetryFailedLogMoveJobs(j.env),
 	}
 
 	queue := j.env.RemoteQueue()

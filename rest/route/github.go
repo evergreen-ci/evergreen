@@ -133,9 +133,25 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// shouldSkipWebhook returns true if the event is from a GitHub app and the app is available for the owner/repo or,
-// the event is from webhooks and the app is not available for the owner/repo.
+// shouldSkipWebhook returns true if the event is from a GitHub app and the app
+// is available for the owner/repo or, the event is from webhooks and the app is
+// not available for the owner/repo. This deduplicates event processing for
+// repos with both the GitHub app installed and a repo webhook installed.
 func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo string, fromApp bool) bool {
+	if gh.settings.Ui.StagingEnvironment != "" {
+		// For personal staging, only use repo webhooks and ignore GitHub app
+		// webhooks because they're more convenient.
+		//
+		// For context, it's easier to maintain personal staging if they use
+		// only repo webhooks because Evergreen devs have direct and visible
+		// control over the repo webhook configurations (via repo settings). In
+		// contrast, GitHub apps have restrictive permissions and are not
+		// directly accessible by Evergreen devs, so making changes (e.g. adding
+		// webhooks to a new repo, changing webhook configuration, debugging) is
+		// slow and difficult.
+		return fromApp
+	}
+
 	hasApp, err := githubapp.CreateGitHubAppAuth(gh.settings).IsGithubAppInstalledOnRepo(ctx, owner, repo)
 	if err != nil {
 		hasApp = false
@@ -418,10 +434,21 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	}
 
 	// Get the project's GitHub app auth for check run operations.
-	// If this fails or the project doesn't have a GitHub app configured,
-	// the check run functions will fall back to using the internal app.
-	ghAppAuth := model.GetGitHubAppAuthForProject(ctx, taskToRestart.Project)
-
+	ghAppAuth, err := model.GetAndValidateCheckRunGitHubAppAuth(ctx, taskToRestart)
+	if err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"source":    "GitHub hook",
+			"operation": "check run",
+			"msg_id":    gh.msgID,
+			"event":     gh.eventType,
+			"owner":     owner,
+			"repo":      repo,
+			"task":      taskToRestart.Id,
+			"message":   "checkRun not updated for task",
+		}))
+		// Don't want to retry on this case, so log but return no error.
+		return nil
+	}
 	// Check run status should stay the same while task is being re-run.
 	latestExecutionForTask.Status = taskToRestart.Status
 	_, err = thirdparty.UpdateCheckRun(ctx, owner, repo, gh.settings.Api.URL, checkRun.GetID(), latestExecutionForTask, output, ghAppAuth)
@@ -562,7 +589,8 @@ func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github
 	return nil
 }
 
-// handleMergeGroupDestroyed processes a "destroyed" MergeGroupEvent.
+// handleMergeGroupDestroyed processes a "destroyed" MergeGroupEvent. It marks
+// merge queue patches as removed from the queue and cancels their tasks.
 func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *github.MergeGroupEvent) gimlet.Responder {
 	org := event.GetOrg().GetLogin()
 	repo := event.GetRepo().GetName()
@@ -580,7 +608,7 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 		"message":  "merge group destroyed",
 	})
 
-	updatedPatchIDs, err := patch.MarkMergeQueuePatchesRemovedFromQueue(ctx, org, repo, headSHA, reason)
+	updatedPatches, err := patch.MarkMergeQueuePatchesRemovedFromQueue(ctx, org, repo, headSHA, reason)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
@@ -595,7 +623,40 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "marking patches as removed from queue"))
 	}
 
+	catcher := grip.NewSimpleCatcher()
+	for _, p := range updatedPatches {
+		// Patches may not be finalized if the merge group was destroyed before
+		// the patch intent was processed into a version with tasks.
+		if p.Version == "" {
+			continue
+		}
+		err := model.CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubMergeUser})
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"source":     "GitHub hook",
+			"msg_id":     gh.msgID,
+			"event":      gh.eventType,
+			"org":        org,
+			"repo":       repo,
+			"head_sha":   headSHA,
+			"reason":     reason,
+			"patch_id":   p.Id.Hex(),
+			"version_id": p.Version,
+			"message":    "error cancelling merge queue patch",
+		}))
+		catcher.Wrapf(err, "cancelling patch '%s'", p.Id.Hex())
+	}
+
+	if catcher.HasErrors() {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(catcher.Resolve(), "cancelling merge queue patches"))
+	}
+
+	updatedPatchIDs := make([]string, 0, len(updatedPatches))
+	for _, p := range updatedPatches {
+		updatedPatchIDs = append(updatedPatchIDs, p.Id.Hex())
+	}
 	model.EmitMergeQueueDestroyedSpans(ctx, updatedPatchIDs, org, repo, headSHA, event.GetMergeGroup().GetHeadRef(), reason)
+
+	model.EmitMergeQueueCompletionMetricsFromWebhook(ctx, updatedPatchIDs)
 
 	logFields := message.Fields{
 		"source":   "GitHub hook",
@@ -607,8 +668,8 @@ func (gh *githubHookApi) handleMergeGroupDestroyed(ctx context.Context, event *g
 		"reason":   reason,
 	}
 
-	if len(updatedPatchIDs) > 0 {
-		logFields["patches_updated"] = len(updatedPatchIDs)
+	if len(updatedPatches) > 0 {
+		logFields["patches_updated"] = len(updatedPatches)
 		logFields["message"] = "successfully processed merge group destroyed event"
 	} else {
 		logFields["message"] = "no patches updated when marking merge group as removed"

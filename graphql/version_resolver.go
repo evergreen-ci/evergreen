@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -128,6 +129,24 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 		return childVersions, nil
 	}
 	return nil, nil
+}
+
+// Cost is the field resolver for Version.cost. It applies RoundCost to all adjusted fields
+// so the GraphQL API returns clean values without floating-point noise.
+func (r *versionResolver) Cost(ctx context.Context, obj *restModel.APIVersion) (*cost.Cost, error) {
+	if obj.Cost == nil {
+		return nil, nil
+	}
+	rounded := cost.Cost{
+		AdjustedEC2Cost:               cost.RoundCost(obj.Cost.AdjustedEC2Cost),
+		AdjustedEBSThroughputCost:     cost.RoundCost(obj.Cost.AdjustedEBSThroughputCost),
+		AdjustedEBSStorageCost:        cost.RoundCost(obj.Cost.AdjustedEBSStorageCost),
+		AdjustedS3ArtifactPutCost:     cost.RoundCost(obj.Cost.AdjustedS3ArtifactPutCost),
+		AdjustedS3LogPutCost:          cost.RoundCost(obj.Cost.AdjustedS3LogPutCost),
+		AdjustedS3ArtifactStorageCost: cost.RoundCost(obj.Cost.AdjustedS3ArtifactStorageCost),
+		AdjustedS3LogStorageCost:      cost.RoundCost(obj.Cost.AdjustedS3LogStorageCost),
+	}
+	return &rounded, nil
 }
 
 // ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
@@ -523,7 +542,7 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 
 	dbUser, err := loaders.GetUser(ctx, authorId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()), err)
 	}
 	// This is most likely a reaped user, so just return their info from version
 	if dbUser == nil {
@@ -621,6 +640,38 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	return versionBuilds, nil
 }
 
+// ChildVersions is the resolver for the childVersions field.
+func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Version) ([]*model.Version, error) {
+	if !evergreen.IsPatchRequester(obj.Requester) {
+		return nil, nil
+	}
+	if err := data.ValidatePatchID(obj.Id); err != nil {
+		return nil, werrors.WithStack(err)
+	}
+	foundPatch, err := patch.FindOneId(ctx, obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", obj.Id, err.Error()))
+	}
+	if foundPatch == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", obj.Id))
+	}
+	childPatchIds := foundPatch.Triggers.ChildPatches
+	if len(childPatchIds) > 0 {
+		childVersions := make([]*model.Version, 0, len(childPatchIds))
+		for _, cp := range childPatchIds {
+			v, err := loaders.GetVersion(ctx, cp)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()))
+			}
+			if v != nil {
+				childVersions = append(childVersions, v)
+			}
+		}
+		return childVersions, nil
+	}
+	return nil, nil
+}
+
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
 	projectRef, err := model.FindMergedProjectRef(ctx, obj.Identifier, obj.Id, false)
@@ -672,7 +723,7 @@ func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*us
 
 	dbUser, err := loaders.GetUser(ctx, obj.AuthorID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", obj.AuthorID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", obj.AuthorID, err.Error()), err)
 	}
 	// This is most likely a service user, so just return their info from version
 	if dbUser == nil {

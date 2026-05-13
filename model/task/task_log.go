@@ -93,9 +93,12 @@ func NewTaskLogSender(ctx context.Context, task *Task, senderOpts EvergreenSende
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
-	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) (int64, error) {
-		return svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines)
+	logName := getLogName(*task, logType, output.TaskLogs.ID())
+	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) (int64, int, error) {
+		return svc.Append(ctx, logName, 0, lines)
 	}
+	senderOpts.LogType = string(logType)
+	senderOpts.LogKey = logName
 
 	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", task.Id, logType), senderOpts)
 }
@@ -122,13 +125,13 @@ func AppendTaskLogs(ctx context.Context, task *Task, logType TaskLogType, lines 
 		return errors.Wrap(err, "getting log service")
 	}
 
-	uploadBytes, err := svc.Append(ctx, getLogName(*task, logType, output.TaskLogs.ID()), 0, lines)
+	logName := getLogName(*task, logType, output.TaskLogs.ID())
+	uploadBytes, puts, err := svc.Append(ctx, logName, 0, lines)
+	if puts > 0 {
+		task.S3Usage.IncrementLogs(puts, uploadBytes, string(logType), logName)
+	}
 	if err != nil {
 		return err
-	}
-
-	if uploadBytes > 0 {
-		task.S3Usage.IncrementLogs(1, uploadBytes)
 	}
 
 	return nil

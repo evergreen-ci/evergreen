@@ -354,12 +354,26 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	assert.Equal(t, evergreen.HostsOverallocatedTerminate, resolved0.HostsOverallocatedRule)
 
 	settings1 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseModeConfig}
+
+	// Release mode does not apply the max hosts factor when the distro is not using auto-tuning.
 	resolved1, err := d0.GetResolvedHostAllocatorSettings(settings1)
 	assert.NoError(t, err)
-
-	// Factor in release mode when enabled.
-	assert.Equal(t, 20, resolved1.MaximumHosts)
+	assert.Equal(t, 10, resolved1.MaximumHosts)
 	assert.Equal(t, time.Duration(300)*time.Second, resolved1.AcceptableHostIdleTime)
+
+	// Release mode applies the max hosts factor when the distro is using auto-tuning.
+	d0.HostAllocatorSettings.AutoTuneMaximumHosts = true
+	d0.HostAllocatorSettings.MaximumHosts = 10
+	resolved1, err = d0.GetResolvedHostAllocatorSettings(settings1)
+	assert.NoError(t, err)
+	assert.Equal(t, 20, resolved1.MaximumHosts)
+
+	// Release mode does not apply the max hosts factor when the factor is not configured.
+	d0.HostAllocatorSettings.MaximumHosts = 10
+	settingsNoFactor := &evergreen.Settings{Scheduler: config0, ReleaseMode: evergreen.ReleaseModeConfig{IdleTimeSecondsOverride: 300}}
+	resolved1, err = d0.GetResolvedHostAllocatorSettings(settingsNoFactor)
+	assert.NoError(t, err)
+	assert.Equal(t, 10, resolved1.MaximumHosts)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {

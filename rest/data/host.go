@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -58,13 +59,30 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 		return nil, err
 	}
 	event.LogHostCreated(ctx, intentHost.Id)
-	grip.Info(ctx, message.Fields{
+	fields := message.Fields{
 		"message":  "inserted intent host",
 		"host_id":  intentHost.Id,
 		"host_tag": intentHost.Tag,
 		"distro":   intentHost.Distro.Id,
 		"user":     user.Username(),
-	})
+	}
+	if intentHost.IsDebug {
+		fields["dashboard"] = "debug spawn hosts"
+		fields["is_debug"] = true
+		fields["instance_type"] = intentHost.InstanceType
+		fields["region"] = spawnOptions.Region
+		fields["use_project_setup_script"] = spawnOptions.UseProjectSetupScript
+		if intentHost.ProvisionOptions != nil {
+			fields["task_id"] = intentHost.ProvisionOptions.TaskId
+			fields["setup_step_number"] = intentHost.ProvisionOptions.SetupStepNumber
+		}
+		if intentHost.ProvisionOptions != nil && intentHost.ProvisionOptions.TaskId != "" {
+			if t, err := task.FindOneId(ctx, intentHost.ProvisionOptions.TaskId); err == nil && t != nil {
+				fields["project"] = t.Project
+			}
+		}
+	}
+	grip.Info(ctx, fields)
 
 	if err := units.EnqueueHostCreateJobs(ctx, env, []host.Host{*intentHost}); err != nil {
 		return nil, errors.Wrapf(err, "enqueueing host create job for '%s'", intentHost.Id)

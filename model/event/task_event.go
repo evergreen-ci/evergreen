@@ -100,8 +100,8 @@ func logManyTaskEvents(ctx context.Context, taskIds []string, eventType string, 
 	}
 }
 
-func LogJiraIssueCreated(ctx context.Context, taskId string, execution int, jiraIssue string) {
-	logTaskEvent(ctx, taskId, TaskJiraAlertCreated, TaskEventData{Execution: execution, JiraIssue: jiraIssue})
+func LogJiraIssueCreated(ctx context.Context, taskId string, execution int, jiraIssue string, userId string) {
+	logTaskEvent(ctx, taskId, TaskJiraAlertCreated, TaskEventData{Execution: execution, JiraIssue: jiraIssue, UserId: userId})
 }
 
 func LogTaskPriority(ctx context.Context, taskId string, execution int, userId string, priority int64) {

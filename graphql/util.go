@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -644,6 +645,21 @@ func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 	return len(buildVariantOptions.Tasks) > 0 || len(buildVariantOptions.Variants) > 0 || len(buildVariantOptions.Statuses) > 0
 }
 
+// getAuthorizedSettingsID returns the project/repo ID gated by @requireProjectAccess
+// (settings.Id, mapped from the projectId/repoId GraphQL argument). If the caller also
+// supplied projectRef.id and it differs from the authorized ID, returns an
+// InputValidationError — projectRef.id is not authorized and must not be used as the
+// write key. labelName is used in the error message ("projectId" or "repoId").
+func getAuthorizedSettingsID(ctx context.Context, settings *restModel.APIProjectSettings, labelName string) (string, error) {
+	authorizedID := utility.FromStringPtr(settings.Id)
+	if settings.ProjectRef.Id != nil {
+		if innerID := utility.FromStringPtr(settings.ProjectRef.Id); innerID != authorizedID {
+			return "", InputValidationError.Send(ctx, fmt.Sprintf("%s '%s' does not match projectRef.id '%s'", labelName, authorizedID, innerID))
+		}
+	}
+	return authorizedID, nil
+}
+
 func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(ctx, projectId)
 	if err != nil {
@@ -795,9 +811,12 @@ func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdpa
 		}
 	}
 	settings := evergreen.GetEnvironment().Settings()
-	jiraHandler := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	jiraHandler, err := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	if err != nil {
+		return nil, err
+	}
 	for _, ticket := range searchTickets {
-		jiraIssue, err := jiraHandler.GetJIRATicket(ticket)
+		jiraIssue, err := jiraHandler.GetIssue(ctx, ticket)
 		if err != nil {
 			return nil, err
 		}
@@ -993,6 +1012,10 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 }
 
 func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]task.Task, error) {
+	if dbTask == nil {
+		return nil, nil
+	}
+
 	var (
 		baseTask *task.Task
 		tasks    []task.Task
@@ -1500,4 +1523,46 @@ func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
 		}
 	}
 	return nil, false
+}
+
+// setTestQuarantineState updates the quarantine state for testName on the
+// given task.
+func setTestQuarantineState(ctx context.Context, taskID, testName string, shouldQuarantine bool) (*restModel.APITest, error) {
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	if t.DisplayOnly {
+		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
+	}
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, shouldQuarantine); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to %t for test '%s' on task '%s' on build variant '%s' on project '%s': %s", shouldQuarantine, testName, taskID, t.BuildVariant, t.Project, err.Error()))
+	}
+	return buildQuarantineMutationResponse(ctx, t, testName, shouldQuarantine)
+}
+
+// buildQuarantineMutationResponse returns the corresponding APITest for the
+// task with the quarantine state set to isQuarantined.
+func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName string, isQuarantined bool) (*restModel.APITest, error) {
+	// The TestName filter field is interpreted as a regex; anchor and escape testName for an exact match.
+	taskResults, err := t.GetTestResults(ctx, evergreen.GetEnvironment(), &task.FilterOptions{TestName: "^" + regexp.QuoteMeta(testName) + "$"})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for task '%s': %s", t.Id, err.Error()))
+	}
+	if len(taskResults.Results) == 0 {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("test '%s' not found on task '%s'", testName, t.Id))
+	}
+	tr := taskResults.Results[0]
+	tr.IsManuallyQuarantined = isQuarantined
+	apiTest := &restModel.APITest{}
+	if err = apiTest.BuildFromService(tr.TaskID); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	if err = apiTest.BuildFromService(&tr); err != nil {
+		return nil, InternalServerError.Send(ctx, err.Error())
+	}
+	return apiTest, nil
 }

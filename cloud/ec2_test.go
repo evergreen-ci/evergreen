@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -739,6 +740,15 @@ func (s *EC2Suite) TestModifyHostInvalidSchedule() {
 	s.True(temporarilyExemptUntil.Equal(modifiedHost.SleepSchedule.TemporarilyExemptUntil))
 }
 
+func (s *EC2Suite) TestGetInstanceInfoNoReservationForIntentStyleHostID() {
+	s.Require().True(host.IsIntentHostId("evg-ubuntu-1234"))
+	s.mock.RequestGetInstanceInfoError = noReservationError
+	info, err := s.impl.client.GetInstanceInfo(s.ctx, "evg-ubuntu-1234")
+	s.Nil(info)
+	s.Require().Error(err)
+	s.True(errors.Is(err, noReservationError))
+}
+
 func (s *EC2Suite) TestGetInstanceInformation() {
 	s.Require().NoError(s.h.Insert(s.ctx))
 
@@ -761,6 +771,40 @@ func (s *EC2Suite) TestTerminateInstance() {
 	found, err := host.FindOne(s.ctx, host.ById("h1"))
 	s.Equal(evergreen.HostTerminated, found.Status)
 	s.NoError(err)
+}
+
+func (s *EC2Suite) TestTerminateInstanceIntentHostWithCloudInstance() {
+	s.h.Id = "evg-amazon2-cloud-medium-20260427131846-1234567890"
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	realInstanceID := "i-real-instance-id"
+	s.mock.Instance = &types.Instance{InstanceId: aws.String(realInstanceID)}
+
+	s.NoError(s.onDemandManager.TerminateInstance(s.ctx, s.h, evergreen.User, ""))
+
+	s.Require().NotNil(s.mock.TerminateInstancesInput)
+	s.Equal([]string{realInstanceID}, s.mock.TerminateInstancesInput.InstanceIds, "should terminate using the real instance ID found via tag lookup")
+
+	found, err := host.FindOne(s.ctx, host.ById(s.h.Id))
+	s.Require().NotNil(found)
+	s.Require().NoError(err)
+	s.Equal(evergreen.HostTerminated, found.Status)
+}
+
+func (s *EC2Suite) TestTerminateInstanceIntentHostWithNoCloudInstance() {
+	s.h.Id = "evg-amazon2-cloud-medium-20260427131846-1234567890"
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	s.mock.RequestGetInstanceInfoError = noReservationError
+
+	s.NoError(s.onDemandManager.TerminateInstance(s.ctx, s.h, evergreen.User, ""))
+
+	s.Nil(s.mock.TerminateInstancesInput, "should not call AWS TerminateInstances when no cloud instance is found")
+
+	found, err := host.FindOne(s.ctx, host.ById(s.h.Id))
+	s.Require().NotNil(found)
+	s.Require().NoError(err)
+	s.Equal(evergreen.HostTerminated, found.Status)
 }
 
 func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {

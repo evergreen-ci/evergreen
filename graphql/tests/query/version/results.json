@@ -25,6 +25,16 @@
               "userId": "admin_user",
               "displayName": "Fake User",
               "emailAddress": "fake.user@mongodb.com"
+            },
+            "cost": {
+              "adjustedEBSStorageCost": 0.03,
+              "adjustedEBSThroughputCost": 0.05,
+              "adjustedEC2Cost": 0.89,
+              "adjustedS3ArtifactPutCost": 0.01,
+              "adjustedS3ArtifactStorageCost": 0,
+              "adjustedS3LogPutCost": 0.02,
+              "adjustedS3LogStorageCost": 0,
+              "total": 1
             }
           }
         }

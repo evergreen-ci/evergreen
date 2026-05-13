@@ -17,8 +17,8 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
-	github.com/evergreen-ci/gimlet v0.0.0-20260326192822-ba1f9242291b
-	github.com/evergreen-ci/pail v0.0.0-20260413131233-e5084eca59ac
+	github.com/evergreen-ci/gimlet v0.0.0-20260420181614-abe39e3a6fa7
+	github.com/evergreen-ci/pail v0.0.0-20260507160025-5cf2ef56c715
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
 	github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2
@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20260326190628-51c8dde3a7f5
 	github.com/mongodb/anser v0.0.0-20260326191204-f2d0a92e3f0a
-	github.com/mongodb/grip v0.0.0-20260325175240-dee15316ed15
+	github.com/mongodb/grip v0.0.0-20260416142205-66006126eeab
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
@@ -42,7 +42,7 @@ require (
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.17
-	github.com/vektah/gqlparser/v2 v2.5.31
+	github.com/vektah/gqlparser/v2 v2.5.32
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.64.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.64.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.64.0
@@ -144,7 +144,7 @@ require (
 	github.com/square/certstrap v1.3.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
-	github.com/trivago/tgo v1.0.7 // indirect
+	github.com/trivago/tgo v1.0.7
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
@@ -170,7 +170,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
-	github.com/evergreen-ci/test-selection-client v0.0.0-20251016163227-83399b69e34c
+	github.com/evergreen-ci/test-selection-client v0.0.0-20260409173604-004964bcf728
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2

@@ -245,23 +245,23 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 	return nil
 }
 
-// RunUntil executes steps up until the given input index.
+// RunUntil executes steps up to but not including the given input index.
 func (e *LocalExecutor) RunUntil(ctx context.Context, untilIndex int) error {
 	if len(e.commandBlocks) == 0 {
 		return errors.New("no commands available, please ensure a task has been selected")
 	}
 	maxIndex := e.commandBlocks[len(e.commandBlocks)-1].endIndex
-	if untilIndex >= maxIndex {
+	if untilIndex > maxIndex {
 		e.logger.Warningf(ctx, "Running until step out of range, falling back to %s", e.debugState.CommandList[maxIndex].FullStepNumber())
 		untilIndex = maxIndex
 	}
 
-	for e.debugState.CurrentStepIndex <= untilIndex {
+	for e.debugState.CurrentStepIndex < untilIndex {
 		if err := e.StepNext(ctx); err != nil {
 			e.logger.Errorf(ctx, "Step %s failed: %v", e.debugState.CommandList[e.debugState.CurrentStepIndex].FullStepNumber(), err)
 			return err
 		}
-		if e.debugState.CurrentStepIndex > untilIndex {
+		if e.debugState.CurrentStepIndex >= untilIndex {
 			break
 		}
 	}
@@ -666,13 +666,17 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof(ctx, "Preparing task: %s", taskName)
 
+	var tg *model.TaskGroup
 	if variantName != "" {
 		bv := e.project.FindBuildVariant(variantName)
 		if bv == nil {
 			return errors.Errorf("build variant '%s' not found in project", variantName)
 		}
-		if _, err := bv.Get(taskName); err != nil {
-			return errors.Wrapf(err, "task '%s' is not defined on build variant '%s'", taskName, variantName)
+		tg = e.project.FindTaskGroupForTask(variantName, taskName)
+		if tg == nil {
+			if _, err := bv.Get(taskName); err != nil {
+				return errors.Wrapf(err, "task '%s' is not defined on build variant '%s'", taskName, variantName)
+			}
 		}
 		e.debugState.SelectedVariant = variantName
 		e.taskConfig.Expansions.Put("build_variant", variantName)
@@ -680,16 +684,35 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 		e.logger.Infof(ctx, "Applied expansions from build variant: %s", variantName)
 	}
 
-	// Build command blocks array with pre, main, and post blocks
+	// Build command blocks array. If the task belongs to a task group, use
+	// the group's setup/teardown blocks instead of project-level pre/post.
 	var blocks []executorBlock
 
-	if e.project.Pre != nil && len(e.project.Pre.List()) > 0 {
-		blocks = append(blocks, executorBlock{
-			blockType:   command.PreBlock,
-			commands:    e.project.Pre,
-			canFailTask: e.project.PreErrorFailsTask,
-		})
+	if tg != nil {
+		if tg.SetupGroup != nil && len(tg.SetupGroup.List()) > 0 {
+			blocks = append(blocks, executorBlock{
+				blockType:   command.SetupGroupBlock,
+				commands:    tg.SetupGroup,
+				canFailTask: tg.SetupGroupCanFailTask,
+			})
+		}
+		if tg.SetupTask != nil && len(tg.SetupTask.List()) > 0 {
+			blocks = append(blocks, executorBlock{
+				blockType:   command.SetupTaskBlock,
+				commands:    tg.SetupTask,
+				canFailTask: tg.SetupTaskCanFailTask,
+			})
+		}
+	} else {
+		if e.project.Pre != nil && len(e.project.Pre.List()) > 0 {
+			blocks = append(blocks, executorBlock{
+				blockType:   command.PreBlock,
+				commands:    e.project.Pre,
+				canFailTask: e.project.PreErrorFailsTask,
+			})
+		}
 	}
+
 	blocks = append(blocks, executorBlock{
 		blockType: command.MainTaskBlock,
 		commands: &model.YAMLCommandSet{
@@ -697,12 +720,30 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 		},
 		canFailTask: true,
 	})
-	if e.project.Post != nil && len(e.project.Post.List()) > 0 {
-		blocks = append(blocks, executorBlock{
-			blockType:   command.PostBlock,
-			commands:    e.project.Post,
-			canFailTask: e.project.PostErrorFailsTask,
-		})
+
+	if tg != nil {
+		if tg.TeardownTask != nil && len(tg.TeardownTask.List()) > 0 {
+			blocks = append(blocks, executorBlock{
+				blockType:   command.TeardownTaskBlock,
+				commands:    tg.TeardownTask,
+				canFailTask: tg.TeardownTaskCanFailTask,
+			})
+		}
+		if tg.TeardownGroup != nil && len(tg.TeardownGroup.List()) > 0 {
+			blocks = append(blocks, executorBlock{
+				blockType:   command.TeardownGroupBlock,
+				commands:    tg.TeardownGroup,
+				canFailTask: false,
+			})
+		}
+	} else {
+		if e.project.Post != nil && len(e.project.Post.List()) > 0 {
+			blocks = append(blocks, executorBlock{
+				blockType:   command.PostBlock,
+				commands:    e.project.Post,
+				canFailTask: e.project.PostErrorFailsTask,
+			})
+		}
 	}
 	e.commandBlocks = blocks
 	if err := e.rebuildCommandList(); err != nil {

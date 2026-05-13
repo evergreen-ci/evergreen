@@ -752,6 +752,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	// Add cost attributes to the context for otel tracing
 	if !t.TaskCost.IsZero() {
 		costAttrs := []attribute.KeyValue{
+			attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
 			attribute.Float64(evergreen.TaskOnDemandCostOtelAttribute, t.TaskCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
 			attribute.Float64(evergreen.TaskEBSOnDemandThroughputCostOtelAttribute, t.TaskCost.OnDemandEBSThroughputCost),
@@ -999,12 +1000,38 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		attrs = append(attrs,
 			attribute.Float64(evergreen.VersionOnDemandCostOtelAttribute, v.Cost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.VersionAdjustedCostOtelAttribute, v.Cost.AdjustedEC2Cost),
+			attribute.Float64(evergreen.VersionEBSOnDemandThroughputCostOtelAttribute, v.Cost.OnDemandEBSThroughputCost),
+			attribute.Float64(evergreen.VersionEBSAdjustedThroughputCostOtelAttribute, v.Cost.AdjustedEBSThroughputCost),
+			attribute.Float64(evergreen.VersionEBSOnDemandStorageCostOtelAttribute, v.Cost.OnDemandEBSStorageCost),
+			attribute.Float64(evergreen.VersionEBSAdjustedStorageCostOtelAttribute, v.Cost.AdjustedEBSStorageCost),
+			attribute.Float64(evergreen.VersionOnDemandS3ArtifactPutCostOtelAttribute, v.Cost.OnDemandS3ArtifactPutCost),
+			attribute.Float64(evergreen.VersionAdjustedS3ArtifactPutCostOtelAttribute, v.Cost.AdjustedS3ArtifactPutCost),
+			attribute.Float64(evergreen.VersionOnDemandS3ArtifactStorageCostOtelAttribute, v.Cost.OnDemandS3ArtifactStorageCost),
+			attribute.Float64(evergreen.VersionAdjustedS3ArtifactStorageCostOtelAttribute, v.Cost.AdjustedS3ArtifactStorageCost),
+			attribute.Float64(evergreen.VersionOnDemandS3LogPutCostOtelAttribute, v.Cost.OnDemandS3LogPutCost),
+			attribute.Float64(evergreen.VersionAdjustedS3LogPutCostOtelAttribute, v.Cost.AdjustedS3LogPutCost),
+			attribute.Float64(evergreen.VersionOnDemandS3LogStorageCostOtelAttribute, v.Cost.OnDemandS3LogStorageCost),
+			attribute.Float64(evergreen.VersionAdjustedS3LogStorageCostOtelAttribute, v.Cost.AdjustedS3LogStorageCost),
 		)
 	}
 	if !v.PredictedCost.IsZero() {
 		attrs = append(attrs,
 			attribute.Float64(evergreen.VersionPredictedOnDemandCostOtelAttribute, v.PredictedCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.VersionPredictedAdjustedCostOtelAttribute, v.PredictedCost.AdjustedEC2Cost),
+		)
+	}
+	if !v.S3Usage.IsZero() {
+		var avgFilePutCost float64
+		if v.S3Usage.Artifacts.Count > 0 {
+			avgFilePutCost = v.Cost.AdjustedS3ArtifactPutCost / float64(v.S3Usage.Artifacts.Count)
+		}
+		attrs = append(attrs,
+			attribute.Int(evergreen.VersionS3ArtifactPutRequestsOtelAttribute, v.S3Usage.Artifacts.PutRequests),
+			attribute.Int64(evergreen.VersionS3ArtifactUploadBytesOtelAttribute, v.S3Usage.Artifacts.UploadBytes),
+			attribute.Int(evergreen.VersionS3ArtifactCountOtelAttribute, v.S3Usage.Artifacts.Count),
+			attribute.Float64(evergreen.VersionS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+			attribute.Int(evergreen.VersionS3LogPutRequestsOtelAttribute, v.S3Usage.Logs.PutRequests),
+			attribute.Int64(evergreen.VersionS3LogUploadBytesOtelAttribute, v.S3Usage.Logs.UploadBytes),
 		)
 	}
 
@@ -1696,13 +1723,6 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			}
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
-
-			grip.Error(ctx, message.WrapError(emitMergeQueueCompletionMetrics(ctx, rootPatch, taskVersion, psu.patchFamilyFinishedCollectiveStatus), message.Fields{
-				"message":           "error emitting merge queue completion metrics",
-				"version_id":        taskVersion.Id,
-				"patch_id":          rootPatch.Id.Hex(),
-				"collective_status": psu.patchFamilyFinishedCollectiveStatus,
-			}))
 		}
 	}
 
@@ -1767,8 +1787,9 @@ func gatherMergeQueueTaskMetrics(tasks []task.Task) mergeQueueTaskMetrics {
 	return metrics
 }
 
-// emitMergeQueueCompletionMetrics emits OpenTelemetry metrics for merge queue version completion.
-func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Version, collectiveStatus string) error {
+// EmitMergeQueueCompletionMetrics emits the patch_completed span for a merge queue patch.
+// endTimeSource is attached as an attribute so Honeycomb dashboards can filter by accuracy.
+func EmitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Version, collectiveStatus string, endTime time.Time, endTimeSource string) error {
 	if p.Alias != evergreen.CommitQueueAlias || v.Requester != evergreen.GithubMergeRequester {
 		return nil
 	}
@@ -1785,13 +1806,6 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	if queueEntryTime.IsZero() {
 		queueEntryTime = p.CreateTime
 		queueEntrySource = "create_time"
-	}
-
-	// Calculate the collective finish time across the patch family (parent + children).
-	// This matches the API's finish_time to represent when the entire patch family completed.
-	_, collectiveFinishTime, err := p.GetCollectiveTimes(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting collective finish time for merge queue metrics")
 	}
 
 	baseAttrs := patch.BuildMergeQueueSpanAttributes(
@@ -1811,9 +1825,10 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	defer span.End()
 
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrQueueEntrySource, queueEntrySource))
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrEndTimeSource, endTimeSource))
 
-	if !collectiveFinishTime.IsZero() && !queueEntryTime.IsZero() {
-		timeInQueue := collectiveFinishTime.Sub(queueEntryTime).Milliseconds()
+	if !endTime.IsZero() && !queueEntryTime.IsZero() {
+		timeInQueue := endTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
 	}
 
@@ -1952,6 +1967,32 @@ func EmitMergeQueueDestroyedSpans(ctx context.Context, updatedPatchIDs []string,
 	}
 }
 
+// EmitMergeQueueCompletionMetricsFromWebhook emits the patch_completed span for merge queue patches using the webhook's removal time as the end time.
+func EmitMergeQueueCompletionMetricsFromWebhook(ctx context.Context, updatedPatchIDs []string) {
+	for _, patchID := range updatedPatchIDs {
+		p, err := patch.FindOneId(ctx, patchID)
+		if err != nil || p == nil {
+			continue
+		}
+		claimed, err := patch.ClaimMergeQueueMetricsEmit(ctx, p.Id)
+		if err != nil || !claimed {
+			continue
+		}
+		v, err := VersionFindOneId(ctx, p.Version)
+		if err != nil || v == nil {
+			_ = patch.SetMergeQueueMetricsEmitStatus(ctx, p.Id, patch.MergeQueueMetricsEmitStatusFailed)
+			continue
+		}
+		if err := EmitMergeQueueCompletionMetrics(ctx, p, v, p.Status, p.GithubMergeData.RemovedFromQueueAt, patch.MergeQueueEndTimeSourceGitHubWebhookDestroyed); err != nil {
+			_ = patch.SetMergeQueueMetricsEmitStatus(ctx, p.Id, patch.MergeQueueMetricsEmitStatusFailed)
+			grip.Debug(ctx, message.WrapError(err, message.Fields{
+				"message":  "error emitting merge queue completion metrics from webhook",
+				"patch_id": patchID,
+			}))
+		}
+	}
+}
+
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
 // patches and builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string) error {
@@ -2068,12 +2109,24 @@ func MarkHostTaskDispatched(ctx context.Context, t *task.Task, h *host.Host) err
 }
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
+	// Get exec tasks before resetting parent task first.
+	var execTaskIdsToRestart []string
 	if t.DisplayOnly {
-		execTaskIdsToRestart, err := task.FindExecTasksToReset(ctx, t)
+		ids, err := task.FindExecTasksToReset(ctx, t)
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks to restart")
 		}
-		if err = MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
+		execTaskIdsToRestart = ids
+	}
+
+	// Reset the parent display task before its execution tasks to prevent
+	// weird race conditions of execution tasks running while the parent is resetting.
+	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrap(err, "resetting task in database")
+	}
+
+	if t.DisplayOnly {
+		if err := MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
 			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 
@@ -2082,10 +2135,6 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 			"display_task_id":              t.Id,
 			"restarted_execution_task_ids": execTaskIdsToRestart,
 		}))
-	}
-
-	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
-		return errors.Wrap(err, "resetting task in database")
 	}
 
 	if err := UpdateUnblockedDependencies(ctx, []task.Task{*t}); err != nil {
@@ -2270,7 +2319,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return nil
 	}
 
-	if err = h.ClearRunningTask(ctx); err != nil {
+	if err = h.ClearRunningAndSetLastTask(ctx, t); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 

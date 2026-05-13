@@ -62,3 +62,6 @@ evergreen
 
 # asdf go version manager
 .tool-versions
+
+# Agent related files
+CLAUDE.local.md
