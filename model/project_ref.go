@@ -1816,15 +1816,46 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 	if err != nil {
 		return false, errors.Wrap(err, "finding branch project IDs")
 	}
+	if len(projectRefs) == 0 {
+		return false, nil
+	}
+	if evergreen.PermissionsDisabledForTests() {
+		return true, nil
+	}
 
-	for _, pRef := range projectRefs {
-		opts := gimlet.PermissionOpts{
-			Resource:      pRef.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsView.Value,
+	// Resolve the user's view permission across all branch projects in bulk.
+	// Calling HasPermission per branch project issues two Mongo queries each
+	// (roles + scopes), which scales poorly for repos with many branches.
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	roles, err := roleManager.GetRoles(ctx, u.Roles())
+	if err != nil {
+		return false, errors.Wrap(err, "getting user roles")
+	}
+
+	requiredLevel := evergreen.ProjectSettingsView.Value
+	scopeIDs := make([]string, 0, len(roles))
+	for _, r := range roles {
+		if level, ok := r.Permissions[evergreen.PermissionProjectSettings]; ok && level >= requiredLevel {
+			scopeIDs = append(scopeIDs, r.Scope)
 		}
-		if u.HasPermission(ctx, opts) {
+	}
+	if len(scopeIDs) == 0 {
+		return false, nil
+	}
+
+	scopes, err := roleManager.FilterScopesByResourceType(ctx, scopeIDs, evergreen.ProjectResourceType)
+	if err != nil {
+		return false, errors.Wrap(err, "filtering scopes by resource type")
+	}
+
+	allowed := make(map[string]struct{})
+	for _, s := range scopes {
+		for _, r := range s.Resources {
+			allowed[r] = struct{}{}
+		}
+	}
+	for _, pRef := range projectRefs {
+		if _, ok := allowed[pRef.Id]; ok {
 			return true, nil
 		}
 	}
