@@ -84,6 +84,11 @@ type EC2ProviderSettings struct {
 	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
 	// IP addresses.
 	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled,omitempty" bson:"elastic_ips_enabled,omitempty"`
+
+	// NestedVirtualization, if true, enables EC2 nested virtualization at launch
+	// via CpuOptions. Only supported on 8th generation Intel-based instance types
+	// (c8i, m8i, r8i, and their flex variants).
+	NestedVirtualization bool `mapstructure:"nested_virtualization,omitempty" json:"nested_virtualization,omitempty" bson:"nested_virtualization,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -267,6 +272,12 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	if ec2Settings.IAMInstanceProfileARN != "" {
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
+	}
+
+	if ec2Settings.NestedVirtualization {
+		input.CpuOptions = &types.CpuOptionsRequest{
+			NestedVirtualization: types.NestedVirtualizationSpecificationEnabled,
+		}
 	}
 
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)

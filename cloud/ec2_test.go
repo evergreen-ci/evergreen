@@ -510,6 +510,47 @@ func (s *EC2Suite) TestSpawnHostForTaskWithoutPublicIPv4Address() {
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
 
+func (s *EC2Suite) TestSpawnHostNestedVirtualizationEnabled() {
+	s.h.Distro.Id = "distro_id"
+	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	providerSettings := validEC2ProviderSettings()
+	providerSettings.Append(birch.EC.Boolean("nested_virtualization", true))
+	s.h.Distro.ProviderSettingsList = []*birch.Document{providerSettings}
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	_, err := s.onDemandManager.SpawnHost(s.ctx, s.h)
+	s.NoError(err)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.Require().True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
+
+	s.Require().NotNil(mock.RunInstancesInput)
+	runInput := *mock.RunInstancesInput
+	s.Require().NotNil(runInput.CpuOptions)
+	s.Equal(types.NestedVirtualizationSpecificationEnabled, runInput.CpuOptions.NestedVirtualization)
+}
+
+func (s *EC2Suite) TestSpawnHostNestedVirtualizationDisabled() {
+	s.h.Distro.Id = "distro_id"
+	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	s.h.Distro.ProviderSettingsList = []*birch.Document{validEC2ProviderSettings()}
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	_, err := s.onDemandManager.SpawnHost(s.ctx, s.h)
+	s.NoError(err)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.Require().True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
+
+	s.Require().NotNil(mock.RunInstancesInput)
+	runInput := *mock.RunInstancesInput
+	s.Nil(runInput.CpuOptions)
+}
+
 func (s *EC2Suite) TestModifyHost() {
 	changes := host.HostModifyOptions{
 		AddInstanceTags: []host.Tag{
