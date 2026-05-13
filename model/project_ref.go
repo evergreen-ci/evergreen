@@ -1821,9 +1821,6 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 		return true, nil
 	}
 
-	// Resolve the user's view permission across all branch projects in bulk.
-	// Calling HasPermission per branch project issues two Mongo queries each
-	// (roles + scopes), which scales poorly for repos with many branches.
 	roleManager := evergreen.GetEnvironment().RoleManager()
 	roles, err := roleManager.GetRoles(ctx, u.Roles())
 	if err != nil {
