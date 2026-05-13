@@ -1,8 +1,10 @@
 package model
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -25,6 +27,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"gopkg.in/yaml.v3"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -722,7 +725,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
 	}
-	intermediateProject, err := createIntermediateProject(data, unmarshalStrict)
+	intermediateProject, _, err := createIntermediateProject(data, unmarshalStrict)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -847,7 +850,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		if _, ok := yamlMap[path.FileName]; !ok {
 			return errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
 		}
-		add, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
+		add, _, err := createIntermediateProject(yamlMap[path.FileName], opts.UnmarshalStrict)
 		if err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
@@ -1361,8 +1364,19 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, error) {
+// The returned yaml.Node is the parsed YAML AST for cross-file anchor
+// support (Stage 2). It is nil only when the input is empty.
+func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, *yaml.Node, error) {
 	p := ParserProject{}
+
+	// Always parse to yaml.Node so that Stage 2 can collect anchor definitions
+	// from every file regardless of strict mode.
+	var node yaml.Node
+	if err := yaml.NewDecoder(bytes.NewReader(yml)).Decode(&node); err != nil && !errors.Is(err, io.EOF) {
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return nil, nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
+	}
+
 	if unmarshalStrict {
 		strictProjectWithVariables := struct {
 			ParserProject       `yaml:"pp,inline"`
@@ -1372,13 +1386,25 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 			Variables any `yaml:"variables,omitempty" bson:"-"`
 		}{}
 		if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		p = strictProjectWithVariables.ParserProject
-	} else {
-		if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
-			yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-			return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
+	} else if node.Kind != 0 {
+		if err := node.Decode(&p); err != nil {
+			// node.Decode rejects some constructs that yaml.v2 accepts (e.g. duplicate
+			// mapping keys). Fall back to the v2-aware path so that legacy configs
+			// continue to load without error. This results in a double parse of the
+			// bytes (once to yaml.Node above, once here via yaml.v2), but only affects
+			// configs that already fail yaml.v3 struct decoding. The node from the first
+			// parse is still returned so Stage 2 can collect anchor definitions from it.
+			grip.Warning(context.Background(), message.Fields{
+				"message": "yaml.v3 node decode failed, re-parsing bytes via yaml.v2 fallback",
+			})
+			p = ParserProject{}
+			if err2 := util.UnmarshalYAMLWithFallback(yml, &p); err2 != nil {
+				yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+				return nil, nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
+			}
 		}
 	}
 
@@ -1386,7 +1412,10 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
 
-	return &p, nil
+	if node.Kind == 0 {
+		return &p, nil, nil
+	}
+	return &p, &node, nil
 }
 
 // capParserPriorities caps all priority values in the parser project at MaxConfigSetPriority.
