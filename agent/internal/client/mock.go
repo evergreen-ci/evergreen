@@ -76,15 +76,18 @@ type Mock struct {
 
 	ReportS3UsageShouldFail bool
 	ReportedS3Usage         s3usage.S3Usage
-	AttachedFiles           map[string][]*artifact.File
-	LogID                   string
-	LocalTestResults        []testresult.TestResult
-	HasTestResults          bool
-	ResultsFailed           bool
-	TestResultStats         testresult.TaskTestResultsStats
-	FailedTestSample        []string
-	TestLogs                []*testlog.TestLog
-	TestLogCount            int
+
+	ReportHighExecTimeoutShouldFail bool
+	ReportedHighExecTimeoutSecs     int
+	AttachedFiles                   map[string][]*artifact.File
+	LogID                           string
+	LocalTestResults                []testresult.TestResult
+	HasTestResults                  bool
+	ResultsFailed                   bool
+	TestResultStats                 testresult.TaskTestResultsStats
+	FailedTestSample                []string
+	TestLogs                        []*testlog.TestLog
+	TestLogCount                    int
 
 	taskLogs   map[string][]log.LogLine
 	PatchFiles map[string]string
@@ -462,6 +465,14 @@ func (c *Mock) ReportS3Usage(ctx context.Context, td TaskData, usage s3usage.S3U
 		return errors.New("reporting S3 usage")
 	}
 	c.ReportedS3Usage = usage
+	return nil
+}
+
+func (c *Mock) ReportHighExecTimeout(_ context.Context, _ TaskData, execTimeoutSecs int) error {
+	if c.ReportHighExecTimeoutShouldFail {
+		return errors.New("reporting high exec timeout")
+	}
+	c.ReportedHighExecTimeoutSecs = execTimeoutSecs
 	return nil
 }
 

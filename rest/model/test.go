@@ -31,6 +31,8 @@ type APITest struct {
 	Duration float64    `json:"duration"`
 	// The exit code of the process that ran this test
 	ExitCode int `json:"-"`
+	// Whether this test is currently manually quarantined in the test selection service.
+	IsManuallyQuarantined bool `json:"is_manually_quarantined"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
@@ -68,6 +70,7 @@ func (at *APITest) BuildFromService(st any) error {
 		at.StartTime = utility.ToTimePtr(v.TestStartTime)
 		at.EndTime = utility.ToTimePtr(v.TestEndTime)
 		at.Duration = v.Duration().Seconds()
+		at.IsManuallyQuarantined = v.IsManuallyQuarantined
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{

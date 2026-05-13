@@ -1571,3 +1571,112 @@ func saveTestResults(t *testing.T, ctx context.Context, testBucket pail.Bucket, 
 	require.NoError(t, svc.AppendTestResultMetadata(testutil.MakeAppendTestResultMetadataReq(ctx, savedResults, tr.ID)))
 	return savedResults
 }
+
+func TestTaskAttributesProjectIncludesRepoID(t *testing.T) {
+	trig := &taskTriggers{
+		task:   &task.Task{Project: "branch-project"},
+		repoId: "repo-project",
+	}
+	assert.Equal(t, []string{"branch-project", "repo-project"}, trig.Attributes().Project)
+}
+
+func TestTaskAttributesProjectWithNoRepoContainsOnlyProjectID(t *testing.T) {
+	trig := &taskTriggers{
+		task: &task.Task{Project: "branch-project"},
+	}
+	assert.Equal(t, []string{"branch-project"}, trig.Attributes().Project)
+}
+
+func TestRepoProjectSubscriptionFiresForBranchTask(t *testing.T) {
+	collections := []string{
+		task.Collection, task.OldCollection, model.VersionCollection,
+		build.Collection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection, alertrecord.Collection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	v := model.Version{Id: "v1", AuthorID: "author"}
+	require.NoError(t, v.Insert(ctx))
+	b := build.Build{Id: "b1"}
+	require.NoError(t, b.Insert(ctx))
+	tsk := task.Task{
+		Id: "task1", Version: "v1", BuildId: "b1",
+		Project: "branch-project", DisplayName: "my-task", BuildVariant: "bv1",
+		Requester: evergreen.RepotrackerVersionRequester, Status: evergreen.TaskFailed,
+	}
+	require.NoError(t, tsk.Insert(ctx))
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project", RepoRefId: "repo-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
+	require.NoError(t, repoRef.Replace(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypeTask,
+		EventType:    event.TaskFinished,
+		ResourceId:   "task1",
+		Data:         &event.TaskEventData{Status: evergreen.TaskFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	require.Len(t, notifications, 1)
+	assert.Equal(t, sub.Subscriber.Type, notifications[0].Subscriber.Type)
+}
+
+func TestRepoProjectSubscriptionDoesNotFireForBranchWithoutRepo(t *testing.T) {
+	collections := []string{
+		task.Collection, task.OldCollection, model.VersionCollection,
+		build.Collection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection, alertrecord.Collection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	v := model.Version{Id: "v1", AuthorID: "author"}
+	require.NoError(t, v.Insert(ctx))
+	b := build.Build{Id: "b1"}
+	require.NoError(t, b.Insert(ctx))
+	tsk := task.Task{
+		Id: "task1", Version: "v1", BuildId: "b1",
+		Project: "branch-project", DisplayName: "my-task", BuildVariant: "bv1",
+		Requester: evergreen.RepotrackerVersionRequester, Status: evergreen.TaskFailed,
+	}
+	require.NoError(t, tsk.Insert(ctx))
+	// Project ref has no RepoRefId — not attached to any repo.
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypeTask,
+		EventType:    event.TaskFinished,
+		ResourceId:   "task1",
+		Data:         &event.TaskEventData{Status: evergreen.TaskFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	assert.Empty(t, notifications)
+}

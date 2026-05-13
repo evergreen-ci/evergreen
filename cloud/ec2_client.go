@@ -631,12 +631,19 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 }
 
 func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*types.Instance, error) {
+	var input *ec2.DescribeInstancesInput
 	if host.IsIntentHostId(id) {
-		return nil, errors.Errorf("host ID '%s' is for an intent host", id)
+		// The host's cloud instance ID was never recorded, so look up the
+		// instance using the name tag, which is always set to the intent host ID before launch.
+		input = &ec2.DescribeInstancesInput{
+			Filters: []types.Filter{
+				{Name: aws.String("tag:" + evergreen.TagName), Values: []string{id}},
+			},
+		}
+	} else {
+		input = &ec2.DescribeInstancesInput{InstanceIds: []string{id}}
 	}
-	resp, err := c.ec2Client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []string{id},
-	})
+	resp, err := c.ec2Client.DescribeInstances(ctx, input)
 	if err != nil {
 		return nil, errors.Wrap(err, "EC2 API returned error for DescribeInstances")
 	}

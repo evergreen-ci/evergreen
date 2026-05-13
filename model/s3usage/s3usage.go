@@ -105,80 +105,40 @@ const (
 	S3DaysPerMonth            = 30.0
 )
 
-// CalculateUploadMetrics populates file size and PUT requests for each uploaded file.
-// Returns the populated metrics plus aggregate totals.
-// If any file stat fails, logs a warning and uses zero values for that file.
-func CalculateUploadMetrics(
-	logger grip.Journaler,
-	files []FileMetrics,
-	bucketType S3BucketType,
-	method S3UploadMethod,
-) (populatedFiles []FileMetrics, totalSize int64, totalPuts int) {
-	populatedFiles = make([]FileMetrics, len(files))
-
-	for i, file := range files {
-		fileInfo, err := os.Stat(file.LocalPath)
-		if err != nil {
-			logger.Warningf(context.Background(), "Unable to calculate file size and PUT requests for '%s' after successful upload: %s. Using zero values for metadata.", file.LocalPath, err)
-			populatedFiles[i] = FileMetrics{
-				LocalPath:     file.LocalPath,
-				RemotePath:    file.RemotePath,
-				FileSizeBytes: 0,
-				PutRequests:   0,
-			}
-			continue
-		}
-
-		fileSize := fileInfo.Size()
-		putRequests := CalculatePutRequestsWithContext(bucketType, method, fileSize)
-
-		populatedFiles[i] = FileMetrics{
-			LocalPath:     file.LocalPath,
-			RemotePath:    file.RemotePath,
-			FileSizeBytes: fileSize,
-			PutRequests:   putRequests,
-		}
-
-		totalSize += fileSize
-		totalPuts += putRequests
+// BuildFileMetrics constructs a FileMetrics entry for a successfully uploaded file,
+// statting the file for size. If the stat fails, logs a warning and uses zero size.
+func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, puts int) (FileMetrics, int64) {
+	fileInfo, err := os.Stat(localPath)
+	var fileSize int64
+	if err != nil {
+		logger.Debugf(context.Background(), "Unable to calculate file size for '%s' after successful upload: %s. Using zero values for metadata.", localPath, err)
+	} else {
+		fileSize = fileInfo.Size()
 	}
-
-	return populatedFiles, totalSize, totalPuts
+	return FileMetrics{
+		LocalPath:     localPath,
+		RemotePath:    remotePath,
+		FileSizeBytes: fileSize,
+		PutRequests:   puts,
+	}, fileSize
 }
 
-// CalculatePutRequestsWithContext returns the number of S3 PUT API calls
-// needed to upload a file based on bucket type, upload method, and file size.
-func CalculatePutRequestsWithContext(bucketType S3BucketType, method S3UploadMethod, fileSize int64) int {
-	if fileSize < 0 {
-		return 0
+// ComputePerFileExtremes returns the max and min PutRequests across all uploaded files.
+func ComputePerFileExtremes(files []FileMetrics) (maxPuts, minPuts int) {
+	if len(files) == 0 {
+		return 0, 0
 	}
-
-	switch method {
-	case S3UploadMethodCopy:
-		return 1
-
-	case S3UploadMethodWriter:
-		if bucketType == S3BucketTypeSmall {
-			return 1
+	maxPuts = files[0].PutRequests
+	minPuts = files[0].PutRequests
+	for i := 1; i < len(files); i++ {
+		if files[i].PutRequests > maxPuts {
+			maxPuts = files[i].PutRequests
 		}
-		// Large bucket Writer uses multipart for all sizes, <= 5MB is simple multipart (3 PUTs)
-		if fileSize <= S3PartSize {
-			return 3
+		if files[i].PutRequests < minPuts {
+			minPuts = files[i].PutRequests
 		}
-		numParts := int((fileSize + S3PartSize - 1) / S3PartSize)
-		return 1 + numParts + 1
-
-	case S3UploadMethodPut:
-		// AWS SDK uses single PUT for < 5MB, multipart for >= 5MB
-		if fileSize < S3PartSize {
-			return 1
-		}
-		numParts := int((fileSize + S3PartSize - 1) / S3PartSize)
-		return 1 + numParts + 1
-
-	default:
-		return 0
 	}
+	return maxPuts, minPuts
 }
 
 // CalculateS3PutCostWithConfig calculates the S3 PUT request cost, returning both the standard

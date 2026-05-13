@@ -103,16 +103,3 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NoError(err)
 	assert.NotContains([]CloudStatus{StatusRunning, StatusStopping, StatusStopped}, info.Status)
 }
-
-func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForIntentHosts() {
-	opts := &EC2ManagerOptions{
-		client: &awsClientImpl{},
-	}
-	m := &ec2Manager{env: s.env, EC2ManagerOptions: opts}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	info, err := m.client.GetInstanceInfo(ctx, "evg-ubuntu-1234")
-	s.Nil(info)
-	s.Errorf(err, "intent host")
-}

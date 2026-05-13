@@ -90,6 +90,8 @@ type Version struct {
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`
 
+	// Identifier is the project ID (despite the name, it's not the project
+	// identifier).
 	Identifier string `bson:"identifier" json:"identifier,omitempty"`
 	Remote     bool   `bson:"remote" json:"remote,omitempty"`
 	RemotePath string `bson:"remote_path" json:"remote_path,omitempty"`

@@ -1,0 +1,13 @@
+mutation {
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
+      projectRef: { id: "different_repo_id" }
+    }
+    section: GENERAL
+  ) {
+    projectRef {
+      id
+    }
+  }
+}
