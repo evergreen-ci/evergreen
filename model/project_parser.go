@@ -884,12 +884,19 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		// anchors from this file's own content.
 		if includeNode != nil {
 			for _, anchor := range collectAnchors(includeNode) {
-				for _, existing := range anchorRegistry {
+				replaced := false
+				for i, existing := range anchorRegistry {
 					if existing.name == anchor.name {
-						return errors.Errorf("%s: anchor '%s' in '%s' conflicts with an anchor defined in an earlier file", LoadProjectError, anchor.name, path.FileName)
+						// Last-write-wins: a later file's anchor definition
+						// overrides an earlier one with the same name.
+						anchorRegistry[i] = anchor
+						replaced = true
+						break
 					}
 				}
-				anchorRegistry = append(anchorRegistry, anchor)
+				if !replaced {
+					anchorRegistry = append(anchorRegistry, anchor)
+				}
 			}
 		}
 

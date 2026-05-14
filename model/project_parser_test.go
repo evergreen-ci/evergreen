@@ -3570,10 +3570,12 @@ tasks:
 	assert.Error(t, err, "alias referencing a later-defined anchor should fail")
 }
 
-// TestDuplicateAnchorNameAcrossFilesShouldError verifies that defining the
-// same anchor name in two different files is an error.
-func TestDuplicateAnchorNameAcrossFilesShouldError(t *testing.T) {
-	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml")
+// TestDuplicateAnchorNameAcrossFilesLastWriteWins verifies that when two files
+// define the same anchor name, the later file's definition wins (matching
+// yaml.v3's own within-file behavior). A third file using the alias should
+// see the second definition.
+func TestDuplicateAnchorNameAcrossFilesLastWriteWins(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
 
 	firstYAML := `
 tasks:
@@ -3589,14 +3591,28 @@ tasks:
   - &shared-step
     command: git.get_project
 `
+	thirdYAML := `
+tasks:
+- name: third-task
+  commands:
+  - *shared-step
+`
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
 		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
+			moduleInclude("third.yml", thirdYAML),
 		), "proj", proj)
-	assert.Error(t, err, "duplicate anchor name across files should fail")
-	assert.Contains(t, err.Error(), "shared-step")
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "third-task")
+	require.Len(t, tasksByName["third-task"].Commands, 1)
+	assert.Equal(t, "git.get_project", tasksByName["third-task"].Commands[0].Command)
 }
 
 // TestAnchorWithNestedAlias verifies that a file can use an alias from an
@@ -3776,4 +3792,42 @@ buildvariants:
 	assert.Equal(t, "linux", proj.BuildVariants[0].Name)
 	require.Len(t, proj.BuildVariants[0].Tasks, 1)
 	assert.Equal(t, "templated-task", proj.BuildVariants[0].Tasks[0].Name)
+}
+
+// TestComplexAnchorAliasExpansion verifies that an alias (*anchor) referencing
+// a multi-field command defined in an earlier file fully expands all fields in
+// the consuming include file.
+func TestComplexAnchorAliasExpansion(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: base-task
+  commands:
+  - &full-command
+    command: shell.exec
+    params:
+      script: ./run.sh
+      working_dir: src
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: derived-task
+  commands:
+  - *full-command
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "derived-task")
+	require.Len(t, tasksByName["derived-task"].Commands, 1)
+	cmd := tasksByName["derived-task"].Commands[0]
+	assert.Equal(t, "shell.exec", cmd.Command)
+	assert.Equal(t, "./run.sh", cmd.Params["script"])
+	assert.Equal(t, "src", cmd.Params["working_dir"])
 }
