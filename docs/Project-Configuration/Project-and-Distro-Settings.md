@@ -130,6 +130,7 @@ while still allowing for other kinds of versions (periodic builds, patches, etc)
 
 Additionally, admins can **Force Repotracker Run** to check for new commits if needed
 (Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
+(Users for the project can also trigger the repotracker via an undocumented rest route.)
 
 The repotracker does not guarantee every commit runs their corresponding version, please see [run every mainline commit](#run-every-mainline-commit) for more details.
 
