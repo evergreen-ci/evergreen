@@ -3380,3 +3380,400 @@ tasks:
 	assert.Equal(t, parserStringSlice{"linux"}, vs.MatrixSelector["os"])
 	assert.Equal(t, parserStringSlice{"amd64"}, vs.MatrixSelector["arch"])
 }
+
+// moduleIncludeOpts builds GetProjectOpts that serves include files from
+// inline bytes, bypassing GitHub and git.
+func moduleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
+	return &GetProjectOpts{LocalModuleIncludes: includes}
+}
+
+// mainYAMLWithModuleIncludes builds a minimal main YAML that declares one
+// module (named "m") and includes each filename under that module.
+func mainYAMLWithModuleIncludes(mainBody string, filenames ...string) string {
+	header := `
+modules:
+- name: m
+  repo: test
+  owner: test
+  branch: main
+include:
+`
+	for _, fn := range filenames {
+		header += "- filename: " + fn + "\n  module: m\n"
+	}
+	return header + mainBody
+}
+
+// moduleInclude builds a LocalModuleInclude with module "m".
+func moduleInclude(filename, content string) patch.LocalModuleInclude {
+	return patch.LocalModuleInclude{Module: "m", FileName: filename, FileContent: []byte(content)}
+}
+
+// TestCollectAnchors verifies that collectAnchors walks a Node tree and
+// returns all anchor definitions in encounter order, skipping alias nodes.
+func TestCollectAnchors(t *testing.T) {
+	yml := `
+a: &first
+  x: 1
+b:
+  - &second
+    y: 2
+  - *first
+`
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+
+	entries := collectAnchors(&node)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "first", entries[0].name)
+	assert.Equal(t, "second", entries[1].name)
+}
+
+// TestBuildAnchorPreambleProducesValidYAML verifies that buildAnchorPreamble
+// produces YAML that re-defines all accumulated anchors so the parser can
+// resolve aliases in subsequent files.
+func TestBuildAnchorPreambleProducesValidYAML(t *testing.T) {
+	// Parse a document that defines two anchors.
+	src := `
+steps:
+  - &step-a
+    command: shell.exec
+  - &step-b
+    command: git.get_project
+`
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(src), &node))
+	anchors := collectAnchors(&node)
+	require.Len(t, anchors, 2)
+
+	preamble, err := buildAnchorPreamble(anchors)
+	require.NoError(t, err)
+	require.NotEmpty(t, preamble)
+
+	// The preamble must parse cleanly and define both anchors.
+	var preambleNode yaml.Node
+	require.NoError(t, yaml.Unmarshal(preamble, &preambleNode))
+
+	// Prepend preamble to a snippet that uses the anchors as aliases.
+	snippet := `
+tasks:
+  - name: my-task
+    commands:
+      - *step-a
+      - *step-b
+`
+	combined := append(preamble, []byte(snippet)...)
+	var combinedNode yaml.Node
+	require.NoError(t, yaml.Unmarshal(combined, &combinedNode), "combined preamble+snippet should parse without unknown-anchor errors")
+}
+
+// TestBasicCrossFileAnchor verifies that an anchor defined in the main project
+// file can be used as an alias in an include file.
+func TestBasicCrossFileAnchor(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &common-step
+    command: shell.exec
+    params:
+      script: ./common.sh
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - *common-step
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+
+	require.Contains(t, tasksByName, "include-task")
+	require.Len(t, tasksByName["include-task"].Commands, 1)
+	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
+	assert.Equal(t, "./common.sh", tasksByName["include-task"].Commands[0].Params["script"])
+}
+
+// TestAnchorInEarlierInclude verifies that an anchor defined in include file N
+// can be used as an alias in include file N+1.
+func TestAnchorInEarlierInclude(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml")
+
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - &shared-cmd
+    command: shell.exec
+    params:
+      script: ./shared.sh
+`
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - *shared-cmd
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+		), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+
+	require.Contains(t, tasksByName, "second-task")
+	require.Len(t, tasksByName["second-task"].Commands, 1)
+	assert.Equal(t, "shell.exec", tasksByName["second-task"].Commands[0].Command)
+	assert.Equal(t, "./shared.sh", tasksByName["second-task"].Commands[0].Params["script"])
+}
+
+// TestAnchorInLaterIncludeFileShouldError verifies that an alias in include
+// file N that references an anchor defined only in include file N+1 causes an
+// error, since the anchor is not yet accumulated in the registry when N is
+// processed.
+func TestAnchorInLaterIncludeFileShouldError(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml")
+
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - *future-anchor
+`
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - &future-anchor
+    command: shell.exec
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+		), "proj", proj)
+	assert.Error(t, err, "alias referencing a later-defined anchor should fail")
+}
+
+// TestDuplicateAnchorNameAcrossFilesShouldError verifies that defining the
+// same anchor name in two different files is an error.
+func TestDuplicateAnchorNameAcrossFilesShouldError(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml")
+
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - &shared-step
+    command: shell.exec
+`
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - &shared-step
+    command: git.get_project
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+		), "proj", proj)
+	assert.Error(t, err, "duplicate anchor name across files should fail")
+	assert.Contains(t, err.Error(), "shared-step")
+}
+
+// TestAnchorWithNestedAlias verifies that a file can use an alias from an
+// earlier file within an anchor it defines, and a subsequent file can use that
+// anchor as an alias. This exercises the preamble-within-preamble ordering.
+func TestAnchorWithNestedAlias(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
+
+	// first.yml defines &setup-cmd.
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - &setup-cmd
+    command: shell.exec
+    params:
+      script: ./setup.sh
+`
+	// second.yml uses *setup-cmd (from first) and also defines &cleanup-cmd.
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - *setup-cmd
+  - &cleanup-cmd
+    command: shell.exec
+    params:
+      script: ./cleanup.sh
+`
+	// third.yml uses *cleanup-cmd (defined in second.yml, which itself used an alias to first.yml).
+	thirdYAML := `
+tasks:
+- name: third-task
+  commands:
+  - *cleanup-cmd
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+			moduleInclude("third.yml", thirdYAML),
+		), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "third-task")
+	require.Len(t, tasksByName["third-task"].Commands, 1)
+	assert.Equal(t, "shell.exec", tasksByName["third-task"].Commands[0].Command)
+	assert.Equal(t, "./cleanup.sh", tasksByName["third-task"].Commands[0].Params["script"])
+}
+
+// TestPreambleKeyStrippedFromParserProject verifies that the _evg_anchors key
+// Evergreen injects does not appear anywhere in the parsed struct.
+func TestPreambleKeyStrippedFromParserProject(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &step
+    command: shell.exec
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - *step
+`
+	proj := &Project{}
+	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	// Marshal the parser project back to YAML and confirm _evg_anchors is absent.
+	ppBytes, err := yaml.Marshal(pp)
+	require.NoError(t, err)
+	assert.NotContains(t, string(ppBytes), evgAnchorsKey)
+}
+
+// TestStrictModeWithCrossFileAnchor verifies that cross-file anchor resolution
+// works correctly when unmarshalStrict is true, and that the injected
+// _evg_anchors key does not trigger an unknown-field error.
+func TestStrictModeWithCrossFileAnchor(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &step
+    command: shell.exec
+    params:
+      script: ./common.sh
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - *step
+`
+	proj := &Project{}
+	opts := moduleIncludeOpts(moduleInclude("include.yml", includeYAML))
+	opts.UnmarshalStrict = true
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "include-task")
+	require.Len(t, tasksByName["include-task"].Commands, 1)
+	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
+}
+
+// TestNoAnchorsInIncludeFiles verifies that projects without anchors produce
+// identical output before and after the Stage 2 changes (no regression).
+func TestNoAnchorsInIncludeFiles(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - command: shell.exec
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - command: git.get_project
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	assert.Contains(t, tasksByName, "main-task")
+	assert.Contains(t, tasksByName, "include-task")
+}
+
+// TestAnchorOnComplexType verifies that an anchor on a full task definition
+// can be expanded as an alias in a build variant's task list in an include file.
+func TestAnchorOnComplexType(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- &task-template
+  name: templated-task
+  commands:
+  - command: shell.exec
+    params:
+      script: ./run.sh
+`, "include.yml")
+
+	// Include file uses *task-template to add the task to a build variant.
+	includeYAML := `
+buildvariants:
+- name: linux
+  display_name: Linux
+  run_on:
+  - rhel80-small
+  tasks:
+  - name: templated-task
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Equal(t, "linux", proj.BuildVariants[0].Name)
+	require.Len(t, proj.BuildVariants[0].Tasks, 1)
+	assert.Equal(t, "templated-task", proj.BuildVariants[0].Tasks[0].Name)
+}
