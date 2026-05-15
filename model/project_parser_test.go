@@ -3570,27 +3570,33 @@ tasks:
 	assert.Error(t, err, "alias referencing a later-defined anchor should fail")
 }
 
-// TestDuplicateAnchorNameAcrossFilesLastWriteWins verifies that when two files
-// define the same anchor name, the later file's definition wins (matching
-// yaml.v3's own within-file behavior). A third file using the alias should
-// see the second definition.
+// TestDuplicateAnchorNameAcrossFilesLastWriteWins verifies three things:
+//  1. first.yml uses its own definition A when it references *shared-step.
+//  2. second.yml redefines &shared-step (definition B) and its own *shared-step
+//     use resolves to definition B, not definition A from the preamble.
+//  3. third.yml, which has no anchor definition of its own, also sees definition B.
 func TestDuplicateAnchorNameAcrossFilesLastWriteWins(t *testing.T) {
 	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
 
+	// first.yml: defines &shared-step as shell.exec and immediately uses it.
 	firstYAML := `
 tasks:
 - name: first-task
   commands:
   - &shared-step
     command: shell.exec
+  - *shared-step
 `
+	// second.yml: redefines &shared-step as git.get_project and uses it too.
 	secondYAML := `
 tasks:
 - name: second-task
   commands:
   - &shared-step
     command: git.get_project
+  - *shared-step
 `
+	// third.yml: no anchor definition, just uses *shared-step — should see definition B.
 	thirdYAML := `
 tasks:
 - name: third-task
@@ -3610,6 +3616,20 @@ tasks:
 	for _, task := range proj.Tasks {
 		tasksByName[task.Name] = task
 	}
+
+	// first-task: both commands come from definition A (shell.exec).
+	require.Contains(t, tasksByName, "first-task")
+	require.Len(t, tasksByName["first-task"].Commands, 2)
+	assert.Equal(t, "shell.exec", tasksByName["first-task"].Commands[0].Command)
+	assert.Equal(t, "shell.exec", tasksByName["first-task"].Commands[1].Command)
+
+	// second-task: both commands come from definition B (git.get_project).
+	require.Contains(t, tasksByName, "second-task")
+	require.Len(t, tasksByName["second-task"].Commands, 2)
+	assert.Equal(t, "git.get_project", tasksByName["second-task"].Commands[0].Command)
+	assert.Equal(t, "git.get_project", tasksByName["second-task"].Commands[1].Command)
+
+	// third-task: sees definition B from the registry.
 	require.Contains(t, tasksByName, "third-task")
 	require.Len(t, tasksByName["third-task"].Commands, 1)
 	assert.Equal(t, "git.get_project", tasksByName["third-task"].Commands[0].Command)
