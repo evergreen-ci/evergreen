@@ -1461,16 +1461,6 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status age
 }
 
 func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status agentTaskStatus, description, failureType string, failureMetadataTagsToAdd []string) {
-	// agentTaskSystemFailed is an agent-internal status that must never
-	// reach the wire; normalize it to TaskFailed plus a system failure
-	// type so detail.Status only ever contains a valid end status.
-	if status == agentTaskSystemFailed {
-		status = agentTaskFailed
-		if failureType == "" {
-			failureType = evergreen.CommandTypeSystem
-		}
-	}
-
 	currCmd := tc.getCurrentCommand()
 	if currCmd != nil && failureType == "" {
 		// If there is no explicit user-defined failure type,
