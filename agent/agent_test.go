@@ -1542,7 +1542,7 @@ tasks:
 		Status: evergreen.TaskFailed,
 	})
 
-	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, agentTaskSucceeded, "")
 	s.NoError(err)
 	s.NotNil(resp)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status,

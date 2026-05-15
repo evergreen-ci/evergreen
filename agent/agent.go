@@ -52,14 +52,10 @@ var (
 	globalFilesToCleanup = []string{".gitconfig", ".git-credentials", ".netrc"}
 )
 
-// agentTaskStatus is the agent's internal task status during execution. In
-// addition to the two wire-format statuses (TaskSucceeded and TaskFailed),
-// it can carry agentTaskSystemFailed, which the agent translates to
-// TaskFailed plus Type=CommandTypeSystem before writing to TaskEndDetail.
-// It is intended for the intermediate status flowing through the agent's
-// run/finish pipeline (runPreAndMain, handleTaskResponse, finishTask,
-// endTaskResponse); the final detail.Status field on the wire remains a
-// plain string per apimodels.TaskEndDetail.
+// agentTaskStatus is the agent's intermediate task status. Unlike the
+// wire-format status on TaskEndDetail, it can be agentTaskSystemFailed,
+// which the agent translates to TaskFailed plus Type=CommandTypeSystem
+// before sending.
 type agentTaskStatus string
 
 const (
@@ -1152,12 +1148,8 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	// Run the OOM check whenever the task is in a failed-ish state: either
-	// detail.Status is explicitly failed (including user overrides via the
-	// HTTP endpoint), or the task timed out (in which case the timeout
-	// itself implies an abnormal end even if no command failed). Skip the
-	// timeout branch if the context is already cancelled, since the agent
-	// is shutting down and there's no point spending up to 10s polling.
+	// A timed-out task may have no failed command but can still have been
+	// OOM-killed, so treat timeout as a failed-ish state for OOM purposes.
 	taskFailed := detail.Status == evergreen.TaskFailed || (tc.hadTimedOut() && ctx.Err() == nil)
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) && taskFailed {
 		startTime := time.Now()
