@@ -1514,6 +1514,46 @@ post:
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
+func (s *AgentSuite) TestOOMTrackerRunsWhenUserOverridesToFailed() {
+	// This regression test verifies that the OOM check runs when a task's
+	// commands succeed but the task uses the HTTP endpoint to override its
+	// status to failed. Before the handleTimeoutAndOOM refactor, the OOM
+	// check would be skipped because it consulted the agent-computed status
+	// (success) rather than the user-overridden detail.Status (failed).
+	projYml := `
+buildvariants:
+ - name: mock_build_variant
+tasks:
+ - name: this_is_a_task_name
+   commands:
+    - command: shell.exec
+      params:
+        script: exit 0
+`
+	s.setupRunTask(projYml)
+	s.a.opts.CloudProvider = "provider"
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	s.tc.setUserEndTaskResponse(&triggerEndTaskResp{
+		Status: evergreen.TaskFailed,
+	})
+
+	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status,
+		"user override via HTTP endpoint should set the final status to failed")
+	s.NotNil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker,
+		"OOM tracker info should be populated when detail.Status is failed, regardless of the computed status")
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+	s.NoError(s.tc.logger.Close())
+}
+
 func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 	const buildID = "build_id"
 	const versionID = "not_a_task_group_version"
