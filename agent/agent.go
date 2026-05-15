@@ -583,7 +583,7 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	catcher.Wrap(err, "handling setup error")
 	tc.logger.Execution().Error(ctx, err)
 	grip.Infof(ctx, "Task complete: '%s'.", tc.task.ID)
-	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
+	shouldExit, err := a.handleTaskResponse(ctx, tc, agentTaskSystemFailed, err.Error())
 	catcher.Wrap(err, "handling task response")
 	return tc, shouldExit, catcher.Resolve()
 }
@@ -756,7 +756,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 // for the task. This method returns the status of the task after pre and main
 // have run. Also note that it's critical that all operations in this method
 // must respect the context. If the context errors, this must eventually return.
-func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status string) {
+func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status agentTaskStatus) {
 	defer func() {
 		op := "running task pre and main blocks"
 		pErr := recovery.HandlePanicWithError(recover(), nil, op)
@@ -764,12 +764,12 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 			return
 		}
 		_ = a.logPanic(ctx, tc, pErr, nil, op)
-		status = evergreen.TaskSystemFailed
+		status = agentTaskSystemFailed
 	}()
 
 	if ctx.Err() != nil {
 		tc.logger.Execution().Infof(ctx, "Stopping task execution during setup: %s", ctx.Err())
-		return evergreen.TaskSystemFailed
+		return agentTaskSystemFailed
 	}
 
 	timeoutWatcherCtx, timeoutWatcherCancel := context.WithCancel(ctx)
@@ -835,20 +835,20 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 
 	if execTimeoutCtx.Err() != nil {
 		tc.logger.Execution().Infof(ctx, "Stopping task execution after setup: %s", execTimeoutCtx.Err())
-		return evergreen.TaskSystemFailed
+		return agentTaskSystemFailed
 	}
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info(ctx, "Reporting task started.")
 	if err := a.comm.StartTask(execTimeoutCtx, tc.task, tc.traceID, tc.diskDevices); err != nil {
 		tc.logger.Execution().Error(ctx, errors.Wrap(err, "marking task started"))
-		return evergreen.TaskSystemFailed
+		return agentTaskSystemFailed
 	}
 
 	_ = a.killProcs(execTimeoutCtx, tc, false, "task is starting")
 
 	if err := a.runPreTaskCommands(execTimeoutCtx, tc); err != nil {
-		return evergreen.TaskFailed
+		return agentTaskFailed
 	}
 
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) {
@@ -859,10 +859,10 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	}
 
 	if err := a.runTaskCommands(execTimeoutCtx, tc); err != nil {
-		return evergreen.TaskFailed
+		return agentTaskFailed
 	}
 
-	return evergreen.TaskSucceeded
+	return agentTaskSucceeded
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
@@ -1132,7 +1132,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (bool, error) {
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status agentTaskStatus, systemFailureDescription string) (bool, error) {
 	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription)
 	if err != nil {
 		return false, errors.Wrap(err, "marking task complete")
@@ -1183,7 +1183,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status agentTaskStatus, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
 	if detail.TimedOut {
 		a.runDefaultTimeoutHandler(ctx, tc, detail)
@@ -1419,7 +1419,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 
 }
 
-func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status agentTaskStatus, systemFailureDescription string) *apimodels.TaskEndDetail {
 	highestPriorityDescription := systemFailureDescription
 	var userDefinedFailureType string
 	var userDefinedFailureMetadataTags []string
@@ -1427,10 +1427,10 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		tc.logger.Task().Infof(ctx, "Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
 		if !evergreen.IsValidTaskEndStatus(userEndTaskResp.Status) {
 			tc.logger.Task().Errorf(ctx, "'%s' is not a valid task status, defaulting to system failure.", userEndTaskResp.Status)
-			status = evergreen.TaskFailed
+			status = agentTaskFailed
 			userDefinedFailureType = evergreen.CommandTypeSystem
 		} else {
-			status = userEndTaskResp.Status
+			status = agentTaskStatus(userEndTaskResp.Status)
 			userDefinedFailureMetadataTags = userEndTaskResp.AddFailureMetadataTags
 
 			if len(userEndTaskResp.Description) > globals.EndTaskMessageLimit {
@@ -1458,7 +1458,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	return detail
 }
 
-func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string, failureMetadataTagsToAdd []string) {
+func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status agentTaskStatus, description, failureType string, failureMetadataTagsToAdd []string) {
 	currCmd := tc.getCurrentCommand()
 	if currCmd != nil && failureType == "" {
 		// If there is no explicit user-defined failure type,
@@ -1466,9 +1466,9 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		failureType = currCmd.Type()
 	}
 
-	detail.Status = status
+	detail.Status = string(status)
 	detail.Description = description
-	if status != evergreen.TaskSucceeded {
+	if status != agentTaskSucceeded {
 		if tc.userEndTaskRespOriginatingCommand != nil {
 			detail.FailingCommand = tc.userEndTaskRespOriginatingCommand.FullDisplayName()
 			tc.setFailingCommand(tc.userEndTaskRespOriginatingCommand)

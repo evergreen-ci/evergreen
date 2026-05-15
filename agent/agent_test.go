@@ -314,7 +314,7 @@ func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
 	for _, status := range evergreen.TaskCompletedStatuses {
-		resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+		resp, err := s.a.finishTask(s.ctx, s.tc, agentTaskStatus(status), "")
 		s.Equal(&apimodels.EndTaskResponse{}, resp)
 		s.NoError(err)
 		s.NoError(s.tc.logger.Close())
@@ -358,7 +358,7 @@ func (s *AgentSuite) TestCancelledRunPreAndMainIsNonBlocking() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
 	status := s.a.runPreAndMain(ctx, s.tc)
-	s.Equal(evergreen.TaskSystemFailed, status, "task that aborts before it even can run should system fail")
+	s.Equal(agentTaskSystemFailed, status, "task that aborts before it even can run should system fail")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
 }
@@ -373,7 +373,7 @@ func (s *AgentSuite) TestRunPreAndMainIsPanicSafe() {
 	}
 	s.NotPanics(func() {
 		status := s.a.runPreAndMain(s.ctx, tc)
-		s.Equal(evergreen.TaskSystemFailed, status, "panic in agent should system-fail the task")
+		s.Equal(agentTaskSystemFailed, status, "panic in agent should system-fail the task")
 	})
 	s.NoError(tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{panicLog}, nil)
@@ -388,7 +388,7 @@ func (s *AgentSuite) TestStartTaskFailureInRunPreAndMainCausesSystemFailure() {
 	// no consumer running in parallel to pick up the complete status.
 	s.mockCommunicator.StartTaskShouldFail = true
 	status := s.a.runPreAndMain(ctx, s.tc)
-	s.Equal(evergreen.TaskSystemFailed, status, "task should system-fail when it cannot start the task")
+	s.Equal(agentTaskSystemFailed, status, "task should system-fail when it cannot start the task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, nil, []string{panicLog})
