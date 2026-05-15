@@ -1155,8 +1155,10 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 	// Run the OOM check whenever the task is in a failed-ish state: either
 	// detail.Status is explicitly failed (including user overrides via the
 	// HTTP endpoint), or the task timed out (in which case the timeout
-	// itself implies an abnormal end even if no command failed).
-	taskFailed := detail.Status == evergreen.TaskFailed || tc.hadTimedOut()
+	// itself implies an abnormal end even if no command failed). Skip the
+	// timeout branch if the context is already cancelled, since the agent
+	// is shutting down and there's no point spending up to 10s polling.
+	taskFailed := detail.Status == evergreen.TaskFailed || (tc.hadTimedOut() && ctx.Err() == nil)
 	if tc.oomTrackerEnabled(a.opts.CloudProvider) && taskFailed {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, 10*time.Second)
@@ -1459,6 +1461,16 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status age
 }
 
 func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status agentTaskStatus, description, failureType string, failureMetadataTagsToAdd []string) {
+	// agentTaskSystemFailed is an agent-internal status that must never
+	// reach the wire; normalize it to TaskFailed plus a system failure
+	// type so detail.Status only ever contains a valid end status.
+	if status == agentTaskSystemFailed {
+		status = agentTaskFailed
+		if failureType == "" {
+			failureType = evergreen.CommandTypeSystem
+		}
+	}
+
 	currCmd := tc.getCurrentCommand()
 	if currCmd != nil && failureType == "" {
 		// If there is no explicit user-defined failure type,
