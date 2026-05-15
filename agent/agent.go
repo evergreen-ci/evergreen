@@ -1195,7 +1195,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status agentTas
 		tc.logger.Task().Info(ctx, "Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info(ctx, "Post task completed - FAILURE. Overall task status changed to FAILED.")
-			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "", nil)
+			setEndTaskFailureDetails(tc, detail, agentTaskFailed, "", "", nil)
 		}
 
 		detail.PostErrored = tc.getPostErrored()
