@@ -52,14 +52,14 @@ var (
 	globalFilesToCleanup = []string{".gitconfig", ".git-credentials", ".netrc"}
 )
 
-// agentTaskStatus is the agent's internal task status during execution. It
-// can carry agentTaskSystemFailed in addition to the two wire-format
-// statuses; agentTaskSystemFailed is translated to TaskFailed +
-// Type=CommandTypeSystem before being written to TaskEndDetail. Use this
-// type for the intermediate status flowing through runPreAndMain ->
-// handleTaskResponse -> finishTask -> endTaskResponse; the final
-// detail.Status field on the wire remains a plain string per
-// apimodels.TaskEndDetail.
+// agentTaskStatus is the agent's internal task status during execution. In
+// addition to the two wire-format statuses (TaskSucceeded and TaskFailed),
+// it can carry agentTaskSystemFailed, which the agent translates to
+// TaskFailed plus Type=CommandTypeSystem before writing to TaskEndDetail.
+// It is intended for the intermediate status flowing through the agent's
+// run/finish pipeline (runPreAndMain, handleTaskResponse, finishTask,
+// endTaskResponse); the final detail.Status field on the wire remains a
+// plain string per apimodels.TaskEndDetail.
 type agentTaskStatus string
 
 const (
