@@ -10,8 +10,33 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+// wrapTSSError augments errors from the test selection service with the
+// response body in the error message and structured fields in the grip log.
+func wrapTSSError(ctx context.Context, err error, fields message.Fields) error {
+	if err == nil {
+		return nil
+	}
+	var openAPIErr *testselection.GenericOpenAPIError
+	if errors.As(err, &openAPIErr) {
+		body := string(openAPIErr.Body())
+		logFields := message.Fields{
+			"message": "test selection service request failed",
+			"body":    body,
+		}
+		for k, v := range fields {
+			logFields[k] = v
+		}
+		grip.Error(ctx, message.WrapError(err, logFields))
+		return errors.Wrapf(err, "forwarding request to test selection service: %s", body)
+	}
+	grip.Error(ctx, message.WrapError(err, fields))
+	return errors.Wrap(err, "forwarding request to test selection service")
+}
 
 // newTestSelectionClient constructs a new test selection client using the
 // provided HTTP client.
@@ -62,7 +87,14 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "forwarding request to test selection service")
+		return nil, wrapTSSError(ctx, err, message.Fields{
+			"endpoint":      "select_tests",
+			"project":       req.Project,
+			"requester":     req.Requester,
+			"build_variant": req.BuildVariant,
+			"task_id":       req.TaskID,
+			"task_name":     req.TaskName,
+		})
 	}
 	selectedTests := make([]string, 0, len(selectedTestPtrs))
 	for _, t := range selectedTestPtrs {
@@ -87,7 +119,14 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 	if resp != nil {
 		defer resp.Body.Close()
 	}
-	return errors.Wrap(err, "forwarding request to test selection service")
+	return wrapTSSError(ctx, err, message.Fields{
+		"endpoint":                "transition_tests",
+		"project":                 projectID,
+		"build_variant":           bvName,
+		"task_name":               taskName,
+		"test_name":               testName,
+		"is_manually_quarantined": isQuarantined,
+	})
 }
 
 // GetTestsQuarantineStatus returns a map from each input test name to its
@@ -112,7 +151,13 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "forwarding request to test selection service")
+		return nil, wrapTSSError(ctx, err, message.Fields{
+			"endpoint":      "get_tests_state",
+			"project":       projectID,
+			"build_variant": bvName,
+			"task_name":     taskName,
+			"test_count":    len(testNames),
+		})
 	}
 	if result == nil {
 		return nil, errors.New("nil response from test selection service")
@@ -126,6 +171,88 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 		testToQuarantineStatus[testName] = stateInfo.State == testselection.STATEMACHINEENUM_MANUALLY_QUARANTINED
 	}
 	return testToQuarantineStatus, nil
+}
+
+// SetTaskQuarantined marks all known tests of a task as manually quarantined
+// (or unquarantines them) in the test selection service.
+func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string, isQuarantined bool) error {
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	c := newTestSelectionClient(httpClient)
+
+	_, resp, err := c.StateTransitionAPI.MarkTaskAsManuallyQuarantinedApiTestSelectionTransitionTaskProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
+		IsManuallyQuarantined(isQuarantined).
+		Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	return wrapTSSError(ctx, err, message.Fields{
+		"endpoint":                "transition_task",
+		"project":                 projectID,
+		"build_variant":           bvName,
+		"task_name":               taskName,
+		"is_manually_quarantined": isQuarantined,
+	})
+}
+
+// SetVariantQuarantined marks all known tests of a build variant as manually
+// quarantined (or unquarantines them) in the test selection service.
+func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isQuarantined bool) error {
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	c := newTestSelectionClient(httpClient)
+
+	_, resp, err := c.StateTransitionAPI.MarkVariantAsManuallyQuarantinedApiTestSelectionTransitionVariantProjectIdBuildVariantNamePost(ctx, projectID, bvName).
+		IsManuallyQuarantined(isQuarantined).
+		Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	return wrapTSSError(ctx, err, message.Fields{
+		"endpoint":                "transition_variant",
+		"project":                 projectID,
+		"build_variant":           bvName,
+		"is_manually_quarantined": isQuarantined,
+	})
+}
+
+// GetVariantQuarantineStatus returns the manual-quarantine status for every
+// test in every known task of a build variant. Tests use the override-state
+// precedence rule: if override_state is present and non-null, it determines
+// the result; otherwise state is used.
+func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (map[string]map[string]bool, error) {
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	c := newTestSelectionClient(httpClient)
+
+	result, resp, err := c.StateTransitionAPI.GetVariantStateApiTestSelectionGetVariantStateProjectIdBuildVariantNamePost(ctx, projectID, bvName).Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, wrapTSSError(ctx, err, message.Fields{
+			"endpoint":      "get_variant_state",
+			"project":       projectID,
+			"build_variant": bvName,
+		})
+	}
+	if result == nil {
+		return nil, errors.New("nil response from test selection service")
+	}
+
+	tasks := make(map[string]map[string]bool, len(*result))
+	for taskName, taskState := range *result {
+		tests := make(map[string]bool, len(taskState.TestStats))
+		for testName, stateInfo := range taskState.TestStats {
+			if overrideState, ok := stateInfo.GetOverrideStateOk(); ok && overrideState != nil {
+				tests[testName] = *overrideState == testselection.STATEMACHINEENUM_MANUALLY_QUARANTINED
+				continue
+			}
+			tests[testName] = stateInfo.State == testselection.STATEMACHINEENUM_MANUALLY_QUARANTINED
+		}
+		tasks[taskName] = tests
+	}
+	return tasks, nil
 }
 
 // DecorateQuarantineStatus populates IsManuallyQuarantined on each test result

@@ -738,6 +738,11 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	return apiSamples, nil
 }
 
+// VariantQuarantineStatus is the resolver for the variantQuarantineStatus field.
+func (r *queryResolver) VariantQuarantineStatus(ctx context.Context, projectIdentifier string, buildVariant string) (*restModel.APIVariantQuarantineStatus, error) {
+	return getVariantQuarantineStatusResponse(ctx, projectIdentifier, buildVariant)
+}
+
 // MyPublicKeys is the resolver for the myPublicKeys field.
 func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKey, error) {
 	publicKeys := getMyPublicKeys(ctx)

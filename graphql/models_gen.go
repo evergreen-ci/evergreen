@@ -417,9 +417,20 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+// QuarantineTaskInput is the input to the quarantineTask mutation. It marks every known test of the given task as manually quarantined in the test selection service.
+type QuarantineTaskInput struct {
+	TaskID string `json:"taskId"`
+}
+
 type QuarantineTestInput struct {
 	TaskID   string `json:"taskId"`
 	TestName string `json:"testName"`
+}
+
+// QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.
+type QuarantineVariantInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	BuildVariant      string `json:"buildVariant"`
 }
 
 type Query struct {
@@ -670,9 +681,20 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+// UnquarantineTaskInput is the input to the unquarantineTask mutation.
+type UnquarantineTaskInput struct {
+	TaskID string `json:"taskId"`
+}
+
 type UnquarantineTestInput struct {
 	TaskID   string `json:"taskId"`
 	TestName string `json:"testName"`
+}
+
+// UnquarantineVariantInput is the input to the unquarantineVariant mutation.
+type UnquarantineVariantInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	BuildVariant      string `json:"buildVariant"`
 }
 
 type UpdateBetaFeaturesInput struct {

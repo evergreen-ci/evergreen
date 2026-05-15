@@ -101,6 +101,14 @@ type Mutation {
   quarantineTest(opts: QuarantineTestInput!): TestResult!
   unquarantineTest(opts: UnquarantineTestInput!): TestResult!
 
+  # task quarantining
+  quarantineTask(opts: QuarantineTaskInput!): Task!
+  unquarantineTask(opts: UnquarantineTaskInput!): Task!
+
+  # variant quarantining
+  quarantineVariant(opts: QuarantineVariantInput!): VariantQuarantineStatus!
+  unquarantineVariant(opts: UnquarantineVariantInput!): VariantQuarantineStatus!
+
   # user
   addFavoriteProject(opts: AddFavoriteProjectInput!): Project!
   clearMySubscriptions: Int!
