@@ -86,7 +86,11 @@ func New(apiURL string) Config {
 
 		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
 
-		if !hasHostId && !hasHostIds || (hasHostId && hostId == "") || (hasHostIds && len(hostIdsInterface) == 0) {
+		// If no host ID is present, the field is optional and null, so skip the access check.
+		if !hasHostId && !hasHostIds {
+			return next(ctx)
+		}
+		if (hasHostId && hostId == "") || (hasHostIds && len(hostIdsInterface) == 0) {
 			return nil, ResourceNotFound.Send(ctx, "must specify host ID(s)")
 		}
 
@@ -347,8 +351,6 @@ func New(apiURL string) Config {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
 	}
 	c.Directives.RequireVolumeAccess = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
-		dbUser := mustHaveUser(ctx)
-
 		args, isStringMap := obj.(map[string]interface{})
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
@@ -360,10 +362,15 @@ func New(apiURL string) Config {
 		hasVolumeId := hasVolumeIdParam || hasVolumeParam
 		volumeId := util.CoalesceString(volumeIdParam, volumeParam)
 
-		if !hasVolumeId || volumeId == "" {
+		// If no volume ID is present, the field is optional and null, so skip the access check.
+		if !hasVolumeId {
+			return next(ctx)
+		}
+		if volumeId == "" {
 			return nil, InputValidationError.Send(ctx, "must specify volume ID")
 		}
 
+		dbUser := mustHaveUser(ctx)
 		v, err := host.FindVolumeByID(ctx, volumeId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", volumeId, err.Error()))
