@@ -78,15 +78,15 @@ type Mutation {
   setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
 
   # spawn
-  attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
-  detachVolumeFromHost(volumeId: String!): Boolean!
-  editSpawnHost(spawnHost: EditSpawnHostInput): Host!
-  migrateVolume(volumeId: String!, spawnHostInput: SpawnHostInput): Boolean!
-  spawnHost(spawnHostInput: SpawnHostInput): Host!
-  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
-  removeVolume(volumeId: String!): Boolean!
-  updateSpawnHostStatus(updateSpawnHostStatusInput: UpdateSpawnHostStatusInput!): Host!
-  updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
+  attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean! # Has directive on VolumeHost.
+  detachVolumeFromHost(volumeId: String! @requireVolumeAccess): Boolean!
+  editSpawnHost(spawnHost: EditSpawnHostInput): Host! # Has directive on EditSpawnHostInput.
+  migrateVolume(volumeId: String! @requireVolumeAccess, spawnHostInput: SpawnHostInput): Boolean!
+  spawnHost(spawnHostInput: SpawnHostInput): Host! # Has directive for volume on SpawnHostInput.
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean! # Has directive for host on SpawnVolumeInput.
+  removeVolume(volumeId: String! @requireVolumeAccess): Boolean!
+  updateSpawnHostStatus(updateSpawnHostStatusInput: UpdateSpawnHostStatusInput!): Host! # Has directive on UpdateSpawnHostStatusInput.
+  updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean! # Has directive on UpdateVolumeInput.
 
   # task
   abortTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
@@ -94,7 +94,7 @@ type Mutation {
   restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!): Task!
   scheduleTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), taskIds: [String!]!): [Task!]!
   setTaskPriority(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): Task!
-  setTaskPriorities(taskPriorities: [TaskPriority!]!): [Task!]!
+  setTaskPriorities(taskPriorities: [TaskPriority!]!): [Task!]! # Has directive on TaskPriority.
   unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
   
   # test
@@ -121,7 +121,7 @@ type Mutation {
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
 
   # version
-  refreshGitHubStatuses(opts: RefreshGitHubStatusesInput!): RefreshGitHubStatusesPayload
+  refreshGitHubStatuses(opts: RefreshGitHubStatusesInput!): RefreshGitHubStatusesPayload # Has directive on RefreshGitHubStatusesInput.
   restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
   scheduleUndispatchedBaseTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
   setVersionPriority(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String

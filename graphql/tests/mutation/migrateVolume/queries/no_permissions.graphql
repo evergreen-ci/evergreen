@@ -1,0 +1,13 @@
+mutation migrateVolume {
+  migrateVolume(
+    volumeId: "vol-0603934fsas024db5"
+    spawnHostInput: {
+      distroId: "ubuntu2204-small"
+      isVirtualWorkStation: false
+      region: "us-east-1"
+      savePublicKey: false
+      noExpiration: false
+      publicKey: { name: "my-key", key: "ssh-rsa AAAAAAAAAAAAAA..." }
+    }
+  )
+}

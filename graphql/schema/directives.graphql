@@ -64,3 +64,8 @@ requireAdmin is used to restrict certain actions to admins.
 """
 
 directive @requireAdmin on FIELD_DEFINITION
+
+"""
+requireVolumeAccess is used to restrict edit access for volumes.
+"""
+directive @requireVolumeAccess on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
