@@ -4506,6 +4506,17 @@ func allObjectsExistInBucket(ctx context.Context, bucket pail.Bucket, keys []str
 	return true
 }
 
+// setOutputBucketConfig sets both task and test log bucket configs in memory and persists them.
+func (t *Task) setOutputBucketConfig(ctx context.Context, cfg evergreen.BucketConfig) error {
+	t.TaskOutputInfo.TaskLogs.BucketConfig = cfg
+	t.TaskOutputInfo.TestLogs.BucketConfig = cfg
+	return errors.Wrap(UpdateOne(
+		ctx,
+		bson.M{IdKey: t.Id},
+		bson.M{"$set": bson.M{TaskOutputInfoKey: t.TaskOutputInfo}},
+	), "updating task output bucket config")
+}
+
 // moveLogsByNamesToBucket moves task + test logs to the specified bucket.
 func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.Settings, output *TaskOutput, sourceBucketCfg *evergreen.BucketConfig) error {
 	if output.TestLogs.BucketConfig.Name != output.TaskLogs.BucketConfig.Name {
@@ -4564,13 +4575,7 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 					"task_id":   t.Id,
 					"execution": t.Execution,
 				})
-				t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
-				t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
-				if updateErr := UpdateOne(
-					ctx,
-					bson.M{IdKey: t.Id},
-					bson.M{"$set": bson.M{TaskOutputInfoKey: t.TaskOutputInfo}},
-				); updateErr != nil {
+				if updateErr := t.setOutputBucketConfig(ctx, failedCfg); updateErr != nil {
 					return errors.Wrap(moveErr, "moving logs to failed bucket")
 				}
 				return nil
@@ -4585,20 +4590,7 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 		return errors.Wrap(moveErr, "moving logs to failed bucket")
 	}
 
-	// Update the task output info with the new bucket config.
-	t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
-	t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
-	err = UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				TaskOutputInfoKey: t.TaskOutputInfo,
-			},
-		})
-	return errors.Wrapf(err, "updating task output for task %s", t.Id)
+	return errors.Wrapf(t.setOutputBucketConfig(ctx, failedCfg), "updating task output for task %s", t.Id)
 }
 
 // MoveTestAndTaskLogsToFailedBucket moves task + test logs to the failed-task bucket
@@ -4613,6 +4605,46 @@ func (t *Task) MoveTestAndTaskLogsToFailedBucket(ctx context.Context, settings *
 	}
 
 	return t.moveLogsByNamesToBucket(ctx, settings, output, &sourceBucketCfg)
+}
+
+// RevertBucketConfigToSource updates the task's DB bucket config back to sourceBucketCfg.
+func (t *Task) RevertBucketConfigToSource(ctx context.Context, sourceBucketCfg evergreen.BucketConfig) error {
+	if t.TaskOutputInfo == nil {
+		return nil
+	}
+	return t.setOutputBucketConfig(ctx, sourceBucketCfg)
+}
+
+// RevertBucketConfigToSourceIfLogsExist checks whether the task's log files are still in sourceBucketCfg.
+// If they are, it calls RevertBucketConfigToSource to set the bucket config back to the source bucket.
+func (t *Task) RevertBucketConfigToSourceIfLogsExist(ctx context.Context, sourceBucketCfg evergreen.BucketConfig) (bool, error) {
+	output, ok := t.GetTaskOutputSafe()
+	if !ok {
+		return false, nil
+	}
+
+	srcBucket, err := newBucket(ctx, sourceBucketCfg, output.TestLogs.AWSCredentials)
+	if err != nil {
+		return false, errors.Wrap(err, "getting source bucket")
+	}
+
+	// List using the execution-level prefix, which is a complete path component and works
+	// correctly with both S3 (string-prefix) and local (directory-walk) buckets. This prefix
+	// covers all task and test log files for the given task execution.
+	execPrefix := fmt.Sprintf("%s/%s/%d/", t.Project, t.Id, t.Execution)
+	it, err := srcBucket.List(ctx, execPrefix)
+	if err != nil {
+		return false, errors.Wrap(err, "listing log keys in source bucket")
+	}
+	// We only need to find at least one file still in the source bucket. Even
+	// in a partial move, pointing back to the source bucket is the right
+	// choice: tasks can still read whatever logs remain there, and the next
+	// move job will re-attempt the full move to the failed bucket.
+	if !it.Next(ctx) {
+		return false, it.Err()
+	}
+
+	return true, t.RevertBucketConfigToSource(ctx, sourceBucketCfg)
 }
 
 // UsesLongRetentionBucket returns true if the task failed and is not in LongRetentionProjects.
