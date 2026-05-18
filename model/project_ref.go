@@ -1827,6 +1827,7 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 		return false, errors.Wrap(err, "getting user roles")
 	}
 
+	// Collect scopes from roles that grant the required project settings view permission level.
 	requiredLevel := evergreen.ProjectSettingsView.Value
 	scopeIDs := make([]string, 0, len(roles))
 	for _, r := range roles {
@@ -1845,8 +1846,8 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 
 	allowed := make(map[string]struct{})
 	for _, s := range scopes {
-		for _, r := range s.Resources {
-			allowed[r] = struct{}{}
+		for _, resource := range s.Resources {
+			allowed[resource] = struct{}{}
 		}
 	}
 	for _, pRef := range projectRefs {
