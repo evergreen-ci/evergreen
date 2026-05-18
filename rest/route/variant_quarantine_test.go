@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +53,8 @@ func newRequestWithVars(vars map[string]string) *http.Request {
 }
 
 func ctxWithProjectRef(ref *serviceModel.ProjectRef) context.Context {
-	return context.WithValue(context.Background(), RequestContext, &serviceModel.Context{ProjectRef: ref})
+	ctx := context.WithValue(context.Background(), RequestContext, &serviceModel.Context{ProjectRef: ref})
+	return gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
 }
 
 func TestVariantQuarantineSucceeds(t *testing.T) {

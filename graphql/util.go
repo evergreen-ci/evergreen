@@ -1609,6 +1609,15 @@ func setVariantQuarantineState(ctx context.Context, projectIdentifier, buildVari
 	if err = data.SetVariantQuarantined(ctx, projectID, buildVariant, shouldQuarantine); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to %t for build variant '%s' on project '%s': %s", shouldQuarantine, buildVariant, projectIdentifier, err.Error()))
 	}
+	usr := mustHaveUser(ctx)
+	grip.Info(ctx, message.Fields{
+		"message":                 "build variant quarantine state changed",
+		"user":                    usr.Username(),
+		"project":                 projectID,
+		"project_identifier":      projectIdentifier,
+		"build_variant":           buildVariant,
+		"is_manually_quarantined": shouldQuarantine,
+	})
 	return buildVariantQuarantineStatusResponse(ctx, projectID, projectIdentifier, buildVariant)
 }
 

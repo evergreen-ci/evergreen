@@ -7,6 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -41,6 +43,22 @@ func buildVariantQuarantineResponse(ctx context.Context, projectID, projectIdent
 	return gimlet.NewJSONResponse(apiStatus)
 }
 
+func quarantineVariant(ctx context.Context, projectID, projectIdentifier, variantName string, shouldQuarantine bool) gimlet.Responder {
+	u := MustHaveUser(ctx)
+	if err := data.SetVariantQuarantined(ctx, projectID, variantName, shouldQuarantine); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting quarantine state to %t for build variant '%s' on project '%s'", shouldQuarantine, variantName, projectIdentifier))
+	}
+	grip.Info(ctx, message.Fields{
+		"message":                 "build variant quarantine state changed",
+		"user":                    u.Username(),
+		"project":                 projectID,
+		"project_identifier":      projectIdentifier,
+		"build_variant":           variantName,
+		"is_manually_quarantined": shouldQuarantine,
+	})
+	return buildVariantQuarantineResponse(ctx, projectID, projectIdentifier, variantName)
+}
+
 type variantQuarantineHandler struct {
 	variantName string
 }
@@ -73,10 +91,7 @@ func (h *variantQuarantineHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	if err := data.SetVariantQuarantined(ctx, projectID, h.variantName, true); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "quarantining build variant '%s' on project '%s'", h.variantName, projectIdentifier))
-	}
-	return buildVariantQuarantineResponse(ctx, projectID, projectIdentifier, h.variantName)
+	return quarantineVariant(ctx, projectID, projectIdentifier, h.variantName, true)
 }
 
 type variantUnquarantineHandler struct {
@@ -111,10 +126,7 @@ func (h *variantUnquarantineHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	if err := data.SetVariantQuarantined(ctx, projectID, h.variantName, false); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "unquarantining build variant '%s' on project '%s'", h.variantName, projectIdentifier))
-	}
-	return buildVariantQuarantineResponse(ctx, projectID, projectIdentifier, h.variantName)
+	return quarantineVariant(ctx, projectID, projectIdentifier, h.variantName, false)
 }
 
 type variantQuarantineStatusHandler struct {
