@@ -651,8 +651,8 @@ func groupPatchesAndBuildUpdates(ctx context.Context, patches []Patch, reason st
 }
 
 // MarkMergeQueuePatchesRemovedFromQueue updates patches matching the given HeadSHA to mark them
-// as removed from the GitHub merge queue. Returns the IDs of patches that were updated.
-func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) ([]string, error) {
+// as removed from the GitHub merge queue. Returns the patches that were updated.
+func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headSHA, reason string) ([]Patch, error) {
 	if headSHA == "" {
 		return nil, errors.New("headSHA cannot be empty")
 	}
@@ -683,8 +683,6 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 	patchesInvalidatedByUpstream, updateForUpstream, patchesOwnFailure, updateForOwnFailure :=
 		groupPatchesAndBuildUpdates(ctx, patches, reason, removalTime)
 
-	updatedPatchIDs := []string{}
-
 	updates := []struct {
 		patches []mgobson.ObjectId
 		update  bson.M
@@ -698,15 +696,12 @@ func MarkMergeQueuePatchesRemovedFromQueue(ctx context.Context, org, repo, headS
 		if len(u.patches) > 0 {
 			_, err := UpdateAll(ctx, bson.M{IdKey: bson.M{"$in": u.patches}}, u.update)
 			if err != nil {
-				return updatedPatchIDs, errors.Wrap(err, u.errMsg)
-			}
-			for _, id := range u.patches {
-				updatedPatchIDs = append(updatedPatchIDs, id.Hex())
+				return patches, errors.Wrap(err, u.errMsg)
 			}
 		}
 	}
 
-	return updatedPatchIDs, nil
+	return patches, nil
 }
 
 // ClaimMergeQueueMetricsEmit atomically claims the right to emit the patch_completed span for a merge queue

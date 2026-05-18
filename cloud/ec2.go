@@ -489,21 +489,22 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
-// getResources returns a slice of the AWS resources for the given host
-func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+// ec2HostResources returns the host instance ID and attached volume IDs for EC2
+// APIs that accept a Resources list (e.g. CreateTags, DeleteTags).
+func ec2HostResources(ctx context.Context, client AWSClient, h *host.Host) ([]string, error) {
+	volumeIDs, err := client.GetVolumeIDs(ctx, h)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting volume IDs for host '%s'", h.Id)
 	}
-
-	resources := []string{h.Id}
+	resources := make([]string, 0, 1+len(volumeIDs))
+	resources = append(resources, h.Id)
 	resources = append(resources, volumeIDs...)
 	return resources, nil
 }
 
 // addTags adds or updates the specified tags in the client and db
 func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag) error {
-	resources, err := m.getResources(ctx, h)
+	resources, err := ec2HostResources(ctx, m.client, h)
 	if err != nil {
 		return errors.Wrap(err, "getting host resources")
 	}
@@ -521,7 +522,7 @@ func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag)
 
 // deleteTags removes the specified tags by their keys in the client and db
 func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys []string) error {
-	resources, err := m.getResources(ctx, h)
+	resources, err := ec2HostResources(ctx, m.client, h)
 	if err != nil {
 		return errors.Wrap(err, "getting host resources")
 	}
@@ -576,7 +577,7 @@ func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string)
 func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool) error {
 	expireOnValue := expireInDays(evergreen.SpawnHostExpireDays)
 	if !host.IsIntentHostId(h.Id) {
-		resources, err := m.getResources(ctx, h)
+		resources, err := ec2HostResources(ctx, m.client, h)
 		if err != nil {
 			return errors.Wrap(err, "getting host resources")
 		}
@@ -665,6 +666,30 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 	return errors.Wrapf(h.SetExpirationTime(ctx, h.ExpirationTime.Add(extension)), "extending expiration time in DB for host '%s'", h.Id)
 }
 
+// extendExpireOnByDay extends the expire-on tag on a task host by one day by
+// updating both the EC2 tag and the cached value in the database.
+func extendExpireOnByDay(ctx context.Context, client AWSClient, h *host.Host) error {
+	newExpireOn, err := h.NextExpireOnTagValue()
+	if err != nil {
+		return errors.Wrap(err, "computing new expire-on tag value")
+	}
+
+	resources, err := ec2HostResources(ctx, client, h)
+	if err != nil {
+		return err
+	}
+	if _, err = client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: resources,
+		Tags: []types.Tag{
+			{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(newExpireOn)},
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "updating expire-on tag on EC2 for host '%s'", h.Id)
+	}
+
+	return errors.Wrap(h.BumpExpireOnTag(ctx, newExpireOn), "bumping expire-on tag in DB")
+}
+
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
 	if err := m.setupClient(ctx); err != nil {
@@ -707,6 +732,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		if err == nil {
 			catcher.Wrap(h.SetTemporaryExemption(ctx, exemptUntil), "setting temporary exemption")
 		}
+	}
+	if opts.ExtendExpireOnByDay {
+		catcher.Wrap(extendExpireOnByDay(ctx, m.client, h), "extending expire-on tag by one day")
 	}
 	if opts.NewName != "" {
 		catcher.Add(h.SetDisplayName(ctx, opts.NewName))

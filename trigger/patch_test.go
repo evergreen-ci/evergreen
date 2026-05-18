@@ -13,6 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -407,4 +409,109 @@ func (s *patchSuite) TestPatchStarted() {
 	n, err = s.t.patchStarted(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func TestPatchAttributesProjectIncludesRepoID(t *testing.T) {
+	trig := &patchTriggers{
+		patch:  &patch.Patch{Project: "branch-project"},
+		event:  &event.EventLogEntry{},
+		repoId: "repo-project",
+	}
+	assert.Equal(t, []string{"branch-project", "repo-project"}, trig.Attributes().Project)
+}
+
+func TestPatchAttributesProjectWithNoRepoContainsOnlyProjectID(t *testing.T) {
+	trig := &patchTriggers{
+		patch: &patch.Patch{Project: "branch-project"},
+		event: &event.EventLogEntry{},
+	}
+	assert.Equal(t, []string{"branch-project"}, trig.Attributes().Project)
+}
+
+func TestRepoProjectSubscriptionFiresForBranchPatch(t *testing.T) {
+	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	collections := []string{
+		patch.Collection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	p := patch.Patch{
+		Id:      patchID,
+		Project: "branch-project",
+		Author:  "author",
+		Status:  evergreen.VersionFailed,
+	}
+	require.NoError(t, p.Insert(ctx))
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project", RepoRefId: "repo-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
+	require.NoError(t, repoRef.Replace(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypePatch,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchStateChange,
+		ResourceId:   patchID.Hex(),
+		Data:         &event.PatchEventData{Status: evergreen.VersionFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	require.Len(t, notifications, 1)
+	assert.Equal(t, sub.Subscriber.Type, notifications[0].Subscriber.Type)
+}
+
+func TestRepoProjectSubscriptionDoesNotFireForBranchPatchWithoutRepo(t *testing.T) {
+	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	collections := []string{
+		patch.Collection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	p := patch.Patch{
+		Id:      patchID,
+		Project: "branch-project",
+		Author:  "author",
+		Status:  evergreen.VersionFailed,
+	}
+	require.NoError(t, p.Insert(ctx))
+	// Project ref has no RepoRefId — not attached to any repo.
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypePatch,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchStateChange,
+		ResourceId:   patchID.Hex(),
+		Data:         &event.PatchEventData{Status: evergreen.VersionFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	assert.Empty(t, notifications)
 }

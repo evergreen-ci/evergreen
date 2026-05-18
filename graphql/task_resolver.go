@@ -391,7 +391,8 @@ func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITas
 	}
 
 	taskName := utility.FromStringPtr(obj.DisplayName)
-	steps, err := model.GetTaskExecutionSteps(project, taskName)
+	variantName := utility.FromStringPtr(obj.BuildVariant)
+	steps, err := model.GetTaskExecutionSteps(project, taskName, variantName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building execution steps: %s", err.Error()))
 	}

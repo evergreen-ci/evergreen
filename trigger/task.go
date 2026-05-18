@@ -141,6 +141,7 @@ type taskTriggers struct {
 	data         *event.TaskEventData
 	task         *task.Task
 	owner        string
+	repoId       string
 	uiConfig     evergreen.UIConfig
 	jiraMappings *evergreen.JIRANotificationsConfig
 	host         *host.Host
@@ -203,15 +204,27 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 
 	t.event = e
 
+	projectRef, err := model.FindBranchProjectRef(ctx, t.task.Project)
+	if err != nil {
+		return errors.Wrapf(err, "finding project ref '%s'", t.task.Project)
+	}
+	if projectRef != nil {
+		t.repoId = projectRef.RepoRefId
+	}
+
 	t.jiraMappings = &evergreen.JIRANotificationsConfig{}
 	return t.jiraMappings.Get(ctx)
 }
 
 func (t *taskTriggers) Attributes() event.Attributes {
+	project := []string{t.task.Project}
+	if t.repoId != "" {
+		project = append(project, t.repoId)
+	}
 	attributes := event.Attributes{
 		ID:           []string{t.task.Id},
 		Object:       []string{event.ObjectTask},
-		Project:      []string{t.task.Project},
+		Project:      project,
 		InVersion:    []string{t.task.Version},
 		InBuild:      []string{t.task.BuildId},
 		DisplayName:  []string{t.task.DisplayName},

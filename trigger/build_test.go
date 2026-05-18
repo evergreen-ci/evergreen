@@ -8,8 +8,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -308,4 +311,103 @@ func (s *buildSuite) TestBuildRuntimeChange() {
 	n, err = s.t.buildRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func TestBuildAttributesProjectIncludesRepoID(t *testing.T) {
+	trig := &buildTriggers{
+		build:  &build.Build{Project: "branch-project"},
+		repoId: "repo-project",
+	}
+	assert.Equal(t, []string{"branch-project", "repo-project"}, trig.Attributes().Project)
+}
+
+func TestBuildAttributesProjectWithNoRepoContainsOnlyProjectID(t *testing.T) {
+	trig := &buildTriggers{
+		build: &build.Build{Project: "branch-project"},
+	}
+	assert.Equal(t, []string{"branch-project"}, trig.Attributes().Project)
+}
+
+func TestRepoProjectSubscriptionFiresForBranchBuild(t *testing.T) {
+	collections := []string{
+		build.Collection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	b := build.Build{
+		Id: "b1", Project: "branch-project",
+		DisplayName: "my-build", BuildVariant: "bv1",
+		Requester: evergreen.RepotrackerVersionRequester, Status: evergreen.BuildFailed,
+	}
+	require.NoError(t, b.Insert(ctx))
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project", RepoRefId: "repo-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{Id: "repo-project"}}
+	require.NoError(t, repoRef.Replace(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeBuild,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypeBuild,
+		EventType:    event.BuildStateChange,
+		ResourceId:   "b1",
+		Data:         &event.BuildEventData{Status: evergreen.BuildFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	require.Len(t, notifications, 1)
+	assert.Equal(t, sub.Subscriber.Type, notifications[0].Subscriber.Type)
+}
+
+func TestRepoProjectSubscriptionDoesNotFireForBranchBuildWithoutRepo(t *testing.T) {
+	collections := []string{
+		build.Collection, model.ProjectRefCollection, model.RepoRefCollection,
+		event.SubscriptionsCollection,
+	}
+	require.NoError(t, db.ClearCollections(collections...))
+	t.Cleanup(func() { assert.NoError(t, db.ClearCollections(collections...)) })
+
+	ctx := t.Context()
+	b := build.Build{
+		Id: "b1", Project: "branch-project",
+		DisplayName: "my-build", BuildVariant: "bv1",
+		Requester: evergreen.RepotrackerVersionRequester, Status: evergreen.BuildFailed,
+	}
+	require.NoError(t, b.Insert(ctx))
+	// Project ref has no RepoRefId — not attached to any repo.
+	pRef := model.ProjectRef{Id: "branch-project", Identifier: "branch-project"}
+	require.NoError(t, pRef.Insert(ctx))
+	sub := event.Subscription{
+		ID:           mgobson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeBuild,
+		Trigger:      event.TriggerFailure,
+		Selectors:    []event.Selector{{Type: event.SelectorProject, Data: "repo-project"}},
+		Filter:       event.Filter{Project: "repo-project"},
+		Subscriber:   event.Subscriber{Type: event.EmailSubscriberType, Target: "test@example.com"},
+		Owner:        "repo-project",
+		OwnerType:    event.OwnerTypeProject,
+	}
+	require.NoError(t, sub.Upsert(ctx))
+
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypeBuild,
+		EventType:    event.BuildStateChange,
+		ResourceId:   "b1",
+		Data:         &event.BuildEventData{Status: evergreen.BuildFailed},
+	}
+	notifications, err := NotificationsFromEvent(ctx, &e)
+	require.NoError(t, err)
+	assert.Empty(t, notifications)
 }

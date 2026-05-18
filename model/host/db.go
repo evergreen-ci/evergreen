@@ -128,6 +128,9 @@ var (
 	ipAddressIDKey           = bsonutil.MustHaveTag(IPAddress{}, "ID")
 	ipAddressAllocationIDKey = bsonutil.MustHaveTag(IPAddress{}, "AllocationID")
 	ipAddressHostTagKey      = bsonutil.MustHaveTag(IPAddress{}, "HostTag")
+
+	instanceTagKeyKey   = bsonutil.MustHaveTag(Tag{}, "Key")
+	instanceTagValueKey = bsonutil.MustHaveTag(Tag{}, "Value")
 )
 
 var (
