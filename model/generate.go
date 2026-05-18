@@ -41,9 +41,10 @@ type GeneratedProject struct {
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
 	// Task is the task that is running generate.tasks.
-	Task           *task.Task
-	ActivationInfo *specificActivationInfo
-	NewTVPairs     *TaskVariantPairs
+	Task                     *task.Task
+	ActivationInfo           *specificActivationInfo
+	NewTVPairs               *TaskVariantPairs
+	ExplicitlyGeneratedTasks map[TVPair]bool
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
@@ -335,6 +336,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		// If the parent generator is required to finish, then its generated
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
+		ExplicitlyGeneratedTasks:            g.ExplicitlyGeneratedTasks,
 	}
 	// This will only be populated for patches, not mainline commits.
 	if evergreen.IsPatchRequester(v.Requester) {
@@ -500,6 +502,17 @@ func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *V
 	newTVPairs := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
 		newTVPairs = appendTasks(newTVPairs, bv, p)
+	}
+
+	// Remember which tasks are explicitly generated before dependency expansion
+	// adds tasks that already exist in YAML. Only explicitly generated tasks should
+	// set GeneratedBy.
+	g.ExplicitlyGeneratedTasks = make(map[TVPair]bool, len(newTVPairs.ExecTasks)+len(newTVPairs.DisplayTasks))
+	for _, pair := range newTVPairs.ExecTasks {
+		g.ExplicitlyGeneratedTasks[pair] = true
+	}
+	for _, pair := range newTVPairs.DisplayTasks {
+		g.ExplicitlyGeneratedTasks[pair] = true
 	}
 
 	var err error
