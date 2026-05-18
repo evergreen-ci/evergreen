@@ -674,11 +674,12 @@ func spawnTestHostAndVolume(t *testing.T) {
 	}
 	require.NoError(t, mountedVolume.Insert(t.Context()))
 	h := host.Host{
-		Id:     "i-1104943f",
-		Host:   "i-1104943f",
-		User:   adminUser,
-		Secret: "",
-		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Id:        "i-1104943f",
+		Host:      "i-1104943f",
+		User:      adminUser,
+		StartedBy: adminUser,
+		Secret:    "",
+		Tag:       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Distro: distro.Distro{
 			Id: "i-1104943f",
 			Aliases: []string{

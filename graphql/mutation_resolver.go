@@ -778,14 +778,15 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.DeleteInstanceTags = deletedTags
 	}
 	if spawnHost.Volume != nil {
-		v, err = host.FindVolumeByID(ctx, *spawnHost.Volume)
+		volumeID := utility.FromStringPtr(spawnHost.Volume)
+		v, err = host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", utility.FromStringPtr(spawnHost.Volume), err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
 		}
 		if v.AvailabilityZone != h.Zone {
 			return nil, InputValidationError.Send(ctx, "mounted volume and spawn host must be in the same availability zone")
 		}
-		opts.AttachVolume = *spawnHost.Volume
+		opts.AttachVolume = volumeID
 	}
 	if spawnHost.PublicKey != nil {
 		if h.Status != evergreen.HostRunning {

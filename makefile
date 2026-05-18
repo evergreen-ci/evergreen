@@ -345,7 +345,7 @@ swaggo-install:
 	$(gobin) install github.com/swaggo/swag/cmd/swag@latest
 
 swaggo-format:
-	swag fmt -g service/service.go
+	swag fmt -g service/service.go --exclude thirdparty/clients,graphql
 
 swaggo-build:
 	swag init -g service/service.go -o $(buildDir) --outputTypes json --parseDependency --parseInternal
