@@ -102,6 +102,7 @@ type DirectiveRoot struct {
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireVolumeAccess          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 }
 
 type ComplexityRoot struct {
@@ -14205,12 +14206,53 @@ func (ec *executionContext) field_Mutation_detachProjectFromRepo_argsProjectID(
 func (ec *executionContext) field_Mutation_detachVolumeFromHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "volumeId", ec.unmarshalNString2string)
+
+	arg0, err := ec.field_Mutation_detachVolumeFromHost_argsVolumeID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["volumeId"] = arg0
 	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_detachVolumeFromHost_argsVolumeID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["volumeId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["volumeId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequireVolumeAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+		}
+		return ec.directives.RequireVolumeAccess(ctx, rawArgs, directive0)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_editAnnotationNote_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -14315,7 +14357,8 @@ func (ec *executionContext) field_Mutation_forceRepotrackerRun_argsProjectID(
 func (ec *executionContext) field_Mutation_migrateVolume_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "volumeId", ec.unmarshalNString2string)
+
+	arg0, err := ec.field_Mutation_migrateVolume_argsVolumeID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -14326,6 +14369,46 @@ func (ec *executionContext) field_Mutation_migrateVolume_args(ctx context.Contex
 	}
 	args["spawnHostInput"] = arg1
 	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_migrateVolume_argsVolumeID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["volumeId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["volumeId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequireVolumeAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+		}
+		return ec.directives.RequireVolumeAccess(ctx, rawArgs, directive0)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -14500,12 +14583,53 @@ func (ec *executionContext) field_Mutation_removePublicKey_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_removeVolume_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "volumeId", ec.unmarshalNString2string)
+
+	arg0, err := ec.field_Mutation_removeVolume_argsVolumeID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["volumeId"] = arg0
 	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeVolume_argsVolumeID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["volumeId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["volumeId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequireVolumeAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+		}
+		return ec.directives.RequireVolumeAccess(ctx, rawArgs, directive0)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_reprovisionToNew_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -82948,11 +83072,28 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.SleepSchedule = data
 		case "volume":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volume"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.Volume = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Volume = data
+			} else if tmp == nil {
+				it.Volume = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -88543,11 +88684,28 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 			it.UseTaskConfig = data
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.VolumeID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.VolumeID = data
+			} else if tmp == nil {
+				it.VolumeID = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "useOAuth":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useOAuth"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -88605,11 +88763,33 @@ func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, 
 			it.Expiration = data
 		case "host":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal *string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.Host = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Host = data
+			} else if tmp == nil {
+				it.Host = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "noExpiration":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("noExpiration"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -90176,11 +90356,26 @@ func (ec *executionContext) unmarshalInputUpdateVolumeInput(ctx context.Context,
 			it.Size = data
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.VolumeID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.VolumeID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -90388,18 +90583,53 @@ func (ec *executionContext) unmarshalInputVolumeHost(ctx context.Context, obj an
 		switch k {
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.VolumeID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.VolumeID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.HostID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.HostID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
