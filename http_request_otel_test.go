@@ -56,7 +56,7 @@ func TestHTTPRequestOtelAttributes(t *testing.T) {
 	t.Run("NoAuthHeadersAndNoUserReturnsSameRequest", func(t *testing.T) {
 		r, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
-		assert.Same(t, r, httpRequestOtelAttributes(r))
+		assert.Same(t, r, httpRequestUserOtelAttributes(r))
 	})
 	t.Run("ApiKeyHeadersOnly", func(t *testing.T) {
 		r, err := http.NewRequest(http.MethodGet, "/", nil)
@@ -110,7 +110,7 @@ func otelAttributesOnRequest(t *testing.T, r *http.Request) []attribute.KeyValue
 		sdktrace.WithSpanProcessor(spanRecorder),
 	)
 
-	annotated := httpRequestOtelAttributes(r)
+	annotated := httpRequestUserOtelAttributes(r)
 	_, span := tp.Tracer("test").Start(annotated.Context(), "test")
 	span.End()
 

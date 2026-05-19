@@ -21,8 +21,8 @@ func httpClientAuthMechanismFromRequest(r *http.Request) string {
 	return ""
 }
 
-// httpRequestOtelAttributes appends OpenTelemetry attributes for the incoming HTTP request to its context.
-func httpRequestOtelAttributes(r *http.Request) *http.Request {
+// httpRequestUserOtelAttributes appends OpenTelemetry attributes for the incoming HTTP request to its context.
+func httpRequestUserOtelAttributes(r *http.Request) *http.Request {
 	var attrs []attribute.KeyValue
 
 	if mechanism := httpClientAuthMechanismFromRequest(r); mechanism != "" {
@@ -44,7 +44,7 @@ func httpRequestOtelAttributes(r *http.Request) *http.Request {
 func NewHTTPRequestOtelMiddleware() gimlet.Middleware {
 	return gimlet.WrapperMiddleware(func(next http.HandlerFunc) http.HandlerFunc {
 		return func(rw http.ResponseWriter, r *http.Request) {
-			r = httpRequestOtelAttributes(r)
+			r = httpRequestUserOtelAttributes(r)
 			next(rw, r)
 		}
 	})
