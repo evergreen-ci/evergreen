@@ -48,7 +48,7 @@ func TestHTTPClientAuthMechanismFromRequest(t *testing.T) {
 	t.Run("NoHeadersReturnsEmpty", func(t *testing.T) {
 		r, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
-		assert.Equal(t, "", httpClientAuthMechanismFromRequest(r))
+		assert.Empty(t, httpClientAuthMechanismFromRequest(r))
 	})
 }
 
