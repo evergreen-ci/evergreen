@@ -52,9 +52,10 @@ const (
 	// Use this for GraphQL tests that are written in Golang (e.g. directive_test.go).
 	testUser = "test_user"
 
-	adminUser      = "admin_user"
-	privilegedUser = "privileged_user"
-	regularUser    = "regular_user"
+	adminUser       = "admin_user"
+	privilegedUser  = "privileged_user"
+	regularUser     = "regular_user"
+	branchAdminUser = "branch_admin_user"
 )
 
 type AtomicGraphQLState struct {
@@ -266,6 +267,25 @@ func setupUsers(t *testing.T) {
 		},
 	}
 	assert.NoError(t, regularUser.Insert(t.Context()))
+
+	// Branch admin user has edit access to the sandbox branch project but
+	// not to its attached repo. Used to verify repo-boundary checks on
+	// mutations that act on attached repos (e.g. promoteVarsToRepo).
+	branchAdminUsr := user.DBUser{
+		Id:           branchAdminUser,
+		DispName:     "Branch Admin User",
+		EmailAddress: "branch_admin_user@mongodb.com",
+		LoginCache: user.LoginCache{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+		APIKey: "branch_admin_api_key",
+		SystemRoles: []string{
+			evergreen.BasicProjectAccessRole,
+			"project_sandbox",
+		},
+	}
+	assert.NoError(t, branchAdminUsr.Insert(t.Context()))
 }
 
 func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
