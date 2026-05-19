@@ -5,7 +5,7 @@ mutation {
       size: 300
       type: "standard"
       noExpiration: true
-      host: "i-1104943f"
+      hostId: "i-1104943f"
     }
   )
 }

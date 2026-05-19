@@ -4,8 +4,7 @@ mutation {
       availabilityZone: "us-east-1a"
       size: 300
       type: "standard"
-      noExpiration: true
-      expiration: "2020-08-06T17:42:12Z"
+      host: "i-1104943f"
     }
   )
 }
