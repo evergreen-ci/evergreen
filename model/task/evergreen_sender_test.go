@@ -378,7 +378,7 @@ func newSenderTestMock(ctx context.Context) *senderTestMock {
 				Parse: func(rawLine string) (log.LogLine, error) {
 					return log.LogLine{Data: rawLine}, nil
 				},
-				appendLines: func(ctx context.Context, lines []log.LogLine) (int64, error) {
+				appendLines: func(ctx context.Context, lines []log.LogLine) (int64, int, error) {
 					return svc.Append(ctx, lines)
 				},
 			},
@@ -407,9 +407,9 @@ type mockLogService struct {
 	hasWriteErr bool
 }
 
-func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) (int64, error) {
+func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) (int64, int, error) {
 	if s.hasWriteErr {
-		return 0, errors.New("write error")
+		return 0, 0, errors.New("write error")
 	}
 	var totalBytes int64
 	for _, line := range lines {
@@ -417,5 +417,5 @@ func (s *mockLogService) Append(ctx context.Context, lines []log.LogLine) (int64
 	}
 	s.lines = append(s.lines, lines...)
 
-	return totalBytes, nil
+	return totalBytes, 1, nil
 }

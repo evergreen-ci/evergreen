@@ -778,14 +778,15 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.DeleteInstanceTags = deletedTags
 	}
 	if spawnHost.Volume != nil {
-		v, err = host.FindVolumeByID(ctx, *spawnHost.Volume)
+		volumeID := utility.FromStringPtr(spawnHost.Volume)
+		v, err = host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", utility.FromStringPtr(spawnHost.Volume), err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
 		}
 		if v.AvailabilityZone != h.Zone {
 			return nil, InputValidationError.Send(ctx, "mounted volume and spawn host must be in the same availability zone")
 		}
-		opts.AttachVolume = *spawnHost.Volume
+		opts.AttachVolume = volumeID
 	}
 	if spawnHost.PublicKey != nil {
 		if h.Status != evergreen.HostRunning {
@@ -1190,20 +1191,13 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 // QuarantineTest is the resolver for the quarantineTest field.
-func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*QuarantineTestPayload, error) {
-	t, err := task.FindOneId(ctx, opts.TaskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", opts.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", opts.TaskID))
-	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, opts.TestName, true); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("quarantining test '%s' on task '%s' on build variant '%s' on project '%s' : %s", opts.TestName, opts.TaskID, t.BuildVariant, t.Project, err.Error()))
-	}
-	return &QuarantineTestPayload{
-		Success: true,
-	}, nil
+func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*restModel.APITest, error) {
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, true)
+}
+
+// UnquarantineTest is the resolver for the unquarantineTest field.
+func (r *mutationResolver) UnquarantineTest(ctx context.Context, opts UnquarantineTestInput) (*restModel.APITest, error) {
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, false)
 }
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
+	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -621,6 +624,8 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
 		"mutation/updateVolume":         {spawnTestHostAndVolume},
 		"mutation/schedulePatch":        {persistTestSettings},
+		"mutation/quarantineTest":       {setupQuarantineTestMutation},
+		"mutation/unquarantineTest":     {setupQuarantineTestMutation},
 		"distro/availableRegions":       {setupEnvironmentSettings},
 	}
 	if m[state.Directory] != nil {
@@ -634,7 +639,9 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"mutation/spawnVolume": {clearSubnets},
+		"mutation/spawnVolume":      {clearSubnets},
+		"mutation/quarantineTest":   {teardownQuarantineTestMutation},
+		"mutation/unquarantineTest": {teardownQuarantineTestMutation},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {
@@ -667,11 +674,12 @@ func spawnTestHostAndVolume(t *testing.T) {
 	}
 	require.NoError(t, mountedVolume.Insert(t.Context()))
 	h := host.Host{
-		Id:     "i-1104943f",
-		Host:   "i-1104943f",
-		User:   adminUser,
-		Secret: "",
-		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Id:        "i-1104943f",
+		Host:      "i-1104943f",
+		User:      adminUser,
+		StartedBy: adminUser,
+		Secret:    "",
+		Tag:       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Distro: distro.Distro{
 			Id: "i-1104943f",
 			Aliases: []string{
@@ -726,4 +734,52 @@ func setupEnvironmentSettings(t *testing.T) {
 		"eu-west-1",
 		"ap-southeast-2",
 	}
+}
+
+var (
+	quarantineMutationTSSMock        *httptest.Server
+	quarantineMutationOriginalTSSURL string
+)
+
+func setupQuarantineTestMutation(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
+
+	tsk := &task.Task{
+		Id:             "quarantine_target",
+		Project:        "sandbox_project_id",
+		BuildVariant:   "ubuntu",
+		DisplayName:    "my_task",
+		Status:         evergreen.TaskSucceeded,
+		HasTestResults: true,
+		TaskOutputInfo: &task.TaskOutput{
+			TestResults: task.TestResultOutput{Version: task.TestResultServiceLocal},
+		},
+	}
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	tr := testresult.TestResult{
+		TaskID:         tsk.Id,
+		TestName:       "TestFoo",
+		Status:         evergreen.TestSucceededStatus,
+		TestStartTime:  time.Now().Add(-time.Hour),
+		TaskCreateTime: time.Now().Add(-time.Hour),
+		TestEndTime:    time.Now(),
+	}
+	svc := task.NewLocalService(evergreen.GetEnvironment())
+	require.NoError(t, svc.AppendTestResultMetadata(
+		resultTestutil.MakeAppendTestResultMetadataReq(t.Context(), []testresult.TestResult{tr}, tsk.Id),
+	))
+}
+
+func teardownQuarantineTestMutation(t *testing.T) {
+	if quarantineMutationTSSMock != nil {
+		quarantineMutationTSSMock.Close()
+	}
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationOriginalTSSURL
 }

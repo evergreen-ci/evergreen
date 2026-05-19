@@ -24,6 +24,7 @@ type patchTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.PatchEventData
 	patch    *patch.Patch
+	repoId   string
 	uiConfig evergreen.UIConfig
 
 	base
@@ -67,6 +68,14 @@ func (t *patchTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 	}
 	t.event = e
 
+	projectRef, err := model.FindBranchProjectRef(ctx, t.patch.Project)
+	if err != nil {
+		return errors.Wrapf(err, "finding project ref '%s'", t.patch.Project)
+	}
+	if projectRef != nil {
+		t.repoId = projectRef.RepoRefId
+	}
+
 	return nil
 }
 
@@ -76,10 +85,14 @@ func (t *patchTriggers) Attributes() event.Attributes {
 		eventData := t.event.Data.(*event.PatchEventData)
 		owner = []string{eventData.Author}
 	}
+	project := []string{t.patch.Project}
+	if t.repoId != "" {
+		project = append(project, t.repoId)
+	}
 	return event.Attributes{
 		ID:      []string{t.patch.Id.Hex()},
 		Object:  []string{event.ObjectPatch},
-		Project: []string{t.patch.Project},
+		Project: project,
 		Owner:   owner,
 		Status:  []string{t.patch.Status},
 	}

@@ -407,6 +407,93 @@ buildvariants:
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not defined on build variant")
 	})
+
+	t.Run("TaskGroupUsesSetupAndTeardownBlocks", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: lint-agent
+    commands:
+      - command: subprocess.exec
+        params:
+          command: make lint-agent
+task_groups:
+  - name: lint-group
+    setup_group:
+      - command: git.get_project
+      - command: shell.exec
+        params:
+          script: go mod tidy
+    teardown_task:
+      - command: gotest.parse_files
+      - command: attach.xunit_results
+    tasks:
+      - lint-agent
+buildvariants:
+  - name: lint
+    tasks:
+      - name: lint-group
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask(t.Context(), "lint-agent", "lint")
+		require.NoError(t, err)
+		assert.Equal(t, "lint-agent", executor.debugState.SelectedTask)
+		assert.Equal(t, "lint", executor.debugState.SelectedVariant)
+
+		require.Len(t, executor.commandBlocks, 3)
+		assert.Equal(t, command.SetupGroupBlock, executor.commandBlocks[0].blockType)
+		assert.Equal(t, command.MainTaskBlock, executor.commandBlocks[1].blockType)
+		assert.Equal(t, command.TeardownTaskBlock, executor.commandBlocks[2].blockType)
+	})
+
+	t.Run("TaskGroupValidatesOnVariant", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: lint-agent
+    commands:
+      - command: subprocess.exec
+  - name: other-task
+    commands:
+      - command: shell.exec
+task_groups:
+  - name: lint-group
+    tasks:
+      - lint-agent
+buildvariants:
+  - name: lint
+    tasks:
+      - name: lint-group
+  - name: other
+    tasks:
+      - name: other-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		err = executor.PrepareTask(t.Context(), "lint-agent", "lint")
+		require.NoError(t, err)
+
+		err = executor.PrepareTask(t.Context(), "lint-agent", "other")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not defined on build variant")
+	})
 }
 
 func TestCommandInfoStepNumber(t *testing.T) {

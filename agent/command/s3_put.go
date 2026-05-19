@@ -435,7 +435,11 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 		uploadedFiles     []s3usage.FileMetrics
 		filesList         []string
 		skippedFilesCount int
+		totalRetryPuts    int
+		totalFileSize     int64
 	)
+
+	fileRetryPuts := make(map[string]int)
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -503,7 +507,15 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
-				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
+				// pail.PutCounter is implemented by *s3Bucket; the fallback handles other bucket types that don't track PUT counts.
+				var puts int
+				if pc, ok := s3pc.bucket.(pail.PutCounter); ok {
+					puts, err = pc.UploadWithCount(ctx, remoteName, fpath)
+				} else {
+					err = s3pc.bucket.Upload(ctx, remoteName, fpath)
+				}
+				totalRetryPuts += puts
+				fileRetryPuts[fpath] += puts
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -545,10 +557,9 @@ retryLoop:
 					continue retryLoop
 				}
 
-				uploadedFiles = append(uploadedFiles, s3usage.FileMetrics{
-					LocalPath:  fpath,
-					RemotePath: remoteName,
-				})
+				metrics, fileSize := s3usage.BuildFileMetrics(logger.Task(), fpath, remoteName, fileRetryPuts[fpath])
+				totalFileSize += fileSize
+				uploadedFiles = append(uploadedFiles, metrics)
 
 			}
 
@@ -561,16 +572,9 @@ retryLoop:
 		return nil
 	}
 
-	uploadedFiles, totalFileSize, totalPutRequests := s3usage.CalculateUploadMetrics(
-		logger.Task(),
-		uploadedFiles,
-		s3usage.S3BucketTypeLarge,
-		s3usage.S3UploadMethodPut,
-	)
-
-	maxPuts, minPuts := computePerFileExtremes(uploadedFiles)
+	maxPuts, minPuts := s3usage.ComputePerFileExtremes(uploadedFiles)
 	conf.S3Usage.IncrementArtifacts(s3usage.ArtifactIncrementOptions{
-		PutRequests:               totalPutRequests,
+		PutRequests:               totalRetryPuts,
 		UploadBytes:               totalFileSize,
 		FileCount:                 len(uploadedFiles),
 		MaxPuts:                   maxPuts,
@@ -596,24 +600,6 @@ retryLoop:
 	}
 
 	return nil
-}
-
-// computePerFileExtremes returns the max and min PutRequests across all uploaded files.
-func computePerFileExtremes(files []s3usage.FileMetrics) (maxPuts, minPuts int) {
-	if len(files) == 0 {
-		return 0, 0
-	}
-	maxPuts = files[0].PutRequests
-	minPuts = files[0].PutRequests
-	for i := 1; i < len(files); i++ {
-		if files[i].PutRequests > maxPuts {
-			maxPuts = files[i].PutRequests
-		}
-		if files[i].PutRequests < minPuts {
-			minPuts = files[i].PutRequests
-		}
-	}
-	return maxPuts, minPuts
 }
 
 // attachTaskFiles is responsible for sending the

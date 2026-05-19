@@ -1,9 +1,12 @@
 package s3usage
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -152,86 +155,66 @@ func TestS3Usage(t *testing.T) {
 	})
 }
 
-func TestCalculatePutRequestsWithContext(t *testing.T) {
-	const MB = 1024 * 1024
+func TestBuildFileMetrics(t *testing.T) {
+	t.Run("FileExistsShouldReturnCorrectMetrics", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		localPath := filepath.Join(tmpDir, "test.txt")
+		require.NoError(t, os.WriteFile(localPath, []byte("hello world"), 0644))
+		fi, err := os.Stat(localPath)
+		require.NoError(t, err)
+		expectedSize := fi.Size()
 
-	t.Run("NegativeSizeShouldReturnZero", func(t *testing.T) {
-		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, -100))
-		assert.Equal(t, 0, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, -1*MB))
+		metrics, fileSize := BuildFileMetrics(grip.NewJournaler("test"), localPath, "remote/path/test.txt", 3)
+		assert.Equal(t, localPath, metrics.LocalPath)
+		assert.Equal(t, "remote/path/test.txt", metrics.RemotePath)
+		assert.Equal(t, expectedSize, metrics.FileSizeBytes)
+		assert.Equal(t, 3, metrics.PutRequests)
+		assert.Equal(t, expectedSize, fileSize)
 	})
-
-	t.Run("ZeroByteFileShouldReturnOnePut", func(t *testing.T) {
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 0))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 0))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 0))
+	t.Run("FileNotExistShouldReturnZeroSize", func(t *testing.T) {
+		metrics, fileSize := BuildFileMetrics(grip.NewJournaler("test"), "/nonexistent/path/file.txt", "remote/path/file.txt", 1)
+		assert.Equal(t, "/nonexistent/path/file.txt", metrics.LocalPath)
+		assert.Equal(t, "remote/path/file.txt", metrics.RemotePath)
+		assert.Equal(t, int64(0), metrics.FileSizeBytes)
+		assert.Equal(t, 1, metrics.PutRequests)
+		assert.Equal(t, int64(0), fileSize)
 	})
+}
 
-	t.Run("CopyMethod", func(t *testing.T) {
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodCopy, 1))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodCopy, 1))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodCopy, 1*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodCopy, 100*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodCopy, 1000*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodCopy, 1000*MB))
+func TestComputePerFileExtremes(t *testing.T) {
+	t.Run("EmptyInputReturnsZero", func(t *testing.T) {
+		maxPuts, minPuts := ComputePerFileExtremes(nil)
+		assert.Zero(t, maxPuts)
+		assert.Zero(t, minPuts)
 	})
-
-	t.Run("SmallBucketWriter", func(t *testing.T) {
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 1))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 1*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 4*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 5*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 10*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 100*MB))
+	t.Run("SingleFileReturnsSameMaxAndMin", func(t *testing.T) {
+		files := []FileMetrics{
+			{PutRequests: 5},
+		}
+		maxPuts, minPuts := ComputePerFileExtremes(files)
+		assert.Equal(t, 5, maxPuts)
+		assert.Equal(t, 5, minPuts)
 	})
-
-	t.Run("LargeBucketWriter", func(t *testing.T) {
-		assert.Equal(t, 3, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodWriter, 1))
-		assert.Equal(t, 3, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodWriter, 1*MB))
-		assert.Equal(t, 3, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodWriter, 5*MB))
-		assert.Equal(t, 4, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodWriter, 10*MB))
-		assert.Equal(t, 12, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodWriter, 50*MB))
-		assert.Equal(t, 22, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodWriter, 100*MB))
+	t.Run("MultipleFilesReturnsCorrectExtremes", func(t *testing.T) {
+		files := []FileMetrics{
+			{PutRequests: 3},
+			{PutRequests: 10},
+			{PutRequests: 1},
+			{PutRequests: 7},
+		}
+		maxPuts, minPuts := ComputePerFileExtremes(files)
+		assert.Equal(t, 10, maxPuts)
+		assert.Equal(t, 1, minPuts)
 	})
-
-	t.Run("PutMethodSmallBucket", func(t *testing.T) {
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 1))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 100*1024))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 1*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 4*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 5*MB-1))
-		assert.Equal(t, 3, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 5*MB))
-		assert.Equal(t, 4, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 5*MB+1))
-		assert.Equal(t, 4, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 10*MB))
-		assert.Equal(t, 22, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 100*MB))
-	})
-
-	t.Run("PutMethodLargeBucket", func(t *testing.T) {
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 1))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 2*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 4*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 5*MB-1))
-		assert.Equal(t, 3, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 5*MB))
-		assert.Equal(t, 4, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 5*MB+1))
-		assert.Equal(t, 5, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 15*MB))
-		assert.Equal(t, 22, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 100*MB))
-	})
-
-	t.Run("RealWorldScenarios", func(t *testing.T) {
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 2*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodWriter, 500*1024))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodCopy, 1000*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 300*1024))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 50*1024))
-		assert.Equal(t, 6, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 20*MB))
-	})
-
-	t.Run("BoundaryConditions", func(t *testing.T) {
-		assert.Equal(t, 3, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 5*MB))
-		assert.Equal(t, 3, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 5*MB))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 5*MB-1))
-		assert.Equal(t, 1, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 5*MB-1))
-		assert.Equal(t, 4, CalculatePutRequestsWithContext(S3BucketTypeSmall, S3UploadMethodPut, 5*MB+1))
-		assert.Equal(t, 4, CalculatePutRequestsWithContext(S3BucketTypeLarge, S3UploadMethodPut, 5*MB+1))
+	t.Run("AllSameValueReturnsSameMaxAndMin", func(t *testing.T) {
+		files := []FileMetrics{
+			{PutRequests: 4},
+			{PutRequests: 4},
+			{PutRequests: 4},
+		}
+		maxPuts, minPuts := ComputePerFileExtremes(files)
+		assert.Equal(t, 4, maxPuts)
+		assert.Equal(t, 4, minPuts)
 	})
 }
 
