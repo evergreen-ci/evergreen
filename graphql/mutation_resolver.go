@@ -779,9 +779,9 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 	// TODO: Delete volume option.
 	if spawnHost.Volume != nil || spawnHost.VolumeID != nil {
-		shVolume := utility.FromStringPtr(spawnHost.Volume)
-		shVolumeId := utility.FromStringPtr(spawnHost.VolumeID)
-		volumeID := util.CoalesceString(shVolumeId, shVolume)
+		volumeParam := utility.FromStringPtr(spawnHost.Volume)
+		volumeIDParam := utility.FromStringPtr(spawnHost.VolumeID)
+		volumeID := util.CoalesceString(volumeIDParam, volumeParam)
 		v, err = host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
@@ -938,9 +938,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	}
 	// TODO: Delete host option.
 	if spawnVolumeInput.Host != nil || spawnVolumeInput.HostID != nil {
-		svHost := utility.FromStringPtr(spawnVolumeInput.Host)
-		svHostId := utility.FromStringPtr(spawnVolumeInput.HostID)
-		hostID := util.CoalesceString(svHostId, svHost)
+		hostParam := utility.FromStringPtr(spawnVolumeInput.Host)
+		hostIDParam := utility.FromStringPtr(spawnVolumeInput.HostID)
+		hostID := util.CoalesceString(hostIDParam, hostParam)
 		statusCode, err := cloud.AttachVolume(ctx, vol.ID, hostID)
 		if err != nil {
 			return false, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, "attaching volume '%s' to host: %s", vol.ID, err.Error()))
