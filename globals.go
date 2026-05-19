@@ -485,7 +485,7 @@ const (
 	ModifySpawnHostProjectSettings ModifySpawnHostSource = "project_settings"
 )
 
-// Common OTEL constants and attribute keys
+// Common Otel constants and attribute keys
 const (
 	PackageName = "github.com/evergreen-ci/evergreen"
 

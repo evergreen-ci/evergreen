@@ -39,9 +39,9 @@ func httpRequestOtelAttributes(r *http.Request) *http.Request {
 	return r.WithContext(utility.ContextWithAppendedAttributes(r.Context(), attrs))
 }
 
-// NewHTTPRequestOTELMiddleware returns middleware that records HTTP request tracing attributes.
+// NewHTTPRequestOtelMiddleware returns middleware that records HTTP request tracing attributes.
 // It must run after gimlet.UserMiddleware so user fields are available when the client is authenticated.
-func NewHTTPRequestOTELMiddleware() gimlet.Middleware {
+func NewHTTPRequestOtelMiddleware() gimlet.Middleware {
 	return gimlet.WrapperMiddleware(func(next http.HandlerFunc) http.HandlerFunc {
 		return func(rw http.ResponseWriter, r *http.Request) {
 			r = httpRequestOtelAttributes(r)
