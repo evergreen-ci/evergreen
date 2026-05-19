@@ -22,7 +22,7 @@ import (
 func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *http.Request) {
 	srv := handler.NewDefaultServer(NewExecutableSchema(New(apiURL)))
 
-	// Send OTEL traces for each request.
+	// Send Otel traces for each request.
 	// Only create spans for resolved fields.
 	srv.Use(otelgqlgen.Middleware(
 		otelgqlgen.WithCreateSpanFromFields(func(fieldCtx *graphql.FieldContext) bool {
