@@ -13,8 +13,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // GetServer produces an HTTP server instance for a handler.
@@ -36,22 +34,11 @@ func GetServer(ctx context.Context, addr string, n http.Handler) *http.Server {
 	}
 }
 
-// restClientAuthOTELMiddleware annotates the otelmux HTTP span when clients use Bearer or Api-User/Api-Key auth.
-func restClientAuthOTELMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if mechanism := evergreen.RESTClientAuthMechanismFromRequest(r); mechanism != "" {
-			trace.SpanFromContext(r.Context()).SetAttributes(
-				attribute.String(evergreen.RESTClientAuthOtelAttribute, mechanism),
-			)
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler, error) {
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(ctx, uis.env.UserManager(), uis.umconf))
+	app.AddMiddleware(evergreen.NewHTTPRequestOTELMiddleware())
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.env.UserManager()))
 
 	clients := gimlet.NewApp()
@@ -169,7 +156,6 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(otelmux.Middleware("evergreen"))
-	router.Use(restClientAuthOTELMiddleware)
 
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
