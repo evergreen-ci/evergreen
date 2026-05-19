@@ -42,6 +42,19 @@ func NewMergeQueueMetricsJob() amboy.Job {
 		},
 	}
 	j.SetID(fmt.Sprintf("%s.%s", mergeQueueMetricsJobName, utility.RoundPartOfHour(5).Format(TSFormat)))
+
+	const maxAttempts = 3
+	const maxTime = time.Minute
+
+	j.SetEnqueueScopes(mergeQueueMetricsJobName)
+	j.SetTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxTime,
+	})
+	j.UpdateRetryInfo(amboy.JobRetryOptions{
+		Retryable:   utility.TruePtr(),
+		MaxAttempts: utility.ToIntPtr(maxAttempts),
+	})
+
 	return j
 }
 
