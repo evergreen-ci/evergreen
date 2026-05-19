@@ -141,8 +141,10 @@ func TestRevertBucketConfigToSourceIfLogsExist(t *testing.T) {
 
 	t.Run("DisplayOnlyTaskIsNoop", func(t *testing.T) {
 		sourceCfg := makeBucketCfg(t)
-		tsk := &Task{Id: "task-display-only", DisplayOnly: true}
-		require.NoError(t, db.Insert(t.Context(), Collection, tsk))
+		failedCfg := makeBucketCfg(t)
+		tsk := makeTask(t, "task-display-only", failedCfg)
+		writeLogChunk(t, sourceCfg.Name, tsk)
+		tsk.DisplayOnly = true
 
 		reverted, err := tsk.RevertBucketConfigToSourceIfLogsExist(t.Context(), sourceCfg)
 		require.NoError(t, err)

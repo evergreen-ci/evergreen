@@ -176,7 +176,7 @@ func (j *moveLogsToFailedBucketJob) recoverIfStuck(ctx context.Context, t *task.
 	}
 
 	if reverted {
-		grip.Info(ctx, logFields("reverted bucket config to source bucket after permanent log move failure: logs are accessible in source bucket"))
+		grip.Info(ctx, logFields("reverted bucket config to source bucket after permanent log move failure: logs are accessible in source bucket and will be moved to the failed bucket later via an hourly cron job"))
 		return
 	}
 
