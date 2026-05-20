@@ -54,10 +54,6 @@ const (
 	MergeQueueEndTimeSourceGitHubWebhookDestroyed = "evergreen.merge_queue.github_webhook_destroyed"
 	MergeQueueEndTimeSourceGitHubPolling          = "evergreen.merge_queue.end_time_polling"
 	MergeQueueEndTimeSourceCollectiveFinish       = "evergreen.merge_queue.evergreen_collective_finish"
-	MergeQueueAttrAvgTimeWaitingForSchedulingMs   = "evergreen.merge_queue.avg_time_waiting_for_scheduling_ms"
-	MergeQueueAttrMaxTimeWaitingForSchedulingMs   = "evergreen.merge_queue.max_time_waiting_for_scheduling_ms"
-	MergeQueueAttrAvgTimeWaitingForDependenciesMs = "evergreen.merge_queue.avg_time_waiting_for_dependencies_ms"
-	MergeQueueAttrMaxTimeWaitingForDependenciesMs = "evergreen.merge_queue.max_time_waiting_for_dependencies_ms"
 )
 
 // BuildMergeQueueSpanAttributes creates a slice of common trace attributes for merge queue operations.

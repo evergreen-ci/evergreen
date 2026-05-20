@@ -490,7 +490,7 @@ const (
 	PackageName = "github.com/evergreen-ci/evergreen"
 
 	OtelAttributeMaxLength = 10000
-	// task otel attributes
+	// task otel span name and attributes
 	TaskIDOtelAttribute             = "evergreen.task.id"
 	TaskNameOtelAttribute           = "evergreen.task.name"
 	TaskExecutionOtelAttribute      = "evergreen.task.execution"
@@ -503,8 +503,13 @@ const (
 	TaskIngestTimeOtelAttribute     = "evergreen.task.ingest_time"
 	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
 	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
-	TaskGroupOtelAttribute          = "evergreen.task.task_group"
-	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
+	TaskCompletedOtelSpanName                   = "task.completed"
+	TaskGroupOtelAttribute                      = "evergreen.task.task_group"
+	TaskGroupMaxHostsOtelAttribute              = "evergreen.task.task_group_max_hosts"
+	TaskVariantOtelAttribute                    = "evergreen.task.variant"
+	TaskTimeWaitingForSchedulingMsOtelAttribute = "evergreen.task.time_waiting_for_scheduling_ms"
+	TaskTimeWaitingForDepsMsOtelAttribute       = "evergreen.task.time_waiting_for_dependencies_ms"
+	TaskDurationMsOtelAttribute                 = "evergreen.task.duration_ms"
 
 	// EBS cost otel attributes — task-level (throughput)
 	TaskEBSOnDemandThroughputCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_throughput_cost"
