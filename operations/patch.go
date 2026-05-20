@@ -264,7 +264,7 @@ func Patch() cli.Command {
 				modulePathCache[moduleName] = modulePath
 			}
 			if params.IncludeModules {
-				if !outputJSON {
+				if !outputJSON && len(params.IncludeModuleOverrides) == 0 {
 					fmt.Fprint(os.Stderr, "Using --include-modules will apply module configuration changes to the patch "+
 						"regardless of whether you include each module's code changes.\nTo avoid this, "+
 						"use the set-module command to set modules individually instead.\n")
