@@ -327,12 +327,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.newProjectRef.Enabled {
-		var hasHook bool
-		hasHook, err = dbModel.SetTracksPushEvents(ctx, h.newProjectRef)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "setting project tracks push events for project '%s' in '%s/%s'", h.project, h.newProjectRef.Owner, h.newProjectRef.Repo))
-		}
-
 		var allAliases []model.APIProjectAlias
 		if mergedProjectRef.AliasesNeeded() {
 			allAliases, err = data.FindMergedProjectAliases(ctx, utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases, false)
@@ -343,10 +337,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		// verify enabling PR testing valid
 		if mergedProjectRef.IsPRTestingEnabled() && !h.originalProject.IsPRTestingEnabled() {
-			if !hasHook {
-				return gimlet.MakeJSONErrorResponder(errors.New("cannot enable PR testing in this repo without first enabling GitHub webhooks"))
-			}
-
 			if !hasAliasDefined(allAliases, evergreen.GithubPRAlias) {
 				return gimlet.MakeJSONErrorResponder(errors.New("cannot enable PR testing without a PR patch definition"))
 			}
@@ -372,10 +362,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		// verify enabling commit queue valid
 		if mergedProjectRef.CommitQueue.IsEnabled() && !h.originalProject.CommitQueue.IsEnabled() {
-			if !hasHook {
-				return gimlet.MakeJSONErrorResponder(errors.New("cannot enable commit queue without first enabling GitHub webhooks"))
-			}
-
 			if !hasAliasDefined(allAliases, evergreen.CommitQueueAlias) {
 				return gimlet.MakeJSONErrorResponder(errors.New("cannot enable commit queue without a commit queue patch definition"))
 			}
