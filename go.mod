@@ -176,6 +176,7 @@ require (
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
 	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
 	github.com/parquet-go/parquet-go v0.29.0
+	github.com/redis/go-redis/v9 v9.19.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
 	github.com/vikstrous/dataloadgen v0.0.10
@@ -208,7 +209,6 @@ require (
 	github.com/okta/okta-jwt-verifier-golang/v2 v2.1.1 // indirect
 	github.com/parquet-go/bitpack v1.0.0 // indirect
 	github.com/parquet-go/jsonlite v1.0.0 // indirect
-	github.com/redis/go-redis/v9 v9.19.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/twpayne/go-geom v1.6.1 // indirect
 	github.com/urfave/cli/v3 v3.6.1 // indirect

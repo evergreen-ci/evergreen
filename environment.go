@@ -209,7 +209,8 @@ type Environment interface {
 	// BuildVersion returns the ID of the Evergreen version that built the binary.
 	// Returns an empty string if the version ID isn't provided on startup.
 	BuildVersion() string
-	// RedisClient returns a Redis client for interacting with Redis.
+	// RedisClient returns the Redis client. May be nil if REDIS_URL is unset
+	// or invalid, in which case callers should skip Redis-backed paths.
 	RedisClient() *redis.Client
 }
 
@@ -296,8 +297,11 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.setupRoleManager(ctx, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
 	catcher.Add(e.initSSH(ctx, tracer))
-	catcher.Add(e.initRedis(ctx, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
+
+	// initRedis intentionally does not fail startup. Setup errors are recorded
+	// on its OTel span and surface as Honeycomb alerts.
+	e.initRedis(ctx, tracer)
 
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
@@ -1088,13 +1092,16 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	return nil
 }
 
-func (e *envState) initRedis(ctx context.Context, tracer trace.Tracer) error {
+// initRedis initializes the Redis client from REDIS_URL. Setup failures are
+// recorded on the OTel span for Honeycomb alerting and are intentionally
+// non-fatal — Evergreen must continue to start even if Redis is unreachable.
+func (e *envState) initRedis(ctx context.Context, tracer trace.Tracer) {
 	_, span := tracer.Start(ctx, "InitRedis")
 	defer span.End()
 
 	// We do not have a local testing environment for redis.
 	if testing.Testing() {
-		return nil
+		return
 	}
 
 	// Send Redis setup errors to honeycomb to alert on.
@@ -1106,30 +1113,28 @@ func (e *envState) initRedis(ctx context.Context, tracer trace.Tracer) error {
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
 		recordFailure(errors.New("REDIS_URL not set in environment"))
-		return nil
+		return
 	}
 
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
 		recordFailure(errors.Wrapf(err, "parsing Redis URL '%s'", redisURL))
-		return nil
-	}
-
-	if opt == nil {
-		recordFailure(errors.Errorf("parsed Redis options were nil for URL '%s'", redisURL))
-		return nil
+		return
 	}
 
 	e.redisClient = redis.NewClient(opt)
-	if e.redisClient == nil {
-		recordFailure(errors.New("creating Redis client returned nil"))
-		return nil
+
+	// Pinging Redis to verify the connection because the NewClient method does not return nil or error.
+	// We set a timeout to avoid hanging indefinitely if Redis is unreachable.
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := e.redisClient.Ping(pingCtx).Err(); err != nil {
+		recordFailure(errors.Wrap(err, "pinging Redis"))
 	}
 
 	e.RegisterCloser("redis", false, func(_ context.Context) error {
 		return e.redisClient.Close()
 	})
-	return nil
 }
 
 func (e *envState) RedisClient() *redis.Client {
