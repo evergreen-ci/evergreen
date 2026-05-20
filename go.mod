@@ -208,11 +208,13 @@ require (
 	github.com/okta/okta-jwt-verifier-golang/v2 v2.1.1 // indirect
 	github.com/parquet-go/bitpack v1.0.0 // indirect
 	github.com/parquet-go/jsonlite v1.0.0 // indirect
+	github.com/redis/go-redis/v9 v9.19.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/twpayne/go-geom v1.6.1 // indirect
 	github.com/urfave/cli/v3 v3.6.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.39.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 )
 

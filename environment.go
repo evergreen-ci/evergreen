@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -31,10 +32,12 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -206,6 +209,8 @@ type Environment interface {
 	// BuildVersion returns the ID of the Evergreen version that built the binary.
 	// Returns an empty string if the version ID isn't provided on startup.
 	BuildVersion() string
+	// RedisClient returns a Redis client for interacting with Redis.
+	RedisClient() *redis.Client
 }
 
 // NewEnvironment constructs an Environment instance and initializes all
@@ -291,6 +296,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.setupRoleManager(ctx, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
 	catcher.Add(e.initSSH(ctx, tracer))
+	catcher.Add(e.initRedis(ctx, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
@@ -324,6 +330,7 @@ type envState struct {
 	userManagerInfo         UserManagerInfo
 	shutdownSequenceStarted bool
 	versionID               string
+	redisClient             *redis.Client
 }
 
 // UserManagerInfo lists properties of the UserManager regarding its support for
@@ -1079,6 +1086,57 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	})
 
 	return nil
+}
+
+func (e *envState) initRedis(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "InitRedis")
+	defer span.End()
+
+	// We do not have a local testing environment for redis.
+	if testing.Testing() {
+		return nil
+	}
+
+	// Send Redis setup errors to honeycomb to alert on.
+	recordFailure := func(err error) {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		recordFailure(errors.New("REDIS_URL not set in environment"))
+		return nil
+	}
+
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		recordFailure(errors.Wrapf(err, "parsing Redis URL '%s'", redisURL))
+		return nil
+	}
+
+	if opt == nil {
+		recordFailure(errors.Errorf("parsed Redis options were nil for URL '%s'", redisURL))
+		return nil
+	}
+
+	e.redisClient = redis.NewClient(opt)
+	if e.redisClient == nil {
+		recordFailure(errors.New("creating Redis client returned nil"))
+		return nil
+	}
+
+	e.RegisterCloser("redis", false, func(_ context.Context) error {
+		return e.redisClient.Close()
+	})
+	return nil
+}
+
+func (e *envState) RedisClient() *redis.Client {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.redisClient
 }
 
 // initSSH pulls all private keys from Secrets Manager and adds them to the ssh-agent daemon.
