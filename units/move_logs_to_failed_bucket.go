@@ -25,7 +25,7 @@ const (
 // MoveLogsTriggerTaskEnd is used when the app server enqueues after a failed task ends (agent path).
 const MoveLogsTriggerTaskEnd = "task_end"
 
-// MoveLogsTriggerHourlyRetry is used by PopulateRetryFailedLogMoveJobs (hourly remote cron).
+// MoveLogsTriggerHourlyRetry is used by PopulateRetryFailedLogMoveJobs and PopulateRetryFailedLogMoveJobsForOldTasks (hourly remote cron).
 const MoveLogsTriggerHourlyRetry = "hourly_retry_failed_log_move"
 
 func init() {

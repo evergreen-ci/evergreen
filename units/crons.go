@@ -947,7 +947,16 @@ const retryFailedLogMoveLogTaskIDCap = 200
 // PopulateRetryFailedLogMoveJobs finds failed tasks whose logs are still in the regular
 // bucket (move job failed or never ran) and enqueues one move-logs-to-failed-bucket job per task.
 // Caps enqueued jobs per run to avoid S3 rate limiting; newest failures are prioritized.
-func PopulateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskCollection bool) amboy.QueueOperation {
+func PopulateRetryFailedLogMoveJobs(env evergreen.Environment) amboy.QueueOperation {
+	return populateRetryFailedLogMoveJobs(env, false)
+}
+
+// PopulateRetryFailedLogMoveJobsForOldTasks is like PopulateRetryFailedLogMoveJobs but queries the old tasks collection.
+func PopulateRetryFailedLogMoveJobsForOldTasks(env evergreen.Environment) amboy.QueueOperation {
+	return populateRetryFailedLogMoveJobs(env, true)
+}
+
+func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskCollection bool) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		settings := env.Settings()
 		failedBucketCfg := settings.Buckets.LogBucketFailedTasks
