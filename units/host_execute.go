@@ -1,6 +1,7 @@
 package units
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -81,6 +82,33 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 
 	var logs string
 	if !j.host.Distro.LegacyBootstrap() {
+		scriptFilename := fmt.Sprintf("evg-execute-%s-%s.sh", j.host.Id, j.ID())
+		// Jasper's WriteFile RPC needs a windows-native path
+		nativeScriptPath := j.host.Distro.AbsPathNotCygwinCompatible("/tmp", scriptFilename)
+		shellScriptPath := "/tmp/" + scriptFilename
+
+		if err := j.host.WriteJasperFile(ctx, j.env, options.WriteFile{
+			Path:   nativeScriptPath,
+			Reader: bytes.NewReader([]byte(j.Script)),
+			Perm:   0700,
+		}); err != nil {
+			j.AddError(errors.Wrap(err, "writing script to temp file on host"))
+			return
+		}
+
+		defer func() {
+			if _, cleanupErr := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+				Args: []string{j.host.Distro.ShellBinary(), "-c", fmt.Sprintf("rm -f %s", shellScriptPath)},
+			}); cleanupErr != nil {
+				grip.Warning(ctx, message.WrapError(cleanupErr, message.Fields{
+					"message":     "could not clean up temp script file",
+					"script_path": shellScriptPath,
+					"host_id":     j.host.Id,
+					"job":         j.ID(),
+				}))
+			}
+		}()
+
 		var args []string
 		if !j.host.Distro.IsWindows() && j.Sudo {
 			args = append(args, "sudo")
@@ -88,13 +116,10 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 				args = append(args, fmt.Sprintf("--user=%s", j.SudoUser))
 			}
 		}
-		// We read the shell script verbatim from stdin  (i.e. with "bash -s"
-		// instead of "bash -c") to avoid a Windows limitation on exec string length.
-		args = append(args, j.host.Distro.ShellBinary(), "-s", "-l")
-		var output []string
+		args = append(args, j.host.Distro.ShellBinary(), "-l", shellScriptPath)
+
 		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args:               args,
-			StandardInputBytes: []byte(j.Script),
+			Args: args,
 		})
 		logs = strings.Join(output, "\n")
 		if err != nil {
