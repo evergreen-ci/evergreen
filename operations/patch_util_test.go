@@ -568,4 +568,63 @@ include:
 			assert.Contains(t, []string{"file1.yml", "file2.yml"}, inc.FileName)
 		}
 	})
+
+	t.Run("CLIOverridePathTakesPrecedence", func(t *testing.T) {
+		originalDir := filepath.Join(tempDir, "original_module")
+		overrideDir := filepath.Join(tempDir, "override_module")
+		require.NoError(t, os.MkdirAll(originalDir, 0755))
+		require.NoError(t, os.MkdirAll(overrideDir, 0755))
+
+		require.NoError(t, os.WriteFile(filepath.Join(originalDir, "config.yml"), []byte("original"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(overrideDir, "config.yml"), []byte("override"), 0644))
+
+		projectYAML := `
+include:
+  - filename: config.yml
+    module: mymodule
+`
+		projectFile := filepath.Join(tempDir, "project-override.yml")
+		require.NoError(t, os.WriteFile(projectFile, []byte(projectYAML), 0644))
+
+		params := &patchParams{
+			Project:     "test-project",
+			SkipConfirm: true,
+		}
+		conf := &ClientSettings{
+			Projects: []ClientProjectConf{
+				{
+					Name:        "test-project",
+					ModulePaths: map[string]string{"mymodule": originalDir},
+				},
+			},
+		}
+		modulePathCache := conf.getModulePathsForProject("test-project")
+		modulePathCache["mymodule"] = overrideDir
+
+		includes, err := getLocalModuleIncludes(t.Context(), params, conf, projectFile, "", modulePathCache)
+		require.NoError(t, err)
+		require.Len(t, includes, 1)
+		assert.Equal(t, "override", string(includes[0].FileContent))
+	})
+}
+
+func TestParseModuleOverrides(t *testing.T) {
+	t.Run("ValidSingleModule", func(t *testing.T) {
+		result, err := parseModuleOverrides([]string{"dsi=/path/to/dsi"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"dsi": "/path/to/dsi"}, result)
+	})
+
+	t.Run("ValidMultipleModules", func(t *testing.T) {
+		result, err := parseModuleOverrides([]string{"dsi=/path/to/dsi", "other=/path/to/other"})
+		require.NoError(t, err)
+		assert.Equal(t, "/path/to/dsi", result["dsi"])
+		assert.Equal(t, "/path/to/other", result["other"])
+	})
+
+	t.Run("PathContainingEquals", func(t *testing.T) {
+		result, err := parseModuleOverrides([]string{"dsi=/path/with=equals/dsi"})
+		require.NoError(t, err)
+		assert.Equal(t, "/path/with=equals/dsi", result["dsi"])
+	})
 }
