@@ -4534,6 +4534,9 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 	if failedCfg.Name == "" {
 		return errors.New("failed bucket is not configured")
 	}
+	if runInOldTaskCollection && t.OldTaskId == "" {
+		return errors.Errorf("cannot move logs for task %q: runInOldTaskCollection is true but old_task_id is empty", t.Id)
+	}
 	// Use the provided source bucket config if available, otherwise use the task's current bucket config
 	srcCfg := output.TestLogs.BucketConfig
 	if sourceBucketCfg != nil && sourceBucketCfg.Name != "" {
@@ -4548,7 +4551,7 @@ func (t *Task) moveLogsByNamesToBucket(ctx context.Context, settings *evergreen.
 
 	// use OldTaskId because S3 log keys were written using that ID
 	logTaskID := t.Id
-	if runInOldTaskCollection && t.OldTaskId != "" {
+	if runInOldTaskCollection {
 		logTaskID = t.OldTaskId
 	}
 
@@ -4627,6 +4630,9 @@ func (t *Task) RevertBucketConfigToSource(ctx context.Context, sourceBucketCfg e
 	if t.TaskOutputInfo == nil {
 		return nil
 	}
+	// runInOldTaskCollection is always false because the stuck state only arises from the task-end stuck case where
+	// logger rotation set output to thefailed bucket but the move did not complete. Hourly retry on old_tasks does not create that
+	// state, so tasks in old_tasks do not need revert.
 	return t.setOutputBucketConfig(ctx, sourceBucketCfg, false)
 }
 
