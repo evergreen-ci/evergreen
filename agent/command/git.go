@@ -293,7 +293,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return gitCommands, nil
 	}
 
-	if ref == "" && !isGitHubPRModulePatch(conf, modulePatch) {
+	if ref == "" && !moduleUsesGithubPRHeadCheckout(conf, opts.owner, opts.repo) {
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
@@ -303,13 +303,13 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
-	if isGitHubPRModulePatch(conf, modulePatch) {
-		branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
-		gitCommands = append(gitCommands,
-			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
-			fmt.Sprintf("git checkout '%s'", branchName),
-			fmt.Sprintf("git reset --hard %s", modulePatch.Githash),
-		)
+	if moduleUsesGithubPRHeadCheckout(conf, opts.owner, opts.repo) {
+		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		gitCommands = append(gitCommands, []string{
+			fmt.Sprintf(`git fetch origin "pull/%d/head:%s"`, conf.GithubPatchData.PRNumber, branchName),
+			fmt.Sprintf(`git checkout "%s"`, branchName),
+			fmt.Sprintf("git reset --hard %s", conf.GithubPatchData.HeadHash),
+		}...)
 	} else {
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
@@ -895,9 +895,21 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 	return nil
 }
 
-func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModulePatch) bool {
-	patchProvided := (modulePatch != nil) && (modulePatch.PatchSet.Patch != "")
-	return isGitHub(conf) && patchProvided
+// moduleUsesGithubPRHeadCheckout reports whether a module clone should use the same
+// pull/N/head checkout as the main project for a GitHub PR task.
+func moduleUsesGithubPRHeadCheckout(conf *internal.TaskConfig, moduleOwner, moduleRepo string) bool {
+	if conf.Task.Requester != evergreen.GithubPRRequester {
+		return false
+	}
+	gh := conf.GithubPatchData
+	if gh.PRNumber == 0 || gh.HeadHash == "" {
+		return false
+	}
+	moduleRepoKey := fmt.Sprintf("%s/%s", moduleOwner, moduleRepo)
+
+	// Check if the module repo is the base or head repo.
+	return moduleRepoKey == fmt.Sprintf("%s/%s", gh.BaseOwner, gh.BaseRepo) ||
+		moduleRepoKey == fmt.Sprintf("%s/%s", gh.HeadOwner, gh.HeadRepo)
 }
 
 func isGitHub(conf *internal.TaskConfig) bool {
