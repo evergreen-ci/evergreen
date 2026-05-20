@@ -680,19 +680,19 @@ func TestModuleUsesGithubPRHeadCheckout(t *testing.T) {
 	conf := &internal.TaskConfig{
 		Task: task.Task{Requester: evergreen.GithubPRRequester},
 		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:   42,
-			BaseOwner:  "evergreen-ci",
-			BaseRepo:   "evergreen",
-			HeadOwner:  "octocat",
-			HeadRepo:   "evergreen",
-			HeadHash:   "abc123",
+			PRNumber:  42,
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			HeadOwner: "octocat",
+			HeadRepo:  "evergreen",
+			HeadHash:  "abc123",
 		},
 	}
 	assert.True(t, moduleUsesGithubPRHeadCheckout(conf, "evergreen-ci", "evergreen"))
 	assert.True(t, moduleUsesGithubPRHeadCheckout(conf, "octocat", "evergreen"))
 	assert.False(t, moduleUsesGithubPRHeadCheckout(conf, "evergreen-ci", "sample"))
 	assert.False(t, moduleUsesGithubPRHeadCheckout(&internal.TaskConfig{
-		Task: task.Task{Requester: evergreen.PatchVersionRequester},
+		Task:            task.Task{Requester: evergreen.PatchVersionRequester},
 		GithubPatchData: conf.GithubPatchData,
 	}, "evergreen-ci", "evergreen"))
 }
@@ -702,12 +702,12 @@ func TestBuildModuleCloneCommandGithubPRHead(t *testing.T) {
 	conf := &internal.TaskConfig{
 		Task: task.Task{Requester: evergreen.GithubPRRequester},
 		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:   9001,
-			BaseOwner:  "evergreen-ci",
-			BaseRepo:   "evergreen",
-			HeadOwner:  "octocat",
-			HeadRepo:   "evergreen",
-			HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+			PRNumber:  9001,
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			HeadOwner: "octocat",
+			HeadRepo:  "evergreen",
+			HeadHash:  "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
 		},
 	}
 	opts := cloneOpts{
