@@ -6684,6 +6684,7 @@ func TestBuildTaskCompletedSpanAttributesConditionalFields(t *testing.T) {
 		{
 			name: "FullTimestampsProducesAllThreeAttrs",
 			task: task.Task{
+				DependsOn:           []task.Dependency{{TaskId: "t0"}},
 				ActivatedTime:       now.Add(-30 * time.Minute),
 				ScheduledTime:       now.Add(-20 * time.Minute),
 				DependenciesMetTime: now.Add(-18 * time.Minute),
@@ -6700,6 +6701,7 @@ func TestBuildTaskCompletedSpanAttributesConditionalFields(t *testing.T) {
 		{
 			name: "ZeroActivatedTimeOmitsSchedulingWait",
 			task: task.Task{
+				DependsOn:           []task.Dependency{{TaskId: "t0"}},
 				ScheduledTime:       now.Add(-20 * time.Minute),
 				DependenciesMetTime: now.Add(-18 * time.Minute),
 			},
@@ -6709,6 +6711,7 @@ func TestBuildTaskCompletedSpanAttributesConditionalFields(t *testing.T) {
 		{
 			name: "ZeroDependenciesMetTimeOmitsDepsWait",
 			task: task.Task{
+				DependsOn:     []task.Dependency{{TaskId: "t0"}},
 				ActivatedTime: now.Add(-30 * time.Minute),
 				ScheduledTime: now.Add(-20 * time.Minute),
 			},
@@ -6716,8 +6719,19 @@ func TestBuildTaskCompletedSpanAttributesConditionalFields(t *testing.T) {
 			schedulingWaitMs:  (10 * time.Minute).Milliseconds(),
 		},
 		{
+			name: "NoDependenciesOmitsDepsWait",
+			task: task.Task{
+				ActivatedTime:       now.Add(-30 * time.Minute),
+				ScheduledTime:       now.Add(-20 * time.Minute),
+				DependenciesMetTime: now.Add(-20 * time.Minute),
+			},
+			hasSchedulingWait: true,
+			schedulingWaitMs:  (10 * time.Minute).Milliseconds(),
+		},
+		{
 			name: "ZeroScheduledTimeOmitsSchedulingAndDepsWait",
 			task: task.Task{
+				DependsOn:           []task.Dependency{{TaskId: "t0"}},
 				ActivatedTime:       now.Add(-30 * time.Minute),
 				DependenciesMetTime: now.Add(-22 * time.Minute),
 			},

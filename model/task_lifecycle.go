@@ -2016,7 +2016,7 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute,
 			t.ScheduledTime.Sub(t.ActivatedTime).Milliseconds()))
 	}
-	if !utility.IsZeroTime(t.DependenciesMetTime) && !utility.IsZeroTime(t.ScheduledTime) {
+	if len(t.DependsOn) > 0 && !utility.IsZeroTime(t.DependenciesMetTime) && !utility.IsZeroTime(t.ScheduledTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForDepsMsOtelAttribute,
 			t.DependenciesMetTime.Sub(t.ScheduledTime).Milliseconds()))
 	}
