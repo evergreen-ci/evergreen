@@ -53,7 +53,6 @@ type Environment struct {
 	Clients                 evergreen.ClientConfig
 	shutdownSequenceStarted bool
 	versionID               string
-	redisClient             *redis.Client
 }
 
 // Configure sets default values on the Environment, except for the user manager
