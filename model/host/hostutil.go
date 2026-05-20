@@ -709,6 +709,24 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	return logStream.Logs, catcher.Resolve()
 }
 
+// WriteJasperFile writes a file on the host via the Jasper service's streaming
+// WriteFile RPC, which supports large payloads by sending content in chunks.
+func (h *Host) WriteJasperFile(ctx context.Context, env evergreen.Environment, opts options.WriteFile) error {
+	client, err := h.JasperClient(ctx, env)
+	if err != nil {
+		return errors.Wrap(err, "getting Jasper client")
+	}
+	defer func() {
+		grip.Warning(ctx, message.WrapError(client.CloseConnection(), message.Fields{
+			"message": "could not close connection to Jasper",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}()
+
+	return errors.Wrap(client.WriteFile(ctx, opts), "writing file via Jasper")
+}
+
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
 func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *options.Create) (string, error) {

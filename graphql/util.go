@@ -1105,6 +1105,16 @@ func userHasHostPermission(ctx context.Context, u *user.DBUser, distroId string,
 	return u.Username() == startedBy || u.HasPermission(ctx, opts)
 }
 
+func userHasVolumePermission(ctx context.Context, u *user.DBUser, volumeId string, createdBy string) bool {
+	opts := gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionAdminSettings,
+		RequiredLevel: evergreen.AdminSettingsEdit.Value,
+	}
+	return u.Username() == createdBy || u.HasPermission(ctx, opts)
+}
+
 func userHasProjectSettingsPermission(ctx context.Context, u *user.DBUser, projectId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      projectId,
