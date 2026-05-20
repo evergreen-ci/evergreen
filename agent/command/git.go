@@ -236,7 +236,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	// if there's a PR checkout the ref containing the changes
-	if isGitHub(conf) {
+	if usesGitHubPRSourceCheckout(conf) {
 		var suffix, localBranchName, remoteBranchName, commitToTest string
 		if conf.Task.Requester == evergreen.GithubPRRequester {
 			// Github creates a ref called refs/pull/[pr number]/head
@@ -711,7 +711,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	}
 
 	// Apply patches if this is a patch and we haven't already gotten the changes from a PR
-	if evergreen.IsPatchRequester(conf.Task.Requester) && !isGitHub(conf) {
+	if evergreen.IsPatchRequester(conf.Task.Requester) && !shouldSkipApplyingPatches(conf) {
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "getting patch contents")
 			logger.Task().Error(ctx, err.Error())
@@ -895,14 +895,31 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 	return nil
 }
 
+// usesGitHubPRSourceCheckout reports whether the main project checkout should use GitHub
+// PR or merge-queue refs instead of the task revision. Child patches keep the child
+// project's mainline revision even when parent PR metadata is present for modules.
+func usesGitHubPRSourceCheckout(conf *internal.TaskConfig) bool {
+	return isGitHub(conf) && conf.Task.ParentPatchID == ""
+}
+
+// shouldSkipApplyingPatches reports whether git apply should be skipped for this patch task.
+func shouldSkipApplyingPatches(conf *internal.TaskConfig) bool {
+	if usesGitHubPRSourceCheckout(conf) {
+		return true
+	}
+	// Child patch with parent PR metadata: modules use pull/N/head; the stored diff must not be applied.
+	return conf.Task.ParentPatchID != "" && hasGithubPRPatchMetadata(conf.GithubPatchData)
+}
+
+func hasGithubPRPatchMetadata(gh thirdparty.GithubPatch) bool {
+	return gh.PRNumber != 0 && gh.HeadHash != ""
+}
+
 // moduleUsesGithubPRHeadCheckout reports whether a module clone should use the same
 // pull/N/head checkout as the main project for a GitHub PR task.
 func moduleUsesGithubPRHeadCheckout(conf *internal.TaskConfig, moduleOwner, moduleRepo string) bool {
-	if conf.Task.Requester != evergreen.GithubPRRequester {
-		return false
-	}
 	gh := conf.GithubPatchData
-	if gh.PRNumber == 0 || gh.HeadHash == "" {
+	if !hasGithubPRPatchMetadata(gh) {
 		return false
 	}
 	moduleRepoKey := fmt.Sprintf("%s/%s", moduleOwner, moduleRepo)
@@ -913,7 +930,7 @@ func moduleUsesGithubPRHeadCheckout(conf *internal.TaskConfig, moduleOwner, modu
 }
 
 func isGitHub(conf *internal.TaskConfig) bool {
-	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
+	return hasGithubPRPatchMetadata(conf.GithubPatchData) || conf.GithubMergeData.HeadSHA != ""
 }
 
 // parentRepoForGitHubAppToken returns the repository name to pass when resolving
