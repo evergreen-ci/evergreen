@@ -15,7 +15,6 @@
             "display_name": "buildhost-test",
             "local_config": "",
             "deactivate_previous": false,
-            "tracks_push_events": false,
             "pr_testing_enabled": false,
             "commit_queue": {
                 "enabled": false,

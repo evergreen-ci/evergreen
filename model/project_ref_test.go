@@ -814,7 +814,6 @@ func TestAttachToNewRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		PRTestingEnabled: utility.TruePtr(),
-		TracksPushEvents: utility.TruePtr(),
 	}
 	assert.NoError(t, pRef.Insert(t.Context()))
 	repoRef := RepoRef{ProjectRef{
@@ -853,17 +852,10 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NotEqual(t, "myRepo", pRefFromDB.RepoRefId)
 	assert.Equal(t, "newOwner", pRefFromDB.Owner)
 	assert.Equal(t, "newRepo", pRefFromDB.Repo)
-	assert.Nil(t, pRefFromDB.TracksPushEvents)
 
 	newRepoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
 	assert.NoError(t, err)
 	assert.NotNil(t, newRepoRef)
-
-	assert.True(t, newRepoRef.DoesTrackPushEvents())
-
-	mergedRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
-	assert.NoError(t, err)
-	assert.True(t, mergedRef.DoesTrackPushEvents())
 
 	userFromDB, err := user.FindOneById(t.Context(), "me")
 	assert.NoError(t, err)
@@ -935,7 +927,6 @@ func TestAttachToRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		GithubChecksEnabled: utility.TruePtr(),
-		TracksPushEvents:    utility.TruePtr(),
 		Enabled:             true,
 	}
 	assert.NoError(t, pRef.Insert(t.Context()))
@@ -964,12 +955,10 @@ func TestAttachToRepo(t *testing.T) {
 	assert.True(t, pRefFromDB.Enabled)
 	assert.True(t, pRefFromDB.CommitQueue.IsEnabled())
 	assert.True(t, pRefFromDB.IsGithubChecksEnabled())
-	assert.Nil(t, pRefFromDB.TracksPushEvents)
 
 	repoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
 	assert.NoError(t, err)
 	require.NotNil(t, repoRef)
-	assert.True(t, repoRef.DoesTrackPushEvents())
 
 	u, err = user.FindOneById(t.Context(), "me")
 	assert.NoError(t, err)
@@ -1111,7 +1100,6 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, pRefFromDB.IsGitTagVersionsEnabled())
 			assert.True(t, pRefFromDB.IsGithubChecksEnabled())
 			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubPRTriggerAliases)
-			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
 			dbUser, err = user.FindOneById(t.Context(), "me")
 			assert.NoError(t, err)
@@ -1280,7 +1268,6 @@ func TestDetachFromRepo(t *testing.T) {
 				Id:                     pRef.RepoRefId,
 				Owner:                  pRef.Owner,
 				Repo:                   pRef.Repo,
-				TracksPushEvents:       utility.TruePtr(),
 				PRTestingEnabled:       utility.TruePtr(),
 				GitTagVersionsEnabled:  utility.FalsePtr(),
 				GithubChecksEnabled:    utility.TruePtr(),
@@ -2091,7 +2078,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Empty(t, repoRef.Branch)
-	assert.True(t, repoRef.DoesTrackPushEvents())
 	assert.True(t, repoRef.IsPRTestingEnabled())
 	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
 	assert.Equal(t, "", repoRef.Identifier)

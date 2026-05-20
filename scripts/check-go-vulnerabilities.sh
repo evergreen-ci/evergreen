@@ -22,6 +22,7 @@ IGNORED_PACKAGES=(
     "otel/sdk"                    # DEVPROD-28491 OTel SDK vulnerability tracking
     "filippo.io/edwards25519"     # DEVPROD-28491 Edwards25519 vulnerability tracking
     "github.com/docker/docker"    # DEVPROD-31135 Docker vulnerability tracking
+    "golang.org/x/net"            # DEVPROD-33048 Go networking packages Lib
 )
 
 # Validate that each ignored package has a tracking ticket

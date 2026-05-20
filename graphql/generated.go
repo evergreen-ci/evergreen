@@ -102,6 +102,7 @@ type DirectiveRoot struct {
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireVolumeAccess          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 }
 
 type ComplexityRoot struct {
@@ -1371,7 +1372,6 @@ type ComplexityRoot struct {
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
 		TestSelection                      func(childComplexity int) int
-		TracksPushEvents                   func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
 		WorkstationConfig                  func(childComplexity int) int
@@ -1465,7 +1465,6 @@ type ComplexityRoot struct {
 		SpawnHostScriptPath     func(childComplexity int) int
 		StepbackBisect          func(childComplexity int) int
 		StepbackDisabled        func(childComplexity int) int
-		TracksPushEvents        func(childComplexity int) int
 		VersionControlEnabled   func(childComplexity int) int
 	}
 
@@ -1616,7 +1615,6 @@ type ComplexityRoot struct {
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
 		TestSelection                      func(childComplexity int) int
-		TracksPushEvents                   func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
 		WorkstationConfig                  func(childComplexity int) int
@@ -8355,12 +8353,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.TestSelection(childComplexity), true
-	case "Project.tracksPushEvents":
-		if e.complexity.Project.TracksPushEvents == nil {
-			break
-		}
-
-		return e.complexity.Project.TracksPushEvents(childComplexity), true
 	case "Project.triggers":
 		if e.complexity.Project.Triggers == nil {
 			break
@@ -8783,12 +8775,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectLite.StepbackDisabled(childComplexity), true
-	case "ProjectLite.tracksPushEvents":
-		if e.complexity.ProjectLite.TracksPushEvents == nil {
-			break
-		}
-
-		return e.complexity.ProjectLite.TracksPushEvents(childComplexity), true
 	case "ProjectLite.versionControlEnabled":
 		if e.complexity.ProjectLite.VersionControlEnabled == nil {
 			break
@@ -9667,12 +9653,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RepoRef.TestSelection(childComplexity), true
-	case "RepoRef.tracksPushEvents":
-		if e.complexity.RepoRef.TracksPushEvents == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.TracksPushEvents(childComplexity), true
 	case "RepoRef.triggers":
 		if e.complexity.RepoRef.Triggers == nil {
 			break
@@ -14205,12 +14185,53 @@ func (ec *executionContext) field_Mutation_detachProjectFromRepo_argsProjectID(
 func (ec *executionContext) field_Mutation_detachVolumeFromHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "volumeId", ec.unmarshalNString2string)
+
+	arg0, err := ec.field_Mutation_detachVolumeFromHost_argsVolumeID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["volumeId"] = arg0
 	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_detachVolumeFromHost_argsVolumeID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["volumeId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["volumeId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequireVolumeAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+		}
+		return ec.directives.RequireVolumeAccess(ctx, rawArgs, directive0)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_editAnnotationNote_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -14315,7 +14336,8 @@ func (ec *executionContext) field_Mutation_forceRepotrackerRun_argsProjectID(
 func (ec *executionContext) field_Mutation_migrateVolume_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "volumeId", ec.unmarshalNString2string)
+
+	arg0, err := ec.field_Mutation_migrateVolume_argsVolumeID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -14326,6 +14348,46 @@ func (ec *executionContext) field_Mutation_migrateVolume_args(ctx context.Contex
 	}
 	args["spawnHostInput"] = arg1
 	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_migrateVolume_argsVolumeID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["volumeId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["volumeId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequireVolumeAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+		}
+		return ec.directives.RequireVolumeAccess(ctx, rawArgs, directive0)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_moveAnnotationIssue_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -14500,12 +14562,53 @@ func (ec *executionContext) field_Mutation_removePublicKey_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_removeVolume_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "volumeId", ec.unmarshalNString2string)
+
+	arg0, err := ec.field_Mutation_removeVolume_argsVolumeID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["volumeId"] = arg0
 	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeVolume_argsVolumeID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["volumeId"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["volumeId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequireVolumeAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+		}
+		return ec.directives.RequireVolumeAccess(ctx, rawArgs, directive0)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_reprovisionToNew_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -29631,8 +29734,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -29748,8 +29849,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_RepoRef_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_RepoRef_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37772,8 +37871,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -37921,8 +38018,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -38070,8 +38165,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -38219,8 +38312,6 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -38536,8 +38627,6 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -41178,8 +41267,6 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -41477,8 +41564,6 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -45054,8 +45139,6 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -48680,35 +48763,6 @@ func (ec *executionContext) fieldContext_Project_testSelection(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_tracksPushEvents(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Project_tracksPushEvents,
-		func(ctx context.Context) (any, error) {
-			return obj.TracksPushEvents, nil
-		},
-		nil,
-		ec.marshalOBoolean2ᚖbool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Project_tracksPushEvents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Project_triggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49737,8 +49791,6 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -50950,35 +51002,6 @@ func (ec *executionContext) fieldContext_ProjectLite_stepbackBisect(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _ProjectLite_tracksPushEvents(ctx context.Context, field graphql.CollectedField, obj *model1.ProjectRef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ProjectLite_tracksPushEvents,
-		func(ctx context.Context) (any, error) {
-			return obj.TracksPushEvents, nil
-		},
-		nil,
-		ec.marshalOBoolean2ᚖbool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ProjectLite_tracksPushEvents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ProjectLite",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ProjectLite_versionControlEnabled(ctx context.Context, field graphql.CollectedField, obj *model1.ProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -51345,8 +51368,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -53121,8 +53142,6 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -56507,35 +56526,6 @@ func (ec *executionContext) fieldContext_RepoRef_testSelection(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_tracksPushEvents(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RepoRef_tracksPushEvents,
-		func(ctx context.Context) (any, error) {
-			return obj.TracksPushEvents, nil
-		},
-		nil,
-		ec.marshalNBoolean2ᚖbool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RepoRef_tracksPushEvents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_triggers(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56916,8 +56906,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_RepoRef_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_RepoRef_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_RepoRef_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -65573,8 +65561,6 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -75115,8 +75101,6 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
 			case "testSelection":
 				return ec.fieldContext_Project_testSelection(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
 				return ec.fieldContext_Project_triggers(ctx, field)
 			case "versionControlEnabled":
@@ -76158,8 +76142,6 @@ func (ec *executionContext) fieldContext_VersionLite_project(_ context.Context, 
 				return ec.fieldContext_ProjectLite_stepbackDisabled(ctx, field)
 			case "stepbackBisect":
 				return ec.fieldContext_ProjectLite_stepbackBisect(ctx, field)
-			case "tracksPushEvents":
-				return ec.fieldContext_ProjectLite_tracksPushEvents(ctx, field)
 			case "versionControlEnabled":
 				return ec.fieldContext_ProjectLite_versionControlEnabled(ctx, field)
 			}
@@ -82948,11 +82930,28 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.SleepSchedule = data
 		case "volume":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volume"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.Volume = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Volume = data
+			} else if tmp == nil {
+				it.Volume = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -85881,7 +85880,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "deactivatePrevious", "debugSpawnHostsDisabled", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -86196,13 +86195,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TestSelection = data
-		case "tracksPushEvents":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tracksPushEvents"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TracksPushEvents = data
 		case "triggers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
 			data, err := ec.unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, v)
@@ -86782,7 +86774,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubPRTriggerAliases", "githubMQTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "runEveryMainlineCommit", "spawnHostScriptPath", "debugSpawnHostsDisabled", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "testSelection", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87069,13 +87061,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TestSelection = data
-		case "tracksPushEvents":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tracksPushEvents"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TracksPushEvents = data
 		case "triggers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("triggers"))
 			data, err := ec.unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinitionᚄ(ctx, v)
@@ -88543,11 +88528,28 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 			it.UseTaskConfig = data
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.VolumeID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.VolumeID = data
+			} else if tmp == nil {
+				it.VolumeID = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "useOAuth":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useOAuth"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -88605,11 +88607,33 @@ func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, 
 			it.Expiration = data
 		case "host":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal *string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.Host = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.Host = data
+			} else if tmp == nil {
+				it.Host = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "noExpiration":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("noExpiration"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -90176,11 +90200,26 @@ func (ec *executionContext) unmarshalInputUpdateVolumeInput(ctx context.Context,
 			it.Size = data
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.VolumeID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.VolumeID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -90388,18 +90427,53 @@ func (ec *executionContext) unmarshalInputVolumeHost(ctx context.Context, obj an
 		switch k {
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
 			}
-			it.VolumeID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.VolumeID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.HostID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.HostID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		}
 	}
 
@@ -100613,8 +100687,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "testSelection":
 			out.Values[i] = ec._Project_testSelection(ctx, field, obj)
-		case "tracksPushEvents":
-			out.Values[i] = ec._Project_tracksPushEvents(ctx, field, obj)
 		case "triggers":
 			out.Values[i] = ec._Project_triggers(ctx, field, obj)
 		case "versionControlEnabled":
@@ -101158,8 +101230,6 @@ func (ec *executionContext) _ProjectLite(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._ProjectLite_stepbackDisabled(ctx, field, obj)
 		case "stepbackBisect":
 			out.Values[i] = ec._ProjectLite_stepbackBisect(ctx, field, obj)
-		case "tracksPushEvents":
-			out.Values[i] = ec._ProjectLite_tracksPushEvents(ctx, field, obj)
 		case "versionControlEnabled":
 			out.Values[i] = ec._ProjectLite_versionControlEnabled(ctx, field, obj)
 		default:
@@ -103058,11 +103128,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "testSelection":
 			out.Values[i] = ec._RepoRef_testSelection(ctx, field, obj)
-		case "tracksPushEvents":
-			out.Values[i] = ec._RepoRef_tracksPushEvents(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "triggers":
 			out.Values[i] = ec._RepoRef_triggers(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

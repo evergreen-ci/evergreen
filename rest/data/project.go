@@ -81,17 +81,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		warningCatcher.Add(err)
 	}
 
-	_, err = model.SetTracksPushEvents(ctx, projectRef)
-	if err != nil {
-		grip.Debug(ctx, message.WrapError(err, message.Fields{
-			"message":            "error setting project tracks push events",
-			"project_id":         projectRef.Id,
-			"project_identifier": projectRef.Identifier,
-			"owner":              projectRef.Owner,
-			"repo":               projectRef.Repo,
-		}))
-	}
-
 	if err = projectRef.Add(ctx, u); err != nil {
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

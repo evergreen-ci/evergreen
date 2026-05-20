@@ -868,6 +868,12 @@ func (e *LocalExecutor) fetchTaskConfig(ctx context.Context, opts LocalExecutorO
 	tsk.Secret = mockSecret
 	e.taskConfig.Task = *tsk
 
+	distroView, err := e.communicator.GetDistroView(ctx, taskData)
+	if err != nil {
+		return errors.Wrap(err, "getting distro view")
+	}
+	e.taskConfig.Distro = distroView
+
 	project, err := e.communicator.GetProject(ctx, taskData)
 	if err != nil {
 		return errors.Wrapf(err, "getting parser project '%s'", tsk.Revision)

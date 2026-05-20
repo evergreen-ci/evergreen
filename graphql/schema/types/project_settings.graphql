@@ -82,7 +82,6 @@ input ProjectInput {
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   testSelection: TestSelectionSettingsInput
-  tracksPushEvents: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
