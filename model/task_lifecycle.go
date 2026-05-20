@@ -1996,6 +1996,7 @@ func EmitMergeQueueCompletionMetricsFromWebhook(ctx context.Context, updatedPatc
 
 // emitTaskCompletedSpan emits a standalone span at task end.
 func emitTaskCompletedSpan(ctx context.Context, t *task.Task) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{})
 	_, span := tracer.Start(ctx, evergreen.TaskCompletedOtelSpanName,
 		trace.WithNewRoot(),
 		trace.WithAttributes(buildTaskCompletedSpanAttributes(t)...))
