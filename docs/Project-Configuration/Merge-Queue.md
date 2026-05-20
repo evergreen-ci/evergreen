@@ -29,7 +29,7 @@ required by your GitHub branch protection rules.
 
 1. From <https://spruce.corp.mongodb.com/>, from the More drop down, select Project Settings.
 2. Select your project from the project dropdown.
-3. From the GitHub section, set the Merge Queue to Enabled.
+3. In the GitHub Merge Queue section, set the Merge Queue to Enabled.
 4. Add variant and task tags or regexes for the variants and tasks you wish to run when a pull request is added to the queue.
 
 ### Turn on the GitHub merge queue

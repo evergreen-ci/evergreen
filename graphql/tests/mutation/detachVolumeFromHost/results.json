@@ -10,8 +10,10 @@
         "errors": [
           {
             "message": "must specify volume ID",
-            "path": ["detachVolumeFromHost"],
-            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+            "path": ["detachVolumeFromHost", "volumeId"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
           }
         ],
         "data": null
@@ -22,9 +24,11 @@
       "result": {
         "errors": [
           {
-            "message": "volume 'vol-4db5' does not exist",
-            "path": ["detachVolumeFromHost"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "message": "volume 'vol-4db5' not found",
+            "path": ["detachVolumeFromHost", "volumeId"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -51,6 +55,22 @@
             "message": "host 'not-real' for volume 'vol-two' not found",
             "path": ["detachVolumeFromHost"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to access volume 'vol-0603934da6f024db5'",
+            "path": ["detachVolumeFromHost", "volumeId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
           }
         ],
         "data": null

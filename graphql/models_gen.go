@@ -1226,24 +1226,23 @@ func (e ProjectPermission) MarshalJSON() ([]byte, error) {
 type ProjectSettingsSection string
 
 const (
-	ProjectSettingsSectionGeneral              ProjectSettingsSection = "GENERAL"
-	ProjectSettingsSectionAccess               ProjectSettingsSection = "ACCESS"
-	ProjectSettingsSectionVariables            ProjectSettingsSection = "VARIABLES"
-	ProjectSettingsSectionNotifications        ProjectSettingsSection = "NOTIFICATIONS"
-	ProjectSettingsSectionPatchAliases         ProjectSettingsSection = "PATCH_ALIASES"
-	ProjectSettingsSectionWorkstation          ProjectSettingsSection = "WORKSTATION"
-	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
-	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
-	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
-	ProjectSettingsSectionTestSelection        ProjectSettingsSection = "TEST_SELECTION"
-	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectSettingsSectionGithubAppSettings    ProjectSettingsSection = "GITHUB_APP_SETTINGS"
-	ProjectSettingsSectionGithubPermissions    ProjectSettingsSection = "GITHUB_PERMISSIONS"
-	ProjectSettingsSectionPullRequests         ProjectSettingsSection = "PULL_REQUESTS"
-	ProjectSettingsSectionGitTags              ProjectSettingsSection = "GIT_TAGS"
-	ProjectSettingsSectionMergeQueue           ProjectSettingsSection = "MERGE_QUEUE"
-	ProjectSettingsSectionCommitChecks         ProjectSettingsSection = "COMMIT_CHECKS"
+	ProjectSettingsSectionGeneral           ProjectSettingsSection = "GENERAL"
+	ProjectSettingsSectionAccess            ProjectSettingsSection = "ACCESS"
+	ProjectSettingsSectionVariables         ProjectSettingsSection = "VARIABLES"
+	ProjectSettingsSectionNotifications     ProjectSettingsSection = "NOTIFICATIONS"
+	ProjectSettingsSectionPatchAliases      ProjectSettingsSection = "PATCH_ALIASES"
+	ProjectSettingsSectionWorkstation       ProjectSettingsSection = "WORKSTATION"
+	ProjectSettingsSectionTriggers          ProjectSettingsSection = "TRIGGERS"
+	ProjectSettingsSectionPeriodicBuilds    ProjectSettingsSection = "PERIODIC_BUILDS"
+	ProjectSettingsSectionPlugins           ProjectSettingsSection = "PLUGINS"
+	ProjectSettingsSectionViewsAndFilters   ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionTestSelection     ProjectSettingsSection = "TEST_SELECTION"
+	ProjectSettingsSectionGithubAppSettings ProjectSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectSettingsSectionGithubPermissions ProjectSettingsSection = "GITHUB_PERMISSIONS"
+	ProjectSettingsSectionPullRequests      ProjectSettingsSection = "PULL_REQUESTS"
+	ProjectSettingsSectionGitTags           ProjectSettingsSection = "GIT_TAGS"
+	ProjectSettingsSectionMergeQueue        ProjectSettingsSection = "MERGE_QUEUE"
+	ProjectSettingsSectionCommitChecks      ProjectSettingsSection = "COMMIT_CHECKS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
@@ -1258,7 +1257,6 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionViewsAndFilters,
 	ProjectSettingsSectionTestSelection,
-	ProjectSettingsSectionGithubAndCommitQueue,
 	ProjectSettingsSectionGithubAppSettings,
 	ProjectSettingsSectionGithubPermissions,
 	ProjectSettingsSectionPullRequests,
@@ -1269,7 +1267,7 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions, ProjectSettingsSectionPullRequests, ProjectSettingsSectionGitTags, ProjectSettingsSectionMergeQueue, ProjectSettingsSectionCommitChecks:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions, ProjectSettingsSectionPullRequests, ProjectSettingsSectionGitTags, ProjectSettingsSectionMergeQueue, ProjectSettingsSectionCommitChecks:
 		return true
 	}
 	return false

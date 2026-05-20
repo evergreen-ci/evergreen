@@ -680,19 +680,17 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
-	ProjectPageGeneralSection         = "GENERAL"
-	ProjectPageAccessSection          = "ACCESS"
-	ProjectPageVariablesSection       = "VARIABLES"
-	ProjectPageNotificationsSection   = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection    = "WORKSTATION"
-	ProjectPageTriggersSection        = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
-	ProjectPagePluginSection          = "PLUGINS"
-	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
-	ProjectPageTestSelectionSection   = "TEST_SELECTION"
-	// TODO DEVPROD-31534: deprecate this section
-	ProjectPageGithubAndCQSection       = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageGeneralSection           = "GENERAL"
+	ProjectPageAccessSection            = "ACCESS"
+	ProjectPageVariablesSection         = "VARIABLES"
+	ProjectPageNotificationsSection     = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection        = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection      = "WORKSTATION"
+	ProjectPageTriggersSection          = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection    = "PERIODIC_BUILDS"
+	ProjectPagePluginSection            = "PLUGINS"
+	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
+	ProjectPageTestSelectionSection     = "TEST_SELECTION"
 	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
 	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
 	ProjectPagePullRequestsSection      = "PULL_REQUESTS"
@@ -1816,15 +1814,44 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 	if err != nil {
 		return false, errors.Wrap(err, "finding branch project IDs")
 	}
+	if len(projectRefs) == 0 {
+		return false, nil
+	}
+	if evergreen.PermissionsDisabledForTests() {
+		return true, nil
+	}
 
-	for _, pRef := range projectRefs {
-		opts := gimlet.PermissionOpts{
-			Resource:      pRef.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsView.Value,
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	roles, err := roleManager.GetRoles(ctx, u.Roles())
+	if err != nil {
+		return false, errors.Wrap(err, "getting user roles")
+	}
+
+	// Collect scopes from roles that grant the required project settings view permission level.
+	requiredLevel := evergreen.ProjectSettingsView.Value
+	scopeIDs := make([]string, 0, len(roles))
+	for _, r := range roles {
+		if level, ok := r.Permissions[evergreen.PermissionProjectSettings]; ok && level >= requiredLevel {
+			scopeIDs = append(scopeIDs, r.Scope)
 		}
-		if u.HasPermission(ctx, opts) {
+	}
+	if len(scopeIDs) == 0 {
+		return false, nil
+	}
+
+	scopes, err := roleManager.FilterScopesByResourceType(ctx, scopeIDs, evergreen.ProjectResourceType)
+	if err != nil {
+		return false, errors.Wrap(err, "filtering scopes by resource type")
+	}
+
+	allowed := make(map[string]struct{})
+	for _, s := range scopes {
+		for _, resource := range s.Resources {
+			allowed[resource] = struct{}{}
+		}
+	}
+	for _, pRef := range projectRefs {
+		if _, ok := allowed[pRef.Id]; ok {
 			return true, nil
 		}
 	}
@@ -2326,22 +2353,6 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 					ProjectRefAdminsKey:     p.Admins,
 				},
 			})
-	// TODO DEVPROD-31534: deprecate this section
-	case ProjectPageGithubAndCQSection:
-		err = db.Update(ctx, coll,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$set": bson.M{
-					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
-					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
-					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
-					projectRefGitTagVersionsEnabledKey:  p.GitTagVersionsEnabled,
-					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
-					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
-					projectRefCommitQueueKey:            p.CommitQueue,
-					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
-				},
-			})
 	case ProjectPageNotificationsSection:
 		err = db.Update(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
@@ -2494,8 +2505,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 			modified = true
 		}
 		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
-	// TODO DEVPROD-31534: remove GithubAndCQSection
-	case ProjectPageGithubAndCQSection, ProjectPagePullRequestsSection, ProjectPageGitTagsSection, ProjectPageMergeQueueSection, ProjectPageCommitChecksSection:
+	case ProjectPagePullRequestsSection, ProjectPageGitTagsSection, ProjectPageMergeQueueSection, ProjectPageCommitChecksSection:
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {

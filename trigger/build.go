@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -28,6 +29,7 @@ type buildTriggers struct {
 	data     *event.BuildEventData
 	build    *build.Build
 	tasks    []task.Task
+	repoId   string
 	uiConfig evergreen.UIConfig
 
 	base
@@ -91,14 +93,26 @@ func (t *buildTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 	}
 	t.event = e
 
+	projectRef, err := model.FindBranchProjectRef(ctx, t.build.Project)
+	if err != nil {
+		return errors.Wrapf(err, "finding project ref '%s'", t.build.Project)
+	}
+	if projectRef != nil {
+		t.repoId = projectRef.RepoRefId
+	}
+
 	return nil
 }
 
 func (t *buildTriggers) Attributes() event.Attributes {
+	project := []string{t.build.Project}
+	if t.repoId != "" {
+		project = append(project, t.repoId)
+	}
 	attributes := event.Attributes{
 		ID:           []string{t.build.Id},
 		Object:       []string{event.ObjectBuild},
-		Project:      []string{t.build.Project},
+		Project:      project,
 		Requester:    []string{t.build.Requester},
 		InVersion:    []string{t.build.Version},
 		DisplayName:  []string{t.build.DisplayName},

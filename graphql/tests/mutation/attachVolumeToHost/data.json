@@ -6,7 +6,6 @@
       "home_volume": true,
       "availability_zone": "us-west-1",
       "created_at": { "$date": "2020-06-05T14:43:06.567Z" },
-      "created_by": "ae5deb822e0d71992900471a7199d0d95b8e7c9d05c40a8245a281fd2c1d6684",
       "host": "8881b43f72429ce1312caad3cbd82297ae696e0087d0861d4d1f77418b3f2cfa",
       "expiration": { "$date": "2020-06-06T14:43:06.287Z" },
       "_id": "vol-two",

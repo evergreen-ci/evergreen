@@ -786,7 +786,7 @@ func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
 }
 
-// CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
+// CanUpdateSpawnHost is a shared utility function to determine a user's permissions to modify a spawn host.
 func CanUpdateSpawnHost(ctx context.Context, h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
 		return usr.HasPermission(ctx, gimlet.PermissionOpts{
@@ -3197,14 +3197,15 @@ func CountIntentHosts(ctx context.Context) (int, error) {
 	return Count(ctx, query)
 }
 
-// FindTaskHostsNearingExpiration returns all task hosts whose expire-on tag is
-// within the next day and are currently running a task or completed one within
-// the last 30 minutes.
+// FindTaskHostsNearingExpiration returns all task hosts that have been up for
+// at least an hour, whose expire-on tag is within the next day, and are
+// currently running a task or completed one within the last 30 minutes.
 func FindTaskHostsNearingExpiration(ctx context.Context) ([]Host, error) {
 	query := bson.M{
 		UserHostKey:  false,
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning, evergreen.HostDecommissioned}},
+		StartTimeKey: bson.M{"$lte": time.Now().Add(-2 * time.Hour)},
 		InstanceTagsKey: bson.M{
 			"$elemMatch": bson.M{
 				instanceTagKeyKey:   evergreen.TagExpireOn,

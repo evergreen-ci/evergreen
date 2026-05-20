@@ -2109,12 +2109,24 @@ func MarkHostTaskDispatched(ctx context.Context, t *task.Task, h *host.Host) err
 }
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
+	// Get exec tasks before resetting parent task first.
+	var execTaskIdsToRestart []string
 	if t.DisplayOnly {
-		execTaskIdsToRestart, err := task.FindExecTasksToReset(ctx, t)
+		ids, err := task.FindExecTasksToReset(ctx, t)
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks to restart")
 		}
-		if err = MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
+		execTaskIdsToRestart = ids
+	}
+
+	// Reset the parent display task before its execution tasks to prevent
+	// weird race conditions of execution tasks running while the parent is resetting.
+	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrap(err, "resetting task in database")
+	}
+
+	if t.DisplayOnly {
+		if err := MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
 			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 
@@ -2123,10 +2135,6 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 			"display_task_id":              t.Id,
 			"restarted_execution_task_ids": execTaskIdsToRestart,
 		}))
-	}
-
-	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
-		return errors.Wrap(err, "resetting task in database")
 	}
 
 	if err := UpdateUnblockedDependencies(ctx, []task.Task{*t}); err != nil {

@@ -31,6 +31,7 @@ type versionTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.VersionEventData
 	version  *model.Version
+	repoId   string
 	uiConfig evergreen.UIConfig
 
 	base
@@ -74,13 +75,25 @@ func (t *versionTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) err
 	}
 	t.event = e
 
+	projectRef, err := model.FindBranchProjectRef(ctx, t.version.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "finding project ref '%s'", t.version.Identifier)
+	}
+	if projectRef != nil {
+		t.repoId = projectRef.RepoRefId
+	}
+
 	return nil
 }
 
 func (t *versionTriggers) Attributes() event.Attributes {
+	project := []string{t.version.Identifier}
+	if t.repoId != "" {
+		project = append(project, t.repoId)
+	}
 	attributes := event.Attributes{
 		ID:        []string{t.version.Id},
-		Project:   []string{t.version.Identifier},
+		Project:   project,
 		Object:    []string{event.ObjectVersion},
 		Requester: []string{t.version.Requester},
 	}
