@@ -109,6 +109,12 @@ Note that `set-module` command will not work for module includes and this flag m
 evergreen patch --include-modules
 ```
 
+To specify module paths inline, use `--include-module`:
+
+```bash
+evergreen patch --include-module my_module=/path/to/my_module
+```
+
 ## Test Selection
 
 To run a patch with [test selection enabled](../Project-Configuration/Project-and-Distro-Settings#test_selection_settings) in a subset of those tasks, you can use the `--test-selection-include-variants`/`--tsv` and `--test-selection-include-tasks`/`--tst` flags. Those will specify a regexp subset of the variants/tasks that run in the patch where test selection will be enabled. You can also specify `--test-selection-exclude-variants` and `--test-selection-exclude-tasks` to define regexp variants/tasks where test selection should _not_ run (exclusion takes precedence over inclusion).
@@ -267,7 +273,17 @@ Finalizing a patch actually creates and schedules and tasks. Before this the pat
 evergreen patch --include-modules
 ```
 
-This will attempt to add changes for each module that your project supports. This flag will prompt you to provide your local absolute path to the module, and it will be stored in your evergreen.yml file. For example:
+This will attempt to add changes for each module that your project supports. This flag will prompt you to provide your local absolute path to the module, and it will be stored in your evergreen.yml file.
+
+To specify module paths directly on the command line without modifying your config, use the `--include-module` flag:
+
+```bash
+evergreen patch --include-module my_module=/path/to/my_module --include-module other_module=/path/to/other
+```
+
+This may be useful when working with multiple clones of the same module or when using automated tooling. It overrides any configured module paths that are set in your ~/.evergreen.yml.
+
+The stored config format looks like:
 
 ```yaml
 projects:
