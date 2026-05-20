@@ -722,10 +722,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
+	enableAnchors := false
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
+		enableAnchors = opts.EnableYAMLAnchors
 	}
-	intermediateProject, mainNode, err := createIntermediateProject(data, unmarshalStrict)
+	intermediateProject, mainNode, err := createIntermediateProject(data, unmarshalStrict, enableAnchors)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -872,7 +874,7 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 			parseBytes = append(preamble, rawBytes...)
 		}
 
-		add, includeNode, err := createIntermediateProject(parseBytes, opts.UnmarshalStrict)
+		add, includeNode, err := createIntermediateProject(parseBytes, opts.UnmarshalStrict, opts.EnableYAMLAnchors)
 		if err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
@@ -1171,6 +1173,10 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
+	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
+	// When false (the default), anchors defined in one include file cannot be
+	// referenced as aliases in another file — matching pre-anchor-support behavior.
+	EnableYAMLAnchors bool
 }
 
 type PatchOpts struct {
@@ -1409,13 +1415,39 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-// The returned yaml.Node is the parsed YAML AST for cross-file anchor
-// support (Stage 2). It is nil only when the input is empty.
-func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject, *yaml.Node, error) {
+// If enableAnchors is true, the YAML is also decoded into a yaml.Node AST
+// (returned as the second value) to support cross-file anchor collection.
+// When enableAnchors is false the legacy unmarshal path is used and a nil
+// Node is returned.
+func createIntermediateProject(yml []byte, unmarshalStrict, enableAnchors bool) (*ParserProject, *yaml.Node, error) {
 	p := ParserProject{}
 
-	// Always parse to yaml.Node so that Stage 2 can collect anchor definitions
-	// from every file regardless of strict mode.
+	if !enableAnchors {
+		// Legacy path: no Node parsing; within-file anchors still work because
+		// yaml.v3 resolves them during the single-document unmarshal.
+		if unmarshalStrict {
+			strictProjectWithVariables := struct {
+				ParserProject       `yaml:"pp,inline"`
+				ProjectConfigFields `yaml:"pc,inline"`
+				Variables           any `yaml:"variables,omitempty" bson:"-"`
+			}{}
+			if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
+				return nil, nil, err
+			}
+			p = strictProjectWithVariables.ParserProject
+		} else {
+			if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
+				return nil, nil, errors.Wrap(err, "unmarshalling parser project from YAML")
+			}
+		}
+		if p.Functions == nil {
+			p.Functions = map[string]*YAMLCommandSet{}
+		}
+		return &p, nil, nil
+	}
+
+	// Anchor-enabled path: parse to yaml.Node first so mergeIncludes can
+	// collect anchor definitions for cross-file alias resolution.
 	var node yaml.Node
 	if err := yaml.NewDecoder(bytes.NewReader(yml)).Decode(&node); err != nil && !errors.Is(err, io.EOF) {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}

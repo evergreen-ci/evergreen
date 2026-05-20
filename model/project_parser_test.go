@@ -64,7 +64,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, _, err := createIntermediateProject([]byte(simple), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -81,7 +81,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, _, err := createIntermediateProject([]byte(single), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -93,7 +93,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false)
+				p, _, err := createIntermediateProject([]byte(nameless), false, false)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -105,7 +105,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false)
+				p, _, err := createIntermediateProject([]byte(nameless), false, false)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -114,7 +114,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, _, err := createIntermediateProject([]byte(nameless), false)
+				p, _, err := createIntermediateProject([]byte(nameless), false, false)
 				So(p, ShouldNotBeNil)
 				So(err, ShouldBeNil)
 			})
@@ -143,7 +143,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, _, err := createIntermediateProject([]byte(simple), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -167,7 +167,7 @@ buildvariants:
   - name: "t2"
     depends_on: "t3"
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, _, err := createIntermediateProject([]byte(simple), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -185,7 +185,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, _, err := createIntermediateProject([]byte(simple), false)
+			p, _, err := createIntermediateProject([]byte(simple), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -209,7 +209,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, _, err := createIntermediateProject([]byte(single), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -230,7 +230,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, _, err := createIntermediateProject([]byte(single), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
@@ -245,7 +245,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, _, err := createIntermediateProject([]byte(single), false, false)
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -257,7 +257,7 @@ buildvariants:
   - name: "t1"
     commit_queue_merge: true
 `
-			p, _, err := createIntermediateProject([]byte(single), false)
+			p, _, err := createIntermediateProject([]byte(single), false, false)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -280,7 +280,7 @@ buildvariants:
   - name: "t1"
     activate: true
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, _, err := createIntermediateProject([]byte(yml), false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	bv := p.BuildVariants[0]
@@ -974,7 +974,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, _, err := createIntermediateProject([]byte(yml), false, false)
 
 	// check that display tasks in bv1 parsed correctly
 	assert.NoError(err)
@@ -1003,7 +1003,7 @@ parameters:
 - key: buggy
   value: driver
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, _, err := createIntermediateProject([]byte(yml), false, false)
 	assert.NoError(t, err)
 	require.Len(t, p.Parameters, 2)
 	assert.Equal(t, "iter_count", p.Parameters[0].Key)
@@ -1312,7 +1312,7 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, _, err := createIntermediateProject([]byte(tagYml), false)
+	pp, _, err := createIntermediateProject([]byte(tagYml), false, false)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
@@ -2100,7 +2100,7 @@ buildvariants:
 }
 
 func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod evergreen.ParserProjectStorageMethod) {
-	pp, _, err := createIntermediateProject(yml, false)
+	pp, _, err := createIntermediateProject(yml, false, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
@@ -2123,7 +2123,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, _, err = createIntermediateProject(newYaml, false)
+	pp, _, err = createIntermediateProject(newYaml, false, false)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
@@ -2150,7 +2150,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	yml, err := os.ReadFile(filepath)
 	assert.NoError(t, err)
 
-	original, _, err := createIntermediateProject(yml, false)
+	original, _, err := createIntermediateProject(yml, false, false)
 	assert.NoError(t, err)
 
 	// to and from yaml
@@ -2774,10 +2774,10 @@ ignore:
   - ".github/*"
 `
 
-	p1, _, err := createIntermediateProject([]byte(mainYaml), false)
+	p1, _, err := createIntermediateProject([]byte(mainYaml), false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, _, err := createIntermediateProject([]byte(smallYaml), false)
+	p2, _, err := createIntermediateProject([]byte(smallYaml), false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -2823,13 +2823,13 @@ buildvariants:
       - name: task3
 `
 
-	p1, _, err := createIntermediateProject([]byte(mainYaml), false)
+	p1, _, err := createIntermediateProject([]byte(mainYaml), false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, _, err := createIntermediateProject([]byte(succeed), false)
+	p2, _, err := createIntermediateProject([]byte(succeed), false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	p3, _, err := createIntermediateProject([]byte(fail), false)
+	p3, _, err := createIntermediateProject([]byte(fail), false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -3338,7 +3338,7 @@ tasks:
 - name: task2
   commands: *common-commands
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, _, err := createIntermediateProject([]byte(yml), false, false)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 2)
@@ -3366,7 +3366,7 @@ tasks:
       os: linux
       arch: amd64
 `
-	p, _, err := createIntermediateProject([]byte(yml), false)
+	p, _, err := createIntermediateProject([]byte(yml), false, false)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 1)
@@ -3385,6 +3385,14 @@ tasks:
 // inline bytes, bypassing GitHub and git.
 func moduleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
 	return &GetProjectOpts{LocalModuleIncludes: includes}
+}
+
+// anchorModuleIncludeOpts is like moduleIncludeOpts but also enables cross-file
+// YAML anchor support, which is required for cross-file alias tests.
+func anchorModuleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
+	opts := moduleIncludeOpts(includes...)
+	opts.EnableYAMLAnchors = true
+	return opts
 }
 
 // mainYAMLWithModuleIncludes builds a minimal main YAML that declares one
@@ -3488,7 +3496,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3524,7 +3532,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		anchorModuleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3563,7 +3571,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		anchorModuleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3605,7 +3613,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		anchorModuleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3671,7 +3679,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(
+		anchorModuleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3707,7 +3715,7 @@ tasks:
 `
 	proj := &Project{}
 	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	// Marshal the parser project back to YAML and confirm _evg_anchors is absent.
@@ -3737,7 +3745,7 @@ tasks:
   - *step
 `
 	proj := &Project{}
-	opts := moduleIncludeOpts(moduleInclude("include.yml", includeYAML))
+	opts := anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML))
 	opts.UnmarshalStrict = true
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
 	require.NoError(t, err)
@@ -3769,7 +3777,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3805,7 +3813,7 @@ buildvariants:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	require.Len(t, proj.BuildVariants, 1)
@@ -3837,7 +3845,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}

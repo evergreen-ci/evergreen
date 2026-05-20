@@ -1546,7 +1546,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, _, err := createIntermediateProject([]byte(projYml), false)
+	intermediate, _, err := createIntermediateProject([]byte(projYml), false, false)
 	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
