@@ -691,10 +691,57 @@ func TestModuleUsesGithubPRHeadCheckout(t *testing.T) {
 	assert.True(t, moduleUsesGithubPRHeadCheckout(conf, "evergreen-ci", "evergreen"))
 	assert.True(t, moduleUsesGithubPRHeadCheckout(conf, "octocat", "evergreen"))
 	assert.False(t, moduleUsesGithubPRHeadCheckout(conf, "evergreen-ci", "sample"))
-	assert.False(t, moduleUsesGithubPRHeadCheckout(&internal.TaskConfig{
-		Task:            task.Task{Requester: evergreen.PatchVersionRequester},
+	// Child patches carry parent PR metadata but use PatchVersionRequester on the version.
+	assert.True(t, moduleUsesGithubPRHeadCheckout(&internal.TaskConfig{
+		Task:            task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent-patch-id"},
 		GithubPatchData: conf.GithubPatchData,
 	}, "evergreen-ci", "evergreen"))
+}
+
+func TestUsesGitHubPRSourceCheckout(t *testing.T) {
+	gh := thirdparty.GithubPatch{PRNumber: 42, HeadHash: "abc123"}
+	prConf := &internal.TaskConfig{
+		Task:            task.Task{Requester: evergreen.GithubPRRequester},
+		GithubPatchData: gh,
+	}
+	assert.True(t, usesGitHubPRSourceCheckout(prConf))
+	childConf := &internal.TaskConfig{
+		Task:            task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent"},
+		GithubPatchData: gh,
+	}
+	assert.False(t, usesGitHubPRSourceCheckout(childConf))
+	assert.True(t, shouldSkipApplyingPatches(childConf))
+	assert.False(t, shouldSkipApplyingPatches(&internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.PatchVersionRequester},
+	}))
+}
+
+func TestBuildSourceCloneCommandChildPatchUsesTaskRevision(t *testing.T) {
+	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
+	conf := &internal.TaskConfig{
+		Task: task.Task{
+			Requester:     evergreen.PatchVersionRequester,
+			ParentPatchID: "parent-patch-id",
+			Revision:      "child-mainline-sha",
+		},
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber: 9001,
+			HeadHash: "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+		},
+		ProjectRef: model.ProjectRef{Owner: "evergreen-ci", Repo: "evergreen", Branch: "main"},
+	}
+	opts := cloneOpts{
+		token:  projectGitHubToken,
+		branch: conf.ProjectRef.Branch,
+		owner:  conf.ProjectRef.Owner,
+		repo:   conf.ProjectRef.Repo,
+		dir:    c.Directory,
+	}
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	require.NoError(t, err)
+	joined := strings.Join(cmds, "\n")
+	assert.Contains(t, joined, "git reset --hard child-mainline-sha")
+	assert.NotContains(t, joined, "pull/9001/head")
 }
 
 func TestBuildModuleCloneCommandGithubPRHead(t *testing.T) {
