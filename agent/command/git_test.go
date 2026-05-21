@@ -718,6 +718,14 @@ func TestUsesGitHubPRSourceCheckout(t *testing.T) {
 	assert.False(t, shouldSkipApplyingPatches(&internal.TaskConfig{
 		Task: task.Task{Requester: evergreen.PatchVersionRequester},
 	}))
+	mqConf := &internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.GithubMergeRequester},
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			HeadSHA: "abc123",
+		},
+	}
+	assert.True(t, usesGitHubPRSourceCheckout(mqConf))
+	assert.Equal(t, 0, mqConf.GithubPatchData.PRNumber)
 }
 
 func TestBuildSourceCloneCommandChildPatchUsesTaskRevision(t *testing.T) {

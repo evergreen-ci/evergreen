@@ -899,7 +899,10 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 // PR or merge-queue refs instead of the task revision. Child patches keep the child
 // project's mainline revision even when parent PR metadata is present for modules.
 func usesGitHubPRSourceCheckout(conf *internal.TaskConfig) bool {
-	return isGitHub(conf) && conf.Task.ParentPatchID == ""
+	if conf.Task.ParentPatchID != "" {
+		return false
+	}
+	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
 }
 
 // shouldSkipApplyingPatches reports whether git apply should be skipped for this patch task.
@@ -926,10 +929,6 @@ func moduleUsesGithubPRHeadCheckout(conf *internal.TaskConfig, moduleOwner, modu
 	// Check if the module repo is the base or head repo.
 	return moduleRepoKey == fmt.Sprintf("%s/%s", gh.BaseOwner, gh.BaseRepo) ||
 		moduleRepoKey == fmt.Sprintf("%s/%s", gh.HeadOwner, gh.HeadRepo)
-}
-
-func isGitHub(conf *internal.TaskConfig) bool {
-	return conf.GithubPatchData.PRNumber != 0
 }
 
 // parentRepoForGitHubAppToken returns the repository name to pass when resolving
