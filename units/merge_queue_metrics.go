@@ -46,7 +46,8 @@ func NewMergeQueueMetricsJob() amboy.Job {
 	const maxAttempts = 3
 	const maxTime = time.Minute
 
-	j.SetEnqueueScopes(mergeQueueMetricsJobName)
+	j.SetScopes([]string{mergeQueueMetricsJobName})
+	j.SetEnqueueAllScopes(true)
 	j.SetTimeInfo(amboy.JobTimeInfo{
 		MaxTime: maxTime,
 	})
@@ -71,7 +72,7 @@ func (j *mergeQueueMetricsJob) Run(ctx context.Context) {
 			"message": "error finding projects with merge queue enabled",
 			"job_id":  j.ID(),
 		}))
-		j.AddError(errors.Wrap(err, "finding projects with merge queue enabled"))
+		j.AddRetryableError(errors.Wrap(err, "finding projects with merge queue enabled"))
 		return
 	}
 
@@ -82,7 +83,7 @@ func (j *mergeQueueMetricsJob) Run(ctx context.Context) {
 				"project_id": projectRef.Id,
 				"job":        j.ID(),
 			}))
-			j.AddError(err)
+			j.AddRetryableError(err)
 		}
 	}
 }
@@ -126,7 +127,7 @@ func (j *mergeQueueMetricsJob) emitMetricsForProject(ctx context.Context, projec
 				"repo":        key.repo,
 				"base_branch": key.baseBranch,
 			}))
-			j.AddError(err)
+			j.AddRetryableError(err)
 		}
 	}
 
