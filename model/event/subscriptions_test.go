@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestSubscriptions(t *testing.T) {
@@ -588,14 +589,17 @@ func (s *subscriptionsSuite) TestUpsertWebhookSavesSecretToParameterStore() {
 	s.Require().Len(fakeParams, 1)
 	s.Equal("my-secret", fakeParams[0].Value)
 
-	// New subscriptions must not persist the secret to MongoDB — only the Parameter Store path.
+	// Both the secret bytes and the Parameter Store path are persisted to MongoDB during
+	// Phase 1. The secret stays in MongoDB as a fallback until the Phase 2 cleanup job removes it.
 	raw := bson.M{}
 	s.Require().NoError(db.FindOneQ(s.T().Context(), SubscriptionsCollection, db.Query(bson.M{"_id": "webhook-sub"}), &raw))
 	subscriberRaw, ok := raw["subscriber"].(bson.M)
 	s.Require().True(ok)
 	targetRaw, ok := subscriberRaw["target"].(bson.M)
 	s.Require().True(ok)
-	s.Nil(targetRaw["secret"], "secret must not be stored in MongoDB")
+	storedSecret, ok := targetRaw["secret"].(primitive.Binary)
+	s.Require().True(ok, "secret should be persisted to MongoDB as a fallback during Phase 1")
+	s.Equal([]byte("my-secret"), storedSecret.Data)
 	s.NotEmpty(targetRaw["secret_parameter"], "secret_parameter path should be stored in MongoDB")
 }
 
@@ -712,7 +716,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByOwnerPopulatesSecrets() {
 	s.Equal([]byte("owner-secret"), foundWebhook.Secret)
 }
 
-func (s *subscriptionsSuite) TestRemoveSubscriptionOnlyDeletesFromMongoDB() {
+func (s *subscriptionsSuite) TestRemoveSubscriptionDeletesWebhookSecretFromParameterStore() {
 	webhookSub := &WebhookSubscriber{
 		URL:    "https://example.com/webhook",
 		Secret: []byte("delete-me-secret"),
@@ -734,22 +738,102 @@ func (s *subscriptionsSuite) TestRemoveSubscriptionOnlyDeletesFromMongoDB() {
 	paramName := webhookSub.SecretParameter
 	s.Require().NotEmpty(paramName)
 
-	// Verify secret exists in PS before deletion.
 	fakeParams, err := fakeparameter.FindByIDs(s.T().Context(), paramName)
 	s.Require().NoError(err)
 	s.Require().Len(fakeParams, 1)
 
 	s.Require().NoError(RemoveSubscription(s.T().Context(), "webhook-delete"))
 
-	// Verify subscription is removed from MongoDB.
 	found, err := FindSubscriptionByID(s.T().Context(), "webhook-delete")
 	s.Require().NoError(err)
 	s.Nil(found)
 
-	// Secret remains in Parameter Store — PS cleanup is handled by the Phase 2 migration job.
 	fakeParams, err = fakeparameter.FindByIDs(s.T().Context(), paramName)
 	s.Require().NoError(err)
-	s.Len(fakeParams, 1, "webhook secret should remain in Parameter Store until Phase 2 cleanup")
+	s.Empty(fakeParams, "webhook secret should be removed from Parameter Store when its subscription is deleted")
+}
+
+func (s *subscriptionsSuite) TestRemoveSubscriptionDoesNotTouchParameterStoreForNonWebhook() {
+	emailTarget := "user@example.com"
+	sub := Subscription{
+		ID:           "email-delete",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EmailSubscriberType,
+			Target: &emailTarget,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	allParams, err := fakeparameter.FindByIDs(s.T().Context())
+	s.Require().NoError(err)
+	s.Require().Empty(allParams, "non-webhook upsert should not write to Parameter Store")
+
+	s.Require().NoError(RemoveSubscription(s.T().Context(), "email-delete"))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "email-delete")
+	s.Require().NoError(err)
+	s.Nil(found)
+
+	allParams, err = fakeparameter.FindByIDs(s.T().Context())
+	s.Require().NoError(err)
+	s.Empty(allParams, "non-webhook removal should not touch Parameter Store")
+}
+
+func (s *subscriptionsSuite) TestRemoveSubscriptionDoesNotTouchParameterStoreForLegacyWebhook() {
+	// Simulate a legacy webhook subscription with the secret in MongoDB but no SecretParameter set.
+	// Insert directly to bypass the Upsert write path, which would otherwise save to Parameter Store.
+	raw := bson.M{
+		"_id":     "legacy-webhook-delete",
+		"type":    ResourceTypePatch,
+		"trigger": TriggerOutcome,
+		"filter":  bson.M{"id": "test"},
+		"subscriber": bson.M{
+			"type": EvergreenWebhookSubscriberType,
+			"target": bson.M{
+				"url":    "https://legacy.example.com",
+				"secret": []byte("legacy-secret"),
+			},
+		},
+		"owner":      "me",
+		"owner_type": string(OwnerTypePerson),
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(SubscriptionsCollection).InsertOne(s.T().Context(), raw)
+	s.Require().NoError(err)
+
+	allParams, err := fakeparameter.FindByIDs(s.T().Context())
+	s.Require().NoError(err)
+	s.Require().Empty(allParams)
+
+	s.Require().NoError(RemoveSubscription(s.T().Context(), "legacy-webhook-delete"))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "legacy-webhook-delete")
+	s.Require().NoError(err)
+	s.Nil(found)
+
+	allParams, err = fakeparameter.FindByIDs(s.T().Context())
+	s.Require().NoError(err)
+	s.Empty(allParams, "legacy webhook removal should not touch Parameter Store since no SecretParameter is set")
+}
+
+func (s *subscriptionsSuite) TestVerifyWebhookSecretInParameterStoreReturnsErrorOnValueMismatch() {
+	paramMgr := evergreen.GetEnvironment().ParameterManager()
+	param, err := paramMgr.Put(s.T().Context(), "webhooks/mismatch-test/secret", "stored-value")
+	s.Require().NoError(err)
+
+	err = verifyWebhookSecretInParameterStore(s.T().Context(), param.Name, []byte("intended-different-value"))
+	s.Require().Error(err)
+	s.Contains(err.Error(), "does not match")
+}
+
+func (s *subscriptionsSuite) TestVerifyWebhookSecretInParameterStoreReturnsErrorOnNotFound() {
+	err := verifyWebhookSecretInParameterStore(s.T().Context(), "webhooks/never-existed/secret", []byte("anything"))
+	s.Require().Error(err)
 }
 
 func TestCopyProjectSubscriptions(t *testing.T) {

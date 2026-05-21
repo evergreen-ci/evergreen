@@ -1,6 +1,7 @@
 package event
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"regexp"
@@ -562,6 +563,25 @@ func RemoveSubscription(ctx context.Context, id string) error {
 		return errors.New("id is not valid, cannot remove")
 	}
 
+	// Look up the subscription directly (bypassing populateWebhookSecrets) to clean up its
+	// Parameter Store entry. PS failures are logged but do not block the removal.
+	var sub Subscription
+	err := db.FindOneQ(ctx, SubscriptionsCollection, db.Query(bson.M{subscriptionIDKey: id}), &sub)
+	if err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrapf(err, "looking up subscription '%s' before removal", id)
+	}
+	if err == nil {
+		if ws, ok := sub.Subscriber.Target.(*WebhookSubscriber); ok && ws != nil && ws.SecretParameter != "" {
+			if delErr := deleteWebhookSecretFromParameterStore(ctx, ws.SecretParameter); delErr != nil {
+				grip.Warning(ctx, message.WrapError(delErr, message.Fields{
+					"message":         "deleting webhook secret from Parameter Store on subscription removal",
+					"subscription_id": id,
+					"parameter_name":  ws.SecretParameter,
+				}))
+			}
+		}
+	}
+
 	return db.Remove(ctx, SubscriptionsCollection, bson.M{
 		subscriptionIDKey: id,
 	})
@@ -989,70 +1009,42 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 }
 
 // saveWebhookSecretIfNeeded saves the webhook secret to Parameter Store on every upsert.
-// This keeps Parameter Store authoritative on both creates and secret rotations.
 func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
-	grip.Info(ctx, message.Fields{
-		"message":         "WEBHOOK_TESTTING::::: saveWebhookSecretIfNeeded called",
-		"subscription_id": s.ID,
-		"subscriber_type": s.Subscriber.Type,
-		"source":          "webhook-secret-migration",
-	})
-
 	if s.Subscriber.Type != EvergreenWebhookSubscriberType {
-		grip.Info(ctx, message.Fields{
-			"message":         "WEBHOOK_TESTTING::::: not a webhook subscription, skipping",
-			"subscription_id": s.ID,
-			"subscriber_type": s.Subscriber.Type,
-			"source":          "webhook-secret-migration",
-		})
 		return nil
 	}
 
 	webhookSub, ok := s.Subscriber.Target.(*WebhookSubscriber)
 	if !ok {
-		grip.Info(ctx, message.Fields{
-			"message":         "WEBHOOK_TESTTING::::: target type assertion failed, skipping",
-			"subscription_id": s.ID,
-			"source":          "webhook-secret-migration",
-		})
 		return nil
 	}
 	if len(webhookSub.Secret) == 0 {
-		grip.Info(ctx, message.Fields{
-			"message":         "WEBHOOK_TESTTING::::: secret is empty, skipping",
-			"subscription_id": s.ID,
-			"source":          "webhook-secret-migration",
-		})
 		return nil
 	}
-
-	grip.Info(ctx, message.Fields{
-		"message":         "WEBHOOK_TESTTING::::: attempting to save secret to Parameter Store",
-		"subscription_id": s.ID,
-		"source":          "webhook-secret-migration",
-	})
 
 	paramName, err := saveWebhookSecretToParameterStore(ctx, s.ID, webhookSub.Secret)
 	if err != nil {
 		grip.Warning(ctx, message.Fields{
-			"message":         "WEBHOOK_TESTTING::::: failed to save webhook secret to Parameter Store, falling back to MongoDB",
+			"message":         "saving webhook secret to Parameter Store, falling back to MongoDB",
 			"subscription_id": s.ID,
 			"error":           err.Error(),
-			"source":          "webhook-secret-migration",
 		})
-		// Clear SecretParameter so reads fall back to MongoDB, which will have the correct value after db.Replace.
 		webhookSub.SecretParameter = ""
 		return nil
 	}
 
+	if err := verifyWebhookSecretInParameterStore(ctx, paramName, webhookSub.Secret); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":         "verifying webhook secret in Parameter Store, falling back to MongoDB",
+			"subscription_id": s.ID,
+			"parameter_name":  paramName,
+		}))
+		webhookSub.SecretParameter = ""
+		return nil
+	}
+
+	// Keep Secret in MongoDB as a fallback until the Phase 2 cleanup job removes it.
 	webhookSub.SecretParameter = paramName
-	webhookSub.Secret = nil
-	grip.Info(ctx, message.Fields{
-		"message":         "WEBHOOK_TESTTING::::: saved webhook secret to Parameter Store",
-		"subscription_id": s.ID,
-		"parameter_name":  paramName,
-		"source":          "webhook-secret-migration",
-	})
 	return nil
 }
 
@@ -1075,7 +1067,6 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 					"message":         "failed to read webhook secret from Parameter Store, falling back to MongoDB",
 					"subscription_id": subscriptions[i].ID,
 					"error":           err.Error(),
-					"source":          "webhook-secret-migration",
 				})
 				// Secret is already populated from the DB read — leave it as-is.
 			} else {
@@ -1091,7 +1082,7 @@ func GetWebhookSecretParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/secret", subscriptionID)
 }
 
-// saveWebhookSecretToParameterStore saves a webhook secret to Parameter Store and returns the full parameter name.
+// saveWebhookSecretToParameterStore saves a webhook secret to Parameter Store and returns the parameter name.
 func saveWebhookSecretToParameterStore(ctx context.Context, subscriptionID string, secret []byte) (string, error) {
 	if len(secret) == 0 {
 		return "", errors.New("cannot save empty webhook secret")
@@ -1106,6 +1097,27 @@ func saveWebhookSecretToParameterStore(ctx context.Context, subscriptionID strin
 	}
 
 	return param.Name, nil
+}
+
+// verifyWebhookSecretInParameterStore confirms the stored secret matches the expected value.
+func verifyWebhookSecretInParameterStore(ctx context.Context, paramName string, expected []byte) error {
+	storedSecret, err := getWebhookSecretFromParameterStore(ctx, paramName)
+	if err != nil {
+		return errors.Wrap(err, "reading back webhook secret from Parameter Store")
+	}
+	if !bytes.Equal(storedSecret, expected) {
+		return errors.New("Parameter Store value does not match intended secret")
+	}
+	return nil
+}
+
+// deleteWebhookSecretFromParameterStore removes a webhook secret from Parameter Store. Empty input is a no-op.
+func deleteWebhookSecretFromParameterStore(ctx context.Context, paramName string) error {
+	if paramName == "" {
+		return nil
+	}
+	paramMgr := evergreen.GetEnvironment().ParameterManager()
+	return paramMgr.Delete(ctx, paramName)
 }
 
 // getWebhookSecretFromParameterStore retrieves a webhook secret from Parameter Store.
