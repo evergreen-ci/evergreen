@@ -1784,7 +1784,7 @@ tasks:
 		Patches: []patch.ModulePatch{{
 			Githash: s.hash,
 			PatchSet: patch.PatchSet{
-				Patch: "diff --git a/file b/file",
+				PatchFileId: "parent-patch-file-id",
 				Summary: []thirdparty.Summary{{
 					Name:      "file",
 					Additions: 1,
@@ -1821,6 +1821,7 @@ tasks:
 	s.Require().Len(childPatch.Patches, 1)
 	s.Equal("module1", childPatch.Patches[0].ModuleName)
 	s.Empty(childPatch.Patches[0].PatchSet.Patch)
+	s.Empty(childPatch.Patches[0].PatchSet.PatchFileId)
 	s.Require().Len(childPatch.Patches[0].PatchSet.Summary, 1)
 }
 
