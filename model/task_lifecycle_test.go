@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var (
@@ -6628,5 +6629,144 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 		} else {
 			assert.True(t, task.Aborted, task.Id)
 		}
+	}
+}
+
+func findAttr(attrs []attribute.KeyValue, key string) (attribute.Value, bool) {
+	for _, kv := range attrs {
+		if string(kv.Key) == key {
+			return kv.Value, true
+		}
+	}
+	return attribute.Value{}, false
+}
+
+func TestBuildTaskCompletedSpanAttributesStaticFields(t *testing.T) {
+	t1 := task.Task{
+		Id:           "t1",
+		DisplayName:  "compile",
+		BuildVariant: "ubuntu2204",
+		Version:      "v1",
+		Project:      "test-project",
+	}
+	attrs := buildTaskCompletedSpanAttributes(&t1)
+
+	versionIDVal, hasVersionID := findAttr(attrs, evergreen.VersionIDOtelAttribute)
+	assert.True(t, hasVersionID)
+	assert.Equal(t, t1.Version, versionIDVal.AsString())
+	projectIDVal, hasProjectID := findAttr(attrs, evergreen.ProjectIDOtelAttribute)
+	assert.True(t, hasProjectID)
+	assert.Equal(t, t1.Project, projectIDVal.AsString())
+	taskIDVal, hasTaskID := findAttr(attrs, evergreen.TaskIDOtelAttribute)
+	assert.True(t, hasTaskID)
+	assert.Equal(t, t1.Id, taskIDVal.AsString())
+	taskNameVal, hasTaskName := findAttr(attrs, evergreen.TaskNameOtelAttribute)
+	assert.True(t, hasTaskName)
+	assert.Equal(t, t1.DisplayName, taskNameVal.AsString())
+	taskVariantVal, hasTaskVariant := findAttr(attrs, evergreen.TaskVariantOtelAttribute)
+	assert.True(t, hasTaskVariant)
+	assert.Equal(t, t1.BuildVariant, taskVariantVal.AsString())
+}
+
+func TestBuildTaskCompletedSpanAttributesConditionalFields(t *testing.T) {
+	now := time.Now()
+
+	for _, tc := range []struct {
+		name              string
+		task              task.Task
+		hasSchedulingWait bool
+		schedulingWaitMs  int64
+		hasDepsWait       bool
+		depsWaitMs        int64
+		hasDuration       bool
+		durationMs        int64
+	}{
+		{
+			name: "FullTimestampsProducesAllThreeAttrs",
+			task: task.Task{
+				DependsOn:           []task.Dependency{{TaskId: "t0"}},
+				ActivatedTime:       now.Add(-30 * time.Minute),
+				ScheduledTime:       now.Add(-20 * time.Minute),
+				DependenciesMetTime: now.Add(-18 * time.Minute),
+				StartTime:           now.Add(-15 * time.Minute),
+				FinishTime:          now.Add(-5 * time.Minute),
+			},
+			hasSchedulingWait: true,
+			schedulingWaitMs:  (10 * time.Minute).Milliseconds(),
+			hasDepsWait:       true,
+			depsWaitMs:        (2 * time.Minute).Milliseconds(),
+			hasDuration:       true,
+			durationMs:        (10 * time.Minute).Milliseconds(),
+		},
+		{
+			name: "ZeroActivatedTimeOmitsSchedulingWait",
+			task: task.Task{
+				DependsOn:           []task.Dependency{{TaskId: "t0"}},
+				ScheduledTime:       now.Add(-20 * time.Minute),
+				DependenciesMetTime: now.Add(-18 * time.Minute),
+			},
+			hasDepsWait: true,
+			depsWaitMs:  (2 * time.Minute).Milliseconds(),
+		},
+		{
+			name: "ZeroDependenciesMetTimeOmitsDepsWait",
+			task: task.Task{
+				DependsOn:     []task.Dependency{{TaskId: "t0"}},
+				ActivatedTime: now.Add(-30 * time.Minute),
+				ScheduledTime: now.Add(-20 * time.Minute),
+			},
+			hasSchedulingWait: true,
+			schedulingWaitMs:  (10 * time.Minute).Milliseconds(),
+		},
+		{
+			name: "NoDependenciesOmitsDepsWait",
+			task: task.Task{
+				ActivatedTime:       now.Add(-30 * time.Minute),
+				ScheduledTime:       now.Add(-20 * time.Minute),
+				DependenciesMetTime: now.Add(-20 * time.Minute),
+			},
+			hasSchedulingWait: true,
+			schedulingWaitMs:  (10 * time.Minute).Milliseconds(),
+		},
+		{
+			name: "ZeroScheduledTimeOmitsSchedulingAndDepsWait",
+			task: task.Task{
+				DependsOn:           []task.Dependency{{TaskId: "t0"}},
+				ActivatedTime:       now.Add(-30 * time.Minute),
+				DependenciesMetTime: now.Add(-22 * time.Minute),
+			},
+		},
+		{
+			name: "ZeroStartTimeOmitsDuration",
+			task: task.Task{
+				ActivatedTime: now.Add(-30 * time.Minute),
+				ScheduledTime: now.Add(-20 * time.Minute),
+				FinishTime:    now.Add(-5 * time.Minute),
+			},
+			hasSchedulingWait: true,
+			schedulingWaitMs:  (10 * time.Minute).Milliseconds(),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := buildTaskCompletedSpanAttributes(&tc.task)
+
+			schedVal, hasSchedWait := findAttr(attrs, evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute)
+			assert.Equal(t, tc.hasSchedulingWait, hasSchedWait)
+			if tc.hasSchedulingWait {
+				assert.Equal(t, tc.schedulingWaitMs, schedVal.AsInt64())
+			}
+
+			depsVal, hasDepsWait := findAttr(attrs, evergreen.TaskTimeWaitingForDepsMsOtelAttribute)
+			assert.Equal(t, tc.hasDepsWait, hasDepsWait)
+			if tc.hasDepsWait {
+				assert.Equal(t, tc.depsWaitMs, depsVal.AsInt64())
+			}
+
+			durVal, hasDuration := findAttr(attrs, evergreen.TaskDurationMsOtelAttribute)
+			assert.Equal(t, tc.hasDuration, hasDuration)
+			if tc.hasDuration {
+				assert.Equal(t, tc.durationMs, durVal.AsInt64())
+			}
+		})
 	}
 }
