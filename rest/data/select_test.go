@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -162,7 +163,7 @@ func TestSetTaskQuarantined(t *testing.T) {
 		setTSSURLForTest(t, srv.URL)
 
 		require.NoError(t, SetTaskQuarantined(t.Context(), projectID, bvName, taskName, true))
-		assert.Equal(t, "/api/test_selection/transition_task/my_project/ubuntu/my_task/", capturedPath)
+		assert.Equal(t, fmt.Sprintf("/api/test_selection/%s/my_project/ubuntu/my_task/", TransitionTaskEndpoint), capturedPath)
 		assert.Contains(t, capturedQuery, "is_manually_quarantined=true")
 	})
 
@@ -198,7 +199,7 @@ func TestSetVariantQuarantined(t *testing.T) {
 		setTSSURLForTest(t, srv.URL)
 
 		require.NoError(t, SetVariantQuarantined(t.Context(), projectID, bvName, false))
-		assert.Equal(t, "/api/test_selection/transition_variant/my_project/ubuntu/", capturedPath)
+		assert.Equal(t, fmt.Sprintf("/api/test_selection/%s/my_project/ubuntu/", TransitionVariantEndpoint), capturedPath)
 		assert.Contains(t, capturedQuery, "is_manually_quarantined=false")
 	})
 }

@@ -39,6 +39,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -841,12 +842,12 @@ func setupQuarantineVariantMutation(t *testing.T) {
 	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if strings.Contains(r.URL.Path, "transition_variant") {
+		if strings.Contains(r.URL.Path, data.TransitionVariantEndpoint) {
 			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
 			_, _ = w.Write([]byte("{}"))
 			return
 		}
-		if strings.Contains(r.URL.Path, "get_variant_state") {
+		if strings.Contains(r.URL.Path, data.GetVariantStateEndpoint) {
 			state := "stable"
 			if quarantined.Load() {
 				state = "manually_quarantined"

@@ -15,6 +15,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Test selection service endpoint identifiers.
+const (
+	SelectTestsEndpoint       = "select_tests"
+	TransitionTestsEndpoint   = "transition_tests"
+	GetTestsStateEndpoint     = "get_tests_state"
+	TransitionTaskEndpoint    = "transition_task"
+	TransitionVariantEndpoint = "transition_variant"
+	GetVariantStateEndpoint   = "get_variant_state"
+)
+
 // wrapTSSError augments errors from the test selection service with the
 // response body in the error message and structured fields in the grip log.
 func wrapTSSError(ctx context.Context, err error, fields message.Fields) error {
@@ -88,7 +98,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	}
 	if err != nil {
 		return nil, wrapTSSError(ctx, err, message.Fields{
-			"endpoint":      "select_tests",
+			"endpoint":      SelectTestsEndpoint,
 			"project":       req.Project,
 			"requester":     req.Requester,
 			"build_variant": req.BuildVariant,
@@ -107,25 +117,25 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 
 // SetTestQuarantined marks the test as quarantined or unquarantined in the test
 // selection service.
-func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testName string, isQuarantined bool) error {
+func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testName string, isManuallyQuarantined bool) error {
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
 	c := newTestSelectionClient(httpClient)
 
 	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedApiTestSelectionTransitionTestsProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
-		IsManuallyQuarantined(isQuarantined).
+		IsManuallyQuarantined(isManuallyQuarantined).
 		RequestBody([]*string{&testName}).
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	return wrapTSSError(ctx, err, message.Fields{
-		"endpoint":                "transition_tests",
+		"endpoint":                TransitionTestsEndpoint,
 		"project":                 projectID,
 		"build_variant":           bvName,
 		"task_name":               taskName,
 		"test_name":               testName,
-		"is_manually_quarantined": isQuarantined,
+		"is_manually_quarantined": isManuallyQuarantined,
 	})
 }
 
@@ -152,7 +162,7 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 	}
 	if err != nil {
 		return nil, wrapTSSError(ctx, err, message.Fields{
-			"endpoint":      "get_tests_state",
+			"endpoint":      GetTestsStateEndpoint,
 			"project":       projectID,
 			"build_variant": bvName,
 			"task_name":     taskName,
@@ -175,44 +185,44 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 
 // SetTaskQuarantined marks all known tests of a task as manually quarantined
 // (or unquarantines them) in the test selection service.
-func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string, isQuarantined bool) error {
+func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string, isManuallyQuarantined bool) error {
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
 	c := newTestSelectionClient(httpClient)
 
 	_, resp, err := c.StateTransitionAPI.MarkTaskAsManuallyQuarantinedApiTestSelectionTransitionTaskProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
-		IsManuallyQuarantined(isQuarantined).
+		IsManuallyQuarantined(isManuallyQuarantined).
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	return wrapTSSError(ctx, err, message.Fields{
-		"endpoint":                "transition_task",
+		"endpoint":                TransitionTaskEndpoint,
 		"project":                 projectID,
 		"build_variant":           bvName,
 		"task_name":               taskName,
-		"is_manually_quarantined": isQuarantined,
+		"is_manually_quarantined": isManuallyQuarantined,
 	})
 }
 
 // SetVariantQuarantined marks all known tests of a build variant as manually
 // quarantined (or unquarantines them) in the test selection service.
-func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isQuarantined bool) error {
+func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManuallyQuarantined bool) error {
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
 	c := newTestSelectionClient(httpClient)
 
 	_, resp, err := c.StateTransitionAPI.MarkVariantAsManuallyQuarantinedApiTestSelectionTransitionVariantProjectIdBuildVariantNamePost(ctx, projectID, bvName).
-		IsManuallyQuarantined(isQuarantined).
+		IsManuallyQuarantined(isManuallyQuarantined).
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	return wrapTSSError(ctx, err, message.Fields{
-		"endpoint":                "transition_variant",
+		"endpoint":                TransitionVariantEndpoint,
 		"project":                 projectID,
 		"build_variant":           bvName,
-		"is_manually_quarantined": isQuarantined,
+		"is_manually_quarantined": isManuallyQuarantined,
 	})
 }
 
@@ -231,7 +241,7 @@ func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (
 	}
 	if err != nil {
 		return nil, wrapTSSError(ctx, err, message.Fields{
-			"endpoint":      "get_variant_state",
+			"endpoint":      GetVariantStateEndpoint,
 			"project":       projectID,
 			"build_variant": bvName,
 		})

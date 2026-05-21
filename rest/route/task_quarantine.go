@@ -31,10 +31,10 @@ func parseTaskForQuarantine(ctx context.Context) (*task.Task, error) {
 	return projCtx.Task, nil
 }
 
-func quarantineTask(ctx context.Context, t *task.Task, shouldQuarantine bool) gimlet.Responder {
+func quarantineTask(ctx context.Context, t *task.Task, isManuallyQuarantined bool) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	if err := data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, shouldQuarantine); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting quarantine state to %t for task '%s'", shouldQuarantine, t.Id))
+	if err := data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, isManuallyQuarantined); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting quarantine state to '%t' for task '%s'", isManuallyQuarantined, t.Id))
 	}
 	grip.Info(ctx, message.Fields{
 		"message":                 "task quarantine state changed",
@@ -43,7 +43,7 @@ func quarantineTask(ctx context.Context, t *task.Task, shouldQuarantine bool) gi
 		"project":                 t.Project,
 		"build_variant":           t.BuildVariant,
 		"task_name":               t.DisplayName,
-		"is_manually_quarantined": shouldQuarantine,
+		"is_manually_quarantined": isManuallyQuarantined,
 	})
 	apiTask := &model.APITask{}
 	if err := apiTask.BuildFromService(ctx, t, &model.APITaskArgs{IncludeProjectIdentifier: true}); err != nil {
