@@ -1244,6 +1244,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 				if parentPatch.IsGithubPRPatch() && moduleName != "" {
 					// GitHub PR diffs are applied on the agent via pull/N/head, not git apply.
 					patchSet.Patch = ""
+					patchSet.PatchFileId = ""
 				}
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 					// Apply the parent patch's changes if both child and parent are using the

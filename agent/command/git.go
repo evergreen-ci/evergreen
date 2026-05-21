@@ -908,18 +908,17 @@ func shouldSkipApplyingPatches(conf *internal.TaskConfig) bool {
 		return true
 	}
 	// Child patch with parent PR metadata: modules use pull/N/head; the stored diff must not be applied.
-	return conf.Task.ParentPatchID != "" && hasGithubPRPatchMetadata(conf.GithubPatchData)
-}
-
-func hasGithubPRPatchMetadata(gh thirdparty.GithubPatch) bool {
-	return gh.PRNumber != 0 && gh.HeadHash != ""
+	return conf.Task.ParentPatchID != "" && conf.GithubPatchData.PRNumber != 0
 }
 
 // moduleUsesGithubPRHeadCheckout reports whether a module clone should use the same
 // pull/N/head checkout as the main project for a GitHub PR task.
 func moduleUsesGithubPRHeadCheckout(conf *internal.TaskConfig, moduleOwner, moduleRepo string) bool {
+	if !evergreen.IsGithubPRRequester(conf.Task.Requester) && conf.Task.ParentPatchID == "" {
+		return false
+	}
 	gh := conf.GithubPatchData
-	if !hasGithubPRPatchMetadata(gh) {
+	if gh.PRNumber == 0 {
 		return false
 	}
 	moduleRepoKey := fmt.Sprintf("%s/%s", moduleOwner, moduleRepo)
@@ -930,7 +929,7 @@ func moduleUsesGithubPRHeadCheckout(conf *internal.TaskConfig, moduleOwner, modu
 }
 
 func isGitHub(conf *internal.TaskConfig) bool {
-	return hasGithubPRPatchMetadata(conf.GithubPatchData) || conf.GithubMergeData.HeadSHA != ""
+	return conf.GithubPatchData.PRNumber != 0
 }
 
 // parentRepoForGitHubAppToken returns the repository name to pass when resolving

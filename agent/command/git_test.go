@@ -696,6 +696,10 @@ func TestModuleUsesGithubPRHeadCheckout(t *testing.T) {
 		Task:            task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent-patch-id"},
 		GithubPatchData: conf.GithubPatchData,
 	}, "evergreen-ci", "evergreen"))
+	assert.False(t, moduleUsesGithubPRHeadCheckout(&internal.TaskConfig{
+		Task:            task.Task{Requester: evergreen.PatchVersionRequester},
+		GithubPatchData: conf.GithubPatchData,
+	}, "evergreen-ci", "evergreen"))
 }
 
 func TestUsesGitHubPRSourceCheckout(t *testing.T) {
