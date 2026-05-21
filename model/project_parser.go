@@ -722,12 +722,15 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	enableAnchors := false
+	var anchorRegistry *[]anchorEntry
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
-		enableAnchors = opts.EnableYAMLAnchors
+		if opts.EnableYAMLAnchors {
+			r := []anchorEntry{}
+			anchorRegistry = &r
+		}
 	}
-	intermediateProject, mainNode, err := createIntermediateProject(data, unmarshalStrict, enableAnchors)
+	intermediateProject, err := createIntermediateProject(ctx, data, unmarshalStrict, "", projectID, anchorRegistry)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -737,7 +740,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	if len(intermediateProject.Include) > 0 {
-		if err := mergeIncludes(ctx, projectID, intermediateProject, mainNode, opts); err != nil {
+		if err := mergeIncludes(ctx, projectID, intermediateProject, anchorRegistry, opts); err != nil {
 			return nil, errors.Wrap(err, "merging included files")
 		}
 	}
@@ -761,7 +764,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 // mainNode is the parsed yaml.Node for the main project file; its anchor
 // definitions seed the cross-file anchor registry so include files can
 // reference anchors defined in the main project.
-func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, mainNode *yaml.Node, opts *GetProjectOpts) error {
+func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *[]anchorEntry, opts *GetProjectOpts) error {
 	ctx, span := tracer.Start(ctx, "mergeIncludes")
 	defer span.End()
 
@@ -850,56 +853,16 @@ func mergeIncludes(ctx context.Context, projectID string, intermediateProject *P
 		return errors.Wrap(catcher.Resolve(), "getting includes")
 	}
 
-	// anchorRegistry accumulates anchor definitions from the main project and
-	// each include file in declaration order. Anchors must be ordered so that
-	// self-referential alias uses within anchor values are always defined
-	// before the aliases that reference them.
-	anchorRegistry := collectAnchors(mainNode)
-
 	// We promise to iterate over includes in the order they are defined.
 	for _, path := range intermediateProject.Include {
 		if _, ok := yamlMap[path.FileName]; !ok {
 			return errors.WithStack(errors.Errorf("yaml was nil in map for %s, but it never should be", path.FileName))
 		}
-		rawBytes := yamlMap[path.FileName]
 
-		// Prepend accumulated anchor definitions so the YAML parser can resolve
-		// cross-file aliases in this include file.
-		parseBytes := rawBytes
-		if len(anchorRegistry) > 0 {
-			preamble, err := buildAnchorPreamble(anchorRegistry)
-			if err != nil {
-				return errors.Wrapf(err, "%s: building anchor preamble for '%s'", LoadProjectError, path.FileName)
-			}
-			parseBytes = append(preamble, rawBytes...)
-		}
-
-		add, includeNode, err := createIntermediateProject(parseBytes, opts.UnmarshalStrict, opts.EnableYAMLAnchors)
+		add, err := createIntermediateProject(ctx, yamlMap[path.FileName], opts.UnmarshalStrict, path.FileName, projectID, anchorRegistry)
 		if err != nil {
 			// Return intermediateProject even if we run into issues to show merge progress.
 			return errors.Wrapf(err, "%s: loading file '%s'", LoadProjectError, path.FileName)
-		}
-
-		// Collect new anchors defined in this include file and append them to
-		// the registry for subsequent files. createIntermediateProject strips
-		// _evg_anchors from the returned Node, so collectAnchors finds only
-		// anchors from this file's own content.
-		if includeNode != nil {
-			for _, anchor := range collectAnchors(includeNode) {
-				replaced := false
-				for i, existing := range anchorRegistry {
-					if existing.name == anchor.name {
-						// Last-write-wins: a later file's anchor definition
-						// overrides an earlier one with the same name.
-						anchorRegistry[i] = anchor
-						replaced = true
-						break
-					}
-				}
-				if !replaced {
-					anchorRegistry = append(anchorRegistry, anchor)
-				}
-			}
 		}
 
 		if err = intermediateProject.mergeMultipleParserProjects(add); err != nil {
@@ -1411,20 +1374,15 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 	}, nil
 }
 
-// createIntermediateProject marshals the supplied YAML into our
-// intermediate project representation (i.e. before selectors or
-// matrix logic has been evaluated).
-// If unmarshalStrict is true, use the strict version of unmarshalling.
-// If enableAnchors is true, the YAML is also decoded into a yaml.Node AST
-// (returned as the second value) to support cross-file anchor collection.
-// When enableAnchors is false the legacy unmarshal path is used and a nil
-// Node is returned.
-func createIntermediateProject(yml []byte, unmarshalStrict, enableAnchors bool) (*ParserProject, *yaml.Node, error) {
+// createIntermediateProject marshals the supplied YAML into our intermediate project representation
+// (i.e. before selectors or matrix logic has been evaluated). When anchorRegistry is non-nil,
+// cross-file anchor support is enabled: existing registry entries are prepended as a preamble so the
+// parser can resolve cross-file aliases, and this file's own anchor definitions are appended to the
+// registry for use by subsequent files.
+func createIntermediateProject(ctx context.Context, yml []byte, unmarshalStrict bool, fileName, projectID string, anchorRegistry *[]anchorEntry) (*ParserProject, error) {
 	p := ParserProject{}
 
-	if !enableAnchors {
-		// Legacy path: no Node parsing; within-file anchors still work because
-		// yaml.v3 resolves them during the single-document unmarshal.
+	if anchorRegistry == nil {
 		if unmarshalStrict {
 			strictProjectWithVariables := struct {
 				ParserProject       `yaml:"pp,inline"`
@@ -1432,66 +1390,81 @@ func createIntermediateProject(yml []byte, unmarshalStrict, enableAnchors bool) 
 				Variables           any `yaml:"variables,omitempty" bson:"-"`
 			}{}
 			if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			p = strictProjectWithVariables.ParserProject
 		} else {
 			if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
-				return nil, nil, errors.Wrap(err, "unmarshalling parser project from YAML")
+				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 			}
 		}
 		if p.Functions == nil {
 			p.Functions = map[string]*YAMLCommandSet{}
 		}
-		return &p, nil, nil
+		return &p, nil
 	}
 
-	// Anchor-enabled path: parse to yaml.Node first so mergeIncludes can
-	// collect anchor definitions for cross-file alias resolution.
+	parseBytes := yml
+	if len(*anchorRegistry) > 0 {
+		preamble, err := buildAnchorPreamble(*anchorRegistry)
+		if err != nil {
+			return nil, errors.Wrap(err, "building anchor preamble")
+		}
+		parseBytes = append(preamble, yml...)
+	}
+
 	var node yaml.Node
-	if err := yaml.NewDecoder(bytes.NewReader(yml)).Decode(&node); err != nil && !errors.Is(err, io.EOF) {
+	if err := yaml.NewDecoder(bytes.NewReader(parseBytes)).Decode(&node); err != nil && !errors.Is(err, io.EOF) {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-		return nil, nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
+		return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
+	}
+
+	if node.Kind != 0 {
+		stripEvgAnchorsKey(&node)
 	}
 
 	if unmarshalStrict {
 		strictProjectWithVariables := struct {
 			ParserProject       `yaml:"pp,inline"`
 			ProjectConfigFields `yaml:"pc,inline"`
-			// Variables is only used to suppress yaml unmarshalling errors related
-			// to a non-existent variables field.
-			Variables any `yaml:"variables,omitempty" bson:"-"`
-			// EvgAnchors accepts the _evg_anchors key that Evergreen injects as a
-			// preamble when processing include files for cross-file anchor support.
-			// Declaring it here prevents a spurious "unknown field" error in strict mode.
+			Variables           any `yaml:"variables,omitempty" bson:"-"`
+			// EvgAnchors silences the "unknown field" error in strict mode when the anchor preamble is prepended.
 			EvgAnchors any `yaml:"_evg_anchors,omitempty"`
 		}{}
-		if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
-			return nil, nil, err
+		if err := util.UnmarshalYAMLStrictWithFallback(parseBytes, &strictProjectWithVariables); err != nil {
+			return nil, err
 		}
 		p = strictProjectWithVariables.ParserProject
-		// Strip _evg_anchors from the returned Node so anchor collection in
-		// mergeIncludes sees only this file's own anchor definitions.
-		stripEvgAnchorsKey(&node)
 	} else if node.Kind != 0 {
-		// Strip _evg_anchors before decoding so the returned Node is clean for
-		// anchor collection in mergeIncludes. node.Decode ignores unknown fields,
-		// so this only matters for the returned Node's shape.
-		stripEvgAnchorsKey(&node)
 		if err := node.Decode(&p); err != nil {
-			// node.Decode rejects some constructs that yaml.v2 accepts (e.g. duplicate
-			// mapping keys). Fall back to the v2-aware path so that legacy configs
-			// continue to load without error. This results in a double parse of the
-			// bytes (once to yaml.Node above, once here via yaml.v2), but only affects
-			// configs that already fail yaml.v3 struct decoding. The node from the first
-			// parse is still returned so Stage 2 can collect anchor definitions from it.
-			grip.Warning(context.Background(), message.Fields{
-				"message": "yaml.v3 node decode failed, re-parsing bytes via yaml.v2 fallback",
+			// yaml.v3 rejects some constructs that yaml.v2 accepts (e.g. duplicate keys), so fall back to
+			// the v2 path. The node from the first parse is still used for anchor collection.
+			grip.Warning(ctx, message.Fields{
+				"message": "yaml.v3 decode failed, falling back to yaml.v2",
+				"project": projectID,
+				"file":    fileName,
+				"error":   err.Error(),
 			})
 			p = ParserProject{}
-			if err2 := util.UnmarshalYAMLWithFallback(yml, &p); err2 != nil {
+			if err2 := util.UnmarshalYAMLWithFallback(parseBytes, &p); err2 != nil {
 				yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
-				return nil, nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
+				return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
+			}
+		}
+	}
+
+	if node.Kind != 0 {
+		for _, anchor := range collectAnchors(&node) {
+			replaced := false
+			for i, existing := range *anchorRegistry {
+				if existing.name == anchor.name {
+					(*anchorRegistry)[i] = anchor
+					replaced = true
+					break
+				}
+			}
+			if !replaced {
+				*anchorRegistry = append(*anchorRegistry, anchor)
 			}
 		}
 	}
@@ -1499,11 +1472,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict, enableAnchors bool) 
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
 	}
-
-	if node.Kind == 0 {
-		return &p, nil, nil
-	}
-	return &p, &node, nil
+	return &p, nil
 }
 
 // capParserPriorities caps all priority values in the parser project at MaxConfigSetPriority.
