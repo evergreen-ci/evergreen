@@ -41,9 +41,12 @@ type GeneratedProject struct {
 	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
 	// Task is the task that is running generate.tasks.
-	Task                     *task.Task
-	ActivationInfo           *specificActivationInfo
-	NewTVPairs               *TaskVariantPairs
+	Task           *task.Task
+	ActivationInfo *specificActivationInfo
+	NewTVPairs     *TaskVariantPairs
+	// ExplicitlyGeneratedTasks tracks task/variant pairs from the generated
+	// JSON before dependency resolution. Tasks that get pulled in solely as dependencies of
+	// generated tasks are excluded so that they don't get a GeneratedBy field set.
 	ExplicitlyGeneratedTasks map[TVPair]bool
 }
 
