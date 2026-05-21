@@ -28,6 +28,7 @@ const (
 	repeatFailedDefinitionFlag           = "repeat-failed"
 	repeatPatchIdFlag                    = "repeat-patch"
 	includeModulesFlag                   = "include-modules"
+	yamlAnchorsPatchFlagName             = "yaml-anchors"
 	autoDescriptionFlag                  = "auto-description"
 	testSelectionIncludeVariantsFlagName = "test-selection-include-variants"
 	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
@@ -124,6 +125,10 @@ func Patch() cli.Command {
 				Name:  includeModulesFlag,
 				Usage: "if this boolean is set, Evergreen will include module diffs using changes from defined module paths",
 			},
+			cli.BoolFlag{
+				Name:  yamlAnchorsPatchFlagName,
+				Usage: "(BETA) enable cross-file YAML anchors in included files",
+			},
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -166,6 +171,7 @@ func Patch() cli.Command {
 				RepeatDefinition:                   c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
 				RepeatFailed:                       c.Bool(repeatFailedDefinitionFlag),
 				IncludeModules:                     c.Bool(includeModulesFlag),
+				EnableYAMLAnchors:                  c.Bool(yamlAnchorsPatchFlagName),
 			}
 
 			var err error
@@ -408,6 +414,10 @@ func PatchFile() cli.Command {
 				Usage: "optionally define the patch author by providing an Evergreen username; " +
 					"if not found or provided, will default to the submitter",
 			},
+			cli.BoolFlag{
+				Name:  yamlAnchorsPatchFlagName,
+				Usage: "(BETA) enable cross-file YAML anchors in included files",
+			},
 		),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
@@ -441,19 +451,20 @@ func PatchFile() cli.Command {
 				grip.Error(ctx, errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			params := &patchParams{
-				Project:          c.String(projectFlagName),
-				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				Alias:            c.String(patchAliasFlagName),
-				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
-				Description:      c.String(patchDescriptionFlagName),
-				AutoDescription:  c.Bool(autoDescriptionFlag),
-				ShowSummary:      c.Bool(patchVerboseFlagName),
-				Large:            c.Bool(largeFlagName),
-				PatchAuthor:      c.String(patchAuthorFlag),
-				RepeatPatchId:    c.String(repeatPatchIdFlag),
-				RepeatDefinition: c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
-				RepeatFailed:     c.Bool(repeatFailedDefinitionFlag),
+				Project:           c.String(projectFlagName),
+				Variants:          utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				Alias:             c.String(patchAliasFlagName),
+				SkipConfirm:       c.Bool(skipConfirmFlagName) || outputJSON,
+				Description:       c.String(patchDescriptionFlagName),
+				AutoDescription:   c.Bool(autoDescriptionFlag),
+				ShowSummary:       c.Bool(patchVerboseFlagName),
+				Large:             c.Bool(largeFlagName),
+				PatchAuthor:       c.String(patchAuthorFlag),
+				RepeatPatchId:     c.String(repeatPatchIdFlag),
+				RepeatDefinition:  c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
+				EnableYAMLAnchors: c.Bool(yamlAnchorsPatchFlagName),
 			}
 			var err error
 			diffPath := c.String(diffPathFlagName)

@@ -37,7 +37,7 @@ func Validate() cli.Command {
 			Usage: "specify project identifier in order to run validation requiring project settings",
 		}, cli.BoolFlag{
 			Name:  yamlAnchorsFlagName,
-			Usage: "(BETA) enable cross-file YAML anchor and alias support in included files",
+			Usage: "(BETA) enable cross-file YAML anchors in included files",
 		}),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {

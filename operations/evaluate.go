@@ -42,7 +42,7 @@ func Evaluate() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  yamlAnchorsFlagName,
-				Usage: "(BETA) enable cross-file YAML anchor and alias support in included files",
+				Usage: "(BETA) enable cross-file YAML anchors in included files",
 			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),

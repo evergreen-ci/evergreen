@@ -937,6 +937,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 		ReadFileFrom:        ReadFromPatch,
 		Revision:            hash,
 		LocalModuleIncludes: p.LocalModuleIncludes,
+		EnableYAMLAnchors:   p.EnableYAMLAnchors,
 		ReferencePatchID:    p.ReferenceManifestID,
 		ReferenceManifestID: manifestID,
 		PatchOpts: &PatchOpts{

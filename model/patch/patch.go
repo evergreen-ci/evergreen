@@ -116,6 +116,8 @@ type Patch struct {
 	MergedFrom string `bson:"merged_from,omitempty"`
 	// LocalModuleIncludes is only used for CLI patches to store local module changes.
 	LocalModuleIncludes []LocalModuleInclude `bson:"local_module_includes,omitempty"`
+	// EnableYAMLAnchors opts into cross-file YAML anchor support when parsing this patch's project config.
+	EnableYAMLAnchors bool `bson:"enable_yaml_anchors,omitempty"`
 	// ReferenceManifestID stores the ID of the manifest that this patch is based on.
 	// It is used to determine the module revisions for this patch during creation.
 	// This could potentially reference an invalid manifest, and should not error
