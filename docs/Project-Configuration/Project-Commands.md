@@ -1551,18 +1551,20 @@ Parameters:
 - `background`: if set to true, the script runs in the background
   instead of the foreground. `shell.exec` starts the script but
   does not wait for the script to exit before running the next command.
-  If the background script exits with an error while the
-  task is still running, the task will continue running.
+  If the background script exits with a non-zero exit code while the
+  task is still running, the failure is logged to the task log
+  (visible in Parsley) and the task is marked as failed. This behavior
+  can be opted out of with `continue_on_err: true`.
 - `silent`: if set to true, does not log any shell output during
   execution; useful to avoid leaking sensitive info. Note that you should
   not pass secrets as command-line arguments but instead as environment
   variables or from a file, as Evergreen runs `ps` periodically, which
   will log command-line arguments.
 - `continue_on_err`: by default, a task will fail if the script returns
-  a non-zero exit code; for scripts that set `background`, the task will
-  fail only if the script fails to start. If `continue_on_err`
-  is true and the script fails, it will be ignored and task
-  execution will continue.
+  a non-zero exit code. For scripts that set `background`, the task will
+  also fail if the background script exits abnormally while running.
+  If `continue_on_err` is true, the failure is still logged to the task
+  log but task execution will continue.
 - `system_log`: if set to true, the script's output will be written to
   the task's system logs, instead of inline with logs from the test
   execution.
@@ -1619,8 +1621,10 @@ Parameters:
 - `background`: if set to true, the process runs in the background
   instead of the foreground. `subprocess.exec` starts the process but
   does not wait for the process to exit before running the next command.
-  If the background process exits with an error while the
-  task is still running, the task will continue running.
+  If the background process exits with a non-zero exit code while the
+  task is still running, the failure is logged to the task log
+  (visible in Parsley) and the task is marked as failed. This behavior
+  can be opted out of with `continue_on_err: true`.
 - `silent`: do not log output of command. Note that you should
   not pass secrets as command-line arguments but instead as environment
   variables or from a file, as Evergreen runs `ps` periodically, which
@@ -1632,10 +1636,10 @@ Parameters:
 - `redirect_standard_error_to_output`: if true, redirect standard
   error to standard output
 - `continue_on_err`: by default, a task will fail if the command returns
-  a non-zero exit code; for command that set `background`, the task will
-  fail only if the command fails to start. If `continue_on_err`
-  is true and the command fails, it will be ignored and task
-  execution will continue.
+  a non-zero exit code. For commands that set `background`, the task will
+  also fail if the background command exits abnormally while running.
+  If `continue_on_err` is true, the failure is still logged to the task
+  log but task execution will continue.
 - `add_expansions_to_env`: when true, add all expansions to the
   command's environment. In case of conflicting environment variables
   defined by `env` or `include_expansions_in_env`, this has higher

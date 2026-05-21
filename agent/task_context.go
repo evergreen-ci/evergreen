@@ -59,6 +59,8 @@ type taskContext struct {
 	resourceMonitor *resourceMonitor
 	// s3Usage tracks S3 API usage accumulated during task execution
 	s3Usage s3usage.S3Usage
+	// backgroundFailures is the bidirectional end of the channel whose send-only end is exposed to commands via TaskConfig.
+	backgroundFailures chan error
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup

@@ -84,6 +84,8 @@ type TaskConfig struct {
 	CommandCleanups      []CommandCleanup
 	MaxExecTimeoutSecs   int
 	PSLoggingDisabled    bool
+	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
+	BackgroundFailures chan<- error
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.

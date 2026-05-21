@@ -488,6 +488,9 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig = taskConfig
 	// Wire up S3Usage pointer so commands can increment runtime S3 usage
 	tc.taskConfig.S3Usage = &tc.s3Usage
+	// Buffered to bound accumulation between drain cycles after each foreground command.
+	tc.backgroundFailures = make(chan error, 10)
+	tc.taskConfig.BackgroundFailures = tc.backgroundFailures
 
 	if err := a.startLogging(agentCtx, tc); err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
@@ -843,6 +846,17 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 	}
 
 	if err := a.runTaskCommands(execTimeoutCtx, tc); err != nil {
+		return evergreen.TaskFailed
+	}
+
+	count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+	if count > 0 {
+		span := trace.SpanFromContext(ctx)
+		span.SetAttributes(
+			attribute.Bool(backgroundCommandFailureAttribute, true),
+			attribute.Int(backgroundCommandFailureCountAttribute, count),
+			attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
+		)
 		return evergreen.TaskFailed
 	}
 
