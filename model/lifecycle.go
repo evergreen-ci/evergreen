@@ -765,7 +765,9 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			newTask.Tags = projectTask.Tags
 		}
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
-		newTask.GeneratedBy = creationInfo.GeneratedBy
+		if creationInfo.ExplicitlyGeneratedTasks == nil || creationInfo.ExplicitlyGeneratedTasks[TVPair{Variant: creationInfo.Build.BuildVariant, TaskName: t.Name}] {
+			newTask.GeneratedBy = creationInfo.GeneratedBy
+		}
 		if generatorIsGithubCheck {
 			newTask.IsGithubCheck = true
 		}
@@ -842,7 +844,9 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			if err != nil {
 				return nil, errors.Wrapf(err, "creating display task '%s'", id)
 			}
-			newDisplayTask.GeneratedBy = creationInfo.GeneratedBy
+			if creationInfo.ExplicitlyGeneratedTasks == nil || creationInfo.ExplicitlyGeneratedTasks[TVPair{Variant: creationInfo.Build.BuildVariant, TaskName: dt.Name}] {
+				newDisplayTask.GeneratedBy = creationInfo.GeneratedBy
+			}
 			newDisplayTask.DependsOn, err = task.GetAllDependencies(ctx, newDisplayTask.ExecutionTasks, taskMap)
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting dependencies for display task '%s'", newDisplayTask.Id)
@@ -1477,6 +1481,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
+			ExplicitlyGeneratedTasks:            creationInfo.ExplicitlyGeneratedTasks,
 			TestSelectionParams:                 tsParams,
 		}
 
