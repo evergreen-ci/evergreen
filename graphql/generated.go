@@ -82788,7 +82788,7 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"addedInstanceTags", "deletedInstanceTags", "displayName", "expiration", "hostId", "instanceType", "noExpiration", "publicKey", "savePublicKey", "servicePassword", "sleepSchedule", "volume"}
+	fieldsInOrder := [...]string{"addedInstanceTags", "deletedInstanceTags", "displayName", "expiration", "hostId", "instanceType", "noExpiration", "publicKey", "savePublicKey", "servicePassword", "sleepSchedule", "volume", "volumeId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82948,6 +82948,30 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 				it.Volume = data
 			} else if tmp == nil {
 				it.Volume = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "volumeId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RequireVolumeAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireVolumeAccess is not implemented")
+				}
+				return ec.directives.RequireVolumeAccess(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.VolumeID = data
+			} else if tmp == nil {
+				it.VolumeID = nil
 			} else {
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
@@ -88584,7 +88608,7 @@ func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"availabilityZone", "expiration", "host", "noExpiration", "size", "type"}
+	fieldsInOrder := [...]string{"availabilityZone", "expiration", "host", "hostId", "noExpiration", "size", "type"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88630,6 +88654,35 @@ func (ec *executionContext) unmarshalInputSpawnVolumeInput(ctx context.Context, 
 				it.Host = data
 			} else if tmp == nil {
 				it.Host = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		case "hostId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal *string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.HostID = data
+			} else if tmp == nil {
+				it.HostID = nil
 			} else {
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)

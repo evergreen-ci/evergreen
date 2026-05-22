@@ -276,11 +276,7 @@ func TestSendNotificationMiddleware(t *testing.T) {
 	serveMiddleware(rw, r)
 	assert.Equal(t, http.StatusOK, rw.Code)
 
-	// Regular user sending to a different Slack username gets 401 (check enabled).
-	evergreen.GetEnvironment().Settings().ServiceFlags.SlackSenderCheckEnabled = true
-	t.Cleanup(func() {
-		evergreen.GetEnvironment().Settings().ServiceFlags.SlackSenderCheckEnabled = false
-	})
+	// Regular user sending to a different Slack username gets 401.
 	r = makeRequest("@someone.else")
 	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "other.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
@@ -305,23 +301,6 @@ func TestSendNotificationMiddleware(t *testing.T) {
 	rw = httptest.NewRecorder()
 	serveMiddleware(rw, r)
 	assert.Equal(t, http.StatusUnauthorized, rw.Code)
-
-	// With the check disabled, a regular user sending to a different Slack username is allowed through.
-	evergreen.GetEnvironment().Settings().ServiceFlags.SlackSenderCheckEnabled = false
-	r = makeRequest("@someone.else")
-	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "other.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	rw = httptest.NewRecorder()
-	serveMiddleware(rw, r)
-	assert.Equal(t, http.StatusOK, rw.Code)
-
-	// With the check disabled, a regular user with no Slack username set is allowed through.
-	r = makeRequest("@myslack")
-	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "no.slack.user"})
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	rw = httptest.NewRecorder()
-	serveMiddleware(rw, r)
-	assert.Equal(t, http.StatusOK, rw.Code)
 }
 
 func TestTaskAuthMiddleware(t *testing.T) {
