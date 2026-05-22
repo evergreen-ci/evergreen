@@ -92,6 +92,7 @@ type patchParams struct {
 	GithubAuthor                       string
 	PatchAuthor                        string
 	IncludeModules                     bool
+	IncludeModuleOverrides             map[string]string
 	LocalModuleIncludes                []patch.LocalModuleInclude
 }
 
