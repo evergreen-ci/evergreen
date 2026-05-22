@@ -95,6 +95,8 @@ var (
 	useMergeQueuePathFilteringDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "UseMergeQueuePathFilteringDisabled")
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
+	webhookSecretMigrationDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretMigrationDisabled")
+	webhookSecretCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretCleanupDisabled")
 	slackSenderCheckEnabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "SlackSenderCheckEnabled")
 
 	// DiagnosticsConfig keys

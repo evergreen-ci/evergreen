@@ -43,6 +43,8 @@ type ServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `bson:"use_merge_queue_path_filtering_disabled" json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
+	WebhookSecretMigrationDisabled     bool `bson:"webhook_secret_migration_disabled" json:"webhook_secret_migration_disabled"`
+	WebhookSecretCleanupDisabled       bool `bson:"webhook_secret_cleanup_disabled" json:"webhook_secret_cleanup_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -101,6 +103,8 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
+			webhookSecretMigrationDisabledKey:     c.WebhookSecretMigrationDisabled,
+			webhookSecretCleanupDisabledKey:       c.WebhookSecretCleanupDisabled,
 			slackSenderCheckEnabledKey:            c.SlackSenderCheckEnabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)

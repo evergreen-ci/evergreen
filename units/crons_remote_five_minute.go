@@ -53,6 +53,7 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 		PopulateGithubAPILimitJob(),
 		PopulateMergeQueueMetricsJobs(),
 		PopulateMergeQueueCompletionMetricsFallbackJobs(),
+		PopulateWebhookSecretMigrationJobs(),
 	}
 
 	queue := j.env.RemoteQueue()
