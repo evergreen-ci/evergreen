@@ -627,4 +627,50 @@ func TestParseModuleOverrides(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "/path/with=equals/dsi", result["dsi"])
 	})
+
+	t.Run("EmptyInputReturnsEmptyMap", func(t *testing.T) {
+		result, err := parseModuleOverrides([]string{})
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("MissingSeparatorShouldError", func(t *testing.T) {
+		_, err := parseModuleOverrides([]string{"dsi"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "MODULE_NAME=PATH")
+	})
+
+	t.Run("EmptyModuleNameShouldError", func(t *testing.T) {
+		_, err := parseModuleOverrides([]string{"=/path/to/dsi"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "MODULE_NAME=PATH")
+	})
+
+	t.Run("EmptyPathShouldError", func(t *testing.T) {
+		_, err := parseModuleOverrides([]string{"dsi="})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "MODULE_NAME=PATH")
+	})
+
+	t.Run("DuplicateModuleShouldError", func(t *testing.T) {
+		_, err := parseModuleOverrides([]string{"dsi=/path/one", "dsi=/path/two"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "duplicate")
+	})
+}
+
+func TestGetModulePathUsesOverrideWithoutWritingConfig(t *testing.T) {
+	params := &patchParams{
+		Project:     "test-project",
+		SkipConfirm: false,
+	}
+	conf := &ClientSettings{}
+	modulePathCache := map[string]string{
+		"dsi": "/override/path/dsi",
+	}
+
+	path, err := params.getModulePath(t.Context(), conf, "dsi", modulePathCache)
+	require.NoError(t, err)
+	assert.Equal(t, "/override/path/dsi", path)
+	assert.Empty(t, conf.Projects)
 }

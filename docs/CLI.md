@@ -109,7 +109,7 @@ Note that `set-module` command will not work for module includes and this flag m
 evergreen patch --include-modules
 ```
 
-To specify module paths inline, use `--include-module`:
+To specify module paths inline (overriding any configured paths for that invocation), use `--include-module`:
 
 ```bash
 evergreen patch --include-module my_module=/path/to/my_module
