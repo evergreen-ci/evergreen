@@ -93,7 +93,6 @@ type patchParams struct {
 	PatchAuthor                        string
 	IncludeModules                     bool
 	LocalModuleIncludes                []patch.LocalModuleInclude
-	EnableYAMLAnchors                  bool
 }
 
 type patchSubmission struct {
@@ -121,7 +120,6 @@ type patchSubmission struct {
 	githubAuthor                       string
 	patchAuthor                        string
 	localModuleIncludes                []patch.LocalModuleInclude
-	enableYAMLAnchors                  bool
 }
 
 func (p *patchParams) createPatch(ctx context.Context, ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {
@@ -150,7 +148,6 @@ func (p *patchParams) createPatch(ctx context.Context, ac *legacyClient, diffDat
 		githubAuthor:                       p.GithubAuthor,
 		patchAuthor:                        p.PatchAuthor,
 		localModuleIncludes:                p.LocalModuleIncludes,
-		enableYAMLAnchors:                  p.EnableYAMLAnchors,
 	}
 
 	newPatch, err := ac.PutPatch(ctx, patchSub)

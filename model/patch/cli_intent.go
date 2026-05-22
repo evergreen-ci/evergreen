@@ -108,8 +108,6 @@ type cliIntent struct {
 
 	// LocalModuleIncludes is only used to include local module changes
 	LocalModuleIncludes []LocalModuleInclude `bson:"local_module_includes,omitempty"`
-	// EnableYAMLAnchors opts into cross-file YAML anchor support for this patch's project config parsing.
-	EnableYAMLAnchors bool `bson:"enable_yaml_anchors,omitempty"`
 }
 
 // BSON fields for the patches
@@ -210,7 +208,6 @@ func (c *cliIntent) NewPatch() *Patch {
 		Patches:                                 []ModulePatch{},
 		GitInfo:                                 c.GitInfo,
 		LocalModuleIncludes:                     c.LocalModuleIncludes,
-		EnableYAMLAnchors:                       c.EnableYAMLAnchors,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -250,7 +247,6 @@ type CLIIntentParams struct {
 	RepeatFailed                       bool
 	RepeatPatchId                      string
 	LocalModuleIncludes                []LocalModuleInclude
-	EnableYAMLAnchors                  bool
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -302,7 +298,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		RepeatFailed:                            params.RepeatFailed,
 		RepeatPatchId:                           params.RepeatPatchId,
 		LocalModuleIncludes:                     params.LocalModuleIncludes,
-		EnableYAMLAnchors:                       params.EnableYAMLAnchors,
 	}, nil
 }
 

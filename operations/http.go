@@ -543,7 +543,6 @@ func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmiss
 		GithubAuthor                       string                     `json:"github_author"`
 		PatchAuthor                        string                     `json:"patch_author"`
 		LocalModuleIncludes                []patch.LocalModuleInclude `json:"local_module_includes"`
-		EnableYAMLAnchors                  bool                       `json:"enable_yaml_anchors"`
 	}{
 		Description:                        incomingPatch.description,
 		Project:                            incomingPatch.projectName,
@@ -569,7 +568,6 @@ func (ac *legacyClient) PutPatch(ctx context.Context, incomingPatch patchSubmiss
 		GithubAuthor:                       incomingPatch.githubAuthor,
 		PatchAuthor:                        incomingPatch.patchAuthor,
 		LocalModuleIncludes:                incomingPatch.localModuleIncludes,
-		EnableYAMLAnchors:                  incomingPatch.enableYAMLAnchors,
 	}
 
 	rPipe, wPipe := io.Pipe()

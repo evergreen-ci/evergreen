@@ -722,11 +722,11 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	var anchorRegistry *[]anchorEntry
+	var anchorRegistry *AnchorRegistry
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
 		if opts.EnableYAMLAnchors {
-			r := []anchorEntry{}
+			r := AnchorRegistry{}
 			anchorRegistry = &r
 		}
 	}
@@ -760,11 +760,8 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
 }
 
-// mergeIncludes merges all included files into the intermediateProject.
-// mainNode is the parsed yaml.Node for the main project file; its anchor
-// definitions seed the cross-file anchor registry so include files can
-// reference anchors defined in the main project.
-func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *[]anchorEntry, opts *GetProjectOpts) error {
+// mergeIncludes merges all included files into intermediateProject.
+func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *AnchorRegistry, opts *GetProjectOpts) error {
 	ctx, span := tracer.Start(ctx, "mergeIncludes")
 	defer span.End()
 
@@ -1137,8 +1134,6 @@ type GetProjectOpts struct {
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
 	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
-	// When false (the default), anchors defined in one include file cannot be
-	// referenced as aliases in another file — matching pre-anchor-support behavior.
 	EnableYAMLAnchors bool
 }
 
@@ -1375,11 +1370,11 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 }
 
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
-// (i.e. before selectors or matrix logic has been evaluated). When anchorRegistry is non-nil,
-// cross-file anchor support is enabled: existing registry entries are prepended as a preamble so the
-// parser can resolve cross-file aliases, and this file's own anchor definitions are appended to the
-// registry for use by subsequent files.
-func createIntermediateProject(ctx context.Context, yml []byte, unmarshalStrict bool, fileName, projectID string, anchorRegistry *[]anchorEntry) (*ParserProject, error) {
+// (i.e. before selectors or matrix logic has been evaluated).
+// If unmarshalStrict is true, use the strict version of unmarshalling.
+// When anchorRegistry is non-nil, cross-file anchor support is enabled: existing anchors are prepended so the
+// parser can resolve cross-file aliases, and any new anchor definitions are appended to the registry for future files.
+func createIntermediateProject(ctx context.Context, yml []byte, unmarshalStrict bool, fileName, projectID string, anchorRegistry *AnchorRegistry) (*ParserProject, error) {
 	p := ParserProject{}
 
 	if anchorRegistry == nil {
