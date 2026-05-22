@@ -102,7 +102,7 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 		conf.TestResultsCreatedAt = createdAt
 	}
 	if time.Since(conf.TestResultsCreatedAt) > maxTestResultsInterval {
-		err := errors.Errorf("Cannot append test results more than %s after the first upload. Consider uploading all test results at the end of the task.", maxTestResultsInterval)
+		err := errors.Errorf("Cannot append test results more than %s after the first upload. Consider uploading all test results at the end of the task. (DEVPROD-32331)", maxTestResultsInterval)
 		grip.Alert(ctx, err)
 		return false, err
 	}

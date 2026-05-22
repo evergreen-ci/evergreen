@@ -289,7 +289,6 @@ type Project {
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   testSelection: TestSelectionSettings
-  tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
@@ -385,6 +384,5 @@ type ProjectLite {
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
-  tracksPushEvents: Boolean
   versionControlEnabled: Boolean
 }

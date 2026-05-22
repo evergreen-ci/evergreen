@@ -211,7 +211,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithCommitQueueEnabled() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("cannot enable commit queue without first enabling GitHub webhooks", errResp.Message)
+	s.Equal("cannot enable commit queue without a commit queue patch definition", errResp.Message)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
@@ -528,7 +528,6 @@ func (s *ProjectPutSuite) TestParse() {
 				"display_name": "Nuts and Gum: together at last!",
 				"local_config": "",
 				"deactivate_previous": true,
-				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
 				"hidden": true,
@@ -562,7 +561,6 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 				"display_name": "Nuts and Gum: together at last!",
 				"local_config": "",
 				"deactivate_previous": true,
-				"tracks_push_events": true,
 				"pr_testing_enabled": true,
 				"commitq_enabled": true,
 				"hidden": true,
@@ -667,7 +665,6 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.Equal(cachedProject.Id, utility.FromStringPtr(projectRef.Id))
 	s.Equal(cachedProject.DisplayName, utility.FromStringPtr(projectRef.DisplayName))
 	s.Equal(cachedProject.DeactivatePrevious, projectRef.DeactivatePrevious)
-	s.Equal(cachedProject.TracksPushEvents, projectRef.TracksPushEvents)
 	s.Equal(cachedProject.PRTestingEnabled, projectRef.PRTestingEnabled)
 	s.Equal(cachedProject.CommitQueue.Enabled, projectRef.CommitQueue.Enabled)
 	s.Equal(cachedProject.Hidden, projectRef.Hidden)
@@ -855,7 +852,6 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		Identifier:            "dimoxinil",
 		DisplayName:           "Dimoxinil",
 		DeactivatePrevious:    utility.FalsePtr(),
-		TracksPushEvents:      utility.FalsePtr(),
 		PRTestingEnabled:      utility.FalsePtr(),
 		VersionControlEnabled: utility.TruePtr(),
 		CommitQueue: serviceModel.CommitQueueParams{
@@ -1013,7 +1009,6 @@ func TestDeleteProject(t *testing.T) {
 			Enabled:              true,
 			DisplayName:          fmt.Sprintf("display_%d", i),
 			RepoRefId:            "repo_ref",
-			TracksPushEvents:     utility.TruePtr(),
 			PRTestingEnabled:     utility.TruePtr(),
 			Admins:               []string{"admin0", "admin1"},
 			NotifyOnBuildFailure: utility.TruePtr(),

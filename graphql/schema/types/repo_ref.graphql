@@ -40,7 +40,6 @@ input RepoRefInput {
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   testSelection: TestSelectionSettingsInput
-  tracksPushEvents: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput
@@ -92,7 +91,6 @@ type RepoRef {
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   testSelection: RepoTestSelectionSettings
-  tracksPushEvents: Boolean!
   triggers: [TriggerAlias!]!
   versionControlEnabled: Boolean!
   workstationConfig: RepoWorkstationConfig!

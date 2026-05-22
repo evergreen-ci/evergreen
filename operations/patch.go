@@ -28,6 +28,7 @@ const (
 	repeatFailedDefinitionFlag           = "repeat-failed"
 	repeatPatchIdFlag                    = "repeat-patch"
 	includeModulesFlag                   = "include-modules"
+	includeModuleFlag                    = "include-module"
 	autoDescriptionFlag                  = "auto-description"
 	testSelectionIncludeVariantsFlagName = "test-selection-include-variants"
 	testSelectionIncludeTasksFlagName    = "test-selection-include-tasks"
@@ -116,6 +117,7 @@ func Patch() cli.Command {
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag),
 			mutuallyExclusiveArgs(false, repeatPatchIdFlag, includeModulesFlag),
+			mutuallyExclusiveArgs(false, repeatPatchIdFlag, includeModuleFlag),
 		),
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to Evergreen",
@@ -123,6 +125,10 @@ func Patch() cli.Command {
 			cli.BoolFlag{
 				Name:  includeModulesFlag,
 				Usage: "if this boolean is set, Evergreen will include module diffs using changes from defined module paths",
+			},
+			cli.StringSliceFlag{
+				Name:  includeModuleFlag,
+				Usage: "specify a module as MODULE_NAME=PATH to override the module path for this invocation (repeatable); implicitly enables --include-modules",
 			},
 		),
 		Action: func(c *cli.Context) error {
@@ -174,6 +180,14 @@ func Patch() cli.Command {
 			params.Parameters, err = getParametersFromInput(paramsPairs)
 			if err != nil {
 				return err
+			}
+			includeModulePairs := c.StringSlice(includeModuleFlag)
+			params.IncludeModuleOverrides, err = parseModuleOverrides(includeModulePairs)
+			if err != nil {
+				return err
+			}
+			if len(params.IncludeModuleOverrides) > 0 {
+				params.IncludeModules = true
 			}
 
 			conf, err := NewClientSettings(confPath)
@@ -246,6 +260,9 @@ func Patch() cli.Command {
 			// Initialize module path cache in case these have already been set by the user. We use a cache here
 			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
+			for moduleName, modulePath := range params.IncludeModuleOverrides {
+				modulePathCache[moduleName] = modulePath
+			}
 			if params.IncludeModules {
 				if !outputJSON {
 					fmt.Fprint(os.Stderr, "Using --include-modules will apply module configuration changes to the patch "+
@@ -371,6 +388,26 @@ func getParametersFromInput(params []string) ([]patch.Parameter, error) {
 		key := pair[0]
 		val := strings.Join(pair[1:], "=")
 		res = append(res, patch.Parameter{Key: key, Value: val})
+	}
+	return res, catcher.Resolve()
+}
+
+func parseModuleOverrides(pairs []string) (map[string]string, error) {
+	res := map[string]string{}
+	catcher := grip.NewBasicCatcher()
+	for _, pair := range pairs {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+			catcher.Errorf("could not parse module override '%s' in MODULE_NAME=PATH format", pair)
+			continue
+		}
+		moduleName := parts[0]
+		modulePath := parts[1]
+		if _, exists := res[moduleName]; exists {
+			catcher.Errorf("duplicate module override for '%s'", moduleName)
+			continue
+		}
+		res[moduleName] = modulePath
 	}
 	return res, catcher.Resolve()
 }

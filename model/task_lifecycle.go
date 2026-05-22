@@ -812,6 +812,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return TryResetTask(ctx, settings, t.Id, caller, "", detail)
 	}
 
+	emitTaskCompletedSpan(ctx, t)
 	return catcher.Resolve()
 }
 
@@ -1993,6 +1994,39 @@ func EmitMergeQueueCompletionMetricsFromWebhook(ctx context.Context, updatedPatc
 	}
 }
 
+// emitTaskCompletedSpan emits a standalone span at task end.
+func emitTaskCompletedSpan(ctx context.Context, t *task.Task) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{})
+	_, span := tracer.Start(ctx, evergreen.TaskCompletedOtelSpanName,
+		trace.WithNewRoot(),
+		trace.WithAttributes(buildTaskCompletedSpanAttributes(t)...))
+	span.End()
+}
+
+// buildTaskCompletedSpanAttributes returns trace attributes for a task's completion span.
+func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
+	attrs := []attribute.KeyValue{
+		attribute.String(evergreen.VersionIDOtelAttribute, t.Version),
+		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
+		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
+		attribute.String(evergreen.TaskVariantOtelAttribute, t.BuildVariant),
+	}
+	if !utility.IsZeroTime(t.ActivatedTime) && !utility.IsZeroTime(t.ScheduledTime) {
+		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute,
+			t.ScheduledTime.Sub(t.ActivatedTime).Milliseconds()))
+	}
+	if len(t.DependsOn) > 0 && !utility.IsZeroTime(t.DependenciesMetTime) && !utility.IsZeroTime(t.ScheduledTime) {
+		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForDepsMsOtelAttribute,
+			t.DependenciesMetTime.Sub(t.ScheduledTime).Milliseconds()))
+	}
+	if !utility.IsZeroTime(t.StartTime) && !utility.IsZeroTime(t.FinishTime) {
+		attrs = append(attrs, attribute.Int64(evergreen.TaskDurationMsOtelAttribute,
+			t.FinishTime.Sub(t.StartTime).Milliseconds()))
+	}
+	return attrs
+}
+
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
 // patches and builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string) error {
@@ -2109,12 +2143,24 @@ func MarkHostTaskDispatched(ctx context.Context, t *task.Task, h *host.Host) err
 }
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
+	// Get exec tasks before resetting parent task first.
+	var execTaskIdsToRestart []string
 	if t.DisplayOnly {
-		execTaskIdsToRestart, err := task.FindExecTasksToReset(ctx, t)
+		ids, err := task.FindExecTasksToReset(ctx, t)
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks to restart")
 		}
-		if err = MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
+		execTaskIdsToRestart = ids
+	}
+
+	// Reset the parent display task before its execution tasks to prevent
+	// weird race conditions of execution tasks running while the parent is resetting.
+	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrap(err, "resetting task in database")
+	}
+
+	if t.DisplayOnly {
+		if err := MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
 			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 
@@ -2123,10 +2169,6 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 			"display_task_id":              t.Id,
 			"restarted_execution_task_ids": execTaskIdsToRestart,
 		}))
-	}
-
-	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
-		return errors.Wrap(err, "resetting task in database")
 	}
 
 	if err := UpdateUnblockedDependencies(ctx, []task.Task{*t}); err != nil {

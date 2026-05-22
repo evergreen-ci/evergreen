@@ -5,7 +5,6 @@ mutation {
       size: 300
       type: "standard"
       noExpiration: true
-      host: "i-1104943f"
       expiration: "2020-08-06T17:42:12Z"
     }
   )

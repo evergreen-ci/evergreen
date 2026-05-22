@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -275,6 +276,10 @@ func (e *Environment) CertificateDepot() certdepot.Depot {
 	defer e.mu.RUnlock()
 
 	return e.Depot
+}
+
+func (e *Environment) RedisClient() *redis.Client {
+	return nil
 }
 
 func (e *Environment) SetParameterManager(pm *parameterstore.ParameterManager) {

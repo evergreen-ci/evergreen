@@ -786,7 +786,7 @@ func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
 }
 
-// CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
+// CanUpdateSpawnHost is a shared utility function to determine a user's permissions to modify a spawn host.
 func CanUpdateSpawnHost(ctx context.Context, h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
 		return usr.HasPermission(ctx, gimlet.PermissionOpts{

@@ -523,8 +523,6 @@ type APIProjectRef struct {
 	DisplayName *string `json:"display_name"`
 	// List of identifiers of tasks used in this patch.
 	DeactivatePrevious *bool `json:"deactivate_previous"`
-	// If true, repotracker is run on github push events. If false, repotracker is run periodically every few minutes.
-	TracksPushEvents *bool `json:"tracks_push_events"`
 	// Enable GitHub automated pull request testing.
 	PRTestingEnabled *bool `json:"pr_testing_enabled"`
 	// Enable GitHub manual pull request testing.
@@ -637,7 +635,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		Identifier:                       utility.FromStringPtr(p.Identifier),
 		DisplayName:                      utility.FromStringPtr(p.DisplayName),
 		DeactivatePrevious:               utility.BoolPtrCopy(p.DeactivatePrevious),
-		TracksPushEvents:                 utility.BoolPtrCopy(p.TracksPushEvents),
 		PRTestingEnabled:                 utility.BoolPtrCopy(p.PRTestingEnabled),
 		ManualPRTestingEnabled:           utility.BoolPtrCopy(p.ManualPRTestingEnabled),
 		GitTagVersionsEnabled:            utility.BoolPtrCopy(p.GitTagVersionsEnabled),
@@ -749,7 +746,6 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
-	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
 	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
 	p.ManualPRTestingEnabled = utility.BoolPtrCopy(projectRef.ManualPRTestingEnabled)
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)

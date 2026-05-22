@@ -5,19 +5,19 @@ go 1.24.9
 require (
 	github.com/99designs/gqlgen v0.17.86
 	github.com/PuerkitoBio/rehttp v1.4.0
-	github.com/aws/aws-sdk-go-v2 v1.41.5
-	github.com/aws/aws-sdk-go-v2/config v1.32.14
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.14
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.297.0
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.5
-	github.com/aws/smithy-go v1.24.2
+	github.com/aws/aws-sdk-go-v2 v1.41.7
+	github.com/aws/aws-sdk-go-v2/config v1.32.17
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.302.0
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.7
+	github.com/aws/smithy-go v1.25.1
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
-	github.com/evergreen-ci/gimlet v0.0.0-20260420181614-abe39e3a6fa7
+	github.com/evergreen-ci/gimlet v0.0.0-20260520162532-2cfc3356800c
 	github.com/evergreen-ci/pail v0.0.0-20260507160025-5cf2ef56c715
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
@@ -71,19 +71,18 @@ require (
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andygrunwald/go-jira v1.17.0
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.21 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.21 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.21 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.6 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.23 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.23 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.23 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.21 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.23 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ses v1.34.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.18 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.19 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.41.10
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.21 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
@@ -164,9 +163,9 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.5
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.0
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.4
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.7
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.101.0
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.6
 	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
@@ -177,6 +176,7 @@ require (
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
 	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
 	github.com/parquet-go/parquet-go v0.29.0
+	github.com/redis/go-redis/v9 v9.19.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
 	github.com/vikstrous/dataloadgen v0.0.10
@@ -186,7 +186,7 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/signin v1.0.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.0.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sns v1.39.8 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -214,16 +214,17 @@ require (
 	github.com/urfave/cli/v3 v3.6.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.39.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 )
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.21.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.22 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.13 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.21 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.23 // indirect
 	github.com/coreos/go-oidc v2.5.0+incompatible
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2

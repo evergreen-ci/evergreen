@@ -10,8 +10,10 @@
         "errors": [
           {
             "message": "volume 'not-real' not found",
-            "path": ["removeVolume"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": ["removeVolume", "volumeId"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -23,8 +25,10 @@
         "errors": [
           {
             "message": "must specify volume ID",
-            "path": ["removeVolume"],
-            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+            "path": ["removeVolume", "volumeId"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
           }
         ],
         "data": null
@@ -33,6 +37,22 @@
     {
       "query_file": "unmounted_volume_success.graphql",
       "result": { "data": { "removeVolume": true } }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to access volume 'vol-createdByAdmin'",
+            "path": ["removeVolume", "volumeId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

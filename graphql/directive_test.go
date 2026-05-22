@@ -241,10 +241,15 @@ func TestRequireHostAccess(t *testing.T) {
 			"unable to clear user or host collection")
 	}()
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser){
-		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"FailsWhenInputIsInvalid": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
 			obj := any(nil)
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: host not specified")
+			assert.EqualError(t, err, "input: converting args into map")
+		},
+		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": ""})
+			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
+			assert.EqualError(t, err, "input: must specify host ID(s)")
 		},
 		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
 			obj := any(map[string]any{"hostId": "a-non-existent-host-id"})
@@ -942,6 +947,100 @@ func TestRequireAdmin(t *testing.T) {
 		}
 		t.Run(tName, func(t *testing.T) {
 			tCase(ctx, t, config, usr, wrappedNext, &nextCalled)
+		})
+	}
+}
+
+func TestRequireVolumeAccess(t *testing.T) {
+	defer func() {
+		require.NoError(t, db.ClearCollections(host.VolumesCollection, host.Collection, user.Collection),
+			"unable to clear user, volumes, or host collection")
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser){
+		"FailsWhenInputIsInvalid": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(nil)
+			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			assert.EqualError(t, err, "input: converting args into map")
+		},
+		"FailsWhenVolumeIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"volumeId": ""})
+			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			assert.EqualError(t, err, "input: must specify volume ID")
+		},
+		"FailsWhenVolumeDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"volumeId": "a-non-existent-volume-id"})
+			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			assert.EqualError(t, err, "input: volume 'a-non-existent-volume-id' not found")
+		},
+		"FailsWhenUserDoesNotHavePermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"volumeId": "vol2"})
+			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
+			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access volume 'vol2'")
+		},
+		"SucceedsWhenUserHasPermission (volumeId)": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := any(map[string]any{"volumeId": "vol1"})
+			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+		},
+		"SucceedsWhenUserHasPermission (volume)": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := any(map[string]any{"volume": "vol1"})
+			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+		},
+		"AdminCanBypassPermissionsCheck": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			role := "superuser"
+			require.NoError(t, usr.AddRole(ctx, role))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := any(map[string]any{"volume": "vol2"})
+			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			require.NoError(t, usr.RemoveRole(ctx, role))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+			setupPermissions(t)
+			usr, err := setupUser(t)
+			assert.NoError(t, err)
+			assert.NotNil(t, usr)
+			ctx = gimlet.AttachUser(ctx, usr)
+			assert.NotNil(t, ctx)
+			v1 := host.Volume{
+				ID:        "vol1",
+				CreatedBy: usr.Id,
+			}
+			assert.NoError(t, v1.Insert(ctx))
+			v2 := host.Volume{
+				ID:        "vol2",
+				CreatedBy: "mci_admin",
+			}
+			assert.NoError(t, v2.Insert(ctx))
+			config := New("/graphql")
+			assert.NotNil(t, config)
+			next := func(rctx context.Context) (any, error) {
+				return nil, nil
+			}
+			tCase(ctx, t, next, config, usr)
 		})
 	}
 }

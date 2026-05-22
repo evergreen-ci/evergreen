@@ -11,8 +11,8 @@ VolumeHost is the input to the attachVolumeToHost mutation.
 Its fields are used to attach the volume with volumeId to the host with hostId.
 """
 input VolumeHost {
-  volumeId: String!
-  hostId: String!
+  volumeId: String! @requireVolumeAccess
+  hostId: String! @requireHostAccess(access: EDIT)
 }
 
 input SleepScheduleInput {
@@ -51,7 +51,7 @@ input SpawnHostInput {
   useProjectSetupScript: Boolean
   userDataScript: String
   useTaskConfig: Boolean
-  volumeId: String
+  volumeId: String @requireVolumeAccess
   useOAuth: Boolean
   isDebug: Boolean
   setupStepNumber: String
@@ -65,6 +65,9 @@ input SpawnVolumeInput {
   availabilityZone: String!
   expiration: Time
   host: String
+    @requireHostAccess(access: EDIT)
+    @deprecated(reason: "Use hostId instead of host.")
+  hostId: String @requireHostAccess(access: EDIT)
   noExpiration: Boolean
   size: Int!
   type: String!
@@ -79,7 +82,7 @@ input UpdateVolumeInput {
   name: String
   noExpiration: Boolean
   size: Int
-  volumeId: String!
+  volumeId: String! @requireVolumeAccess
 }
 
 """
@@ -99,6 +102,9 @@ input EditSpawnHostInput {
   servicePassword: String @redactSecrets
   sleepSchedule: SleepScheduleInput
   volume: String
+    @requireVolumeAccess
+    @deprecated(reason: "Use volumeId instead of volume.")
+  volumeId: String @requireVolumeAccess
 }
 
 input InstanceTagInput {
