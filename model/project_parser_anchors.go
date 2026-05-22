@@ -51,12 +51,12 @@ func collectAnchors(node *yaml.Node) AnchorRegistry {
 // Entries must be in encounter order so that any alias references within anchor
 // values (e.g. an anchor whose value itself uses an alias to an earlier anchor)
 // are valid when the preamble is parsed.
-func buildAnchorPreamble(entries AnchorRegistry) ([]byte, error) {
-	if len(entries) == 0 {
+func buildAnchorPreamble(entries *AnchorRegistry) ([]byte, error) {
+	if len(*entries) == 0 {
 		return nil, nil
 	}
-	seqContent := make([]*yaml.Node, 0, len(entries))
-	for _, e := range entries {
+	seqContent := make([]*yaml.Node, 0, len(*entries))
+	for _, e := range *entries {
 		seqContent = append(seqContent, e.node)
 	}
 	preambleDoc := &yaml.Node{

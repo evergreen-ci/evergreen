@@ -27,6 +27,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	yaml2 "gopkg.in/yaml.v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -726,8 +727,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
 		if opts.EnableYAMLAnchors {
-			r := AnchorRegistry{}
-			anchorRegistry = &r
+			anchorRegistry = &AnchorRegistry{}
 		}
 	}
 	intermediateProject, err := createIntermediateProject(ctx, data, unmarshalStrict, "", projectID, anchorRegistry)
@@ -1401,7 +1401,7 @@ func createIntermediateProject(ctx context.Context, yml []byte, unmarshalStrict 
 
 	parseBytes := yml
 	if len(*anchorRegistry) > 0 {
-		preamble, err := buildAnchorPreamble(*anchorRegistry)
+		preamble, err := buildAnchorPreamble(anchorRegistry)
 		if err != nil {
 			return nil, errors.Wrap(err, "building anchor preamble")
 		}
@@ -1432,16 +1432,10 @@ func createIntermediateProject(ctx context.Context, yml []byte, unmarshalStrict 
 		p = strictProjectWithVariables.ParserProject
 	} else if node.Kind != 0 {
 		if err := node.Decode(&p); err != nil {
-			// yaml.v3 rejects some constructs that yaml.v2 accepts (e.g. duplicate keys), so fall back to
-			// the v2 path. The node from the first parse is still used for anchor collection.
-			grip.Warning(ctx, message.Fields{
-				"message": "yaml.v3 decode failed, falling back to yaml.v2",
-				"project": projectID,
-				"file":    fileName,
-				"error":   err.Error(),
-			})
+			// yaml.v3 node decode failed; fall back to yaml.v2, which is more lenient.
+			// The node is still used for anchor collection below.
 			p = ParserProject{}
-			if err2 := util.UnmarshalYAMLWithFallback(parseBytes, &p); err2 != nil {
+			if err2 := yaml2.Unmarshal(parseBytes, &p); err2 != nil {
 				yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
 				return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 			}
