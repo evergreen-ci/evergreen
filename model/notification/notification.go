@@ -143,8 +143,13 @@ func (n *Notification) Composer(ctx context.Context) (message.Composer, error) {
 
 		payload.Project = jiraIssue.Project
 		payload.Type = jiraIssue.IssueType
+		// JIRA sends run on a background queue, so this callback fires from a
+		// different goroutine after the JIRA HTTP request returns, long after
+		// the caller's ctx has been canceled. Drop the cancellation so the
+		// event log insert below isn't aborted.
+		callbackCtx := context.WithoutCancel(ctx)
 		payload.Callback = func(issueKey string) {
-			event.LogJiraIssueCreated(ctx, n.Metadata.TaskID, n.Metadata.TaskExecution, issueKey, n.Metadata.CreatedBy)
+			event.LogJiraIssueCreated(callbackCtx, n.Metadata.TaskID, n.Metadata.TaskExecution, issueKey, n.Metadata.CreatedBy)
 		}
 
 		return message.MakeJiraMessage(payload), nil
