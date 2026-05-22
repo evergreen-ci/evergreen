@@ -363,6 +363,9 @@ An anchor defined in the main config file or in an earlier include file can be r
 
 ```yaml
 # main evergreen.yml — defines an anchor for reuse
+include:
+  - filename: included.yml
+
 tasks:
   - name: setup
     commands:
@@ -381,6 +384,8 @@ tasks:
 ```
 
 If two files define an anchor with the same name, the later file's definition takes precedence for files processed after it. Within each file, anchors behave according to standard YAML rules.
+
+> **Note:** `_evg_anchors` is a reserved key used internally by Evergreen when processing cross-file anchors. Do not use it as a key in your project YAML.
 
 #### Limitations and Alternatives
 

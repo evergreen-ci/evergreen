@@ -2,10 +2,7 @@ package util
 
 import (
 	"bytes"
-	"context"
 
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	yaml2 "gopkg.in/yaml.v2"
 	"gopkg.in/yaml.v3"
@@ -23,9 +20,6 @@ func UnmarshalYAMLWithFallback(in []byte, out any) error {
 		if err2 := yaml2.Unmarshal(in, out); err2 != nil {
 			return err
 		}
-		grip.Warning(context.Background(), message.Fields{
-			"message": "yaml.v3 unmarshal failed, fell back to yaml.v2",
-		})
 	}
 	return nil
 }

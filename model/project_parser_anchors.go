@@ -16,17 +16,17 @@ type anchorEntry struct {
 	node *yaml.Node
 }
 
-// AnchorRegistry accumulates YAML anchor definitions across include files for cross-file alias resolution.
-type AnchorRegistry []anchorEntry
+// anchorEntries accumulates YAML anchor definitions across include files for cross-file alias resolution.
+type anchorEntries []anchorEntry
 
 // collectAnchors walks node in pre-order and returns all anchored nodes in
 // encounter order. AliasNodes are not followed, so only anchor definitions
 // (&name) are collected, never alias uses (*name).
-func collectAnchors(node *yaml.Node) AnchorRegistry {
+func collectAnchors(node *yaml.Node) anchorEntries {
 	if node == nil {
 		return nil
 	}
-	var entries AnchorRegistry
+	var entries anchorEntries
 	var walk func(*yaml.Node)
 	walk = func(n *yaml.Node) {
 		if n == nil || n.Kind == yaml.AliasNode {
@@ -51,8 +51,8 @@ func collectAnchors(node *yaml.Node) AnchorRegistry {
 // Entries must be in encounter order so that any alias references within anchor
 // values (e.g. an anchor whose value itself uses an alias to an earlier anchor)
 // are valid when the preamble is parsed.
-func buildAnchorPreamble(entries *AnchorRegistry) ([]byte, error) {
-	if len(*entries) == 0 {
+func buildAnchorPreamble(entries *anchorEntries) ([]byte, error) {
+	if entries == nil || len(*entries) == 0 {
 		return nil, nil
 	}
 	seqContent := make([]*yaml.Node, 0, len(*entries))

@@ -64,7 +64,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, err := createIntermediateProject(t.Context(), []byte(simple), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -81,7 +81,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, err := createIntermediateProject(t.Context(), []byte(single), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -93,7 +93,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, err := createIntermediateProject(t.Context(), []byte(nameless), false, "", "", nil)
+				p, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -105,7 +105,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, err := createIntermediateProject(t.Context(), []byte(nameless), false, "", "", nil)
+				p, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -114,7 +114,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, err := createIntermediateProject(t.Context(), []byte(nameless), false, "", "", nil)
+				p, err := createIntermediateProject([]byte(nameless), false, nil)
 				So(p, ShouldNotBeNil)
 				So(err, ShouldBeNil)
 			})
@@ -143,7 +143,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, err := createIntermediateProject(t.Context(), []byte(simple), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -167,7 +167,7 @@ buildvariants:
   - name: "t2"
     depends_on: "t3"
 `
-			p, err := createIntermediateProject(t.Context(), []byte(simple), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -185,7 +185,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, err := createIntermediateProject(t.Context(), []byte(simple), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(simple), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -209,7 +209,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, err := createIntermediateProject(t.Context(), []byte(single), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -230,7 +230,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, err := createIntermediateProject(t.Context(), []byte(single), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
@@ -245,7 +245,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, err := createIntermediateProject(t.Context(), []byte(single), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -257,7 +257,7 @@ buildvariants:
   - name: "t1"
     commit_queue_merge: true
 `
-			p, err := createIntermediateProject(t.Context(), []byte(single), false, "", "", nil)
+			p, err := createIntermediateProject([]byte(single), false, nil)
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -280,7 +280,7 @@ buildvariants:
   - name: "t1"
     activate: true
 `
-	p, err := createIntermediateProject(t.Context(), []byte(yml), false, "", "", nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	bv := p.BuildVariants[0]
@@ -974,7 +974,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, err := createIntermediateProject(t.Context(), []byte(yml), false, "", "", nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 
 	// check that display tasks in bv1 parsed correctly
 	assert.NoError(err)
@@ -1003,7 +1003,7 @@ parameters:
 - key: buggy
   value: driver
 `
-	p, err := createIntermediateProject(t.Context(), []byte(yml), false, "", "", nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	assert.NoError(t, err)
 	require.Len(t, p.Parameters, 2)
 	assert.Equal(t, "iter_count", p.Parameters[0].Key)
@@ -1312,7 +1312,7 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, err := createIntermediateProject(t.Context(), []byte(tagYml), false, "", "", nil)
+	pp, err := createIntermediateProject([]byte(tagYml), false, nil)
 	assert.NotNil(pp)
 	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
@@ -2100,7 +2100,7 @@ buildvariants:
 }
 
 func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod evergreen.ParserProjectStorageMethod) {
-	pp, err := createIntermediateProject(t.Context(), yml, false, "", "", nil)
+	pp, err := createIntermediateProject(yml, false, nil)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
@@ -2123,7 +2123,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, err = createIntermediateProject(t.Context(), newYaml, false, "", "", nil)
+	pp, err = createIntermediateProject(newYaml, false, nil)
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
@@ -2150,7 +2150,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	yml, err := os.ReadFile(filepath)
 	assert.NoError(t, err)
 
-	original, err := createIntermediateProject(t.Context(), yml, false, "", "", nil)
+	original, err := createIntermediateProject(yml, false, nil)
 	assert.NoError(t, err)
 
 	// to and from yaml
@@ -2774,10 +2774,10 @@ ignore:
   - ".github/*"
 `
 
-	p1, err := createIntermediateProject(t.Context(), []byte(mainYaml), false, "", "", nil)
+	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject(t.Context(), []byte(smallYaml), false, "", "", nil)
+	p2, err := createIntermediateProject([]byte(smallYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -2823,13 +2823,13 @@ buildvariants:
       - name: task3
 `
 
-	p1, err := createIntermediateProject(t.Context(), []byte(mainYaml), false, "", "", nil)
+	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject(t.Context(), []byte(succeed), false, "", "", nil)
+	p2, err := createIntermediateProject([]byte(succeed), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	p3, err := createIntermediateProject(t.Context(), []byte(fail), false, "", "", nil)
+	p3, err := createIntermediateProject([]byte(fail), false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -3338,7 +3338,7 @@ tasks:
 - name: task2
   commands: *common-commands
 `
-	p, err := createIntermediateProject(t.Context(), []byte(yml), false, "", "", nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 2)
@@ -3366,7 +3366,7 @@ tasks:
       os: linux
       arch: amd64
 `
-	p, err := createIntermediateProject(t.Context(), []byte(yml), false, "", "", nil)
+	p, err := createIntermediateProject([]byte(yml), false, nil)
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 1)
@@ -3454,7 +3454,7 @@ steps:
 	anchors := collectAnchors(&node)
 	require.Len(t, anchors, 2)
 
-	preamble, err := buildAnchorPreamble(anchors)
+	preamble, err := buildAnchorPreamble(&anchors)
 	require.NoError(t, err)
 	require.NotEmpty(t, preamble)
 
