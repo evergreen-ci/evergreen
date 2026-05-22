@@ -571,13 +571,36 @@ func RemoveSubscription(ctx context.Context, id string) error {
 		return errors.Wrapf(err, "looking up subscription '%s' before removal", id)
 	}
 	if err == nil {
-		if ws, ok := sub.Subscriber.Target.(*WebhookSubscriber); ok && ws != nil && ws.SecretParameter != "" {
-			if delErr := deleteWebhookSecretFromParameterStore(ctx, ws.SecretParameter); delErr != nil {
-				grip.Warning(ctx, message.WrapError(delErr, message.Fields{
-					"message":         "deleting webhook secret from Parameter Store on subscription removal",
-					"subscription_id": id,
-					"parameter_name":  ws.SecretParameter,
-				}))
+		if ws, ok := sub.Subscriber.Target.(*WebhookSubscriber); ok && ws != nil {
+			if ws.SecretParameter != "" {
+				if delErr := deleteWebhookSecretFromParameterStore(ctx, ws.SecretParameter); delErr != nil {
+					grip.Warning(ctx, message.WrapError(delErr, message.Fields{
+						"message":         "deleting webhook secret from Parameter Store on subscription removal",
+						"subscription_id": id,
+						"parameter_name":  ws.SecretParameter,
+					}))
+				} else {
+					grip.Debug(ctx, message.Fields{
+						"message":         "deleted webhook secret from Parameter Store on subscription removal",
+						"subscription_id": id,
+						"parameter_name":  ws.SecretParameter,
+					})
+				}
+			}
+			if ws.AuthorizationParameter != "" {
+				if delErr := deleteWebhookSecretFromParameterStore(ctx, ws.AuthorizationParameter); delErr != nil {
+					grip.Warning(ctx, message.WrapError(delErr, message.Fields{
+						"message":         "deleting webhook Authorization header from Parameter Store on subscription removal",
+						"subscription_id": id,
+						"parameter_name":  ws.AuthorizationParameter,
+					}))
+				} else {
+					grip.Debug(ctx, message.Fields{
+						"message":         "deleted webhook Authorization header from Parameter Store on subscription removal",
+						"subscription_id": id,
+						"parameter_name":  ws.AuthorizationParameter,
+					})
+				}
 			}
 		}
 	}
@@ -1008,7 +1031,7 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 	}
 }
 
-// saveWebhookSecretIfNeeded saves the webhook secret to Parameter Store on every upsert.
+// saveWebhookSecretIfNeeded saves the webhook secret and Authorization header to Parameter Store on every upsert.
 func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
 	if s.Subscriber.Type != EvergreenWebhookSubscriberType {
 		return nil
@@ -1018,33 +1041,85 @@ func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
 	if !ok {
 		return nil
 	}
-	if len(webhookSub.Secret) == 0 {
-		return nil
+
+	if len(webhookSub.Secret) > 0 {
+		paramName, err := saveWebhookSecretToParameterStore(ctx, s.ID, webhookSub.Secret)
+		if err != nil {
+			grip.Warning(ctx, message.Fields{
+				"message":         "saving webhook secret to Parameter Store, falling back to MongoDB",
+				"subscription_id": s.ID,
+				"error":           err.Error(),
+			})
+			webhookSub.SecretParameter = ""
+		} else if err := verifyWebhookSecretInParameterStore(ctx, paramName, webhookSub.Secret); err != nil {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":         "verifying webhook secret in Parameter Store, falling back to MongoDB",
+				"subscription_id": s.ID,
+				"parameter_name":  paramName,
+			}))
+			webhookSub.SecretParameter = ""
+		} else {
+			// Keep Secret in MongoDB as a fallback until the Phase 2 cleanup job removes it.
+			webhookSub.SecretParameter = paramName
+			grip.Debug(ctx, message.Fields{
+				"message":         "saved webhook secret to Parameter Store",
+				"subscription_id": s.ID,
+				"parameter_name":  paramName,
+			})
+		}
 	}
 
-	paramName, err := saveWebhookSecretToParameterStore(ctx, s.ID, webhookSub.Secret)
-	if err != nil {
-		grip.Warning(ctx, message.Fields{
-			"message":         "saving webhook secret to Parameter Store, falling back to MongoDB",
-			"subscription_id": s.ID,
-			"error":           err.Error(),
-		})
-		webhookSub.SecretParameter = ""
-		return nil
+	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" {
+		paramName, err := saveWebhookAuthToParameterStore(ctx, s.ID, authValue)
+		if err != nil {
+			grip.Warning(ctx, message.Fields{
+				"message":         "saving webhook Authorization header to Parameter Store, falling back to MongoDB",
+				"subscription_id": s.ID,
+				"error":           err.Error(),
+			})
+			webhookSub.AuthorizationParameter = ""
+		} else if err := verifyWebhookSecretInParameterStore(ctx, paramName, []byte(authValue)); err != nil {
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
+				"message":         "verifying webhook Authorization header in Parameter Store, falling back to MongoDB",
+				"subscription_id": s.ID,
+				"parameter_name":  paramName,
+			}))
+			webhookSub.AuthorizationParameter = ""
+		} else {
+			webhookSub.AuthorizationParameter = paramName
+			grip.Debug(ctx, message.Fields{
+				"message":         "saved webhook Authorization header to Parameter Store",
+				"subscription_id": s.ID,
+				"parameter_name":  paramName,
+			})
+		}
+	} else if s.ID != "" {
+		// Authorization header was removed on update. Clean up the old PS entry if
+		// one exists, so we don't leave orphaned parameters in Parameter Store.
+		existing := &Subscription{}
+		if err := db.FindOneQ(ctx, SubscriptionsCollection, db.Query(bson.D{
+			{Key: "_id", Value: s.ID},
+			{Key: "subscriber.target.authorization_parameter", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},
+		}), existing); err == nil {
+			if existingWebhookSub, ok := existing.Subscriber.Target.(*WebhookSubscriber); ok {
+				if delErr := deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationParameter); delErr != nil {
+					grip.Warning(ctx, message.WrapError(delErr, message.Fields{
+						"message":         "deleting webhook Authorization header from Parameter Store on header removal",
+						"subscription_id": s.ID,
+						"parameter_name":  existingWebhookSub.AuthorizationParameter,
+					}))
+				} else {
+					grip.Debug(ctx, message.Fields{
+						"message":         "deleted webhook Authorization header from Parameter Store on header removal",
+						"subscription_id": s.ID,
+						"parameter_name":  existingWebhookSub.AuthorizationParameter,
+					})
+				}
+			}
+		}
+		// ResultsNotFound means no prior authorization_parameter — nothing to clean up.
 	}
 
-	if err := verifyWebhookSecretInParameterStore(ctx, paramName, webhookSub.Secret); err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message":         "verifying webhook secret in Parameter Store, falling back to MongoDB",
-			"subscription_id": s.ID,
-			"parameter_name":  paramName,
-		}))
-		webhookSub.SecretParameter = ""
-		return nil
-	}
-
-	// Keep Secret in MongoDB as a fallback until the Phase 2 cleanup job removes it.
-	webhookSub.SecretParameter = paramName
 	return nil
 }
 
@@ -1070,7 +1145,34 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 				})
 				// Secret is already populated from the DB read — leave it as-is.
 			} else {
+				if !bytes.Equal(secret, webhookSub.Secret) {
+					grip.Warning(ctx, message.Fields{
+						"message":         "Parameter Store secret does not match MongoDB secret",
+						"subscription_id": subscriptions[i].ID,
+					})
+				}
 				webhookSub.Secret = secret
+			}
+		}
+
+		if webhookSub.AuthorizationParameter != "" {
+			authValue, err := getWebhookSecretFromParameterStore(ctx, webhookSub.AuthorizationParameter)
+			if err != nil {
+				grip.Debug(ctx, message.Fields{
+					"message":         "failed to read webhook Authorization header from Parameter Store, falling back to MongoDB",
+					"subscription_id": subscriptions[i].ID,
+					"error":           err.Error(),
+				})
+				// Authorization header is already populated from the DB read — leave it as-is.
+			} else {
+				dbAuthValue := webhookSub.GetHeader("Authorization")
+				if !bytes.Equal(authValue, []byte(dbAuthValue)) {
+					grip.Warning(ctx, message.Fields{
+						"message":         "Parameter Store Authorization header does not match MongoDB value",
+						"subscription_id": subscriptions[i].ID,
+					})
+				}
+				webhookSub.SetHeader("Authorization", string(authValue))
 			}
 		}
 	}
@@ -1080,6 +1182,26 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 // GetWebhookSecretParameterPath returns the Parameter Store path for a webhook subscription's secret.
 func GetWebhookSecretParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/secret", subscriptionID)
+}
+
+// GetWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
+func GetWebhookAuthParameterPath(subscriptionID string) string {
+	return fmt.Sprintf("webhooks/%s/authorization", subscriptionID)
+}
+
+// saveWebhookAuthToParameterStore saves a webhook Authorization header value to Parameter Store and returns the parameter name.
+func saveWebhookAuthToParameterStore(ctx context.Context, subscriptionID string, authValue string) (string, error) {
+	if authValue == "" {
+		return "", errors.New("cannot save empty webhook Authorization header")
+	}
+
+	paramMgr := evergreen.GetEnvironment().ParameterManager()
+	param, err := paramMgr.Put(ctx, GetWebhookAuthParameterPath(subscriptionID), authValue)
+	if err != nil {
+		return "", errors.Wrapf(err, "putting webhook Authorization header for subscription '%s' into Parameter Store", subscriptionID)
+	}
+
+	return param.Name, nil
 }
 
 // saveWebhookSecretToParameterStore saves a webhook secret to Parameter Store and returns the parameter name.

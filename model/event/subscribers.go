@@ -126,12 +126,13 @@ type WebhookSubscriber struct {
 	// Secret is kept with bson:"secret,omitempty" (not bson:"-") so populateWebhookSecrets can fall
 	// back to the DB value for subscriptions not yet processed by the migration job. Once migrated,
 	// this field is absent from the document. Phase 2 cleanup removes any remaining DB secrets.
-	Secret          []byte          `bson:"secret,omitempty"`
-	SecretParameter string          `bson:"secret_parameter,omitempty"`
-	Retries         int             `bson:"retries"`
-	MinDelayMS      int             `bson:"min_delay_ms"`
-	TimeoutMS       int             `bson:"timeout_ms"`
-	Headers         []WebhookHeader `bson:"headers"`
+	Secret                  []byte          `bson:"secret,omitempty"`
+	SecretParameter         string          `bson:"secret_parameter,omitempty"`
+	AuthorizationParameter  string          `bson:"authorization_parameter,omitempty"`
+	Retries                 int             `bson:"retries"`
+	MinDelayMS              int             `bson:"min_delay_ms"`
+	TimeoutMS               int             `bson:"timeout_ms"`
+	Headers                 []WebhookHeader `bson:"headers"`
 }
 
 type WebhookHeader struct {
@@ -176,6 +177,17 @@ func (s *WebhookSubscriber) GetHeader(key string) string {
 		}
 	}
 	return ""
+}
+
+// SetHeader sets the value for the given key, updating in place if it exists.
+func (s *WebhookSubscriber) SetHeader(key, value string) {
+	for i := range s.Headers {
+		if s.Headers[i].Key == key {
+			s.Headers[i].Value = value
+			return
+		}
+	}
+	s.Headers = append(s.Headers, WebhookHeader{Key: key, Value: value})
 }
 
 type JIRAIssueSubscriber struct {
