@@ -53,6 +53,12 @@ After making changes, run `make lint-<package>` for each affected package and ve
 
 Adding a `ServiceFlags` field requires running `make test-service-graphql`.
 
+### CLI Changes
+
+Whenever modifying the `operations/` package (CLI commands), increment `ClientVersion` in `config.go`.
+The format is the calendar date (`YYYY-MM-DD`); append a letter suffix (e.g. `2026-05-20a`) if there
+are multiple changes on the same day.
+
 ### CI Self-Tests
 
 The Evergreen codebase has automated tests defined in `self-tests.yml`, which itself runs in Evergreen. For most tasks in
@@ -196,3 +202,4 @@ For opening PRs, follow the template in `.github/pull_request_template.md`:
 * Prefix with Jira ticket: `DEVPROD-XXXX: Description of change`
     * Example: `DEVPROD-1234: Add user authentication`
 * Include the Jira ticket in the placeholder on the first line of the description.
+
