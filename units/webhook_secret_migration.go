@@ -135,8 +135,8 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 			return
 		}
 		if err := db.Update(ctx, event.SubscriptionsCollection,
-			bson.M{"_id": j.SubscriptionID},
-			bson.M{"$set": bson.M{"subscriber.target.secret_parameter": param.Name}},
+			bson.D{{Key: "_id", Value: j.SubscriptionID}},
+			bson.D{{Key: "$set", Value: bson.D{{Key: "subscriber.target.secret_parameter", Value: param.Name}}}},
 		); err != nil {
 			j.AddError(errors.Wrapf(err, "updating subscription '%s' after migrating secret", j.SubscriptionID))
 			return
@@ -165,8 +165,8 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 			return
 		}
 		if err := db.Update(ctx, event.SubscriptionsCollection,
-			bson.M{"_id": j.SubscriptionID},
-			bson.M{"$set": bson.M{"subscriber.target.authorization_parameter": param.Name}},
+			bson.D{{Key: "_id", Value: j.SubscriptionID}},
+			bson.D{{Key: "$set", Value: bson.D{{Key: "subscriber.target.authorization_parameter", Value: param.Name}}}},
 		); err != nil {
 			j.AddError(errors.Wrapf(err, "updating subscription '%s' after migrating Authorization header", j.SubscriptionID))
 			return
@@ -345,8 +345,8 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 
 	if len(webhookSub.Secret) > 0 && webhookSub.SecretParameter != "" {
 		if err := db.Update(ctx, event.SubscriptionsCollection,
-			bson.M{"_id": j.SubscriptionID},
-			bson.M{"$unset": bson.M{"subscriber.target.secret": ""}},
+			bson.D{{Key: "_id", Value: j.SubscriptionID}},
+			bson.D{{Key: "$unset", Value: bson.D{{Key: "subscriber.target.secret", Value: ""}}}},
 		); err != nil {
 			j.AddError(errors.Wrapf(err, "removing secret from MongoDB for subscription '%s'", j.SubscriptionID))
 			return
@@ -360,8 +360,8 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 
 	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationParameter != "" {
 		if err := db.Update(ctx, event.SubscriptionsCollection,
-			bson.M{"_id": j.SubscriptionID},
-			bson.M{"$pull": bson.M{"subscriber.target.headers": bson.M{"key": "Authorization"}}},
+			bson.D{{Key: "_id", Value: j.SubscriptionID}},
+			bson.D{{Key: "$pull", Value: bson.D{{Key: "subscriber.target.headers", Value: bson.D{{Key: "key", Value: "Authorization"}}}}}},
 		); err != nil {
 			j.AddError(errors.Wrapf(err, "removing Authorization header from MongoDB for subscription '%s'", j.SubscriptionID))
 			return

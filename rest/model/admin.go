@@ -2068,6 +2068,8 @@ type APIServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
+	WebhookSecretMigrationDisabled     bool `json:"webhook_secret_migration_disabled"`
+	WebhookSecretCleanupDisabled       bool `json:"webhook_secret_cleanup_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2522,6 +2524,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
+		as.WebhookSecretMigrationDisabled = v.WebhookSecretMigrationDisabled
+		as.WebhookSecretCleanupDisabled = v.WebhookSecretCleanupDisabled
 		as.SlackSenderCheckEnabled = v.SlackSenderCheckEnabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
@@ -2570,6 +2574,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
+		WebhookSecretMigrationDisabled:     as.WebhookSecretMigrationDisabled,
+		WebhookSecretCleanupDisabled:       as.WebhookSecretCleanupDisabled,
 		SlackSenderCheckEnabled:            as.SlackSenderCheckEnabled,
 	}, nil
 }
