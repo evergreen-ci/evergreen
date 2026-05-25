@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -5108,31 +5109,14 @@ func TestUpdateTaskCost(t *testing.T) {
 		task := Task{
 			Id:        "no_time",
 			TimeTaken: 0,
-			S3Usage:   s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10}}},
 		}
 		require.NoError(t, task.Insert(ctx))
 
-		require.NoError(t, task.UpdateTaskCost(ctx))
+		task.UpdateTaskCost(ctx)
 		assert.True(t, task.TaskCost.IsZero())
 	})
 
-	t.Run("CalculatesS3PutCostFromArtifactUsage", func(t *testing.T) {
-		require.NoError(t, db.Clear(Collection))
-		task := Task{
-			Id:        "s3_cost",
-			TimeTaken: time.Hour,
-			S3Usage:   s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1000}}},
-		}
-		require.NoError(t, task.Insert(ctx))
-
-		require.NoError(t, task.UpdateTaskCost(ctx))
-		var costCfg evergreen.CostConfig
-		require.NoError(t, costCfg.Get(ctx))
-		expectedStd, _ := s3usage.CalculateS3PutCostWithConfig(1000, &costCfg)
-		assert.InDelta(t, expectedStd, task.TaskCost.OnDemandS3ArtifactPutCost, 1e-9)
-	})
-
-	t.Run("CalculatesEC2AndS3Costs", func(t *testing.T) {
+	t.Run("CalculatesEC2Costs", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, distro.Collection, evergreen.ConfigCollection))
 
 		costConfig := evergreen.CostConfig{
@@ -5153,21 +5137,20 @@ func TestUpdateTaskCost(t *testing.T) {
 		require.NoError(t, d.Insert(ctx))
 
 		task := Task{
-			Id:        "both_costs",
+			Id:        "ec2_cost",
 			DistroId:  "test_distro",
 			TimeTaken: time.Hour,
 			S3Usage:   s3usage.S3Usage{Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 1000}}},
 		}
 		require.NoError(t, task.Insert(ctx))
 
-		require.NoError(t, task.UpdateTaskCost(ctx))
+		task.UpdateTaskCost(ctx)
 		assert.True(t, task.TaskCost.OnDemandEC2Cost > 0)
 		assert.True(t, task.TaskCost.AdjustedEC2Cost > 0)
-		expectedS3Std, _ := s3usage.CalculateS3PutCostWithConfig(1000, &costConfig)
-		assert.InDelta(t, expectedS3Std, task.TaskCost.OnDemandS3ArtifactPutCost, 1e-9)
+		assert.Zero(t, task.TaskCost.OnDemandS3ArtifactPutCost, "UpdateTaskCost must not compute S3 costs")
 	})
 
-	t.Run("SkipsUpdateWhenNoCostsCalculated", func(t *testing.T) {
+	t.Run("ZeroCostWhenNoDistroConfig", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 		task := Task{
 			Id:        "no_cost",
@@ -5175,9 +5158,58 @@ func TestUpdateTaskCost(t *testing.T) {
 		}
 		require.NoError(t, task.Insert(ctx))
 
-		require.NoError(t, task.UpdateTaskCost(ctx))
+		task.UpdateTaskCost(ctx)
 		assert.True(t, task.TaskCost.IsZero())
 	})
+}
+
+func TestMarkEndPreservesS3StorageCost(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(Collection, evergreen.ConfigCollection))
+	})
+
+	costConfig := evergreen.CostConfig{
+		S3Cost: evergreen.S3CostConfig{
+			Storage: evergreen.S3StorageCostConfig{
+				DefaultMaxArtifactExpirationDays: 365,
+			},
+		},
+	}
+	require.NoError(t, costConfig.Set(ctx))
+
+	tsk := Task{
+		Id:        mgobson.NewObjectId().Hex(),
+		StartTime: time.Now().Add(-time.Hour),
+		S3Usage: s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{
+				BytesByBucketAndKey: []s3usage.BucketFileMetrics{
+					{
+						Bucket: "test-bucket",
+						Files:  []s3usage.FileBytes{{FileKey: "artifacts/binary.tar.gz", Bytes: 1024 * 1024}},
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, tsk.Insert(ctx))
+
+	lookup := func(_ context.Context, _, _ string) (int, bool) {
+		return 365, true
+	}
+
+	// SaveS3Usage writes storage cost via dotted-path $set.
+	require.NoError(t, tsk.SaveS3Usage(ctx, lookup, ""))
+	require.True(t, tsk.TaskCost.OnDemandS3ArtifactStorageCost > 0, "SaveS3Usage must compute storage cost for test to be meaningful")
+
+	// MarkEnd must not overwrite the storage cost fields SaveS3Usage wrote.
+	require.NoError(t, tsk.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+	dbTask, err := FindOneId(ctx, tsk.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbTask)
+	assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactStorageCost > 0, "MarkEnd must not wipe S3 storage cost written by SaveS3Usage")
+	assert.True(t, dbTask.TaskCost.AdjustedS3ArtifactStorageCost > 0, "MarkEnd must not wipe adjusted S3 storage cost written by SaveS3Usage")
 }
 
 func TestSaveS3Usage(t *testing.T) {
@@ -5533,6 +5565,60 @@ func TestSaveS3Usage(t *testing.T) {
 			tc.assertions(t, dbTask, tc.costConfig)
 		})
 	}
+}
+
+func TestSaveS3UsageIsIdempotent(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(func() {
+		require.NoError(t, db.ClearCollections(Collection))
+	})
+
+	costCfg := evergreen.CostConfig{
+		S3Cost: evergreen.S3CostConfig{
+			Storage: evergreen.S3StorageCostConfig{
+				DefaultMaxArtifactExpirationDays: 365,
+				DevprodOwnedAWSAccountIDs:        []string{"123456789012"},
+			},
+		},
+	}
+	require.NoError(t, costCfg.Set(ctx))
+	t.Cleanup(func() {
+		require.NoError(t, (&evergreen.CostConfig{}).Set(context.Background()))
+	})
+
+	tk := Task{Id: "idempotent-storage-cost"}
+	require.NoError(t, tk.Insert(ctx))
+
+	tk.S3Usage.IncrementArtifacts(s3usage.ArtifactIncrementOptions{
+		DevprodOwnedAWSAccountIDs: []string{"123456789012"},
+		PutRequests:               10,
+		UploadBytes:               5 * 1024 * 1024,
+		FileCount:                 1,
+		MaxPuts:                   10,
+		MinPuts:                   10,
+		Bucket:                    "mciuploads",
+		AWSRoleARN:                "arn:aws:iam::123456789012:role/upload",
+		Files:                     []s3usage.FileMetrics{{RemotePath: "some/path/file.tar.gz", FileSizeBytes: 5 * 1024 * 1024}},
+	})
+	lookup := func(_ context.Context, _, _ string) (int, bool) { return 30, true }
+
+	// First call: simulates a per-event report mid-task.
+	require.NoError(t, tk.SaveS3Usage(ctx, lookup, ""))
+	afterFirstCall, err := FindOneId(ctx, tk.Id)
+	require.NoError(t, err)
+	require.NotNil(t, afterFirstCall)
+	require.True(t, afterFirstCall.TaskCost.AdjustedS3ArtifactStorageCost > 0)
+	firstOnDemand := afterFirstCall.TaskCost.OnDemandS3ArtifactStorageCost
+	firstAdjusted := afterFirstCall.TaskCost.AdjustedS3ArtifactStorageCost
+
+	// Second call: simulates teardown arriving as a new HTTP request where middleware reloads the task from DB.
+	afterFirstCall.S3Usage = tk.S3Usage
+	require.NoError(t, afterFirstCall.SaveS3Usage(ctx, lookup, ""))
+	afterSecondCall, err := FindOneId(ctx, tk.Id)
+	require.NoError(t, err)
+	require.NotNil(t, afterSecondCall)
+	assert.InDelta(t, firstOnDemand, afterSecondCall.TaskCost.OnDemandS3ArtifactStorageCost, 1e-12)
+	assert.InDelta(t, firstAdjusted, afterSecondCall.TaskCost.AdjustedS3ArtifactStorageCost, 1e-12)
 }
 
 func TestCalculateS3PutCostsUsesArtifactPutRequestsAfterIncrementFilter(t *testing.T) {

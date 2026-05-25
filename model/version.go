@@ -361,69 +361,121 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 	return v.BuildVariants, nil
 }
 
+// versionCostBSONFields returns BSON key-value pairs for all 14 cost fields under the given version document prefix.
+func versionCostBSONFields(prefix string, c cost.Cost) bson.D {
+	return bson.D{
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandEC2CostKey), Value: c.OnDemandEC2Cost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedEC2CostKey), Value: c.AdjustedEC2Cost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSThroughputCostKey), Value: c.OnDemandEBSThroughputCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSThroughputCostKey), Value: c.AdjustedEBSThroughputCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSStorageCostKey), Value: c.OnDemandEBSStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSStorageCostKey), Value: c.AdjustedEBSStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3ArtifactPutCostKey), Value: c.OnDemandS3ArtifactPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3ArtifactPutCostKey), Value: c.AdjustedS3ArtifactPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3LogPutCostKey), Value: c.OnDemandS3LogPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3LogPutCostKey), Value: c.AdjustedS3LogPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3ArtifactStorageCostKey), Value: c.OnDemandS3ArtifactStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3ArtifactStorageCostKey), Value: c.AdjustedS3ArtifactStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3LogStorageCostKey), Value: c.OnDemandS3LogStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3LogStorageCostKey), Value: c.AdjustedS3LogStorageCost},
+	}
+}
+
+// versionS3CostBSONFields returns BSON pairs for the 8 S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.
+func versionS3CostBSONFields(prefix string, c cost.Cost) bson.D {
+	return bson.D{
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3ArtifactPutCostKey), Value: c.OnDemandS3ArtifactPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3ArtifactPutCostKey), Value: c.AdjustedS3ArtifactPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3LogPutCostKey), Value: c.OnDemandS3LogPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3LogPutCostKey), Value: c.AdjustedS3LogPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3ArtifactStorageCostKey), Value: c.OnDemandS3ArtifactStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3ArtifactStorageCostKey), Value: c.AdjustedS3ArtifactStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3LogStorageCostKey), Value: c.OnDemandS3LogStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3LogStorageCostKey), Value: c.AdjustedS3LogStorageCost},
+	}
+}
+
 // UpdateAggregateTaskCosts aggregates the actual and predicted costs from all execution tasks
 // in the version and updates the version's Cost and PredictedCost fields in the database.
 func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	env := evergreen.GetEnvironment()
 	tasksColl := env.DB().Collection(taskCollection)
 
-	match := bson.M{
-		taskVersionKey: v.Id,
-		taskDisplayOnlyKey: bson.M{
-			"$ne": true,
-		},
+	match := bson.D{
+		{Key: taskVersionKey, Value: v.Id},
+		{Key: taskDisplayOnlyKey, Value: bson.D{{Key: "$ne", Value: true}}},
 	}
 
-	pipeline := []bson.M{
-		{"$match": match},
-		{"$unionWith": bson.M{
-			"coll": oldTaskCollection,
-			"pipeline": []bson.M{
-				{"$match": match},
-			},
-		}},
-		{"$group": bson.M{
-			"_id": nil,
-			// Actual per-task costs summed for the version.
-			"total_on_demand":                bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
-			"total_adjusted":                 bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
-			"total_on_demand_ebs_throughput": bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandEBSThroughputCostKey},
-			"total_adjusted_ebs_throughput":  bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedEBSThroughputCostKey},
-			"total_on_demand_ebs_storage":    bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandEBSStorageCostKey},
-			"total_adjusted_ebs_storage":     bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedEBSStorageCostKey},
+	sum := func(field string) bson.D { return bson.D{{Key: "$sum", Value: "$" + field}} }
 
-			"total_on_demand_s3_artifact_put_cost":     bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3ArtifactPutCostKey},
-			"total_adjusted_s3_artifact_put_cost":      bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3ArtifactPutCostKey},
-			"total_on_demand_s3_log_put_cost":          bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3LogPutCostKey},
-			"total_adjusted_s3_log_put_cost":           bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3LogPutCostKey},
-			"total_on_demand_s3_artifact_storage_cost": bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3ArtifactStorageCostKey},
-			"total_adjusted_s3_artifact_storage_cost":  bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3ArtifactStorageCostKey},
-			"total_on_demand_s3_log_storage_cost":      bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3LogStorageCostKey},
-			"total_adjusted_s3_log_storage_cost":       bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3LogStorageCostKey},
+	// EC2/EBS actual cost fields only; S3 actual costs are accumulated per-task by IncrementVersionS3CostAndUsage.
+	ec2EBSCostFields := func(prefix string) bson.D {
+		return bson.D{
+			{Key: cost.OnDemandEC2CostKey, Value: "$" + prefix + "_on_demand"},
+			{Key: cost.AdjustedEC2CostKey, Value: "$" + prefix + "_adjusted"},
+			{Key: cost.OnDemandEBSThroughputCostKey, Value: "$" + prefix + "_on_demand_ebs_throughput"},
+			{Key: cost.AdjustedEBSThroughputCostKey, Value: "$" + prefix + "_adjusted_ebs_throughput"},
+			{Key: cost.OnDemandEBSStorageCostKey, Value: "$" + prefix + "_on_demand_ebs_storage"},
+			{Key: cost.AdjustedEBSStorageCostKey, Value: "$" + prefix + "_adjusted_ebs_storage"},
+		}
+	}
 
-			// Predicted per-task costs summed for the version (all components).
-			"expected_on_demand":                          bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
-			"expected_adjusted":                           bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
-			"expected_on_demand_ebs_throughput":           bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandEBSThroughputCostKey},
-			"expected_adjusted_ebs_throughput":            bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedEBSThroughputCostKey},
-			"expected_on_demand_ebs_storage":              bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandEBSStorageCostKey},
-			"expected_adjusted_ebs_storage":               bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedEBSStorageCostKey},
-			"expected_on_demand_s3_artifact_put_cost":     bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandS3ArtifactPutCostKey},
-			"expected_adjusted_s3_artifact_put_cost":      bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedS3ArtifactPutCostKey},
-			"expected_on_demand_s3_log_put_cost":          bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandS3LogPutCostKey},
-			"expected_adjusted_s3_log_put_cost":           bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedS3LogPutCostKey},
-			"expected_on_demand_s3_artifact_storage_cost": bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandS3ArtifactStorageCostKey},
-			"expected_adjusted_s3_artifact_storage_cost":  bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedS3ArtifactStorageCostKey},
-			"expected_on_demand_s3_log_storage_cost":      bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandS3LogStorageCostKey},
-			"expected_adjusted_s3_log_storage_cost":       bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedS3LogStorageCostKey},
+	allCostFields := func(prefix string) bson.D {
+		return bson.D{
+			{Key: cost.OnDemandEC2CostKey, Value: "$" + prefix + "_on_demand"},
+			{Key: cost.AdjustedEC2CostKey, Value: "$" + prefix + "_adjusted"},
+			{Key: cost.OnDemandEBSThroughputCostKey, Value: "$" + prefix + "_on_demand_ebs_throughput"},
+			{Key: cost.AdjustedEBSThroughputCostKey, Value: "$" + prefix + "_adjusted_ebs_throughput"},
+			{Key: cost.OnDemandEBSStorageCostKey, Value: "$" + prefix + "_on_demand_ebs_storage"},
+			{Key: cost.AdjustedEBSStorageCostKey, Value: "$" + prefix + "_adjusted_ebs_storage"},
+			{Key: cost.OnDemandS3ArtifactPutCostKey, Value: "$" + prefix + "_on_demand_s3_artifact_put_cost"},
+			{Key: cost.AdjustedS3ArtifactPutCostKey, Value: "$" + prefix + "_adjusted_s3_artifact_put_cost"},
+			{Key: cost.OnDemandS3LogPutCostKey, Value: "$" + prefix + "_on_demand_s3_log_put_cost"},
+			{Key: cost.AdjustedS3LogPutCostKey, Value: "$" + prefix + "_adjusted_s3_log_put_cost"},
+			{Key: cost.OnDemandS3ArtifactStorageCostKey, Value: "$" + prefix + "_on_demand_s3_artifact_storage_cost"},
+			{Key: cost.AdjustedS3ArtifactStorageCostKey, Value: "$" + prefix + "_adjusted_s3_artifact_storage_cost"},
+			{Key: cost.OnDemandS3LogStorageCostKey, Value: "$" + prefix + "_on_demand_s3_log_storage_cost"},
+			{Key: cost.AdjustedS3LogStorageCostKey, Value: "$" + prefix + "_adjusted_s3_log_storage_cost"},
+		}
+	}
 
-			// S3 usage metrics (not dollar costs).
-			"total_artifact_put_requests": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3PutRequestsKey},
-			"total_artifact_upload_bytes": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3UploadBytesKey},
-			"total_artifact_count":        bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactCountKey},
-			"total_log_put_requests":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3PutRequestsKey},
-			"total_log_upload_bytes":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3UploadBytesKey},
-		}},
+	pipeline := []bson.D{
+		{{Key: "$match", Value: match}},
+		{{Key: "$unionWith", Value: bson.D{
+			{Key: "coll", Value: oldTaskCollection},
+			{Key: "pipeline", Value: []bson.D{{{Key: "$match", Value: match}}}},
+		}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: nil},
+			// Actual EC2/EBS per-task costs; S3 actual costs are accumulated per-task via IncrementVersionS3CostAndUsage.
+			{Key: "total_on_demand", Value: sum(taskCostKey + "." + taskOnDemandCostKey)},
+			{Key: "total_adjusted", Value: sum(taskCostKey + "." + taskAdjustedCostKey)},
+			{Key: "total_on_demand_ebs_throughput", Value: sum(taskCostKey + "." + cost.OnDemandEBSThroughputCostKey)},
+			{Key: "total_adjusted_ebs_throughput", Value: sum(taskCostKey + "." + cost.AdjustedEBSThroughputCostKey)},
+			{Key: "total_on_demand_ebs_storage", Value: sum(taskCostKey + "." + cost.OnDemandEBSStorageCostKey)},
+			{Key: "total_adjusted_ebs_storage", Value: sum(taskCostKey + "." + cost.AdjustedEBSStorageCostKey)},
+			// Predicted per-task costs.
+			{Key: "expected_on_demand", Value: sum(taskPredictedCostKey + "." + taskOnDemandCostKey)},
+			{Key: "expected_adjusted", Value: sum(taskPredictedCostKey + "." + taskAdjustedCostKey)},
+			{Key: "expected_on_demand_ebs_throughput", Value: sum(taskPredictedCostKey + "." + cost.OnDemandEBSThroughputCostKey)},
+			{Key: "expected_adjusted_ebs_throughput", Value: sum(taskPredictedCostKey + "." + cost.AdjustedEBSThroughputCostKey)},
+			{Key: "expected_on_demand_ebs_storage", Value: sum(taskPredictedCostKey + "." + cost.OnDemandEBSStorageCostKey)},
+			{Key: "expected_adjusted_ebs_storage", Value: sum(taskPredictedCostKey + "." + cost.AdjustedEBSStorageCostKey)},
+			{Key: "expected_on_demand_s3_artifact_put_cost", Value: sum(taskPredictedCostKey + "." + cost.OnDemandS3ArtifactPutCostKey)},
+			{Key: "expected_adjusted_s3_artifact_put_cost", Value: sum(taskPredictedCostKey + "." + cost.AdjustedS3ArtifactPutCostKey)},
+			{Key: "expected_on_demand_s3_log_put_cost", Value: sum(taskPredictedCostKey + "." + cost.OnDemandS3LogPutCostKey)},
+			{Key: "expected_adjusted_s3_log_put_cost", Value: sum(taskPredictedCostKey + "." + cost.AdjustedS3LogPutCostKey)},
+			{Key: "expected_on_demand_s3_artifact_storage_cost", Value: sum(taskPredictedCostKey + "." + cost.OnDemandS3ArtifactStorageCostKey)},
+			{Key: "expected_adjusted_s3_artifact_storage_cost", Value: sum(taskPredictedCostKey + "." + cost.AdjustedS3ArtifactStorageCostKey)},
+			{Key: "expected_on_demand_s3_log_storage_cost", Value: sum(taskPredictedCostKey + "." + cost.OnDemandS3LogStorageCostKey)},
+			{Key: "expected_adjusted_s3_log_storage_cost", Value: sum(taskPredictedCostKey + "." + cost.AdjustedS3LogStorageCostKey)},
+		}}},
+		// Reshape the flat $group output into sub-documents matching the BSON tags on cost.Cost.
+		{{Key: "$project", Value: bson.D{
+			{Key: "_id", Value: 0},
+			{Key: VersionCostKey, Value: ec2EBSCostFields("total")},
+			{Key: VersionPredictedCostKey, Value: allCostFields("expected")},
+		}}},
 	}
 
 	cursor, err := tasksColl.Aggregate(ctx, pipeline)
@@ -432,138 +484,56 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	}
 
 	var results []struct {
-		// Actual costs (summed from task cost).
-		TotalOnDemand              float64 `bson:"total_on_demand"`
-		TotalAdjusted              float64 `bson:"total_adjusted"`
-		TotalOnDemandEBSThroughput float64 `bson:"total_on_demand_ebs_throughput"`
-		TotalAdjustedEBSThroughput float64 `bson:"total_adjusted_ebs_throughput"`
-		TotalOnDemandEBSStorage    float64 `bson:"total_on_demand_ebs_storage"`
-		TotalAdjustedEBSStorage    float64 `bson:"total_adjusted_ebs_storage"`
-
-		TotalOnDemandS3ArtifactPutCost     float64 `bson:"total_on_demand_s3_artifact_put_cost"`
-		TotalAdjustedS3ArtifactPutCost     float64 `bson:"total_adjusted_s3_artifact_put_cost"`
-		TotalOnDemandS3LogPutCost          float64 `bson:"total_on_demand_s3_log_put_cost"`
-		TotalAdjustedS3LogPutCost          float64 `bson:"total_adjusted_s3_log_put_cost"`
-		TotalOnDemandS3ArtifactStorageCost float64 `bson:"total_on_demand_s3_artifact_storage_cost"`
-		TotalAdjustedS3ArtifactStorageCost float64 `bson:"total_adjusted_s3_artifact_storage_cost"`
-		TotalOnDemandS3LogStorageCost      float64 `bson:"total_on_demand_s3_log_storage_cost"`
-		TotalAdjustedS3LogStorageCost      float64 `bson:"total_adjusted_s3_log_storage_cost"`
-
-		// Predicted costs (summed from task predicted_cost).
-		PredictedOnDemand              float64 `bson:"expected_on_demand"`
-		PredictedAdjusted              float64 `bson:"expected_adjusted"`
-		PredictedOnDemandEBSThroughput float64 `bson:"expected_on_demand_ebs_throughput"`
-		PredictedAdjustedEBSThroughput float64 `bson:"expected_adjusted_ebs_throughput"`
-		PredictedOnDemandEBSStorage    float64 `bson:"expected_on_demand_ebs_storage"`
-		PredictedAdjustedEBSStorage    float64 `bson:"expected_adjusted_ebs_storage"`
-
-		PredictedOnDemandS3ArtifactPutCost     float64 `bson:"expected_on_demand_s3_artifact_put_cost"`
-		PredictedAdjustedS3ArtifactPutCost     float64 `bson:"expected_adjusted_s3_artifact_put_cost"`
-		PredictedOnDemandS3LogPutCost          float64 `bson:"expected_on_demand_s3_log_put_cost"`
-		PredictedAdjustedS3LogPutCost          float64 `bson:"expected_adjusted_s3_log_put_cost"`
-		PredictedOnDemandS3ArtifactStorageCost float64 `bson:"expected_on_demand_s3_artifact_storage_cost"`
-		PredictedAdjustedS3ArtifactStorageCost float64 `bson:"expected_adjusted_s3_artifact_storage_cost"`
-		PredictedOnDemandS3LogStorageCost      float64 `bson:"expected_on_demand_s3_log_storage_cost"`
-		PredictedAdjustedS3LogStorageCost      float64 `bson:"expected_adjusted_s3_log_storage_cost"`
-
-		TotalArtifactPutRequests int   `bson:"total_artifact_put_requests"`
-		TotalArtifactUploadBytes int64 `bson:"total_artifact_upload_bytes"`
-		TotalArtifactCount       int   `bson:"total_artifact_count"`
-		TotalLogPutRequests      int   `bson:"total_log_put_requests"`
-		TotalLogUploadBytes      int64 `bson:"total_log_upload_bytes"`
+		Cost      cost.Cost `bson:"cost"`
+		Predicted cost.Cost `bson:"predicted_cost"`
 	}
 	if err = cursor.All(ctx, &results); err != nil {
 		return errors.Wrap(err, "reading aggregated task cost results")
 	}
 
 	var total, predicted cost.Cost
-	var s3Total s3usage.S3Usage
 	if len(results) > 0 {
-		total.OnDemandEC2Cost = results[0].TotalOnDemand
-		total.AdjustedEC2Cost = results[0].TotalAdjusted
-		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
-		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
-
-		total.OnDemandEBSThroughputCost = results[0].TotalOnDemandEBSThroughput
-		total.AdjustedEBSThroughputCost = results[0].TotalAdjustedEBSThroughput
-		total.OnDemandEBSStorageCost = results[0].TotalOnDemandEBSStorage
-		total.AdjustedEBSStorageCost = results[0].TotalAdjustedEBSStorage
-
-		total.OnDemandS3ArtifactPutCost = results[0].TotalOnDemandS3ArtifactPutCost
-		total.AdjustedS3ArtifactPutCost = results[0].TotalAdjustedS3ArtifactPutCost
-		total.OnDemandS3LogPutCost = results[0].TotalOnDemandS3LogPutCost
-		total.AdjustedS3LogPutCost = results[0].TotalAdjustedS3LogPutCost
-		total.OnDemandS3ArtifactStorageCost = results[0].TotalOnDemandS3ArtifactStorageCost
-		total.AdjustedS3ArtifactStorageCost = results[0].TotalAdjustedS3ArtifactStorageCost
-		total.OnDemandS3LogStorageCost = results[0].TotalOnDemandS3LogStorageCost
-		total.AdjustedS3LogStorageCost = results[0].TotalAdjustedS3LogStorageCost
-
-		predicted.OnDemandEBSThroughputCost = results[0].PredictedOnDemandEBSThroughput
-		predicted.AdjustedEBSThroughputCost = results[0].PredictedAdjustedEBSThroughput
-		predicted.OnDemandEBSStorageCost = results[0].PredictedOnDemandEBSStorage
-		predicted.AdjustedEBSStorageCost = results[0].PredictedAdjustedEBSStorage
-
-		predicted.OnDemandS3ArtifactPutCost = results[0].PredictedOnDemandS3ArtifactPutCost
-		predicted.AdjustedS3ArtifactPutCost = results[0].PredictedAdjustedS3ArtifactPutCost
-		predicted.OnDemandS3LogPutCost = results[0].PredictedOnDemandS3LogPutCost
-		predicted.AdjustedS3LogPutCost = results[0].PredictedAdjustedS3LogPutCost
-		predicted.OnDemandS3ArtifactStorageCost = results[0].PredictedOnDemandS3ArtifactStorageCost
-		predicted.AdjustedS3ArtifactStorageCost = results[0].PredictedAdjustedS3ArtifactStorageCost
-		predicted.OnDemandS3LogStorageCost = results[0].PredictedOnDemandS3LogStorageCost
-		predicted.AdjustedS3LogStorageCost = results[0].PredictedAdjustedS3LogStorageCost
-
-		s3Total.Artifacts.PutRequests = results[0].TotalArtifactPutRequests
-		s3Total.Artifacts.UploadBytes = results[0].TotalArtifactUploadBytes
-		s3Total.Artifacts.Count = results[0].TotalArtifactCount
-		s3Total.Logs.PutRequests = results[0].TotalLogPutRequests
-		s3Total.Logs.UploadBytes = results[0].TotalLogUploadBytes
+		total = results[0].Cost
+		predicted = results[0].Predicted
 	}
 
-	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
-		"$set": bson.M{
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEC2CostKey):          total.OnDemandEC2Cost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEC2CostKey):          total.AdjustedEC2Cost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEC2CostKey): predicted.OnDemandEC2Cost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEC2CostKey): predicted.AdjustedEC2Cost,
-
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSThroughputCostKey): predicted.OnDemandEBSThroughputCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSThroughputCostKey): predicted.AdjustedEBSThroughputCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSStorageCostKey):    predicted.OnDemandEBSStorageCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSStorageCostKey):    predicted.AdjustedEBSStorageCost,
-
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3ArtifactPutCostKey):     predicted.OnDemandS3ArtifactPutCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3ArtifactPutCostKey):     predicted.AdjustedS3ArtifactPutCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3LogPutCostKey):          predicted.OnDemandS3LogPutCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3LogPutCostKey):          predicted.AdjustedS3LogPutCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3ArtifactStorageCostKey): predicted.OnDemandS3ArtifactStorageCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3ArtifactStorageCostKey): predicted.AdjustedS3ArtifactStorageCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3LogStorageCostKey):      predicted.OnDemandS3LogStorageCost,
-			bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3LogStorageCostKey):      predicted.AdjustedS3LogStorageCost,
-
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEBSThroughputCostKey): total.OnDemandEBSThroughputCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSThroughputCostKey): total.AdjustedEBSThroughputCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEBSStorageCostKey):    total.OnDemandEBSStorageCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSStorageCostKey):    total.AdjustedEBSStorageCost,
-
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3ArtifactPutCostKey):     total.OnDemandS3ArtifactPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3ArtifactPutCostKey):     total.AdjustedS3ArtifactPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3LogPutCostKey):          total.OnDemandS3LogPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3LogPutCostKey):          total.AdjustedS3LogPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3ArtifactStorageCostKey): total.OnDemandS3ArtifactStorageCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3ArtifactStorageCostKey): total.AdjustedS3ArtifactStorageCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3LogStorageCostKey):      total.OnDemandS3LogStorageCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3LogStorageCostKey):      total.AdjustedS3LogStorageCost,
-
-			VersionS3UsageKey: s3Total,
-		},
-	}); err != nil {
+	setFields := versionEC2EBSCostBSONFields(VersionCostKey, total)
+	setFields = append(setFields, versionCostBSONFields(VersionPredictedCostKey, predicted)...)
+	if err := VersionUpdateOne(ctx, bson.D{{Key: VersionIdKey, Value: v.Id}}, bson.D{{Key: "$set", Value: setFields}}); err != nil {
 		return errors.Wrap(err, "updating version aggregated task costs")
 	}
 
 	v.Cost = total
 	v.PredictedCost = predicted
-	v.S3Usage = s3Total
 	return nil
+}
+
+// versionEC2EBSCostBSONFields returns BSON pairs for the 6 EC2/EBS-only cost fields; S3 fields are managed by IncrementVersionS3CostAndUsage.
+func versionEC2EBSCostBSONFields(prefix string, c cost.Cost) bson.D {
+	return bson.D{
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandEC2CostKey), Value: c.OnDemandEC2Cost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedEC2CostKey), Value: c.AdjustedEC2Cost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSThroughputCostKey), Value: c.OnDemandEBSThroughputCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSThroughputCostKey), Value: c.AdjustedEBSThroughputCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSStorageCostKey), Value: c.OnDemandEBSStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSStorageCostKey), Value: c.AdjustedEBSStorageCost},
+	}
+}
+
+// IncrementVersionS3CostAndUsage atomically increments the version's S3 cost and usage fields by one task's contribution.
+func IncrementVersionS3CostAndUsage(ctx context.Context, versionID string, taskCost cost.Cost, s3Usage s3usage.S3Usage) error {
+	if taskCost.IsZero() && s3Usage.IsZero() {
+		return nil
+	}
+	inc := versionS3CostBSONFields(VersionCostKey, taskCost)
+	inc = append(inc,
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3ArtifactsKey, taskS3PutRequestsKey), Value: s3Usage.Artifacts.PutRequests},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3ArtifactsKey, taskS3UploadBytesKey), Value: s3Usage.Artifacts.UploadBytes},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3ArtifactsKey, taskS3ArtifactCountKey), Value: s3Usage.Artifacts.Count},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3LogsKey, taskS3PutRequestsKey), Value: s3Usage.Logs.PutRequests},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3LogsKey, taskS3UploadBytesKey), Value: s3Usage.Logs.UploadBytes},
+	)
+	return VersionUpdateOne(ctx, bson.D{{Key: VersionIdKey, Value: versionID}}, bson.D{{Key: "$inc", Value: inc}})
 }
 
 // GetHighestTaskExecution returns the highest execution number of all tasks in the version.

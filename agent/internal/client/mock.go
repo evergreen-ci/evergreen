@@ -75,7 +75,7 @@ type Mock struct {
 	SendTaskDetailsShouldFail            bool
 
 	ReportS3UsageShouldFail bool
-	ReportedS3Usage         s3usage.S3Usage
+	ReportedS3Usages        []s3usage.S3Usage
 
 	ReportHighExecTimeoutShouldFail bool
 	ReportedHighExecTimeoutSecs     int
@@ -460,11 +460,11 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
-func (c *Mock) ReportS3Usage(ctx context.Context, td TaskData, usage s3usage.S3Usage) error {
+func (c *Mock) ReportS3Usage(_ context.Context, _ TaskData, usage s3usage.S3Usage, _ bool) error {
 	if c.ReportS3UsageShouldFail {
 		return errors.New("reporting S3 usage")
 	}
-	c.ReportedS3Usage = usage
+	c.ReportedS3Usages = append(c.ReportedS3Usages, usage)
 	return nil
 }
 
