@@ -252,8 +252,9 @@ func GetNice(pid int) (int, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "getting nice value")
 	}
-	// Since nice values range from -20 to 19, returning -1 would be ambiguous with the conventional Unix error indicator. So the kernel
-	// returns 20 - nice instead (giving a range of 1–40, always positive). We reverse that transformation to get the real nice value back.
+	// Go's syscall.Getpriority calls the raw Linux syscall which returns
+	// (20 - nice) rather than the nice value itself so we have to invert it here to
+	// get the real nice.
 	return 20 - nice, nil
 }
 
