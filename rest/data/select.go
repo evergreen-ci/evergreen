@@ -10,8 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -25,26 +23,15 @@ const (
 	GetVariantStateEndpoint   = "get_variant_state"
 )
 
-// wrapTSSError augments errors from the test selection service with the
-// response body in the error message and structured fields in the grip log.
-func wrapTSSError(ctx context.Context, err error, fields message.Fields) error {
+// wrapTSSError wraps test selection service errors with the response body in the message. Callers handle logging and adding context.
+func wrapTSSError(err error) error {
 	if err == nil {
 		return nil
 	}
 	var openAPIErr *testselection.GenericOpenAPIError
 	if errors.As(err, &openAPIErr) {
-		body := string(openAPIErr.Body())
-		logFields := message.Fields{
-			"message": "test selection service request failed",
-			"body":    body,
-		}
-		for k, v := range fields {
-			logFields[k] = v
-		}
-		grip.Error(ctx, message.WrapError(err, logFields))
-		return errors.Wrapf(err, "forwarding request to test selection service: %s", body)
+		return errors.Wrapf(err, "forwarding request to test selection service: %s", string(openAPIErr.Body()))
 	}
-	grip.Error(ctx, message.WrapError(err, fields))
 	return errors.Wrap(err, "forwarding request to test selection service")
 }
 
@@ -97,14 +84,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, wrapTSSError(ctx, err, message.Fields{
-			"endpoint":      SelectTestsEndpoint,
-			"project":       req.Project,
-			"requester":     req.Requester,
-			"build_variant": req.BuildVariant,
-			"task_id":       req.TaskID,
-			"task_name":     req.TaskName,
-		})
+		return nil, wrapTSSError(err)
 	}
 	selectedTests := make([]string, 0, len(selectedTestPtrs))
 	for _, t := range selectedTestPtrs {
@@ -129,14 +109,7 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 	if resp != nil {
 		defer resp.Body.Close()
 	}
-	return wrapTSSError(ctx, err, message.Fields{
-		"endpoint":                TransitionTestsEndpoint,
-		"project":                 projectID,
-		"build_variant":           bvName,
-		"task_name":               taskName,
-		"test_name":               testName,
-		"is_manually_quarantined": isManuallyQuarantined,
-	})
+	return wrapTSSError(err)
 }
 
 // GetTestsQuarantineStatus returns a map from each input test name to its
@@ -161,13 +134,7 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, wrapTSSError(ctx, err, message.Fields{
-			"endpoint":      GetTestsStateEndpoint,
-			"project":       projectID,
-			"build_variant": bvName,
-			"task_name":     taskName,
-			"test_count":    len(testNames),
-		})
+		return nil, wrapTSSError(err)
 	}
 	if result == nil {
 		return nil, errors.New("nil response from test selection service")
@@ -196,13 +163,7 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string,
 	if resp != nil {
 		defer resp.Body.Close()
 	}
-	return wrapTSSError(ctx, err, message.Fields{
-		"endpoint":                TransitionTaskEndpoint,
-		"project":                 projectID,
-		"build_variant":           bvName,
-		"task_name":               taskName,
-		"is_manually_quarantined": isManuallyQuarantined,
-	})
+	return wrapTSSError(err)
 }
 
 // SetVariantQuarantined marks all known tests of a build variant as manually
@@ -218,12 +179,7 @@ func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManu
 	if resp != nil {
 		defer resp.Body.Close()
 	}
-	return wrapTSSError(ctx, err, message.Fields{
-		"endpoint":                TransitionVariantEndpoint,
-		"project":                 projectID,
-		"build_variant":           bvName,
-		"is_manually_quarantined": isManuallyQuarantined,
-	})
+	return wrapTSSError(err)
 }
 
 // GetVariantQuarantineStatus returns the manual-quarantine status for every
@@ -240,11 +196,7 @@ func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, wrapTSSError(ctx, err, message.Fields{
-			"endpoint":      GetVariantStateEndpoint,
-			"project":       projectID,
-			"build_variant": bvName,
-		})
+		return nil, wrapTSSError(err)
 	}
 	if result == nil {
 		return nil, errors.New("nil response from test selection service")
