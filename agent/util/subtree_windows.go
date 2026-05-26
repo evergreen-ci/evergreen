@@ -369,6 +369,11 @@ func (we *WindowsError) Error() string {
 	return fmt.Sprintf("gowin32: %s failed: %v", we.functionName, we.innerError)
 }
 
+// GetNice is a no-op in Windows (Linux-only). It returns the default nice.
+func GetNice(int) (int, error) {
+	return DefaultNice, nil
+}
+
 // SetNice is a no-op in Windows (Linux-only).
 func SetNice(int, int) error {
 	return nil

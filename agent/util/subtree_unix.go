@@ -242,6 +242,20 @@ func parsePs(psOutput string) []process {
 	return processes
 }
 
+// GetNice returns the nice value for the process given by PID. Passing 0
+// refers to the current process.
+func GetNice(pid int) (int, error) {
+	if runtime.GOOS != "linux" {
+		return DefaultNice, nil
+	}
+	nice, err := syscall.Getpriority(syscall.PRIO_PROCESS, pid)
+	if err != nil {
+		return 0, errors.Wrap(err, "getting nice value")
+	}
+	// Getpriority returns 20 - nice to avoid ambiguity with -1 error returns.
+	return 20 - nice, nil
+}
+
 // SetNice sets the nice for the process given by PID. This determines its
 // relative scheduling priority for host CPU.
 // This is only available if the current process has sufficient permissions to
