@@ -4304,12 +4304,12 @@ func (t *Task) UpdateTaskCost(ctx context.Context) {
 // ec2EBSSetFields populates m with dotted-path $set entries for the EC2 and EBS cost fields under prefix.
 // S3 cost fields are intentionally excluded — they are owned by SaveS3Usage.
 func ec2EBSSetFields(prefix string, c cost.Cost, m bson.M) {
-	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEC2CostKey)]           = c.OnDemandEC2Cost
-	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEC2CostKey)]           = c.AdjustedEC2Cost
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEC2CostKey)] = c.OnDemandEC2Cost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEC2CostKey)] = c.AdjustedEC2Cost
 	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSThroughputCostKey)] = c.OnDemandEBSThroughputCost
 	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSThroughputCostKey)] = c.AdjustedEBSThroughputCost
-	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSStorageCostKey)]    = c.OnDemandEBSStorageCost
-	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSStorageCostKey)]    = c.AdjustedEBSStorageCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSStorageCostKey)] = c.OnDemandEBSStorageCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSStorageCostKey)] = c.AdjustedEBSStorageCost
 }
 
 // calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
