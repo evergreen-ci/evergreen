@@ -23,6 +23,8 @@ IGNORED_PACKAGES=(
     "filippo.io/edwards25519"     # DEVPROD-28491 Edwards25519 vulnerability tracking
     "github.com/docker/docker"    # DEVPROD-31135 Docker vulnerability tracking
     "golang.org/x/net"            # DEVPROD-33048 Go networking packages Lib
+    "golang.org/x/crypto"         # DEVPROD-33754 Go crypto package vulnerability tracking
+    "golang.org/x/sys"            # DEVPROD-33756 Go sys package vulnerability tracking
 )
 
 # Validate that each ignored package has a tracking ticket
