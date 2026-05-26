@@ -259,13 +259,17 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 		ictx = ctx
 	}
 
-	// If the agent is running at elevated priority (negative nice), momentarily
-	// reset to default nice so the child process inherits normal priority, then
-	// restore after spawning. Skip entirely if the agent isn't elevated (e.g. on
-	// spawn hosts where it lacks permission to set negative nice).
+	// This momentarily sets the nice for this thread back to the default nice
+	// to ensure the process that's about to be created and all of its children
+	// processes use the default nice (child processes inherit the nice of the
+	// parent process). This thread will have no special nice until it's reset
+	// but that should be a brief window.
+	// Passing 0 as the PID refers to the current thread.
+	// Skip entirely if the agent isn't running at elevated priority (e.g. on
+	// debug spawn hosts where it lacks permission to set negative nice).
 	currentNice, niceErr := agentutil.GetNice(0)
-	adjustNice := niceErr == nil && currentNice < agentutil.DefaultNice
-	if adjustNice {
+	shouldAdjustNice := niceErr == nil && currentNice < agentutil.DefaultNice
+	if shouldAdjustNice {
 		if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
 			logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
 		}
@@ -280,7 +284,10 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 		return proc, errors.WithStack(err)
 	}
 
-	if adjustNice {
+	// Once the child process has started, reset the agent's nice back to the
+	// lower nice value to ensure that this agent thread will have its original
+	// CPU priority.
+	if shouldAdjustNice {
 		if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
 			logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
 		}

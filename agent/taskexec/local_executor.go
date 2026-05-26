@@ -113,9 +113,9 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		logger: logger,
 	}
 
-	expansions.Put("otel_trace_id", "00000000000000000000000000000000")
-	expansions.Put("otel_parent_id", "0000000000000000")
-	expansions.Put("otel_collector_endpoint", "")
+	expansions.Put("otel_trace_id", "DEBUG_MODE_NO_TRACE_ID")
+	expansions.Put("otel_parent_id", "DEBUG_MODE_NO_TRACE_PARENT")
+	expansions.Put("otel_collector_endpoint", "DEBUG_MODE_NO_TRACE_COLLECTOR")
 
 	taskConfig := &internal.TaskConfig{
 		Expansions:            expansions,
@@ -152,9 +152,6 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 	return localExecutor, nil
 }
 
-// wrapLoggerWithRedactor wraps the local logger's sender with a RedactingSender
-// so that secrets are redacted from the non-streaming log output (e.g. on spawn
-// host debug sessions).
 func (e *LocalExecutor) wrapLoggerWithRedactor() {
 	redactedSender := redactor.NewRedactingSender(e.logger.GetSender(), redactor.RedactionOptions{
 		Expansions:         e.taskConfig.NewExpansions,

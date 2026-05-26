@@ -252,7 +252,8 @@ func GetNice(pid int) (int, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "getting nice value")
 	}
-	// Getpriority returns 20 - nice to avoid ambiguity with -1 error returns.
+	// Since nice values range from -20 to 19, returning -1 would be ambiguous with the conventional Unix error indicator. So the kernel
+	// returns 20 - nice instead (giving a range of 1–40, always positive). We reverse that transformation to get the real nice value back.
 	return 20 - nice, nil
 }
 
