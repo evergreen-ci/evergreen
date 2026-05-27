@@ -15,9 +15,6 @@ import (
 
 // Test selection service endpoint identifiers.
 const (
-	SelectTestsEndpoint       = "select_tests"
-	TransitionTestsEndpoint   = "transition_tests"
-	GetTestsStateEndpoint     = "get_tests_state"
 	TransitionTaskEndpoint    = "transition_task"
 	TransitionVariantEndpoint = "transition_variant"
 	GetVariantStateEndpoint   = "get_variant_state"
