@@ -108,7 +108,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 
 	metadata := model.VersionMetadata{
 		IsAdHoc:         true,
-		Activate:        true,
+		Activate:        j.project.IsWaterfallEnabled(),
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
 		Alias:           definition.Alias,

@@ -226,15 +226,16 @@ type ArtifactIncrementOptions struct {
 	MinPuts     int
 	Bucket      string
 	AWSRoleARN  string
-	Files       []FileMetrics
-	// DevprodOwnedAWSAccountIDs, when non-empty, restricts recording to uploads whose AWSRoleARN
-	// resolves to an account ID in this list.
+	// AWSAccountID is the resolved account ID when AWSRoleARN is empty (key+secret auth).
+	AWSAccountID string
+	Files        []FileMetrics
+	// DevprodOwnedAWSAccountIDs, when non-empty, limits recording to uploads in these accounts.
 	DevprodOwnedAWSAccountIDs []string
 }
 
 // IncrementArtifacts updates aggregate artifact upload metrics after an s3.put command.
 func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
-	if !evergreen.IsDevprodOwnedArtifactIAMRole(opts.AWSRoleARN, opts.DevprodOwnedAWSAccountIDs) {
+	if !evergreen.IsDevprodOwnedUpload(opts.AWSRoleARN, opts.AWSAccountID, opts.DevprodOwnedAWSAccountIDs) {
 		return
 	}
 

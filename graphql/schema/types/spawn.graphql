@@ -64,9 +64,6 @@ Its fields determine the properties of the volume that will be spawned.
 input SpawnVolumeInput {
   availabilityZone: String!
   expiration: Time
-  host: String
-    @requireHostAccess(access: EDIT)
-    @deprecated(reason: "Use hostId instead of host.")
   hostId: String @requireHostAccess(access: EDIT)
   noExpiration: Boolean
   size: Int!
@@ -101,9 +98,6 @@ input EditSpawnHostInput {
   savePublicKey: Boolean
   servicePassword: String @redactSecrets
   sleepSchedule: SleepScheduleInput
-  volume: String
-    @requireVolumeAccess
-    @deprecated(reason: "Use volumeId instead of volume.")
   volumeId: String @requireVolumeAccess
 }
 
