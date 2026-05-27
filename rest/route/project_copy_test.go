@@ -160,8 +160,20 @@ func (s *copyVariablesSuite) SetupTest() {
 	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	s.cancel = cancel
 
-	s.route = &copyVariablesHandler{usr: &user.DBUser{Id: "admin"}}
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection, event.EventCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection, event.EventCollection,
+		evergreen.ScopeCollection, evergreen.RoleCollection))
+	env := testutil.NewEnvironment(ctx, s.T())
+	s.NoError(db.CreateCollections(evergreen.ScopeCollection))
+
+	rm := env.RoleManager()
+	s.NoError(rm.AddScope(s.T().Context(), gimlet.Scope{ID: "scope_projectA", Resources: []string{"projectA"}, Type: evergreen.ProjectResourceType}))
+	s.NoError(rm.AddScope(s.T().Context(), gimlet.Scope{ID: "scope_projectB", Resources: []string{"projectB"}, Type: evergreen.ProjectResourceType}))
+	s.NoError(rm.AddScope(s.T().Context(), gimlet.Scope{ID: "scope_repoRef", Resources: []string{"repoRef"}, Type: evergreen.ProjectResourceType}))
+	s.NoError(rm.UpdateRole(s.T().Context(), gimlet.Role{ID: "admin_role_a", Scope: "scope_projectA", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	s.NoError(rm.UpdateRole(s.T().Context(), gimlet.Role{ID: "admin_role_b", Scope: "scope_projectB", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+	s.NoError(rm.UpdateRole(s.T().Context(), gimlet.Role{ID: "admin_role_repo", Scope: "scope_repoRef", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
+
+	s.route = &copyVariablesHandler{usr: &user.DBUser{Id: "admin", SystemRoles: []string{"admin_role_a", "admin_role_b", "admin_role_repo"}}}
 	pRefs := []model.ProjectRef{
 		{
 			Id:      "projectA",
@@ -425,4 +437,24 @@ func (s *copyVariablesSuite) TestCopyFromRepo() {
 	events, err := model.MostRecentProjectEvents(s.ctx, s.route.opts.CopyTo, 100)
 	s.NoError(err)
 	s.Len(events, 1)
+}
+
+func (s *copyVariablesSuite) TestCopyVariablesUnauthorizedDestination() {
+	s.route.usr = &user.DBUser{Id: "unauthorized-user", SystemRoles: []string{"admin_role_a"}}
+	s.route.copyFrom = "projectA"
+	s.route.opts = copyVariablesOptions{
+		CopyTo:         "projectB",
+		IncludePrivate: true,
+	}
+
+	resp := s.route.Run(s.ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusUnauthorized, resp.Status())
+
+	projectVars, err := model.FindOneProjectVars(s.ctx, "projectB")
+	s.NoError(err)
+	s.Len(projectVars.Vars, 3)
+	s.Equal("yellow", projectVars.Vars["banana"])
+	s.Equal("green", projectVars.Vars["apple"])
+	s.Equal("its me", projectVars.Vars["hello"])
 }
