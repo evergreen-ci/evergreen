@@ -1589,8 +1589,6 @@ func setTaskQuarantineState(ctx context.Context, taskID string, isManuallyQuaran
 
 // setVariantQuarantineState quarantines (or unquarantines) every known test of every known task in a build variant.
 func setVariantQuarantineState(ctx context.Context, projectIdentifier, buildVariant string, isManuallyQuarantined bool) (*restModel.APIVariantQuarantineStatus, error) {
-	// The @requireProjectAccess directive on the caller has already verified
-	// the project exists, so any error here indicates an internal lookup failure.
 	projectID, err := model.GetIdForProject(ctx, projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
@@ -1611,8 +1609,6 @@ func setVariantQuarantineState(ctx context.Context, projectIdentifier, buildVari
 }
 
 func getVariantQuarantineStatusResponse(ctx context.Context, projectIdentifier, buildVariant string) (*restModel.APIVariantQuarantineStatus, error) {
-	// The @requireProjectAccess directive on the caller has already verified
-	// the project exists, so any error here indicates an internal lookup failure.
 	projectID, err := model.GetIdForProject(ctx, projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
