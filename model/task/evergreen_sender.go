@@ -52,9 +52,6 @@ type EvergreenSenderOptions struct {
 	LogType string
 	// LogKey is the S3 key for the log being written, used for storage cost tracking.
 	LogKey string
-	// ReportS3Usage, if set, receives a best-effort per-flush S3 cost report.
-	// Defined as a callback to avoid a circular import with agent/internal/client.
-	ReportS3Usage func(ctx context.Context, usage s3usage.S3Usage)
 
 	appendLines logLineAppender
 }
@@ -249,9 +246,6 @@ func (s *evergreenSender) flush(ctx context.Context) error {
 	uploadBytes, puts, err := s.opts.appendLines(ctx, s.buffer)
 	if s.opts.S3Usage != nil && puts > 0 {
 		s.opts.S3Usage.IncrementLogs(puts, uploadBytes, s.opts.LogType, s.opts.LogKey)
-		if s.opts.ReportS3Usage != nil {
-			s.opts.ReportS3Usage(ctx, *s.opts.S3Usage)
-		}
 	}
 	if err != nil {
 		return errors.Wrap(err, "appending lines to log")
