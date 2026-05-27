@@ -1,11 +1,15 @@
 package command
 
 import (
+	"context"
 	"regexp"
 	"strings"
 	"time"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -103,4 +107,27 @@ func getAssumedRoleExpiration(conf *internal.TaskConfig, sessionToken string) (t
 		return time.Time{}, false
 	}
 	return conf.AssumeRoleInformation[sessionToken].Expiration, true
+}
+
+// resolveAWSAccountIDFromStaticCredentials calls STS GetCallerIdentity using the given
+// static credentials to determine which AWS account owns the key. It is used for key+secret
+// s3.put commands where no role ARN is available to derive the account ID.
+func resolveAWSAccountIDFromStaticCredentials(ctx context.Context, awsKey, awsSecret, awsSessionToken, region string) (string, error) {
+	staticCreds := credentials.NewStaticCredentialsProvider(awsKey, awsSecret, awsSessionToken)
+	cfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithCredentialsProvider(staticCreds),
+		awsconfig.WithRegion(region),
+	)
+	if err != nil {
+		return "", errors.Wrap(err, "loading AWS config for STS call")
+	}
+	stsClient := sts.NewFromConfig(cfg)
+	output, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	if err != nil {
+		return "", errors.Wrap(err, "calling STS GetCallerIdentity")
+	}
+	if output.Account == nil {
+		return "", errors.New("STS GetCallerIdentity returned nil account ID")
+	}
+	return *output.Account, nil
 }

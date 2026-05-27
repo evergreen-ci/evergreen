@@ -135,6 +135,59 @@ func TestS3Usage(t *testing.T) {
 		assert.False(t, s3Usage.IsZero())
 	})
 
+	t.Run("IncrementArtifactsWithAccountIDOwnedShouldRecord", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		owned := []string{"123456789012"}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+			DevprodOwnedAWSAccountIDs: owned,
+			PutRequests:               7,
+			UploadBytes:               70,
+			FileCount:                 1,
+			MaxPuts:                   7,
+			MinPuts:                   7,
+			Bucket:                    "b",
+			AWSAccountID:              "123456789012",
+			Files:                     []FileMetrics{{RemotePath: "z", FileSizeBytes: 70}},
+		})
+		assert.Equal(t, 7, s3Usage.Artifacts.PutRequests)
+		assert.False(t, s3Usage.IsZero())
+	})
+
+	t.Run("IncrementArtifactsWithAccountIDUnownedShouldSkip", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		owned := []string{"123456789012"}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+			DevprodOwnedAWSAccountIDs: owned,
+			PutRequests:               7,
+			UploadBytes:               70,
+			FileCount:                 1,
+			MaxPuts:                   7,
+			MinPuts:                   7,
+			Bucket:                    "b",
+			AWSAccountID:              "999999999999",
+			Files:                     []FileMetrics{{RemotePath: "z", FileSizeBytes: 70}},
+		})
+		assert.Equal(t, 0, s3Usage.Artifacts.PutRequests)
+		assert.True(t, s3Usage.IsZero())
+	})
+
+	t.Run("IncrementArtifactsWithNoARNAndNoAccountIDShouldSkip", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		owned := []string{"123456789012"}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+			DevprodOwnedAWSAccountIDs: owned,
+			PutRequests:               5,
+			UploadBytes:               50,
+			FileCount:                 1,
+			MaxPuts:                   5,
+			MinPuts:                   5,
+			Bucket:                    "b",
+			Files:                     []FileMetrics{{RemotePath: "z", FileSizeBytes: 50}},
+		})
+		assert.Equal(t, 0, s3Usage.Artifacts.PutRequests)
+		assert.True(t, s3Usage.IsZero())
+	})
+
 	t.Run("IncrementLogs", func(t *testing.T) {
 		s3Usage := S3Usage{}
 		assert.Equal(t, 0, s3Usage.Logs.PutRequests)
