@@ -564,8 +564,8 @@ func (p *ProjectRef) IsDispatchingDisabled() bool {
 	return utility.FromBoolPtr(p.DispatchingDisabled)
 }
 
-func (p *ProjectRef) IsWaterfallDisabled() bool {
-	return utility.FromBoolPtr(p.WaterfallDisabled)
+func (p *ProjectRef) IsWaterfallEnabled() bool {
+	return !utility.FromBoolPtr(p.WaterfallDisabled)
 }
 
 func (p *ProjectRef) IsPRTestingEnabled() bool {
