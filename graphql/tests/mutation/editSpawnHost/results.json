@@ -62,22 +62,6 @@
           }
         ]
       }
-    },
-    {
-      "query_file": "no_permissions_volume_old.graphql",
-      "test_user_id": "regular_user",
-      "result": {
-        "data": null,
-        "errors": [
-          {
-            "message": "user 'regular_user' does not have permission to access volume 'vol-two'",
-            "path": ["editSpawnHost", "spawnHost", "volume"],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
-          }
-        ]
-      }
     }
   ]
 }
