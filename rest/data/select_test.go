@@ -312,4 +312,37 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 		require.NoError(t, DecorateQuarantineStatus(t.Context(), display, results))
 		assert.False(t, results[0].IsManuallyQuarantined)
 	})
+
+	t.Run("DisplayTaskFansOutEvenWhenDisplayTaskTestSelectionDisabled", func(t *testing.T) {
+		// Covers the case where the display task's TestSelectionEnabled flag is
+		// stale (e.g. a new display task was created over a mix of new and
+		// pre-existing execution tasks, and only the pre-existing one had TSS
+		// enabled). The fan-out should still decorate based on each execution
+		// task's actual state.
+		require.NoError(t, db.ClearCollections(task.Collection))
+		require.NoError(t, (&task.Task{
+			Id:                   "exec_enabled",
+			Project:              "p",
+			BuildVariant:         "bv",
+			DisplayName:          "enabled",
+			TestSelectionEnabled: true,
+		}).Insert(t.Context()))
+
+		srv := statusServer(t, map[string]map[string]string{
+			"enabled": {"TestEnabled": "manually_quarantined"},
+		})
+		setTSSURL(t, srv.URL)
+
+		display := &task.Task{
+			Id:                   "display_task",
+			DisplayOnly:          true,
+			ExecutionTasks:       []string{"exec_enabled"},
+			TestSelectionEnabled: false,
+		}
+		results := []testresult.TestResult{
+			{TaskID: "exec_enabled", TestName: "TestEnabled"},
+		}
+		require.NoError(t, DecorateQuarantineStatus(t.Context(), display, results))
+		assert.True(t, results[0].IsManuallyQuarantined)
+	})
 }

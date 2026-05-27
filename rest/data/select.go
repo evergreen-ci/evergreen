@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -130,14 +132,19 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 }
 
 // DecorateQuarantineStatus populates IsManuallyQuarantined on each test result
-// in place. No-ops when test selection is disabled. Display tasks fan out to
-// their execution tasks because TSS keys quarantine state by execution task name.
+// in place. No-ops when test selection is disabled. Display tasks always fan
+// out to their execution tasks; the display task's TestSelectionEnabled flag
+// is treated as a hint because it can be stale relative to its execution
+// tasks, so the fan-out re-checks each execution task's state directly.
 func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testresult.TestResult) error {
-	if !t.TestSelectionEnabled || len(results) == 0 {
+	if len(results) == 0 {
 		return nil
 	}
 	if t.DisplayOnly {
 		return decorateDisplayTaskQuarantineStatus(ctx, results)
+	}
+	if !t.TestSelectionEnabled {
+		return nil
 	}
 	testNames := make([]string, 0, len(results))
 	for _, r := range results {
@@ -176,6 +183,20 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, results []testresu
 	if err != nil {
 		return errors.Wrap(err, "fetching execution tasks")
 	}
+	foundExecTaskIDs := make(map[string]bool, len(execTasks))
+	for _, execTask := range execTasks {
+		foundExecTaskIDs[execTask.Id] = true
+	}
+	var missingExecTaskIDs []string
+	for _, id := range execTaskIDs {
+		if !foundExecTaskIDs[id] {
+			missingExecTaskIDs = append(missingExecTaskIDs, id)
+		}
+	}
+	grip.WarningWhen(ctx, len(missingExecTaskIDs) > 0, message.Fields{
+		"message":               "execution tasks not found when decorating display task quarantine status; their test results will be left undecorated",
+		"missing_exec_task_ids": missingExecTaskIDs,
+	})
 	for _, execTask := range execTasks {
 		if !execTask.TestSelectionEnabled {
 			continue
