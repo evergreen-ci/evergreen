@@ -41,6 +41,28 @@
           }
         }
       }
+    },
+    {
+      "query_file": "quarantine_status.graphql",
+      "result": {
+        "data": {
+          "variantQuarantineStatus": {
+            "projectIdentifier": "sandbox",
+            "buildVariant": "ubuntu",
+            "tasks": [
+              {
+                "taskName": "my_task",
+                "tests": [
+                  {
+                    "testName": "TestFoo",
+                    "isManuallyQuarantined": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

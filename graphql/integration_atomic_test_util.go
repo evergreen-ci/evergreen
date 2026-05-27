@@ -819,9 +819,23 @@ func teardownQuarantineTestMutation(t *testing.T) {
 
 func setupQuarantineTaskMutation(t *testing.T) {
 	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	var quarantined atomic.Bool
 	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, data.TransitionTaskEndpoint) {
+			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+		if strings.Contains(r.URL.Path, data.GetVariantStateEndpoint) {
+			state := "stable"
+			if quarantined.Load() {
+				state = "manually_quarantined"
+			}
+			_, _ = fmt.Fprintf(w, `{"my_task":{"task_name":"my_task","test_stats":{"TestFoo":{"state":"%s"}}}}`, state)
+			return
+		}
 		_, _ = w.Write([]byte("{}"))
 	}))
 	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
