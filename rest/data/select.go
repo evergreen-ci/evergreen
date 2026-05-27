@@ -141,7 +141,7 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 		return nil
 	}
 	if t.DisplayOnly {
-		return decorateDisplayTaskQuarantineStatus(ctx, results)
+		return decorateDisplayTaskQuarantineStatus(ctx, t.Id, results)
 	}
 	if !t.TestSelectionEnabled {
 		return nil
@@ -164,7 +164,7 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 // and fetches quarantine status once per execution task. Execution tasks
 // without test selection enabled, and tests whose execution task can't be
 // loaded, are left with the default IsManuallyQuarantined value.
-func decorateDisplayTaskQuarantineStatus(ctx context.Context, results []testresult.TestResult) error {
+func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID string, results []testresult.TestResult) error {
 	resultIndicesByExecTaskID := map[string][]int{}
 	for i, r := range results {
 		if r.TaskID == "" {
@@ -195,8 +195,12 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, results []testresu
 	}
 	grip.WarningWhen(ctx, len(missingExecTaskIDs) > 0, message.Fields{
 		"message":               "execution tasks not found when decorating display task quarantine status; their test results will be left undecorated",
+		"display_task_id":       displayTaskID,
 		"missing_exec_task_ids": missingExecTaskIDs,
 	})
+	// TODO: issue these GetTestsQuarantineStatus calls concurrently with a
+	// bounded semaphore to reduce latency on display tasks with many execution
+	// tasks.
 	for _, execTask := range execTasks {
 		if !execTask.TestSelectionEnabled {
 			continue
