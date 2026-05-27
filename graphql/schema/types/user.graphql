@@ -195,29 +195,6 @@ type UseSpruceOptions {
 }
 
 """
-CursorSettings represents the status of a user's Cursor API key stored in Sage.
-"""
-type CursorSettings {
-  keyConfigured: Boolean!
-  keyLastFour: String
-}
-
-"""
-SetCursorAPIKeyPayload is the response from setting a Cursor API key.
-"""
-type SetCursorAPIKeyPayload {
-  success: Boolean!
-  keyLastFour: String
-}
-
-"""
-DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
-"""
-type DeleteCursorAPIKeyPayload {
-  success: Boolean!
-}
-
-"""
 UserLite replaces User by sidestepping the APIUser field. It does not contain all fields at this time.
 """
 type UserLite {

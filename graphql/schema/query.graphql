@@ -72,7 +72,6 @@ type Query {
   ): [TaskTestResultSample!]
 
   # user
-  cursorSettings: CursorSettings
   myPublicKeys: [PublicKey!]!
   user(userId: String): User!
   userConfig: UserConfig
