@@ -14,9 +14,10 @@ import (
 
 func Evaluate() cli.Command {
 	const (
-		taskFlagName     = "tasks"
-		variantsFlagName = "variants"
-		diffableFlagName = "diffable"
+		taskFlagName        = "tasks"
+		variantsFlagName    = "variants"
+		diffableFlagName    = "diffable"
+		yamlAnchorsFlagName = "yaml-anchors"
 	)
 
 	return cli.Command{
@@ -39,6 +40,10 @@ func Evaluate() cli.Command {
 				Name:  joinFlagNames(localModulesFlagName, "lm"),
 				Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
 			},
+			cli.BoolFlag{
+				Name:  yamlAnchorsFlagName,
+				Usage: "(BETA) enable cross-file YAML anchors in included files",
+			},
 		),
 		Before: mergeBeforeFuncs(requirePathFlag),
 		Action: func(c *cli.Context) error {
@@ -60,8 +65,9 @@ func Evaluate() cli.Command {
 			p := &model.Project{}
 			ctx := context.Background()
 			opts := &model.GetProjectOpts{
-				LocalModules: localModuleMap,
-				ReadFileFrom: model.ReadFromLocal,
+				LocalModules:      localModuleMap,
+				ReadFileFrom:      model.ReadFromLocal,
+				EnableYAMLAnchors: c.Bool(yamlAnchorsFlagName),
 			}
 			_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
 			if err != nil {
