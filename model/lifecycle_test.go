@@ -3265,7 +3265,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 		}
 		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
 	})
-	t.Run("ReturnsFalseForNonPatchVersion", func(t *testing.T) {
+	t.Run("ReturnsTrueForNonPatchVersion", func(t *testing.T) {
 		creationInfo := TaskCreationInfo{
 			ProjectRef: &ProjectRef{
 				TestSelection: TestSelectionSettings{
@@ -3280,7 +3280,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 				IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv1")},
 			},
 		}
-		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
 	})
 	t.Run("ReturnsTrueIfTestSelectionDefaultEnabled", func(t *testing.T) {
 		creationInfo := TaskCreationInfo{
