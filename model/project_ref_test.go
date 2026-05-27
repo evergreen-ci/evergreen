@@ -283,6 +283,101 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	assert.Len(t, mergedProjects, 1)
 	assert.Equal(t, "ident_enabled", mergedProjects[0].Id)
 }
+
+func TestFindAllMergedEnabledTrackedProjectRefs(t *testing.T) {
+	t.Run("MergesSharedRepoRefAcrossMultipleProjects", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		repoRef := &RepoRef{ProjectRef{
+			Id:                  "shared_repo",
+			SpawnHostScriptPath: "shared-path",
+		}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+
+		project1 := &ProjectRef{
+			Id:        "project_a",
+			Enabled:   true,
+			RepoRefId: "shared_repo",
+		}
+		project2 := &ProjectRef{
+			Id:        "project_b",
+			Enabled:   true,
+			RepoRefId: "shared_repo",
+		}
+		require.NoError(t, project1.Insert(t.Context()))
+		require.NoError(t, project2.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+
+		for _, p := range results {
+			assert.Equal(t, "shared-path", p.SpawnHostScriptPath, "expected repo settings to be merged into project '%s'", p.Id)
+		}
+	})
+
+	t.Run("MissingRepoRefShouldError", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		project := &ProjectRef{
+			Id:        "orphan",
+			Enabled:   true,
+			RepoRefId: "nonexistent_repo",
+		}
+		require.NoError(t, project.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		assert.Error(t, err)
+		assert.Nil(t, results)
+		assert.Contains(t, err.Error(), "nonexistent_repo")
+	})
+
+	t.Run("FiltersHiddenAndDisabledProjects", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		repoRef := &RepoRef{ProjectRef{Id: "repo1"}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+
+		visible := &ProjectRef{
+			Id:        "visible",
+			Enabled:   true,
+			RepoRefId: "repo1",
+		}
+		disabled := &ProjectRef{
+			Id:        "disabled",
+			Enabled:   false,
+			RepoRefId: "repo1",
+		}
+		hidden := &ProjectRef{
+			Id:        "hidden",
+			Enabled:   true,
+			Hidden:    utility.TruePtr(),
+			RepoRefId: "repo1",
+		}
+		noRepoSettings := &ProjectRef{
+			Id:      "no_repo",
+			Enabled: true,
+		}
+		require.NoError(t, visible.Insert(t.Context()))
+		require.NoError(t, disabled.Insert(t.Context()))
+		require.NoError(t, hidden.Insert(t.Context()))
+		require.NoError(t, noRepoSettings.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+
+		ids := make(map[string]bool)
+		for _, p := range results {
+			ids[p.Id] = true
+		}
+		assert.True(t, ids["visible"], "enabled non-hidden project should be returned")
+		assert.True(t, ids["no_repo"], "enabled project without RepoRefId should be returned")
+		assert.False(t, ids["disabled"], "disabled project should not be returned")
+		assert.False(t, ids["hidden"], "hidden project should not be returned")
+	})
+}
+
 func TestGetNumberOfEnabledProjects(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
