@@ -232,13 +232,22 @@ func Count(ctx context.Context, collection string, query any) (int, error) {
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
 func FindOneQ(ctx context.Context, collection string, q Q, out any) error {
+	return findOneQ(ctx, GetGlobalSessionFactory(), collection, q, out)
+}
+
+// FindAllQ runs a Q query against the given collection, applying the results to "out."
+func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
+	return findAllQ(ctx, GetGlobalSessionFactory(), collection, q, out)
+}
+
+func findOneQ(ctx context.Context, factory SessionFactory, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
+	session, db, err := factory.GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -254,15 +263,14 @@ func FindOneQ(ctx context.Context, collection string, q Q, out any) error {
 		One(out)
 }
 
-// FindAllQ runs a Q query against the given collection, applying the results to "out."
-func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
+func findAllQ(ctx context.Context, factory SessionFactory, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
+	session, db, err := factory.GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -335,7 +343,11 @@ func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, err
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
 func Aggregate(ctx context.Context, collection string, pipeline any, out any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
+	return aggregate(ctx, GetGlobalSessionFactory(), collection, pipeline, out)
+}
+
+func aggregate(ctx context.Context, factory SessionFactory, collection string, pipeline, out any) error {
+	session, db, err := factory.GetSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(ctx, err)
@@ -349,79 +361,31 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 }
 
 // FindOneQSecondary is the SecondaryPreferred sibling of FindOneQ. Reads may
-// be replication-lagged; do not use for read-after-write within a single
-// request or inside transactions.
+// be replication-lagged; do not use for read-after-write or inside transactions.
 func FindOneQSecondary(ctx context.Context, collection string, q Q, out any) error {
-	if q.maxTime > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
-		defer cancel()
-	}
-
-	session, db, err := GetGlobalSecondarySessionFactory().GetSession(ctx)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).
-		Find(q.filter).
-		Select(q.projection).
-		Sort(q.sort...).
-		Skip(q.skip).
-		Limit(1).
-		Hint(q.hint).
-		One(out)
+	return findOneQ(ctx, GetGlobalSecondarySessionFactory(), collection, q, out)
 }
 
-// FindAllQSecondary is the SecondaryPreferred sibling of FindAllQ. Reads may
-// be replication-lagged; do not use for read-after-write within a single
-// request or inside transactions.
+// FindAllQSecondary is the SecondaryPreferred sibling of FindAllQ. See
+// FindOneQSecondary for caveats.
 func FindAllQSecondary(ctx context.Context, collection string, q Q, out any) error {
-	if q.maxTime > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
-		defer cancel()
-	}
-
-	session, db, err := GetGlobalSecondarySessionFactory().GetSession(ctx)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).
-		Find(q.filter).
-		Select(q.projection).
-		Sort(q.sort...).
-		Skip(q.skip).
-		Limit(q.limit).
-		Hint(q.hint).
-		All(out)
+	return findAllQ(ctx, GetGlobalSecondarySessionFactory(), collection, q, out)
 }
 
 // CountQSecondary is the SecondaryPreferred sibling of CountQ.
 func CountQSecondary(ctx context.Context, collection string, q Q) (int, error) {
-	res, err := evergreen.GetEnvironment().SecondaryReadClient().
-		Database(evergreen.GetEnvironment().Settings().Database.DB).
+	env := evergreen.GetEnvironment()
+	res, err := env.SecondaryReadClient().
+		Database(env.Settings().Database.DB).
 		Collection(collection).
 		CountDocuments(ctx, q.filter)
 	return int(res), errors.WithStack(err)
 }
 
-// AggregateSecondary is the SecondaryPreferred sibling of Aggregate.
+// AggregateSecondary is the SecondaryPreferred sibling of Aggregate. See
+// FindOneQSecondary for caveats.
 func AggregateSecondary(ctx context.Context, collection string, pipeline any, out any) error {
-	session, db, err := GetGlobalSecondarySessionFactory().GetSession(ctx)
-	if err != nil {
-		err = errors.Wrap(err, "establishing secondary db connection")
-		grip.Error(ctx, err)
-		return err
-	}
-	defer session.Close()
-
-	pipe := db.C(collection).Pipe(pipeline)
-
-	return errors.WithStack(pipe.All(out))
+	return aggregate(ctx, GetGlobalSecondarySessionFactory(), collection, pipeline, out)
 }
 
 // =============================================

@@ -122,10 +122,9 @@ type Environment interface {
 	Session(ctx context.Context) db.Session
 	CedarSession(ctx context.Context) db.Session
 	Client() *mongo.Client
-	// SecondaryReadClient returns the MongoDB client configured for
-	// SecondaryPreferred read routing. When ServiceFlags.SecondaryReadsDisabled
-	// is set, this returns the primary client instead — providing a runtime
-	// kill-switch without redeploy. Reads on this client may be replication-lagged.
+	// SecondaryReadClient returns the MongoDB client configured with
+	// SecondaryPreferred read routing. Reads may be replication-lagged.
+	// Returns the primary client when ServiceFlags.SecondaryReadsDisabled is set.
 	SecondaryReadClient() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
@@ -517,15 +516,15 @@ func (e *envState) Client() *mongo.Client {
 	return e.client
 }
 
-// SecondaryReadClient returns the SecondaryPreferred client. If the
-// SecondaryReadsDisabled service flag is set, or no secondary client was
-// constructed, this falls back to the primary client. Callers do not need
-// to nil-check the result.
 func (e *envState) SecondaryReadClient() *mongo.Client {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	if e.secondaryClient == nil {
+		grip.Warning(e.ctx, message.Fields{
+			"message":   "secondary read client is nil; falling back to primary",
+			"operation": "SecondaryReadClient",
+		})
 		return e.client
 	}
 	if e.settings != nil && e.settings.ServiceFlags.SecondaryReadsDisabled {

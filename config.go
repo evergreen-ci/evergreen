@@ -805,13 +805,8 @@ type DBSettings struct {
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
-// mongoClientOpt mutates client options built by mongoOptions. Used to layer
-// optional settings (e.g. read preference) on top of the shared base config
-// without changing the existing call sites.
 type mongoClientOpt func(*options.ClientOptions)
 
-// withReadPreference returns a mongoClientOpt that sets the read preference
-// on the client options. Used to construct the secondary-read client.
 func withReadPreference(rp *readpref.ReadPref) mongoClientOpt {
 	return func(o *options.ClientOptions) { o.SetReadPreference(rp) }
 }
