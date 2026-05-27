@@ -38,14 +38,13 @@ type taskGetHandler struct {
 	fetchAllExecutions bool
 	execution          int
 
-	url        string
 	parsleyURL string
 }
 
-func makeGetTaskRoute(parsleyURL, url string) gimlet.RouteHandler {
+func makeGetTaskRoute(parsleyURL string) gimlet.RouteHandler {
 	return &taskGetHandler{
 		parsleyURL: parsleyURL,
-		url:        url}
+	}
 }
 
 // Factory creates an instance of the handler.
@@ -60,7 +59,7 @@ func makeGetTaskRoute(parsleyURL, url string) gimlet.RouteHandler {
 //	@Param			fetch_all_executions	query		string	false	"Fetches previous executions of the task if they are available"
 //	@Success		200						{object}	model.APITask
 func (tgh *taskGetHandler) Factory() gimlet.RouteHandler {
-	return &taskGetHandler{parsleyURL: tgh.parsleyURL, url: tgh.url}
+	return &taskGetHandler{parsleyURL: tgh.parsleyURL}
 }
 
 // ParseAndValidate fetches the taskId from the http request.
@@ -122,7 +121,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeProjectIdentifier: true,
 		IncludeAMI:               true,
 		IncludeArtifacts:         true,
-		LogURL:                   tgh.url,
+		LogURL:                   GetURL(ctx),
 		ParsleyLogURL:            tgh.parsleyURL,
 	})
 	if err != nil {
@@ -136,7 +135,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(ctx, tasks, tgh.url, tgh.parsleyURL); err != nil {
+		if err = taskModel.BuildPreviousExecutions(ctx, tasks, GetURL(ctx), tgh.parsleyURL); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding previous task executions to API model for task '%s'", tgh.taskID))
 		}
 	}
