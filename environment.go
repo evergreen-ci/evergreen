@@ -35,6 +35,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
@@ -121,6 +122,11 @@ type Environment interface {
 	Session(ctx context.Context) db.Session
 	CedarSession(ctx context.Context) db.Session
 	Client() *mongo.Client
+	// SecondaryReadClient returns the MongoDB client configured for
+	// SecondaryPreferred read routing. When ServiceFlags.SecondaryReadsDisabled
+	// is set, this returns the primary client instead — providing a runtime
+	// kill-switch without redeploy. Reads on this client may be replication-lagged.
+	SecondaryReadClient() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
 	// Evergreen.
@@ -322,6 +328,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	secondaryClient         *mongo.Client
 	cedarClient             *mongo.Client
 	sharedDBClient          *mongo.Client
 	mu                      sync.RWMutex
@@ -432,6 +439,11 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
 
+	e.secondaryClient, err = mongo.Connect(ctx, settings.mongoOptions(settings.Url, withReadPreference(readpref.SecondaryPreferred())))
+	if err != nil {
+		return errors.Wrap(err, "connecting to the Evergreen DB for secondary reads")
+	}
+
 	if settings.SharedURL != "" {
 		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoOptions(settings.SharedURL))
 		if err != nil {
@@ -503,6 +515,23 @@ func (e *envState) Client() *mongo.Client {
 	defer e.mu.RUnlock()
 
 	return e.client
+}
+
+// SecondaryReadClient returns the SecondaryPreferred client. If the
+// SecondaryReadsDisabled service flag is set, or no secondary client was
+// constructed, this falls back to the primary client. Callers do not need
+// to nil-check the result.
+func (e *envState) SecondaryReadClient() *mongo.Client {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if e.secondaryClient == nil {
+		return e.client
+	}
+	if e.settings != nil && e.settings.ServiceFlags.SecondaryReadsDisabled {
+		return e.client
+	}
+	return e.secondaryClient
 }
 
 // DB returns a database that is dedicated to this instance of Evergreen.

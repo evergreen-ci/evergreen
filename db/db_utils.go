@@ -43,6 +43,35 @@ func GetGlobalSessionFactory() SessionFactory {
 	}
 }
 
+// GetGlobalSecondarySessionFactory initializes a session factory that routes
+// reads through the SecondaryPreferred client. Reads issued through this
+// factory may be replication-lagged. Do not use inside transactions or
+// read-then-write flows.
+func GetGlobalSecondarySessionFactory() SessionFactory {
+	env := evergreen.GetEnvironment()
+	return &shimSecondaryFactoryImpl{
+		env: env,
+		db:  env.Settings().Database.DB,
+	}
+}
+
+type shimSecondaryFactoryImpl struct {
+	env evergreen.Environment
+	db  string
+}
+
+func (s *shimSecondaryFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Database, error) {
+	if s.env == nil {
+		return nil, nil, errors.New("undefined environment")
+	}
+	client := s.env.SecondaryReadClient()
+	if client == nil {
+		return nil, nil, errors.New("secondary read client is not defined")
+	}
+	session := db.WrapClient(ctx, client).Clone()
+	return session, session.DB(s.db), nil
+}
+
 // GetSession creates a database session and connection that uses the associated
 // context in its operations.
 func (s *shimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Database, error) {
@@ -309,6 +338,82 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
+		grip.Error(ctx, err)
+		return err
+	}
+	defer session.Close()
+
+	pipe := db.C(collection).Pipe(pipeline)
+
+	return errors.WithStack(pipe.All(out))
+}
+
+// FindOneQSecondary is the SecondaryPreferred sibling of FindOneQ. Reads may
+// be replication-lagged; do not use for read-after-write within a single
+// request or inside transactions.
+func FindOneQSecondary(ctx context.Context, collection string, q Q, out any) error {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := GetGlobalSecondarySessionFactory().GetSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(1).
+		Hint(q.hint).
+		One(out)
+}
+
+// FindAllQSecondary is the SecondaryPreferred sibling of FindAllQ. Reads may
+// be replication-lagged; do not use for read-after-write within a single
+// request or inside transactions.
+func FindAllQSecondary(ctx context.Context, collection string, q Q, out any) error {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := GetGlobalSecondarySessionFactory().GetSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(q.limit).
+		Hint(q.hint).
+		All(out)
+}
+
+// CountQSecondary is the SecondaryPreferred sibling of CountQ.
+func CountQSecondary(ctx context.Context, collection string, q Q) (int, error) {
+	res, err := evergreen.GetEnvironment().SecondaryReadClient().
+		Database(evergreen.GetEnvironment().Settings().Database.DB).
+		Collection(collection).
+		CountDocuments(ctx, q.filter)
+	return int(res), errors.WithStack(err)
+}
+
+// AggregateSecondary is the SecondaryPreferred sibling of Aggregate.
+func AggregateSecondary(ctx context.Context, collection string, pipeline any, out any) error {
+	session, db, err := GetGlobalSecondarySessionFactory().GetSession(ctx)
+	if err != nil {
+		err = errors.Wrap(err, "establishing secondary db connection")
 		grip.Error(ctx, err)
 		return err
 	}
