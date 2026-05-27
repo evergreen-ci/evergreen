@@ -1855,7 +1855,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 	h.LastGroup = t.TaskGroup
 	h.LastBuildVariant = t.BuildVariant
 	h.LastVersion = t.Version
-	h.LastProject = t.Version
+	h.LastProject = t.Project
 	h.LastTaskCompletedTime = now
 
 	return nil
