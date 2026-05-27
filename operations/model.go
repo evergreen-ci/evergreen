@@ -683,19 +683,7 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, stri
 func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
 	token, path, err := s.getOAuthToken(ctx)
 	if err != nil {
-		// The auth library caches tokens in a file. Sometimes, the tokens are expired and
-		// we need to remove the file to get a new token.
-		if path != "" {
-			if delErr := os.RemoveAll(path); delErr != nil {
-				grip.Warning(ctx, errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
-			}
-			token, path, err = s.getOAuthToken(ctx)
-			if err != nil {
-				return errors.Wrap(err, "getting OAuth token after removing token file")
-			}
-		} else {
-			return errors.Wrap(err, "getting OAuth token")
-		}
+		return errors.Wrap(err, "getting OAuth token")
 	}
 
 	s.OAuth.AccessToken = token.AccessToken

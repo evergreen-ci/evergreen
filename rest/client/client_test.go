@@ -2,10 +2,12 @@ package client
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,5 +67,78 @@ func TestRemoveStaleOAuthLockFile(t *testing.T) {
 
 	t.Run("NoErrorWhenFileDoesNotExist", func(t *testing.T) {
 		assert.NoError(t, removeStaleOAuthLockFile("/nonexistent/path"))
+	})
+}
+
+func TestWaitForOAuthLockRelease(t *testing.T) {
+	t.Run("MissingLockShouldReturnImmediately", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		lockFilePath := filepath.Join(tmpDir, "token.json.lock")
+
+		err := waitForOAuthLockRelease(t.Context(), lockFilePath, time.Second)
+		require.NoError(t, err)
+	})
+
+	t.Run("StaleLockShouldBeRemovedAndReturn", func(t *testing.T) {
+		cmd := exec.Command("true")
+		require.NoError(t, cmd.Run())
+
+		tmpDir := t.TempDir()
+		lockFilePath := filepath.Join(tmpDir, "token.json.lock")
+		require.NoError(t, os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", cmd.Process.Pid)), 0600))
+
+		err := waitForOAuthLockRelease(t.Context(), lockFilePath, time.Second)
+		require.NoError(t, err)
+
+		_, statErr := os.Stat(lockFilePath)
+		assert.True(t, os.IsNotExist(statErr))
+	})
+
+	t.Run("ActiveLockShouldTimeout", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		lockFilePath := filepath.Join(tmpDir, "token.json.lock")
+		require.NoError(t, os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0600))
+
+		start := time.Now()
+		err := waitForOAuthLockRelease(t.Context(), lockFilePath, 300*time.Millisecond)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timed out")
+		assert.GreaterOrEqual(t, time.Since(start), 300*time.Millisecond)
+	})
+}
+
+func TestIsPortBindError(t *testing.T) {
+	t.Run("NilErrorShouldReturnFalse", func(t *testing.T) {
+		assert.False(t, isPortBindError(nil))
+	})
+
+	t.Run("PortBindErrorShouldReturnTrue", func(t *testing.T) {
+		assert.True(t, isPortBindError(fmt.Errorf("listen tcp 127.0.0.1:8888: bind: address already in use")))
+	})
+
+	t.Run("UnrelatedErrorShouldReturnFalse", func(t *testing.T) {
+		assert.False(t, isPortBindError(fmt.Errorf("refresh token expired")))
+	})
+}
+
+func TestCallbackPortAvailable(t *testing.T) {
+	t.Run("FreePortShouldReturnTrue", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		port := listener.Addr().(*net.TCPAddr).Port
+		require.NoError(t, listener.Close())
+
+		assert.True(t, callbackPortAvailable(fmt.Sprintf("%d", port)))
+	})
+
+	t.Run("UsedPortShouldReturnFalse", func(t *testing.T) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		port := listener.Addr().(*net.TCPAddr).Port
+		t.Cleanup(func() {
+			assert.NoError(t, listener.Close())
+		})
+
+		assert.False(t, callbackPortAvailable(fmt.Sprintf("%d", port)))
 	})
 }
