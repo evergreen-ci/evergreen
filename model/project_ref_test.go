@@ -327,9 +327,48 @@ func TestFindAllMergedEnabledTrackedProjectRefs(t *testing.T) {
 		require.NoError(t, project.Insert(t.Context()))
 
 		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, results)
 		assert.Contains(t, err.Error(), "nonexistent_repo")
+	})
+
+	t.Run("MergesDifferentRepoRefsForDifferentProjects", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		repoRefA := &RepoRef{ProjectRef{
+			Id:                  "repo_a",
+			SpawnHostScriptPath: "path-a",
+		}}
+		repoRefB := &RepoRef{ProjectRef{
+			Id:                  "repo_b",
+			SpawnHostScriptPath: "path-b",
+		}}
+		require.NoError(t, repoRefA.Replace(t.Context()))
+		require.NoError(t, repoRefB.Replace(t.Context()))
+
+		projectA := &ProjectRef{
+			Id:        "project_a",
+			Enabled:   true,
+			RepoRefId: "repo_a",
+		}
+		projectB := &ProjectRef{
+			Id:        "project_b",
+			Enabled:   true,
+			RepoRefId: "repo_b",
+		}
+		require.NoError(t, projectA.Insert(t.Context()))
+		require.NoError(t, projectB.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+
+		merged := make(map[string]string)
+		for _, p := range results {
+			merged[p.Id] = p.SpawnHostScriptPath
+		}
+		assert.Equal(t, "path-a", merged["project_a"])
+		assert.Equal(t, "path-b", merged["project_b"])
 	})
 
 	t.Run("FiltersHiddenAndDisabledProjects", func(t *testing.T) {
