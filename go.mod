@@ -17,7 +17,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
-	github.com/evergreen-ci/gimlet v0.0.0-20260420181614-abe39e3a6fa7
+	github.com/evergreen-ci/gimlet v0.0.0-20260520162532-2cfc3356800c
 	github.com/evergreen-ci/pail v0.0.0-20260507160025-5cf2ef56c715
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
@@ -176,6 +176,7 @@ require (
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
 	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
 	github.com/parquet-go/parquet-go v0.29.0
+	github.com/redis/go-redis/v9 v9.19.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
 	github.com/vikstrous/dataloadgen v0.0.10
@@ -213,6 +214,7 @@ require (
 	github.com/urfave/cli/v3 v3.6.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.39.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 )
 

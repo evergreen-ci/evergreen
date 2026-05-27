@@ -279,12 +279,6 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Changing owner/repo"); err != nil {
 				return nil, err
 			}
-			// Check if webhook is enabled if the owner/repo has changed.
-			// Using the new project ref ensures we update tracking at the end.
-			_, err = model.SetTracksPushEvents(ctx, newProjectRef)
-			if err != nil {
-				return nil, errors.Wrapf(err, "setting project tracks push events for project '%s' in '%s/%s'", projectId, newProjectRef.Owner, newProjectRef.Repo)
-			}
 			modified = true
 		} else if mergedSection.Enabled && !mergedBeforeRef.Enabled {
 			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Enabling project"); err != nil {

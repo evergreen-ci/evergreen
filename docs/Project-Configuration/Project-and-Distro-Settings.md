@@ -838,3 +838,19 @@ To enable test selection by default for all patch tasks, go to "Test Selection" 
 enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
 patch tasks by default. This default can still be overridden by choosing specific variants/tasks in which to enable test
 selection from [the CLI](../CLI.md#test-selection).
+
+## GitHub App Settings
+
+Project and repo settings include a GitHub App Settings tab where you can save a GitHub App ID and private key. These
+credentials allow Evergreen to act on behalf of your GitHub App for certain features.
+
+![github_app_creds.png](../images/github_app_creds.png)
+
+Configuring a GitHub App is required or recommended for the following:
+
+- **[GitHub check runs](Github-Integrations#github-check-runs)**: Required to define more than 10 check runs in a
+  project. The app must have `checks:write` permission.
+- **[Dynamic GitHub access tokens](Github-Integrations#dynamic-github-access-tokens)**: Required to use the
+  `github.generate_token` command to generate short-lived GitHub tokens.
+- **[Included files](Project-Configuration-Files#include)**: Recommended. Using a GitHub App for included file
+  retrieval reduces pressure on shared GitHub API rate limits.

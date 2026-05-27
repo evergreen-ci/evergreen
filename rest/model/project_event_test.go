@@ -134,7 +134,6 @@ func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectR
 	suite.Equal(in.Identifier, utility.FromStringPtr(out.Identifier))
 	suite.Equal(in.DisplayName, utility.FromStringPtr(out.DisplayName))
 	suite.Equal(in.DeactivatePrevious, out.DeactivatePrevious)
-	suite.Equal(in.TracksPushEvents, out.TracksPushEvents)
 	suite.Equal(in.PRTestingEnabled, out.PRTestingEnabled)
 	suite.Equal(in.PatchingDisabled, out.PatchingDisabled)
 

@@ -500,3 +500,46 @@ func TestIncludeDependencies(t *testing.T) {
 		So(pairs, ShouldContain, TVPair{TaskName: "b", Variant: "bv-with-group"})
 	})
 }
+
+func TestInactiveGeneratedRootMarksDepsInactive(t *testing.T) {
+	t.Run("ExplicitDeactivateWithBVCronPropagatesInactivity", func(t *testing.T) {
+		p := &Project{
+			Tasks: []ProjectTask{{Name: "my_task"}},
+			BuildVariants: []BuildVariant{{
+				Name:          "bv1",
+				CronBatchTime: "0 * * * *",
+				Tasks:         []BuildVariantTaskUnit{{Name: "my_task", Activate: utility.FalsePtr()}},
+			}},
+		}
+		di := &dependencyIncluder{Project: p}
+		result := di.inactiveGeneratedRootMarksDepsInactive(TVPair{Variant: "bv1", TaskName: "my_task"})
+		assert.True(t, result)
+	})
+
+	t.Run("BVCronWithoutExplicitDeactivateDoesNotPropagate", func(t *testing.T) {
+		p := &Project{
+			Tasks: []ProjectTask{{Name: "my_task"}},
+			BuildVariants: []BuildVariant{{
+				Name:          "bv1",
+				CronBatchTime: "0 * * * *",
+				Tasks:         []BuildVariantTaskUnit{{Name: "my_task"}},
+			}},
+		}
+		di := &dependencyIncluder{Project: p}
+		result := di.inactiveGeneratedRootMarksDepsInactive(TVPair{Variant: "bv1", TaskName: "my_task"})
+		assert.False(t, result)
+	})
+
+	t.Run("ExplicitDeactivateWithoutCronPropagatesInactivity", func(t *testing.T) {
+		p := &Project{
+			Tasks: []ProjectTask{{Name: "my_task"}},
+			BuildVariants: []BuildVariant{{
+				Name:  "bv1",
+				Tasks: []BuildVariantTaskUnit{{Name: "my_task", Activate: utility.FalsePtr()}},
+			}},
+		}
+		di := &dependencyIncluder{Project: p}
+		result := di.inactiveGeneratedRootMarksDepsInactive(TVPair{Variant: "bv1", TaskName: "my_task"})
+		assert.True(t, result)
+	})
+}

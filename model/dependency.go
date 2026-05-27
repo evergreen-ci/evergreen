@@ -190,16 +190,27 @@ func (di *dependencyIncluder) inactiveGeneratedRootMarksDepsInactive(pair TVPair
 	if bvt == nil {
 		return false
 	}
-	if bvt.BatchTime != nil || bvt.CronBatchTime != "" || utility.FromBoolPtr(bvt.Disable) {
+	bv := di.Project.FindBuildVariant(pair.Variant)
+
+	// activate: false takes precedence over cron/batchtime, so propagate
+	// inactivity to dependencies
+	taskExplicitDeactivate := bvt.Activate != nil && !utility.FromBoolPtr(bvt.Activate)
+	variantExplicitDeactivate := bv != nil && bv.Activate != nil && !utility.FromBoolPtr(bv.Activate)
+	if taskExplicitDeactivate || variantExplicitDeactivate {
+		return true
+	}
+
+	if utility.FromBoolPtr(bvt.Disable) {
 		return false
 	}
-	bv := di.Project.FindBuildVariant(pair.Variant)
+	if bvt.BatchTime != nil || bvt.CronBatchTime != "" {
+		return false
+	}
 	if bv != nil && (bv.BatchTime != nil || bv.CronBatchTime != "" || utility.FromBoolPtr(bv.Disable)) {
 		return false
 	}
-	taskExplicitDeactivate := bvt.Activate != nil && !utility.FromBoolPtr(bvt.Activate)
-	variantExplicitDeactivate := bv != nil && bv.Activate != nil && !utility.FromBoolPtr(bv.Activate)
-	return taskExplicitDeactivate || variantExplicitDeactivate
+
+	return false
 }
 
 func (di *dependencyIncluder) updateDeactivationMap(pair TVPair, pairSpecifiesActivation bool) {

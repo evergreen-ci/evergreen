@@ -638,9 +638,29 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVarsToRepoInput) (bool, error) {
 	usr := mustHaveUser(ctx)
+
+	project, err := model.FindBranchProjectRef(ctx, opts.ProjectID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", opts.ProjectID, err.Error()))
+	}
+	if project == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", opts.ProjectID))
+	}
+	if project.RepoRefId == "" {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' is not attached to a repo", opts.ProjectID))
+	}
+
+	if !usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      project.RepoRefId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}) {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to edit settings for repo '%s'", usr.Username(), project.RepoRefId))
+	}
+
 	if err := data.PromoteVarsToRepo(ctx, opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectID, err.Error()))
-
 	}
 	return true, nil
 }
@@ -777,8 +797,11 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.AddInstanceTags = addedTags
 		opts.DeleteInstanceTags = deletedTags
 	}
-	if spawnHost.Volume != nil {
-		volumeID := utility.FromStringPtr(spawnHost.Volume)
+	// TODO: Delete volume option.
+	if spawnHost.Volume != nil || spawnHost.VolumeID != nil {
+		volumeParam := utility.FromStringPtr(spawnHost.Volume)
+		volumeIDParam := utility.FromStringPtr(spawnHost.VolumeID)
+		volumeID := util.CoalesceString(volumeIDParam, volumeParam)
 		v, err = host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
@@ -933,8 +956,12 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("applying expiration options to volume '%s': %s", vol.ID, err.Error()))
 	}
-	if spawnVolumeInput.Host != nil {
-		statusCode, err := cloud.AttachVolume(ctx, vol.ID, utility.FromStringPtr(spawnVolumeInput.Host))
+	// TODO: Delete host option.
+	if spawnVolumeInput.Host != nil || spawnVolumeInput.HostID != nil {
+		hostParam := utility.FromStringPtr(spawnVolumeInput.Host)
+		hostIDParam := utility.FromStringPtr(spawnVolumeInput.HostID)
+		hostID := util.CoalesceString(hostIDParam, hostParam)
+		statusCode, err := cloud.AttachVolume(ctx, vol.ID, hostID)
 		if err != nil {
 			return false, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, "attaching volume '%s' to host: %s", vol.ID, err.Error()))
 		}

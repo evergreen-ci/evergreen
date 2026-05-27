@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const criticalRefPricingMsg = "EC2 reference pricing could not be applied, on_demand_rate and savings_plan_rate will be set to zero. To avoid inaccurate cost calculations, add a document to ec2_instance_reference_prices."
+const errorRefPricingMsg = "EC2 reference pricing could not be applied, on_demand_rate and savings_plan_rate will be set to zero. To avoid inaccurate cost calculations, add a document to ec2_instance_reference_prices."
 
 const (
 	refPricingOSLinux   = "linux"
@@ -50,15 +50,15 @@ func ec2InstanceTypeFromDistro(d *distro.Distro) string {
 }
 
 // ApplyReferenceCostDataOrWarn fills CostData from the EC2 reference price row for this distro's
-// instance type and OS, or zeros rates and logs critically if none are found.
+// instance type and OS, or zeros rates and logs an error if none are found.
 func ApplyReferenceCostDataOrWarn(ctx context.Context, d *distro.Distro) {
 	if d == nil || !evergreen.IsEc2Provider(d.Provider) {
 		return
 	}
 	instanceType := ec2InstanceTypeFromDistro(d)
 	if instanceType == "" {
-		grip.Critical(ctx, message.Fields{
-			"message":                criticalRefPricingMsg,
+		grip.Error(ctx, message.Fields{
+			"message":                errorRefPricingMsg,
 			"reason":                 "cannot_resolve_ec2_instance_type",
 			"distro_id":              d.Id,
 			"image_id":               d.ImageID,
@@ -76,8 +76,8 @@ func ApplyReferenceCostDataOrWarn(ctx context.Context, d *distro.Distro) {
 		return
 	}
 	if ref == nil {
-		grip.Critical(ctx, message.Fields{
-			"message":                  criticalRefPricingMsg,
+		grip.Error(ctx, message.Fields{
+			"message":                  errorRefPricingMsg,
 			"reason":                   "no_ec2_reference_price_row",
 			"distro_id":                d.Id,
 			"image_id":                 d.ImageID,
