@@ -366,6 +366,10 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 		LevelInfo:     levelInfo,
 		FlushInterval: time.Minute,
 		S3Usage:       config.S3Usage,
+		ReportS3Usage: func(ctx context.Context, usage s3usage.S3Usage) {
+			td := TaskData{ID: tsk.Id, Secret: tsk.Secret}
+			grip.Debug(ctx, errors.Wrap(c.ReportS3Usage(ctx, td, usage, false), "reporting S3 log usage"))
+		},
 	}
 	sender, err = task.NewTaskLogSender(ctx, tsk, senderOpts, logType)
 	if err != nil {

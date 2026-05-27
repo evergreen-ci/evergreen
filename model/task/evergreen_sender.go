@@ -52,6 +52,10 @@ type EvergreenSenderOptions struct {
 	LogType string
 	// LogKey is the S3 key for the log being written, used for storage cost tracking.
 	LogKey string
+	// ReportS3Usage, if set, is called after each timed flush to send an
+	// intermediate S3 cost report. Defined as a callback to avoid a circular
+	// import with agent/internal/client.
+	ReportS3Usage func(ctx context.Context, usage s3usage.S3Usage)
 
 	appendLines logLineAppender
 }
@@ -234,6 +238,9 @@ func (s *evergreenSender) timedFlush() {
 				if err := s.flush(s.ctx); err != nil {
 					s.opts.Local.Send(s.ctx, message.NewErrorMessage(level.Error, err))
 				}
+			}
+			if s.opts.ReportS3Usage != nil && s.opts.S3Usage != nil {
+				s.opts.ReportS3Usage(s.ctx, *s.opts.S3Usage)
 			}
 			_ = timer.Reset(s.opts.FlushInterval)
 			s.mu.Unlock()
