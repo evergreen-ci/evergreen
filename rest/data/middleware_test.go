@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -151,4 +152,46 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, http.StatusNotFound, statusCode)
 	require.Equal(t, "", projectId)
+}
+
+func TestBuildProjectParameterMapForLegacy(t *testing.T) {
+	t.Run("QueryProjectIDIgnoredWhenBuildIDInPath", func(t *testing.T) {
+		query := url.Values{"project_id": []string{"attacker_project"}}
+		vars := map[string]string{"build_id": "victim_build_id"}
+
+		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
+
+		require.Empty(t, paramsMap[projectIdKey])
+		require.Equal(t, "victim_build_id", paramsMap[buildIdKey])
+	})
+
+	t.Run("QueryProjectIDIgnoredWhenTaskIDInPath", func(t *testing.T) {
+		query := url.Values{"project_id": []string{"attacker_project"}}
+		vars := map[string]string{"task_id": "victim_task_id"}
+
+		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
+
+		require.Empty(t, paramsMap[projectIdKey])
+		require.Equal(t, "victim_task_id", paramsMap[taskIdKey])
+	})
+
+	t.Run("QueryProjectIDIgnoredWhenVersionIDInPath", func(t *testing.T) {
+		query := url.Values{"project_id": []string{"attacker_project"}}
+		vars := map[string]string{"version_id": "victim_version_id"}
+
+		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
+
+		require.Empty(t, paramsMap[projectIdKey])
+		require.Equal(t, "victim_version_id", paramsMap[versionIdKey])
+	})
+
+	t.Run("QueryProjectIDIgnoredWhenPatchIDInPath", func(t *testing.T) {
+		query := url.Values{"project_id": []string{"attacker_project"}}
+		vars := map[string]string{"patch_id": "victim_patch_id"}
+
+		paramsMap := BuildProjectParameterMapForLegacy(query, vars)
+
+		require.Empty(t, paramsMap[projectIdKey])
+		require.Equal(t, "victim_patch_id", paramsMap[patchIdKey])
+	})
 }
