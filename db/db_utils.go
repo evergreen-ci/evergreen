@@ -366,8 +366,7 @@ func FindOneQSecondary(ctx context.Context, collection string, q Q, out any) err
 	return findOneQ(ctx, GetGlobalSecondarySessionFactory(), collection, q, out)
 }
 
-// FindAllQSecondary is the SecondaryPreferred sibling of FindAllQ. See
-// FindOneQSecondary for caveats.
+// FindAllQSecondary is the SecondaryPreferred sibling of FindAllQ.
 func FindAllQSecondary(ctx context.Context, collection string, q Q, out any) error {
 	return findAllQ(ctx, GetGlobalSecondarySessionFactory(), collection, q, out)
 }
@@ -382,8 +381,7 @@ func CountQSecondary(ctx context.Context, collection string, q Q) (int, error) {
 	return int(res), errors.WithStack(err)
 }
 
-// AggregateSecondary is the SecondaryPreferred sibling of Aggregate. See
-// FindOneQSecondary for caveats.
+// AggregateSecondary is the SecondaryPreferred sibling of Aggregate.
 func AggregateSecondary(ctx context.Context, collection string, pipeline any, out any) error {
 	return aggregate(ctx, GetGlobalSecondarySessionFactory(), collection, pipeline, out)
 }
