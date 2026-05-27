@@ -204,4 +204,3 @@ func TestImage(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, res)
 }
-

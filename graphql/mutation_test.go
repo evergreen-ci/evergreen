@@ -90,4 +90,3 @@ func TestResetAPIKey(t *testing.T) {
 		assert.Equal(t, result.APIKey, updatedUser.APIKey)
 	})
 }
-
