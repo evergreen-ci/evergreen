@@ -1639,8 +1639,8 @@ func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef)
 		if err := db.FindAllQ(ctx, RepoRefCollection, q, &fetched); err != nil {
 			return nil, errors.Wrap(err, "finding repo refs")
 		}
-		for i := range fetched {
-			repoRefs[fetched[i].Id] = &fetched[i]
+		for _, r := range fetched {
+			repoRefs[r.Id] = &r
 		}
 	}
 
