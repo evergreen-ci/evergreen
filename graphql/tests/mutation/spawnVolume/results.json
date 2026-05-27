@@ -18,10 +18,6 @@
       "result": { "data": { "spawnVolume": true } }
     },
     {
-      "query_file": "spawn_and_attach_success_old.graphql",
-      "result": { "data": { "spawnVolume": true } }
-    },
-    {
       "query_file": "spawn_and_attach_success.graphql",
       "result": { "data": { "spawnVolume": true } }
     },
@@ -54,22 +50,6 @@
           {
             "message": "user 'regular_user' does not have permission to access host 'i-1104943f'",
             "path": ["spawnVolume", "spawnVolumeInput", "hostId"],
-            "extensions": {
-              "code": "FORBIDDEN"
-            }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
-      "query_file": "no_permissions_host_old.graphql",
-      "test_user_id": "regular_user",
-      "result": {
-        "errors": [
-          {
-            "message": "user 'regular_user' does not have permission to access host 'i-1104943f'",
-            "path": ["spawnVolume", "spawnVolumeInput", "host"],
             "extensions": {
               "code": "FORBIDDEN"
             }

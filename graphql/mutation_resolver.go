@@ -797,19 +797,16 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.AddInstanceTags = addedTags
 		opts.DeleteInstanceTags = deletedTags
 	}
-	// TODO: Delete volume option.
-	if spawnHost.Volume != nil || spawnHost.VolumeID != nil {
-		volumeParam := utility.FromStringPtr(spawnHost.Volume)
-		volumeIDParam := utility.FromStringPtr(spawnHost.VolumeID)
-		volumeID := util.CoalesceString(volumeIDParam, volumeParam)
-		v, err = host.FindVolumeByID(ctx, volumeID)
+	if spawnHost.VolumeID != nil {
+		volume := utility.FromStringPtr(spawnHost.VolumeID)
+		v, err = host.FindVolumeByID(ctx, volume)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volumeID, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volume, err.Error()))
 		}
 		if v.AvailabilityZone != h.Zone {
 			return nil, InputValidationError.Send(ctx, "mounted volume and spawn host must be in the same availability zone")
 		}
-		opts.AttachVolume = volumeID
+		opts.AttachVolume = volume
 	}
 	if spawnHost.PublicKey != nil {
 		if h.Status != evergreen.HostRunning {
@@ -956,12 +953,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("applying expiration options to volume '%s': %s", vol.ID, err.Error()))
 	}
-	// TODO: Delete host option.
-	if spawnVolumeInput.Host != nil || spawnVolumeInput.HostID != nil {
-		hostParam := utility.FromStringPtr(spawnVolumeInput.Host)
-		hostIDParam := utility.FromStringPtr(spawnVolumeInput.HostID)
-		hostID := util.CoalesceString(hostIDParam, hostParam)
-		statusCode, err := cloud.AttachVolume(ctx, vol.ID, hostID)
+	if spawnVolumeInput.HostID != nil {
+		host := utility.FromStringPtr(spawnVolumeInput.HostID)
+		statusCode, err := cloud.AttachVolume(ctx, vol.ID, host)
 		if err != nil {
 			return false, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, "attaching volume '%s' to host: %s", vol.ID, err.Error()))
 		}
