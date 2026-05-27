@@ -483,7 +483,7 @@ func (s *execCmdSuite) TestBackgroundCommandSuccessDoesNotSendToChannel() {
 	}, "test-task", s.logger, bgFailures, false)
 	s.Require().NoError(err)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 	s.Empty(bgFailures)
 }
 
@@ -494,7 +494,7 @@ func (s *execCmdSuite) TestBackgroundCommandFailureWithContinueOnErrorDoesNotSen
 	}, "test-task", s.logger, bgFailures, true)
 	s.Require().NoError(err)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 	s.Empty(bgFailures)
 }
 
@@ -505,7 +505,7 @@ func (s *execCmdSuite) TestBackgroundCommandSigkillExitDoesNotSendToChannel() {
 	}, "test-task", s.logger, bgFailures, false)
 	s.Require().NoError(err)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 	s.Empty(bgFailures)
 }
 
@@ -516,7 +516,7 @@ func (s *execCmdSuite) TestBackgroundCommandSigtermExitDoesNotSendToChannel() {
 	}, "test-task", s.logger, bgFailures, false)
 	s.Require().NoError(err)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 	s.Empty(bgFailures)
 }
 

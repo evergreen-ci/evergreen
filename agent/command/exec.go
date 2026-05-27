@@ -24,10 +24,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// teardownSignalExitCodes are exit codes from external termination (SIGKILL, SIGTERM) that should be treated as teardown, not failure.
+// teardownSignalExitCodes are exit codes that typically indicate the agent terminated the process during cleanup
+// (SIGKILL=9, SIGTERM=15). Note: user background processes may legitimately exit with these codes for unrelated reasons.
 var teardownSignalExitCodes = []int{9, 15}
 
-// isTeardownExit reports whether a process exit was caused by external teardown.
+// isTeardownExit reports whether a process exit should be treated as teardown rather than a real failure.
+// ctx.Err() covers exec/idle timeout cancellation only — it does not fire during killProcs-initiated teardown,
+// which sends signals directly without cancelling the task context first.
 func isTeardownExit(ctx context.Context, info jasper.ProcessInfo) bool {
 	return ctx.Err() != nil || slices.Contains(teardownSignalExitCodes, info.ExitCode)
 }

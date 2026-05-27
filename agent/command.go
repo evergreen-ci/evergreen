@@ -137,7 +137,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 	}
 
 	// Captured before per-command shadowing so drain attributes land on a live span.
-	parentCtx := ctx
+	blockCtx := ctx
 
 	for _, cmd := range cmds {
 		if err := ctx.Err(); err != nil {
@@ -183,7 +183,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		// Anything reaching this channel must fail the task; continue_on_err filtering happens at the trigger.
 		count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
 		if count > 0 {
-			span := trace.SpanFromContext(parentCtx)
+			span := trace.SpanFromContext(blockCtx)
 			span.SetAttributes(
 				attribute.Bool(backgroundCommandFailureAttribute, true),
 				attribute.Int(backgroundCommandFailureCountAttribute, count),

@@ -1554,7 +1554,11 @@ Parameters:
   If the background script exits with a non-zero exit code while the
   task is still running, the failure is logged to the task log
   (visible in Parsley) and the task is marked as failed. This behavior
-  can be opted out of with `continue_on_err: true`.
+  can be opted out of with `continue_on_err: true`. Note: processes
+  that exit with code 9 (SIGKILL) or 15 (SIGTERM) are excluded from
+  this behavior, as these codes typically indicate the process was
+  terminated by the agent during task cleanup, though user processes
+  may exit with these codes for unrelated reasons.
 - `silent`: if set to true, does not log any shell output during
   execution; useful to avoid leaking sensitive info. Note that you should
   not pass secrets as command-line arguments but instead as environment
@@ -1624,7 +1628,11 @@ Parameters:
   If the background process exits with a non-zero exit code while the
   task is still running, the failure is logged to the task log
   (visible in Parsley) and the task is marked as failed. This behavior
-  can be opted out of with `continue_on_err: true`.
+  can be opted out of with `continue_on_err: true`. Note: processes
+  that exit with code 9 (SIGKILL) or 15 (SIGTERM) are excluded from
+  this behavior, as these codes typically indicate the process was
+  terminated by the agent during task cleanup, though user processes
+  may exit with these codes for unrelated reasons.
 - `silent`: do not log output of command. Note that you should
   not pass secrets as command-line arguments but instead as environment
   variables or from a file, as Evergreen runs `ps` periodically, which
