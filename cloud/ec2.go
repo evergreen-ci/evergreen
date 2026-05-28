@@ -696,8 +696,12 @@ func extendExpireOnByDay(ctx context.Context, client AWSClient, h *host.Host) er
 
 // tagHostIDOnVolumes tags the host's EBS volumes with its EC2 instance ID.
 func tagHostIDOnVolumes(ctx context.Context, client AWSClient, h *host.Host) error {
-	devices, err := client.GetInstanceBlockDevices(ctx, h)
-	if err != nil {
+	var devices []types.InstanceBlockDeviceMapping
+	if err := utility.Retry(ctx, func() (bool, error) {
+		var err error
+		devices, err = client.GetInstanceBlockDevices(ctx, h)
+		return err != nil, err
+	}, awsClientDefaultRetryOptions()); err != nil {
 		return errors.Wrap(err, "getting instance block devices")
 	}
 
@@ -707,8 +711,11 @@ func tagHostIDOnVolumes(ctx context.Context, client AWSClient, h *host.Host) err
 			volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
 		}
 	}
+	if len(volumeIDs) == 0 {
+		return nil
+	}
 
-	_, err = client.CreateTags(ctx, &ec2.CreateTagsInput{
+	_, err := client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: volumeIDs,
 		Tags: []types.Tag{
 			{Key: aws.String(evergreen.TagHostID), Value: aws.String(h.Id)},
