@@ -232,7 +232,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		AppendTags(c.FullDisplayName()).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
-			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError)
+			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
 		})
 
 	if !c.IgnoreStandardOutput {
@@ -262,7 +262,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 
 // runJasperProcess starts a Jasper process. This does not wait for the process
 // to exit.
-func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, opts *options.Create, taskID string, logger client.LoggerProducer, bgFailures chan<- error, continueOnError bool) (jasper.Process, error) {
+func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, opts *options.Create, taskID string, logger client.LoggerProducer, bgFailures chan<- error, continueOnError bool, backgroundCommandFailureEnabled bool) (jasper.Process, error) {
 	var cancel context.CancelFunc
 	var ictx context.Context
 	if background {
@@ -310,10 +310,14 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 					logger.Task().Warningf(ctx, "Background command failed but continue_on_err is set, task will continue: %s", err)
 					return
 				}
+				if !backgroundCommandFailureEnabled {
+					logger.Task().Infof(ctx, "Background command failed but failure tracking is disabled, task will continue: %s", err)
+					return
+				}
 				select {
 				case bgFailures <- err:
 				default:
-					// Visibility for buffer pressure: a dropped error here means more failures fired than the agent drained between commands.
+					// Buffer pressure: more failures fired than the agent drained between commands.
 					grip.Debug(ctx, message.Fields{
 						"message":   "background failure channel full, dropping error",
 						"task_id":   taskID,

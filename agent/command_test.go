@@ -371,10 +371,8 @@ functions:
 `
 	s.setUpConfigAndProject(projYml)
 
-	// Flag is false (default) — channel is nil, background failures are ignored.
-	s.tc.backgroundFailures = make(chan error, 10)
-	s.tc.backgroundFailures <- errors.New("background command (PID 99999) exited with code 1")
-
+	// Flag is false (default) — backgroundFailures channel is nil, matching production behavior from setupTask.
+	// The drain should be a no-op and the task should not fail.
 	func1 := model.PluginCommandConf{
 		Function:    "trivial",
 		DisplayName: "function",

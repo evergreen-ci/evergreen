@@ -851,7 +851,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 		return evergreen.TaskFailed
 	}
 
-	count, msgs := drainBackgroundFailures(ctx, tc.taskConfig.BackgroundCommandFailureEnabled, tc.backgroundFailures, tc.logger.Task())
+	count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
 	if count > 0 {
 		span := trace.SpanFromContext(ctx)
 		span.SetAttributes(
