@@ -482,17 +482,21 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
-		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
+		// isTaskGroupNewToHost only fires when the next task is itself in a task group, so the standalone-next-task case is checked explicitly.
+		if details.TaskGroup != "" && (nextTask.TaskGroup == "" || isTaskGroupNewToHost(currentHost, nextTask)) {
 			grip.Debug(ctx, message.Fields{
-				"message":              "next task is a standalone task or part of a different task group; not updating running task group task, because current task group needs to be torn down",
-				"current_task_group":   details.TaskGroup,
-				"task_distro_id":       nextTask.DistroId,
-				"task_id":              nextTask.Id,
-				"next_task_group":      nextTask.TaskGroup,
-				"task_build_variant":   nextTask.BuildVariant,
-				"task_version":         nextTask.Version,
-				"task_project":         nextTask.Project,
-				"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+				"message":               "next task is a standalone task or part of a different task group instance; not updating running task group task, because current task group needs to be torn down",
+				"current_task_group":    details.TaskGroup,
+				"current_build_variant": currentHost.LastBuildVariant,
+				"current_project":       currentHost.LastProject,
+				"current_version":       currentHost.LastVersion,
+				"task_distro_id":        nextTask.DistroId,
+				"task_id":               nextTask.Id,
+				"next_task_group":       nextTask.TaskGroup,
+				"task_build_variant":    nextTask.BuildVariant,
+				"task_version":          nextTask.Version,
+				"task_project":          nextTask.Project,
+				"task_group_max_hosts":  nextTask.TaskGroupMaxHosts,
 			})
 			return nil, true, nil
 		}
@@ -1363,7 +1367,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			t.TaskOutputInfo.TaskLogs.BucketConfig = failedCfg
 			t.TaskOutputInfo.TestLogs.BucketConfig = failedCfg
 		}
-		j := units.NewMoveLogsToFailedBucketJob(h.env, t.Id, utility.RoundPartOfMinute(0).Format(units.TSFormat), sourceBucketCfg, units.MoveLogsTriggerTaskEnd)
+		j := units.NewMoveLogsToFailedBucketJob(h.env, t.Id, utility.RoundPartOfMinute(0).Format(units.TSFormat), sourceBucketCfg, units.MoveLogsTriggerTaskEnd, false)
 		if err := amboy.EnqueueUniqueJob(ctx, h.env.RemoteQueue(), j); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "could not enqueue job to move logs to failed bucket",

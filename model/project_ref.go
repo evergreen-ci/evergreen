@@ -57,6 +57,7 @@ type ProjectRef struct {
 	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	WaterfallDisabled      *bool               `bson:"waterfall_disabled,omitempty" json:"waterfall_disabled,omitempty" yaml:"waterfall_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
 	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
@@ -87,10 +88,6 @@ type ProjectRef struct {
 
 	// DebugSpawnHostsDisabled indicates whether users can spawn debug hosts for tasks in this project.
 	DebugSpawnHostsDisabled *bool `bson:"debug_spawn_hosts_disabled,omitempty" json:"debug_spawn_hosts_disabled,omitempty" yaml:"debug_spawn_hosts_disabled,omitempty"`
-
-	// TracksPushEvents, if true indicates that Repotracker is triggered by Github PushEvents for this project.
-	// If a repo is enabled and this is what creates the hook, then TracksPushEvents will be set at the repo level.
-	TracksPushEvents *bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
@@ -511,7 +508,6 @@ var (
 	ProjectRefAdminsKey                             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	ProjectRefGitTagAuthorizedUsersKey              = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
 	ProjectRefGitTagAuthorizedTeamsKey              = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
-	ProjectRefTracksPushEventsKey                   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefManualPRTestingEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
 	projectRefGithubChecksEnabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
@@ -520,6 +516,7 @@ var (
 	projectRefCommitQueueKey                        = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefPatchingDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefWaterfallDisabledKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WaterfallDisabled")
 	projectRefStepbackDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
 	projectRefStepbackBisectKey                     = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
 	projectRefVersionControlEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
@@ -565,6 +562,10 @@ func (p *ProjectRef) IsRepotrackerDisabled() bool {
 
 func (p *ProjectRef) IsDispatchingDisabled() bool {
 	return utility.FromBoolPtr(p.DispatchingDisabled)
+}
+
+func (p *ProjectRef) IsWaterfallEnabled() bool {
+	return !utility.FromBoolPtr(p.WaterfallDisabled)
 }
 
 func (p *ProjectRef) IsPRTestingEnabled() bool {
@@ -633,10 +634,6 @@ func (p *ProjectRef) IsHidden() bool {
 
 func (p *ProjectRef) UseRepoSettings() bool {
 	return p.RepoRefId != ""
-}
-
-func (p *ProjectRef) DoesTrackPushEvents() bool {
-	return utility.FromBoolPtr(p.TracksPushEvents)
 }
 
 func (p *ProjectRef) IsVersionControlEnabled() bool {
@@ -1024,8 +1021,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 	}
 	update = p.addGithubConflictsToUpdate(ctx, update)
 	err = db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
-		"$set":   update,
-		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
+		"$set": update,
 	})
 	if err != nil {
 		return errors.Wrap(err, "attaching repo to scope")
@@ -1065,8 +1061,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 	update = p.addGithubConflictsToUpdate(ctx, update)
 
 	err = db.UpdateId(ctx, ProjectRefCollection, p.Id, bson.M{
-		"$set":   update,
-		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
+		"$set": update,
 	})
 	if err != nil {
 		return errors.Wrap(err, "updating owner/repo in the DB")
@@ -1356,16 +1351,6 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
-	_, err = SetTracksPushEvents(ctx, &repoRef.ProjectRef)
-	if err != nil {
-		grip.Debug(ctx, message.WrapError(err, message.Fields{
-			"message": "error setting project tracks push events",
-			"repo_id": repoRef.Id,
-			"owner":   repoRef.Owner,
-			"repo":    repoRef.Repo,
-		}))
-	}
-
 	// Creates scope and give user admin access to repo.
 	if err = repoRef.Add(ctx, u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
@@ -1814,15 +1799,44 @@ func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId st
 	if err != nil {
 		return false, errors.Wrap(err, "finding branch project IDs")
 	}
+	if len(projectRefs) == 0 {
+		return false, nil
+	}
+	if evergreen.PermissionsDisabledForTests() {
+		return true, nil
+	}
 
-	for _, pRef := range projectRefs {
-		opts := gimlet.PermissionOpts{
-			Resource:      pRef.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsView.Value,
+	roleManager := evergreen.GetEnvironment().RoleManager()
+	roles, err := roleManager.GetRoles(ctx, u.Roles())
+	if err != nil {
+		return false, errors.Wrap(err, "getting user roles")
+	}
+
+	// Collect scopes from roles that grant the required project settings view permission level.
+	requiredLevel := evergreen.ProjectSettingsView.Value
+	scopeIDs := make([]string, 0, len(roles))
+	for _, r := range roles {
+		if level, ok := r.Permissions[evergreen.PermissionProjectSettings]; ok && level >= requiredLevel {
+			scopeIDs = append(scopeIDs, r.Scope)
 		}
-		if u.HasPermission(ctx, opts) {
+	}
+	if len(scopeIDs) == 0 {
+		return false, nil
+	}
+
+	scopes, err := roleManager.FilterScopesByResourceType(ctx, scopeIDs, evergreen.ProjectResourceType)
+	if err != nil {
+		return false, errors.Wrap(err, "filtering scopes by resource type")
+	}
+
+	allowed := make(map[string]struct{})
+	for _, s := range scopes {
+		for _, resource := range s.Resources {
+			allowed[resource] = struct{}{}
+		}
+	}
+	for _, pRef := range projectRefs {
+		if _, ok := allowed[pRef.Id]; ok {
 			return true, nil
 		}
 	}
@@ -1970,40 +1984,6 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx context.Context, o
 		"branch":  branch,
 	})
 	return nil, nil
-}
-
-// SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
-func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
-	// Don't return errors because it could cause the project page to break if GitHub is down.
-	hasApp, err := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, projectRef.Owner, projectRef.Repo)
-	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message":            "Error verifying GitHub app installation",
-			"project":            projectRef.Id,
-			"project_identifier": projectRef.Identifier,
-			"owner":              projectRef.Owner,
-			"repo":               projectRef.Repo,
-		}))
-		projectRef.TracksPushEvents = utility.FalsePtr()
-		return false, nil
-	}
-	// don't return error:
-	// sometimes people change a project to track a personal
-	// branch we don't have access to
-	if !hasApp {
-		grip.Warning(ctx, message.Fields{
-			"message":            "GitHub app not installed",
-			"project":            projectRef.Id,
-			"project_identifier": projectRef.Identifier,
-			"owner":              projectRef.Owner,
-			"repo":               projectRef.Repo,
-		})
-		projectRef.TracksPushEvents = utility.FalsePtr()
-		return false, nil
-	}
-
-	projectRef.TracksPushEvents = utility.TruePtr()
-	return true, nil
 }
 
 func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete []string) error {
@@ -2272,6 +2252,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			projectRefWaterfallDisabledKey:       p.WaterfallDisabled,
 			projectRefStepbackDisabledKey:        p.StepbackDisabled,
 			projectRefStepbackBisectKey:          p.StepbackBisect,
 			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,
@@ -2281,10 +2262,6 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			ProjectRefDisabledStatsCacheKey:      p.DisabledStatsCache,
 			projectRefDebugSpawnHostsDisabledKey: p.DebugSpawnHostsDisabled,
 			projectRefRunEveryMainlineCommitKey:  p.RunEveryMainlineCommit,
-		}
-		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
-		if p.TracksPushEvents != nil {
-			setUpdate[ProjectRefTracksPushEventsKey] = p.TracksPushEvents
 		}
 		// Allow a user to modify owner and repo only if they are editing an unattached project
 		if !isRepo && !p.UseRepoSettings() && !defaultToRepo {

@@ -523,8 +523,6 @@ type APIProjectRef struct {
 	DisplayName *string `json:"display_name"`
 	// List of identifiers of tasks used in this patch.
 	DeactivatePrevious *bool `json:"deactivate_previous"`
-	// If true, repotracker is run on github push events. If false, repotracker is run periodically every few minutes.
-	TracksPushEvents *bool `json:"tracks_push_events"`
 	// Enable GitHub automated pull request testing.
 	PRTestingEnabled *bool `json:"pr_testing_enabled"`
 	// Enable GitHub manual pull request testing.
@@ -556,6 +554,8 @@ type APIProjectRef struct {
 	RepotrackerError *APIRepositoryErrorDetails `json:"repotracker_error"`
 	// Disable task dispatching.
 	DispatchingDisabled *bool `json:"dispatching_disabled"`
+	// Disable automatic task activation on the waterfall.
+	WaterfallDisabled *bool `json:"waterfall_disabled"`
 	// Disable stepback.
 	StepbackDisabled *bool `json:"stepback_disabled"`
 	// Enable debug spawn host functionality.
@@ -637,7 +637,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		Identifier:                       utility.FromStringPtr(p.Identifier),
 		DisplayName:                      utility.FromStringPtr(p.DisplayName),
 		DeactivatePrevious:               utility.BoolPtrCopy(p.DeactivatePrevious),
-		TracksPushEvents:                 utility.BoolPtrCopy(p.TracksPushEvents),
 		PRTestingEnabled:                 utility.BoolPtrCopy(p.PRTestingEnabled),
 		ManualPRTestingEnabled:           utility.BoolPtrCopy(p.ManualPRTestingEnabled),
 		GitTagVersionsEnabled:            utility.BoolPtrCopy(p.GitTagVersionsEnabled),
@@ -652,6 +651,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		PatchingDisabled:                 utility.BoolPtrCopy(p.PatchingDisabled),
 		RepotrackerDisabled:              utility.BoolPtrCopy(p.RepotrackerDisabled),
 		DispatchingDisabled:              utility.BoolPtrCopy(p.DispatchingDisabled),
+		WaterfallDisabled:                utility.BoolPtrCopy(p.WaterfallDisabled),
 		StepbackDisabled:                 utility.BoolPtrCopy(p.StepbackDisabled),
 		StepbackBisect:                   utility.BoolPtrCopy(p.StepbackBisect),
 		VersionControlEnabled:            utility.BoolPtrCopy(p.VersionControlEnabled),
@@ -749,7 +749,6 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
-	p.TracksPushEvents = utility.BoolPtrCopy(projectRef.TracksPushEvents)
 	p.PRTestingEnabled = utility.BoolPtrCopy(projectRef.PRTestingEnabled)
 	p.ManualPRTestingEnabled = utility.BoolPtrCopy(projectRef.ManualPRTestingEnabled)
 	p.GitTagVersionsEnabled = utility.BoolPtrCopy(projectRef.GitTagVersionsEnabled)
@@ -761,6 +760,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
+	p.WaterfallDisabled = utility.BoolPtrCopy(projectRef.WaterfallDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
 	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)

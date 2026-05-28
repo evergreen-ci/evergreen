@@ -1137,7 +1137,8 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	if tc.oomTrackerEnabled(a.opts.CloudProvider) && status == evergreen.TaskFailed {
+	// Check both statuses, as this may have changed via user endpoint or etc.
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) && (detail.Status == evergreen.TaskFailed || status == evergreen.TaskFailed) {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer oomCancel()

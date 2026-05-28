@@ -56,7 +56,7 @@ and
 
 ## Include Limits
 
-We have a limit of 35
+We have a limit of 50
 [included files](../Project-Configuration/Project-Configuration-Files/#Include)
 per project based on this
 [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) about GitHub

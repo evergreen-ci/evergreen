@@ -638,9 +638,29 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVarsToRepoInput) (bool, error) {
 	usr := mustHaveUser(ctx)
+
+	project, err := model.FindBranchProjectRef(ctx, opts.ProjectID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", opts.ProjectID, err.Error()))
+	}
+	if project == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", opts.ProjectID))
+	}
+	if project.RepoRefId == "" {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' is not attached to a repo", opts.ProjectID))
+	}
+
+	if !usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      project.RepoRefId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}) {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to edit settings for repo '%s'", usr.Username(), project.RepoRefId))
+	}
+
 	if err := data.PromoteVarsToRepo(ctx, opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectID, err.Error()))
-
 	}
 	return true, nil
 }
@@ -777,15 +797,16 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.AddInstanceTags = addedTags
 		opts.DeleteInstanceTags = deletedTags
 	}
-	if spawnHost.Volume != nil {
-		v, err = host.FindVolumeByID(ctx, *spawnHost.Volume)
+	if spawnHost.VolumeID != nil {
+		volume := utility.FromStringPtr(spawnHost.VolumeID)
+		v, err = host.FindVolumeByID(ctx, volume)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", utility.FromStringPtr(spawnHost.Volume), err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volume, err.Error()))
 		}
 		if v.AvailabilityZone != h.Zone {
 			return nil, InputValidationError.Send(ctx, "mounted volume and spawn host must be in the same availability zone")
 		}
-		opts.AttachVolume = *spawnHost.Volume
+		opts.AttachVolume = volume
 	}
 	if spawnHost.PublicKey != nil {
 		if h.Status != evergreen.HostRunning {
@@ -932,8 +953,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("applying expiration options to volume '%s': %s", vol.ID, err.Error()))
 	}
-	if spawnVolumeInput.Host != nil {
-		statusCode, err := cloud.AttachVolume(ctx, vol.ID, utility.FromStringPtr(spawnVolumeInput.Host))
+	if spawnVolumeInput.HostID != nil {
+		host := utility.FromStringPtr(spawnVolumeInput.HostID)
+		statusCode, err := cloud.AttachVolume(ctx, vol.ID, host)
 		if err != nil {
 			return false, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, "attaching volume '%s' to host: %s", vol.ID, err.Error()))
 		}

@@ -184,7 +184,7 @@ type EditSpawnHostInput struct {
 	SavePublicKey       *bool                   `json:"savePublicKey,omitempty"`
 	ServicePassword     *string                 `json:"servicePassword,omitempty"`
 	SleepSchedule       *host.SleepScheduleInfo `json:"sleepSchedule,omitempty"`
-	Volume              *string                 `json:"volume,omitempty"`
+	VolumeID            *string                 `json:"volumeId,omitempty"`
 }
 
 type ExternalLinkForMetadata struct {
@@ -540,7 +540,7 @@ type SpawnHostInput struct {
 type SpawnVolumeInput struct {
 	AvailabilityZone string     `json:"availabilityZone"`
 	Expiration       *time.Time `json:"expiration,omitempty"`
-	Host             *string    `json:"host,omitempty"`
+	HostID           *string    `json:"hostId,omitempty"`
 	NoExpiration     *bool      `json:"noExpiration,omitempty"`
 	Size             int        `json:"size"`
 	Type             string     `json:"type"`

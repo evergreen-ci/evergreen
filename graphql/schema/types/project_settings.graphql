@@ -49,6 +49,7 @@ input ProjectInput {
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
+  waterfallDisabled: Boolean
   displayName: String
   enabled: Boolean
   externalLinks: [ExternalLinkInput!]
@@ -82,7 +83,6 @@ input ProjectInput {
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   testSelection: TestSelectionSettingsInput
-  tracksPushEvents: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput

@@ -251,6 +251,7 @@ type Project {
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
+  waterfallDisabled: Boolean
   displayName: String!
   enabled: Boolean
   externalLinks: [ExternalLink!]
@@ -289,7 +290,6 @@ type Project {
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
   testSelection: TestSelectionSettings
-  tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
@@ -357,6 +357,7 @@ type ProjectLite {
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
+  waterfallDisabled: Boolean
   displayName: String!
   enabled: Boolean
   githubChecksEnabled: Boolean
@@ -385,6 +386,5 @@ type ProjectLite {
   spawnHostScriptPath: String!
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
-  tracksPushEvents: Boolean
   versionControlEnabled: Boolean
 }

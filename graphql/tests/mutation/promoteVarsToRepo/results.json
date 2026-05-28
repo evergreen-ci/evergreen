@@ -7,6 +7,38 @@
           "promoteVarsToRepo": true
         }
       }
+    },
+    {
+      "query_file": "promote_vars_branch_admin_only.graphql",
+      "test_user_id": "branch_admin_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'branch_admin_user' does not have permission to edit settings for repo 'sandbox_repo_id'",
+            "path": ["promoteVarsToRepo"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "promote_vars_no_access.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to 'edit project settings' for the project 'sandbox_project_id'",
+            "path": ["promoteVarsToRepo", "opts", "projectId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

@@ -75,12 +75,17 @@ func New(apiURL string) Config {
 	c.Directives.RequireHostAccess = func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (any, error) {
 		args, isStringMap := obj.(map[string]interface{})
 		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "host not specified")
+			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 		hostId, hasHostId := args["hostId"].(string)
 		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
+
+		// If no host ID is present, the field is optional and null, so skip the access check.
 		if !hasHostId && !hasHostIds {
-			return nil, ResourceNotFound.Send(ctx, "host not specified")
+			return next(ctx)
+		}
+		if (hasHostId && hostId == "") || (hasHostIds && len(hostIdsInterface) == 0) {
+			return nil, ResourceNotFound.Send(ctx, "must specify host ID(s)")
 		}
 
 		hostIdsToCheck := []string{hostId}
@@ -123,7 +128,6 @@ func New(apiURL string) Config {
 
 		// If directive is checking for create permissions, no distro ID is required.
 		if access == DistroSettingsAccessCreate {
-
 			if user.HasDistroCreatePermission(ctx) {
 				return next(ctx)
 			}
@@ -339,6 +343,34 @@ func New(apiURL string) Config {
 			return next(ctx)
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
+	}
+	c.Directives.RequireVolumeAccess = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "converting args into map")
+		}
+
+		volumeId, hasVolumeId := args["volumeId"].(string)
+		// If no volume ID is present, the field is optional and null, so skip the access check.
+		if !hasVolumeId {
+			return next(ctx)
+		}
+		if volumeId == "" {
+			return nil, InputValidationError.Send(ctx, "must specify volume ID")
+		}
+
+		dbUser := mustHaveUser(ctx)
+		v, err := host.FindVolumeByID(ctx, volumeId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", volumeId, err.Error()))
+		}
+		if v == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("volume '%s' not found", volumeId))
+		}
+		if userHasVolumePermission(ctx, dbUser, volumeId, v.CreatedBy) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access volume '%s'", dbUser.Username(), volumeId))
 	}
 
 	return c

@@ -570,7 +570,20 @@ func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
-	foundHost := MustHaveHost(ctx)
+	foundHost := GetHost(ctx)
+	if foundHost == nil {
+		var err error
+		foundHost, err = host.FindOneId(ctx, h.hostID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s'", h.hostID))
+		}
+		if foundHost == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("host '%s' not found", h.hostID),
+			})
+		}
+	}
 
 	dv := apimodels.DistroView{
 		DisableShallowClone: foundHost.Distro.DisableShallowClone,
@@ -853,10 +866,15 @@ func (h *reportHighExecTimeoutHandler) Parse(ctx context.Context, r *http.Reques
 
 func (h *reportHighExecTimeoutHandler) Run(ctx context.Context) gimlet.Responder {
 	t := MustHaveTask(ctx)
+	// Ignore errors because the project identifier is a nice-to-have for
+	// alerting.
+	projectIdentifier, _ := model.GetIdentifierForProject(ctx, t.Project)
+
 	grip.Warning(ctx, message.Fields{
 		"message":                          "task dynamically set an unusually high exec timeout",
 		"task_id":                          t.Id,
-		"project":                          t.Project,
+		"project_id":                       t.Project,
+		"project_identifier":               projectIdentifier,
 		"display_name":                     t.DisplayName,
 		"exec_timeout_secs":                h.report.ExecTimeoutSecs,
 		"threshold_high_exec_timeout_secs": int(evergreen.HighExecTimeoutThreshold.Seconds()),

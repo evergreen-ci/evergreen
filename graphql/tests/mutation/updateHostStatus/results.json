@@ -6,11 +6,8 @@
         "data": null,
         "errors": [
           {
-            "message": "No matching hosts found",
-            "path": [
-              "updateHostStatus",
-              "hostIds"
-            ],
+            "message": "must specify host ID(s)",
+            "path": ["updateHostStatus", "hostIds"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -33,10 +30,7 @@
         "errors": [
           {
             "message": "No matching hosts found",
-            "path": [
-              "updateHostStatus",
-              "hostIds"
-            ],
+            "path": ["updateHostStatus", "hostIds"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -60,10 +54,7 @@
         "errors": [
           {
             "message": "user 'regular_user' does not have permission to access host 'i-0d0ae8b83366d22be'",
-            "path": [
-              "updateHostStatus",
-              "hostIds"
-            ],
+            "path": ["updateHostStatus", "hostIds"],
             "extensions": {
               "code": "FORBIDDEN"
             }

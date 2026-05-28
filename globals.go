@@ -485,26 +485,31 @@ const (
 	ModifySpawnHostProjectSettings ModifySpawnHostSource = "project_settings"
 )
 
-// Common OTEL constants and attribute keys
+// Common Otel constants and attribute keys
 const (
 	PackageName = "github.com/evergreen-ci/evergreen"
 
 	OtelAttributeMaxLength = 10000
-	// task otel attributes
-	TaskIDOtelAttribute             = "evergreen.task.id"
-	TaskNameOtelAttribute           = "evergreen.task.name"
-	TaskExecutionOtelAttribute      = "evergreen.task.execution"
-	TaskStatusOtelAttribute         = "evergreen.task.status"
-	TaskFailureTypeOtelAttribute    = "evergreen.task.failure_type"
-	TaskFailingCommandOtelAttribute = "evergreen.task.failing_command"
-	TaskDescriptionOtelAttribute    = "evergreen.task.description"
-	TaskTagsOtelAttribute           = "evergreen.task.tags"
-	TaskActivatedTimeOtelAttribute  = "evergreen.task.activated_time"
-	TaskIngestTimeOtelAttribute     = "evergreen.task.ingest_time"
-	TaskOnDemandCostOtelAttribute   = "evergreen.task.on_demand_cost"
-	TaskAdjustedCostOtelAttribute   = "evergreen.task.adjusted_cost"
-	TaskGroupOtelAttribute          = "evergreen.task.task_group"
-	TaskGroupMaxHostsOtelAttribute  = "evergreen.task.task_group_max_hosts"
+	// task otel span name and attributes
+	TaskIDOtelAttribute                         = "evergreen.task.id"
+	TaskNameOtelAttribute                       = "evergreen.task.name"
+	TaskExecutionOtelAttribute                  = "evergreen.task.execution"
+	TaskStatusOtelAttribute                     = "evergreen.task.status"
+	TaskFailureTypeOtelAttribute                = "evergreen.task.failure_type"
+	TaskFailingCommandOtelAttribute             = "evergreen.task.failing_command"
+	TaskDescriptionOtelAttribute                = "evergreen.task.description"
+	TaskTagsOtelAttribute                       = "evergreen.task.tags"
+	TaskActivatedTimeOtelAttribute              = "evergreen.task.activated_time"
+	TaskIngestTimeOtelAttribute                 = "evergreen.task.ingest_time"
+	TaskOnDemandCostOtelAttribute               = "evergreen.task.on_demand_cost"
+	TaskAdjustedCostOtelAttribute               = "evergreen.task.adjusted_cost"
+	TaskCompletedOtelSpanName                   = "task.completed"
+	TaskGroupOtelAttribute                      = "evergreen.task.task_group"
+	TaskGroupMaxHostsOtelAttribute              = "evergreen.task.task_group_max_hosts"
+	TaskVariantOtelAttribute                    = "evergreen.task.variant"
+	TaskTimeWaitingForSchedulingMsOtelAttribute = "evergreen.task.time_waiting_for_scheduling_ms"
+	TaskTimeWaitingForDepsMsOtelAttribute       = "evergreen.task.time_waiting_for_dependencies_ms"
+	TaskDurationMsOtelAttribute                 = "evergreen.task.duration_ms"
 
 	// EBS cost otel attributes — task-level (throughput)
 	TaskEBSOnDemandThroughputCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_throughput_cost"
@@ -609,6 +614,10 @@ const (
 	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
 	GraphQLAIAgentOtelAttribute    = "evergreen.graphql.ai_agent"
 	AggregationNameOtelAttribute   = "db.aggregationName"
+
+	// HTTP request otel attributes.
+	HTTPClientAuthOtelAttribute  = "evergreen.http.client_auth"
+	HTTPUserOnlyAPIOtelAttribute = "evergreen.http.user.only_api"
 )
 
 const (

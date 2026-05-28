@@ -37,7 +37,6 @@
       },
       "admins": ["bob.smith"],
       "spawn_host_script_path": "",
-      "tracks_push_events": true,
       "perf_enabled": true,
       "build_baron_settings": {
         "ticket_create_project": "EVG",
