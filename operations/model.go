@@ -683,7 +683,7 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, stri
 func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
 	token, path, err := s.getOAuthToken(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting OAuth token")
+		return errors.Wrap(err, "getting OAuth token; if your device cannot use the browser, try running 'evergreen login --no-browser'")
 	}
 
 	s.OAuth.AccessToken = token.AccessToken

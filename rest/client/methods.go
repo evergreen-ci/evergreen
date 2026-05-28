@@ -1958,8 +1958,7 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	ctx = oidc.ClientContext(ctx, httpClient)
 
 	loader := &dex.FileTokenLoader{}
-	baseOpts := append([]dex.ClientOption{}, opts...)
-	baseOpts = append(baseOpts,
+	baseOpts := append(opts,
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
 		dex.WithFallbackToStdOut(true),
@@ -1967,6 +1966,7 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 
 	flow := oauthFlowAuthCode
 	if doNotUseBrowser {
+		grip.Notice(ctx, "Using OAuth device flow because oauth.do_not_use_browser is true. You can set oauth.do_not_use_browser to false in your client configuration file to allow Evergreen to open a browser for a smoother login experience.")
 		flow = oauthFlowDevice
 	} else if !callbackPortAvailable(oauthCallbackPort) {
 		grip.Notice(ctx, message.Fields{
@@ -1989,6 +1989,13 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	if err != nil && flow == oauthFlowAuthCode && isPortBindError(err) {
 		grip.Notice(ctx, "OAuth auth-code flow failed due to a port conflict; falling back to device code flow")
 		flow = oauthFlowDevice
+		token, tokenPath, err = requestOAuthToken(ctx, baseOpts, loader, flow)
+		if err == nil && token != nil && token.Expiry.After(time.Now()) {
+			return token, tokenPath, nil
+		}
+	}
+
+	if err != nil && isOAuthLockClaimedError(err) {
 		token, tokenPath, err = requestOAuthToken(ctx, baseOpts, loader, flow)
 		if err == nil && token != nil && token.Expiry.After(time.Now()) {
 			return token, tokenPath, nil
@@ -2027,12 +2034,8 @@ func requestOAuthToken(ctx context.Context, baseOpts []dex.ClientOption, loader 
 	defer client.Close()
 
 	tokenPath := client.TokenFilePath()
-	lockPath := tokenPath + ".lock"
-	if err := waitForOAuthLockRelease(ctx, lockPath, oauthLockWaitTimeout); err != nil {
+	if err := removeInvalidOAuthTokenCacheIfUnlocked(ctx, tokenPath, oauthLockWaitTimeout); err != nil {
 		return nil, tokenPath, err
-	}
-	if err := removeStaleOAuthLockFile(lockPath); err != nil {
-		grip.Warning(ctx, errors.Wrapf(err, "removing stale OAuth token lock file at '%s'", lockPath))
 	}
 
 	token, err := client.Token()
@@ -2062,6 +2065,38 @@ func isPortBindError(err error) bool {
 	return strings.Contains(errString, "address already in use") ||
 		strings.Contains(errString, "bind:") ||
 		strings.Contains(errString, "listen tcp")
+}
+
+func isOAuthLockClaimedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, dex.ErrLockClaimed) || strings.Contains(strings.ToLower(err.Error()), "lock claimed by process")
+}
+
+func removeInvalidOAuthTokenCacheIfUnlocked(ctx context.Context, tokenFilePath string, timeout time.Duration) error {
+	if tokenFilePath == "" {
+		return nil
+	}
+	lockPath := tokenFilePath + ".lock"
+	if err := waitForOAuthLockRelease(ctx, lockPath, timeout); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(tokenFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "reading OAuth token file at '%s'", tokenFilePath)
+	}
+	token := &oauth2.Token{}
+	if err := json.Unmarshal(data, token); err == nil {
+		return nil
+	}
+	if err := os.Remove(tokenFilePath); err != nil && !os.IsNotExist(err) {
+		return errors.Wrapf(err, "removing invalid OAuth token file at '%s'", tokenFilePath)
+	}
+	return nil
 }
 
 func waitForOAuthLockRelease(ctx context.Context, lockFilePath string, timeout time.Duration) error {

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -9,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 )
 
 func TestEvergreenCommunicatorConstructor(t *testing.T) {
@@ -118,6 +121,96 @@ func TestIsPortBindError(t *testing.T) {
 
 	t.Run("UnrelatedErrorShouldReturnFalse", func(t *testing.T) {
 		assert.False(t, isPortBindError(fmt.Errorf("refresh token expired")))
+	})
+}
+
+func TestIsOAuthLockClaimedError(t *testing.T) {
+	t.Run("NilErrorShouldReturnFalse", func(t *testing.T) {
+		assert.False(t, isOAuthLockClaimedError(nil))
+	})
+
+	t.Run("WrappedDexLockErrorShouldReturnTrue", func(t *testing.T) {
+		assert.True(t, isOAuthLockClaimedError(fmt.Errorf("lock claimed by process 123: %w", dex.ErrLockClaimed)))
+	})
+
+	t.Run("DexLockMessageShouldReturnTrue", func(t *testing.T) {
+		assert.True(t, isOAuthLockClaimedError(fmt.Errorf("lock claimed by process 123: lock file claimed by another process")))
+	})
+
+	t.Run("UnrelatedErrorShouldReturnFalse", func(t *testing.T) {
+		assert.False(t, isOAuthLockClaimedError(fmt.Errorf("refresh token expired")))
+	})
+}
+
+func TestRemoveInvalidOAuthTokenCacheIfUnlocked(t *testing.T) {
+	t.Run("MissingTokenShouldReturnImmediately", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tokenFilePath := filepath.Join(tmpDir, "token.json")
+
+		require.NoError(t, removeInvalidOAuthTokenCacheIfUnlocked(t.Context(), tokenFilePath, time.Second))
+	})
+
+	t.Run("ValidTokenShouldRemain", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tokenFilePath := filepath.Join(tmpDir, "token.json")
+		tokenData, err := json.Marshal(&oauth2.Token{
+			AccessToken:  "access",
+			RefreshToken: "refresh",
+			Expiry:       time.Now().Add(time.Hour),
+		})
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(tokenFilePath, tokenData, 0600))
+
+		require.NoError(t, removeInvalidOAuthTokenCacheIfUnlocked(t.Context(), tokenFilePath, time.Second))
+
+		_, err = os.Stat(tokenFilePath)
+		assert.NoError(t, err)
+	})
+
+	t.Run("InvalidTokenShouldBeRemoved", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tokenFilePath := filepath.Join(tmpDir, "token.json")
+		require.NoError(t, os.WriteFile(tokenFilePath, []byte("{"), 0600))
+
+		require.NoError(t, removeInvalidOAuthTokenCacheIfUnlocked(t.Context(), tokenFilePath, time.Second))
+
+		_, err := os.Stat(tokenFilePath)
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("StaleLockShouldAllowInvalidTokenRemoval", func(t *testing.T) {
+		cmd := exec.Command("true")
+		require.NoError(t, cmd.Run())
+
+		tmpDir := t.TempDir()
+		tokenFilePath := filepath.Join(tmpDir, "token.json")
+		lockFilePath := tokenFilePath + ".lock"
+		require.NoError(t, os.WriteFile(tokenFilePath, []byte("{"), 0600))
+		require.NoError(t, os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", cmd.Process.Pid)), 0600))
+
+		require.NoError(t, removeInvalidOAuthTokenCacheIfUnlocked(t.Context(), tokenFilePath, time.Second))
+
+		_, tokenErr := os.Stat(tokenFilePath)
+		assert.True(t, os.IsNotExist(tokenErr))
+		_, lockErr := os.Stat(lockFilePath)
+		assert.True(t, os.IsNotExist(lockErr))
+	})
+
+	t.Run("ActiveLockShouldNotRemoveInvalidToken", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tokenFilePath := filepath.Join(tmpDir, "token.json")
+		lockFilePath := tokenFilePath + ".lock"
+		require.NoError(t, os.WriteFile(tokenFilePath, []byte("{"), 0600))
+		require.NoError(t, os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d", os.Getpid())), 0600))
+
+		err := removeInvalidOAuthTokenCacheIfUnlocked(t.Context(), tokenFilePath, 300*time.Millisecond)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "timed out")
+
+		_, tokenErr := os.Stat(tokenFilePath)
+		assert.NoError(t, tokenErr)
+		_, lockErr := os.Stat(lockFilePath)
+		assert.NoError(t, lockErr)
 	})
 }
 
