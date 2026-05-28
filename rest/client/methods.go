@@ -1968,7 +1968,6 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 
 	flow := oauthFlowAuthCode
 	if doNotUseBrowser {
-		grip.Notice(ctx, "Using OAuth device flow because oauth.do_not_use_browser is true. You can set oauth.do_not_use_browser to false in your client configuration file to allow Evergreen to open a browser for a smoother login experience.")
 		flow = oauthFlowDevice
 	} else if !callbackPortAvailable(oauthCallbackPort) {
 		grip.Notice(ctx, message.Fields{
