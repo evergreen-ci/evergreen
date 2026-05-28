@@ -4,7 +4,6 @@ Watch the demo [here](https://drive.google.com/file/d/10g7cg9EisS-t_QKjLRrg5bKQU
 
 > **Notice:**
 > The task debugger is currently in **beta**. Features and behavior may change.
-
 > **Tip:** You can use [Claude Code as an AI debugging assistant](#using-claude-code-for-debugging) to automatically investigate failures, identify root causes, and fix them.
 
 ## Why Use the Task Debugger?
@@ -520,7 +519,7 @@ This installs the skill from the [agent-skills marketplace](https://github.com/1
 
 From any directory, start Claude Code and invoke the skill with your task ID:
 
-```
+```bash
 /evergreen-task-debugger <task_id>
 ```
 
