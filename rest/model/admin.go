@@ -2571,7 +2571,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
-		BackgroundCommandFailureEnabled: as.BackgroundCommandFailureEnabled,
+		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 	}, nil
 }
 
