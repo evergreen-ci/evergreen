@@ -40,7 +40,9 @@ var (
 		"claimed by another client",
 		"refresh token expired",
 	}
+)
 
+const (
 	oauthCallbackPort     = "8888"
 	oauthLockWaitTimeout  = 2 * time.Minute
 	oauthLockPollInterval = 200 * time.Millisecond
