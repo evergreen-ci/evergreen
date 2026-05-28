@@ -1251,6 +1251,9 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
 	}
+	if volume.Host != "" {
+		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostID), Value: aws.String(volume.Host)})
+	}
 	input := &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
 		VolumeType:       types.VolumeType(volume.Type),
