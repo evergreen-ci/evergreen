@@ -225,7 +225,7 @@ evergreen debug run-all
 
 #### `evergreen debug run-until <step>`
 
-Run from the current position up to and including the specified [step](#understanding-step-numbers). Stops immediately on the first step that fails.
+Run from the current position up to the specified [step](#understanding-step-numbers). Stops immediately on the first step that fails.
 
 ```bash
 evergreen debug run-until 5
@@ -501,3 +501,41 @@ When investigating issues, check the following:
 2. Relevant daemon logs from `~/.evergreen-local/daemon.log`
 3. Relevant execution logs from `evergreen debug logs`
 4. Relevant execution logs from the setup phase from `evergreen debug logs --setup`
+
+## Using Claude Code for Debugging
+
+You can use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) as an AI debugging assistant during your debug session. The `evergreen-task-debugger` skill gives Claude full context about the task debugger CLI and instructs it to proactively investigate failures, identify root causes, apply fixes, and verify them.
+
+### Install the Skill
+
+```bash
+claude plugin install evergreen-task-debugger@mongodb-internal
+```
+
+This installs the skill from the [agent-skills marketplace](https://github.com/10gen/agent-skills/blob/main/.agents/skills/tooling/evergreen-task-debugger/skills/evergreen-task-debugger/SKILL.md). You can also install the full tooling bundle with `claude plugin install tooling@mongodb-internal`.
+
+### Usage
+
+From any directory, start Claude Code and invoke the skill with your task ID:
+
+```
+/evergreen-task-debugger <task_id>
+```
+
+Claude Code will:
+
+1. Start the debug daemon and load the task
+2. Identify which steps failed and pull their logs
+3. Read relevant source files and configs to understand the failure
+4. Suggest a fix (or apply it directly if it's a config/script edit)
+5. Ask you to confirm before re-running the step to verify
+
+### What Claude Code Can Do
+
+- Start the debug daemon and load your task automatically
+- Analyze step logs and read source files to identify root causes
+- Edit configs, scripts, and source code to fix issues
+- Re-run failed steps to verify fixes (with your confirmation)
+- Iterate if the first fix doesn't work
+- Test with different expansion values via `set-var`
+- Hot-reload modified configurations and continue debugging
