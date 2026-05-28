@@ -92,13 +92,15 @@ func TestCacheSaveSkipsOnHit(t *testing.T) {
 	require.NoError(t, err)
 
 	c := &cacheSave{
-		CacheName:     "go-modules",
-		Bucket:        "my-cache-bucket",
-		RemotePath:    "project/caches",
-		KeyExpansions: []string{"${project_id}"},
-		Paths:         []string{"vendor"},
-		AwsKey:        "key",
-		AwsSecret:     "secret",
+		cacheCommon: cacheCommon{
+			CacheName:     "go-modules",
+			Bucket:        "my-cache-bucket",
+			RemotePath:    "project/caches",
+			KeyExpansions: []string{"${project_id}"},
+			AwsKey:        "key",
+			AwsSecret:     "secret",
+		},
+		Paths: []string{"vendor"},
 	}
 
 	require.NoError(t, c.Execute(ctx, comm, logger, conf))
