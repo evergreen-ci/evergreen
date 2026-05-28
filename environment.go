@@ -516,6 +516,8 @@ func (e *envState) Client() *mongo.Client {
 	return e.client
 }
 
+// SecondaryReadClient returns a MongoDB client configured with SecondaryPreferred read routing.
+// Returns the normal client if secondary reads are disabled by admin settings.
 func (e *envState) SecondaryReadClient() *mongo.Client {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
