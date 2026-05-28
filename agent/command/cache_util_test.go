@@ -66,6 +66,17 @@ func TestComputeCacheKey(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "does-not-exist.txt")
 	})
+
+	t.Run("KeyFileContentDoesNotCollideWithExpansions", func(t *testing.T) {
+		// A key file containing "a" plus expansion "b" must not hash the same as
+		// expansions ["a", "b"], which a naive concatenation would conflate.
+		fileWithA := writeCacheKeyFile(t, dir, "collide.txt", "a")
+		withFile, err := computeCacheKey([]string{fileWithA}, []string{"b"})
+		require.NoError(t, err)
+		withoutFile, err := computeCacheKey(nil, []string{"a", "b"})
+		require.NoError(t, err)
+		assert.NotEqual(t, withFile, withoutFile)
+	})
 }
 
 func TestCacheHitExpansionName(t *testing.T) {

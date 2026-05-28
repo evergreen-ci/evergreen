@@ -52,7 +52,6 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 	}
 
 	remoteKey := c.remoteKey(key)
-	localPath := c.localPath(conf.WorkDir)
 
 	logger.Task().Infof(ctx, "cache.restore: computed cache key '%s'.", key)
 	logger.Task().Infof(ctx, "cache.restore: looking up cache at '%s/%s'.", c.Bucket, remoteKey)
@@ -76,6 +75,14 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 		setCacheHit(conf, c.CacheName, false)
 		return nil
 	}
+
+	localPath, err := createTempCacheArchive(conf.WorkDir)
+	if err != nil {
+		return errors.Wrap(err, "creating local cache file")
+	}
+	defer func() {
+		logger.Task().Error(ctx, errors.Wrapf(os.Remove(localPath), "removing local cache archive '%s'", localPath))
+	}()
 
 	if err := c.bucket.Download(ctx, remoteKey, localPath); err != nil {
 		return errors.Wrapf(err, "downloading cache object '%s'", remoteKey)

@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"io"
 	"io/fs"
@@ -153,9 +154,21 @@ func (c *cacheCommon) remoteKey(key string) string {
 	return path.Join(c.RemotePath, key, c.CacheName+cacheArchiveSuffix)
 }
 
-// localPath returns the on-disk path for the cache tarball within workDir.
-func (c *cacheCommon) localPath(workDir string) string {
-	return filepath.Join(workDir, c.CacheName+cacheArchiveSuffix)
+// createTempCacheArchive creates a uniquely named temporary file in workDir for
+// the cache tarball and returns its path. The unique name avoids colliding with
+// or overwriting a user file in the working directory; the caller is
+// responsible for removing it.
+func createTempCacheArchive(workDir string) (string, error) {
+	f, err := os.CreateTemp(workDir, "cache-*"+cacheArchiveSuffix)
+	if err != nil {
+		return "", errors.Wrap(err, "creating temporary cache archive file")
+	}
+	// Close immediately; callers reopen the path via the archive writer or the
+	// S3 download. The file must be closed before it can be removed on Windows.
+	if err := f.Close(); err != nil {
+		return "", errors.Wrapf(err, "closing temporary cache archive file '%s'", f.Name())
+	}
+	return f.Name(), nil
 }
 
 func (c *cacheCommon) getRoleARN() string {
@@ -202,9 +215,14 @@ func cacheWasHit(conf *internal.TaskConfig, cacheName string) bool {
 }
 
 // validateCacheName checks that name is set and uses only allowed characters.
+// Character validation is deferred for expandable values, since the resolved
+// name is re-validated after expansions are applied.
 func validateCacheName(name string) error {
 	if name == "" {
 		return errors.New("name cannot be blank")
+	}
+	if util.IsExpandable(name) {
+		return nil
 	}
 	if !cacheNameRegex.MatchString(name) {
 		return errors.Errorf("name '%s' must match %s", name, cacheNameRegex.String())
@@ -225,20 +243,30 @@ func validateCacheCredentials(catcher grip.Catcher, roleARN, awsKey, awsSecret, 
 	}
 }
 
-// computeCacheKey returns a hex-encoded SHA-256 over the contents of each key
-// file followed by each expansion value, in the order given. Every entry is
-// null-terminated so the key is order-sensitive and unambiguous: the same bytes
-// split differently across entries hash to different keys. Nothing about the
-// runtime environment is folded in implicitly; callers include values like
-// "${distro_id}" through keyExpansions if they want that partitioning.
+// computeCacheKey returns a hex-encoded SHA-256 over the key files followed by
+// the expansion values, in the order given. The key is order-sensitive. Each
+// section is length-prefixed and each entry is self-delimiting (key files
+// contribute a fixed-size per-file digest, expansions are length-prefixed) so
+// inputs can't run together: a key file containing "a" plus expansion "b" hashes
+// differently from expansions ["a", "b"]. Nothing about the runtime environment
+// is folded in implicitly; callers include values like "${distro_id}" through
+// keyExpansions if they want that partitioning.
 func computeCacheKey(keyFiles, keyExpansions []string) (string, error) {
 	h := sha256.New()
+	writeUint64 := func(n int) {
+		var buf [8]byte
+		binary.BigEndian.PutUint64(buf[:], uint64(n))
+		h.Write(buf[:])
+	}
+
+	writeUint64(len(keyFiles))
 	for _, keyFile := range keyFiles {
 		f, err := os.Open(keyFile)
 		if err != nil {
 			return "", errors.Wrapf(err, "opening key file '%s'", keyFile)
 		}
-		_, err = io.Copy(h, f)
+		fileHash := sha256.New()
+		_, err = io.Copy(fileHash, f)
 		closeErr := f.Close()
 		if err != nil {
 			return "", errors.Wrapf(err, "hashing key file '%s'", keyFile)
@@ -246,11 +274,15 @@ func computeCacheKey(keyFiles, keyExpansions []string) (string, error) {
 		if closeErr != nil {
 			return "", errors.Wrapf(closeErr, "closing key file '%s'", keyFile)
 		}
-		h.Write([]byte{0})
+		// A fixed-width per-file digest is self-delimiting, so file contents
+		// can't merge with the following entries.
+		h.Write(fileHash.Sum(nil))
 	}
+
+	writeUint64(len(keyExpansions))
 	for _, value := range keyExpansions {
+		writeUint64(len(value))
 		h.Write([]byte(value))
-		h.Write([]byte{0})
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
