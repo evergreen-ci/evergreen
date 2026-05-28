@@ -891,14 +891,13 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 // modifyProjectVersionsHandler is a RequestHandler for setting the priority of versions.
 type modifyProjectVersionsHandler struct {
 	projectId string
-	url       string
 	opts      dbModel.ModifyVersionsOptions
 	startTime time.Time
 	endTime   time.Time
 }
 
-func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
-	return &modifyProjectVersionsHandler{url: url}
+func makeModifyProjectVersionsHandler() gimlet.RouteHandler {
+	return &modifyProjectVersionsHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -919,7 +918,7 @@ func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
 //	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
 //	@Success		200
 func (h *modifyProjectVersionsHandler) Factory() gimlet.RouteHandler {
-	return &modifyProjectVersionsHandler{url: h.url}
+	return &modifyProjectVersionsHandler{}
 }
 
 func (h *modifyProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -1002,13 +1001,12 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 type getProjectTasksHandler struct {
 	projectName string
 	taskName    string
-	url         string
 
 	opts model.GetProjectTasksOpts
 }
 
-func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
-	return &getProjectTasksHandler{url: url}
+func makeGetProjectTasksHandler() gimlet.RouteHandler {
+	return &getProjectTasksHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -1023,7 +1021,7 @@ func makeGetProjectTasksHandler(url string) gimlet.RouteHandler {
 //	@Param			{object}	body	model.GetProjectTasksOpts	false	"parameters"
 //	@Success		200			{array}	model.APITask
 func (h *getProjectTasksHandler) Factory() gimlet.RouteHandler {
-	return &getProjectTasksHandler{url: h.url}
+	return &getProjectTasksHandler{}
 }
 
 func (h *getProjectTasksHandler) Parse(ctx context.Context, r *http.Request) error {
