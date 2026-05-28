@@ -8,11 +8,40 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
+
+// cacheNameRegex constrains a cache name to characters that are safe in both an
+// S3 object key and the derived cache-hit expansion name.
+var cacheNameRegex = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+
+// validateCacheName checks that name is set and uses only allowed characters.
+func validateCacheName(name string) error {
+	if name == "" {
+		return errors.New("name cannot be blank")
+	}
+	if !cacheNameRegex.MatchString(name) {
+		return errors.Errorf("name '%s' must match %s", name, cacheNameRegex.String())
+	}
+	return nil
+}
+
+// validateCacheCredentials enforces the same credential shape as s3.put: either
+// a role ARN, or an AWS key and secret, but not both.
+func validateCacheCredentials(catcher grip.Catcher, roleARN, awsKey, awsSecret, awsSessionToken string) {
+	if roleARN != "" {
+		catcher.NewWhen(awsKey != "", "AWS key must be empty when using role ARN")
+		catcher.NewWhen(awsSecret != "", "AWS secret must be empty when using role ARN")
+		catcher.NewWhen(awsSessionToken != "", "AWS session token must be empty when using role ARN")
+	} else {
+		catcher.NewWhen(awsKey == "", "AWS key cannot be blank")
+		catcher.NewWhen(awsSecret == "", "AWS secret cannot be blank")
+	}
+}
 
 // computeCacheKey returns a hex-encoded SHA-256 over the contents of each key
 // file followed by each expansion value, in the order given. Every entry is
