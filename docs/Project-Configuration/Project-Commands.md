@@ -485,7 +485,7 @@ functions:
         bucket: my-cache-bucket
         remote_path: my-project/caches
         key_files: [go.sum]
-        key_expansions: [ "${project_id}", "${goos}-${goarch}" ]
+        key_expansions: ["${project_id}", "${goos}-${goarch}"]
 
 tasks:
   - name: build
@@ -509,8 +509,8 @@ tasks:
           bucket: my-cache-bucket
           remote_path: my-project/caches
           key_files: [go.sum]
-          key_expansions: [ "${project_id}", "${goos}-${goarch}" ]
-          paths: [ .cache/go-mod ]
+          key_expansions: ["${project_id}", "${goos}-${goarch}"]
+          paths: [.cache/go-mod]
 ```
 
 ## downstream_expansions.set
