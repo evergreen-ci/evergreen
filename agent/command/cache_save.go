@@ -68,7 +68,14 @@ func (c *cacheSave) Execute(ctx context.Context, comm client.Communicator, logge
 	}
 
 	remoteKey := c.remoteKey(key)
-	localPath := c.localPath(conf.WorkDir)
+
+	localPath, err := createTempCacheArchive(conf.WorkDir)
+	if err != nil {
+		return errors.Wrap(err, "creating local cache file")
+	}
+	defer func() {
+		logger.Task().Error(ctx, errors.Wrapf(os.Remove(localPath), "removing local cache archive '%s'", localPath))
+	}()
 
 	logger.Task().Infof(ctx, "cache.save: computed cache key '%s'.", key)
 	logger.Task().Infof(ctx, "cache.save: bundling paths %s into '%s'.", c.Paths, localPath)
@@ -76,9 +83,6 @@ func (c *cacheSave) Execute(ctx context.Context, comm client.Communicator, logge
 	if err := makeCacheArchive(ctx, conf.WorkDir, c.Paths, localPath, logger.Task()); err != nil {
 		return errors.Wrap(err, "creating cache archive")
 	}
-	defer func() {
-		logger.Task().Error(ctx, errors.Wrapf(os.Remove(localPath), "removing local cache archive '%s'", localPath))
-	}()
 
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
