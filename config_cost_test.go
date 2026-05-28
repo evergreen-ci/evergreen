@@ -164,6 +164,37 @@ func TestIsDevprodOwnedArtifactIAMRole(t *testing.T) {
 	assert.False(t, IsDevprodOwnedArtifactIAMRole("", []string{"123456789012"}))
 }
 
+func TestIsDevprodOwnedUpload(t *testing.T) {
+	owned := []string{"123456789012"}
+	role123 := "arn:aws:iam::123456789012:role/r"
+	roleOther := "arn:aws:iam::999999999999:role/r"
+
+	t.Run("EmptyListAllowsAll", func(t *testing.T) {
+		assert.True(t, IsDevprodOwnedUpload(role123, "", nil))
+		assert.True(t, IsDevprodOwnedUpload("", "123456789012", nil))
+		assert.True(t, IsDevprodOwnedUpload("", "", nil))
+		assert.True(t, IsDevprodOwnedUpload(role123, "", []string{}))
+	})
+	t.Run("RoleARNOwnedAccount", func(t *testing.T) {
+		assert.True(t, IsDevprodOwnedUpload(role123, "", owned))
+	})
+	t.Run("RoleARNUnownedAccount", func(t *testing.T) {
+		assert.False(t, IsDevprodOwnedUpload(roleOther, "", owned))
+	})
+	t.Run("RoleARNTakesPrecedenceOverAccountID", func(t *testing.T) {
+		assert.False(t, IsDevprodOwnedUpload(roleOther, "123456789012", owned))
+	})
+	t.Run("AccountIDOwnedAccount", func(t *testing.T) {
+		assert.True(t, IsDevprodOwnedUpload("", "123456789012", owned))
+	})
+	t.Run("AccountIDUnownedAccount", func(t *testing.T) {
+		assert.False(t, IsDevprodOwnedUpload("", "999999999999", owned))
+	})
+	t.Run("BothEmptyWithListReturnsFalse", func(t *testing.T) {
+		assert.False(t, IsDevprodOwnedUpload("", "", owned))
+	})
+}
+
 func TestCostConfigIsConfigured(t *testing.T) {
 	t.Run("EmptyConfig", func(t *testing.T) {
 		c := CostConfig{}

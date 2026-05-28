@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -14,6 +15,8 @@ import (
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -297,6 +300,58 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
+}
+
+func TestJIRAIssueCallbackLogsEventAfterCtxCancel(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+	})
+
+	taskID := "task_jira_callback_ctx_cancel"
+	issueKey := "EVG-99999"
+	n := Notification{
+		ID: "jira-callback-ctx-cancel",
+		Subscriber: event.Subscriber{
+			Type: event.JIRAIssueSubscriberType,
+			Target: &event.JIRAIssueSubscriber{
+				Project:   "EVG",
+				IssueType: "Build Failure",
+			},
+		},
+		Payload: &message.JiraIssue{
+			Summary:     "title",
+			Description: "body",
+		},
+	}
+	n.SetTaskMetadata(taskID, 0, "admin.user")
+	require.NoError(t, InsertMany(t.Context(), n))
+
+	found, err := Find(t.Context(), n.ID)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+
+	jobCtx, cancel := context.WithCancel(t.Context())
+	c, err := found.Composer(jobCtx)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	cancel()
+
+	raw, ok := c.Raw().(*message.JiraIssue)
+	require.True(t, ok)
+	require.NotNil(t, raw.Callback)
+	raw.Callback(issueKey)
+
+	events, err := event.Find(t.Context(), event.TaskEventsForId(taskID))
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	assert.Equal(t, event.TaskJiraAlertCreated, events[0].EventType)
+	assert.Equal(t, taskID, events[0].ResourceId)
+	data, ok := events[0].Data.(*event.TaskEventData)
+	require.True(t, ok)
+	assert.Equal(t, issueKey, data.JiraIssue)
+	assert.Equal(t, "admin.user", data.UserId)
 }
 
 func (s *notificationSuite) TestEmailPayload() {

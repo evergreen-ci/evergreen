@@ -113,6 +113,10 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		logger: logger,
 	}
 
+	expansions.Put("otel_trace_id", "DEBUG_MODE_NO_TRACE_ID")
+	expansions.Put("otel_parent_id", "DEBUG_MODE_NO_TRACE_PARENT")
+	expansions.Put("otel_collector_endpoint", "DEBUG_MODE_NO_TRACE_COLLECTOR")
+
 	taskConfig := &internal.TaskConfig{
 		Expansions:            expansions,
 		NewExpansions:         agentutil.NewDynamicExpansions(expansions),
@@ -142,9 +146,21 @@ func NewLocalExecutor(ctx context.Context, opts LocalExecutorOptions) (*LocalExe
 		if err := localExecutor.fetchTaskConfig(ctx, opts); err != nil {
 			return nil, errors.Wrap(err, "fetching task config")
 		}
+		localExecutor.wrapLoggerWithRedactor()
 	}
 
 	return localExecutor, nil
+}
+
+func (e *LocalExecutor) wrapLoggerWithRedactor() {
+	redactedSender := redactor.NewRedactingSender(e.logger.GetSender(), redactor.RedactionOptions{
+		Expansions:         e.taskConfig.NewExpansions,
+		Redacted:           e.taskConfig.Redacted,
+		InternalRedactions: e.taskConfig.InternalRedactions,
+	})
+	redactedLogger := logging.MakeGrip(redactedSender)
+	e.logger = redactedLogger
+	e.loggerProducer = &localLoggerProducer{logger: redactedLogger}
 }
 
 // LoadProject loads and parses an Evergreen project configuration from a file
@@ -238,7 +254,13 @@ func (e *LocalExecutor) SetupWorkingDirectory(path string) error {
 		return errors.Wrapf(err, "creating working directory '%s'", path)
 	}
 
+	tmpDir := filepath.Join(path, "tmp")
+	if err := os.MkdirAll(tmpDir, 0777); err != nil {
+		e.logger.Warningf(context.Background(), "creating task temporary directory '%s': %v", tmpDir, err)
+	}
+
 	e.workDir = path
+	e.taskConfig.WorkDir = path
 	e.expansions.Put("workdir", path)
 	e.logger.Infof(context.Background(), "Working directory set to: %s", path)
 

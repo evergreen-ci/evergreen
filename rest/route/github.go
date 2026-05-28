@@ -216,7 +216,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"pr_number": event.GetPullRequest().GetNumber(),
 				"hash":      event.GetPullRequest().GetHead().GetSHA(),
 				"user":      event.GetSender().GetLogin(),
-				"assignee":  event.GetAssignee().GetLogin(),
+				"assignee":  event.GetPullRequest().GetAssignee().GetLogin(),
 				"message":   "PR accepted, attempting to queue",
 			})
 
@@ -1490,7 +1490,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		Revision:   revision,
 		GitTag:     tag,
 		RemotePath: remotePath,
-		Activate:   true,
+		Activate:   pRef.IsWaterfallEnabled(),
 	}
 	var projectInfo model.ProjectInfo
 	if remotePath != "" {

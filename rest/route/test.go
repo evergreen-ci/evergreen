@@ -159,10 +159,10 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		nextKey = fmt.Sprintf("%d", tgh.key+1)
 	}
 
-	return tgh.buildResponse(results.Results, nextKey)
+	return tgh.buildResponse(ctx, results.Results, nextKey)
 }
 
-func (tgh *testGetHandler) buildResponse(results []testresult.TestResult, key string) gimlet.Responder {
+func (tgh *testGetHandler) buildResponse(ctx context.Context, results []testresult.TestResult, key string) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response format"))
@@ -174,7 +174,7 @@ func (tgh *testGetHandler) buildResponse(results []testresult.TestResult, key st
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tgh.sc.GetURL(),
+				BaseURL:         GetURL(ctx),
 				Key:             key,
 				Limit:           tgh.limit,
 			},

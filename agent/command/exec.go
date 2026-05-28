@@ -277,8 +277,14 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 	// parent process). This thread will have no special nice until it's reset
 	// but that should be a brief window.
 	// Passing 0 as the PID refers to the current thread.
-	if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
-		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+	// Skip entirely if the agent isn't running at elevated priority (e.g. on
+	// debug spawn hosts where it lacks permission to set negative nice).
+	currentNice, niceErr := agentutil.GetNice(0)
+	shouldAdjustNice := niceErr == nil && currentNice < agentutil.DefaultNice
+	if shouldAdjustNice {
+		if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
+			logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+		}
 	}
 
 	proc, err := jpm.CreateProcess(ictx, opts)
@@ -290,11 +296,13 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 		return proc, errors.WithStack(err)
 	}
 
-	// Once the child processes has started, reset the agent's nice back to the
+	// Once the child process has started, reset the agent's nice back to the
 	// lower nice value to ensure that this agent thread will have its original
 	// CPU priority.
-	if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
-		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
+	if shouldAdjustNice {
+		if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
+			logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
+		}
 	}
 
 	if cancel != nil {

@@ -71,6 +71,9 @@ type TaskConfig struct {
 	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
 	// owned by Devprod that we want to calculate s3 costs for.
 	DevprodOwnedAWSAccountIDs []string
+	// awsAccountIDByKey caches resolved AWS account IDs keyed by AWS access key ID,
+	// so repeated s3.put commands using the same key avoid redundant STS calls.
+	awsAccountIDByKey map[string]string
 	// TestResultsCreatedAt is the time the first test results were
 	// uploaded for this task execution. Subsequent uploads reuse this
 	// value to ensure all results land in the same S3 partition.
@@ -263,6 +266,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		NewExpansions:         agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
 		DynamicExpansions:     util.Expansions{},
 		AssumeRoleInformation: map[string]AssumeRoleInformation{},
+		awsAccountIDByKey:     map[string]string{},
 		InternalRedactions:    agentutil.NewDynamicExpansions(internalRedactions),
 		ProjectVars:           opts.ExpansionsAndVars.Vars,
 		Redacted:              redacted,
@@ -359,6 +363,24 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 		attributes[evergreen.TaskActivatedTimeOtelAttribute] = tc.Task.ActivatedTime.Format(time.RFC3339)
 	}
 	return attributes
+}
+
+// GetOrSetCachedAWSAccountID returns the AWS account ID for key, resolving and caching on first use. Resolve errors are not cached.
+func (t *TaskConfig) GetOrSetCachedAWSAccountID(key string, resolve func() (string, error)) (string, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.awsAccountIDByKey == nil {
+		t.awsAccountIDByKey = map[string]string{}
+	}
+	if id, ok := t.awsAccountIDByKey[key]; ok {
+		return id, nil
+	}
+	id, err := resolve()
+	if err != nil {
+		return "", err
+	}
+	t.awsAccountIDByKey[key] = id
+	return id, nil
 }
 
 // TaskAttributes returns a list of common otel attributes for tasks.

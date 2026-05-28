@@ -599,7 +599,6 @@
               { "name": "email_notifications_disabled", "enabled": false },
               { "name": "webhook_notifications_disabled", "enabled": false },
               { "name": "github_status_api_disabled", "enabled": false },
-              { "name": "slack_sender_check_enabled", "enabled": false },
               { "name": "background_command_failure_enabled", "enabled": false }
             ]
           }
