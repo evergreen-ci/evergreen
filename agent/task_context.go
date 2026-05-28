@@ -480,6 +480,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.TaskOutput = a.opts.SetupData.TaskOutput
 	taskConfig.MaxExecTimeoutSecs = a.opts.SetupData.MaxExecTimeoutSecs
 	taskConfig.PSLoggingDisabled = a.opts.SetupData.PSLoggingDisabled
+	taskConfig.BackgroundCommandFailureEnabled = a.opts.SetupData.BackgroundCommandFailureEnabled
 
 	// Set AWS credentials for task output buckets.
 	awsCreds := pail.CreateAWSStaticCredentials(taskConfig.TaskOutput.Key, taskConfig.TaskOutput.Secret, "")

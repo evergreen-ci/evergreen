@@ -39,7 +39,11 @@ var (
 // drainBackgroundFailures consolidates the consume-and-log step shared by the two
 // task-level pass/fail decision points so they don't drift apart over time; the
 // call sites still own the divergent attribute target and failure status.
-func drainBackgroundFailures(ctx context.Context, ch <-chan error, taskLog grip.Journaler) (count int, msgs []string) {
+func drainBackgroundFailures(ctx context.Context, backgroundFailureEnabled bool, ch <-chan error, taskLog grip.Journaler) (count int, msgs []string) {
+	if !backgroundFailureEnabled || ch == nil {
+		taskLog.Debugf(ctx, "drainBackgroundFailures: skipping drain (enabled=%v, ch_nil=%v)", backgroundFailureEnabled, ch == nil)
+		return 0, nil
+	}
 	for {
 		select {
 		case bgErr := <-ch:
@@ -181,7 +185,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		commandSpan.End()
 
 		// Anything reaching this channel must fail the task; continue_on_err filtering happens at the trigger.
-		count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+		count, msgs := drainBackgroundFailures(ctx, tc.taskConfig.BackgroundCommandFailureEnabled, tc.backgroundFailures, tc.logger.Task())
 		if count > 0 {
 			span := trace.SpanFromContext(blockCtx)
 			span.SetAttributes(

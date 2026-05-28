@@ -2077,6 +2077,8 @@ type APIServiceFlags struct {
 	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
 	SlackSenderCheckEnabled      bool `json:"slack_sender_check_enabled"`
+
+	BackgroundCommandFailureEnabled bool `json:"background_command_failure_enabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2523,6 +2525,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
 		as.SlackSenderCheckEnabled = v.SlackSenderCheckEnabled
+		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2571,6 +2574,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 		SlackSenderCheckEnabled:            as.SlackSenderCheckEnabled,
+		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 	}, nil
 }
 
