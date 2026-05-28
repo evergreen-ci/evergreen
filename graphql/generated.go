@@ -1094,7 +1094,6 @@ type ComplexityRoot struct {
 		UnscheduleVersionTasks        func(childComplexity int, versionID string, abort bool) int
 		UpdateBetaFeatures            func(childComplexity int, opts UpdateBetaFeaturesInput) int
 		UpdateHostStatus              func(childComplexity int, hostIds []string, status string, notes *string) int
-		UpdateParsleySettings         func(childComplexity int, opts UpdateParsleySettingsInput) int
 		UpdatePublicKey               func(childComplexity int, targetKeyName string, updateInfo PublicKeyInput) int
 		UpdateSpawnHostStatus         func(childComplexity int, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) int
 		UpdateUserSettings            func(childComplexity int, userSettings *model.APIUserSettings) int
@@ -1199,11 +1198,6 @@ type ComplexityRoot struct {
 		Description   func(childComplexity int) int
 		ExactMatch    func(childComplexity int) int
 		Expression    func(childComplexity int) int
-	}
-
-	ParsleySettings struct {
-		JumpToFailingLineEnabled func(childComplexity int) int
-		SectionsEnabled          func(childComplexity int) int
 	}
 
 	Patch struct {
@@ -2232,10 +2226,6 @@ type ComplexityRoot struct {
 		BetaFeatures func(childComplexity int) int
 	}
 
-	UpdateParsleySettingsPayload struct {
-		ParsleySettings func(childComplexity int) int
-	}
-
 	UpstreamProject struct {
 		Owner       func(childComplexity int) int
 		Project     func(childComplexity int) int
@@ -2258,7 +2248,6 @@ type ComplexityRoot struct {
 		EmailAddress              func(childComplexity int) int
 		HasTokenExchangePending   func(childComplexity int) int
 		ParsleyFilters            func(childComplexity int) int
-		ParsleySettings           func(childComplexity int) int
 		Patches                   func(childComplexity int, patchesInput PatchesInput) int
 		Permissions               func(childComplexity int) int
 		Settings                  func(childComplexity int) int
@@ -2579,7 +2568,6 @@ type MutationResolver interface {
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	SetCursorAPIKey(ctx context.Context, apiKey string) (*SetCursorAPIKeyPayload, error)
 	UpdateBetaFeatures(ctx context.Context, opts UpdateBetaFeaturesInput) (*UpdateBetaFeaturesPayload, error)
-	UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
 	UpdateUserSettings(ctx context.Context, userSettings *model.APIUserSettings) (bool, error)
 	RefreshGitHubStatuses(ctx context.Context, opts RefreshGitHubStatusesInput) (*RefreshGitHubStatusesPayload, error)
@@ -7134,17 +7122,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateHostStatus(childComplexity, args["hostIds"].([]string), args["status"].(string), args["notes"].(*string)), true
-	case "Mutation.updateParsleySettings":
-		if e.complexity.Mutation.UpdateParsleySettings == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_updateParsleySettings_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UpdateParsleySettings(childComplexity, args["opts"].(UpdateParsleySettingsInput)), true
 	case "Mutation.updatePublicKey":
 		if e.complexity.Mutation.UpdatePublicKey == nil {
 			break
@@ -7517,19 +7494,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ParsleyFilter.Expression(childComplexity), true
-
-	case "ParsleySettings.jumpToFailingLineEnabled":
-		if e.complexity.ParsleySettings.JumpToFailingLineEnabled == nil {
-			break
-		}
-
-		return e.complexity.ParsleySettings.JumpToFailingLineEnabled(childComplexity), true
-	case "ParsleySettings.sectionsEnabled":
-		if e.complexity.ParsleySettings.SectionsEnabled == nil {
-			break
-		}
-
-		return e.complexity.ParsleySettings.SectionsEnabled(childComplexity), true
 
 	case "Patch.activated":
 		if e.complexity.Patch.Activated == nil {
@@ -12121,13 +12085,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UpdateBetaFeaturesPayload.BetaFeatures(childComplexity), true
 
-	case "UpdateParsleySettingsPayload.parsleySettings":
-		if e.complexity.UpdateParsleySettingsPayload.ParsleySettings == nil {
-			break
-		}
-
-		return e.complexity.UpdateParsleySettingsPayload.ParsleySettings(childComplexity), true
-
 	case "UpstreamProject.owner":
 		if e.complexity.UpstreamProject.Owner == nil {
 			break
@@ -12220,12 +12177,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.ParsleyFilters(childComplexity), true
-	case "User.parsleySettings":
-		if e.complexity.User.ParsleySettings == nil {
-			break
-		}
-
-		return e.complexity.User.ParsleySettings(childComplexity), true
 	case "User.patches":
 		if e.complexity.User.Patches == nil {
 			break
@@ -13239,7 +13190,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputParameterStoreConfigInput,
 		ec.unmarshalInputParserProjectS3ConfigInput,
 		ec.unmarshalInputParsleyFilterInput,
-		ec.unmarshalInputParsleySettingsInput,
 		ec.unmarshalInputPatchConfigure,
 		ec.unmarshalInputPatchTriggerAliasInput,
 		ec.unmarshalInputPatchesInput,
@@ -13316,7 +13266,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUIConfigInput,
 		ec.unmarshalInputUnquarantineTestInput,
 		ec.unmarshalInputUpdateBetaFeaturesInput,
-		ec.unmarshalInputUpdateParsleySettingsInput,
 		ec.unmarshalInputUpdateSpawnHostStatusInput,
 		ec.unmarshalInputUpdateVolumeInput,
 		ec.unmarshalInputUseSpruceOptionsInput,
@@ -15691,17 +15640,6 @@ func (ec *executionContext) field_Mutation_updateHostStatus_argsHostIds(
 		var zeroVal []string
 		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
 	}
-}
-
-func (ec *executionContext) field_Mutation_updateParsleySettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "opts", ec.unmarshalNUpdateParsleySettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateParsleySettingsInput)
-	if err != nil {
-		return nil, err
-	}
-	args["opts"] = arg0
-	return args, nil
 }
 
 func (ec *executionContext) field_Mutation_updatePublicKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -41767,51 +41705,6 @@ func (ec *executionContext) fieldContext_Mutation_updateBetaFeatures(ctx context
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_updateParsleySettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_updateParsleySettings,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().UpdateParsleySettings(ctx, fc.Args["opts"].(UpdateParsleySettingsInput))
-		},
-		nil,
-		ec.marshalOUpdateParsleySettingsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateParsleySettingsPayload,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_updateParsleySettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "parsleySettings":
-				return ec.fieldContext_UpdateParsleySettingsPayload_parsleySettings(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UpdateParsleySettingsPayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_updateParsleySettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_updatePublicKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44041,64 +43934,6 @@ func (ec *executionContext) fieldContext_ParsleyFilter_expression(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _ParsleySettings_sectionsEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleySettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ParsleySettings_sectionsEnabled,
-		func(ctx context.Context) (any, error) {
-			return obj.SectionsEnabled, nil
-		},
-		nil,
-		ec.marshalNBoolean2ᚖbool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ParsleySettings_sectionsEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ParsleySettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ParsleySettings_jumpToFailingLineEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleySettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled,
-		func(ctx context.Context) (any, error) {
-			return obj.JumpToFailingLineEnabled, nil
-		},
-		nil,
-		ec.marshalNBoolean2ᚖbool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ParsleySettings_jumpToFailingLineEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ParsleySettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Patch_id(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45295,8 +45130,6 @@ func (ec *executionContext) fieldContext_Patch_user(_ context.Context, field gra
 				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
 			case "parsleyFilters":
 				return ec.fieldContext_User_parsleyFilters(ctx, field)
-			case "parsleySettings":
-				return ec.fieldContext_User_parsleySettings(ctx, field)
 			case "patches":
 				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
@@ -54267,8 +54100,6 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
 			case "parsleyFilters":
 				return ec.fieldContext_User_parsleyFilters(ctx, field)
-			case "parsleySettings":
-				return ec.fieldContext_User_parsleySettings(ctx, field)
 			case "patches":
 				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
@@ -71942,41 +71773,6 @@ func (ec *executionContext) fieldContext_UpdateBetaFeaturesPayload_betaFeatures(
 	return fc, nil
 }
 
-func (ec *executionContext) _UpdateParsleySettingsPayload_parsleySettings(ctx context.Context, field graphql.CollectedField, obj *UpdateParsleySettingsPayload) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UpdateParsleySettingsPayload_parsleySettings,
-		func(ctx context.Context) (any, error) {
-			return obj.ParsleySettings, nil
-		},
-		nil,
-		ec.marshalOParsleySettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UpdateParsleySettingsPayload_parsleySettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UpdateParsleySettingsPayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "sectionsEnabled":
-				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
-			case "jumpToFailingLineEnabled":
-				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _UpstreamProject_owner(ctx context.Context, field graphql.CollectedField, obj *UpstreamProject) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -72693,41 +72489,6 @@ func (ec *executionContext) fieldContext_User_parsleyFilters(_ context.Context, 
 				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _User_parsleySettings(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_User_parsleySettings,
-		func(ctx context.Context) (any, error) {
-			return obj.ParsleySettings, nil
-		},
-		nil,
-		ec.marshalOParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_User_parsleySettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "sectionsEnabled":
-				return ec.fieldContext_ParsleySettings_sectionsEnabled(ctx, field)
-			case "jumpToFailingLineEnabled":
-				return ec.fieldContext_ParsleySettings_jumpToFailingLineEnabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ParsleySettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -75514,8 +75275,6 @@ func (ec *executionContext) fieldContext_Version_user(_ context.Context, field g
 				return ec.fieldContext_User_hasTokenExchangePending(ctx, field)
 			case "parsleyFilters":
 				return ec.fieldContext_User_parsleyFilters(ctx, field)
-			case "parsleySettings":
-				return ec.fieldContext_User_parsleySettings(ctx, field)
 			case "patches":
 				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
@@ -85250,40 +85009,6 @@ func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputParsleySettingsInput(ctx context.Context, obj any) (model.APIParsleySettings, error) {
-	var it model.APIParsleySettings
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"sectionsEnabled", "jumpToFailingLineEnabled"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "sectionsEnabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sectionsEnabled"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SectionsEnabled = data
-		case "jumpToFailingLineEnabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jumpToFailingLineEnabled"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.JumpToFailingLineEnabled = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputPatchConfigure(ctx context.Context, obj any) (PatchConfigure, error) {
 	var it PatchConfigure
 	asMap := map[string]any{}
@@ -90086,33 +89811,6 @@ func (ec *executionContext) unmarshalInputUpdateBetaFeaturesInput(ctx context.Co
 				return it, err
 			}
 			it.BetaFeatures = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputUpdateParsleySettingsInput(ctx context.Context, obj any) (UpdateParsleySettingsInput, error) {
-	var it UpdateParsleySettingsInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"parsleySettings"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "parsleySettings":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parsleySettings"))
-			data, err := ec.unmarshalNParsleySettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ParsleySettings = data
 		}
 	}
 
@@ -98209,10 +97907,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateBetaFeatures(ctx, field)
 			})
-		case "updateParsleySettings":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_updateParsleySettings(ctx, field)
-			})
 		case "updatePublicKey":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updatePublicKey(ctx, field)
@@ -98961,50 +98655,6 @@ func (ec *executionContext) _ParsleyFilter(ctx context.Context, sel ast.Selectio
 			}
 		case "expression":
 			out.Values[i] = ec._ParsleyFilter_expression(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var parsleySettingsImplementors = []string{"ParsleySettings"}
-
-func (ec *executionContext) _ParsleySettings(ctx context.Context, sel ast.SelectionSet, obj *model.APIParsleySettings) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, parsleySettingsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ParsleySettings")
-		case "sectionsEnabled":
-			out.Values[i] = ec._ParsleySettings_sectionsEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "jumpToFailingLineEnabled":
-			out.Values[i] = ec._ParsleySettings_jumpToFailingLineEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -108979,42 +108629,6 @@ func (ec *executionContext) _UpdateBetaFeaturesPayload(ctx context.Context, sel 
 	return out
 }
 
-var updateParsleySettingsPayloadImplementors = []string{"UpdateParsleySettingsPayload"}
-
-func (ec *executionContext) _UpdateParsleySettingsPayload(ctx context.Context, sel ast.SelectionSet, obj *UpdateParsleySettingsPayload) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, updateParsleySettingsPayloadImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("UpdateParsleySettingsPayload")
-		case "parsleySettings":
-			out.Values[i] = ec._UpdateParsleySettingsPayload_parsleySettings(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var upstreamProjectImplementors = []string{"UpstreamProject"}
 
 func (ec *executionContext) _UpstreamProject(ctx context.Context, sel ast.SelectionSet, obj *UpstreamProject) graphql.Marshaler {
@@ -109148,8 +108762,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "parsleyFilters":
 			out.Values[i] = ec._User_parsleyFilters(ctx, field, obj)
-		case "parsleySettings":
-			out.Values[i] = ec._User_parsleySettings(ctx, field, obj)
 		case "patches":
 			field := field
 
@@ -115208,11 +114820,6 @@ func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergree
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNParsleySettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, v any) (*model.APIParsleySettings, error) {
-	res, err := ec.unmarshalInputParsleySettingsInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalNPatch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatch(ctx context.Context, sel ast.SelectionSet, v model.APIPatch) graphql.Marshaler {
 	return ec._Patch(ctx, sel, &v)
 }
@@ -117323,11 +116930,6 @@ func (ec *executionContext) unmarshalNUnquarantineTestInput2githubᚗcomᚋeverg
 
 func (ec *executionContext) unmarshalNUpdateBetaFeaturesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateBetaFeaturesInput(ctx context.Context, v any) (UpdateBetaFeaturesInput, error) {
 	res, err := ec.unmarshalInputUpdateBetaFeaturesInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNUpdateParsleySettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateParsleySettingsInput(ctx context.Context, v any) (UpdateParsleySettingsInput, error) {
-	res, err := ec.unmarshalInputUpdateParsleySettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -120086,17 +119688,6 @@ func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋeverg
 	return res, nil
 }
 
-func (ec *executionContext) marshalOParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v model.APIParsleySettings) graphql.Marshaler {
-	return ec._ParsleySettings(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOParsleySettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v *model.APIParsleySettings) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ParsleySettings(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOPatch2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPatchᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIPatch) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -121709,13 +121300,6 @@ func (ec *executionContext) marshalOUpdateBetaFeaturesPayload2ᚖgithubᚗcomᚋ
 		return graphql.Null
 	}
 	return ec._UpdateBetaFeaturesPayload(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOUpdateParsleySettingsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateParsleySettingsPayload(ctx context.Context, sel ast.SelectionSet, v *UpdateParsleySettingsPayload) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._UpdateParsleySettingsPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUpstreamProject2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpstreamProject(ctx context.Context, sel ast.SelectionSet, v *UpstreamProject) graphql.Marshaler {

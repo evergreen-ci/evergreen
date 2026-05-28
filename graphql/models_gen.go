@@ -700,14 +700,6 @@ type UpdateBetaFeaturesPayload struct {
 	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures,omitempty"`
 }
 
-type UpdateParsleySettingsInput struct {
-	ParsleySettings *model.APIParsleySettings `json:"parsleySettings"`
-}
-
-type UpdateParsleySettingsPayload struct {
-	ParsleySettings *model.APIParsleySettings `json:"parsleySettings,omitempty"`
-}
-
 type UpdateSpawnHostStatusInput struct {
 	Action        SpawnHostStatusActions `json:"action"`
 	HostID        string                 `json:"hostId"`

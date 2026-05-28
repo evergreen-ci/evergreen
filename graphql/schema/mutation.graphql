@@ -113,7 +113,6 @@ type Mutation {
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   setCursorAPIKey(apiKey: String!): SetCursorAPIKeyPayload!
   updateBetaFeatures(opts: UpdateBetaFeaturesInput!): UpdateBetaFeaturesPayload
-  updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
   updatePublicKey(
     targetKeyName: String!
     updateInfo: PublicKeyInput!
