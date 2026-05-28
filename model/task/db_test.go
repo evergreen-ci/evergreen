@@ -968,6 +968,155 @@ func TestGetTasksByVersionFilterDisplayTaskMembers(t *testing.T) {
 	assert.Equal(t, "grouped", tasks[1].DisplayName)
 }
 
+func TestGetTasksByVersionFilterByExecutionTaskStatus(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	now := time.Now()
+	// The display task is failed overall but contains one successful and one
+	// failed execution task.
+	successExec := Task{
+		Id:                 "success-exec",
+		DisplayName:        "success-exec",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr("display"),
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      now,
+	}
+	failedExec := Task{
+		Id:                 "failed-exec",
+		DisplayName:        "failed-exec",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr("display"),
+		DisplayStatusCache: evergreen.TaskFailed,
+		ActivatedTime:      now,
+	}
+	display := Task{
+		Id:                 "display",
+		DisplayName:        "display",
+		Version:            "v1",
+		DisplayOnly:        true,
+		ExecutionTasks:     []string{"success-exec", "failed-exec"},
+		DisplayStatusCache: evergreen.TaskFailed,
+		ActivatedTime:      now,
+	}
+	standalone := Task{
+		Id:                 "standalone",
+		DisplayName:        "standalone",
+		Version:            "v1",
+		DisplayTaskId:      utility.ToStringPtr(""),
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      now,
+	}
+	require.NoError(t, db.InsertMany(t.Context(), Collection, successExec, failedExec, display, standalone))
+
+	ctx := context.TODO()
+
+	// Filtering by success returns the standalone task and the failed-overall
+	// display task, because the display task has a successful subtask.
+	opts := GetTasksByVersionOptions{
+		Statuses: []string{evergreen.TaskSucceeded},
+		Sorts:    []TasksSortOrder{{Key: DisplayNameKey, Order: 1}},
+	}
+	tasks, count, err := GetTasksByVersion(ctx, "v1", opts)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+	require.Len(t, tasks, 2)
+	assert.Equal(t, "display", tasks[0].Id)
+	assert.Equal(t, "standalone", tasks[1].Id)
+
+	// Filtering by failed returns only the display task, whose own status
+	// matches; the successful standalone task is excluded.
+	opts = GetTasksByVersionOptions{
+		Statuses: []string{evergreen.TaskFailed},
+	}
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+	require.Len(t, tasks, 1)
+	assert.Equal(t, "display", tasks[0].Id)
+
+	// Filtering by a status that neither the display task nor any of its
+	// subtasks have returns nothing.
+	opts = GetTasksByVersionOptions{
+		Statuses: []string{evergreen.TaskSystemFailed},
+	}
+	tasks, count, err = GetTasksByVersion(ctx, "v1", opts)
+	require.NoError(t, err)
+	assert.Equal(t, 0, count)
+	assert.Empty(t, tasks)
+}
+
+func TestGetTasksByVersionFilterByBaseExecutionTaskStatus(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	now := time.Now()
+	// The base display task is failed overall but contains a successful base
+	// execution task.
+	baseSuccessExec := Task{
+		Id:                 "base-success-exec",
+		DisplayName:        "base-success-exec",
+		Version:            "vbase",
+		DisplayTaskId:      utility.ToStringPtr("dt-base"),
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      now,
+	}
+	baseFailedExec := Task{
+		Id:                 "base-failed-exec",
+		DisplayName:        "base-failed-exec",
+		Version:            "vbase",
+		DisplayTaskId:      utility.ToStringPtr("dt-base"),
+		DisplayStatusCache: evergreen.TaskFailed,
+		ActivatedTime:      now,
+	}
+	baseDisplay := Task{
+		Id:                 "dt-base",
+		DisplayName:        "dt",
+		BuildVariant:       "bv",
+		Version:            "vbase",
+		DisplayOnly:        true,
+		ExecutionTasks:     []string{"base-success-exec", "base-failed-exec"},
+		DisplayStatusCache: evergreen.TaskFailed,
+		ActivatedTime:      now,
+	}
+	currentDisplay := Task{
+		Id:                 "dt-cur",
+		DisplayName:        "dt",
+		BuildVariant:       "bv",
+		Version:            "vcur",
+		DisplayOnly:        true,
+		DisplayStatusCache: evergreen.TaskSucceeded,
+		ActivatedTime:      now,
+	}
+	require.NoError(t, db.InsertMany(t.Context(), Collection, baseSuccessExec, baseFailedExec, baseDisplay, currentDisplay))
+
+	ctx := context.TODO()
+
+	// Filtering by a base status that the base display task lacks overall but a
+	// base subtask has still returns the current display task.
+	opts := GetTasksByVersionOptions{
+		BaseVersionID: "vbase",
+		BaseStatuses:  []string{evergreen.TaskSucceeded},
+	}
+	tasks, count, err := GetTasksByVersion(ctx, "vcur", opts)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+	require.Len(t, tasks, 1)
+	assert.Equal(t, "dt-cur", tasks[0].Id)
+	require.NotNil(t, tasks[0].BaseTask)
+	assert.Equal(t, "dt-base", tasks[0].BaseTask.Id)
+
+	// Filtering by a base status that neither the base display task nor any of
+	// its base subtasks have returns nothing.
+	opts = GetTasksByVersionOptions{
+		BaseVersionID: "vbase",
+		BaseStatuses:  []string{evergreen.TaskSystemFailed},
+	}
+	tasks, count, err = GetTasksByVersion(ctx, "vcur", opts)
+	require.NoError(t, err)
+	assert.Equal(t, 0, count)
+	assert.Empty(t, tasks)
+}
+
 func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection))
 

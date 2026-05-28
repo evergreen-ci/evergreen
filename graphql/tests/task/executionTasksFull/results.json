@@ -32,6 +32,23 @@
           }
         }
       }
+    },
+    {
+      "query_file": "execution_tasks_filtered_success.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "display_task_mixed",
+            "executionTasksFull": [
+              {
+                "id": "execution_task_success",
+                "status": "success",
+                "displayStatus": "success"
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }
