@@ -5,11 +5,14 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -129,10 +132,18 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 }
 
 // DecorateQuarantineStatus populates IsManuallyQuarantined on each test result
-// in place. No-ops on display tasks and on tasks without test selection
-// enabled.
+// in place. No-ops when test selection is disabled. Display tasks always fan
+// out to their execution tasks; the display task's TestSelectionEnabled flag
+// is treated as a hint because it can be stale relative to its execution
+// tasks, so the fan-out re-checks each execution task's state directly.
 func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testresult.TestResult) error {
-	if !t.TestSelectionEnabled || t.DisplayOnly || len(results) == 0 {
+	if len(results) == 0 {
+		return nil
+	}
+	if t.DisplayOnly {
+		return decorateDisplayTaskQuarantineStatus(ctx, t.Id, results)
+	}
+	if !t.TestSelectionEnabled {
 		return nil
 	}
 	testNames := make([]string, 0, len(results))
@@ -145,6 +156,67 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 	}
 	for i := range results {
 		results[i].IsManuallyQuarantined = statuses[results[i].GetDisplayTestName()]
+	}
+	return nil
+}
+
+// decorateDisplayTaskQuarantineStatus groups results by their execution task ID
+// and fetches quarantine status once per execution task. Execution tasks
+// without test selection enabled, and tests whose execution task can't be
+// loaded, are left with the default IsManuallyQuarantined value.
+func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID string, results []testresult.TestResult) error {
+	resultIndicesByExecTaskID := map[string][]int{}
+	for i, r := range results {
+		if r.TaskID == "" {
+			continue
+		}
+		resultIndicesByExecTaskID[r.TaskID] = append(resultIndicesByExecTaskID[r.TaskID], i)
+	}
+	if len(resultIndicesByExecTaskID) == 0 {
+		return nil
+	}
+	execTaskIDs := make([]string, 0, len(resultIndicesByExecTaskID))
+	for id := range resultIndicesByExecTaskID {
+		execTaskIDs = append(execTaskIDs, id)
+	}
+	execTasks, err := task.FindAll(ctx, db.Query(task.ByIds(execTaskIDs)))
+	if err != nil {
+		return errors.Wrap(err, "fetching execution tasks")
+	}
+	foundExecTaskIDs := make(map[string]bool, len(execTasks))
+	for _, execTask := range execTasks {
+		foundExecTaskIDs[execTask.Id] = true
+	}
+	var missingExecTaskIDs []string
+	for _, id := range execTaskIDs {
+		if !foundExecTaskIDs[id] {
+			missingExecTaskIDs = append(missingExecTaskIDs, id)
+		}
+	}
+	grip.WarningWhen(ctx, len(missingExecTaskIDs) > 0, message.Fields{
+		"message":               "execution tasks not found when decorating display task quarantine status; their test results will be left undecorated",
+		"display_task_id":       displayTaskID,
+		"missing_exec_task_ids": missingExecTaskIDs,
+	})
+	// TODO: issue these GetTestsQuarantineStatus calls concurrently with a
+	// bounded semaphore to reduce latency on display tasks with many execution
+	// tasks.
+	for _, execTask := range execTasks {
+		if !execTask.TestSelectionEnabled {
+			continue
+		}
+		indices := resultIndicesByExecTaskID[execTask.Id]
+		testNames := make([]string, 0, len(indices))
+		for _, i := range indices {
+			testNames = append(testNames, results[i].GetDisplayTestName())
+		}
+		statuses, err := GetTestsQuarantineStatus(ctx, execTask.Project, execTask.BuildVariant, execTask.DisplayName, testNames)
+		if err != nil {
+			return errors.Wrapf(err, "fetching test quarantine statuses for execution task '%s'", execTask.Id)
+		}
+		for _, i := range indices {
+			results[i].IsManuallyQuarantined = statuses[results[i].GetDisplayTestName()]
+		}
 	}
 	return nil
 }
