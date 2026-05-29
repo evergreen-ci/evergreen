@@ -789,6 +789,71 @@ tasks:
           content_type: text/plain
           permissions: public-read
           display_name: merged-schema.graphql (latest)
+
+  # Exercises the cache.restore/cache.save round trip end to end against real
+  # S3, so the commands can be validated in staging. The key includes the task
+  # ID and execution so every run starts from a guaranteed miss, then proves the
+  # save makes a later restore hit and re-extract the file after it is deleted
+  # locally.
+  - name: test-cache-commands
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o errexit
+            mkdir -p cache-src
+            echo "cached-content-${task_id}-${execution}" > cache-src/cached-file
+      - command: cache.restore
+        display_name: "First cache.restore (expected miss)"
+        params:
+          name: self-test-cache
+          role_arn: ${assume_role_arn}
+          bucket: mciuploads
+          remote_path: evergreen/self-tests/cache/${task_id}/${execution}
+          key_expansions:
+            - ${task_id}-${execution}
+      - command: subprocess.exec
+        display_name: "Assert first cache.restore was a miss"
+        params:
+          binary: bash
+          include_expansions_in_env:
+            - self_test_cache_cache_hit
+          args:
+            - "-c"
+            - '[ "$self_test_cache_cache_hit" != "true" ]'
+      - command: cache.save
+        display_name: "cache.save (expected upload)"
+        params:
+          name: self-test-cache
+          role_arn: ${assume_role_arn}
+          bucket: mciuploads
+          remote_path: evergreen/self-tests/cache/${task_id}/${execution}
+          key_expansions:
+            - ${task_id}-${execution}
+          paths:
+            - cache-src
+      - command: shell.exec
+        display_name: "Remove cached file to prove restore re-fetches it"
+        params:
+          script: rm -rf cache-src
+      - command: cache.restore
+        display_name: "Second cache.restore (expected hit)"
+        params:
+          name: self-test-cache
+          role_arn: ${assume_role_arn}
+          bucket: mciuploads
+          remote_path: evergreen/self-tests/cache/${task_id}/${execution}
+          key_expansions:
+            - ${task_id}-${execution}
+      - command: subprocess.exec
+        display_name: "Assert second cache.restore was a hit and restored the file"
+        params:
+          binary: bash
+          include_expansions_in_env:
+            - self_test_cache_cache_hit
+          args:
+            - "-c"
+            - 'test "$self_test_cache_cache_hit" = "true" && grep -q "cached-content-${task_id}-${execution}" cache-src/cached-file'
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build"]
@@ -860,6 +925,7 @@ buildvariants:
       - name: ".test"
       - name: ".linter"
       - name: test-cloud
+      - name: test-cache-commands
       - name: generate-api-docs
       - name: generate-graphql-merged-schema
 
