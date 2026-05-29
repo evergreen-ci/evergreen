@@ -291,6 +291,22 @@ func CountQ(ctx context.Context, collection string, q Q) (int, error) {
 	return Count(ctx, collection, q.filter)
 }
 
+func countQ(ctx context.Context, factory SessionFactory, collection string, q Q) (int, error) {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := factory.GetSession(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer session.Close()
+
+	return db.C(collection).Find(q.filter).Count()
+}
+
 // RemoveAllQ removes all docs that satisfy the query
 func RemoveAllQ(ctx context.Context, collection string, q Q) error {
 	return Remove(ctx, collection, q.filter)
@@ -373,12 +389,7 @@ func FindAllQSecondary(ctx context.Context, collection string, q Q, out any) err
 
 // CountQSecondary is the SecondaryPreferred sibling of CountQ.
 func CountQSecondary(ctx context.Context, collection string, q Q) (int, error) {
-	env := evergreen.GetEnvironment()
-	res, err := env.SecondaryReadClient().
-		Database(env.Settings().Database.DB).
-		Collection(collection).
-		CountDocuments(ctx, q.filter)
-	return int(res), errors.WithStack(err)
+	return countQ(ctx, GetGlobalSecondarySessionFactory(), collection, q)
 }
 
 // AggregateSecondary is the SecondaryPreferred sibling of Aggregate.
