@@ -82,12 +82,6 @@ type CursorParams struct {
 	IncludeCursor bool                 `json:"includeCursor"`
 }
 
-// CursorSettings represents the status of a user's Cursor API key stored in Sage.
-type CursorSettings struct {
-	KeyConfigured bool    `json:"keyConfigured"`
-	KeyLastFour   *string `json:"keyLastFour,omitempty"`
-}
-
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 type DeactivateStepbackTaskInput struct {
 	ProjectID        string `json:"projectId"`
@@ -99,11 +93,6 @@ type DeactivateStepbackTaskInput struct {
 type DefaultSectionToRepoInput struct {
 	ProjectID string                 `json:"projectId"`
 	Section   ProjectSettingsSection `json:"section"`
-}
-
-// DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
-type DeleteCursorAPIKeyPayload struct {
-	Success bool `json:"success"`
 }
 
 // DeleteDistroInput is the input to the deleteDistro mutation.
@@ -428,9 +417,20 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+// QuarantineTaskInput is the input to the quarantineTask mutation. It marks every known test of the given task as manually quarantined in the test selection service.
+type QuarantineTaskInput struct {
+	TaskID string `json:"taskId"`
+}
+
 type QuarantineTestInput struct {
 	TaskID   string `json:"taskId"`
 	TestName string `json:"testName"`
+}
+
+// QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.
+type QuarantineVariantInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	BuildVariant      string `json:"buildVariant"`
 }
 
 type Query struct {
@@ -486,12 +486,6 @@ type ServiceFlag struct {
 type ServiceFlagInput struct {
 	Name    string `json:"name"`
 	Enabled bool   `json:"enabled"`
-}
-
-// SetCursorAPIKeyPayload is the response from setting a Cursor API key.
-type SetCursorAPIKeyPayload struct {
-	Success     bool    `json:"success"`
-	KeyLastFour *string `json:"keyLastFour,omitempty"`
 }
 
 // SetLastRevisionInput is the input to the setLastRevision mutation.
@@ -687,9 +681,20 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+// UnquarantineTaskInput is the input to the unquarantineTask mutation.
+type UnquarantineTaskInput struct {
+	TaskID string `json:"taskId"`
+}
+
 type UnquarantineTestInput struct {
 	TaskID   string `json:"taskId"`
 	TestName string `json:"testName"`
+}
+
+// UnquarantineVariantInput is the input to the unquarantineVariant mutation.
+type UnquarantineVariantInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	BuildVariant      string `json:"buildVariant"`
 }
 
 type UpdateBetaFeaturesInput struct {
@@ -698,14 +703,6 @@ type UpdateBetaFeaturesInput struct {
 
 type UpdateBetaFeaturesPayload struct {
 	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures,omitempty"`
-}
-
-type UpdateParsleySettingsInput struct {
-	ParsleySettings *model.APIParsleySettings `json:"parsleySettings"`
-}
-
-type UpdateParsleySettingsPayload struct {
-	ParsleySettings *model.APIParsleySettings `json:"parsleySettings,omitempty"`
 }
 
 type UpdateSpawnHostStatusInput struct {

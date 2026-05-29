@@ -1,0 +1,5 @@
+mutation {
+  quarantineVariant(opts: { projectIdentifier: "does_not_exist", buildVariant: "ubuntu" }) {
+    projectIdentifier
+  }
+}
