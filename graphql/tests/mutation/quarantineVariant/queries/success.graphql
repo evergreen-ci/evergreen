@@ -1,0 +1,13 @@
+mutation {
+  quarantineVariant(opts: { projectIdentifier: "sandbox", buildVariant: "ubuntu" }) {
+    projectIdentifier
+    buildVariant
+    tasks {
+      taskName
+      tests {
+        testName
+        isManuallyQuarantined
+      }
+    }
+  }
+}

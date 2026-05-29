@@ -1219,6 +1219,26 @@ func (r *mutationResolver) UnquarantineTest(ctx context.Context, opts Unquaranti
 	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, false)
 }
 
+// QuarantineTask is the resolver for the quarantineTask field.
+func (r *mutationResolver) QuarantineTask(ctx context.Context, opts QuarantineTaskInput) (*restModel.APITask, error) {
+	return setTaskQuarantineState(ctx, opts.TaskID, true)
+}
+
+// UnquarantineTask is the resolver for the unquarantineTask field.
+func (r *mutationResolver) UnquarantineTask(ctx context.Context, opts UnquarantineTaskInput) (*restModel.APITask, error) {
+	return setTaskQuarantineState(ctx, opts.TaskID, false)
+}
+
+// QuarantineVariant is the resolver for the quarantineVariant field.
+func (r *mutationResolver) QuarantineVariant(ctx context.Context, opts QuarantineVariantInput) (*restModel.APIVariantQuarantineStatus, error) {
+	return setVariantQuarantineState(ctx, opts.ProjectIdentifier, opts.BuildVariant, true)
+}
+
+// UnquarantineVariant is the resolver for the unquarantineVariant field.
+func (r *mutationResolver) UnquarantineVariant(ctx context.Context, opts UnquarantineVariantInput) (*restModel.APIVariantQuarantineStatus, error) {
+	return setVariantQuarantineState(ctx, opts.ProjectIdentifier, opts.BuildVariant, false)
+}
+
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavoriteProjectInput) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(ctx, opts.ProjectIdentifier)
