@@ -384,8 +384,10 @@ Parameters:
 ## cache.restore
 
 `cache.restore` downloads and extracts a previously saved build cache from S3.
-Pair it with [`cache.save`](#cachesave) to avoid recomputing expensive build
-artifacts (dependency downloads, compiled toolchains, etc.) across runs.
+It is typically used with [`cache.save`](#cachesave) to avoid recomputing
+expensive build artifacts (dependency downloads, compiled toolchains, etc.)
+across runs: run `cache.restore` first to fetch the cache, then `cache.save`
+later in the same task to populate it on a miss.
 
 The command computes a cache key as a SHA-256 over the contents of each
 `key_files` entry followed by each `key_expansions` value, then looks for
@@ -406,7 +408,7 @@ miss is never an error.
       - go.sum
     key_expansions:
       - ${project_id}
-      - ${goos}-${goarch}
+      - ${distro_id}
 ```
 
 Parameters:
@@ -428,7 +430,7 @@ Parameters:
 
 The cache key is order-sensitive and contains nothing implicit: the OS,
 architecture, and distro are folded in only if you add them to `key_expansions`
-(e.g. `${goos}-${goarch}` or `${distro_id}`). The `<name>_cache_hit` expansion
+(e.g. `${distro_id}`). The `<name>_cache_hit` expansion
 converts dashes in `name` to underscores so it is a usable shell variable (for
 example, `name: mise-and-go` sets `mise_and_go_cache_hit`).
 
@@ -437,9 +439,12 @@ See [`cache.save`](#cachesave) for an end-to-end restore/install/save example.
 ## cache.save
 
 `cache.save` bundles paths into a tar.gz archive and uploads it to S3 so a
-later run can restore them with [`cache.restore`](#cacherestore). It recomputes
-the cache key from the same `key_files` and `key_expansions`, so the two
-commands resolve to the same S3 object without sharing hidden state.
+later run can restore them with [`cache.restore`](#cacherestore). It is
+typically run after [`cache.restore`](#cacherestore) in the same task: the
+restore fetches an existing cache, and the save populates it when the restore
+missed. It recomputes the cache key from the same `key_files` and
+`key_expansions`, so the two commands resolve to the same S3 object without
+sharing hidden state.
 
 If the `<name>_cache_hit` expansion is `"true"` (set by a preceding
 `cache.restore` hit), `cache.save` does nothing and succeeds. Otherwise it
@@ -458,7 +463,7 @@ and the command still succeeds.
       - go.sum
     key_expansions:
       - ${project_id}
-      - ${goos}-${goarch}
+      - ${distro_id}
     paths:
       - .cache/go-mod
 ```
@@ -485,7 +490,7 @@ functions:
         bucket: my-cache-bucket
         remote_path: my-project/caches
         key_files: [go.sum]
-        key_expansions: ["${project_id}", "${goos}-${goarch}"]
+        key_expansions: ["${project_id}", "${distro_id}"]
 
 tasks:
   - name: build
@@ -509,7 +514,7 @@ tasks:
           bucket: my-cache-bucket
           remote_path: my-project/caches
           key_files: [go.sum]
-          key_expansions: ["${project_id}", "${goos}-${goarch}"]
+          key_expansions: ["${project_id}", "${distro_id}"]
           paths: [.cache/go-mod]
 ```
 
