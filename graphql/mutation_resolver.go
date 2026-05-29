@@ -21,13 +21,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -1221,6 +1219,26 @@ func (r *mutationResolver) UnquarantineTest(ctx context.Context, opts Unquaranti
 	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, false)
 }
 
+// QuarantineTask is the resolver for the quarantineTask field.
+func (r *mutationResolver) QuarantineTask(ctx context.Context, opts QuarantineTaskInput) (*restModel.APITask, error) {
+	return setTaskQuarantineState(ctx, opts.TaskID, true)
+}
+
+// UnquarantineTask is the resolver for the unquarantineTask field.
+func (r *mutationResolver) UnquarantineTask(ctx context.Context, opts UnquarantineTaskInput) (*restModel.APITask, error) {
+	return setTaskQuarantineState(ctx, opts.TaskID, false)
+}
+
+// QuarantineVariant is the resolver for the quarantineVariant field.
+func (r *mutationResolver) QuarantineVariant(ctx context.Context, opts QuarantineVariantInput) (*restModel.APIVariantQuarantineStatus, error) {
+	return setVariantQuarantineState(ctx, opts.ProjectIdentifier, opts.BuildVariant, true)
+}
+
+// UnquarantineVariant is the resolver for the unquarantineVariant field.
+func (r *mutationResolver) UnquarantineVariant(ctx context.Context, opts UnquarantineVariantInput) (*restModel.APIVariantQuarantineStatus, error) {
+	return setVariantQuarantineState(ctx, opts.ProjectIdentifier, opts.BuildVariant, false)
+}
+
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavoriteProjectInput) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(ctx, opts.ProjectIdentifier)
@@ -1268,31 +1286,6 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
-}
-
-// DeleteCursorAPIKey is the resolver for the deleteCursorAPIKey field.
-func (r *mutationResolver) DeleteCursorAPIKey(ctx context.Context) (*DeleteCursorAPIKeyPayload, error) {
-	usr := mustHaveUser(ctx)
-
-	sageConfig := &evergreen.SageConfig{}
-	if err := sageConfig.Get(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
-	}
-
-	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
-	}
-	defer sageClient.Close()
-
-	result, err := sageClient.DeleteCursorAPIKey(ctx, usr.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting Cursor API key: %s", err.Error()))
-	}
-
-	return &DeleteCursorAPIKeyPayload{
-		Success: result.Success,
-	}, nil
 }
 
 // DeleteSubscriptions is the resolver for the deleteSubscriptions field.
@@ -1413,32 +1406,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	return true, nil
 }
 
-// SetCursorAPIKey is the resolver for the setCursorAPIKey field.
-func (r *mutationResolver) SetCursorAPIKey(ctx context.Context, apiKey string) (*SetCursorAPIKeyPayload, error) {
-	usr := mustHaveUser(ctx)
-
-	sageConfig := &evergreen.SageConfig{}
-	if err := sageConfig.Get(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
-	}
-
-	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
-	}
-	defer sageClient.Close()
-
-	result, err := sageClient.SetCursorAPIKey(ctx, usr.Id, apiKey)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting Cursor API key: %s", err.Error()))
-	}
-
-	return &SetCursorAPIKeyPayload{
-		Success:     result.Success,
-		KeyLastFour: utility.ToStringPtr(result.KeyLastFour),
-	}, nil
-}
-
 // UpdateBetaFeatures is the resolver for the updateBetaFeatures field.
 func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBetaFeaturesInput) (*UpdateBetaFeaturesPayload, error) {
 	usr := mustHaveUser(ctx)
@@ -1452,23 +1419,6 @@ func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBe
 	betaFeatures.BuildFromService(usr.BetaFeatures)
 	return &UpdateBetaFeaturesPayload{
 		BetaFeatures: &betaFeatures,
-	}, nil
-}
-
-// UpdateParsleySettings is the resolver for the updateParsleySettings field.
-func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error) {
-	usr := mustHaveUser(ctx)
-	newSettings := opts.ParsleySettings.ToService()
-
-	changes := parsley.MergeExistingParsleySettings(usr.ParsleySettings, newSettings)
-	if err := usr.UpdateParsleySettings(ctx, changes); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings for user '%s': %s", usr.Id, err.Error()))
-	}
-
-	parsleySettings := restModel.APIParsleySettings{}
-	parsleySettings.BuildFromService(usr.ParsleySettings)
-	return &UpdateParsleySettingsPayload{
-		ParsleySettings: &parsleySettings,
 	}, nil
 }
 

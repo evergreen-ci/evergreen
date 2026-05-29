@@ -7,15 +7,6 @@ input PublicKeyInput {
   name: String!
 }
 
-input UpdateParsleySettingsInput {
-  parsleySettings: ParsleySettingsInput!
-}
-
-input ParsleySettingsInput {
-  sectionsEnabled: Boolean
-  jumpToFailingLineEnabled: Boolean
-}
-
 input UpdateBetaFeaturesInput {
   betaFeatures: BetaFeaturesInput!
 }
@@ -104,7 +95,6 @@ type User {
   emailAddress: String
   hasTokenExchangePending: Boolean!
   parsleyFilters: [ParsleyFilter!]
-  parsleySettings: ParsleySettings
   patches(patchesInput: PatchesInput!): Patches # user patches
   permissions: Permissions
   settings: UserSettings
@@ -136,20 +126,8 @@ type UserConfig {
   oauth_connector_id: String!
 }
 
-type UpdateParsleySettingsPayload {
-  parsleySettings: ParsleySettings
-}
-
 type UpdateBetaFeaturesPayload {
   betaFeatures: BetaFeatures
-}
-
-"""
-ParsleySettings contains information about a user's settings for Parsley.
-"""
-type ParsleySettings {
-  sectionsEnabled: Boolean!
-  jumpToFailingLineEnabled: Boolean!
 }
 
 type BetaFeatures {
@@ -192,29 +170,6 @@ type Notifications {
 
 type UseSpruceOptions {
   spruceV1: Boolean
-}
-
-"""
-CursorSettings represents the status of a user's Cursor API key stored in Sage.
-"""
-type CursorSettings {
-  keyConfigured: Boolean!
-  keyLastFour: String
-}
-
-"""
-SetCursorAPIKeyPayload is the response from setting a Cursor API key.
-"""
-type SetCursorAPIKeyPayload {
-  success: Boolean!
-  keyLastFour: String
-}
-
-"""
-DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
-"""
-type DeleteCursorAPIKeyPayload {
-  success: Boolean!
 }
 
 """

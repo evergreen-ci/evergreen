@@ -738,35 +738,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	return apiSamples, nil
 }
 
-// CursorSettings is the resolver for the cursorSettings field.
-func (r *queryResolver) CursorSettings(ctx context.Context) (*CursorSettings, error) {
-	usr := mustHaveUser(ctx)
-
-	sageConfig := &evergreen.SageConfig{}
-	if err := sageConfig.Get(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
-	}
-
-	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
-	if err != nil {
-		// Return a default response indicating the feature is not configured.
-		// NewSageClient returns an error when the base URL is empty.
-		return &CursorSettings{
-			KeyConfigured: false,
-			KeyLastFour:   nil,
-		}, nil
-	}
-	defer sageClient.Close()
-
-	result, err := sageClient.GetCursorAPIKeyStatus(ctx, usr.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Cursor API key status: %s", err.Error()))
-	}
-
-	return &CursorSettings{
-		KeyConfigured: result.HasKey,
-		KeyLastFour:   utility.ToStringPtr(result.KeyLastFour),
-	}, nil
+// VariantQuarantineStatus is the resolver for the variantQuarantineStatus field.
+func (r *queryResolver) VariantQuarantineStatus(ctx context.Context, projectIdentifier string, buildVariant string) (*restModel.APIVariantQuarantineStatus, error) {
+	return getVariantQuarantineStatusResponse(ctx, projectIdentifier, buildVariant)
 }
 
 // MyPublicKeys is the resolver for the myPublicKeys field.

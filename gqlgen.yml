@@ -545,10 +545,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   ParsleyFilterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
-  ParsleySettings:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleySettings
-  ParsleySettingsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleySettings
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
     fields:
@@ -946,10 +942,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TaskStats:
     model: github.com/evergreen-ci/evergreen/model/task.TaskStats
+  TaskQuarantineEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITaskQuarantineEntry
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
+  TestQuarantineEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APITestQuarantineEntry
   TestResult:
     model: github.com/evergreen-ci/evergreen/rest/model.APITest
   TestSelectionSettings:
@@ -1000,6 +1000,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
   UseSpruceOptionsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIUseSpruceOptions
+  VariantQuarantineStatus:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIVariantQuarantineStatus
   VariantTask:
     model: github.com/evergreen-ci/evergreen/rest/model.VariantTask
   VariantTaskInput:

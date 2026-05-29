@@ -1629,20 +1629,32 @@ func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, 
 }
 
 func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef) ([]ProjectRef, error) {
-	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
+	repoRefIDs := make([]string, 0)
+	seen := make(map[string]bool)
+	for _, pRef := range pRefs {
+		if pRef.UseRepoSettings() && !seen[pRef.RepoRefId] {
+			seen[pRef.RepoRefId] = true
+			repoRefIDs = append(repoRefIDs, pRef.RepoRefId)
+		}
+	}
+
+	repoRefs := map[string]*RepoRef{}
+	if len(repoRefIDs) > 0 {
+		var fetched []RepoRef
+		q := db.Query(bson.M{RepoRefIdKey: bson.M{"$in": repoRefIDs}})
+		if err := db.FindAllQ(ctx, RepoRefCollection, q, &fetched); err != nil {
+			return nil, errors.Wrap(err, "finding repo refs")
+		}
+		for _, r := range fetched {
+			repoRefs[r.Id] = &r
+		}
+	}
+
 	for i, pRef := range pRefs {
 		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
-				var err error
-				repoRef, err = FindOneRepoRef(ctx, pRef.RepoRefId)
-				if err != nil {
-					return nil, errors.Wrapf(err, "finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
-				}
-				if repoRef == nil {
-					return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
-				}
-				repoRefs[pRef.RepoRefId] = repoRef
+				return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 			}
 			mergedProject, err := mergeBranchAndRepoSettings(&pRefs[i], repoRef)
 			if err != nil {

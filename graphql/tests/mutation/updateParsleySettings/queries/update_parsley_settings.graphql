@@ -1,8 +1,0 @@
-mutation {
-  updateParsleySettings(opts: { parsleySettings: { sectionsEnabled: false } }) {
-    parsleySettings {
-      sectionsEnabled
-      jumpToFailingLineEnabled
-    }
-  }
-}
