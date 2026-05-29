@@ -32,7 +32,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 // GET /rest/v2/agent/perf_monitoring_url
@@ -798,39 +797,11 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
-	if h.final {
-		ctx, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName)
-		defer span.End()
-
-		grip.Error(ctx, errors.Wrapf(model.IncrementVersionS3CostAndUsage(ctx, t.Version, t.TaskCost, t.S3Usage), "incrementing version S3 cost and usage for version '%s'", t.Version))
-
-		var avgFilePutCost, maxFilePutCost, minFilePutCost float64
-		if t.S3Usage.Artifacts.Count > 0 && t.S3Usage.Artifacts.PutRequests > 0 {
-			costPerPut := t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
-			avgFilePutCost = t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
-			maxFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
-			minFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMinPutRequests)
-		}
-
-		span.SetAttributes(
-			attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
-			attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
-			attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
-			attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
-			attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactPutCost),
-			attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactPutCost),
-			attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactStorageCost),
-			attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactStorageCost),
-			attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
-			attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
-			attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, t.TaskCost.OnDemandS3LogPutCost),
-			attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, t.TaskCost.AdjustedS3LogPutCost),
-			attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, t.TaskCost.OnDemandS3LogStorageCost),
-			attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, t.TaskCost.AdjustedS3LogStorageCost),
-			attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
-			attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
-			attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
-		)
+	// Skip if the server already incremented the version cost via endAndResetSystemFailedTask; that
+	// path sets status to system-failed and the agent request arriving late would double-count.
+	if h.final && t.Status != evergreen.TaskSystemFailed {
+		grip.Error(ctx, errors.Wrapf(model.TrackVersionS3CostForTask(ctx, t.Id, t.Version, "completed", t.TaskCost, t.S3Usage),
+			"tracking version S3 cost for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

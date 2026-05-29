@@ -2412,6 +2412,11 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 }
 
 func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+	// The agent is dead and the task was aborted; increment the version's S3 cost from the
+	// last intermediate state saved to the task document.
+	grip.Error(ctx, errors.Wrapf(TrackVersionS3CostForTask(ctx, t.Id, t.Version, "system_failed", t.TaskCost, t.S3Usage),
+		"tracking version S3 cost for stale aborted task '%s'", t.Id))
+
 	failureDetails := &apimodels.TaskEndDetail{
 		Status:      evergreen.TaskFailed,
 		Type:        evergreen.CommandTypeSystem,
@@ -2430,6 +2435,11 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 	if t.IsFinished() {
 		return nil
 	}
+
+	// The agent is dead (heartbeat timeout or host terminated) and will never reach teardown group,
+	// so increment the version's S3 cost from the last intermediate state saved to the task document.
+	grip.Error(ctx, errors.Wrapf(TrackVersionS3CostForTask(ctx, t.Id, t.Version, "system_failed", t.TaskCost, t.S3Usage),
+		"tracking version S3 cost for system-failed task '%s'", t.Id))
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
 
