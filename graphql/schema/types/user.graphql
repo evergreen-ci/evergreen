@@ -7,15 +7,6 @@ input PublicKeyInput {
   name: String!
 }
 
-input UpdateParsleySettingsInput {
-  parsleySettings: ParsleySettingsInput!
-}
-
-input ParsleySettingsInput {
-  sectionsEnabled: Boolean
-  jumpToFailingLineEnabled: Boolean
-}
-
 input UpdateBetaFeaturesInput {
   betaFeatures: BetaFeaturesInput!
 }
@@ -104,7 +95,6 @@ type User {
   emailAddress: String
   hasTokenExchangePending: Boolean!
   parsleyFilters: [ParsleyFilter!]
-  parsleySettings: ParsleySettings
   patches(patchesInput: PatchesInput!): Patches # user patches
   permissions: Permissions
   settings: UserSettings
@@ -136,20 +126,8 @@ type UserConfig {
   oauth_connector_id: String!
 }
 
-type UpdateParsleySettingsPayload {
-  parsleySettings: ParsleySettings
-}
-
 type UpdateBetaFeaturesPayload {
   betaFeatures: BetaFeatures
-}
-
-"""
-ParsleySettings contains information about a user's settings for Parsley.
-"""
-type ParsleySettings {
-  sectionsEnabled: Boolean!
-  jumpToFailingLineEnabled: Boolean!
 }
 
 type BetaFeatures {

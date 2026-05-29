@@ -111,7 +111,6 @@ type Mutation {
   resetAPIKey: UserConfig
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   updateBetaFeatures(opts: UpdateBetaFeaturesInput!): UpdateBetaFeaturesPayload
-  updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
   updatePublicKey(
     targetKeyName: String!
     updateInfo: PublicKeyInput!

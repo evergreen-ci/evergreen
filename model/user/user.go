@@ -40,7 +40,6 @@ type DBUser struct {
 	FavoriteProjects       []string               `bson:"favorite_projects"`
 	OnlyAPI                bool                   `bson:"only_api,omitempty"`
 	ParsleyFilters         []parsley.Filter       `bson:"parsley_filters"`
-	ParsleySettings        parsley.Settings       `bson:"parsley_settings"`
 	NumScheduledPatchTasks int                    `bson:"num_scheduled_patch_tasks"`
 	LastScheduledTasksAt   time.Time              `bson:"last_scheduled_tasks_at"`
 	BetaFeatures           evergreen.BetaFeatures `bson:"beta_features"`
@@ -225,16 +224,6 @@ func (u *DBUser) UpdateSettings(ctx context.Context, settings UserSettings) erro
 		return errors.Wrapf(err, "saving user settings for user '%s'", u.Id)
 	}
 	u.Settings = settings
-	return nil
-}
-
-// UpdateParsleySettings updates a user's settings for Parsley.
-func (u *DBUser) UpdateParsleySettings(ctx context.Context, settings parsley.Settings) error {
-	update := bson.M{"$set": bson.M{ParsleySettingsKey: settings}}
-	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
-		return errors.Wrapf(err, "saving Parsley settings for user '%s'", u.Id)
-	}
-	u.ParsleySettings = settings
 	return nil
 }
 

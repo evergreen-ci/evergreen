@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -1400,23 +1399,6 @@ func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBe
 	betaFeatures.BuildFromService(usr.BetaFeatures)
 	return &UpdateBetaFeaturesPayload{
 		BetaFeatures: &betaFeatures,
-	}, nil
-}
-
-// UpdateParsleySettings is the resolver for the updateParsleySettings field.
-func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error) {
-	usr := mustHaveUser(ctx)
-	newSettings := opts.ParsleySettings.ToService()
-
-	changes := parsley.MergeExistingParsleySettings(usr.ParsleySettings, newSettings)
-	if err := usr.UpdateParsleySettings(ctx, changes); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings for user '%s': %s", usr.Id, err.Error()))
-	}
-
-	parsleySettings := restModel.APIParsleySettings{}
-	parsleySettings.BuildFromService(usr.ParsleySettings)
-	return &UpdateParsleySettingsPayload{
-		ParsleySettings: &parsleySettings,
 	}, nil
 }
 
