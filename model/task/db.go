@@ -40,6 +40,13 @@ var (
 		{Key: OverrideDependenciesKey, Value: 1},
 		{Key: UnattainableDependencyKey, Value: 1},
 	}
+
+	// TasksByVersionIndex pins HasMatchingTasks's plan to a stable
+	// version-prefixed scan so mainlineCommits latency stops fluctuating.
+	TasksByVersionIndex = bson.D{
+		{Key: VersionKey, Value: 1},
+		{Key: ActivatedTimeKey, Value: 1},
+	}
 )
 
 var (
@@ -2263,19 +2270,19 @@ type HasMatchingTasksOptions struct {
 // HasMatchingTasks returns true if the version has tasks with the given statuses
 func HasMatchingTasks(ctx context.Context, versionID string, opts HasMatchingTasksOptions) (bool, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "HasMatchingTasks")})
-	options := GetTasksByVersionOptions{
+	pipelineOpts := GetTasksByVersionOptions{
 		TaskNames:                  opts.TaskNames,
 		Variants:                   opts.Variants,
 		Statuses:                   opts.Statuses,
 		IncludeNeverActivatedTasks: !opts.IncludeNeverActivatedTasks,
 	}
-	pipeline, err := getTasksByVersionPipeline(versionID, options)
+	pipeline, err := getTasksByVersionPipeline(versionID, pipelineOpts)
 	if err != nil {
 		return false, errors.Wrap(err, "getting tasks by version pipeline")
 	}
 	pipeline = append(pipeline, bson.M{"$limit": 1})
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(TasksByVersionIndex))
 	if err != nil {
 		// If the pipeline stage is too large we should use the slow annotations lookup
 		if db.IsErrorCode(err, db.FacetPipelineStageTooLargeCode) && !opts.UseSlowAnnotationsLookup {
@@ -2338,9 +2345,11 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	if !opts.IncludeNeverActivatedTasks {
 		match[ActivatedTimeKey] = bson.M{"$ne": utility.ZeroTime}
 	}
+	// Match before project so the planner can use a version-prefixed index
+	// without relying on its $project/$match reordering optimization.
 	pipeline := []bson.M{
-		{"$project": projectOut},
 		{"$match": match},
+		{"$project": projectOut},
 	}
 
 	if !opts.IncludeExecutionTasks {
