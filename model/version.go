@@ -431,20 +431,21 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 	}
 
 	var results []struct {
-		// Actual EC2/EBS costs (S3 actual costs are accumulated per-task by IncrementVersionS3CostAndUsage).
+		// Actual costs (summed from task cost).
 		TotalOnDemand              float64 `bson:"total_on_demand"`
 		TotalAdjusted              float64 `bson:"total_adjusted"`
 		TotalOnDemandEBSThroughput float64 `bson:"total_on_demand_ebs_throughput"`
 		TotalAdjustedEBSThroughput float64 `bson:"total_adjusted_ebs_throughput"`
 		TotalOnDemandEBSStorage    float64 `bson:"total_on_demand_ebs_storage"`
 		TotalAdjustedEBSStorage    float64 `bson:"total_adjusted_ebs_storage"`
-		// Predicted costs (all components including S3).
-		PredictedOnDemand                      float64 `bson:"expected_on_demand"`
-		PredictedAdjusted                      float64 `bson:"expected_adjusted"`
-		PredictedOnDemandEBSThroughput         float64 `bson:"expected_on_demand_ebs_throughput"`
-		PredictedAdjustedEBSThroughput         float64 `bson:"expected_adjusted_ebs_throughput"`
-		PredictedOnDemandEBSStorage            float64 `bson:"expected_on_demand_ebs_storage"`
-		PredictedAdjustedEBSStorage            float64 `bson:"expected_adjusted_ebs_storage"`
+		// Predicted costs (summed from task predicted_cost).
+		PredictedOnDemand              float64 `bson:"expected_on_demand"`
+		PredictedAdjusted              float64 `bson:"expected_adjusted"`
+		PredictedOnDemandEBSThroughput float64 `bson:"expected_on_demand_ebs_throughput"`
+		PredictedAdjustedEBSThroughput float64 `bson:"expected_adjusted_ebs_throughput"`
+		PredictedOnDemandEBSStorage    float64 `bson:"expected_on_demand_ebs_storage"`
+		PredictedAdjustedEBSStorage    float64 `bson:"expected_adjusted_ebs_storage"`
+
 		PredictedOnDemandS3ArtifactPutCost     float64 `bson:"expected_on_demand_s3_artifact_put_cost"`
 		PredictedAdjustedS3ArtifactPutCost     float64 `bson:"expected_adjusted_s3_artifact_put_cost"`
 		PredictedOnDemandS3LogPutCost          float64 `bson:"expected_on_demand_s3_log_put_cost"`
