@@ -801,7 +801,7 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	// Skip if the server already incremented the version cost via endAndResetSystemFailedTask; that
 	// path sets status to system-failed and the agent request arriving late would double-count.
 	if h.final && t.Status != evergreen.TaskSystemFailed {
-		grip.Error(ctx, errors.Wrapf(model.TrackVersionS3CostForTask(ctx, t.Id, t.Version, "completed", t.TaskCost, t.S3Usage),
+		grip.Error(ctx, errors.Wrapf(model.TrackVersionS3CostForTask(ctx, t.Id, t.Version, evergreen.TaskSucceeded, t.TaskCost, t.S3Usage),
 			"tracking version S3 cost for task '%s'", h.taskID))
 	}
 

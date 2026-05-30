@@ -536,10 +536,7 @@ const (
 	TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_max_put_requests_cost"
 	TaskS3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
 
-	// TaskS3CostSourceOtelAttribute indicates how the version S3 cost was reported:
-	// "completed" means the agent ran teardown (full data); "system_failed" means the
-	// agent was dead and data is from the last intermediate report (may be partial).
-	TaskS3CostSourceOtelAttribute = "evergreen.task.s3_cost.source"
+	TaskS3CostTaskStatusOtelAttribute = "evergreen.task.s3_cost.task_status"
 
 	// S3 cost tracking otel attributes — task-level log aggregates
 	TaskS3LogPutRequestsOtelAttribute         = "evergreen.task.s3_cost.log_put_requests"

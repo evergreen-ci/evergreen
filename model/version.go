@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -529,14 +530,10 @@ func IncrementVersionS3CostAndUsage(ctx context.Context, versionID string, taskC
 }
 
 // TrackVersionS3CostForTask increments the version's S3 cost and usage by this task's contribution
-// and emits an OTel span. source should be "completed" when the agent ran teardown (full data) or
-// "system_failed" when the agent was dead and data is from the last intermediate report.
+// and emits an OTel span. source should be evergreen.TaskSucceeded when the agent ran teardown
+// (full data) or evergreen.TaskSystemFailed when the agent was dead and data is from the last
+// intermediate report.
 func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source string, taskCost cost.Cost, s3Usage s3usage.S3Usage) error {
-	ctx, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName)
-	defer span.End()
-
-	err := IncrementVersionS3CostAndUsage(ctx, versionID, taskCost, s3Usage)
-
 	var avgFilePutCost, maxFilePutCost, minFilePutCost float64
 	if s3Usage.Artifacts.Count > 0 && s3Usage.Artifacts.PutRequests > 0 {
 		costPerPut := taskCost.AdjustedS3ArtifactPutCost / float64(s3Usage.Artifacts.PutRequests)
@@ -545,28 +542,31 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 		minFilePutCost = costPerPut * float64(s3Usage.Artifacts.ArtifactWithMinPutRequests)
 	}
 
-	span.SetAttributes(
-		attribute.String(evergreen.TaskIDOtelAttribute, taskID),
-		attribute.String(evergreen.TaskS3CostSourceOtelAttribute, source),
-		attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, s3Usage.Artifacts.PutRequests),
-		attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, s3Usage.Artifacts.UploadBytes),
-		attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, s3Usage.Artifacts.Count),
-		attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, taskCost.OnDemandS3ArtifactPutCost),
-		attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, taskCost.AdjustedS3ArtifactPutCost),
-		attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, taskCost.OnDemandS3ArtifactStorageCost),
-		attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, taskCost.AdjustedS3ArtifactStorageCost),
-		attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, s3Usage.Logs.PutRequests),
-		attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, s3Usage.Logs.UploadBytes),
-		attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, taskCost.OnDemandS3LogPutCost),
-		attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, taskCost.AdjustedS3LogPutCost),
-		attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, taskCost.OnDemandS3LogStorageCost),
-		attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, taskCost.AdjustedS3LogStorageCost),
-		attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
-		attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
-		attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
-	)
+	_, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName,
+		trace.WithNewRoot(),
+		trace.WithAttributes(
+			attribute.String(evergreen.TaskIDOtelAttribute, taskID),
+			attribute.String(evergreen.TaskS3CostTaskStatusOtelAttribute, source),
+			attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, s3Usage.Artifacts.PutRequests),
+			attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, s3Usage.Artifacts.UploadBytes),
+			attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, s3Usage.Artifacts.Count),
+			attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, taskCost.OnDemandS3ArtifactPutCost),
+			attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, taskCost.AdjustedS3ArtifactPutCost),
+			attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, taskCost.OnDemandS3ArtifactStorageCost),
+			attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, taskCost.AdjustedS3ArtifactStorageCost),
+			attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, s3Usage.Logs.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, s3Usage.Logs.UploadBytes),
+			attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, taskCost.OnDemandS3LogPutCost),
+			attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, taskCost.AdjustedS3LogPutCost),
+			attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, taskCost.OnDemandS3LogStorageCost),
+			attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, taskCost.AdjustedS3LogStorageCost),
+			attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+			attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
+			attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
+		))
+	span.End()
 
-	return err
+	return IncrementVersionS3CostAndUsage(ctx, versionID, taskCost, s3Usage)
 }
 
 // GetHighestTaskExecution returns the highest execution number of all tasks in the version.
