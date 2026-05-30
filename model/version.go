@@ -493,12 +493,14 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEBSStorageCostKey):    total.OnDemandEBSStorageCost,
 		bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSStorageCostKey):    total.AdjustedEBSStorageCost,
 
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEC2CostKey):               predicted.OnDemandEC2Cost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEC2CostKey):               predicted.AdjustedEC2Cost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSThroughputCostKey):     predicted.OnDemandEBSThroughputCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSThroughputCostKey):     predicted.AdjustedEBSThroughputCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSStorageCostKey):        predicted.OnDemandEBSStorageCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSStorageCostKey):        predicted.AdjustedEBSStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEC2CostKey): predicted.OnDemandEC2Cost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEC2CostKey): predicted.AdjustedEC2Cost,
+
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSThroughputCostKey): predicted.OnDemandEBSThroughputCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSThroughputCostKey): predicted.AdjustedEBSThroughputCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSStorageCostKey):    predicted.OnDemandEBSStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSStorageCostKey):    predicted.AdjustedEBSStorageCost,
+
 		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3ArtifactPutCostKey):     predicted.OnDemandS3ArtifactPutCost,
 		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3ArtifactPutCostKey):     predicted.AdjustedS3ArtifactPutCost,
 		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3LogPutCostKey):          predicted.OnDemandS3LogPutCost,
