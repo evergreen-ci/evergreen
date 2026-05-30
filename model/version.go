@@ -486,27 +486,27 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 
 	// Use dotted-path $set for actual costs to avoid overwriting S3 fields managed by IncrementVersionS3CostAndUsage.
 	setFields := bson.M{
-		bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEC2CostKey):          total.OnDemandEC2Cost,
-		bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEC2CostKey):          total.AdjustedEC2Cost,
+		bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEC2CostKey):           total.OnDemandEC2Cost,
+		bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEC2CostKey):           total.AdjustedEC2Cost,
 		bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEBSThroughputCostKey): total.OnDemandEBSThroughputCost,
 		bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSThroughputCostKey): total.AdjustedEBSThroughputCost,
 		bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEBSStorageCostKey):    total.OnDemandEBSStorageCost,
 		bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSStorageCostKey):    total.AdjustedEBSStorageCost,
 
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEC2CostKey):                  predicted.OnDemandEC2Cost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEC2CostKey):                  predicted.AdjustedEC2Cost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSThroughputCostKey):         predicted.OnDemandEBSThroughputCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSThroughputCostKey):         predicted.AdjustedEBSThroughputCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSStorageCostKey):            predicted.OnDemandEBSStorageCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSStorageCostKey):            predicted.AdjustedEBSStorageCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3ArtifactPutCostKey):         predicted.OnDemandS3ArtifactPutCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3ArtifactPutCostKey):         predicted.AdjustedS3ArtifactPutCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3LogPutCostKey):              predicted.OnDemandS3LogPutCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3LogPutCostKey):              predicted.AdjustedS3LogPutCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3ArtifactStorageCostKey):     predicted.OnDemandS3ArtifactStorageCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3ArtifactStorageCostKey):     predicted.AdjustedS3ArtifactStorageCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3LogStorageCostKey):          predicted.OnDemandS3LogStorageCost,
-		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3LogStorageCostKey):          predicted.AdjustedS3LogStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEC2CostKey):               predicted.OnDemandEC2Cost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEC2CostKey):               predicted.AdjustedEC2Cost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSThroughputCostKey):     predicted.OnDemandEBSThroughputCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSThroughputCostKey):     predicted.AdjustedEBSThroughputCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandEBSStorageCostKey):        predicted.OnDemandEBSStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedEBSStorageCostKey):        predicted.AdjustedEBSStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3ArtifactPutCostKey):     predicted.OnDemandS3ArtifactPutCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3ArtifactPutCostKey):     predicted.AdjustedS3ArtifactPutCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3LogPutCostKey):          predicted.OnDemandS3LogPutCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3LogPutCostKey):          predicted.AdjustedS3LogPutCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3ArtifactStorageCostKey): predicted.OnDemandS3ArtifactStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3ArtifactStorageCostKey): predicted.AdjustedS3ArtifactStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.OnDemandS3LogStorageCostKey):      predicted.OnDemandS3LogStorageCost,
+		bsonutil.GetDottedKeyName(VersionPredictedCostKey, cost.AdjustedS3LogStorageCostKey):      predicted.AdjustedS3LogStorageCost,
 	}
 	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{"$set": setFields}); err != nil {
 		return errors.Wrap(err, "updating version aggregated task costs")
