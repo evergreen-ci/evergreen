@@ -132,6 +132,9 @@ func (e *ProjectChangeEvent) RedactSecrets() {
 	isGHAppKeyModified := !bytes.Equal(e.Before.GitHubAppAuth.PrivateKey, e.After.GitHubAppAuth.PrivateKey)
 	e.Before.GitHubAppAuth = getRedactedGitHubAppCopy(e.Before.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedBeforeValue)
 	e.After.GitHubAppAuth = getRedactedGitHubAppCopy(e.After.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedAfterValue)
+	modifiedWebhooks := getModifiedWebhookSubscriberIDs(e.Before.Subscriptions, e.After.Subscriptions)
+	e.Before.Subscriptions = getRedactedSubscriptionsCopy(e.Before.Subscriptions, modifiedWebhooks, evergreen.RedactedBeforeValue)
+	e.After.Subscriptions = getRedactedSubscriptionsCopy(e.After.Subscriptions, modifiedWebhooks, evergreen.RedactedAfterValue)
 }
 
 // getModifiedProjectVars returns the set of project variables in the change
@@ -204,6 +207,85 @@ func getRedactedGitHubAppCopy(auth ProjectEventGitHubAppAuth, isGHAppKeyModified
 		redactedAuth.PrivateKey = []byte{}
 	}
 	return redactedAuth
+}
+
+// getModifiedWebhookSecrets returns the set of subscription IDs whose webhook secrets or Authorization headers changed.
+func getModifiedWebhookSubscriberIDs(before, after []event.Subscription) map[string]struct{} {
+	beforeByID := buildWebhookSubscribers(before)
+	afterByID := buildWebhookSubscribers(after)
+
+	modified := make(map[string]struct{})
+	allIDs := make(map[string]struct{}, len(beforeByID)+len(afterByID))
+	for id := range beforeByID {
+		allIDs[id] = struct{}{}
+	}
+	for id := range afterByID {
+		allIDs[id] = struct{}{}
+	}
+
+	for id := range allIDs {
+		bws, aws := beforeByID[id], afterByID[id]
+		if bws == nil || aws == nil || !bytes.Equal(bws.Secret, aws.Secret) || bws.GetHeader("Authorization") != aws.GetHeader("Authorization") {
+			modified[id] = struct{}{}
+		}
+	}
+	return modified
+}
+
+// getRedactedSubscriptionsCopy returns a copy of the subscriptions with webhook secrets redacted.
+func getRedactedSubscriptionsCopy(subscriptions []event.Subscription, modifiedIDs map[string]struct{}, placeholder string) []event.Subscription {
+	result := make([]event.Subscription, len(subscriptions))
+	copy(result, subscriptions)
+	for i := range result {
+		if result[i].Subscriber.Type != event.EvergreenWebhookSubscriberType {
+			continue
+		}
+		ws, ok := result[i].Subscriber.Target.(*event.WebhookSubscriber)
+		if !ok || ws == nil {
+			continue
+		}
+		redacted := *ws
+		_, isModified := modifiedIDs[result[i].ID]
+		redactWebhook(&redacted, isModified, placeholder)
+		result[i].Subscriber.Target = &redacted
+	}
+	return result
+}
+
+// buildWebhookSubscribers returns a map of subscription ID to WebhookSubscriber for all webhook subscriptions.
+func buildWebhookSubscribers(subscriptions []event.Subscription) map[string]*event.WebhookSubscriber {
+	result := make(map[string]*event.WebhookSubscriber)
+	for i := range subscriptions {
+		if subscriptions[i].Subscriber.Type != event.EvergreenWebhookSubscriberType {
+			continue
+		}
+		if ws, ok := subscriptions[i].Subscriber.Target.(*event.WebhookSubscriber); ok {
+			result[subscriptions[i].ID] = ws
+		}
+	}
+	return result
+}
+
+// redactWebhook replaces the secret and Authorization header with a diff-aware placeholder.
+// Modified secrets use the caller-supplied placeholder to show before/after. Unmodified secrets
+// use evergreen.RedactedValue so users know the field exists and was not deleted.
+func redactWebhook(ws *event.WebhookSubscriber, isModified bool, placeholder string) {
+	if len(ws.Secret) > 0 {
+		if isModified {
+			ws.Secret = []byte(placeholder)
+		} else {
+			ws.Secret = []byte(evergreen.RedactedValue)
+		}
+	}
+	for i := range ws.Headers {
+		if ws.Headers[i].Key == "Authorization" {
+			if isModified {
+				ws.Headers[i].Value = placeholder
+			} else {
+				ws.Headers[i].Value = evergreen.RedactedValue
+			}
+		}
+	}
 }
 
 type ProjectChangeEvents []ProjectChangeEventEntry
