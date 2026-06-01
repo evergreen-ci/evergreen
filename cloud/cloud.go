@@ -149,6 +149,13 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 
 	switch mgrOpts.Provider {
 	case evergreen.ProviderNameEc2OnDemand:
+		grip.Warning(message.Fields{
+			"message":  "deprecated ec2-ondemand provider used; routing to ec2FleetManager",
+			"ticket":   "DEVPROD-25338",
+			"provider": mgrOpts.Provider,
+			"region":   mgrOpts.Region,
+			"account":  mgrOpts.Account,
+		})
 		provider = &ec2FleetManager{
 			env: env,
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
