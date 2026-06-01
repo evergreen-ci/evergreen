@@ -16,10 +16,6 @@ import (
 )
 
 const (
-	// WorkDirInContainer is where the host task workdir is mounted inside the container.
-	// Replaced by same-path mounting in A2; kept here until A2 lands.
-	WorkDirInContainer = "/work"
-
 	// EnvFileMountTarget is the in-container path where the env tmpfs is bind-mounted (read-only).
 	EnvFileMountTarget = "/var/run/evergreen-env"
 
@@ -57,6 +53,9 @@ func (c Config) Validate() error {
 	if c.WorkDir == "" {
 		return errors.New("work directory is required")
 	}
+	if !filepath.IsAbs(c.WorkDir) {
+		return errors.Errorf("work directory must be absolute, got %q", c.WorkDir)
+	}
 	if c.TaskID == "" {
 		return errors.New("task ID is required")
 	}
@@ -90,9 +89,10 @@ func envHostDir(taskID string) string {
 
 // CreateAndStart creates a Docker container for task isolation and starts it.
 // The container runs `sleep infinity` to stay alive while the agent `docker exec`s
-// commands into it. The host task working directory is bind-mounted at /work.
-// A per-task tmpfs is provisioned on the host and bind-mounted read-only into
-// the container at EnvFileMountTarget for env-file forwarding.
+// commands into it. The host task working directory is bind-mounted at the same
+// path inside the container (same-path semantics). A per-task tmpfs is provisioned
+// on the host and bind-mounted read-only into the container at EnvFileMountTarget
+// for env-file forwarding.
 // The caller must call Destroy when the task is complete.
 func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	if err := cfg.Validate(); err != nil {
@@ -121,7 +121,7 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	containerCfg := &container.Config{
 		Image:      cfg.Image,
 		Cmd:        []string{"sleep", "infinity"},
-		WorkingDir: WorkDirInContainer,
+		WorkingDir: cfg.WorkDir,
 		Tty:        false,
 	}
 
@@ -129,7 +129,7 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		{
 			Type:   mount.TypeBind,
 			Source: cfg.WorkDir,
-			Target: WorkDirInContainer,
+			Target: cfg.WorkDir,
 		},
 		{
 			Type:     mount.TypeBind,
