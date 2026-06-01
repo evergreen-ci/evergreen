@@ -175,15 +175,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 			}
 
 			if conf.Distro != nil {
-				// Remap the command's resolved host working dir to its in-container
-				// equivalent. After A2 (same-path mounting) ContainerExecWorkDir ==
-				// WorkDir and this becomes an identity mapping.
-				containerWorkDir := conf.ContainerExecWorkDir
-				if conf.ContainerExecWorkDir != "" && conf.WorkDir != "" &&
-					(c.WorkingDir == conf.WorkDir || strings.HasPrefix(c.WorkingDir, conf.WorkDir+string(filepath.Separator))) {
-					containerWorkDir = filepath.Join(conf.ContainerExecWorkDir, strings.TrimPrefix(c.WorkingDir, conf.WorkDir))
-				}
-				if err := agentutil.WrapWithContainer(opts, conf.ContainerID, containerWorkDir, conf.EnvFileHostDir); err != nil {
+				if err := agentutil.WrapWithContainer(opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
 					return nil, errors.Wrap(err, "wrapping command for container execution")
 				}
 			}

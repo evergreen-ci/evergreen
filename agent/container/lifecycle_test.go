@@ -33,6 +33,15 @@ func TestConfigValidation(t *testing.T) {
 		assert.Error(t, cfg.Validate())
 	})
 
+	t.Run("RelativeWorkDirRejected", func(t *testing.T) {
+		cfg := Config{
+			Image:   "ubuntu:22.04",
+			WorkDir: "relative/path",
+			TaskID:  "task123",
+		}
+		assert.ErrorContains(t, cfg.Validate(), "work directory must be absolute")
+	})
+
 	t.Run("MissingTaskID", func(t *testing.T) {
 		cfg := Config{
 			Image:   "ubuntu:22.04",

@@ -179,27 +179,23 @@ func runChecks(ctx context.Context, containerID, workDir, optPath string) []chec
 	results := []checkResult{}
 	hostUID := strconv.Itoa(os.Getuid())
 
-	// execIn runs argv inside the container as root with /work as cwd.
-	// Approach B from the plan: build docker-exec args directly because
-	// agent/util.WrapWithContainer doesn't forward env or set --workdir.
+	// execIn runs argv inside the container with workDir as cwd (same-path semantics).
 	execIn := func(argv ...string) (string, error) {
-		full := append([]string{"exec", "-w", container.WorkDirInContainer, containerID}, argv...)
+		full := append([]string{"exec", "-w", workDir, containerID}, argv...)
 		out, err := exec.CommandContext(ctx, "docker", full...).CombinedOutput()
 		return strings.TrimSpace(string(out)), err
 	}
-	// execAs is the same but with -u <uid>:<gid> so the kernel sees the
-	// host's user. Used for the UID-consistency criterion.
+	// execAs is the same but with -u <uid>:<gid> so the kernel sees the host's user.
 	execAs := func(uid string, argv ...string) (string, error) {
-		full := append([]string{"exec", "-u", uid, "-w", container.WorkDirInContainer, containerID}, argv...)
+		full := append([]string{"exec", "-u", uid, "-w", workDir, containerID}, argv...)
 		out, err := exec.CommandContext(ctx, "docker", full...).CombinedOutput()
 		return strings.TrimSpace(string(out)), err
 	}
 	// One demonstrative use of agent/util.WrapWithContainer to prove the
-	// wrapper integrates with downstream callers. Passes the in-container
-	// workdir and no envFileHostDir (env forwarding not exercised here).
+	// wrapper integrates with downstream callers.
 	execViaWrapper := func(argv ...string) (string, error) {
 		opts := &options.Create{Args: argv}
-		if err := agentutil.WrapWithContainer(opts, containerID, container.WorkDirInContainer, ""); err != nil {
+		if err := agentutil.WrapWithContainer(opts, containerID, workDir, ""); err != nil {
 			return "", err
 		}
 		out, err := exec.CommandContext(ctx, opts.Args[0], opts.Args[1:]...).CombinedOutput()
@@ -244,13 +240,13 @@ func runChecks(ctx context.Context, containerID, workDir, optPath string) []chec
 	if err := os.WriteFile(filepath.Join(workDir, "from-host.txt"), []byte(hostMsg+"\n"), 0o644); err != nil {
 		add("host→container bind", false, "host write failed: "+err.Error())
 	} else {
-		got, err := execIn("cat", container.WorkDirInContainer+"/from-host.txt")
+		got, err := execIn("cat", workDir+"/from-host.txt")
 		add("host→container bind", err == nil && strings.TrimSpace(got) == hostMsg, got)
 	}
 
 	// 7. Workdir bind, container → host.
 	cMsg := "hello from container"
-	_, err = execIn("sh", "-c", fmt.Sprintf("echo '%s' > %s/from-container.txt", cMsg, container.WorkDirInContainer))
+	_, err = execIn("sh", "-c", fmt.Sprintf("echo '%s' > '%s/from-container.txt'", cMsg, workDir))
 	hostRead := ""
 	if err == nil {
 		b, rerr := os.ReadFile(filepath.Join(workDir, "from-container.txt"))
@@ -264,7 +260,7 @@ func runChecks(ctx context.Context, containerID, workDir, optPath string) []chec
 	//    sees the host's UID inside the container, and a file written
 	//    under the bind-mounted workdir is owned by host UID on the host.
 	uidIn, _ := execAs(hostUID, "id", "-u")
-	_, _ = execAs(hostUID, "sh", "-c", "touch "+container.WorkDirInContainer+"/uid-probe.txt")
+	_, _ = execAs(hostUID, "sh", "-c", "touch '"+workDir+"/uid-probe.txt'")
 	stat, statErr := os.Stat(filepath.Join(workDir, "uid-probe.txt"))
 	fileUID := -1
 	if statErr == nil {
