@@ -2153,36 +2153,24 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	}
 
 	// Calculate EC2 runtime costs now that we have the actual runtime.
-	if err := t.UpdateTaskCost(ctx); err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message":   "failed to calculate task cost",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-		}))
-	}
+	t.UpdateTaskCost(ctx)
 
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
-	return UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				FinishTimeKey:         finishTime,
-				StatusKey:             detail.Status,
-				TimeTakenKey:          t.TimeTaken,
-				TaskCostKey:           t.TaskCost,
-				DetailsKey:            detail,
-				StartTimeKey:          t.StartTime,
-				DisplayStatusCacheKey: t.DisplayStatusCache,
-				TaskOutputInfoKey:     t.TaskOutputInfo,
-			},
-		})
+	setFields := bson.M{
+		FinishTimeKey:         finishTime,
+		StatusKey:             detail.Status,
+		TimeTakenKey:          t.TimeTaken,
+		DetailsKey:            detail,
+		StartTimeKey:          t.StartTime,
+		DisplayStatusCacheKey: t.DisplayStatusCache,
+		TaskOutputInfoKey:     t.TaskOutputInfo,
+	}
+	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
+	return UpdateOne(ctx, bson.M{IdKey: t.Id}, bson.M{"$set": setFields})
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
@@ -4300,9 +4288,10 @@ func getHostRegionForTask(ctx context.Context, t *Task) string {
 	return util.AZToRegion(result.Zone)
 }
 
-func (t *Task) UpdateTaskCost(ctx context.Context) error {
+// UpdateTaskCost computes EC2 and EBS costs from the task's runtime and distro pricing into t.TaskCost.
+func (t *Task) UpdateTaskCost(ctx context.Context) {
 	if t.TimeTaken <= 0 {
-		return nil
+		return
 	}
 
 	financeConfig, costData, d, err := t.getFinanceConfigAndDistro(ctx)
@@ -4310,20 +4299,17 @@ func (t *Task) UpdateTaskCost(ctx context.Context) error {
 		t.calculateRuntimeCost(financeConfig, costData)
 		t.calculateEBSThroughputCost(ctx, financeConfig, d)
 	}
-	costConfig := &evergreen.CostConfig{}
-	if err := costConfig.Get(ctx); err == nil {
-		t.calculateS3PutCosts(costConfig)
-	}
+}
 
-	if t.TaskCost.IsZero() {
-		return nil
-	}
-
-	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{
-		"$set": bson.M{
-			TaskCostKey: t.TaskCost,
-		},
-	})
+// ec2EBSSetFields populates m with dotted-path $set entries for the EC2 and EBS cost fields under prefix.
+// S3 cost fields are intentionally excluded — they are owned by SaveS3Usage.
+func ec2EBSSetFields(prefix string, c cost.Cost, m bson.M) {
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEC2CostKey)] = c.OnDemandEC2Cost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEC2CostKey)] = c.AdjustedEC2Cost
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSThroughputCostKey)] = c.OnDemandEBSThroughputCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSThroughputCostKey)] = c.AdjustedEBSThroughputCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSStorageCostKey)] = c.OnDemandEBSStorageCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSStorageCostKey)] = c.AdjustedEBSStorageCost
 }
 
 // calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
@@ -4365,6 +4351,9 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 	if logBucketName == "" || lookup == nil {
 		return
 	}
+	// Reset before accumulating so this function is idempotent when called more than once per task.
+	t.TaskCost.OnDemandS3LogStorageCost = 0
+	t.TaskCost.AdjustedS3LogStorageCost = 0
 	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System} {
 		if lm.LogKey == "" {
 			continue
@@ -4414,6 +4403,9 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	if lookup == nil {
 		return
 	}
+	// Reset before accumulating so this function is idempotent when called more than once per task.
+	t.TaskCost.OnDemandS3ArtifactStorageCost = 0
+	t.TaskCost.AdjustedS3ArtifactStorageCost = 0
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
 		for _, fileEntry := range bucketEntry.Files {
 			days, skipCost, usedLookup := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, bucketEntry.AWSRoleARN, lookup, costConfig)
