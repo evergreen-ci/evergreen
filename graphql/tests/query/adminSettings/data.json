@@ -304,6 +304,16 @@
           "project_id": "spruce",
           "allowed_tasks": ["lint", "storybook"],
           "allowed_bvs": null
+        },
+        {
+          "project_id": "evergreen_repo",
+          "allowed_tasks": ["check_codegen"],
+          "allowed_bvs": null
+        },
+        {
+          "project_id": "spruce_repo",
+          "allowed_tasks": ["check_codegen"],
+          "allowed_bvs": null
         }
       ]
     },
@@ -501,6 +511,37 @@
       "finance_formula": 0.777,
       "savings_plan_discount": 0.3,
       "on_demand_discount": 0.8
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "display_name": "Evergreen",
+      "repo_ref_id": "evergreen_repo",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen"
+    },
+    {
+      "_id": "spruce",
+      "display_name": "",
+      "identifier": "spruce",
+      "repo_ref_id": "spruce_repo",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce"
+    }
+  ],
+  "repo_ref": [
+    {
+      "_id": "evergreen_repo",
+      "display_name": "Evergreen Repo",
+      "owner_name": "evergreen-ci",
+      "repo_name": "evergreen"
+    },
+    {
+      "_id": "spruce_repo",
+      "display_name": "",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce"
     }
   ]
 }
