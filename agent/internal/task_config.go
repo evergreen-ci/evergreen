@@ -104,11 +104,6 @@ type TaskConfig struct {
 	// Set alongside ContainerID when container isolation is enabled.
 	EnvFileHostDir string
 
-	// ContainerExecWorkDir is the working directory passed via --workdir to
-	// docker exec. Until A2 (same-path workdir mounting) lands, this is the
-	// in-container workdir constant rather than the host-side WorkDir.
-	ContainerExecWorkDir string
-
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
 	PatchOrVersionDescription string
