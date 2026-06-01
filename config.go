@@ -23,6 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
 )
@@ -804,7 +805,13 @@ type DBSettings struct {
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
-func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
+type mongoClientOpt func(*options.ClientOptions)
+
+func withReadPreference(rp *readpref.ReadPref) mongoClientOpt {
+	return func(o *options.ClientOptions) { o.SetReadPreference(rp) }
+}
+
+func (s *DBSettings) mongoOptions(url string, extra ...mongoClientOpt) *options.ClientOptions {
 	opts := options.Client().ApplyURI(url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
@@ -817,6 +824,9 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 			AuthMechanism: awsAuthMechanism,
 			AuthSource:    mongoExternalAuthSource,
 		})
+	}
+	for _, opt := range extra {
+		opt(opts)
 	}
 	return opts
 }

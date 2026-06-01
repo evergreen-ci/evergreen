@@ -246,6 +246,15 @@ func (e *Environment) Client() *mongo.Client {
 	return e.MongoClient
 }
 
+// SecondaryReadClient returns the same client as Client() in the mock —
+// tests run against a single-node MongoDB, so there is no real secondary.
+// This satisfies the interface without requiring test-specific config.
+func (e *Environment) SecondaryReadClient() *mongo.Client {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.MongoClient
+}
+
 func (e *Environment) DB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
