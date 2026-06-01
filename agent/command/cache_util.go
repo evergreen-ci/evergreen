@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -196,6 +197,28 @@ func (c *cacheCommon) createPailBucket(ctx context.Context, comm client.Communic
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
 	c.bucket = bucket
 	return err
+}
+
+// retryS3Op runs op with the same exponential backoff the other S3 commands use
+// for transient errors. The op closure returns whether the error is retryable,
+// so the caller can mark terminal outcomes (e.g. a cache miss or a benign
+// already-exists response) as non-retryable. Each attempt is logged to the task
+// logger, matching the other S3 commands.
+func retryS3Op(ctx context.Context, logger grip.Journaler, description string, op utility.RetryableFunc) error {
+	attempt := 0
+	return utility.Retry(ctx, func() (bool, error) {
+		attempt++
+		logger.Infof(ctx, "Attempting to %s (attempt %d of %d).", description, attempt, maxS3OpAttempts)
+		canRetry, err := op()
+		if err != nil && canRetry {
+			logger.Errorf(ctx, "Problem while attempting to %s, retrying: %s", description, err)
+		}
+		return canRetry, err
+	}, utility.RetryOptions{
+		MaxAttempts: maxS3OpAttempts,
+		MinDelay:    s3OpSleep,
+		MaxDelay:    s3OpRetryMaxSleep,
+	})
 }
 
 // setCacheHit records whether a cache was hit in the cache-hit expansion that

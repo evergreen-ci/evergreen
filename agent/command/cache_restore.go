@@ -2,10 +2,13 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -20,7 +23,7 @@ type cacheRestore struct {
 }
 
 func cacheRestoreFactory() Command   { return &cacheRestore{} }
-func (c *cacheRestore) Name() string { return "cache.restore" }
+func (c *cacheRestore) Name() string { return evergreen.CacheRestoreCommandName }
 
 func (c *cacheRestore) ParseParams(params map[string]any) error {
 	if err := decodeCacheParams(params, c); err != nil {
@@ -66,16 +69,6 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "checking bucket")
 	}
 
-	exists, err := c.bucket.Exists(ctx, remoteKey)
-	if err != nil {
-		return errors.Wrap(err, "checking for cache object")
-	}
-	if !exists {
-		logger.Task().Infof(ctx, "cache.restore: cache miss for key '%s'.", key)
-		setCacheHit(conf, c.CacheName, false)
-		return nil
-	}
-
 	localPath, err := createTempCacheArchive(conf.WorkDir)
 	if err != nil {
 		return errors.Wrap(err, "creating local cache file")
@@ -84,8 +77,26 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 		logger.Task().Error(ctx, errors.Wrapf(os.Remove(localPath), "removing local cache archive '%s'", localPath))
 	}()
 
-	if err := c.bucket.Download(ctx, remoteKey, localPath); err != nil {
+	// Download directly rather than checking Exists first: a missing object
+	// surfaces as a key-not-found error, which is a terminal cache miss, so we
+	// avoid an extra S3 round-trip.
+	miss := false
+	downloadDesc := fmt.Sprintf("download cache object '%s'", remoteKey)
+	err = retryS3Op(ctx, logger.Task(), downloadDesc, func() (bool, error) {
+		downloadErr := c.bucket.Download(ctx, remoteKey, localPath)
+		if pail.IsKeyNotFoundError(downloadErr) {
+			miss = true
+			return false, nil
+		}
+		return downloadErr != nil, downloadErr
+	})
+	if err != nil {
 		return errors.Wrapf(err, "downloading cache object '%s'", remoteKey)
+	}
+	if miss {
+		logger.Task().Infof(ctx, "cache.restore: cache miss for key '%s'.", key)
+		setCacheHit(conf, c.CacheName, false)
+		return nil
 	}
 
 	// A 0-byte file is treated as a miss. This mirrors Evergreen's optional

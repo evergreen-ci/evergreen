@@ -2,9 +2,11 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/aws/smithy-go"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/utility"
@@ -26,7 +28,7 @@ type cacheSave struct {
 }
 
 func cacheSaveFactory() Command   { return &cacheSave{} }
-func (c *cacheSave) Name() string { return "cache.save" }
+func (c *cacheSave) Name() string { return evergreen.CacheSaveCommandName }
 
 func (c *cacheSave) ParseParams(params map[string]any) error {
 	if err := decodeCacheParams(params, c); err != nil {
@@ -94,16 +96,26 @@ func (c *cacheSave) Execute(ctx context.Context, comm client.Communicator, logge
 		return errors.Wrap(err, "checking bucket")
 	}
 
-	if err := c.bucket.Upload(ctx, remoteKey, localPath); err != nil {
+	alreadyExists := false
+	uploadDesc := fmt.Sprintf("upload cache object '%s'", remoteKey)
+	err = retryS3Op(ctx, logger.Task(), uploadDesc, func() (bool, error) {
+		uploadErr := c.bucket.Upload(ctx, remoteKey, localPath)
 		// Skip-existing semantics: S3 reports PreconditionFailed when the
 		// object already exists and IfNotExists is set on the request. That is
 		// not an error for caching, it just means another task saved first.
 		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "PreconditionFailed" {
-			logger.Task().Infof(ctx, "cache.save: not uploading because '%s/%s' already exists.", c.Bucket, remoteKey)
-			return nil
+		if errors.As(uploadErr, &apiErr) && apiErr.ErrorCode() == "PreconditionFailed" {
+			alreadyExists = true
+			return false, nil
 		}
+		return uploadErr != nil, uploadErr
+	})
+	if err != nil {
 		return errors.Wrapf(err, "uploading cache object '%s'", remoteKey)
+	}
+	if alreadyExists {
+		logger.Task().Infof(ctx, "cache.save: not uploading because '%s/%s' already exists.", c.Bucket, remoteKey)
+		return nil
 	}
 
 	logger.Task().Infof(ctx, "cache.save: uploaded cache to '%s/%s'.", c.Bucket, remoteKey)
