@@ -438,11 +438,6 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
 
-	e.secondaryClient, err = mongo.Connect(ctx, settings.mongoOptions(settings.Url, withReadPreference(readpref.SecondaryPreferred())))
-	if err != nil {
-		return errors.Wrap(err, "connecting to the Evergreen DB for secondary reads")
-	}
-
 	if settings.SharedURL != "" {
 		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoOptions(settings.SharedURL))
 		if err != nil {
@@ -518,20 +513,28 @@ func (e *envState) Client() *mongo.Client {
 
 // SecondaryReadClient returns a MongoDB client configured with SecondaryPreferred read routing.
 // Returns the normal client if secondary reads are disabled by admin settings.
+// The secondary client is initialized lazily on first call so tests that never
+// take the secondary path don't pay for a second mongo topology.
 func (e *envState) SecondaryReadClient() *mongo.Client {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.settings == nil || e.settings.ServiceFlags.SecondaryReadsDisabled {
+		return e.client
+	}
 
 	if e.secondaryClient == nil {
-		grip.Warning(e.ctx, message.Fields{
-			"message":   "secondary read client is nil; falling back to primary",
-			"operation": "SecondaryReadClient",
-		})
-		return e.client
+		client, err := mongo.Connect(e.ctx, e.settings.Database.mongoOptions(e.settings.Database.Url, withReadPreference(readpref.SecondaryPreferred())))
+		if err != nil {
+			grip.Warning(e.ctx, message.WrapError(err, message.Fields{
+				"message":   "failed to initialize secondary read client; falling back to primary",
+				"operation": "SecondaryReadClient",
+			}))
+			return e.client
+		}
+		e.secondaryClient = client
 	}
-	if e.settings != nil && e.settings.ServiceFlags.SecondaryReadsDisabled {
-		return e.client
-	}
+
 	return e.secondaryClient
 }
 
