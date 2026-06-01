@@ -407,8 +407,7 @@ miss is never an error.
     key_files:
       - go.sum
     key_expansions:
-      - ${project_id}
-      - ${distro_id}
+      - ${distro_arch}
 ```
 
 Parameters:
@@ -429,8 +428,11 @@ Parameters:
   Use either `role_arn` (recommended) or `aws_key` + `aws_secret`.
 
 The cache key is order-sensitive and contains nothing implicit: the OS,
-architecture, and distro are folded in only if you add them to `key_expansions`
-(e.g. `${distro_id}`). The `<name>_cache_hit` expansion
+architecture, and distro are folded in only if you add them to `key_expansions`.
+For architecture-scoped caches (compiled toolchains, build artifacts, etc.), use
+`${distro_arch}`, which resolves to `<GOOS>_<GOARCH>` (e.g. `linux_amd64`); use
+`${distro_id}` instead if a cache must be pinned to an exact distro. The
+`<name>_cache_hit` expansion
 converts dashes in `name` to underscores so it is a usable shell variable (for
 example, `name: mise-and-go` sets `mise_and_go_cache_hit`).
 
@@ -462,8 +464,7 @@ and the command still succeeds.
     key_files:
       - go.sum
     key_expansions:
-      - ${project_id}
-      - ${distro_id}
+      - ${distro_arch}
     paths:
       - .cache/go-mod
 ```
@@ -490,7 +491,7 @@ functions:
         bucket: my-cache-bucket
         remote_path: my-project/caches
         key_files: [go.sum]
-        key_expansions: ["${project_id}", "${distro_id}"]
+        key_expansions: ["${distro_arch}"]
 
 tasks:
   - name: build
@@ -514,7 +515,7 @@ tasks:
           bucket: my-cache-bucket
           remote_path: my-project/caches
           key_files: [go.sum]
-          key_expansions: ["${project_id}", "${distro_id}"]
+          key_expansions: ["${distro_arch}"]
           paths: [.cache/go-mod]
 ```
 
