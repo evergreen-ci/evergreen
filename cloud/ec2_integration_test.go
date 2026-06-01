@@ -60,15 +60,21 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	testConfig.SSH.TaskHostKey.Name = "evergreen-task-hosts"
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
+	// ec2FleetManager.makeOverrides requires at least one subnet in the global
+	// AWS settings. Populate it with the distro's subnet so the fleet manager
+	// can resolve overrides without error.
+	testConfig.Providers.AWS.Subnets = []evergreen.Subnet{
+		{AZ: "us-east-1a", SubnetID: "subnet-517c941a"},
+	}
 	require.NoError(db.Clear(host.Collection))
 
-	opts := &EC2ManagerOptions{
-		client: &awsClientImpl{},
+	m := &ec2FleetManager{
+		env: env,
+		EC2FleetManagerOptions: &EC2FleetManagerOptions{
+			client: &awsClientImpl{},
+		},
 	}
-
-	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.setupClient(ctx))
 
 	d := fetchTestDistro()
 	h := host.NewIntent(host.CreateOptions{
@@ -88,7 +94,8 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		},
 	})
 	h, err := m.SpawnHost(ctx, h)
-	assert.NoError(err)
+	require.NoError(err)
+	require.NotNil(h)
 	assert.NoError(h.Insert(ctx))
 	foundHosts, err := host.Find(ctx, host.IsUninitialized)
 	assert.NoError(err)

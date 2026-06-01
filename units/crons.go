@@ -887,7 +887,7 @@ func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := utility.RoundPartOfHour(0).Format(TSFormat)
 		for i := range volumes {
-			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeExpirationCheckJob(ts, &volumes[i], evergreen.ProviderNameEc2OnDemand)), "enqueueing volume expiration check job for volume '%s'", volumes[i].ID)
+			catcher.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewVolumeExpirationCheckJob(ts, &volumes[i], evergreen.ProviderNameEc2Fleet)), "enqueueing volume expiration check job for volume '%s'", volumes[i].ID)
 		}
 
 		return errors.Wrap(catcher.Resolve(), "populating check volume expiration jobs")

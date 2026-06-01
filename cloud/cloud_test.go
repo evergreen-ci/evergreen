@@ -22,7 +22,7 @@ func TestGetManager(t *testing.T) {
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &ec2FleetManager{})
 		})
 
 		Convey("Static should be returned for static provider name", func() {

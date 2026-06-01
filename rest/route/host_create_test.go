@@ -80,8 +80,8 @@ func TestMakeHost(t *testing.T) {
 	require.NotNil(h)
 
 	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	assert.Equal(sampleTask.Id, h.SpawnOptions.TaskID)
@@ -138,8 +138,8 @@ func TestMakeHost(t *testing.T) {
 	assert.True(ec2Settings.IsVpc)
 
 	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	// Using an alias should resolve to the actual distro
@@ -159,8 +159,8 @@ func TestMakeHost(t *testing.T) {
 	require.NotNil(h)
 
 	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	assert.Equal("task-id", h.SpawnOptions.TaskID)
@@ -189,8 +189,8 @@ func TestMakeHost(t *testing.T) {
 	assert.NotNil(h)
 
 	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -229,8 +229,8 @@ func TestMakeHost(t *testing.T) {
 	require.NotNil(h)
 
 	assert.Equal("", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider, "provider should be set to ec2 in the absence of a distro")
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Provider, "provider should be set to ec2 in the absence of a distro")
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Distro.Provider)
 	assert.Equal(distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
@@ -261,8 +261,8 @@ func TestMakeHost(t *testing.T) {
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
 	require.Len(h.Distro.ProviderSettingsList, 1)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Distro.Provider)
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-east-1"))
@@ -275,8 +275,8 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
-	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Fleet, h.Distro.Provider)
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))

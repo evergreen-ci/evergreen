@@ -34,6 +34,13 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "i-12345", h.Id)
 		},
+		"SpawnHostWithOnDemandProvider": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+			spawnedHost, err := m.SpawnHost(ctx, h)
+			require.NoError(t, err)
+			require.NotNil(t, spawnedHost)
+			assert.Equal(t, "i-12345", spawnedHost.Id)
+		},
 		"GetInstanceStatusesReturnsMultipleHostStatusesAndCachesData": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h1 := h
 			h2 := host.Host{
@@ -489,6 +496,20 @@ func TestCleanup(t *testing.T) {
 		require.NotZero(t, dbIPAddr2)
 		assert.Equal(t, h2.Tag, dbIPAddr2.HostTag, "IP address should remain associated with running host")
 	})
+}
+
+func TestGetManagerForEc2OnDemandUsesFleet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	mgr, err := GetManager(ctx, env, ManagerOpts{Provider: evergreen.ProviderNameEc2OnDemand})
+	require.NoError(t, err)
+	require.NotNil(t, mgr)
+	_, ok := mgr.(*ec2FleetManager)
+	assert.True(t, ok, "ec2-ondemand provider should return an ec2FleetManager")
 }
 
 func TestInstanceTypeAZCache(t *testing.T) {
