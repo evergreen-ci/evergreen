@@ -1,6 +1,7 @@
 package container
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,12 @@ func TestContainerName(t *testing.T) {
 	cfg := Config{TaskID: "abc123_def456_24_08_01_12_00_00"}
 	name := cfg.containerName()
 	assert.Equal(t, "evergreen-task-abc123_def456_24_08_01_12_00_00", name)
+}
+
+func TestEnvHostDir(t *testing.T) {
+	dir := envHostDir("abc123_def456_24_08_01_12_00_00")
+	assert.Equal(t, filepath.Join("/var/run/evergreen-env", "abc123_def456_24_08_01_12_00_00"), dir)
+	assert.True(t, filepath.IsAbs(dir), "envHostDir should return an absolute path")
 }
 
 func TestExtraMountsValidation(t *testing.T) {
