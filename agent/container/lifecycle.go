@@ -10,12 +10,21 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 const (
 	// WorkDirInContainer is where the host task workdir is mounted inside the container.
+	// Replaced by same-path mounting in A2; kept here until A2 lands.
 	WorkDirInContainer = "/work"
+
+	// EnvFileMountTarget is the in-container path where the env tmpfs is bind-mounted (read-only).
+	EnvFileMountTarget = "/var/run/evergreen-env"
+
+	// envFileBaseDir is the host-side root for per-task env tmpfs directories.
+	envFileBaseDir = "/var/run/evergreen-env"
 )
 
 // Mount is a host→container bind mount layered on top of the workdir mount.
@@ -68,14 +77,22 @@ func (c Config) containerName() string {
 
 // TaskContainer represents a running isolation container for a single task.
 type TaskContainer struct {
-	ID   string // Docker container ID (short hash).
-	Name string // Human-readable container name.
-	cli  *client.Client
+	ID             string // Docker container ID (short hash).
+	Name           string // Human-readable container name.
+	EnvFileHostDir string // host-side tmpfs dir for env-file forwarding; empty if not provisioned.
+	cli            *client.Client
+}
+
+// envHostDir returns the host-side tmpfs directory path for the given task ID.
+func envHostDir(taskID string) string {
+	return filepath.Join(envFileBaseDir, taskID)
 }
 
 // CreateAndStart creates a Docker container for task isolation and starts it.
 // The container runs `sleep infinity` to stay alive while the agent `docker exec`s
 // commands into it. The host task working directory is bind-mounted at /work.
+// A per-task tmpfs is provisioned on the host and bind-mounted read-only into
+// the container at EnvFileMountTarget for env-file forwarding.
 // The caller must call Destroy when the task is complete.
 func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	if err := cfg.Validate(); err != nil {
@@ -93,6 +110,14 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		return nil, errors.Wrap(err, "ensuring container image")
 	}
 
+	// Provision the per-task tmpfs for env-file forwarding before container
+	// create, so the bind mount can be included at create time.
+	envDir := envHostDir(cfg.TaskID)
+	if err := provisionEnvTmpfs(envDir); err != nil {
+		cli.Close()
+		return nil, errors.Wrap(err, "provisioning env tmpfs")
+	}
+
 	containerCfg := &container.Config{
 		Image:      cfg.Image,
 		Cmd:        []string{"sleep", "infinity"},
@@ -100,11 +125,19 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		Tty:        false,
 	}
 
-	mounts := []mount.Mount{{
-		Type:   mount.TypeBind,
-		Source: cfg.WorkDir,
-		Target: WorkDirInContainer,
-	}}
+	mounts := []mount.Mount{
+		{
+			Type:   mount.TypeBind,
+			Source: cfg.WorkDir,
+			Target: WorkDirInContainer,
+		},
+		{
+			Type:     mount.TypeBind,
+			Source:   envDir,
+			Target:   EnvFileMountTarget,
+			ReadOnly: true,
+		},
+	}
 	for _, m := range cfg.ExtraMounts {
 		mounts = append(mounts, mount.Mount{
 			Type:     mount.TypeBind,
@@ -129,30 +162,53 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	name := cfg.containerName()
 	resp, err := cli.ContainerCreate(ctx, containerCfg, hostCfg, nil, nil, name)
 	if err != nil {
+		_ = removeEnvTmpfs(envDir)
 		cli.Close()
 		return nil, errors.Wrap(err, "creating container")
 	}
 
 	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true}) //nolint
+		_ = removeEnvTmpfs(envDir)
 		cli.Close()
 		return nil, errors.Wrap(err, "starting container")
 	}
 
 	return &TaskContainer{
-		ID:   resp.ID,
-		Name: name,
-		cli:  cli,
+		ID:             resp.ID,
+		Name:           name,
+		EnvFileHostDir: envDir,
+		cli:            cli,
 	}, nil
 }
 
-// Destroy force-removes the container and closes the Docker client.
+// Destroy force-removes the container and cleans up the env tmpfs, then closes
+// the Docker client.
 func (tc *TaskContainer) Destroy(ctx context.Context) error {
 	defer tc.cli.Close()
-	return errors.Wrap(
+
+	removeErr := errors.Wrap(
 		tc.cli.ContainerRemove(ctx, tc.ID, container.RemoveOptions{Force: true}),
 		"removing container",
 	)
+
+	var envErr error
+	if tc.EnvFileHostDir != "" {
+		envErr = errors.Wrap(removeEnvTmpfs(tc.EnvFileHostDir), "removing env tmpfs")
+	}
+
+	if removeErr != nil {
+		if envErr != nil {
+			// Container removal failed, so log the tmpfs cleanup failure rather
+			// than dropping it; the mount may persist on the host.
+			grip.Error(ctx, message.WrapError(envErr, message.Fields{
+				"message": "env tmpfs cleanup failed after container removal error; mount may persist",
+				"dir":     tc.EnvFileHostDir,
+			}))
+		}
+		return removeErr
+	}
+	return envErr
 }
 
 // ensureImage pulls the image if it is not already present locally.
