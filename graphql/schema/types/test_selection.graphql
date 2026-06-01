@@ -1,0 +1,60 @@
+###### INPUTS ######
+"""
+QuarantineTaskInput is the input to the quarantineTask mutation. It marks every known test of the given task as manually quarantined in the test selection service.
+"""
+input QuarantineTaskInput {
+  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+}
+
+"""
+UnquarantineTaskInput is the input to the unquarantineTask mutation.
+"""
+input UnquarantineTaskInput {
+  taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+}
+
+"""
+QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.
+"""
+input QuarantineVariantInput {
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  buildVariant: String!
+}
+
+"""
+UnquarantineVariantInput is the input to the unquarantineVariant mutation.
+"""
+input UnquarantineVariantInput {
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: EDIT)
+  buildVariant: String!
+}
+
+###### TYPES ######
+"""
+VariantQuarantineStatus is the manual-quarantine status of every known test
+of every known task in a build variant, as reported by the test selection
+service.
+"""
+type VariantQuarantineStatus {
+  projectIdentifier: String!
+  buildVariant: String!
+  tasks: [TaskQuarantineEntry!]!
+}
+
+"""
+TaskQuarantineEntry is the per-task view of quarantine state inside a build
+variant.
+"""
+type TaskQuarantineEntry {
+  taskName: String!
+  tests: [TestQuarantineEntry!]!
+}
+
+"""
+TestQuarantineEntry is the per-test view of manual-quarantine state inside a
+task.
+"""
+type TestQuarantineEntry {
+  testName: String!
+  isManuallyQuarantined: Boolean!
+}

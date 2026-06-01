@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -38,6 +39,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -646,6 +648,11 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/schedulePatch":        {persistTestSettings},
 		"mutation/quarantineTest":       {setupQuarantineTestMutation},
 		"mutation/unquarantineTest":     {setupQuarantineTestMutation},
+		"mutation/quarantineTask":       {setupQuarantineTaskMutation},
+		"mutation/unquarantineTask":     {setupQuarantineTaskMutation},
+		"mutation/quarantineVariant":    {setupQuarantineVariantMutation},
+		"mutation/unquarantineVariant":  {setupQuarantineVariantMutation},
+		"query/variantQuarantineStatus": {setupVariantQuarantineStatusQuery},
 		"distro/availableRegions":       {setupEnvironmentSettings},
 	}
 	if m[state.Directory] != nil {
@@ -659,9 +666,14 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"mutation/spawnVolume":      {clearSubnets},
-		"mutation/quarantineTest":   {teardownQuarantineTestMutation},
-		"mutation/unquarantineTest": {teardownQuarantineTestMutation},
+		"mutation/spawnVolume":          {clearSubnets},
+		"mutation/quarantineTest":       {teardownQuarantineTestMutation},
+		"mutation/unquarantineTest":     {teardownQuarantineTestMutation},
+		"mutation/quarantineTask":       {teardownQuarantineTestMutation},
+		"mutation/unquarantineTask":     {teardownQuarantineTestMutation},
+		"mutation/quarantineVariant":    {teardownQuarantineTestMutation},
+		"mutation/unquarantineVariant":  {teardownQuarantineTestMutation},
+		"query/variantQuarantineStatus": {teardownQuarantineTestMutation},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {
@@ -800,6 +812,88 @@ func setupQuarantineTestMutation(t *testing.T) {
 func teardownQuarantineTestMutation(t *testing.T) {
 	if quarantineMutationTSSMock != nil {
 		quarantineMutationTSSMock.Close()
+		quarantineMutationTSSMock = nil
 	}
 	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationOriginalTSSURL
+}
+
+func setupQuarantineTaskMutation(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	var quarantined atomic.Bool
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, data.TransitionTaskEndpoint) {
+			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+		if strings.Contains(r.URL.Path, data.GetVariantStateEndpoint) {
+			state := "stable"
+			if quarantined.Load() {
+				state = "manually_quarantined"
+			}
+			_, _ = fmt.Fprintf(w, `{"my_task":{"task_name":"my_task","test_stats":{"TestFoo":{"state":"%s"}}}}`, state)
+			return
+		}
+		_, _ = w.Write([]byte("{}"))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
+
+	tsk := &task.Task{
+		Id:           "quarantine_target",
+		Project:      "sandbox_project_id",
+		BuildVariant: "ubuntu",
+		DisplayName:  "my_task",
+		Status:       evergreen.TaskSucceeded,
+	}
+	require.NoError(t, tsk.Insert(t.Context()))
+}
+
+func setupQuarantineVariantMutation(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	var quarantined atomic.Bool
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, data.TransitionVariantEndpoint) {
+			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+		if strings.Contains(r.URL.Path, data.GetVariantStateEndpoint) {
+			state := "stable"
+			if quarantined.Load() {
+				state = "manually_quarantined"
+			}
+			_, _ = fmt.Fprintf(w, `{"my_task":{"task_name":"my_task","test_stats":{"TestFoo":{"state":"%s"}}}}`, state)
+			return
+		}
+		_, _ = w.Write([]byte("{}"))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
+}
+
+func setupVariantQuarantineStatusQuery(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"task_a": {
+				"task_name": "task_a",
+				"test_stats": {
+					"test_1": {"state": "manually_quarantined"},
+					"test_2": {"state": "stable"}
+				}
+			},
+			"task_b": {
+				"task_name": "task_b",
+				"test_stats": {
+					"test_3": {"state": "stable", "override_state": "manually_quarantined"}
+				}
+			}
+		}`))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
 }

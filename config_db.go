@@ -96,6 +96,7 @@ var (
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
 	secondaryReadsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
+	backgroundCommandFailureEnabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCommandFailureEnabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

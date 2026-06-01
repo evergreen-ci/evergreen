@@ -52,6 +52,8 @@ type ServiceFlags struct {
 	WebhookNotificationsDisabled bool `bson:"webhook_notifications_disabled" json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
 	SecondaryReadsDisabled       bool `bson:"secondary_reads_disabled" json:"secondary_reads_disabled"`
+
+	BackgroundCommandFailureEnabled bool `bson:"background_command_failure_enabled" json:"background_command_failure_enabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -102,6 +104,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
+			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

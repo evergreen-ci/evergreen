@@ -932,7 +932,9 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Equal("task1", dbTasks[1].DisplayName)
 	assert.Equal("task2", dbTasks[2].DisplayName)
 	assert.Equal("task3", dbTasks[3].DisplayName)
-	assert.False(dbTasks[0].TestSelectionEnabled)
+	// displaytask1 contains task1 and task2 (both TSS-enabled), so the
+	// display task is also considered enabled.
+	assert.True(dbTasks[0].TestSelectionEnabled)
 	assert.True(dbTasks[1].TestSelectionEnabled)
 	assert.True(dbTasks[2].TestSelectionEnabled)
 	assert.False(dbTasks[3].TestSelectionEnabled)

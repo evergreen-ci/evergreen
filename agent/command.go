@@ -30,7 +30,30 @@ var (
 	commandNameAttribute        = fmt.Sprintf("%s.command_name", commandsAttribute)
 	commandDisplayNameAttribute = fmt.Sprintf("%s.command_display_name", commandsAttribute)
 	functionNameAttribute       = fmt.Sprintf("%s.function_name", commandsAttribute)
+
+	backgroundCommandFailureAttribute      = fmt.Sprintf("%s.background_failure", commandsAttribute)
+	backgroundCommandFailureCountAttribute = fmt.Sprintf("%s.background_failure_count", commandsAttribute)
+	backgroundCommandFailuresAttribute     = fmt.Sprintf("%s.background_failures", commandsAttribute)
 )
+
+// drainBackgroundFailures consolidates the consume-and-log step shared by the two
+// task-level pass/fail decision points so they don't drift apart over time; the
+// call sites still own the divergent attribute target and failure status.
+func drainBackgroundFailures(ctx context.Context, ch <-chan error, taskLog grip.Journaler) (count int, msgs []string) {
+	if ch == nil {
+		return 0, nil
+	}
+	for {
+		select {
+		case bgErr := <-ch:
+			taskLog.Errorf(ctx, "Background command failed: %s", bgErr)
+			count++
+			msgs = append(msgs, bgErr.Error())
+		default:
+			return count, msgs
+		}
+	}
+}
 
 type runCommandsOptions struct {
 	// block is the name of the block that the command runs in.
@@ -116,6 +139,9 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		defer functionSpan.End()
 	}
 
+	// Captured before per-command shadowing so drain attributes land on a live span.
+	blockCtx := ctx
+
 	for _, cmd := range cmds {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running command list")
@@ -156,6 +182,18 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			return errors.Wrap(err, "running command")
 		}
 		commandSpan.End()
+
+		// Anything reaching this channel must fail the task; continue_on_err filtering happens at the trigger.
+		count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+		if count > 0 {
+			span := trace.SpanFromContext(blockCtx)
+			span.SetAttributes(
+				attribute.Bool(backgroundCommandFailureAttribute, true),
+				attribute.Int(backgroundCommandFailureCountAttribute, count),
+				attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
+			)
+			return errors.New("background command failed")
+		}
 	}
 	return nil
 }

@@ -25,7 +25,6 @@ type APIDBUser struct {
 	HasTokenExchangePending   bool               `json:"has_token_exchange_pending"`
 	TokenAccessTokenExpiresAt *time.Time         `json:"token_access_token_expires_at"`
 	ParsleyFilters            []APIParsleyFilter `json:"parsley_filters"`
-	ParsleySettings           APIParsleySettings `json:"parsley_settings"`
 	Settings                  APIUserSettings    `json:"settings"`
 	UserID                    *string            `json:"user_id"`
 }
@@ -54,10 +53,6 @@ func (s *APIDBUser) BuildFromService(usr user.DBUser) {
 	}
 	s.ParsleyFilters = res
 
-	parsleySettings := APIParsleySettings{}
-	parsleySettings.BuildFromService(usr.ParsleySettings)
-	s.ParsleySettings = parsleySettings
-
 	s.HasTokenExchangePending = usr.TokenExchangeState != nil
 	if tok := usr.TokenExchangeToken; tok != nil && !tok.Expiry.IsZero() {
 		// Use UTC so GraphQL Time marshaling is stable across server local TZ (RFC3339 Z).
@@ -75,7 +70,6 @@ func (s *APIDBUser) ToService() (*user.DBUser, error) {
 	out.EmailAddress = utility.FromStringPtr(s.EmailAddress)
 	out.SystemRoles = s.Roles
 	out.OnlyAPI = s.OnlyApi
-	out.ParsleySettings = s.ParsleySettings.ToService()
 	out.BetaFeatures = s.BetaFeatures.ToService()
 
 	if s.ParsleyFilters != nil {
