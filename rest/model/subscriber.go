@@ -164,7 +164,8 @@ func (s *APISubscriber) ToService() (event.Subscriber, error) {
 				}
 			}
 		}
-		target = apiModel.ToService()
+		ws := apiModel.ToService()
+		target = &ws
 
 	case event.JIRAIssueSubscriberType:
 		apiModel := APIJIRAIssueSubscriber{}

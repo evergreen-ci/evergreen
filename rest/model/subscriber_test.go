@@ -73,7 +73,7 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	target.Secret = []byte(evergreen.RedactedValue)
 
 	assert.EqualValues(webhookSubscriber.Type, origWebhookSubscriber.Type)
-	assert.EqualValues(target, origWebhookSubscriber.Target)
+	assert.EqualValues(&target, origWebhookSubscriber.Target)
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
