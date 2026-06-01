@@ -509,11 +509,11 @@ You can use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overvie
 
 ### Install the Skill
 
+Follow the [agent-skills quick start guide](https://github.com/10gen/agent-skills#quick-start-claude-code) to set up Claude Code with skills, then install the task debugger skill:
+
 ```bash
 claude plugin install evergreen-task-debugger@mongodb-internal
 ```
-
-This installs the skill from the [agent-skills marketplace](https://github.com/10gen/agent-skills/blob/main/.agents/skills/tooling/evergreen-task-debugger/skills/evergreen-task-debugger/SKILL.md). You can also install the full tooling bundle with `claude plugin install tooling@mongodb-internal`.
 
 ### Usage
 
