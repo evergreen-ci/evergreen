@@ -513,8 +513,16 @@ func (e *envState) Client() *mongo.Client {
 
 // SecondaryReadClient returns a MongoDB client configured with SecondaryPreferred read routing.
 // Returns the normal client if secondary reads are disabled by admin settings.
+//
 // The secondary client is initialized lazily on first call so tests that never
-// take the secondary path don't pay for a second mongo topology.
+// take the secondary path don't pay for a second mongo topology. This is safe
+// because mongo.Connect does not perform a blocking handshake — it constructs
+// the client and starts topology discovery in the background — so the first
+// caller pays only the cost of a write-lock acquisition. The first secondary
+// query then waits for server selection (bounded by serverSelectionTimeout,
+// typically sub-100ms since the secondary URL is the same as the primary's).
+// If Connect itself errors, we log and fall back to the primary client; the
+// next call retries.
 func (e *envState) SecondaryReadClient() *mongo.Client {
 	e.mu.Lock()
 	defer e.mu.Unlock()
