@@ -195,11 +195,13 @@ func runChecks(ctx context.Context, containerID, workDir, optPath string) []chec
 		return strings.TrimSpace(string(out)), err
 	}
 	// One demonstrative use of agent/util.WrapWithContainer to prove the
-	// wrapper integrates with downstream callers, even with its current
-	// no-env, no-workdir limitations.
+	// wrapper integrates with downstream callers. Passes the in-container
+	// workdir and no envFileHostDir (env forwarding not exercised here).
 	execViaWrapper := func(argv ...string) (string, error) {
 		opts := &options.Create{Args: argv}
-		agentutil.WrapWithContainer(opts, containerID)
+		if err := agentutil.WrapWithContainer(opts, containerID, container.WorkDirInContainer, ""); err != nil {
+			return "", err
+		}
 		out, err := exec.CommandContext(ctx, opts.Args[0], opts.Args[1:]...).CombinedOutput()
 		return strings.TrimSpace(string(out)), err
 	}

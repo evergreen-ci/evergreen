@@ -233,7 +233,17 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			if conf.Distro != nil {
-				agentutil.WrapWithContainer(opts, conf.ContainerID)
+				// Remap the command's resolved host working dir to its in-container
+				// equivalent. After A2 (same-path mounting) ContainerExecWorkDir ==
+				// WorkDir and this becomes an identity mapping.
+				containerWorkDir := conf.ContainerExecWorkDir
+				if conf.ContainerExecWorkDir != "" && conf.WorkDir != "" &&
+					(c.WorkingDir == conf.WorkDir || strings.HasPrefix(c.WorkingDir, conf.WorkDir+string(filepath.Separator))) {
+					containerWorkDir = filepath.Join(conf.ContainerExecWorkDir, strings.TrimPrefix(c.WorkingDir, conf.WorkDir))
+				}
+				if err := agentutil.WrapWithContainer(opts, conf.ContainerID, containerWorkDir, conf.EnvFileHostDir); err != nil {
+					return nil, errors.Wrap(err, "wrapping command for container execution")
+				}
 			}
 			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
 		})

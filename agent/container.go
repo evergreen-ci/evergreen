@@ -28,6 +28,8 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		return errors.Wrap(err, "starting isolation container")
 	}
 	conf.ContainerID = tc.ID
+	conf.EnvFileHostDir = tc.EnvFileHostDir
+	conf.ContainerExecWorkDir = agentcontainer.WorkDirInContainer
 	a.currentContainer = tc
 	grip.Infof(ctx, "Started isolation container '%s' (image=%s) for task '%s'.", tc.Name, ci.Image, conf.Task.Id)
 	return nil
@@ -43,4 +45,6 @@ func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig)
 	}
 	a.currentContainer = nil
 	conf.ContainerID = ""
+	conf.EnvFileHostDir = ""
+	conf.ContainerExecWorkDir = ""
 }
