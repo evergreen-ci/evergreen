@@ -872,6 +872,8 @@ const (
 	AttachResultsCommandName      = "attach.results"
 	AttachArtifactsCommandName    = "attach.artifacts"
 	AttachXUnitResultsCommandName = "attach.xunit_results"
+	CacheRestoreCommandName       = "cache.restore"
+	CacheSaveCommandName          = "cache.save"
 )
 
 var AttachCommands = []string{
