@@ -2488,23 +2488,81 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 		})
 	}
 
+	// A display task is included when its own aggregate status matches the
+	// filter or when any of its execution tasks matches. This lets users filter
+	// the table by a status and still reach a display task's matching subtasks,
+	// even when the display task's overall status differs (e.g. filtering by
+	// "success" on a failed-overall display task that has successful subtasks).
 	if len(opts.Statuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				DisplayStatusKey: bson.M{"$in": opts.Statuses},
+		const matchingExecTasksKey = "matching_exec_tasks"
+		pipeline = append(pipeline,
+			subtaskStatusLookupStage("$"+ExecutionTasksKey, "$"+ExecutionKey, opts.Statuses, matchingExecTasksKey),
+			bson.M{
+				"$match": bson.M{
+					"$or": []bson.M{
+						{DisplayStatusKey: bson.M{"$in": opts.Statuses}},
+						{matchingExecTasksKey: bson.M{"$ne": bson.A{}}},
+					},
+				},
 			},
-		})
+			bson.M{"$project": bson.M{matchingExecTasksKey: 0}},
+		)
 	}
 
 	if shouldPopulateBaseTask && len(opts.BaseStatuses) > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses},
+		const matchingBaseExecTasksKey = "matching_base_exec_tasks"
+		baseExecutionTasksField := "$" + bsonutil.GetDottedKeyName(BaseTaskKey, ExecutionTasksKey)
+		baseExecutionField := "$" + bsonutil.GetDottedKeyName(BaseTaskKey, ExecutionKey)
+		pipeline = append(pipeline,
+			subtaskStatusLookupStage(baseExecutionTasksField, baseExecutionField, opts.BaseStatuses, matchingBaseExecTasksKey),
+			bson.M{
+				"$match": bson.M{
+					"$or": []bson.M{
+						{BaseTaskStatusKey: bson.M{"$in": opts.BaseStatuses}},
+						{matchingBaseExecTasksKey: bson.M{"$ne": bson.A{}}},
+					},
+				},
 			},
-		})
+			bson.M{"$project": bson.M{matchingBaseExecTasksKey: 0}},
+		)
 	}
 
 	return pipeline, nil
+}
+
+// subtaskStatusLookupStage builds a $lookup stage that finds whether a display
+// task has at least one execution task whose persisted display status is in
+// statuses. It joins on the display task's execution task IDs against the
+// primary _id index and limits the result to a single projected ID, so the
+// joined payload stays negligible. executionTasksField and executionField are
+// the aggregation field references (e.g. "$execution_tasks") identifying the
+// display task's execution task IDs and its current execution.
+func subtaskStatusLookupStage(executionTasksField, executionField string, statuses []string, asField string) bson.M {
+	return bson.M{
+		"$lookup": bson.M{
+			"from": Collection,
+			"let": bson.M{
+				"etids": bson.M{"$ifNull": bson.A{executionTasksField, bson.A{}}},
+				"ex":    executionField,
+			},
+			"pipeline": []bson.M{
+				{
+					"$match": bson.M{
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$in": bson.A{"$" + IdKey, "$$etids"}},
+								{"$lte": bson.A{"$" + ExecutionKey, "$$ex"}},
+								{"$in": bson.A{"$" + DisplayStatusCacheKey, statuses}},
+							},
+						},
+					},
+				},
+				{"$limit": 1},
+				{"$project": bson.M{IdKey: 1}},
+			},
+			"as": asField,
+		},
+	}
 }
 
 // FindAllDependencyTasksToModify finds tasks that depend on the
