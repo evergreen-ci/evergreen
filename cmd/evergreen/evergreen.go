@@ -39,7 +39,7 @@ func main() {
 	app := buildApp()
 	defer recoverFromPanic()
 
-	grip.EmergencyFatal(app.Run(args))
+	grip.EmergencyFatal(context.Background(), app.Run(args))
 }
 
 func buildApp() *cli.App {
@@ -148,8 +148,12 @@ func setupPanicReport(c *cli.Context) {
 			LoadedFrom: notFound,
 		}
 	}
+	// We ignore the error here and let versionDate default to the zero value because
+	// we only want to set the VersionAsNumber if the version is valid.
+	versionDate, _ := operations.ParseDateVersionString(evergreen.ClientVersion)
 	panicReport = &model.PanicReport{
 		Version:                 evergreen.ClientVersion,
+		VersionAsNumber:         versionDate.Unix(),
 		AgentVersion:            evergreen.AgentVersion,
 		BuildRevision:           evergreen.BuildRevision,
 		CurrentWorkingDirectory: cwd,

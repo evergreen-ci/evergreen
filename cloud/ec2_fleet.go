@@ -148,7 +148,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 
 	if err := m.spawnFleetHost(ctx, h, ec2Settings); err != nil {
 		msg := "error spawning host with Fleet"
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       msg,
 			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
@@ -156,18 +156,28 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		}))
 		return nil, errors.Wrap(err, msg)
 	}
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"message":       "spawned host with Fleet",
 		"host_id":       h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
 
+	if err := tagHostIDOnVolumes(ctx, m.client, h); err != nil {
+		return nil, errors.Wrap(err, "tagging host ID on volumes")
+	}
+
 	return h, nil
 }
 
 // ModifyHost modifies an existing host's properties (tags, instance type, sleep schedule, expiration).
 func (m *ec2FleetManager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
+	if opts.ExtendExpireOnByDay {
+		if err := m.setupClient(ctx); err != nil {
+			return errors.Wrap(err, "creating client")
+		}
+		return errors.Wrap(extendExpireOnByDay(ctx, m.client, h), "extending expire-on tag by one day")
+	}
 	return m.ec2Mgr.ModifyHost(ctx, h, opts)
 }
 
@@ -219,7 +229,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	}
 
 	// Cache instance information so we can make fewer calls to AWS's API.
-	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache...), message.Fields{
+	grip.Error(ctx, message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache...), message.Fields{
 		"message":   "error bulk updating cached host data",
 		"num_hosts": len(hostIDsToCache),
 		"host_ids":  hostIDsToCache,
@@ -246,7 +256,7 @@ func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (C
 			info.Status = StatusNonExistent
 			return info, nil
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
 			"host_id":       h.Id,
 			"host_provider": h.Distro.Provider,
@@ -258,7 +268,7 @@ func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (C
 	if info.Status = ec2StateToEvergreenStatus(instance.State); info.Status == StatusRunning {
 		// Cache instance information so we can make fewer calls to AWS's API.
 		pair := hostInstancePair{host: h, instance: instance}
-		grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{
+		grip.Error(ctx, message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{
 			"message": "can't update host cached data",
 			"type":    "ec2 fleet",
 			"host_id": h.Id,
@@ -302,7 +312,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		InstanceIds: []string{h.Id},
 	})
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "error terminating instance",
 			"user":          user,
 			"host_id":       h.Id,
@@ -313,7 +323,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	}
 
 	for _, stateChange := range resp.TerminatingInstances {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":       "terminated instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
@@ -323,7 +333,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
+	grip.Error(ctx, message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
 		"host_id":        h.Id,
@@ -401,7 +411,7 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 		}
 	}
 
-	grip.InfoWhen(deletedCount > 0, message.Fields{
+	grip.InfoWhen(ctx, deletedCount > 0, message.Fields{
 		"message":       "removed launch templates",
 		"deleted_count": deletedCount,
 		"provider":      evergreen.ProviderNameEc2Fleet,
@@ -427,7 +437,7 @@ func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
 		return errors.Wrapf(err, "unsetting host tags for %d IP addresses", len(ipAddrIDs))
 	}
 
-	grip.InfoWhen(len(staleIPAddrs) > 0, message.Fields{
+	grip.InfoWhen(ctx, len(staleIPAddrs) > 0, message.Fields{
 		"message":        "cleaned up stale IP addresses",
 		"num_cleaned_up": len(staleIPAddrs),
 		"provider":       evergreen.ProviderNameEc2Fleet,
@@ -482,7 +492,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	defer func() {
 		// Cleanup
 		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag))})
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":  "can't delete launch template",
 			"host_id":  h.Id,
 			"host_tag": h.Tag,
@@ -507,7 +517,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 		// guaranteed to succeed. For example, if the IPAM pool has no addresses
 		// available currently, Evergreen still needs a usable host, so the
 		// launch template has to fall back to using an AWS-managed IP address.
-		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
+		grip.Notice(ctx, message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
 			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))
@@ -598,7 +608,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	})
 	if err != nil {
 		if errors.Cause(err) == ec2TemplateNameExistsError {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":  "template already exists for host",
 				"host_id":  h.Id,
 				"host_tag": h.Tag,

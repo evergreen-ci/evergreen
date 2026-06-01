@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -145,15 +147,22 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting test results"))
 	}
 
+	if err := data.DecorateQuarantineStatus(ctx, tgh.task, results.Results); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "decorating test quarantine statuses",
+			"task_id": tgh.task.Id,
+		}))
+	}
+
 	var nextKey string
 	if tgh.key*tgh.limit < utility.FromIntPtr(results.Stats.FilteredCount) {
 		nextKey = fmt.Sprintf("%d", tgh.key+1)
 	}
 
-	return tgh.buildResponse(results.Results, nextKey)
+	return tgh.buildResponse(ctx, results.Results, nextKey)
 }
 
-func (tgh *testGetHandler) buildResponse(results []testresult.TestResult, key string) gimlet.Responder {
+func (tgh *testGetHandler) buildResponse(ctx context.Context, results []testresult.TestResult, key string) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 	if err := resp.SetFormat(gimlet.JSON); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response format"))
@@ -165,7 +174,7 @@ func (tgh *testGetHandler) buildResponse(results []testresult.TestResult, key st
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tgh.sc.GetURL(),
+				BaseURL:         GetURL(ctx),
 				Key:             key,
 				Limit:           tgh.limit,
 			},

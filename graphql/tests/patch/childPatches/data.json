@@ -1,4 +1,46 @@
 {
+  "versions": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e1",
+      "create_time": {
+        "$date": "2020-02-21T15:13:48.801Z"
+      },
+      "gitspec": "abc123",
+      "author": "admin.user",
+      "author_email": "admin_user@mongodb.com",
+      "message": "parent patch",
+      "status": "created",
+      "order": 1,
+      "ignored": false,
+      "branch_name": "main",
+      "identifier": "spruce",
+      "remote": false,
+      "r": "patch_request",
+      "author_id": "admin_user",
+      "activated": true,
+      "errors": []
+    },
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "create_time": {
+        "$date": "2020-02-22T15:13:48.801Z"
+      },
+      "gitspec": "def456",
+      "author": "admin.user",
+      "author_email": "admin_user@mongodb.com",
+      "message": "child patch",
+      "status": "created",
+      "order": 2,
+      "ignored": false,
+      "branch_name": "main",
+      "identifier": "spruce",
+      "remote": false,
+      "r": "patch_request",
+      "author_id": "admin_user",
+      "activated": true,
+      "errors": []
+    }
+  ],
   "patches": [
     {
       "_id": {

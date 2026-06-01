@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -299,43 +300,6 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	return apiHost, nil
 }
 
-// HostEvents is the resolver for the hostEvents field.
-func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	h, err := host.FindOneByIdOrTag(ctx, hostID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host '%s': %s", hostID, err.Error()))
-	}
-	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
-	}
-	hostQueryOpts := event.PaginatedHostEventsOpts{
-		ID:      h.Id,
-		Tag:     utility.FromStringPtr(hostTag),
-		Limit:   utility.FromIntPtr(limit),
-		Page:    utility.FromIntPtr(page),
-		SortAsc: false,
-	}
-	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", hostID, err.Error()))
-	}
-	// populate eventlogs pointer arrays
-	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
-	for _, e := range events {
-		apiEventLog := restModel.HostAPIEventLogEntry{}
-		err = apiEventLog.BuildFromService(e)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
-		}
-		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
-	}
-	hostevents := HostEvents{
-		EventLogEntries: apiEventLogPointers,
-		Count:           count,
-	}
-	return &hostevents, nil
-}
-
 // Hosts is the resolver for the hosts field.
 func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
 	hostIDParam := ""
@@ -416,7 +380,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 			forbiddenHosts = append(forbiddenHosts, h.Id)
 		}
 		if len(forbiddenHosts) > 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":         "User does not have permission to view hosts",
 				"forbidden_hosts": forbiddenHosts,
 				"user":            usr.Username(),
@@ -441,19 +405,19 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching all task queues: %s", err.Error()))
 	}
 
-	distros := []*TaskQueueDistro{}
+	countsByDistro, err := host.CountHostsCanRunTasksByDistro(ctx, evergreen.GetEnvironment())
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host counts by distro: %s", err.Error()))
+	}
 
-	for _, distro := range queues {
-		numHosts, err := host.CountHostsCanRunTasks(ctx, distro.Distro)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching associated hosts: %s", err.Error()))
-		}
-		tqd := TaskQueueDistro{
-			ID:        distro.Distro,
-			TaskCount: len(distro.Queue),
-			HostCount: numHosts,
-		}
-		distros = append(distros, &tqd)
+	distros := make([]*TaskQueueDistro, 0, len(queues))
+	for _, q := range queues {
+		hostCount := countsByDistro[q.Distro]
+		distros = append(distros, &TaskQueueDistro{
+			ID:        q.Distro,
+			TaskCount: q.DistroQueueInfo.Length,
+			HostCount: hostCount,
+		})
 	}
 
 	// sort distros by task count in descending order
@@ -774,35 +738,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	return apiSamples, nil
 }
 
-// CursorSettings is the resolver for the cursorSettings field.
-func (r *queryResolver) CursorSettings(ctx context.Context) (*CursorSettings, error) {
-	usr := mustHaveUser(ctx)
-
-	sageConfig := &evergreen.SageConfig{}
-	if err := sageConfig.Get(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
-	}
-
-	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
-	if err != nil {
-		// Return a default response indicating the feature is not configured.
-		// NewSageClient returns an error when the base URL is empty.
-		return &CursorSettings{
-			KeyConfigured: false,
-			KeyLastFour:   nil,
-		}, nil
-	}
-	defer sageClient.Close()
-
-	result, err := sageClient.GetCursorAPIKeyStatus(ctx, usr.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Cursor API key status: %s", err.Error()))
-	}
-
-	return &CursorSettings{
-		KeyConfigured: result.HasKey,
-		KeyLastFour:   utility.ToStringPtr(result.KeyLastFour),
-	}, nil
+// VariantQuarantineStatus is the resolver for the variantQuarantineStatus field.
+func (r *queryResolver) VariantQuarantineStatus(ctx context.Context, projectIdentifier string, buildVariant string) (*restModel.APIVariantQuarantineStatus, error) {
+	return getVariantQuarantineStatusResponse(ctx, projectIdentifier, buildVariant)
 }
 
 // MyPublicKeys is the resolver for the myPublicKeys field.
@@ -925,7 +863,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message":    "Error getting most recent version",
 				"project_id": projectId,
 			}))
@@ -1282,13 +1220,18 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 	}
 
 	apiTasks := []*restModel.APITask{}
+	versionIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, apiTask)
+		if t.Version != "" {
+			versionIDs = append(versionIDs, t.Version)
+		}
 	}
+	loaders.PreloadVersions(ctx, versionIDs)
 
 	latestTask, err := model.GetLatestMainlineTask(ctx, opts)
 	if err != nil {
@@ -1305,6 +1248,91 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		Pagination: &TaskHistoryPagination{
 			MostRecentTaskOrder: latestTask.RevisionOrderNumber,
 			OldestTaskOrder:     oldestTask.RevisionOrderNumber,
+		},
+	}, nil
+}
+
+// TaskHistoryByCreateTime is the resolver for the taskHistoryByCreateTime field.
+func (r *queryResolver) TaskHistoryByCreateTime(ctx context.Context, options TaskHistoryOpts) (*TaskHistoryByCreateTime, error) {
+	if options.CursorParams == nil {
+		return nil, InputValidationError.Send(ctx, "must specify cursor params")
+	}
+
+	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
+	}
+
+	taskID := options.CursorParams.CursorID
+	includeCursor := options.CursorParams.IncludeCursor
+
+	foundTask, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if foundTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	taskCreateTime := foundTask.CreateTime
+
+	opts := model.FindTaskHistoryByCreateTimeOptions{
+		TaskName:     options.TaskName,
+		BuildVariant: options.BuildVariant,
+		ProjectId:    projectId,
+		Limit:        options.Limit,
+	}
+
+	switch options.CursorParams.Direction {
+	case TaskHistoryDirectionBefore:
+		opts.UpperBound = utility.ToTimePtr(taskCreateTime)
+		opts.IncludeUpperBound = includeCursor
+	case TaskHistoryDirectionAfter:
+		opts.LowerBound = utility.ToTimePtr(taskCreateTime)
+		opts.IncludeLowerBound = includeCursor
+	default:
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid cursor direction: %s", options.CursorParams.Direction))
+	}
+
+	if options.Date != nil {
+		opts.UpperBound = options.Date
+		opts.IncludeUpperBound = true
+		opts.LowerBound = nil
+	}
+
+	tasks, err := model.FindTasksForHistoryByCreateTime(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting history for task '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	apiTasks := []*restModel.APITask{}
+	versionIDs := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		apiTask := &restModel.APITask{}
+		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
+		}
+		apiTasks = append(apiTasks, apiTask)
+		if t.Version != "" {
+			versionIDs = append(versionIDs, t.Version)
+		}
+	}
+	loaders.PreloadVersions(ctx, versionIDs)
+
+	latestTask, err := model.GetLatestMainlineTaskByCreateTime(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching latest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	oldestTask, err := model.GetOldestMainlineTaskByCreateTime(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	return &TaskHistoryByCreateTime{
+		Tasks: apiTasks,
+		Pagination: &TaskHistoryByCreateTimePagination{
+			MostRecentTaskCreateTime: latestTask.CreateTime,
+			OldestTaskCreateTime:     oldestTask.CreateTime,
 		},
 	}, nil
 }

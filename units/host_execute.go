@@ -1,6 +1,7 @@
 package units
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -70,7 +71,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 	}
 
 	if j.host.Status != evergreen.HostRunning {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "host is down, not attempting to run script",
 			"host_id": j.host.Id,
 			"distro":  j.host.Distro.Id,
@@ -81,6 +82,33 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 
 	var logs string
 	if !j.host.Distro.LegacyBootstrap() {
+		scriptFilename := fmt.Sprintf("evg-execute-%s-%s.sh", j.host.Id, j.ID())
+		// Jasper's WriteFile RPC needs a windows-native path
+		nativeScriptPath := j.host.Distro.AbsPathNotCygwinCompatible("/tmp", scriptFilename)
+		shellScriptPath := "/tmp/" + scriptFilename
+
+		if err := j.host.WriteJasperFile(ctx, j.env, options.WriteFile{
+			Path:   nativeScriptPath,
+			Reader: bytes.NewReader([]byte(j.Script)),
+			Perm:   0700,
+		}); err != nil {
+			j.AddError(errors.Wrap(err, "writing script to temp file on host"))
+			return
+		}
+
+		defer func() {
+			if _, cleanupErr := j.host.RunJasperProcess(ctx, j.env, &options.Create{
+				Args: []string{j.host.Distro.ShellBinary(), "-c", fmt.Sprintf("rm -f %s", shellScriptPath)},
+			}); cleanupErr != nil {
+				grip.Warning(ctx, message.WrapError(cleanupErr, message.Fields{
+					"message":     "could not clean up temp script file",
+					"script_path": shellScriptPath,
+					"host_id":     j.host.Id,
+					"job":         j.ID(),
+				}))
+			}
+		}()
+
 		var args []string
 		if !j.host.Distro.IsWindows() && j.Sudo {
 			args = append(args, "sudo")
@@ -88,18 +116,15 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 				args = append(args, fmt.Sprintf("--user=%s", j.SudoUser))
 			}
 		}
-		// We read the shell script verbatim from stdin  (i.e. with "bash -s"
-		// instead of "bash -c") to avoid a Windows limitation on exec string length.
-		args = append(args, j.host.Distro.ShellBinary(), "-s", "-l")
-		var output []string
+		args = append(args, j.host.Distro.ShellBinary(), "-l", shellScriptPath)
+
 		output, err := j.host.RunJasperProcess(ctx, j.env, &options.Create{
-			Args:               args,
-			StandardInputBytes: []byte(j.Script),
+			Args: args,
 		})
 		logs = strings.Join(output, "\n")
 		if err != nil {
 			event.LogHostScriptExecuteFailed(ctx, j.host.Id, logs, err)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":          "script failed during execution",
 				"legacy_bootstrap": j.host.Distro.LegacyBootstrap(),
 				"host_id":          j.host.Id,
@@ -115,7 +140,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 		logs, err = j.host.RunSSHShellScript(ctx, j.Script, j.Sudo, j.SudoUser)
 		if err != nil {
 			event.LogHostScriptExecuteFailed(ctx, j.host.Id, logs, err)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "script failed during execution",
 				"host_id": j.host.Id,
 				"distro":  j.host.Distro.Id,
@@ -129,7 +154,7 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 
 	event.LogHostScriptExecuted(ctx, j.host.Id, logs)
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "host executed script successfully",
 		"host_id": j.host.Id,
 		"distro":  j.host.Distro.Id,

@@ -355,7 +355,37 @@ include:
     module: module_name
 ```
 
-Warning: YAML anchors currently not supported.
+#### YAML Anchors (Beta)
+
+YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files. Cross-file anchor support is in beta and requires passing `--yaml-anchors` to `evergreen validate` or `evergreen evaluate`.
+
+An anchor defined in the main config file or in an earlier include file can be referenced as an alias in any later include file. Files are processed in the order they are listed in `include`, so an alias can only refer to an anchor that was defined in a file that appears earlier in the list (or in the main config file).
+
+```yaml
+# main evergreen.yml — defines an anchor for reuse
+include:
+  - filename: included.yml
+
+tasks:
+  - name: setup
+    commands:
+      - &common-setup
+        command: shell.exec
+        params:
+          script: ./setup.sh
+```
+
+```yaml
+# included.yml — uses the anchor defined in the main file
+tasks:
+  - name: teardown
+    commands:
+      - *common-setup
+```
+
+If two files define an anchor with the same name, the later file's definition takes precedence for files processed after it. Within each file, anchors behave according to standard YAML rules.
+
+> **Note:** `_evg_anchors` is a reserved key used internally by Evergreen when processing cross-file anchors. Do not use it as a key in your project YAML.
 
 #### Limitations and Alternatives
 
@@ -481,6 +511,31 @@ Fields:
   time of the Evergreen version creation)
 - `auto_update`: if true, the latest revision for the module will be
   dynamically retrieved for each Github PR, CLI patch, and periodic build submission
+
+#### Wiki modules
+
+A module whose `repo` is a [GitHub wiki](https://docs.github.com/en/communities/documenting-your-project-with-wikis/about-wikis) (repository name `parent.wiki` for the `parent` repository) is cloned **only** at the remote’s **default branch (HEAD)**. Evergreen does not pin wikis to a specific commit, mainline time, or patch selection.
+
+The following are **ignored** for wiki modules (they still apply to normal modules):
+
+- `branch`, `ref`, and `auto_update` for the purpose of choosing a revision
+- `revisions` on [`git.get_project`](../Project-Commands#gitgetproject), the version manifest, and [evergreen set-module](../CLI/#operating-on-existing-patches)
+
+The `${<module_name>_rev}` expansion and other manifest-based revision fields are **empty** and not useful for wikis.
+
+The GitHub App used for private clones must be installed on the **parent** repository (e.g. `org/parent`); the clone URL still uses the `parent.wiki` repository.
+
+Wiki modules are intended for use with **git.get_project** cloning. [Includes](#include) that pull project YAML from a module repository are not supported for wikis.
+
+Example `modules` entry using a wiki repository:
+
+```yaml
+modules:
+  - name: product-wiki
+    owner: mongodb
+    repo: mongo.wiki
+    prefix: src/wiki
+```
 
 ### Pre and Post
 
@@ -624,7 +679,8 @@ tasks:
 
 ### Controlling When Tasks and Variants Run
 
-You can control when tasks and build variants run using several different mechanisms:
+You can control when tasks and build variants run by setting activate, batchtime, disable, or cron on tasks or build variants, detailed
+[here](Controlling-when-tasks-run). There are also options to limit tasks and build variants to certain requesters or changed files, detailed below.
 
 #### Limiting by Requester Type
 
@@ -641,18 +697,6 @@ To cause a task to only run in versions NOT triggered from git tags, set
 
 To cause a task to only run in versions triggered from git tags, set
 `git_tag_only: true`.
-
-To cause a task to not run at all, set `disable: true`.
-
-- This behaves similarly to commenting out the task but will not
-  trigger any validation errors.
-- Disabling a task prevents it from being warned on for not being used.
-- If a task is disabled and is depended on by another task, the
-  dependent task will simply exclude the disabled task from its
-  dependencies.
-
-Can also set activate, batchtime or cron on tasks or build variants, detailed
-[here](Controlling-when-tasks-run).
 
 If there are conflicting settings defined at different levels, the order of
 priority is defined [here](#task-fields-override-hierarchy).

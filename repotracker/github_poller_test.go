@@ -247,7 +247,7 @@ func TestGetAllRevisions(t *testing.T) {
 		// exist upstream - a total of 3
 		Convey("There should be only three revisions even if you request more "+
 			"than 3", func() {
-			revisions, err := ghp.GetRecentRevisions(123)
+			revisions, err := ghp.GetRecentRevisions(t.Context(), 123)
 			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 3)
 		})
@@ -255,7 +255,7 @@ func TestGetAllRevisions(t *testing.T) {
 		// Get only one recent revision and ensure it's the right revision
 		Convey("There should be only be one if you request 1 and it should be "+
 			"the latest", func() {
-			revisions, err := ghp.GetRecentRevisions(1)
+			revisions, err := ghp.GetRecentRevisions(t.Context(), 1)
 			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 1)
 			So(revisions[0].Revision, ShouldEqual, lastRevision)
@@ -263,7 +263,7 @@ func TestGetAllRevisions(t *testing.T) {
 
 		// Get no recent revisions
 		Convey("There should be no revisions if you request 0", func() {
-			revisions, err := ghp.GetRecentRevisions(0)
+			revisions, err := ghp.GetRecentRevisions(t.Context(), 0)
 			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 0)
 		})

@@ -293,7 +293,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	upstreamVersion := model.Version{
 		Id:         "upstreamVersion",
 		Author:     "me",
-		CreateTime: time.Now(),
+		CreateTime: time.Date(2023, 12, 13, 18, 13, 31, 0, time.UTC),
 		Revision:   "abc",
 		Identifier: "upstream",
 	}
@@ -330,7 +330,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.NoError(alias.Upsert(t.Context()))
 	_, err := model.GetNewRevisionOrderNumber(t.Context(), downstreamProjectRef.Id)
 	assert.NoError(err)
-	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
+	downstreamRevision := "c37179fcad01b12ef752a65af3156fb8dc7e452c"
 	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
@@ -426,7 +426,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	upstreamVersion := model.Version{
 		Id:         "upstreamVersion",
 		Author:     "me",
-		CreateTime: time.Now(),
+		CreateTime: time.Date(2023, 12, 13, 18, 13, 31, 0, time.UTC),
 		Revision:   "abc",
 		Identifier: "upstream",
 	}
@@ -463,7 +463,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	assert.NoError(alias.Upsert(t.Context()))
 	_, err := model.GetNewRevisionOrderNumber(t.Context(), downstreamProjectRef.Id)
 	assert.NoError(err)
-	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
+	downstreamRevision := "c37179fcad01b12ef752a65af3156fb8dc7e452c"
 	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
@@ -572,29 +572,33 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.NoError(alias.Upsert(t.Context()))
 	_, err := model.GetNewRevisionOrderNumber(t.Context(), downstreamProjectRef.Id)
 	assert.NoError(err)
-	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
-	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
+	downstreamRevisionPrior := "3c10c5e814535dc8e6d06553cce69a60e4f58c91"
+	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevisionPrior))
 
-	now := time.Now()
+	sampleOlderSHA := "9bdedd0990e83e328e42f7bb8c2771cab6ae0145"
+	sampleNewerSHA := "7e05633b9bc529e19eba18b1fc88f78d346855b2"
+	downstreamRevisionOlder := "178959df398ed0767113492cbd90ad9afbc67bfe"
+	downstreamRevisionNewer := "c37179fcad01b12ef752a65af3156fb8dc7e452c"
+
 	pushEvent := &github.PushEvent{
 		Commits: []*github.HeadCommit{
 			{
-				ID:      utility.ToStringPtr("3585388b1591dfca47ac26a5b9a564ec8f138a5e"),
-				Message: utility.ToStringPtr("message"),
+				ID:      utility.ToStringPtr(sampleOlderSHA),
+				Message: utility.ToStringPtr("Update random.txt"),
 				Author: &github.CommitAuthor{
-					Email: utility.ToStringPtr("hello@example.com"),
-					Name:  utility.ToStringPtr("test"),
+					Email: utility.ToStringPtr("chaya.malik@10gen.com"),
+					Name:  utility.ToStringPtr("Chaya Malik"),
 				},
-				Timestamp: &github.Timestamp{Time: now.Add(-time.Minute)},
+				Timestamp: &github.Timestamp{Time: time.Date(2023, 12, 12, 17, 59, 6, 0, time.UTC)},
 			},
 			{
-				ID:      utility.ToStringPtr("b27779f856b211ffaf97cbc124b7082a20ea8bc0"),
-				Message: utility.ToStringPtr("another message"),
+				ID:      utility.ToStringPtr(sampleNewerSHA),
+				Message: utility.ToStringPtr("Update README.md"),
 				Author: &github.CommitAuthor{
-					Email: utility.ToStringPtr("hello@example.com"),
-					Name:  utility.ToStringPtr("test"),
+					Email: utility.ToStringPtr("chaya.malik@10gen.com"),
+					Name:  utility.ToStringPtr("Chaya Malik"),
 				},
-				Timestamp: &github.Timestamp{Time: now},
+				Timestamp: &github.Timestamp{Time: time.Date(2023, 12, 13, 18, 13, 31, 0, time.UTC)},
 			},
 		},
 	}
@@ -605,23 +609,23 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	require.Len(dbVersions, 2)
 
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
-	assert.Equal("downstream_b27779f856b211ffaf97cbc124b7082a20ea8bc0_def1", dbVersions[0].Id)
-	assert.Equal("cf46076567e4949f9fc68e0634139d4ac495c89b", dbVersions[0].Revision)
+	assert.Equal("downstream_"+sampleNewerSHA+"_def1", dbVersions[0].Id)
+	assert.Equal(downstreamRevisionNewer, dbVersions[0].Revision)
 	assert.Equal(evergreen.VersionCreated, dbVersions[0].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[0].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[0].Requester)
 	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[0].TriggerType)
-	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", dbVersions[0].TriggerSHA)
+	assert.Equal(sampleNewerSHA, dbVersions[0].TriggerSHA)
 	assert.Equal("upstream", dbVersions[0].TriggerID)
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
 
-	assert.Equal("downstream_3585388b1591dfca47ac26a5b9a564ec8f138a5e_def1", dbVersions[1].Id)
-	assert.Equal(downstreamRevision, dbVersions[1].Revision)
+	assert.Equal("downstream_"+sampleOlderSHA+"_def1", dbVersions[1].Id)
+	assert.Equal(downstreamRevisionOlder, dbVersions[1].Revision)
 	assert.Equal(evergreen.VersionCreated, dbVersions[1].Status)
 	assert.Equal(downstreamProjectRef.Id, dbVersions[1].Identifier)
 	assert.Equal(evergreen.TriggerRequester, dbVersions[1].Requester)
 	assert.Equal(model.ProjectTriggerLevelPush, dbVersions[1].TriggerType)
-	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", dbVersions[1].TriggerSHA)
+	assert.Equal(sampleOlderSHA, dbVersions[1].TriggerSHA)
 	assert.Equal("upstream", dbVersions[1].TriggerID)
 
 	builds, err := build.Find(t.Context(), build.ByVersion(dbVersions[0].Id))
@@ -646,14 +650,14 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		assert.Equal(model.ProjectTriggerLevelPush, t.TriggerType)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(ctx, dbVersions[1].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(ctx, dbVersions[1].Id, downstreamProjectRef.Id, downstreamRevisionOlder, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 	assert.Len(mani.Modules, 1)
 	require.NotNil(mani.Modules["sample"])
-	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", mani.Modules["sample"].Revision)
+	assert.Equal(sampleOlderSHA, mani.Modules["sample"].Revision)
 	assert.Equal("main", mani.Modules["sample"].Branch)
 	assert.Equal("sample", mani.Modules["sample"].Repo)
 	assert.Equal("evergreen-ci", mani.Modules["sample"].Owner)

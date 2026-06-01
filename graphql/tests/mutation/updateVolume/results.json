@@ -51,6 +51,22 @@
     {
       "query_file": "update_expiration_time.graphql",
       "result": { "data": { "updateVolume": true } }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to access volume 'vol-0603934da6f024db5'",
+            "path": ["updateVolume", "updateVolumeInput", "volumeId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }

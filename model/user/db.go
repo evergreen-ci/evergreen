@@ -33,6 +33,8 @@ var (
 	LastScheduledTasksAtKey   = bsonutil.MustHaveTag(DBUser{}, "LastScheduledTasksAt")
 	SettingsKey               = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey                 = bsonutil.MustHaveTag(DBUser{}, "APIKey")
+	TokenExchangeStateKey     = bsonutil.MustHaveTag(DBUser{}, "TokenExchangeState")
+	TokenExchangeTokenKey     = bsonutil.MustHaveTag(DBUser{}, "TokenExchangeToken")
 	OnlyAPIKey                = bsonutil.MustHaveTag(DBUser{}, "OnlyAPI")
 	PubKeysKey                = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
 	LoginCacheKey             = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
@@ -46,7 +48,6 @@ var (
 	PubKeyNCreatedAtKey       = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
 	FavoriteProjectsKey       = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
 	ParsleyFiltersKey         = bsonutil.MustHaveTag(DBUser{}, "ParsleyFilters")
-	ParsleySettingsKey        = bsonutil.MustHaveTag(DBUser{}, "ParsleySettings")
 	NumScheduledPatchTasksKey = bsonutil.MustHaveTag(DBUser{}, "NumScheduledPatchTasks")
 	BetaFeaturesKey           = bsonutil.MustHaveTag(DBUser{}, "BetaFeatures")
 )
@@ -286,8 +287,10 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 	u := &DBUser{}
 	env := evergreen.GetEnvironment()
 	setFields := bson.M{
-		DispNameKey:     displayName,
 		EmailAddressKey: email,
+	}
+	if displayName != "" {
+		setFields[DispNameKey] = displayName
 	}
 	if accessToken != "" {
 		setFields[bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheAccessTokenKey)] = accessToken
@@ -303,8 +306,13 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 	if len(roles) > 0 {
 		setOnInsertFields[RolesKey] = roles
 	}
+	filter := bson.M{IdKey: userId}
+	// If the userId is empty, we use the email address as the filter.
+	if userId == "" {
+		filter = bson.M{EmailAddressKey: email}
+	}
 	res := env.DB().Collection(Collection).FindOneAndUpdate(ctx,
-		bson.M{IdKey: userId},
+		filter,
 		bson.M{
 			"$set":         setFields,
 			"$setOnInsert": setOnInsertFields,
@@ -322,7 +330,7 @@ func GetOrCreateUser(ctx context.Context, userId, displayName, email, accessToke
 	}
 
 	if err := setSlackInformation(ctx, env, u); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "could not set Slack information for user",
 			"user_id":       u.Id,
 			"email_address": u.EmailAddress,
@@ -353,7 +361,7 @@ func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUs
 		return errors.Wrapf(err, "getting Slack user with email address '%s'", u.EmailAddress)
 	}
 	if slackUser == nil {
-		grip.Error(message.Fields{
+		grip.Error(ctx, message.Fields{
 			"message":       "Couldn't find slack user by email address",
 			"user_id":       u.Id,
 			"email_address": u.EmailAddress,

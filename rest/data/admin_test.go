@@ -132,8 +132,15 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.Equal(testSettings.OktaServiceConfig.ClientID, settingsFromConnector.OktaServiceConfig.ClientID)
 	s.Equal(testSettings.OktaServiceConfig.ClientSecret, settingsFromConnector.OktaServiceConfig.ClientSecret)
+	s.Equal(testSettings.OktaServiceConfig.Scopes, settingsFromConnector.OktaServiceConfig.Scopes)
+	s.Equal(testSettings.OktaServiceConfig.Audience, settingsFromConnector.OktaServiceConfig.Audience)
+	s.Equal(testSettings.OktaServiceConfig.Issuer, settingsFromConnector.OktaServiceConfig.Issuer)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackMonths)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settingsFromConnector.Buckets.RetryFailedLogMoveMaxJobsPerRun)
+	s.EqualValues(testSettings.Buckets.TestResultsBucket, settingsFromConnector.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, settingsFromConnector.Buckets.Credentials.Secret)
+	s.Equal(testSettings.Buckets.Credentials.Bucket, settingsFromConnector.Buckets.Credentials.Bucket)
 	s.Equal(testSettings.FWS.URL, settingsFromConnector.FWS.URL)
 	s.EqualValues(testSettings.HostJasper.URL, settingsFromConnector.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
@@ -194,6 +201,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
+	s.EqualValues(testSettings.Tracer.TraceURLTemplate, settingsFromConnector.Tracer.TraceURLTemplate)
 
 	// Check that secrets are stored in the parameter manager.
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
@@ -227,8 +235,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	paramSettings, err := evergreen.GetConfig(ctx)
 	s.Require().NoError(err)
 	s.Equal(testSettings.AuthConfig.Okta.ClientID, paramSettings.AuthConfig.Okta.ClientID)
+	s.EqualValues(testSettings.Buckets.TestResultsBucket, paramSettings.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, paramSettings.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, paramSettings.Buckets.Credentials.Secret)
+	s.Equal(testSettings.Buckets.Credentials.Bucket, paramSettings.Buckets.Credentials.Bucket)
 	s.Equal(testSettings.Jira.PersonalAccessToken, paramSettings.Jira.PersonalAccessToken)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, paramSettings.Providers.AWS.EC2Keys[0].Key)
 	s.Equal(testSettings.Providers.AWS.EC2Keys[0].Secret, paramSettings.Providers.AWS.EC2Keys[0].Secret)
@@ -328,8 +338,12 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.Equal(testSettings.FWS.URL, settingsFromConnector.FWS.URL)
 	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackMonths)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settingsFromConnector.Buckets.RetryFailedLogMoveMaxJobsPerRun)
+	s.EqualValues(testSettings.Buckets.TestResultsBucket, settingsFromConnector.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, settingsFromConnector.Buckets.Credentials.Secret)
+	s.Equal(testSettings.Buckets.Credentials.Bucket, settingsFromConnector.Buckets.Credentials.Bucket)
 
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 
@@ -375,6 +389,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
+	s.EqualValues(testSettings.Tracer.TraceURLTemplate, settingsFromConnector.Tracer.TraceURLTemplate)
 }
 
 func (s *AdminDataSuite) TestRestart() {

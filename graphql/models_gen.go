@@ -82,12 +82,6 @@ type CursorParams struct {
 	IncludeCursor bool                 `json:"includeCursor"`
 }
 
-// CursorSettings represents the status of a user's Cursor API key stored in Sage.
-type CursorSettings struct {
-	KeyConfigured bool    `json:"keyConfigured"`
-	KeyLastFour   *string `json:"keyLastFour,omitempty"`
-}
-
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 type DeactivateStepbackTaskInput struct {
 	ProjectID        string `json:"projectId"`
@@ -99,11 +93,6 @@ type DeactivateStepbackTaskInput struct {
 type DefaultSectionToRepoInput struct {
 	ProjectID string                 `json:"projectId"`
 	Section   ProjectSettingsSection `json:"section"`
-}
-
-// DeleteCursorAPIKeyPayload is the response from deleting a Cursor API key.
-type DeleteCursorAPIKeyPayload struct {
-	Success bool `json:"success"`
 }
 
 // DeleteDistroInput is the input to the deleteDistro mutation.
@@ -160,9 +149,10 @@ type DistroEventsPayload struct {
 }
 
 type DistroPermissions struct {
-	Admin bool `json:"admin"`
-	Edit  bool `json:"edit"`
-	View  bool `json:"view"`
+	DistroID string `json:"distroId"`
+	Admin    bool   `json:"admin"`
+	Edit     bool   `json:"edit"`
+	View     bool   `json:"view"`
 }
 
 type DistroPermissionsOptions struct {
@@ -183,7 +173,7 @@ type EditSpawnHostInput struct {
 	SavePublicKey       *bool                   `json:"savePublicKey,omitempty"`
 	ServicePassword     *string                 `json:"servicePassword,omitempty"`
 	SleepSchedule       *host.SleepScheduleInfo `json:"sleepSchedule,omitempty"`
-	Volume              *string                 `json:"volume,omitempty"`
+	VolumeID            *string                 `json:"volumeId,omitempty"`
 }
 
 type ExternalLinkForMetadata struct {
@@ -406,8 +396,9 @@ type ProjectEvents struct {
 }
 
 type ProjectPermissions struct {
-	Edit bool `json:"edit"`
-	View bool `json:"view"`
+	ProjectIdentifier string `json:"projectIdentifier"`
+	Edit              bool   `json:"edit"`
+	View              bool   `json:"view"`
 }
 
 type ProjectPermissionsOptions struct {
@@ -426,13 +417,20 @@ type PublicKeyInput struct {
 	Name string `json:"name"`
 }
 
+// QuarantineTaskInput is the input to the quarantineTask mutation. It marks every known test of the given task as manually quarantined in the test selection service.
+type QuarantineTaskInput struct {
+	TaskID string `json:"taskId"`
+}
+
 type QuarantineTestInput struct {
 	TaskID   string `json:"taskId"`
 	TestName string `json:"testName"`
 }
 
-type QuarantineTestPayload struct {
-	Success bool `json:"success"`
+// QuarantineVariantInput is the input to the quarantineVariant mutation. It marks every known test of every known task in the build variant as manually quarantined in the test selection service.
+type QuarantineVariantInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	BuildVariant      string `json:"buildVariant"`
 }
 
 type Query struct {
@@ -451,8 +449,9 @@ type RemoveFavoriteProjectInput struct {
 }
 
 type RepoPermissions struct {
-	Edit bool `json:"edit"`
-	View bool `json:"view"`
+	RepoID string `json:"repoId"`
+	Edit   bool   `json:"edit"`
+	View   bool   `json:"view"`
 }
 
 type RepoPermissionsOptions struct {
@@ -487,12 +486,6 @@ type ServiceFlag struct {
 type ServiceFlagInput struct {
 	Name    string `json:"name"`
 	Enabled bool   `json:"enabled"`
-}
-
-// SetCursorAPIKeyPayload is the response from setting a Cursor API key.
-type SetCursorAPIKeyPayload struct {
-	Success     bool    `json:"success"`
-	KeyLastFour *string `json:"keyLastFour,omitempty"`
 }
 
 // SetLastRevisionInput is the input to the setLastRevision mutation.
@@ -541,7 +534,7 @@ type SpawnHostInput struct {
 type SpawnVolumeInput struct {
 	AvailabilityZone string     `json:"availabilityZone"`
 	Expiration       *time.Time `json:"expiration,omitempty"`
-	Host             *string    `json:"host,omitempty"`
+	HostID           *string    `json:"hostId,omitempty"`
 	NoExpiration     *bool      `json:"noExpiration,omitempty"`
 	Size             int        `json:"size"`
 	Type             string     `json:"type"`
@@ -584,6 +577,16 @@ type TaskFilterOptions struct {
 type TaskHistory struct {
 	Tasks      []*model.APITask       `json:"tasks"`
 	Pagination *TaskHistoryPagination `json:"pagination"`
+}
+
+type TaskHistoryByCreateTime struct {
+	Tasks      []*model.APITask                   `json:"tasks"`
+	Pagination *TaskHistoryByCreateTimePagination `json:"pagination"`
+}
+
+type TaskHistoryByCreateTimePagination struct {
+	MostRecentTaskCreateTime time.Time `json:"mostRecentTaskCreateTime"`
+	OldestTaskCreateTime     time.Time `json:"oldestTaskCreateTime"`
 }
 
 type TaskHistoryOpts struct {
@@ -678,20 +681,28 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+// UnquarantineTaskInput is the input to the unquarantineTask mutation.
+type UnquarantineTaskInput struct {
+	TaskID string `json:"taskId"`
+}
+
+type UnquarantineTestInput struct {
+	TaskID   string `json:"taskId"`
+	TestName string `json:"testName"`
+}
+
+// UnquarantineVariantInput is the input to the unquarantineVariant mutation.
+type UnquarantineVariantInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+	BuildVariant      string `json:"buildVariant"`
+}
+
 type UpdateBetaFeaturesInput struct {
 	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures"`
 }
 
 type UpdateBetaFeaturesPayload struct {
 	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures,omitempty"`
-}
-
-type UpdateParsleySettingsInput struct {
-	ParsleySettings *model.APIParsleySettings `json:"parsleySettings"`
-}
-
-type UpdateParsleySettingsPayload struct {
-	ParsleySettings *model.APIParsleySettings `json:"parsleySettings,omitempty"`
 }
 
 type UpdateSpawnHostStatusInput struct {
@@ -1212,20 +1223,23 @@ func (e ProjectPermission) MarshalJSON() ([]byte, error) {
 type ProjectSettingsSection string
 
 const (
-	ProjectSettingsSectionGeneral              ProjectSettingsSection = "GENERAL"
-	ProjectSettingsSectionAccess               ProjectSettingsSection = "ACCESS"
-	ProjectSettingsSectionVariables            ProjectSettingsSection = "VARIABLES"
-	ProjectSettingsSectionNotifications        ProjectSettingsSection = "NOTIFICATIONS"
-	ProjectSettingsSectionPatchAliases         ProjectSettingsSection = "PATCH_ALIASES"
-	ProjectSettingsSectionWorkstation          ProjectSettingsSection = "WORKSTATION"
-	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
-	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
-	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
-	ProjectSettingsSectionTestSelection        ProjectSettingsSection = "TEST_SELECTION"
-	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectSettingsSectionGithubAppSettings    ProjectSettingsSection = "GITHUB_APP_SETTINGS"
-	ProjectSettingsSectionGithubPermissions    ProjectSettingsSection = "GITHUB_PERMISSIONS"
+	ProjectSettingsSectionGeneral           ProjectSettingsSection = "GENERAL"
+	ProjectSettingsSectionAccess            ProjectSettingsSection = "ACCESS"
+	ProjectSettingsSectionVariables         ProjectSettingsSection = "VARIABLES"
+	ProjectSettingsSectionNotifications     ProjectSettingsSection = "NOTIFICATIONS"
+	ProjectSettingsSectionPatchAliases      ProjectSettingsSection = "PATCH_ALIASES"
+	ProjectSettingsSectionWorkstation       ProjectSettingsSection = "WORKSTATION"
+	ProjectSettingsSectionTriggers          ProjectSettingsSection = "TRIGGERS"
+	ProjectSettingsSectionPeriodicBuilds    ProjectSettingsSection = "PERIODIC_BUILDS"
+	ProjectSettingsSectionPlugins           ProjectSettingsSection = "PLUGINS"
+	ProjectSettingsSectionViewsAndFilters   ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionTestSelection     ProjectSettingsSection = "TEST_SELECTION"
+	ProjectSettingsSectionGithubAppSettings ProjectSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectSettingsSectionGithubPermissions ProjectSettingsSection = "GITHUB_PERMISSIONS"
+	ProjectSettingsSectionPullRequests      ProjectSettingsSection = "PULL_REQUESTS"
+	ProjectSettingsSectionGitTags           ProjectSettingsSection = "GIT_TAGS"
+	ProjectSettingsSectionMergeQueue        ProjectSettingsSection = "MERGE_QUEUE"
+	ProjectSettingsSectionCommitChecks      ProjectSettingsSection = "COMMIT_CHECKS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
@@ -1240,14 +1254,17 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionViewsAndFilters,
 	ProjectSettingsSectionTestSelection,
-	ProjectSettingsSectionGithubAndCommitQueue,
 	ProjectSettingsSectionGithubAppSettings,
 	ProjectSettingsSectionGithubPermissions,
+	ProjectSettingsSectionPullRequests,
+	ProjectSettingsSectionGitTags,
+	ProjectSettingsSectionMergeQueue,
+	ProjectSettingsSectionCommitChecks,
 }
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionTestSelection, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions, ProjectSettingsSectionPullRequests, ProjectSettingsSectionGitTags, ProjectSettingsSectionMergeQueue, ProjectSettingsSectionCommitChecks:
 		return true
 	}
 	return false

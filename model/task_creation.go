@@ -38,7 +38,11 @@ type TaskCreationInfo struct {
 	// in order for the build/version to be finished. Tasks with specific
 	// activation conditions (e.g. cron, activate) are not considered essential.
 	ActivatedTasksAreEssentialToSucceed bool
-	TestSelectionParams                 TestSelectionParams // Task creation parameters for test selection
+	// ExplicitlyGeneratedTasks tracks task/variant pairs that came
+	// directly from the generated JSON, as opposed to being pulled in
+	// as dependencies.
+	ExplicitlyGeneratedTasks map[TVPair]bool
+	TestSelectionParams      TestSelectionParams // Task creation parameters for test selection
 }
 
 // TestSelectionParams contains parameters for enabling test selection on tasks

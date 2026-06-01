@@ -62,11 +62,11 @@ func RunCommandsInBlock(ctx context.Context, deps BlockExecutorDeps, cmdBlock Co
 		}
 
 		if cmdBlock.CanTimeOutHeartbeat && deps.SetHeartbeatTimeout != nil {
-			deps.ExecLogger.Infof("Setting heartbeat timeout to type '%s'.", cmdBlock.TimeoutKind)
+			deps.ExecLogger.Infof(ctx, "Setting heartbeat timeout to type '%s'.", cmdBlock.TimeoutKind)
 			deps.SetHeartbeatTimeout(time.Now(), cmdBlock.GetTimeout, cmdBlock.TimeoutKind)
 			defer func() {
 				if deps.ResetHeartbeatTimeout != nil {
-					deps.ExecLogger.Infof("Resetting heartbeat timeout from type '%s' back to default.", cmdBlock.TimeoutKind)
+					deps.ExecLogger.Infof(ctx, "Resetting heartbeat timeout from type '%s' back to default.", cmdBlock.TimeoutKind)
 					deps.ResetHeartbeatTimeout()
 				}
 			}()
@@ -95,18 +95,18 @@ func RunCommandsInBlock(ctx context.Context, deps BlockExecutorDeps, cmdBlock Co
 		if err != nil {
 			logFields["original_error"] = err.Error()
 		}
-		deps.TaskLogger.Error(logFields)
+		deps.TaskLogger.Error(ctx, logFields)
 		err = errors.Wrap(pErr, op)
 	}()
 
 	legacyBlockName := BlockToLegacyName(cmdBlock.Block)
-	deps.TaskLogger.Infof("Running %s commands.", legacyBlockName)
+	deps.TaskLogger.Infof(ctx, "Running %s commands.", legacyBlockName)
 	start := time.Now()
 	defer func() {
 		if err != nil {
-			deps.TaskLogger.Error(errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
+			deps.TaskLogger.Error(ctx, errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
 		}
-		deps.TaskLogger.Infof("Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
+		deps.TaskLogger.Infof(ctx, "Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
 	}()
 
 	commands := cmdBlock.Commands.List()

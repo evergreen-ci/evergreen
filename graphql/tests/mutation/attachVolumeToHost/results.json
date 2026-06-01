@@ -22,9 +22,11 @@
       "result": {
         "errors": [
           {
-            "message": "must specify host ID",
-            "path": ["attachVolumeToHost"],
-            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+            "message": "must specify host ID(s)",
+            "path": ["attachVolumeToHost", "volumeAndHost", "hostId"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -36,8 +38,10 @@
         "errors": [
           {
             "message": "must specify volume ID",
-            "path": ["attachVolumeToHost"],
-            "extensions": { "code": "INPUT_VALIDATION_ERROR" }
+            "path": ["attachVolumeToHost", "volumeAndHost", "volumeId"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
           }
         ],
         "data": null
@@ -48,9 +52,11 @@
       "result": {
         "errors": [
           {
-            "message": "host 'i-114astast943f' not found",
-            "path": ["attachVolumeToHost"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "message": "No matching hosts found",
+            "path": ["attachVolumeToHost", "volumeAndHost", "hostId"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -62,8 +68,26 @@
         "errors": [
           {
             "message": "volume 'vol-4db5' not found",
-            "path": ["attachVolumeToHost"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": ["attachVolumeToHost", "volumeAndHost", "volumeId"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to access volume 'vol-0603934da6f024db5'",
+            "path": ["attachVolumeToHost", "volumeAndHost", "volumeId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
           }
         ],
         "data": null

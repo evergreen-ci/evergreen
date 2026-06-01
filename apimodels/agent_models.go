@@ -133,13 +133,14 @@ type GetNextTaskDetails struct {
 }
 
 type AgentSetupData struct {
-	SplunkServerURL        string                  `json:"splunk_server_url"`
-	SplunkClientToken      string                  `json:"splunk_client_token"`
-	SplunkChannel          string                  `json:"splunk_channel"`
-	TaskOutput             evergreen.S3Credentials `json:"task_output"`
-	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
-	MaxExecTimeoutSecs     int                     `json:"max_exec_timeout_secs"`
-	PSLoggingDisabled      bool                    `json:"ps_logging_disabled"`
+	SplunkServerURL                 string                  `json:"splunk_server_url"`
+	SplunkClientToken               string                  `json:"splunk_client_token"`
+	SplunkChannel                   string                  `json:"splunk_channel"`
+	TaskOutput                      evergreen.S3Credentials `json:"task_output"`
+	TraceCollectorEndpoint          string                  `json:"trace_collector_endpoint"`
+	MaxExecTimeoutSecs              int                     `json:"max_exec_timeout_secs"`
+	PSLoggingDisabled               bool                    `json:"ps_logging_disabled"`
+	BackgroundCommandFailureEnabled bool                    `json:"background_command_failure_enabled"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
@@ -379,6 +380,9 @@ type ExpansionsAndVars struct {
 	// InternalRedactions contain Evergreen-internal values that should not be
 	// usable by the task but should still be redacted from logs.
 	InternalRedactions map[string]string `json:"internal_redactions"`
+	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
+	// owned by Devprod that we want to calculate s3 costs for.
+	DevprodOwnedAWSAccountIDs []string `json:"devprod_owned_aws_account_ids,omitempty"`
 }
 
 // CheckRunOutput represents the output for a CheckRun.
@@ -402,4 +406,10 @@ type CheckRunAnnotation struct {
 	Message         string `json:"message,omitempty" plugin:"expand"`
 	Title           string `json:"title,omitempty" plugin:"expand"`
 	RawDetails      string `json:"raw_details,omitempty" plugin:"expand"`
+}
+
+// HighExecTimeoutReport is the payload sent when a task dynamically sets an
+// unusually high exec timeout.
+type HighExecTimeoutReport struct {
+	ExecTimeoutSecs int `json:"exec_timeout_secs"`
 }

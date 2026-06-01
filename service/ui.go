@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -62,13 +63,18 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 	cookieStore.Options.HttpOnly = true
 	cookieStore.Options.Secure = true
 
+	jiraHandler, err := thirdparty.NewJiraHandler(*settings.Jira.Export())
+	if err != nil {
+		return nil, errors.Wrap(err, "creating jira handler")
+	}
+
 	uis := &UIServer{
 		Settings:    *settings,
 		env:         env,
 		queue:       queue,
 		Home:        home,
 		CookieStore: cookieStore,
-		jiraHandler: thirdparty.NewJiraHandler(*settings.Jira.Export()),
+		jiraHandler: jiraHandler,
 		umconf: gimlet.UserMiddlewareConfiguration{
 			HeaderKeyName:                   evergreen.APIKeyHeader,
 			HeaderUserName:                  evergreen.APIUserHeader,
@@ -82,14 +88,14 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 	}
 
 	if settings.AuthConfig.Kanopy != nil {
-		uis.umconf.OIDC = &gimlet.OIDCConfig{
+		uis.umconf.OIDCConfigs = append(uis.umconf.OIDCConfigs, &gimlet.OIDCConfig{
 			KeysetURL:  settings.AuthConfig.Kanopy.KeysetURL,
 			Issuer:     settings.AuthConfig.Kanopy.Issuer,
 			HeaderName: settings.AuthConfig.Kanopy.HeaderName,
 			DisplayNameFromID: func(id string) string {
 				return cases.Title(language.English).String(strings.Join(strings.Split(id, "."), " "))
 			},
-		}
+		})
 	}
 
 	if err := uis.umconf.Validate(); err != nil {
@@ -106,7 +112,7 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		return
 	}
 
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(r.Context(), message.WrapError(err, message.Fields{
 		"method":  r.Method,
 		"url":     r.URL,
 		"code":    code,
@@ -116,7 +122,7 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		gimlet.WriteJSONResponse(w, code, struct {
+		gimlet.WriteJSONResponse(r.Context(), w, code, struct {
 			Error string `json:"error"`
 		}{err.Error()})
 	} else {
@@ -160,7 +166,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 			"Disallow: /",
 		}, "\n")))
 		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
+			gimlet.WriteResponse(r.Context(), rw, gimlet.MakeTextErrorResponder(err))
 		}
 	})
 
@@ -217,7 +223,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Hosts
 	app.AddRoute("/hosts").Handler(uis.legacyHostsPage).Get()
 	app.AddRoute("/host/{host_id}").Handler(uis.legacyHostPage).Get()
-	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(gimlet.ProxyOptions{
+	app.AddPrefixRoute("/host/{host_id}/ide/").Wrap(needsLogin, ownsHost, vsCodeRunning).Proxy(context.Background(), gimlet.ProxyOptions{
 		FindTarget:        uis.getHostDNS,
 		StripSourcePrefix: true,
 		RemoteScheme:      "http",
@@ -283,7 +289,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// allow requests from specific origins.
 	for _, r := range app.Routes() {
 		if r.HasMethod(http.MethodPost) || r.HasMethod(http.MethodGet) {
-			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(w http.ResponseWriter, _ *http.Request) { gimlet.WriteJSON(w, "") }).Options()
+			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(w http.ResponseWriter, r *http.Request) { gimlet.WriteJSON(r.Context(), w, "") }).Options()
 		}
 	}
 

@@ -28,50 +28,6 @@
       }
     },
     {
-      "query_file": "service_flags.graphql",
-      "result": {
-        "data": {
-          "saveAdminSettings": {
-            "serviceFlags": {
-              "agentStartDisabled": true,
-              "alertsDisabled": true,
-              "backgroundReauthDisabled": true,
-              "backgroundStatsDisabled": true,
-              "cacheStatsEndpointDisabled": true,
-              "cacheStatsJobDisabled": true,
-              "checkBlockedTasksDisabled": true,
-              "cliUpdatesDisabled": true,
-              "cloudCleanupDisabled": true,
-              "degradedModeDisabled": true,
-              "elasticIPsDisabled": true,
-              "emailNotificationsDisabled": true,
-              "eventProcessingDisabled": true,
-              "githubPRTestingDisabled": true,
-              "githubStatusAPIDisabled": true,
-              "hostAllocatorDisabled": true,
-              "hostInitDisabled": true,
-              "jiraNotificationsDisabled": true,
-              "jwtTokenForCLIDisabled": true,
-              "largeParserProjectsDisabled": true,
-              "monitorDisabled": true,
-              "releaseModeDisabled": true,
-              "repotrackerDisabled": true,
-              "schedulerDisabled": true,
-              "slackNotificationsDisabled": true,
-              "sleepScheduleDisabled": true,
-              "staticAPIKeysDisabled": true,
-              "systemFailedTaskRestartDisabled": true,
-              "taskDispatchDisabled": true,
-              "taskLoggingDisabled": true,
-              "taskReliabilityDisabled": true,
-              "useMergeQueuePathFilteringDisabled": true,
-              "webhookNotificationsDisabled": true
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "runners.graphql",
       "result": {
         "data": {
@@ -279,7 +235,10 @@
         "data": {
           "saveAdminSettings": {
             "oktaServiceConfig": {
-              "clientId": "service-id"
+              "audience": "audience",
+              "clientId": "service-id",
+              "issuer": "issuer",
+              "scopes": ["scope1", "scope2"]
             }
           }
         }
@@ -433,7 +392,8 @@
               "enabled": true,
               "collectorEndpoint": "https://collector.example.com",
               "collectorInternalEndpoint": "https://internal-collector.example.com",
-              "collectorAPIKey": "test-api-key"
+              "collectorAPIKey": "test-api-key",
+              "traceUrlTemplate": "https://tracing.example.com/trace?trace_id=%s"
             },
             "projectCreation": {
               "totalProjectLimit": 100,

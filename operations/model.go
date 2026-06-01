@@ -56,7 +56,7 @@ type ClientProjectConf struct {
 	LocalAliases   []model.ProjectAlias `json:"local_aliases,omitempty" yaml:"local_aliases,omitempty"`
 }
 
-func findConfigFilePath(fn string) (string, error) {
+func findConfigFilePath(ctx context.Context, fn string) (string, error) {
 	currentBinPath, _ := osext.Executable()
 
 	userHome, _ := util.GetUserHome()
@@ -76,7 +76,7 @@ func findConfigFilePath(fn string) (string, error) {
 	}
 	for _, path := range defaultFiles {
 		if isValidPath(path) {
-			grip.WarningWhen(fn != "", "Couldn't find configuration file, falling back on default.")
+			grip.WarningWhen(ctx, fn != "", "Couldn't find configuration file, falling back on default.")
 			return path, nil
 		}
 	}
@@ -117,6 +117,10 @@ type OAuth struct {
 	// DoNotUseBrowser indicates that the OAuth flow should not attempt to open a browser.
 	// This setting is the final authority on the flow.
 	DoNotUseBrowser bool `json:"do_not_use_browser" yaml:"do_not_use_browser"`
+
+	// SpawnHostAccessToken is an access token for a spawn host. This is used to
+	// initially authenticate a spawn host before the user has SSH'd into it.
+	SpawnHostAccessToken *oauth2.Token `json:"spawn_host_access_token,omitempty" yaml:"spawn_host_access_token,omitempty"`
 }
 
 // AccessTokenIfNotExpired returns the access token if it is not expired, otherwise it returns an empty string.
@@ -155,7 +159,7 @@ type ClientSettings struct {
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
-	path, err := findConfigFilePath(fn)
+	path, err := findConfigFilePath(context.Background(), fn)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding config file '%s'", fn)
 	}
@@ -233,7 +237,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// If there is no saved token file path,
 		// print the opt-out message as the OAuth flow starts.
 		if s.OAuth.TokenFilePath == "" && printMessages {
-			grip.Info(optOut)
+			grip.Info(ctx, optOut)
 		}
 		if err := s.SetOAuthToken(ctx); err != nil {
 			return c, errors.Wrap(err, "setting config OAuth token")
@@ -243,7 +247,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// To use OAuth tokens, we need to use the corp URL.
 		c.SetAPIServerHost(s.getApiServerHost(true))
 	} else if reason != "" && printMessages {
-		grip.Info(reason)
+		grip.Info(ctx, reason)
 	}
 
 	// Check CLI version AFTER authentication is set up
@@ -327,7 +331,7 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communicator) error {
 	clients, err := c.GetClientConfig(ctx)
 	if err != nil {
-		grip.Debug(errors.Wrap(err, "getting client config info"))
+		grip.Debug(ctx, errors.Wrap(err, "getting client config info"))
 	}
 	if clients == nil {
 		return nil
@@ -335,7 +339,7 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 	if clients.OldestAllowedCLIVersion != "" {
 		isCLIVersionTooOld, err := isFirstDateBefore(evergreen.ClientVersion, clients.OldestAllowedCLIVersion)
 		if err != nil {
-			grip.Warning(errors.Wrap(err, "checking if client is older than the latest version"))
+			grip.Warning(ctx, errors.Wrap(err, "checking if client is older than the latest version"))
 		}
 		if isCLIVersionTooOld {
 			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
@@ -350,7 +354,7 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 		// save the configuration file
 		if err := s.Write(""); err != nil {
 			// This shouldn't prevent users from using the CLI so just log a warning.
-			grip.Warning(errors.Wrap(err, "saving configuration file"))
+			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
 		}
 	}
 	return nil
@@ -360,15 +364,15 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdate bool) {
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
-		grip.Debug(errors.Wrap(err, "getting banner messages"))
+		grip.Debug(ctx, errors.Wrap(err, "getting banner messages"))
 	} else if len(banner) > 0 {
-		grip.Noticef("Banner: %s", banner)
+		grip.Noticef(ctx, "Banner: %s", banner)
 	}
 
 	if checkForUpdate {
-		update, err := checkUpdate(c, true, false)
+		update, err := checkUpdate(ctx, c, true, false)
 		if err != nil {
-			grip.Debug(err)
+			grip.Debug(ctx, err)
 		}
 		if update.needsUpdate {
 			if runtime.GOOS == "windows" {
@@ -381,24 +385,28 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 }
 
 func isFirstDateBefore(dateString1, dateString2 string) (bool, error) {
-	layout := "2006-01-02"
-	// Extract just the date portion if the string is long enough.
-	// This allows values such as "2024-08-10a" to be parsed as "2024-08-10"
-	if len(dateString1) >= 10 {
-		dateString1 = dateString1[:10]
-	}
-	if len(dateString2) >= 10 {
-		dateString2 = dateString2[:10]
-	}
-	t1, err := time.Parse(layout, dateString1)
+	t1, err := ParseDateVersionString(dateString1)
 	if err != nil {
 		return false, fmt.Errorf("error parsing first date '%s': %w", dateString1, err)
 	}
-	t2, err := time.Parse(layout, dateString2)
+	t2, err := ParseDateVersionString(dateString2)
 	if err != nil {
 		return false, fmt.Errorf("error parsing second date '%s': %w", dateString2, err)
 	}
 	return t1.Before(t2), nil
+}
+
+// ParseDateVersionString parses a date string into a time.Time object.
+// The date string is expected to be in the format YYYY-MM-DD, this is
+// how we format our ClientVersion and AgentVersion.
+func ParseDateVersionString(dateString string) (time.Time, error) {
+	layout := "2006-01-02"
+	// Extract just the date portion if the string is long enough.
+	// This allows values such as "2024-08-10a" to be parsed as "2024-08-10"
+	if len(dateString) >= 10 {
+		dateString = dateString[:10]
+	}
+	return time.Parse(layout, dateString)
 }
 
 func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error) {
@@ -631,7 +639,7 @@ func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
 	})
 }
 
-func (s *ClientSettings) SetDefaultProject(cwd, project string) {
+func (s *ClientSettings) SetDefaultProject(ctx context.Context, cwd, project string) {
 	if s.DisableAutoDefaulting {
 		return
 	}
@@ -644,17 +652,24 @@ func (s *ClientSettings) SetDefaultProject(cwd, project string) {
 		s.ProjectsForDirectory = map[string]string{}
 	}
 	s.ProjectsForDirectory[cwd] = project
-	grip.Infof("Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
+	grip.Infof(ctx, "Project '%s' will be set as the one to use for directory '%s'. To disable automatic defaulting, set 'disable_auto_defaulting' to true.", project, cwd)
 }
 
-func (s *ClientSettings) SetAutoUpgradeCLI() {
+func (s *ClientSettings) SetAutoUpgradeCLI(ctx context.Context) {
 	s.AutoUpgradeCLI = true
-	grip.Info("Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
+	grip.Info(ctx, "Evergreen CLI will be automatically updated and installed before each command if a more recent version is detected.")
 }
 
 func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, string, error) {
 	if s.OAuth.ClientID == "" || s.OAuth.Issuer == "" || s.OAuth.ConnectorID == "" {
 		return nil, "", fmt.Errorf("OAuth configuration is incomplete: copy the `oauth` section from Spruce at '%s' in to your configuration file at '%s'", s.UIServerHost+"/preferences/cli", s.LoadedFrom)
+	}
+	if s.OAuth.SpawnHostAccessToken != nil {
+		if s.OAuth.SpawnHostAccessToken.Expiry.After(time.Now()) {
+			return s.OAuth.SpawnHostAccessToken, "", nil
+		}
+		// Clear the access token if it is expired.
+		s.OAuth.SpawnHostAccessToken = nil
 	}
 	return client.GetOAuthToken(ctx,
 		s.OAuth.DoNotUseBrowser,
@@ -668,19 +683,11 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, stri
 func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
 	token, path, err := s.getOAuthToken(ctx)
 	if err != nil {
-		// The auth library caches tokens in a file. Sometimes, the tokens are expired and
-		// we need to remove the file to get a new token.
-		if path != "" {
-			if delErr := os.RemoveAll(path); delErr != nil {
-				grip.Warning(errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
-			}
-			token, path, err = s.getOAuthToken(ctx)
-			if err != nil {
-				return errors.Wrap(err, "getting OAuth token after removing token file")
-			}
-		} else {
-			return errors.Wrap(err, "getting OAuth token")
-		}
+		// `getOAuthToken` has many fallbacks and retries internally
+		// so reaching this point typically means:
+		// 1. The user's device cannot use the browser and needs to use the device code flow.
+		// 2. The token lock file is stuck in a bad state and needs to be deleted.
+		return errors.Wrap(err, "getting OAuth token; if your device cannot use the browser, try running 'evergreen login --no-browser'. if you've ran this command before, delete the oauth.token_file_path from your configuration file and it's corresponding lock file (same path but with an appended .lock extension) and try again.")
 	}
 
 	s.OAuth.AccessToken = token.AccessToken
@@ -691,7 +698,7 @@ func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
 		if err := s.Write(""); err != nil {
 			// This shouldn't prevent the current operation from succeeding
 			// so just log a warning.
-			grip.Warning(errors.Wrap(err, "saving configuration file"))
+			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
 		}
 	}
 

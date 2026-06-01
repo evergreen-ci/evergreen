@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 )
@@ -26,14 +27,14 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 		return errors.New("cannot send nil results")
 	}
 
-	logger.Task().Info("Attaching test results...")
+	logger.Task().Info(ctx, "Attaching test results...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	if err := attachTestResults(ctx, conf, td, comm, results); err != nil {
 		return errors.Wrap(err, "sending test results")
 	}
 
-	logger.Task().Info("Successfully attached results.")
+	logger.Task().Info(ctx, "Successfully attached results.")
 
 	return nil
 }
@@ -46,7 +47,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		return sendTestResults(ctx, comm, logger, conf, results)
 	}
 
-	logger.Task().Info("Posting test logs...")
+	logger.Task().Info(ctx, "Posting test logs...")
 
 	opts := redactor.RedactionOptions{
 		Expansions:         conf.NewExpansions,
@@ -63,7 +64,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		return err
 	}
 
-	logger.Task().Infof("Finished posting test logs (%d of %d succeeded).", succeeded, len(logs))
+	logger.Task().Infof(ctx, "Finished posting test logs (%d of %d succeeded).", succeeded, len(logs))
 
 	return sendTestResults(ctx, comm, logger, conf, results)
 }
@@ -92,8 +93,19 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 	}
 }
 
+const maxTestResultsInterval = 24 * time.Hour
+
 func uploadTestResults(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {
-	createdAt := conf.Task.CreateTime
+	createdAt := conf.TestResultsCreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now()
+		conf.TestResultsCreatedAt = createdAt
+	}
+	if time.Since(conf.TestResultsCreatedAt) > maxTestResultsInterval {
+		err := errors.Errorf("Cannot append test results more than %s after the first upload. Consider uploading all test results at the end of the task. (DEVPROD-32331)", maxTestResultsInterval)
+		grip.Alert(ctx, err)
+		return false, err
+	}
 	info := makeTestResultsInfo(conf.Task, conf.DisplayTaskInfo)
 	newResults := makeTestResults(&conf.Task, results)
 	key := testresult.PartitionKey(createdAt, info.Project, info.ID())

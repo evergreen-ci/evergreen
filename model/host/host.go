@@ -294,12 +294,9 @@ type ProvisionOptions struct {
 	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
 	SetupScript string `bson:"setup_script" json:"setup_script"`
 
-	// UseOAuth indicates whether to run `evergreen fetch` with static credentials (legacy)
-	// or whether to write the command to a file, and have the user run `evergreen host fetch` (OAuth).
-	UseOAuth bool `bson:"use_oauth" json:"use_oauth"`
-
 	// SetupStepNumber, if set, indicates the step number that the debug host
-	// should run until after initializing the daemon. Accepts step notation (e.g., "5" or "5.1")
+	// should run up to (exclusive) after initializing the daemon. The specified
+	// step will not be executed. Accepts step notation (e.g., "5" or "5.1").
 	SetupStepNumber string `bson:"setup_step_number,omitempty" json:"setup_step_number,omitempty"`
 }
 
@@ -325,6 +322,9 @@ type SpawnOptions struct {
 	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
+
+	// ProjectID is the ID of the project that's running the task.
+	ProjectID string `bson:"project_id,omitempty" json:"project_id,omitempty"`
 
 	// Retries is the number of times Evergreen should try to spawn this host.
 	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
@@ -468,6 +468,7 @@ type HostModifyOptions struct {
 	SleepScheduleOptions       `bson:",inline"`
 	AddHours                   time.Duration `json:"add_hours"` // duration to extend expiration
 	AddTemporaryExemptionHours int           `json:"add_temporary_exemption_hours"`
+	ExtendExpireOnByDay        bool          `json:"extend_expire_on_by_day"` // whether to extend the expire-on tag by one day
 	AttachVolume               string        `json:"attach_volume"`
 	DetachVolume               string        `json:"detach_volume"`
 	SubscriptionType           string        `json:"subscription_type"`
@@ -785,7 +786,7 @@ func (h *Host) IsContainer() bool {
 	return utility.StringSliceContains(evergreen.ProviderContainer, h.Provider)
 }
 
-// CanUpdateSpawnHost is a shared utility function to determine a users permissions to modify a spawn host
+// CanUpdateSpawnHost is a shared utility function to determine a user's permissions to modify a spawn host.
 func CanUpdateSpawnHost(ctx context.Context, h *Host, usr *user.DBUser) bool {
 	if usr.Username() != h.StartedBy {
 		return usr.HasPermission(ctx, gimlet.PermissionOpts{
@@ -839,7 +840,7 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": msg,
 			"host_id": h.Id,
 			"status":  newStatus,
@@ -896,7 +897,7 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
 	defer cancel()
 	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, newStatus, user, logs)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "host status changed",
 		"host_id":    h.Id,
 		"host_tag":   h.Tag,
@@ -914,7 +915,7 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated && h.Provider != evergreen.ProviderNameStatic {
 		msg := ErrorHostAlreadyTerminated
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": msg,
 			"host_id": h.Id,
 			"status":  newStatus,
@@ -941,7 +942,7 @@ func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, 
 	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
 	defer cancel()
 	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, newStatus, user, logs)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "host status changed atomically",
 		"host_id":    h.Id,
 		"host_tag":   h.Tag,
@@ -980,7 +981,7 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, decommissionI
 	}
 	if h.HasContainers {
 		containers, err := h.GetContainers(ctx)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error getting containers",
 			"host_id": h.Id,
 		}))
@@ -993,7 +994,7 @@ func (h *Host) SetDecommissioned(ctx context.Context, user string, decommissionI
 				failedContainerIds = append(failedContainerIds, c.Id)
 			}
 		}
-		grip.Warning(message.WrapError(catcher.Resolve(), message.Fields{
+		grip.Warning(ctx, message.WrapError(catcher.Resolve(), message.Fields{
 			"message":  "error decommissioning containers",
 			"host_ids": failedContainerIds,
 		}))
@@ -1054,7 +1055,7 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
 	defer cancel()
 	event.LogHostStatusChanged(eventCtx, h.Id, h.Status, evergreen.HostStopped, user, "")
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "host stopped",
 		"host_id":    h.Id,
 		"host_tag":   h.Tag,
@@ -1481,7 +1482,7 @@ func (h *Host) MarkAsProvisioned(ctx context.Context) error {
 	}
 
 	event.LogHostProvisioned(ctx, h.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":    "host marked provisioned",
 		"host_id":    h.Id,
 		"host_tag":   h.Tag,
@@ -1546,7 +1547,7 @@ func (h *Host) UpdateStartingToRunning(ctx context.Context) error {
 	h.Status = evergreen.HostRunning
 
 	event.LogHostProvisioned(ctx, h.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":   "host marked provisioned",
 		"host_id":   h.Id,
 		"host_tag":  h.Tag,
@@ -1620,7 +1621,7 @@ func (h *Host) setAwaitingJasperRestart(ctx context.Context, user string) error 
 	}
 
 	event.LogHostJasperRestarting(ctx, h.Id, user)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":               "set needs reprovision",
 		"host_id":               h.Id,
 		"host_tag":              h.Tag,
@@ -1695,7 +1696,7 @@ func (h *Host) setAwaitingReprovisionToNew(ctx context.Context, user string) err
 	}
 
 	event.LogHostConvertingProvisioning(ctx, h.Id, h.Distro.BootstrapSettings.Method, user)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":               "set needs reprovision",
 		"host_id":               h.Id,
 		"host_tag":              h.Tag,
@@ -1833,7 +1834,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
 	defer cancel()
 	event.LogHostRunningTaskCleared(eventCtx, h.Id, h.RunningTask, h.RunningTaskExecution)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":         "cleared host running task and set last task",
 		"host_id":         h.Id,
 		"host_tag":        h.Tag,
@@ -1854,7 +1855,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 	h.LastGroup = t.TaskGroup
 	h.LastBuildVariant = t.BuildVariant
 	h.LastVersion = t.Version
-	h.LastProject = t.Version
+	h.LastProject = t.Project
 	h.LastTaskCompletedTime = now
 
 	return nil
@@ -1875,7 +1876,7 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 		eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventLoggingTimeout)
 		defer cancel()
 		event.LogHostRunningTaskCleared(eventCtx, h.Id, h.RunningTask, h.RunningTaskExecution)
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":        "cleared host running task",
 			"host_id":        h.Id,
 			"host_tag":       h.Tag,
@@ -1967,7 +1968,7 @@ func (h *Host) UpdateRunningTask(ctx context.Context, env evergreen.Environment,
 
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
 	if err != nil {
-		grip.DebugWhen(db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
+		grip.DebugWhen(ctx, db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
 			"message": "found duplicate running task",
 			"task":    t.Id,
 			"host_id": h.Id,
@@ -2659,7 +2660,7 @@ func FindTerminatableDebugHostsForProject(ctx context.Context, projectId string)
 
 		t, err := task.FindOneId(ctx, h.ProvisionOptions.TaskId)
 		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "problem finding task for debug host",
 				"host_id": h.Id,
 				"task_id": h.ProvisionOptions.TaskId,
@@ -2667,7 +2668,7 @@ func FindTerminatableDebugHostsForProject(ctx context.Context, projectId string)
 			continue
 		}
 		if t == nil {
-			grip.Warning(message.Fields{
+			grip.Warning(ctx, message.Fields{
 				"message": "task not found for debug host",
 				"host_id": h.Id,
 				"task_id": h.ProvisionOptions.TaskId,
@@ -3196,6 +3197,30 @@ func CountIntentHosts(ctx context.Context) (int, error) {
 	return Count(ctx, query)
 }
 
+// FindTaskHostsNearingExpiration returns all task hosts that have been up for
+// at least an hour, whose expire-on tag is within the next day, and are
+// currently running a task or completed one within the last 30 minutes.
+func FindTaskHostsNearingExpiration(ctx context.Context) ([]Host, error) {
+	query := bson.M{
+		UserHostKey:  false,
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning, evergreen.HostDecommissioned}},
+		StartTimeKey: bson.M{"$lte": time.Now().Add(-2 * time.Hour)},
+		InstanceTagsKey: bson.M{
+			"$elemMatch": bson.M{
+				instanceTagKeyKey:   evergreen.TagExpireOn,
+				instanceTagValueKey: bson.M{"$lte": time.Now().AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat)},
+			},
+		},
+		"$or": []bson.M{
+			{RunningTaskKey: bson.M{"$exists": true}},
+			{LTCTimeKey: bson.M{"$gte": time.Now().Add(-30 * time.Minute)}},
+		},
+	}
+
+	return Find(ctx, query)
+}
+
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
 // expire but have their expiration time within the next day and are still up.
 func FindSpawnhostsWithNoExpirationToExtend(ctx context.Context) ([]Host, error) {
@@ -3215,6 +3240,34 @@ func makeExpireOnTag(expireOn string) Tag {
 		Value:         expireOn,
 		CanBeModified: false,
 	}
+}
+
+// NextExpireOnTagValue returns the expire-on tag value one day later than the
+// host's current value, without modifying any state.
+func (h *Host) NextExpireOnTagValue() (string, error) {
+	var currentExpireOn string
+	for _, tag := range h.InstanceTags {
+		if tag.Key == evergreen.TagExpireOn {
+			currentExpireOn = tag.Value
+			break
+		}
+	}
+	if currentExpireOn == "" {
+		return "", errors.Errorf("host '%s' has no expire-on tag", h.Id)
+	}
+
+	expireOnTime, err := time.ParseInLocation(evergreen.ExpireOnFormat, currentExpireOn, time.UTC)
+	if err != nil {
+		return "", errors.Wrapf(err, "parsing expire-on tag value '%s' for host '%s'", currentExpireOn, h.Id)
+	}
+	return expireOnTime.AddDate(0, 0, 1).Format(evergreen.ExpireOnFormat), nil
+}
+
+// BumpExpireOnTag updates the host's expire-on tag to the given value, updating
+// both the in-memory host and the database.
+func (h *Host) BumpExpireOnTag(ctx context.Context, newExpireOn string) error {
+	h.addTag(makeExpireOnTag(newExpireOn), true)
+	return errors.Wrapf(h.SetTags(ctx), "updating expire-on tag in DB for host '%s'", h.Id)
 }
 
 // MarkShouldNotExpire marks a host as one that should not expire
@@ -3254,14 +3307,14 @@ func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue, userTimeZ
 		if err != nil {
 			return errors.Wrap(err, "creating default sleep schedule for host being marked unexpirable that has invalid schedule")
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":            "host is being marked unexpirable but has an invalid sleep schedule, setting it to the default sleep schedule",
 			"host_id":            h.Id,
 			"started_by":         h.StartedBy,
 			"old_sleep_schedule": h.SleepSchedule,
 			"new_sleep_schedule": schedule,
 		})
-		grip.Error(message.WrapError(h.UpdateSleepSchedule(ctx, *schedule, time.Now()), message.Fields{
+		grip.Error(ctx, message.WrapError(h.UpdateSleepSchedule(ctx, *schedule, time.Now()), message.Fields{
 			"message":    "could not set default sleep schedule for host being marked unexpirable that currently has an invalid schedule",
 			"host_id":    h.Id,
 			"started_by": h.StartedBy,
@@ -3871,7 +3924,7 @@ func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time)
 	} else {
 		extendedBy = exemptUntil.Sub(now)
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                  "creating/extending temporary exemption from the sleep schedule",
 		"host_id":                  h.Id,
 		"distro_id":                h.Distro.Id,

@@ -43,7 +43,9 @@
       "execution": 1,
       "host_id": "host2",
       "status": "undispatched",
+      "activated": true,
       "display_only": true,
+      "display_status_cache": "blocked",
       "execution_tasks": ["execution_task"],
       "depends_on": [
         {

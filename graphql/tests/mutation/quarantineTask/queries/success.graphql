@@ -1,0 +1,7 @@
+mutation {
+  quarantineTask(opts: { taskId: "quarantine_target" }) {
+    id
+    displayName
+    buildVariant
+  }
+}

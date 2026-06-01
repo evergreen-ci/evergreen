@@ -62,3 +62,7 @@ evergreen
 
 # asdf go version manager
 .tool-versions
+
+# Agent related files
+CLAUDE.local.md
+.claude/scheduled_tasks.lock

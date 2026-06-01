@@ -26,6 +26,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const debugProjectConfigDir = "debug_project_config"
+
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
 	DistroId              string
@@ -155,7 +157,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		so.ProvisionOptions.SetupScript, err = model.GetSetupScriptForTask(ctx, so.ProvisionOptions.TaskId)
 		if err != nil {
 			// still spawn the host if the setup script is buggy
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to get setup script for host",
 				"task_id": so.ProvisionOptions.TaskId,
 				"user_id": so.UserName,
@@ -277,7 +279,7 @@ func generateConfigScript(ctx context.Context, taskID string, settings *evergree
 		return "", "", errors.Errorf("project ref not found for task '%s'", taskID)
 	}
 
-	configPath := filepath.Join(homeDir, pRef.RemotePath)
+	configPath := filepath.Join(homeDir, debugProjectConfigDir, pRef.RemotePath)
 
 	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
@@ -292,6 +294,9 @@ func generateConfigScript(ctx context.Context, taskID string, settings *evergree
 	}
 	if pp == nil {
 		return "", "", errors.Errorf("parser project not found for version '%s'", v.Id)
+	}
+	if err = pp.ClearParamsYAML(); err != nil {
+		return "", "", errors.Wrap(err, "clearing params YAML for debug config")
 	}
 	yamlBytes, err := yaml.Marshal(pp)
 	if err != nil {
@@ -359,7 +364,7 @@ evergreen debug select "%s"
 evergreen debug run-until %s
 
 if [ $? -eq 0 ]; then
-  echo "Debug setup script completed successfully (ran until step %s)."
+  echo "Debug setup script completed successfully (ran up to but not including step %s)."
 else
   echo "ERROR: Debug setup script failed during execution."
 fi
@@ -421,7 +426,7 @@ func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *hos
 
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"stdout":    stdout.String(),
 			"stderr":    stderr.String(),
 			"operation": "set host RDP password",
@@ -432,7 +437,7 @@ func updateRDPPassword(ctx context.Context, env evergreen.Environment, host *hos
 		return errors.Wrap(err, "updating host RDP password")
 	}
 
-	grip.Debug(message.Fields{
+	grip.Debug(ctx, message.Fields{
 		"stdout":    stdout.String(),
 		"stderr":    stderr.String(),
 		"operation": "set host RDP password",

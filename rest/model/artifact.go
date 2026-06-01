@@ -10,6 +10,11 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+type APIAssociatedLink struct {
+	Name *string `json:"name"`
+	Link *string `json:"url"`
+}
+
 type APIFile struct {
 	// Human-readable name of the file
 	Name *string `json:"name"`
@@ -19,8 +24,9 @@ type APIFile struct {
 	// Determines who can see the file in the UI
 	Visibility *string `json:"visibility"`
 	// When true, these artifacts are excluded from reproduction
-	IgnoreForFetch bool    `json:"ignore_for_fetch"`
-	ContentType    *string `json:"content_type"`
+	IgnoreForFetch  bool                `json:"ignore_for_fetch"`
+	ContentType     *string             `json:"content_type"`
+	AssociatedLinks []APIAssociatedLink `json:"associated_links"`
 }
 
 type APIEntry struct {
@@ -37,6 +43,16 @@ func (f *APIFile) BuildFromService(file artifact.File) {
 	f.Link = utility.ToStringPtr(file.Link)
 	f.Visibility = utility.ToStringPtr(file.Visibility)
 	f.IgnoreForFetch = file.IgnoreForFetch
+
+	associatedLinks := []APIAssociatedLink{}
+	for _, link := range file.AssociatedLinks {
+		apiLink := APIAssociatedLink{
+			Name: utility.ToStringPtr(link.Name),
+			Link: utility.ToStringPtr(link.Link),
+		}
+		associatedLinks = append(associatedLinks, apiLink)
+	}
+	f.AssociatedLinks = associatedLinks
 
 }
 
@@ -64,12 +80,21 @@ func (f *APIFile) GetLogURL(env evergreen.Environment, taskID string, execution 
 }
 
 func (f *APIFile) ToService() artifact.File {
+	associatedLinks := []artifact.AssociatedLink{}
+	for _, link := range f.AssociatedLinks {
+		associatedLinks = append(associatedLinks, artifact.AssociatedLink{
+			Name: utility.FromStringPtr(link.Name),
+			Link: utility.FromStringPtr(link.Link),
+		})
+	}
+
 	return artifact.File{
-		ContentType:    utility.FromStringPtr(f.ContentType),
-		Name:           utility.FromStringPtr(f.Name),
-		Link:           utility.FromStringPtr(f.Link),
-		Visibility:     utility.FromStringPtr(f.Visibility),
-		IgnoreForFetch: f.IgnoreForFetch,
+		ContentType:     utility.FromStringPtr(f.ContentType),
+		Name:            utility.FromStringPtr(f.Name),
+		Link:            utility.FromStringPtr(f.Link),
+		Visibility:      utility.FromStringPtr(f.Visibility),
+		IgnoreForFetch:  f.IgnoreForFetch,
+		AssociatedLinks: associatedLinks,
 	}
 }
 

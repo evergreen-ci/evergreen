@@ -31,6 +31,7 @@ type versionTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.VersionEventData
 	version  *model.Version
+	repoId   string
 	uiConfig evergreen.UIConfig
 
 	base
@@ -74,13 +75,25 @@ func (t *versionTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) err
 	}
 	t.event = e
 
+	projectRef, err := model.FindBranchProjectRef(ctx, t.version.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "finding project ref '%s'", t.version.Identifier)
+	}
+	if projectRef != nil {
+		t.repoId = projectRef.RepoRefId
+	}
+
 	return nil
 }
 
 func (t *versionTriggers) Attributes() event.Attributes {
+	project := []string{t.version.Identifier}
+	if t.repoId != "" {
+		project = append(project, t.repoId)
+	}
 	attributes := event.Attributes{
 		ID:        []string{t.version.Id},
-		Project:   []string{t.version.Identifier},
+		Project:   project,
 		Object:    []string{event.ObjectVersion},
 		Requester: []string{t.version.Requester},
 	}
@@ -126,7 +139,7 @@ func (t *versionTriggers) makeData(ctx context.Context, sub *event.Subscription,
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
 		}
-		grip.NoticeWhen(versionStatus != t.data.Status, message.Fields{
+		grip.NoticeWhen(ctx, versionStatus != t.data.Status, message.Fields{
 			"message":                   "patch's current collective status does not match the version event data's status",
 			"version_collective_status": versionStatus,
 			"version_event_status":      t.data.Status,

@@ -52,6 +52,8 @@ type AssumeRoleOptions struct {
 	// DurationSeconds is an optional field of the duration of the role session.
 	// It defaults to 15 minutes.
 	DurationSeconds *int32
+	// UseDebug indicates whether the debug prefix on the external ID will be used.
+	UseDebug bool
 }
 
 // AssumeRoleCredentials are the credentials to be returned from
@@ -95,7 +97,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID, hostID string, 
 		return AssumeRoleCredentials{}, fmt.Errorf("host '%s' not found", hostID)
 	}
 
-	externalID := createExternalID(t, p, dbHost.IsDebug)
+	externalID := createExternalID(t, p, opts.UseDebug || dbHost.IsDebug)
 	creds, err := s.assumeRole(ctx, externalID, opts)
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "assuming role: '%v'", err)

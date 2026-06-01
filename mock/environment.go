@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -277,6 +278,10 @@ func (e *Environment) CertificateDepot() certdepot.Depot {
 	return e.Depot
 }
 
+func (e *Environment) RedisClient() *redis.Client {
+	return nil
+}
+
 func (e *Environment) SetParameterManager(pm *parameterstore.ParameterManager) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -344,7 +349,7 @@ func (e *Environment) Close(ctx context.Context) error {
 			continue
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":      "calling closer",
 			"closer":       name,
 			"timeout_secs": time.Since(deadline),

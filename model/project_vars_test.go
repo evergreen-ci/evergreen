@@ -85,10 +85,11 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, project1.Insert(t.Context()))
 
 	repoVars := ProjectVars{
-		Id:            repo.Id,
-		Vars:          map[string]string{"hello": "world", "world": "hello", "beep": "boop", "admin": "only"},
-		PrivateVars:   map[string]bool{"world": true},
-		AdminOnlyVars: map[string]bool{"admin": true},
+		Id:               repo.Id,
+		Vars:             map[string]string{"hello": "world", "world": "hello", "beep": "boop", "admin": "only"},
+		PrivateVars:      map[string]bool{"world": true},
+		AdminOnlyVars:    map[string]bool{"admin": true},
+		VarsDescriptions: map[string]string{"admin": "this is for admin eyes only"},
 	}
 	project0Vars := ProjectVars{
 		Id:   project0.Id,
@@ -111,11 +112,13 @@ func TestFindMergedProjectVars(t *testing.T) {
 	dbRepoVars, err := FindOneProjectVars(t.Context(), repo.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbRepoVars)
+
 	expectedMergedVars := ProjectVars{
-		Id:            project0.Id,
-		Vars:          map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var", "admin": "only"},
-		PrivateVars:   map[string]bool{},
-		AdminOnlyVars: map[string]bool{"admin": true},
+		Id:               project0.Id,
+		Vars:             map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var", "admin": "only"},
+		PrivateVars:      map[string]bool{},
+		AdminOnlyVars:    map[string]bool{"admin": true},
+		VarsDescriptions: map[string]string{"admin": "this is for admin eyes only"},
 	}
 
 	// Merged vars should contain all branch project vars and any non-overridden
@@ -469,13 +472,15 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 				Vars:        map[string]string{"b": "2", "c": "3"},
 				PrivateVars: map[string]bool{"b": false, "a": true},
 			}
+			require.NoError(t, vars.Insert(t.Context()))
+
 			varsToDelete := []string{"d"}
 			_, err := vars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 
 			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
-			require.NotZero(t, dbVars)
+			require.NotNil(t, dbVars)
 
 			assert.Len(t, dbVars.Vars, 2)
 			assert.Equal(t, "2", dbVars.Vars["b"])
@@ -500,13 +505,15 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 				Vars:        map[string]string{"b": "2", "c": "3"},
 				PrivateVars: map[string]bool{"b": false, "a": true},
 			}
+			require.NoError(t, vars.Insert(t.Context()))
+
 			varsToDelete := []string{"d"}
 			_, err := vars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 
 			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
-			require.NotZero(t, dbVars)
+			require.NotNil(t, dbVars)
 
 			assert.Len(t, dbVars.Vars, 2)
 			assert.Equal(t, "2", dbVars.Vars["b"])
@@ -524,6 +531,10 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 				Id: "new_project",
 			}
 			require.NoError(t, newProjRef.Insert(t.Context()))
+			newProjVars := &ProjectVars{
+				Id: newProjRef.Id,
+			}
+			require.NoError(t, newProjVars.Insert(t.Context()))
 
 			newVars := *vars
 			newVars.Id = newProjRef.Id
@@ -533,7 +544,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			// Original project vars should not be modified at all.
 			dbVars, err = FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
-			require.NotZero(t, dbVars)
+			require.NotNil(t, dbVars)
 
 			assert.Len(t, dbVars.Vars, 2)
 			assert.Equal(t, "2", dbVars.Vars["b"])
@@ -546,7 +557,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 
 			dbNewVars, err := FindOneProjectVars(t.Context(), newVars.Id)
 			require.NoError(t, err)
-			require.NotZero(t, dbNewVars)
+			require.NotNil(t, dbNewVars)
 
 			assert.Equal(t, newVars.Id, dbNewVars.Id)
 			assert.Equal(t, dbNewVars.Vars, newVars.Vars)
@@ -556,6 +567,87 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			for _, paramName := range dbNewVars.Parameters.ParameterNames() {
 				assert.NotContains(t, paramName, vars.Id, "parameter '%s' in new project '%s' should not contain old project ID '%s'", paramName, dbNewVars.Id, vars.Id)
 			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
+
+			tCase(t)
+		})
+	}
+
+}
+
+func TestProjectVarsClear(t *testing.T) {
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
+	})
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"DeletesAllExistingVars": func(t *testing.T) {
+			pRef := ProjectRef{
+				Id: "123",
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			vars := &ProjectVars{
+				Id:            pRef.Id,
+				Vars:          map[string]string{"a": "1", "b": "2", "c": "3"},
+				PrivateVars:   map[string]bool{"b": true},
+				AdminOnlyVars: map[string]bool{"c": true},
+			}
+			assert.NoError(t, vars.Insert(t.Context()))
+
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Len(t, dbVars.Vars, 3)
+			assert.Equal(t, "1", dbVars.Vars["a"])
+			assert.Equal(t, "2", dbVars.Vars["b"])
+			assert.Equal(t, "3", dbVars.Vars["c"])
+
+			assert.True(t, dbVars.PrivateVars["b"])
+			assert.True(t, dbVars.AdminOnlyVars["c"])
+
+			checkParametersMatchVars(t.Context(), t, dbVars.Parameters, dbVars.Vars)
+			checkParametersNamespacedByProject(t, *dbVars)
+
+			require.NoError(t, vars.Clear(t.Context()))
+
+			dbVars, err = FindOneProjectVars(t.Context(), vars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Empty(t, dbVars.Vars)
+			assert.Empty(t, dbVars.PrivateVars)
+			assert.Empty(t, dbVars.AdminOnlyVars)
+			checkParametersMatchVars(t.Context(), t, dbVars.Parameters, dbVars.Vars)
+		},
+		"NoopsWithNoVars": func(t *testing.T) {
+			pRef := ProjectRef{
+				Id: "123",
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			vars := &ProjectVars{
+				Id:            pRef.Id,
+				Vars:          map[string]string{},
+				PrivateVars:   map[string]bool{},
+				AdminOnlyVars: map[string]bool{},
+			}
+			assert.NoError(t, vars.Insert(t.Context()))
+
+			require.NoError(t, vars.Clear(t.Context()))
+
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Empty(t, dbVars.Vars)
+			assert.Empty(t, dbVars.PrivateVars)
+			assert.Empty(t, dbVars.AdminOnlyVars)
+			assert.Empty(t, dbVars.Parameters)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

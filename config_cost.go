@@ -2,7 +2,10 @@ package evergreen
 
 import (
 	"context"
+	"slices"
+	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -33,6 +36,12 @@ type S3StorageCostConfig struct {
 	StandardStorageCostDiscount float64 `bson:"standard_storage_cost_discount" json:"standard_storage_cost_discount" yaml:"standard_storage_cost_discount"`
 	IAStorageCostDiscount       float64 `bson:"i_a_storage_cost_discount" json:"i_a_storage_cost_discount" yaml:"i_a_storage_cost_discount"`
 	ArchiveStorageCostDiscount  float64 `bson:"archive_storage_cost_discount" json:"archive_storage_cost_discount" yaml:"archive_storage_cost_discount"`
+	// DefaultMaxArtifactExpirationDays is the fallback retention period used when no lifecycle rule is found for a bucket.
+	DefaultMaxArtifactExpirationDays int `bson:"default_max_artifact_expiration_days" json:"default_max_artifact_expiration_days" yaml:"default_max_artifact_expiration_days"`
+	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are owned by Devprod that we want to calculate s3 costs for.
+	DevprodOwnedAWSAccountIDs []string `bson:"devprod_owned_aws_account_ids,omitempty" json:"devprod_owned_aws_account_ids,omitempty" yaml:"devprod_owned_aws_account_ids,omitempty"`
+	// ArtifactAWSAccountsWithoutLifecycleRules contains the AWS account IDs of the accounts that we want to calculate s3 costs for but don't have lifecycle rules for.
+	ArtifactAWSAccountsWithoutLifecycleRules []string `bson:"artifact_aws_accounts_without_lifecycle_rules,omitempty" json:"artifact_aws_accounts_without_lifecycle_rules,omitempty" yaml:"artifact_aws_accounts_without_lifecycle_rules,omitempty"`
 }
 
 // S3CostConfig represents S3 cost configuration with separate upload and storage settings.
@@ -53,6 +62,18 @@ var (
 	financeConfigOnDemandDiscountKey    = bsonutil.MustHaveTag(CostConfig{}, "OnDemandDiscount")
 	financeConfigS3CostKey              = bsonutil.MustHaveTag(CostConfig{}, "S3Cost")
 	financeConfigEBSCostKey             = bsonutil.MustHaveTag(CostConfig{}, "EBSCost")
+
+	s3CostConfigUploadKey  = bsonutil.MustHaveTag(S3CostConfig{}, "Upload")
+	s3CostConfigStorageKey = bsonutil.MustHaveTag(S3CostConfig{}, "Storage")
+
+	s3UploadCostUploadCostDiscountKey = bsonutil.MustHaveTag(S3UploadCostConfig{}, "UploadCostDiscount")
+
+	s3StorageCostStandardStorageCostDiscountKey              = bsonutil.MustHaveTag(S3StorageCostConfig{}, "StandardStorageCostDiscount")
+	s3StorageCostIAStorageCostDiscountKey                    = bsonutil.MustHaveTag(S3StorageCostConfig{}, "IAStorageCostDiscount")
+	s3StorageCostArchiveStorageCostDiscountKey               = bsonutil.MustHaveTag(S3StorageCostConfig{}, "ArchiveStorageCostDiscount")
+	s3StorageCostDefaultMaxArtifactExpirationDaysKey         = bsonutil.MustHaveTag(S3StorageCostConfig{}, "DefaultMaxArtifactExpirationDays")
+	s3StorageCostDevprodOwnedAWSAccountIDsKey                = bsonutil.MustHaveTag(S3StorageCostConfig{}, "DevprodOwnedAWSAccountIDs")
+	s3StorageCostArtifactAWSAccountsWithoutLifecycleRulesKey = bsonutil.MustHaveTag(S3StorageCostConfig{}, "ArtifactAWSAccountsWithoutLifecycleRules")
 )
 
 func (*CostConfig) SectionId() string { return "cost" }
@@ -67,8 +88,14 @@ func (c *CostConfig) Set(ctx context.Context) error {
 			financeConfigFormulaKey:             c.FinanceFormula,
 			financeConfigSavingsPlanDiscountKey: c.SavingsPlanDiscount,
 			financeConfigOnDemandDiscountKey:    c.OnDemandDiscount,
-			financeConfigS3CostKey:              c.S3Cost,
-			financeConfigEBSCostKey:             c.EBSCost,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigUploadKey, s3UploadCostUploadCostDiscountKey):                         c.S3Cost.Upload.UploadCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostStandardStorageCostDiscountKey):              c.S3Cost.Storage.StandardStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostIAStorageCostDiscountKey):                    c.S3Cost.Storage.IAStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostArchiveStorageCostDiscountKey):               c.S3Cost.Storage.ArchiveStorageCostDiscount,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostDefaultMaxArtifactExpirationDaysKey):         c.S3Cost.Storage.DefaultMaxArtifactExpirationDays,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostDevprodOwnedAWSAccountIDsKey):                c.S3Cost.Storage.DevprodOwnedAWSAccountIDs,
+			bsonutil.GetDottedKeyName(financeConfigS3CostKey, s3CostConfigStorageKey, s3StorageCostArtifactAWSAccountsWithoutLifecycleRulesKey): c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules,
+			financeConfigEBSCostKey: c.EBSCost,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -90,8 +117,68 @@ func (c *CostConfig) ValidateAndDefault() error {
 	validateDiscountField(c.S3Cost.Storage.IAStorageCostDiscount, "S3 infrequent access storage cost discount", catcher)
 	validateDiscountField(c.S3Cost.Storage.ArchiveStorageCostDiscount, "S3 archive storage cost discount", catcher)
 	validateDiscountField(c.EBSCost.EBSDiscount, "EBS cost discount", catcher)
+	if c.S3Cost.Storage.DefaultMaxArtifactExpirationDays < 0 {
+		catcher.New("default max artifact expiration days must be non-negative")
+	}
+	for _, id := range c.S3Cost.Storage.DevprodOwnedAWSAccountIDs {
+		catcher.Add(validateAWSAccountID(id, "devprod owned AWS account ID"))
+	}
+	for _, id := range c.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules {
+		catcher.Add(validateAWSAccountID(id, "artifact AWS account without lifecycle rules"))
+	}
 
 	return catcher.Resolve()
+}
+
+func validateAWSAccountID(id, fieldLabel string) error {
+	s := strings.TrimSpace(id)
+	if s == "" {
+		return errors.Errorf("%s cannot be empty", fieldLabel)
+	}
+	if len(s) != 12 {
+		return errors.Errorf("%s must be a 12-digit AWS account ID", fieldLabel)
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return errors.Errorf("%s must contain only digits", fieldLabel)
+		}
+	}
+	return nil
+}
+
+// IsInDevProdOwnedAccountList reports whether an account ID is in the list of devprod owned account IDs.
+func IsInDevProdOwnedAccountList(accountID string, list []string) bool {
+	return slices.ContainsFunc(list, func(id string) bool {
+		return strings.TrimSpace(id) == accountID
+	})
+}
+
+// IsDevprodOwnedArtifactIAMRole reports whether an IAM role ARN belongs to an account in the list
+// of devprod owned account IDs.
+func IsDevprodOwnedArtifactIAMRole(awsRoleARN string, devprodOwnedAWSAccountIDs []string) bool {
+	if len(devprodOwnedAWSAccountIDs) == 0 {
+		return true
+	}
+	acctID, ok := util.AWSAccountIDFromIAMARN(awsRoleARN)
+	return ok && IsInDevProdOwnedAccountList(acctID, devprodOwnedAWSAccountIDs)
+}
+
+// IsDevprodOwnedUpload reports whether an upload belongs to a devprod-owned account.
+// When awsRoleARN is non-empty, the account ID is derived from the ARN. When awsRoleARN
+// is empty, awsAccountID is used directly (for key+secret auth where no ARN is available).
+// Returns true when the owned account list is empty, meaning all uploads are tracked.
+func IsDevprodOwnedUpload(awsRoleARN, awsAccountID string, devprodOwnedAWSAccountIDs []string) bool {
+	if len(devprodOwnedAWSAccountIDs) == 0 {
+		return true
+	}
+	if awsRoleARN != "" {
+		acctID, ok := util.AWSAccountIDFromIAMARN(awsRoleARN)
+		return ok && IsInDevProdOwnedAccountList(acctID, devprodOwnedAWSAccountIDs)
+	}
+	if awsAccountID != "" {
+		return IsInDevProdOwnedAccountList(awsAccountID, devprodOwnedAWSAccountIDs)
+	}
+	return false
 }
 
 // IsConfigured returns true if any finance config field is set.
@@ -103,5 +190,6 @@ func (c *CostConfig) IsConfigured() bool {
 		c.S3Cost.Storage.StandardStorageCostDiscount != 0 ||
 		c.S3Cost.Storage.IAStorageCostDiscount != 0 ||
 		c.S3Cost.Storage.ArchiveStorageCostDiscount != 0 ||
-		c.EBSCost.EBSDiscount != 0
+		c.EBSCost.EBSDiscount != 0 ||
+		c.S3Cost.Storage.DefaultMaxArtifactExpirationDays != 0
 }

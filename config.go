@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-03-26"
+	ClientVersion = "2026-05-27a"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-03-26"
+	AgentVersion = "2026-05-27c"
 )
 
 const (
@@ -77,6 +77,7 @@ type Settings struct {
 	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
 	DebugSpawnHosts     DebugSpawnHostsConfig   `yaml:"debug_spawn_hosts" bson:"debug_spawn_hosts" json:"debug_spawn_hosts" id:"debug_spawn_hosts"`
+	Diagnostics         DiagnosticsConfig       `yaml:"diagnostics" bson:"diagnostics" json:"diagnostics" id:"diagnostics"`
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions" secret:"true"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
@@ -160,7 +161,8 @@ func (c *Settings) Set(ctx context.Context) error {
 			sshKey:                     c.SSH,
 			spawnhostKey:               c.Spawnhost,
 			shutdownWaitKey:            c.ShutdownWaitSeconds,
-		}}), "updating config section '%s'", c.SectionId(),
+		},
+	}), "updating config section '%s'", c.SectionId(),
 	)
 }
 
@@ -256,7 +258,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 	catcher := grip.NewSimpleCatcher()
 	baseConfig := config.Sections[ConfigDocID].(*Settings)
 	valConfig := reflect.ValueOf(*baseConfig)
-	//iterate over each field in the config struct
+	// iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
 		// retrieve the 'id' struct tag
 		sectionId := valConfig.Type().Field(i).Tag.Get("id")
@@ -288,7 +290,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		paramConfig := baseConfig
 		paramMgr := GetEnvironment().ParameterManager()
 		if paramMgr == nil {
-			grip.Errorf("parameter manager is nil, cannot read admin secrets from parameter store")
+			grip.Errorf(ctx, "parameter manager is nil, cannot read admin secrets from parameter store")
 			return baseConfig, nil
 		}
 		settingsValue := reflect.ValueOf(paramConfig).Elem()
@@ -300,7 +302,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 		if ctx.Err() != nil {
 			return nil, errors.Wrap(ctx.Err(), "context is cancelled, cannot get settings")
 		} else if err != nil {
-			grip.Error(errors.Wrap(err, "getting all admin secrets from parameter store"))
+			grip.Error(ctx, errors.Wrap(err, "getting all admin secrets from parameter store"))
 		} else {
 			for _, param := range params {
 				paramCache[param.Name] = param.Value
@@ -309,7 +311,7 @@ func getSettings(ctx context.Context, includeOverrides, includeParameterStore bo
 
 		readAdminSecrets(ctx, paramMgr, settingsValue, settingsType, "", paramCache, adminCatcher)
 		if adminCatcher.HasErrors() && ctx.Err() == nil {
-			grip.Error(errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
+			grip.Error(ctx, errors.Wrap(adminCatcher.Resolve(), "reading admin settings in parameter store"))
 		} else {
 			baseConfig = paramConfig
 		}
@@ -416,7 +418,7 @@ func readAdminSecrets(ctx context.Context, paramMgr *parameterstore.ParameterMan
 					if len(newMap.MapKeys()) == len(fieldValue.MapKeys()) {
 						fieldValue.Set(newMap)
 					} else {
-						grip.ErrorWhen(ctx.Err() == nil, message.Fields{
+						grip.ErrorWhen(ctx, ctx.Err() == nil, message.Fields{
 							"message":  "readAdminSecrets did not find all map keys in parameter store",
 							"path":     fieldPath,
 							"keys":     fieldValue.MapKeys(),
@@ -518,7 +520,7 @@ func UpdateConfig(ctx context.Context, config *Settings) error {
 	catcher := grip.NewSimpleCatcher()
 	valConfig := reflect.ValueOf(*config)
 
-	//iterate over each field in the config struct
+	// iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
 		// retrieve the 'id' struct tag
 		sectionId := valConfig.Type().Field(i).Tag.Get("id")
@@ -701,7 +703,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 
 			senders = append(senders, logger.MakeQueueSender(ctx, env.LocalQueue(), sender))
 		}
-		grip.Warning(errors.Wrap(err, "setting up Slack alert logger"))
+		grip.Warning(ctx, errors.Wrap(err, "setting up Slack alert logger"))
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
@@ -740,6 +742,10 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 		}
 	}
 
+	if s.Tracer.TraceURLTemplate != "" {
+		sender = send.NewTraceURLSender(sender, s.Tracer.TraceURLTemplate)
+	}
+
 	return sender, nil
 }
 
@@ -774,7 +780,6 @@ type ReadConcern struct {
 }
 
 func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
-
 	if rc.Level == "majority" {
 		return readconcern.Majority()
 	} else if rc.Level == "local" {
@@ -782,9 +787,10 @@ func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
 	} else if rc.Level == "" {
 		return readconcern.Majority()
 	} else {
-		grip.Error(message.Fields{
+		grip.Error(context.Background(), message.Fields{
 			"error":   "ReadConcern Level is not majority or local, setting to majority",
-			"rcLevel": rc.Level})
+			"rcLevel": rc.Level,
+		})
 		return readconcern.Majority()
 	}
 }

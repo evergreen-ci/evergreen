@@ -81,17 +81,6 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		warningCatcher.Add(err)
 	}
 
-	_, err = model.SetTracksPushEvents(ctx, projectRef)
-	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":            "error setting project tracks push events",
-			"project_id":         projectRef.Id,
-			"project_identifier": projectRef.Identifier,
-			"owner":              projectRef.Owner,
-			"repo":               projectRef.Repo,
-		}))
-	}
-
 	if err = projectRef.Add(ctx, u); err != nil {
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -100,7 +89,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 
 	err = model.LogProjectAdded(ctx, projectRef.Id, u.DisplayName())
-	grip.Error(message.WrapError(err, message.Fields{
+	grip.Error(ctx, message.WrapError(err, message.Fields{
 		"message":            "problem logging project added",
 		"project_id":         projectRef.Id,
 		"project_identifier": projectRef.Identifier,
@@ -241,6 +230,8 @@ func UpdateProjectVars(ctx context.Context, projectId string, varsModel *restMod
 	varsModel.Vars = vars.Vars
 	varsModel.PrivateVars = vars.PrivateVars
 	varsModel.AdminOnlyVars = vars.AdminOnlyVars
+	varsModel.VarsDescriptions = vars.VarsDescriptions
+
 	varsModel.VarsToDelete = []string{}
 	return nil
 }
@@ -248,7 +239,7 @@ func UpdateProjectVars(ctx context.Context, projectId string, varsModel *restMod
 func GetProjectEventLog(ctx context.Context, project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	id, err := model.GetIdForProject(ctx, project)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
 			"func":    "GetProjectEventLog",
 			"message": "error getting id for project",
 			"project": project,

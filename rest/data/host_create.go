@@ -301,7 +301,7 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, pu
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
 	event.LogHostCreated(ctx, intent.Id)
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":  "intent host created",
 		"host_id":  intent.Id,
 		"host_tag": intent.Tag,
@@ -344,6 +344,7 @@ func getHostCreationOptions(ctx context.Context, d distro.Distro, taskID, userID
 			options.SpawnOptions.TaskID = taskID
 			options.SpawnOptions.TaskExecutionNumber = t.Execution
 		}
+		options.SpawnOptions.ProjectID = t.Project
 		options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(createHost.TeardownTimeoutSecs) * time.Second)
 		options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(createHost.SetupTimeoutSecs) * time.Second)
 		options.SpawnOptions.Retries = createHost.Retries

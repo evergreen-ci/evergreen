@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"runtime/debug"
 	"slices"
 	"sort"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -170,7 +172,6 @@ var projectMixedValidators = []projectValidator{
 
 var projectAliasWarningValidators = []projectAliasValidator{
 	validateAliasCoverage,
-	validateCheckRuns,
 }
 
 // Functions used to validate a project configuration that requires additional
@@ -181,6 +182,7 @@ var projectSettingsValidators = []projectSettingsValidator{
 	validateIncludeLimits,
 	validateTimeoutLimits,
 	validateReferentialIntegrity,
+	validateGitHubAppCheckRuns,
 }
 
 func (vr ValidationError) Error() string {
@@ -611,44 +613,6 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 	return aliasNeedsVariant, aliasNeedsTask, nil
 }
 
-// validateCheckRuns returns warnings if PR aliases are going to violate check run rules for the given config.
-func validateCheckRuns(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	errs := ValidationErrors{}
-	aliasMap := map[string][]model.ProjectAlias{} // map of alias name to aliases
-	for _, a := range aliases {
-		if _, ok := aliasMap[a.Alias]; !ok {
-			aliasMap[a.Alias] = []model.ProjectAlias{}
-		}
-		aliasMap[a.Alias] = append(aliasMap[a.Alias], a)
-	}
-
-	tvPairs, err := p.BuildProjectTVPairsWithAlias(aliasMap[evergreen.GithubPRAlias], evergreen.GithubPRRequester)
-	if err != nil {
-		errs = append(errs, ValidationError{
-			Message: "problem getting task variant pairs for PR aliases",
-			Level:   Warning,
-		})
-		return errs
-	}
-	tvPairs.ExecTasks, err = model.IncludeDependencies(p, tvPairs.ExecTasks, evergreen.GithubPRRequester, nil)
-	if err != nil {
-		errs = append(errs, ValidationError{
-			Message: "problem adding dependencies to PR alias tasks",
-			Level:   Warning,
-		})
-		return errs
-	}
-	numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(&tvPairs)
-	checkRunLimit := evergreen.GetEnvironment().Settings().GitHubCheckRun.CheckRunLimit
-	if numCheckRuns > checkRunLimit {
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit),
-			Level:   Warning,
-		})
-	}
-	return errs
-}
-
 func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgName string) (bool, error) {
 	tg := p.FindTaskGroup(tgName)
 	if tg == nil {
@@ -1041,8 +1005,12 @@ func shouldValidateSingleTaskDistros(projectIdentifier string, singleTaskDistroA
 	return shouldValidate, allowAll, Error, []ValidationError{}
 }
 
-func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+func validateTimeoutLimits(ctx context.Context, settings *evergreen.Settings, project *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
+
+	highestExecTimeoutSecs := project.ExecTimeoutSecs
+	var highestExecTimeoutTask string
+
 	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
 		for _, task := range project.Tasks {
 			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
@@ -1050,9 +1018,40 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
 					Level:   Error,
 				})
+				if task.ExecTimeoutSecs > highestExecTimeoutSecs {
+					highestExecTimeoutSecs = task.ExecTimeoutSecs
+					highestExecTimeoutTask = task.Name
+				}
 			}
 		}
 	}
+
+	highExecTimeoutThresholdSecs := int(evergreen.HighExecTimeoutThreshold.Seconds())
+	if highestExecTimeoutSecs > highExecTimeoutThresholdSecs {
+		var projectID, projectIdentifier string
+		if ref != nil {
+			projectID = ref.Id
+			projectIdentifier = ref.Identifier
+		} else if project != nil {
+			projectID = project.Identifier
+		}
+		grip.Warning(ctx, message.Fields{
+			"message":                          "project has an unusually high exec timeout defined",
+			"project_id":                       projectID,
+			"project_identifier":               projectIdentifier,
+			"highest_exec_timeout_secs":        highestExecTimeoutSecs,
+			"threshold_high_exec_timeout_secs": highExecTimeoutThresholdSecs,
+			"highest_exec_timeout_task":        highestExecTimeoutTask,
+			// This is a little hacky, but it's hard to tell if the high exec
+			// timeout in validation comes from an actual patch/version (which
+			// should alert) or from a user running `evergreen validate` (which
+			// shouldn't alert). Adding a stacktrace makes it easier to
+			// determine the source of the high exec timeout value without
+			// changing the entire project validation interface.
+			"stack": string(debug.Stack()),
+		})
+	}
+
 	return errs
 }
 
@@ -1069,6 +1068,22 @@ func validateReferentialIntegrity(ctx context.Context, settings *evergreen.Setti
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(p, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroAllowlist, distroWarnings)...)
 	return validationErrs
+}
+
+// validateGitHubAppCheckRuns returns warnings if the project has more check runs configured than allowed (which varies depending on GitHub App setup).
+func validateGitHubAppCheckRuns(ctx context.Context, settings *evergreen.Settings, p *model.Project, ref *model.ProjectRef, _ bool) ValidationErrors {
+	errs := ValidationErrors{}
+	numCheckRuns := p.CountCheckRuns()
+	if numCheckRuns == 0 {
+		return errs
+	}
+	if err := model.VerifyCheckRunLimit(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, ref.HasGitHubAppAuth(ctx)); err != nil {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("check runs will be skipped; %s", err.Error()),
+			Level:   Warning,
+		})
+	}
+	return errs
 }
 
 func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {

@@ -141,6 +141,7 @@ type taskTriggers struct {
 	data         *event.TaskEventData
 	task         *task.Task
 	owner        string
+	repoId       string
 	uiConfig     evergreen.UIConfig
 	jiraMappings *evergreen.JIRANotificationsConfig
 	host         *host.Host
@@ -203,15 +204,27 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 
 	t.event = e
 
+	projectRef, err := model.FindBranchProjectRef(ctx, t.task.Project)
+	if err != nil {
+		return errors.Wrapf(err, "finding project ref '%s'", t.task.Project)
+	}
+	if projectRef != nil {
+		t.repoId = projectRef.RepoRefId
+	}
+
 	t.jiraMappings = &evergreen.JIRANotificationsConfig{}
 	return t.jiraMappings.Get(ctx)
 }
 
 func (t *taskTriggers) Attributes() event.Attributes {
+	project := []string{t.task.Project}
+	if t.repoId != "" {
+		project = append(project, t.repoId)
+	}
 	attributes := event.Attributes{
 		ID:           []string{t.task.Id},
 		Object:       []string{event.ObjectTask},
-		Project:      []string{t.task.Project},
+		Project:      project,
 		InVersion:    []string{t.task.Version},
 		InBuild:      []string{t.task.BuildId},
 		DisplayName:  []string{t.task.DisplayName},
@@ -359,7 +372,7 @@ func (t *taskTriggers) generate(ctx context.Context, sub *event.Subscription, pa
 	if err != nil {
 		return nil, errors.Wrap(err, "creating notification")
 	}
-	n.SetTaskMetadata(t.task.Id, t.task.Execution)
+	n.SetTaskMetadata(t.task.Id, t.task.Execution, "")
 
 	return n, nil
 }
@@ -383,7 +396,7 @@ func (t *taskTriggers) generateWithAlertRecord(ctx context.Context, sub *event.S
 	}
 
 	newRec := newAlertRecord(sub.ID, t.task, alertType)
-	grip.Error(message.WrapError(newRec.Insert(ctx), message.Fields{
+	grip.Error(ctx, message.WrapError(newRec.Insert(ctx), message.Fields{
 		"source":  "alert-record",
 		"type":    alertType,
 		"task_id": t.task.Id,
@@ -608,7 +621,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			errMessage["error"] = err.Error()
-			grip.Error(errMessage)
+			grip.Error(ctx, errMessage)
 			return false, err
 		}
 
@@ -619,7 +632,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage["outcome"] = "sending alert"
 			errMessage[message.FieldsMsgName] = "identified transition to failure!"
-			grip.Info(errMessage)
+			grip.Info(ctx, errMessage)
 
 			return true, nil
 		}
@@ -634,7 +647,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 			errMessage["error"] = err.Error()
 			errMessage["lastAlert"] = lastAlerted
 			errMessage["outcome"] = "not sending alert"
-			grip.Error(errMessage)
+			grip.Error(ctx, errMessage)
 			return false, err
 		}
 		if lastAlerted == nil {
@@ -652,7 +665,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 				errMessage["outcome"] = "not sending alert (75%)"
 
 			}
-			grip.Warning(errMessage)
+			grip.Warning(ctx, errMessage)
 
 			return maybeSend, nil
 		}
@@ -852,7 +865,7 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 		var match bool
 		match, err = testMatchesRegex(test.GetDisplayTestName(), sub)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"source":  "test-trigger",
 				"message": "bad regex in db",
 				"task":    t.task.Id,

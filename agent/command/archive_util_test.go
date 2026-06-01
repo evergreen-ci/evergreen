@@ -329,3 +329,259 @@ func TestGlobPatternBehavior(t *testing.T) {
 		})
 	}
 }
+
+func TestGlobPatternCombinations(t *testing.T) {
+	testDir := getDirectoryOfFile()
+	rootPath := filepath.Join(testDir, "testdata", "glob_combinations")
+
+	// Test cases with combinations of include and exclude patterns
+	testCases := []struct {
+		name          string
+		includes      []string
+		excludes      []string
+		expectedPaths []string
+	}{
+		{
+			// Should recursively find all java files in the fixture folder
+			name:     "AllJavaFiles",
+			includes: []string{"./**.java"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"src/main.java",
+				"src/util.java",
+				"src/subdir/helper.java",
+				"src/subdir/test.java",
+			},
+		},
+		{
+			// Should recursively find all json and md files in the fixture folder
+			name:     "MultipleIncludes",
+			includes: []string{"**.json", "**.md"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"config/local.json",
+				"config/settings.json",
+				"docs/guide.md",
+			},
+		},
+		{
+			// Should recursively find all files in the config directory, and include the directory itself
+			name:     "SpecificDirectory",
+			includes: []string{"config/**"},
+			expectedPaths: []string{
+				"config",
+				"config/local.json",
+				"config/settings.json",
+			},
+		},
+		{
+			// Should include every folder and file one level under src, but not recursively.
+			name:     "DirectChildrenOnly",
+			includes: []string{"src/*"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"src/main.java",
+				"src/subdir",
+				"src/util.java",
+			},
+		},
+		{
+			// Should include every folder under src recursively, and also just a specific file.
+			name:     "SpecificFiles",
+			includes: []string{"config/local.json", "src/**"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"config/local.json",
+				"src",
+				"src/main.java",
+				"src/util.java",
+				"src/subdir",
+				"src/subdir/helper.java",
+				"src/subdir/test.java",
+			},
+		},
+		{
+			// Should include both specified files only.
+			name:     "SpecificFilesAndWildcard",
+			includes: []string{"src/main.java", "src/util.java"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"src/main.java",
+				"src/util.java",
+			},
+		},
+		{
+			// Tracking the legacy behavior, wildcards before the last slash don't return results due to how prefixes are matched.
+			// This test exercises the code for "**" wildcard final path element.
+			name:          "WildcardsBeforeEndDontWork",
+			includes:      []string{"*/**"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			// Tracking the legacy behavior, wildcards before the last slash don't return results due to how prefixes are matched.
+			// This test exercises the code path without a "**" wildcard final path element.
+			name:          "WildcardsBeforeEndDontWorkWithSpecificEnding",
+			includes:      []string{"*/main.java"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			// Tracking the legacy behavior, wildcards before the last slash don't return results due to how prefixes are matched.
+			// This test exercises the code path with a "**.java" wildcard final path element, which is distinct from bare '**'.
+			name:          "WildcardsBeforeEndDontWorkWithDoubleWildcardEnding",
+			includes:      []string{"*/**.java"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			// Tracking the legacy behavior, wildcards before the last slash don't return results due to how prefixes are matched.
+			// This test exercises the code path with no double wildcard but a wildcard in the final path element.
+			name:          "WildcardsBeforeEndDontWorkWithSingleWildcardEnding",
+			includes:      []string{"*/*.java"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			// This tracks the legacy behavior that never returns anything if the include pattern ends in a slash.
+			name:          "EndingInSlashReturnsNone",
+			includes:      []string{"src/"},
+			excludes:      []string{},
+			expectedPaths: []string{},
+		},
+		{
+			// Tests using infrequently used "?" wildcard, which matches a single character.
+			// This particular one should match a single file.
+			name:     "TestQuestionMarkWildcard",
+			includes: []string{"config/loc??.json"},
+			excludes: []string{},
+			expectedPaths: []string{
+				"config/local.json",
+			},
+		},
+		//
+		// Test Exclusions. Note that we have to include the rootPath because the util function
+		// currently requires the exclude math to match the full joined path, not just the suffix
+		// to the root path provided.
+		//
+		{
+			// The '*.java' doesn't actually exclude anything because filepath.Match is used on the whole path
+			// This is preserving legacy behavior.
+			name:     "FailToExcludeEverythingSingleStar",
+			includes: []string{"**.java"},
+			excludes: []string{"*.java"},
+			expectedPaths: []string{
+				"src/main.java",
+				"src/util.java",
+				"src/subdir/helper.java",
+				"src/subdir/test.java",
+			},
+		},
+		{
+			// The '**' doesn't actually exclude anything because filepath.Match doesn't handle double wildcards.
+			name:     "FailToExcludeEverythingDoubleStar",
+			includes: []string{"**.java"},
+			excludes: []string{"**"},
+			expectedPaths: []string{
+				"src/main.java",
+				"src/util.java",
+				"src/subdir/helper.java",
+				"src/subdir/test.java",
+			},
+		},
+		{
+			// This excludes the only file explicitly included, resulting in no matches.
+			name:          "SpecificFileAndExclude",
+			includes:      []string{"src/main.java"},
+			excludes:      []string{filepath.Join(rootPath, "src/main.java")},
+			expectedPaths: []string{},
+		},
+		{
+			// This excludes a wiledcard that matches the file explicitly included, resulting in no matches.
+			name:          "SpecificFileAndExcludeWildcard",
+			includes:      []string{"src/main.java"},
+			excludes:      []string{filepath.Join(rootPath, "src/*.java")},
+			expectedPaths: []string{},
+		},
+		{
+			// This excludes one of the java files marked under src, leaving only the remaining one.
+			name:     "SingleWildcardAndExcludeSpecific",
+			includes: []string{"src/*.java"},
+			excludes: []string{filepath.Join(rootPath, "src/main.java")},
+			expectedPaths: []string{
+				"src/util.java",
+			},
+		},
+		{
+			// This excludes one of the java files marked under src, leaving the remaining ones obtained recursively
+			name:     "DoubleWildcardAndExcludeSpecific",
+			includes: []string{"src/**.java"},
+			excludes: []string{filepath.Join(rootPath, "src/main.java")},
+			expectedPaths: []string{
+				"src/subdir/helper.java",
+				"src/subdir/test.java",
+				"src/util.java",
+			},
+		},
+		{
+			// This excludes all the direct subfiles of src, leaving only the deeper recursive files.
+			name:     "DoubleWildcardAndExcludeWildcard",
+			includes: []string{"src/**.java"},
+			excludes: []string{filepath.Join(rootPath, "src/*.java")},
+			expectedPaths: []string{
+				"src/subdir/helper.java",
+				"src/subdir/test.java",
+			},
+		},
+		{
+			// Combines the exclusion of direct subfiles of src, and one specific subdirectory file.
+			name:     "DoubleWildcardAndExcludeWildcardAndSpecificFile",
+			includes: []string{"src/**.java"},
+			excludes: []string{filepath.Join(rootPath, "src/*.java"), filepath.Join(rootPath, "src/subdir/test.java")},
+			expectedPaths: []string{
+				"src/subdir/helper.java",
+			},
+		},
+		{
+			// Combines the exclusion of direct subfiles of src, and one specific subdirectory file, but uses "**"
+			// which includes returning the directories themselves as well.
+			name:     "DoubleWildcardAllAndExcludeWildcardAndSpecificFile",
+			includes: []string{"src/**"},
+			excludes: []string{filepath.Join(rootPath, "src/*.java"), filepath.Join(rootPath, "src/subdir/test.java")},
+			expectedPaths: []string{
+				"src",
+				"src/subdir",
+				"src/subdir/helper.java",
+			},
+		},
+		{
+			// Tests that excluding a directory using a trailing slash works, despite
+			// this not working for includes. This preserves legacy behavior.
+			name:     "ExcludeDirectoriesFromDoubleWildcard",
+			includes: []string{"config/**"},
+			excludes: []string{filepath.Join(rootPath, "config/")},
+			expectedPaths: []string{
+				"config/local.json",
+				"config/settings.json",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			files, _, err := findContentsToArchive(t.Context(), rootPath, tc.includes, tc.excludes)
+			require.NoError(t, err)
+
+			var actualPaths []string
+			for _, f := range files {
+				rel, err := filepath.Rel(rootPath, f.path)
+				require.NoError(t, err)
+				actualPaths = append(actualPaths, filepath.ToSlash(rel))
+			}
+
+			assert.ElementsMatch(t, tc.expectedPaths, actualPaths,
+				"includes: %v, excludes: %v should find expected paths", tc.includes, tc.excludes)
+		})
+	}
+}

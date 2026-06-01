@@ -19,7 +19,6 @@ type HandlerOpts struct {
 	APIQueue            amboy.Queue
 	TaskDispatcher      model.TaskQueueItemDispatcher
 	TaskAliasDispatcher model.TaskQueueItemDispatcher
-	URL                 string
 	GithubSecret        []byte
 }
 
@@ -31,8 +30,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	parsleyURL := settings.Ui.ParsleyUrl
-
-	sc.SetURL(opts.URL)
 
 	// Middleware
 	requireUser := gimlet.NewRequireAuthHandler()
@@ -47,6 +44,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requireBackstage := newBackstageMiddleware()
 	createProject := NewCanCreateMiddleware()
 	adminSettings := RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
+	sendNotifications := NewSendNotificationMiddleware()
 	createDistro := RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)
 	editRoles := RequiresSuperUserPermission(evergreen.PermissionRoleModify, evergreen.RoleModify)
 	viewTasks := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
@@ -61,6 +59,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	removeDistroSettings := RequiresDistroPermission(evergreen.PermissionDistroSettings, evergreen.DistroSettingsAdmin)
 	compress := gimlet.WrapperHandlerMiddleware(handlers.CompressHandler)
 
+	app.AddWrapper(NewRequestHostMiddleware())
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Clients
@@ -80,7 +79,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().Wrap(requireTask).RouteHandler(makeHostListRouteManager())
 	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeFetchTask())
 	app.AddRoute("/task/{task_id}/display_task").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDisplayTaskHandler())
-	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireTask, requireHost).RouteHandler(makeGetDistroView())
+	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetDistroView())
 	app.AddRoute("/task/{task_id}/host_view").Version(2).Get().Wrap(requireTask, requireHost).RouteHandler(makeGetHostView())
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
 	app.AddRoute("/task/{task_id}/expansions_and_vars").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetExpansionsAndVars(settings))
@@ -91,12 +90,13 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/heartbeat").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeHeartbeat())
 	app.AddRoute("/task/{task_id}/parser_project").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetParserProject(env))
 	app.AddRoute("/task/{task_id}/project_ref").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetProjectRef())
+	app.AddRoute("/task/{task_id}/high_exec_timeout").Version(2).Post().Wrap(requireTask).RouteHandler(makeReportHighExecTimeout())
 	app.AddRoute("/task/{task_id}/s3_usage").Version(2).Post().Wrap(requireTask).RouteHandler(makeReportS3Usage())
 	app.AddRoute("/task/{task_id}/set_results_info").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetTaskResultsInfoHandler())
 	app.AddRoute("/task/{task_id}/start").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeStartTask(env))
 	app.AddRoute("/task/{task_id}/test_logs").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeAttachTestLog(settings))
 	app.AddRoute("/task/{task_id}/test_results").Version(2).Post().Wrap(requireTask, requireHost).RouteHandler(makeAttachTestResults(env))
-	app.AddRoute("/task/{task_id}/patch").Version(2).Get().Wrap(requireTask).RouteHandler(makeServePatch())
+	app.AddRoute("/task/{task_id}/patch").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeServePatch())
 	app.AddRoute("/task/{task_id}/version").Version(2).Get().Wrap(requireTask).RouteHandler(makeServeVersion())
 	app.AddRoute("/task/{task_id}/git/patchfile/{patchfile_id}").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGitServePatchFile())
 	app.AddRoute("/task/{task_id}/github_dynamic_access_token").Version(2).Delete().Wrap(requireUserOrTask).RouteHandler(makeRevokeGitHubDynamicAccessToken(env))
@@ -130,6 +130,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_users").Version(2).Delete().Wrap(requireUser, adminSettings).RouteHandler(makeDeleteServiceUser())
 	app.AddRoute("/alias/{project_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAliases())
 	app.AddRoute("/auth").Version(2).Get().Wrap(requireUser).RouteHandler(&authPermissionGetHandler{})
+	app.AddRoute("/auth/token_exchange/authorize").Version(2).Get().Wrap(requireUser).Handler(tokenExchangeAuthorizeHandler(env))
+	app.AddRoute("/auth/token_exchange/callback").Version(2).Get().Wrap(requireUser).RouteHandler(makeTokenExchangeCallback(env))
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetBuildByID(env))
 	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makeChangeStatusForBuild())
 	app.AddRoute("/builds/{build_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeAbortBuild())
@@ -175,7 +177,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/keys").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchKeys())
 	app.AddRoute("/keys").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetKey())
 	app.AddRoute("/keys/{key_name}").Version(2).Delete().Wrap(requireUser).RouteHandler(makeDeleteKeys())
-	app.AddRoute("/notifications/{type}").Version(2).Post().Wrap(requireUser).RouteHandler(makeNotification(env))
+	app.AddRoute("/notifications/slack").Version(2).Post().Wrap(requireUser, sendNotifications).RouteHandler(makeSlackNotification(env))
+	app.AddRoute("/notifications/email").Version(2).Post().Wrap(requireUser, sendNotifications).RouteHandler(makeEmailNotification(env))
 	app.AddRoute("/panic").Version(2).Post().Wrap(requireUser).RouteHandler(makePanicReport())
 	app.AddRoute("/patches/{patch_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchByID())
 	app.AddRoute("/patches/{patch_id}").Version(2).Patch().Wrap(requireUser, submitPatches).RouteHandler(makeChangePatchStatus(env))
@@ -190,7 +193,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}").Version(2).Delete().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeDeleteProject())
 	app.AddRoute("/projects/{project_id}").Version(2).Get().Wrap(requireUser, addProject, viewProjectSettings).RouteHandler(makeGetProjectByID())
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makePatchProjectByID(settings))
-	app.AddRoute("/projects/{project_id}/repotracker").Version(2).Post().Wrap(requireUser, addProject).RouteHandler(makeRunRepotrackerForProject())
+	app.AddRoute("/projects/{project_id}/repotracker").Version(2).Post().Wrap(requireUser, addProject, editTasks).RouteHandler(makeRunRepotrackerForProject())
 	app.AddRoute("/projects/{project_id}").Version(2).Put().Wrap(requireUser, createProject).RouteHandler(makePutProjectByID(env))
 	app.AddRoute("/projects/{project_id}/copy").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeCopyProject(env))
 	app.AddRoute("/projects/{project_id}/copy/variables").Version(2).Post().Wrap(requireUser, addProject, requireProjectAdmin, editProjectSettings).RouteHandler(makeCopyVariables())
@@ -202,11 +205,14 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/task_reliability").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetProjectTaskReliability())
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTaskStats())
 	app.AddRoute("/projects/{project_id}/versions").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectVersionsHandler())
-	app.AddRoute("/projects/{project_id}/versions").Version(2).Patch().Wrap(requireUser, requireProjectAdmin).RouteHandler(makeModifyProjectVersionsHandler(opts.URL))
-	app.AddRoute("/projects/{project_id}/tasks/{task_name}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTasksHandler(opts.URL))
+	app.AddRoute("/projects/{project_id}/versions").Version(2).Patch().Wrap(requireUser, requireProjectAdmin).RouteHandler(makeModifyProjectVersionsHandler())
+	app.AddRoute("/projects/{project_id}/tasks/{task_name}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTasksHandler())
 	app.AddRoute("/projects/{project_id}/task_executions").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetProjectTaskExecutionsHandler())
 	app.AddRoute("/projects/{project_id}/patch_trigger_aliases").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchPatchTriggerAliases())
 	app.AddRoute("/projects/{project_id}/parameters").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchParameters())
+	app.AddRoute("/projects/{project_id}/variants/{variant_name}/quarantine").Version(2).Post().Wrap(requireUser, addProject, editTasks).RouteHandler(makeVariantQuarantineHandler())
+	app.AddRoute("/projects/{project_id}/variants/{variant_name}/unquarantine").Version(2).Post().Wrap(requireUser, addProject, editTasks).RouteHandler(makeVariantUnquarantineHandler())
+	app.AddRoute("/projects/{project_id}/variants/{variant_name}/quarantine_status").Version(2).Get().Wrap(requireUser, addProject, viewTasks).RouteHandler(makeVariantQuarantineStatusHandler())
 	app.AddRoute("/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/permissions/users").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetAllUsersPermissions(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
@@ -219,7 +225,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/subscriptions").Version(2).Delete().Wrap(requireUser).RouteHandler(makeDeleteSubscription())
 	app.AddRoute("/subscriptions").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchSubscription())
 	app.AddRoute("/subscriptions").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetSubscription())
-	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTaskRoute(parsleyURL, opts.URL))
+	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetTaskRoute(parsleyURL))
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(requireUser, addProject, editTasks).RouteHandler(makeModifyTaskRoute())
 	app.AddRoute("/tasks/{task_id}/artifacts/url").Version(2).Patch().Wrap(requireUser, addProject, requireProjectAdmin, editTasks).RouteHandler(makeUpdateArtifactURLRoute())
 	app.AddRoute("/tasks/{task_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByTask())
@@ -228,12 +234,14 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/created_ticket").Version(2).Put().Wrap(requireUser, editAnnotations).RouteHandler(makeCreatedTicketByTask())
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeTaskAbortHandler())
 	app.AddRoute("/tasks/{task_id}/manifest").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetManifestHandler())
+	app.AddRoute("/tasks/{task_id}/quarantine").Version(2).Post().Wrap(requireUser, addProject, editTasks).RouteHandler(makeTaskQuarantineHandler())
+	app.AddRoute("/tasks/{task_id}/unquarantine").Version(2).Post().Wrap(requireUser, addProject, editTasks).RouteHandler(makeTaskUnquarantineHandler())
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(requireUser, addProject, editTasks).RouteHandler(makeTaskRestartHandler())
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(requireUser, addProject, viewTasks).RouteHandler(makeFetchTestsForTask(env, sc))
 	app.AddRoute("/tasks/{task_id}/tests/count").Version(2).Get().Wrap(requireUser, addProject, viewTasks).RouteHandler(makeFetchTestCountForTask())
 	app.AddRoute("/tasks/{task_id}/generated_tasks").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetGeneratedTasks())
-	app.AddRoute("/tasks/{task_id}/build/TaskLogs").Version(2).Get().Wrap(requireUser, viewTasks, compress).RouteHandler(makeGetTaskLogs(opts.URL))
-	app.AddRoute("/tasks/{task_id}/build/TestLogs/{path}").Version(2).Get().Wrap(requireUser, viewTasks, compress).RouteHandler(makeGetTestLogs(opts.URL))
+	app.AddRoute("/tasks/{task_id}/build/TaskLogs").Version(2).Get().Wrap(requireUser, viewTasks, compress).RouteHandler(makeGetTaskLogs())
+	app.AddRoute("/tasks/{task_id}/build/TestLogs/{path}").Version(2).Get().Wrap(requireUser, viewTasks, compress).RouteHandler(makeGetTestLogs())
 	app.AddRoute("/tasks/{task_id}/github_dynamic_access_tokens").Version(2).Delete().Wrap(requireUser, viewTasks).RouteHandler(makeDeleteGitHubDynamicAccessTokens())
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetUserConfig())
@@ -245,6 +253,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(requireUser, editRoles).RouteHandler(makeDeleteUserPermissions(env.RoleManager()))
+	app.AddRoute("/users/{user_id}/permission-details").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUserPermissionDetails(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/roles").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserRoles(env.RoleManager()))
 	app.AddRoute("/validate").Version(2).Post().Wrap(requireUser).RouteHandler(makeValidateProject())
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionByID())

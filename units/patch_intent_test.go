@@ -1895,6 +1895,17 @@ tasks:
 }
 
 func TestMakeMergeQueueDescription(t *testing.T) {
+	mergeGroup := thirdparty.GithubMergeGroup{
+		HeadSHA:    "0e312ffabcdefghijklmnop",
+		HeadCommit: "I'm a commit!",
+		BaseSHA:    "abcdef0123456789deadbeef",
+	}
+	assert.Equal(t,
+		"GitHub Merge Queue: I'm a commit! (0e312ff) [merge-base abcdef0]",
+		makeMergeQueueDescription(mergeGroup))
+}
+
+func TestMakeMergeQueueDescriptionOmitsMergeBaseWhenEmpty(t *testing.T) {
 	mergeGroup := thirdparty.GithubMergeGroup{HeadSHA: "0e312ffabcdefghijklmnop", HeadCommit: "I'm a commit!"}
 	assert.Equal(t, "GitHub Merge Queue: I'm a commit! (0e312ff)", makeMergeQueueDescription(mergeGroup))
 }

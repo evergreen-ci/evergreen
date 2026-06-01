@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mongobson "go.mongodb.org/mongo-driver/bson"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -177,6 +179,130 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 	assert.Equal(http.StatusOK, rw.Code)
 }
 
+func TestNotificationSendMiddleware(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+
+	adminRole := gimlet.Role{
+		ID:          "notification_send",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{evergreen.PermissionNotificationsSend: evergreen.NotificationsSend.Value},
+	}
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{evergreen.SuperUserPermissionsID},
+	}
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(t.Context(), adminRole))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(t.Context(), superUserScope))
+
+	// Create a middleware that requires the notifications send permission.
+	permission := RequiresSuperUserPermission(evergreen.PermissionNotificationsSend, evergreen.NotificationsSend)
+	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
+		permission.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+	}
+	opCtx := model.Context{}
+	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{}, evergreen.GetEnvironment().RoleManager())
+	assert.NoError(t, err)
+	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
+	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
+
+	// Check that a regular user can't use the route.
+	r, err := http.NewRequest(http.MethodPut, "/notifications/email", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
+	ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "regular.user"})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw := httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, r, checkPermission)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+
+	// Check that an authenticated user can use the route.
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "notification.user", SystemRoles: []string{"notification_send"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, r, checkPermission)
+	assert.Equal(t, http.StatusOK, rw.Code)
+}
+
+func TestSendNotificationMiddleware(t *testing.T) {
+	require.NoError(t, db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection))
+
+	adminRole := gimlet.Role{
+		ID:          "notification_send",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{evergreen.PermissionNotificationsSend: evergreen.NotificationsSend.Value},
+	}
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{evergreen.SuperUserPermissionsID},
+	}
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().UpdateRole(t.Context(), adminRole))
+	require.NoError(t, evergreen.GetEnvironment().RoleManager().AddScope(t.Context(), superUserScope))
+
+	mw := NewSendNotificationMiddleware()
+	opCtx := model.Context{}
+
+	makeRequest := func(target string) *http.Request {
+		body := strings.NewReader(`{"target":"` + target + `"}`)
+		r, err := http.NewRequest(http.MethodPost, "/notifications/slack", body)
+		require.NoError(t, err)
+		return r
+	}
+
+	serveMiddleware := func(rw http.ResponseWriter, r *http.Request) {
+		mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+			rw.WriteHeader(http.StatusOK)
+		})
+	}
+
+	// Superuser with notification_send role can send to any target.
+	r := makeRequest("@other.user")
+	ctx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "superuser", SystemRoles: []string{"notification_send"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw := httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusOK, rw.Code)
+
+	// Regular user sending to themselves (target matches their Slack username).
+	r = makeRequest("@myslack")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "self.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusOK, rw.Code)
+
+	// Regular user sending to a different Slack username gets 401.
+	r = makeRequest("@someone.else")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "other.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+
+	// Regular user with no Slack username set gets 401 (check enabled).
+	r = makeRequest("@myslack")
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "no.slack.user"})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+
+	// A correctly-formatted email body on the email route returns 401 for a regular user.
+	body := strings.NewReader(`{"recipients":["someone@example.com"],"subject":"hi"}`)
+	r, err := http.NewRequest(http.MethodPost, "/notifications/email", body)
+	require.NoError(t, err)
+	ctx = gimlet.AttachUser(t.Context(), &user.DBUser{Id: "self.user", Settings: user.UserSettings{SlackUsername: "myslack"}})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	rw = httptest.NewRecorder()
+	serveMiddleware(rw, r)
+	assert.Equal(t, http.StatusUnauthorized, rw.Code)
+}
+
 func TestTaskAuthMiddleware(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -194,8 +320,9 @@ func TestTaskAuthMiddleware(t *testing.T) {
 		Status: evergreen.TaskSucceeded,
 	}
 	host1 := &host.Host{
-		Id:     "host1",
-		Secret: "abcdef",
+		Id:          "host1",
+		Secret:      "abcdef",
+		RunningTask: "task1",
 	}
 	assert.NoError(task1.Insert(t.Context()))
 	assert.NoError(completedTask.Insert(t.Context()))
@@ -220,7 +347,15 @@ func TestTaskAuthMiddleware(t *testing.T) {
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
 	rw = httptest.NewRecorder()
-	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		// Verify that the task and host are stored in the request context.
+		foundTask := GetTask(r.Context())
+		assert.NotNil(foundTask)
+		assert.Equal("task1", foundTask.Id)
+		foundHost := GetHost(r.Context())
+		assert.NotNil(foundHost)
+		assert.Equal("host1", foundHost.Id)
+	})
 	assert.Equal(http.StatusOK, rw.Code)
 
 	r.Header.Set(evergreen.TaskHeader, "completedTask")
@@ -229,6 +364,7 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	assert.NotEqual(http.StatusOK, rw.Code)
 
 	assert.NoError(task.UpdateOne(ctx, bson.M{task.IdKey: "completedTask"}, bson.M{"$set": bson.M{task.FinishTimeKey: time.Now().Add(-30 * time.Minute)}}))
+	assert.NoError(host.UpdateOne(ctx, mongobson.M{host.IdKey: "host1"}, mongobson.M{"$set": mongobson.M{host.RunningTaskKey: "completedTask"}}))
 	r.Header.Set(evergreen.TaskHeader, "completedTask")
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -255,7 +391,12 @@ func TestHostAuthMiddleware(t *testing.T) {
 					evergreen.HostSecretHeader: []string{h.Secret},
 				},
 			}
-			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+				// Verify that the host is stored in the request context.
+				foundHost := GetHost(r.Context())
+				assert.NotNil(t, foundHost)
+				assert.Equal(t, h.Id, foundHost.Id)
+			})
 			assert.Equal(t, http.StatusOK, rw.Code)
 		},
 		"FailsWithInvalidSecret": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {

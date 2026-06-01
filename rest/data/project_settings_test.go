@@ -253,6 +253,14 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 	}
 }
 
+func makeInternalAlias(alias string) restModel.APIProjectAlias {
+	return restModel.APIProjectAlias{
+		Alias:   utility.ToStringPtr(alias),
+		Variant: utility.ToStringPtr(".*"),
+		Task:    utility.ToStringPtr(".*"),
+	}
+}
+
 func TestSaveProjectSettingsForSection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -388,37 +396,6 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePluginSection, false, "me")
 			require.NoError(t, err)
 			assert.NotNil(t, settings)
-		},
-		"github conflicts on Commit Queue page when defaulting to repo": func(t *testing.T, ref model.ProjectRef) {
-			conflictingRef := model.ProjectRef{
-				Identifier:          "conflicting-project",
-				Owner:               ref.Owner,
-				Repo:                ref.Repo,
-				Branch:              ref.Branch,
-				Enabled:             true,
-				PRTestingEnabled:    utility.TruePtr(),
-				GithubChecksEnabled: utility.TruePtr(),
-				CommitQueue: model.CommitQueueParams{
-					Enabled: utility.TruePtr(),
-				},
-			}
-			assert.NoError(t, conflictingRef.Insert(t.Context()))
-
-			changes := model.ProjectRef{
-				Id:                  ref.Id,
-				PRTestingEnabled:    nil,
-				GithubChecksEnabled: utility.FalsePtr(),
-			}
-			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), changes))
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-			}
-			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "PR testing (projects: conflicting-project)")
-			assert.NotContains(t, err.Error(), "the commit queue")
-			assert.NotContains(t, err.Error(), "commit checks")
 		},
 		model.ProjectPageGithubPermissionsSection: func(t *testing.T, ref model.ProjectRef) {
 			apiChanges := &restModel.APIProjectSettings{
@@ -987,6 +964,137 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Equal(t, true, utility.FromBoolPtr(projectFromDB.TestSelection.Allowed))
 			assert.Equal(t, false, utility.FromBoolPtr(projectFromDB.TestSelection.DefaultEnabled))
 		},
+		model.ProjectPagePullRequestsSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for the PR flags.
+			ref.PRTestingEnabled = nil
+			ref.ManualPRTestingEnabled = nil
+			ref.OldestAllowedMergeBase = ""
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the PULL_REQUESTS section.
+			apiProjectRef.PRTestingEnabled = utility.TruePtr()
+			apiProjectRef.ManualPRTestingEnabled = utility.TruePtr()
+			apiProjectRef.OldestAllowedMergeBase = utility.ToStringPtr("deadbeef")
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					makeInternalAlias(evergreen.GithubPRAlias),
+				},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPagePullRequestsSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.PRTestingEnabled))
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.ManualPRTestingEnabled))
+			assert.Equal(t, "deadbeef", pRefFromDB.OldestAllowedMergeBase)
+		},
+		model.ProjectPageGitTagsSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for git tag settings.
+			ref.GitTagVersionsEnabled = nil
+			ref.GitTagAuthorizedUsers = nil
+			ref.GitTagAuthorizedTeams = nil
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the GIT_TAGS section.
+			apiProjectRef.GitTagVersionsEnabled = utility.TruePtr()
+			apiProjectRef.GitTagAuthorizedUsers = utility.ToStringPtrSlice(
+				[]string{"user1", "user2"},
+			)
+			apiProjectRef.GitTagAuthorizedTeams = utility.ToStringPtrSlice(
+				[]string{"team1"},
+			)
+
+			gitTagAlias := restModel.APIProjectAlias{
+				Alias:      utility.ToStringPtr(evergreen.GitTagAlias),
+				GitTag:     utility.ToStringPtr("v.*"),
+				RemotePath: utility.ToStringPtr("evergreen.yml"),
+			}
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases:    []restModel.APIProjectAlias{gitTagAlias},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGitTagsSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.GitTagVersionsEnabled))
+			assert.Equal(t, []string{"user1", "user2"}, pRefFromDB.GitTagAuthorizedUsers)
+			assert.Equal(t, []string{"team1"}, pRefFromDB.GitTagAuthorizedTeams)
+		},
+		model.ProjectPageMergeQueueSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for the commit queue.
+			ref.CommitQueue.Enabled = utility.FalsePtr()
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the MERGE_QUEUE section.
+			apiProjectRef.CommitQueue.Enabled = utility.TruePtr()
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					makeInternalAlias(evergreen.CommitQueueAlias),
+				},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageMergeQueueSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.CommitQueue.Enabled))
+		},
+		model.ProjectPageCommitChecksSection: func(t *testing.T, ref model.ProjectRef) {
+			// Start from a clean state for commit checks.
+			ref.GithubChecksEnabled = nil
+
+			apiProjectRef := restModel.APIProjectRef{}
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
+			apiProjectRef.PRTestingEnabled = utility.FalsePtr()
+
+			// Apply changes from the COMMIT_CHECKS section.
+			apiProjectRef.GithubChecksEnabled = utility.TruePtr()
+
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: apiProjectRef,
+				Aliases: []restModel.APIProjectAlias{
+					makeInternalAlias(evergreen.GithubChecksAlias),
+				},
+			}
+
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageCommitChecksSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+
+			assert.True(t, utility.FromBoolPtr(pRefFromDB.GithubChecksEnabled))
+		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection,
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,
@@ -1131,13 +1239,16 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Empty(t, projectVarsFromDB.Vars)
 			assert.Empty(t, projectVarsFromDB.PrivateVars)
 			assert.Empty(t, projectVarsFromDB.AdminOnlyVars)
+			assert.Empty(t, projectVarsFromDB.VarsDescriptions)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 4)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
 			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
+			assert.Len(t, repoVarsFromDB.VarsDescriptions, 1)
 			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
+			assert.Equal(t, "keep my description when you promote me", repoVarsFromDB.VarsDescriptions["a"])
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 			assert.Equal(t, "3", repoVarsFromDB.Vars["c"])
 
@@ -1160,14 +1271,17 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Equal(t, "3", varsFromDB.Vars["c"])
 			assert.Empty(t, varsFromDB.PrivateVars)
 			assert.Empty(t, varsFromDB.AdminOnlyVars)
+			assert.Empty(t, varsFromDB.VarsDescriptions)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 3)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
 			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
+			assert.Len(t, repoVarsFromDB.VarsDescriptions, 1)
 			assert.NotContains(t, repoVarsFromDB.Vars, "c")
 			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
+			assert.Equal(t, "keep my description when you promote me", repoVarsFromDB.VarsDescriptions["a"])
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 
 			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
@@ -1258,10 +1372,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		rVars := model.ProjectVars{
-			Id:            repoRef.Id,
-			Vars:          map[string]string{"d": "4"},
-			PrivateVars:   map[string]bool{"d": true},
-			AdminOnlyVars: map[string]bool{"d": true},
+			Id:               repoRef.Id,
+			Vars:             map[string]string{"d": "4"},
+			PrivateVars:      map[string]bool{"d": true},
+			AdminOnlyVars:    map[string]bool{"d": true},
+			VarsDescriptions: map[string]string{},
 		}
 		assert.NoError(t, rVars.Insert(t.Context()))
 
@@ -1286,10 +1401,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		assert.NoError(t, pUnattached.Insert(t.Context()))
 
 		pVars := model.ProjectVars{
-			Id:            pRef.Id,
-			Vars:          map[string]string{"a": "1", "b": "2", "c": "3"},
-			PrivateVars:   map[string]bool{"a": true},
-			AdminOnlyVars: map[string]bool{},
+			Id:               pRef.Id,
+			Vars:             map[string]string{"a": "1", "b": "2", "c": "3"},
+			PrivateVars:      map[string]bool{"a": true},
+			AdminOnlyVars:    map[string]bool{},
+			VarsDescriptions: map[string]string{"a": "keep my description when you promote me"},
 		}
 		assert.NoError(t, pVars.Insert(t.Context()))
 

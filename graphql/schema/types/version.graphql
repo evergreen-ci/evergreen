@@ -54,7 +54,6 @@ type Version {
   activated: Boolean
   author: String!
   authorEmail: String!
-  baseTaskStatuses: [String!]!
   baseVersion: Version
   branch: String!
   buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
@@ -62,6 +61,7 @@ type Version {
   childVersions: [Version!]
   cost: Cost
   createTime: Time!
+  ingestTime: Time
   errors: [String!]!
   externalLinksForMetadata: [ExternalLinkForMetadata!]!
   finishTime: Time
@@ -157,4 +157,31 @@ type ExternalLinkForMetadata {
 type GitTag {
   tag: String!
   pusher: String!
+}
+
+"""
+VersionLite replaces Version by sidestepping the APIVersion layer. It does not contain all Version fields at this time.
+"""
+type VersionLite {
+  id: String!
+  activated: Boolean
+  branch: String!
+  childVersions: [VersionLite!]
+  cost: Cost
+  createTime: Time!
+  ingestTime: Time
+  errors: [String!]!
+  finishTime: Time
+  ignored: Boolean!
+  message: String!
+  order: Int!
+  project: ProjectLite
+  repo: String!
+  requester: String!
+  revision: String!
+  startTime: Time
+  status: String!
+  taskStatusStats: TaskStats
+  user: UserLite!
+  warnings: [String!]!
 }

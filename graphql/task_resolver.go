@@ -6,9 +6,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,7 +19,17 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
+
+// Total is the field resolver for Cost.total.
+func (r *costResolver) Total(ctx context.Context, obj *cost.Cost) (*float64, error) {
+	if obj == nil {
+		return nil, nil
+	}
+	return utility.ToFloat64Ptr(cost.RoundCost(obj.TotalAdjusted())), nil
+}
 
 // AbortInfo is the resolver for the abortInfo field.
 func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*AbortInfo, error) {
@@ -379,7 +391,8 @@ func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITas
 	}
 
 	taskName := utility.FromStringPtr(obj.DisplayName)
-	steps, err := model.GetTaskExecutionSteps(project, taskName)
+	variantName := utility.FromStringPtr(obj.BuildVariant)
+	steps, err := model.GetTaskExecutionSteps(project, taskName, variantName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building execution steps: %s", err.Error()))
 	}
@@ -494,7 +507,7 @@ func (r *taskResolver) Generator(ctx context.Context, obj *restModel.APITask) (*
 	if obj.GeneratedBy == "" {
 		return nil, nil
 	}
-	generator, err := task.FindOneIdWithoutGeneratedJSON(ctx, obj.GeneratedBy)
+	generator, err := task.FindOneId(ctx, obj.GeneratedBy)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
@@ -604,6 +617,21 @@ func (r *taskResolver) NextTaskPassing(ctx context.Context, obj *restModel.APITa
 	}
 
 	return tsk, nil
+}
+
+// InvalidatedByUpstream is the resolver for the invalidatedByUpstream field.
+func (r *taskResolver) InvalidatedByUpstream(ctx context.Context, obj *restModel.APITask) (*bool, error) {
+	if !evergreen.IsGithubMergeQueueRequester(utility.FromStringPtr(obj.Requester)) {
+		return nil, nil
+	}
+	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+	}
+	if apiPatch == nil {
+		return nil, nil
+	}
+	return &apiPatch.InvalidatedByUpstream, nil
 }
 
 // Patch is the resolver for the patch field.
@@ -717,6 +745,24 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	return &TaskLogs{TaskID: utility.FromStringPtr(obj.Id), Execution: obj.Execution}, nil
 }
 
+// TaskCost is the field resolver for Task.taskCost. It applies RoundCost to all
+// adjusted fields so the GraphQL API returns clean values without floating-point noise.
+func (r *taskResolver) TaskCost(ctx context.Context, obj *restModel.APITask) (*cost.Cost, error) {
+	if obj.TaskCost == nil {
+		return nil, nil
+	}
+	rounded := cost.Cost{
+		AdjustedEC2Cost:               cost.RoundCost(obj.TaskCost.AdjustedEC2Cost),
+		AdjustedEBSThroughputCost:     cost.RoundCost(obj.TaskCost.AdjustedEBSThroughputCost),
+		AdjustedEBSStorageCost:        cost.RoundCost(obj.TaskCost.AdjustedEBSStorageCost),
+		AdjustedS3ArtifactPutCost:     cost.RoundCost(obj.TaskCost.AdjustedS3ArtifactPutCost),
+		AdjustedS3LogPutCost:          cost.RoundCost(obj.TaskCost.AdjustedS3LogPutCost),
+		AdjustedS3ArtifactStorageCost: cost.RoundCost(obj.TaskCost.AdjustedS3ArtifactStorageCost),
+		AdjustedS3LogStorageCost:      cost.RoundCost(obj.TaskCost.AdjustedS3LogStorageCost),
+	}
+	return &rounded, nil
+}
+
 // TaskOwnerTeam is the resolver for the taskOwnerTeam field.
 func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
 	fwsBaseURL := evergreen.GetEnvironment().Settings().FWS.URL
@@ -771,7 +817,10 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	taskID := utility.FromStringPtr(obj.Id)
 	dbTask, err := task.FindOneIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()), err)
+	}
+	if dbTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' with execution %d not found", taskID, obj.Execution))
 	}
 
 	filterOpts, err := convertTestFilterOptions(ctx, dbTask, opts)
@@ -782,6 +831,13 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	taskResults, err := dbTask.GetTestResults(ctx, evergreen.GetEnvironment(), filterOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for APITask '%s': %s", dbTask.Id, err.Error()))
+	}
+
+	if err := data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "decorating test quarantine statuses",
+			"task_id": dbTask.Id,
+		}))
 	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
@@ -822,20 +878,39 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 	return stats.TotalCount, nil
 }
 
+// Version is the resolver for the version field.
+func (r *taskResolver) Version(ctx context.Context, obj *restModel.APITask) (*model.Version, error) {
+	versionID := utility.FromStringPtr(obj.Version)
+	v, err := loaders.GetVersion(ctx, versionID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()), err)
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
+	}
+	return v, nil
+}
+
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)
-	apiVersion, err := GetVersion(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()), err)
 	}
-	if apiVersion == nil {
+	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
+	apiVersion := &restModel.APIVersion{}
+	apiVersion.BuildFromService(ctx, *v)
 	return apiVersion, nil
 }
+
+// Cost returns CostResolver implementation.
+func (r *Resolver) Cost() CostResolver { return &costResolver{r} }
 
 // Task returns TaskResolver implementation.
 func (r *Resolver) Task() TaskResolver { return &taskResolver{r} }
 
+type costResolver struct{ *Resolver }
 type taskResolver struct{ *Resolver }

@@ -22,6 +22,7 @@ var (
 	// bson fields for the version struct
 	VersionIdKey          = bsonutil.MustHaveTag(Version{}, "Id")
 	VersionCreateTimeKey  = bsonutil.MustHaveTag(Version{}, "CreateTime")
+	VersionIngestTimeKey  = bsonutil.MustHaveTag(Version{}, "IngestTime")
 	VersionStartTimeKey   = bsonutil.MustHaveTag(Version{}, "StartTime")
 	VersionFinishTimeKey  = bsonutil.MustHaveTag(Version{}, "FinishTime")
 	VersionRevisionKey    = bsonutil.MustHaveTag(Version{}, "Revision")

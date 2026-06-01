@@ -5,7 +5,39 @@
       "identifier": "spruce",
       "gitspec": "5e823e1f28baeaa22ae00823d83e03082cd148ab",
       "r": "gitter_request",
-      "requester": "gitter_request"
+      "requester": "gitter_request",
+      "status": "failed",
+      "cost": {
+        "adjusted_ec2_cost": 0.89,
+        "adjusted_ebs_throughput_cost": 0.05,
+        "adjusted_ebs_storage_cost": 0.03,
+        "adjusted_s3_artifact_put_cost": 0.01,
+        "adjusted_s3_log_put_cost": 0.02
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "patch_version_task_1",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "r": "gitter_request",
+      "execution": 0,
+      "display_task_id": "",
+      "display_status_cache": "succeeded",
+      "activated_time": {
+        "$date": "2020-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "patch_version_task_2",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "r": "gitter_request",
+      "execution": 0,
+      "display_task_id": "",
+      "display_status_cache": "failed",
+      "activated_time": {
+        "$date": "2020-01-01T00:00:00.000Z"
+      }
     }
   ],
   "patches": [

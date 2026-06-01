@@ -138,17 +138,17 @@ func (r *processRegistry) removeJob(taskId string) error {
 // job object, which can later be used by "cleanup" to terminate all members of the job object at
 // once. If a job object doesn't already exist, it will create one automatically, scoped by the
 // task ID for which the shell process was started.
-func TrackProcess(taskId string, pid int, logger grip.Journaler) {
+func TrackProcess(ctx context.Context, taskId string, pid int, logger grip.Journaler) {
 	job, err := processMapping.getJob(taskId)
 	if err != nil {
-		logger.Errorf("Failed to get job object: %s", err)
+		logger.Errorf(ctx, "Failed to get job object: %s", err)
 		return
 	}
 
-	logger.Infof("Tracking process with PID %d.", pid)
+	logger.Infof(ctx, "Tracking process with PID %d.", pid)
 
 	if err = job.AssignProcess(uint(pid)); err != nil {
-		logger.Errorf("Failed assigning process with PID %d to job object: %s.", pid, err)
+		logger.Errorf(ctx, "Failed assigning process with PID %d to job object: %s.", pid, err)
 		return
 	}
 }
@@ -163,7 +163,7 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir, _ string, logger gri
 	}
 
 	if err := job.Terminate(0); err != nil {
-		logger.Errorf("Failed to terminate job object '%s': %s.", key, err)
+		logger.Errorf(ctx, "Failed to terminate job object '%s': %s.", key, err)
 		return errors.Wrapf(err, "terminating job object '%s'", key)
 	}
 
@@ -367,6 +367,11 @@ func (we *WindowsError) InnerError() error {
 
 func (we *WindowsError) Error() string {
 	return fmt.Sprintf("gowin32: %s failed: %v", we.functionName, we.innerError)
+}
+
+// GetNice is a no-op in Windows and returns the default nice.
+func GetNice(int) (int, error) {
+	return DefaultNice, nil
 }
 
 // SetNice is a no-op in Windows (Linux-only).

@@ -50,6 +50,7 @@ func FindPatchesByProject(ctx context.Context, projectId string, ts time.Time, l
 		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
+			IncludeVersionCost:       true,
 		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
@@ -81,6 +82,7 @@ func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, er
 	err = apiPatch.BuildFromService(ctx, *p, &restModel.APIPatchArgs{
 		IncludeChildPatches:      true,
 		IncludeProjectIdentifier: true,
+		IncludeVersionCost:       true,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
@@ -128,7 +130,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 			return errors.Wrapf(err, "finalizing patch '%s'", p.Id.Hex())
 		}
 		if requester == evergreen.PatchVersionRequester {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"operation":     "patch creation",
 				"message":       "finalized patch",
 				"from":          "rest route",
@@ -192,6 +194,7 @@ func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int
 		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
+			IncludeVersionCost:       true,
 		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())

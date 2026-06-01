@@ -3,6 +3,7 @@ package parameterstore
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -114,7 +115,7 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 	// parameter was changed in case caching gets enabled or a different
 	// ParameterManager instance has caching enabled.
 	if err := BumpParameterRecord(ctx, pm.DB, fullName, time.Now()); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "could not bump parameter update timestamp, possibly because it is being concurrently updated",
 			"name":    fullName,
 		}))
@@ -224,6 +225,9 @@ func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]P
 				missingNames = append(missingNames, name)
 			}
 		}
+		// Sort the missing names so the error message returns them in a
+		// predictable order.
+		slices.Sort(missingNames)
 
 		if len(missingNames) > 0 {
 			return nil, errors.Errorf("parameter(s) not found: %s", missingNames)
@@ -256,7 +260,7 @@ func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 		// the parameter was changed in case caching gets enabled or a different
 		// ParameterManager instance has caching enabled.
 		if err := BumpParameterRecord(ctx, pm.DB, fullName, time.Now()); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "could not bump parameter record last updated timestamp, possibly because it is being concurrently updated",
 				"name":    fullName,
 			}))

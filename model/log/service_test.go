@@ -388,4 +388,4 @@ func readLogLines(t *testing.T, svc LogService, ctx context.Context, opts GetOpt
 
 }
 
-func ignoreBytes(_ int64, err error) error { return err }
+func ignoreBytes(_ int64, _ int, err error) error { return err }

@@ -27,7 +27,7 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
 
 To start authenticating via OAuth, you will need to comment out or delete the `api_key` field from your `~/.evergreen.yml` file.
 
-After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli).
+After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
 ## Basic Patch Usage
 
@@ -107,6 +107,12 @@ Note that `set-module` command will not work for module includes and this flag m
 
 ```bash
 evergreen patch --include-modules
+```
+
+To specify module paths inline (overriding any configured paths for that invocation), use `--include-module`:
+
+```bash
+evergreen patch --include-module my_module=/path/to/my_module
 ```
 
 ## Test Selection
@@ -267,7 +273,17 @@ Finalizing a patch actually creates and schedules and tasks. Before this the pat
 evergreen patch --include-modules
 ```
 
-This will attempt to add changes for each module that your project supports. This flag will prompt you to provide your local absolute path to the module, and it will be stored in your evergreen.yml file. For example:
+This will attempt to add changes for each module that your project supports. This flag will prompt you to provide your local absolute path to the module, and it will be stored in your evergreen.yml file.
+
+To specify module paths directly on the command line without modifying your config, use the `--include-module` flag:
+
+```bash
+evergreen patch --include-module my_module=/path/to/my_module --include-module other_module=/path/to/other
+```
+
+This may be useful when working with multiple clones of the same module or when using automated tooling. It overrides any configured module paths that are set in your ~/.evergreen.yml.
+
+The stored config format looks like:
 
 ```yaml
 projects:
@@ -686,14 +702,26 @@ api:
 
 The "url" keys in each list item should contain the appropriate URL to the binary for each architecture. The "latest*revision" key should contain the githash that was used to build the binary. It should match the output of `evergreen version` for \_all* the binaries at the URLs listed in order for auto-updates to be successful.
 
+### Task Debugger
+
+For debugging task commands on spawn hosts, see the [Task Debugger documentation](Hosts/Debug-Spawn-Hosts.md).
+
 ### Notifications
 
 The Evergreen CLI has the ability to send slack and email notifications for scripting. These use Evergreen's account, so be cautious about rate limits or being marked as a spammer.
 
-```bash
-# Send a Slack message
-evergreen notify slack --target <#channel or @user> --msg <message>
+#### Send a Slack message
 
-# Send an email
-evergreen notify --from <sender> --recipients <to> --subject <subject> --body <body>
+Only service users have permission to use this command, unless the target is yourself.
+
+```bash
+evergreen notify slack --target <#channel or @user> --msg <message>
+```
+
+#### Send an email
+
+Only service users have permission to use this command.
+
+```bash
+evergreen notify email --from <sender> --recipients <to> --subject <subject> --body <body>
 ```

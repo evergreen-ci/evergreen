@@ -243,7 +243,7 @@ func updateTaskQueue(ctx context.Context, distro string, taskQueue []TaskQueueIt
 // and modifies the queue info.
 // This is in contrast to RemoveTaskQueues, which simply deletes these documents.
 func ClearTaskQueue(ctx context.Context, distroId string) error {
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "clearing task queue",
 		"distro":  distroId,
 	})
@@ -269,7 +269,7 @@ func ClearTaskQueue(ctx context.Context, distroId string) error {
 	}
 	// Want to at least try to clear even in the case of an error
 	if aliasCount == 0 && err == nil {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "secondary task queue not found, skipping",
 			"distro":  distroId,
 		})
@@ -436,7 +436,9 @@ func FindMinimumQueuePositionForTask(ctx context.Context, taskId string) (int, e
 
 func FindAllTaskQueues(ctx context.Context) ([]TaskQueue, error) {
 	taskQueues := []TaskQueue{}
-	err := db.FindAllQ(ctx, TaskQueuesCollection, db.Query(bson.M{}), &taskQueues)
+	// Exclude the queue field to avoid fetching potentially thousands of task items.
+	q := db.Query(bson.M{}).WithoutFields(taskQueueQueueKey)
+	err := db.FindAllQ(ctx, TaskQueuesCollection, q, &taskQueues)
 	return taskQueues, err
 }
 

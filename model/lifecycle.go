@@ -418,7 +418,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			event.LogTaskRestarted(ctx, t.Id, t.Execution, caller)
 		}
 		if t.DisplayOnly {
-			grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
+			grip.Error(ctx, message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
 				"message":                      "could not log task restart events for some execution tasks",
 				"display_task_id":              t.Id,
 				"restarted_execution_task_ids": t.ExecutionTasks,
@@ -503,7 +503,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	var githubCheckAliases ProjectAliases
 	if creationInfo.Version.Requester == evergreen.RepotrackerVersionRequester && creationInfo.ProjectRef.IsGithubChecksEnabled() {
 		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(ctx, creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":            "error getting github check aliases when adding tasks to build",
 			"project":            creationInfo.Version.Identifier,
 			"project_identifier": creationInfo.ProjectRef.Identifier,
@@ -572,7 +572,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		}
 		creationInfo.Version.BuildVariants[i].BatchTimeTasks = append(creationInfo.Version.BuildVariants[i].BatchTimeTasks, batchTimeTaskStatuses...)
 	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get activation time for tasks",
 		"variant": creationInfo.Build.BuildVariant,
 		"runner":  "addTasksToBuild",
@@ -765,7 +765,9 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			newTask.Tags = projectTask.Tags
 		}
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
-		newTask.GeneratedBy = creationInfo.GeneratedBy
+		if creationInfo.ExplicitlyGeneratedTasks == nil || creationInfo.ExplicitlyGeneratedTasks[TVPair{Variant: creationInfo.Build.BuildVariant, TaskName: t.Name}] {
+			newTask.GeneratedBy = creationInfo.GeneratedBy
+		}
 		if generatorIsGithubCheck {
 			newTask.IsGithubCheck = true
 		}
@@ -793,7 +795,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			execTaskId := execTable.GetId(creationInfo.Build.BuildVariant, et)
 			if execTaskId == "" {
 				if !loggedExecutionTaskNotFound {
-					grip.Debug(message.Fields{
+					grip.Debug(ctx, message.Fields{
 						"message":                     "execution task not found",
 						"variant":                     creationInfo.Build.BuildVariant,
 						"exec_task":                   et,
@@ -818,7 +820,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		}
 
 		// update existing exec tasks
-		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
+		grip.Error(ctx, message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
 			"message":              "problem adding display task ID to exec tasks",
 			"exec_tasks_to_update": execTasksThatNeedParentId,
 			"display_task_id":      id,
@@ -828,7 +830,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 		// existing display task may need to be updated
 		if displayTaskAlreadyExists {
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
+			grip.Error(ctx, message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
 				"exec_tasks":   execTaskIds,
 				"display_task": dt.Name,
@@ -842,7 +844,9 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			if err != nil {
 				return nil, errors.Wrapf(err, "creating display task '%s'", id)
 			}
-			newDisplayTask.GeneratedBy = creationInfo.GeneratedBy
+			if creationInfo.ExplicitlyGeneratedTasks == nil || creationInfo.ExplicitlyGeneratedTasks[TVPair{Variant: creationInfo.Build.BuildVariant, TaskName: dt.Name}] {
+				newDisplayTask.GeneratedBy = creationInfo.GeneratedBy
+			}
 			newDisplayTask.DependsOn, err = task.GetAllDependencies(ctx, newDisplayTask.ExecutionTasks, taskMap)
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting dependencies for display task '%s'", newDisplayTask.Id)
@@ -854,12 +858,10 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 	addSingleHostTaskGroupDependencies(taskMap, creationInfo.Project, execTable)
 
-	// Determine which newly-created tasks should use test selection.
-	// Note that this will only consider test selection for newly-created tasks,
-	// not existing tasks. If a task already existed and is now being regrouped
-	// under a new display task, its test selection state will not be
-	// re-evaluated to avoid changing the behavior of the task.
-	if err := setTestSelectionEnabledForTasks(taskMap, displayTaskIDsToNames, creationInfo); err != nil {
+	// Set test-selection state on newly-created execution tasks and propagate
+	// to display tasks. tasks contains only display tasks here; execution
+	// tasks are appended below. Pre-existing tasks are not re-evaluated.
+	if err := setTestSelectionEnabledForTasks(taskMap, tasks, displayTaskIDsToNames, creationInfo); err != nil {
 		return nil, errors.Wrap(err, "setting test selection enabled for newly-created tasks")
 	}
 
@@ -1039,7 +1041,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		name, tags, ok := creationInfo.Project.GetTaskNameAndTags(buildVarTask)
 		if ok {
 			isGithubCheck, err = creationInfo.GithubChecksAliases.HasMatchingTask(name, tags)
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "error checking if task matches aliases",
 				"version": creationInfo.Version.Id,
 				"task":    buildVarTask.Name,
@@ -1130,14 +1132,26 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 }
 
 // setTestSelectionEnabledForTasks sets the test selection enabled state for
-// the given tasks.
-func setTestSelectionEnabledForTasks(tasks map[string]*task.Task, displayTaskIDsToNames map[string]string, creationInfo TaskCreationInfo) error {
-	for _, t := range tasks {
+// the given execution tasks, and propagates the result to each display task:
+// a display task is considered enabled if any of its execution tasks are.
+// Only newly-created execution tasks (those present in execTasks) contribute
+// to the display task's state; pre-existing execution tasks are not
+// re-evaluated, matching the policy applied to execution tasks themselves.
+func setTestSelectionEnabledForTasks(execTasks map[string]*task.Task, displayTasks []*task.Task, displayTaskIDsToNames map[string]string, creationInfo TaskCreationInfo) error {
+	for _, t := range execTasks {
 		enabled, err := isTestSelectionEnabledForTask(t, displayTaskIDsToNames, creationInfo)
 		if err != nil {
 			return errors.Wrapf(err, "checking if test selection is enabled for task '%s'", t.Id)
 		}
 		t.TestSelectionEnabled = enabled
+	}
+	for _, dt := range displayTasks {
+		for _, execTaskID := range dt.ExecutionTasks {
+			if execTask, ok := execTasks[execTaskID]; ok && execTask.TestSelectionEnabled {
+				dt.TestSelectionEnabled = true
+				break
+			}
+		}
 	}
 	return nil
 }
@@ -1392,13 +1406,6 @@ func canBuildVariantEnableTestSelection(bvName string, creationInfo TaskCreation
 	if !creationInfo.ProjectRef.IsTestSelectionAllowed() {
 		return false
 	}
-	if !evergreen.IsPatchRequester(creationInfo.Version.Requester) {
-		// Test selection is only available for patches for now. Will eventually
-		// be available for other requesters, but this acts as a temporary
-		// safety guard to prevent an experimental feature from affecting
-		// non-patch versions.
-		return false
-	}
 
 	isTestSelectionDefaultEnabled := creationInfo.ProjectRef.IsTestSelectionDefaultEnabled()
 	isTestSelectionIncludeSet := len(creationInfo.TestSelectionParams.IncludeBuildVariants) > 0 || len(creationInfo.TestSelectionParams.IncludeTasks) > 0
@@ -1477,10 +1484,11 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
+			ExplicitlyGeneratedTasks:            creationInfo.ExplicitlyGeneratedTasks,
 			TestSelectionParams:                 tsParams,
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"op":        "creating build for version",
 			"variant":   pair.Variant,
 			"activated": activateVariant,
@@ -1491,7 +1499,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			return nil, nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"op":        "skipping empty build for version",
 				"variant":   pair.Variant,
 				"activated": activateVariant,
@@ -1558,7 +1566,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
 	}
-	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
+	grip.Error(ctx, message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
 		"runner":  "addNewBuilds",
 		"version": creationInfo.Version.Id,

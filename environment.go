@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -31,10 +32,12 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -206,6 +209,9 @@ type Environment interface {
 	// BuildVersion returns the ID of the Evergreen version that built the binary.
 	// Returns an empty string if the version ID isn't provided on startup.
 	BuildVersion() string
+	// RedisClient returns the Redis client. May be nil if REDIS_URL is unset
+	// or invalid, in which case callers should skip Redis-backed paths.
+	RedisClient() *redis.Client
 }
 
 // NewEnvironment constructs an Environment instance and initializes all
@@ -293,6 +299,10 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.initSSH(ctx, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
 
+	// initRedis intentionally does not fail startup. Setup errors are recorded
+	// on its OTel span and surface as Honeycomb alerts.
+	e.initRedis(ctx, tracer)
+
 	if catcher.HasErrors() {
 		return nil, errors.WithStack(catcher.Resolve())
 
@@ -324,6 +334,7 @@ type envState struct {
 	userManagerInfo         UserManagerInfo
 	shutdownSequenceStarted bool
 	versionID               string
+	redisClient             *redis.Client
 }
 
 // UserManagerInfo lists properties of the UserManager regarding its support for
@@ -731,7 +742,7 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 		ctx, cancel = context.WithTimeout(ctx, queueShutdownWaitTimeout)
 		defer cancel()
 		if !amboy.WaitInterval(ctx, e.notificationsQueue, queueShutdownWaitInterval) {
-			grip.Critical(message.Fields{
+			grip.Critical(ctx, message.Fields{
 				"message": "pending jobs failed to finish",
 				"queue":   "notifications",
 				"status":  e.notificationsQueue.Stats(ctx),
@@ -741,7 +752,7 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 
 		e.notificationsQueue.Close(ctx)
 
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":     "closed notification queue",
 			"num_senders": len(rootSenders),
 			"errors":      catcher.HasErrors(),
@@ -750,7 +761,7 @@ func (e *envState) createNotificationQueue(ctx context.Context, tracer trace.Tra
 		for _, s := range rootSenders {
 			catcher.Add(s.Close())
 		}
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message":     "closed all root senders",
 			"num_senders": len(rootSenders),
 			"errors":      catcher.HasErrors(),
@@ -885,12 +896,12 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 		if err != nil {
 			// Don't return error when so we can continue to initialize environment
 			// during Slack outages.
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "setting up Slack logger",
 			}))
 		}
 		if sender == nil {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message": "failed to create Slack logger",
 			})
 		} else {
@@ -922,11 +933,11 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 // for the error handler to work, the global application logging must already be
 // set up (see (*Settings).GetSender).
 func (e *envState) setSenderErrorHandler(s send.Sender, name string) error {
-	return s.SetErrorHandler(func(err error, m message.Composer) {
+	return s.SetErrorHandler(func(ctx context.Context, err error, m message.Composer) {
 		if err == nil {
 			return
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"notification":        m.String(),
 			"message_type":        fmt.Sprintf("%T", m),
 			"notification_target": name,
@@ -1068,7 +1079,7 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		grip.Error(errors.Wrap(err, "otel error"))
+		grip.Error(ctx, errors.Wrap(err, "otel error"))
 	}))
 
 	e.RegisterCloser("otel-tracer-provider", false, func(ctx context.Context) error {
@@ -1079,6 +1090,58 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	})
 
 	return nil
+}
+
+// initRedis initializes the Redis client from REDIS_URL. Setup failures are
+// recorded on the OTel span for Honeycomb alerting and are intentionally
+// non-fatal — Evergreen must continue to start even if Redis is unreachable.
+func (e *envState) initRedis(ctx context.Context, tracer trace.Tracer) {
+	_, span := tracer.Start(ctx, "InitRedis")
+	defer span.End()
+
+	// We do not have a local testing environment for redis.
+	if testing.Testing() {
+		return
+	}
+
+	// Send Redis setup errors to honeycomb to alert on.
+	recordFailure := func(err error) {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		recordFailure(errors.New("REDIS_URL not set in environment"))
+		return
+	}
+
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		recordFailure(errors.Wrapf(err, "parsing Redis URL '%s'", redisURL))
+		return
+	}
+
+	e.redisClient = redis.NewClient(opt)
+
+	// Pinging Redis to verify the connection because the NewClient method does not return nil or error.
+	// We set a timeout to avoid hanging indefinitely if Redis is unreachable.
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := e.redisClient.Ping(pingCtx).Err(); err != nil {
+		recordFailure(errors.Wrap(err, "pinging Redis"))
+	}
+
+	e.RegisterCloser("redis", false, func(_ context.Context) error {
+		return e.redisClient.Close()
+	})
+}
+
+func (e *envState) RedisClient() *redis.Client {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.redisClient
 }
 
 // initSSH pulls all private keys from Secrets Manager and adds them to the ssh-agent daemon.
@@ -1308,7 +1371,7 @@ func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken C
 	// Just log and continue if the GitHub sender fails to set the error
 	// handler. While having the error log is useful for monitoring, it's not
 	// essential for the sender to work.
-	grip.Error(message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
+	grip.Error(e.ctx, message.WrapError(e.setSenderErrorHandler(sender, owner), message.Fields{
 		"message": "could not set fallback error handler for GitHub status sender",
 		"owner":   owner,
 		"repo":    repo,
@@ -1375,7 +1438,7 @@ func (e *envState) Close(ctx context.Context) error {
 		wg.Add(1)
 		go func(idx int, name string, clfn func(context.Context) error) {
 			defer wg.Done()
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":      "calling closer",
 				"index":        idx,
 				"closer":       name,
@@ -1395,7 +1458,7 @@ func (e *envState) Close(ctx context.Context) error {
 			continue
 		}
 
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":      "calling closer",
 			"index":        idx,
 			"closer":       closer.name,

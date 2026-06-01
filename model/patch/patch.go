@@ -55,29 +55,31 @@ type LocalModuleInclude struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id                                      mgobson.ObjectId `bson:"_id,omitempty"`
-	Description                             string           `bson:"desc"`
-	Path                                    string           `bson:"path,omitempty"`
-	Githash                                 string           `bson:"githash"`
-	Hidden                                  bool             `bson:"hidden"`
-	PatchNumber                             int              `bson:"patch_number"`
-	Author                                  string           `bson:"author"`
-	Version                                 string           `bson:"version"`
-	Status                                  string           `bson:"status"`
-	CreateTime                              time.Time        `bson:"create_time"`
-	StartTime                               time.Time        `bson:"start_time"`
-	FinishTime                              time.Time        `bson:"finish_time"`
-	BuildVariants                           []string         `bson:"build_variants"`
-	RegexBuildVariants                      []string         `bson:"regex_build_variants"`
-	RegexTestSelectionBuildVariants         []string         `bson:"regex_test_selection_build_variants,omitempty"`
-	RegexTestSelectionExcludedBuildVariants []string         `bson:"regex_test_selection_excluded_build_variants,omitempty"`
-	Tasks                                   []string         `bson:"tasks"`
-	RegexTestSelectionTasks                 []string         `bson:"regex_test_selection_tasks,omitempty"`
-	RegexTestSelectionExcludedTasks         []string         `bson:"regex_test_selection_excluded_tasks,omitempty"`
-	RegexTasks                              []string         `bson:"regex_tasks"`
-	VariantsTasks                           []VariantTasks   `bson:"variants_tasks"`
-	Patches                                 []ModulePatch    `bson:"patches"`
-	Parameters                              []Parameter      `bson:"parameters,omitempty"`
+	Id          mgobson.ObjectId `bson:"_id,omitempty"`
+	Description string           `bson:"desc"`
+	Path        string           `bson:"path,omitempty"`
+	Githash     string           `bson:"githash"`
+	Hidden      bool             `bson:"hidden"`
+	PatchNumber int              `bson:"patch_number"`
+	Author      string           `bson:"author"`
+	Version     string           `bson:"version"`
+	Status      string           `bson:"status"`
+	CreateTime  time.Time        `bson:"create_time"`
+	// IngestTime is the wall-clock time when this patch document was first persisted.
+	IngestTime                              time.Time      `bson:"ingest_time,omitempty"`
+	StartTime                               time.Time      `bson:"start_time"`
+	FinishTime                              time.Time      `bson:"finish_time"`
+	BuildVariants                           []string       `bson:"build_variants"`
+	RegexBuildVariants                      []string       `bson:"regex_build_variants"`
+	RegexTestSelectionBuildVariants         []string       `bson:"regex_test_selection_build_variants,omitempty"`
+	RegexTestSelectionExcludedBuildVariants []string       `bson:"regex_test_selection_excluded_build_variants,omitempty"`
+	Tasks                                   []string       `bson:"tasks"`
+	RegexTestSelectionTasks                 []string       `bson:"regex_test_selection_tasks,omitempty"`
+	RegexTestSelectionExcludedTasks         []string       `bson:"regex_test_selection_excluded_tasks,omitempty"`
+	RegexTasks                              []string       `bson:"regex_tasks"`
+	VariantsTasks                           []VariantTasks `bson:"variants_tasks"`
+	Patches                                 []ModulePatch  `bson:"patches"`
+	Parameters                              []Parameter    `bson:"parameters,omitempty"`
 	// Activated indicates whether or not the patch is finalized (i.e.
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.
@@ -120,6 +122,8 @@ type Patch struct {
 	// when the manifest is not found.
 	// Not stored in the database since it is only needed during patch creation.
 	ReferenceManifestID string `bson:"-"`
+	// MergeQueueMetricsEmitStatus tracks whether the patch_completed span was successfully emitted.
+	MergeQueueMetricsEmitStatus string `bson:"merge_queue_metrics_emit_status,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -417,6 +421,7 @@ func TryMarkStarted(ctx context.Context, versionId string, startTime time.Time) 
 
 // Insert inserts the patch into the db, returning any errors that occur
 func (p *Patch) Insert(ctx context.Context) error {
+	p.IngestTime = time.Now()
 	return db.Insert(ctx, Collection, p)
 }
 
@@ -884,7 +889,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 	}
 
 	if !(hasCreated || hasFailure || hasSuccess || hasAborted) {
-		grip.Critical(message.Fields{
+		grip.Critical(context.Background(), message.Fields{
 			"message":  "An unknown patch status was found",
 			"cause":    "Programmer error: new statuses should be added to GetCollectiveStatusFromPatchStatuses().",
 			"statuses": statuses,

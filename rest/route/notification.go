@@ -17,47 +17,6 @@ import (
 
 ///////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/notifications/{type}
-
-type notificationPostHandler struct {
-	handler     gimlet.RouteHandler
-	environment evergreen.Environment
-}
-
-func makeNotification(environment evergreen.Environment) gimlet.RouteHandler {
-	return &notificationPostHandler{
-		environment: environment,
-	}
-}
-
-func (h *notificationPostHandler) Factory() gimlet.RouteHandler {
-	return &notificationPostHandler{
-		environment: h.environment,
-	}
-}
-
-// Parse fetches the notification type from the http request.
-func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	t := gimlet.GetVars(r)["type"]
-	switch t {
-	case "slack":
-		h.handler = makeSlackNotification(h.environment)
-	case "email":
-		h.handler = makeEmailNotification(h.environment)
-	default:
-		return errors.Errorf("unsupported notification type '%s'", t)
-	}
-
-	return h.handler.Parse(ctx, r)
-}
-
-// Run dispatches the notification.
-func (h *notificationPostHandler) Run(ctx context.Context) gimlet.Responder {
-	return h.handler.Run(ctx)
-}
-
-///////////////////////////////////////////////////////////////////////
-//
 // POST /rest/v2/notifications/slack
 
 type slackNotificationPostHandler struct {
@@ -113,7 +72,7 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 	}
 
 	h.sender = s
-	h.sender.Send(h.composer)
+	h.sender.Send(ctx, h.composer)
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
@@ -162,7 +121,7 @@ func (h *emailNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting email sender"))
 	}
 
-	h.sender.Send(h.composer)
+	h.sender.Send(ctx, h.composer)
 
 	return gimlet.NewJSONResponse(struct{}{})
 }

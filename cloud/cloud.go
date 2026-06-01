@@ -149,7 +149,7 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 
 	switch mgrOpts.Provider {
 	case evergreen.ProviderNameEc2OnDemand:
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":  "deprecated ec2-ondemand provider used; routing to ec2FleetManager",
 			"ticket":   "DEVPROD-25338",
 			"provider": mgrOpts.Provider,
@@ -199,7 +199,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	if len(d.ProviderSettingsList) > 1 {
 		if evergreen.IsEc2Provider(d.Provider) {
 			// this shouldn't ever happen, but if it does we want to continue so we don't inadvertently block task queues
-			grip.Error(message.Fields{
+			grip.Error(context.Background(), message.Fields{
 				"message":           "distro should be modified to have only one provider settings",
 				"provider_settings": d.ProviderSettingsList,
 				"distro":            d.Id,

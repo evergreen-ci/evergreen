@@ -30,7 +30,9 @@ const (
 )
 
 var (
-	gitHubAppNotInstalledError = errors.New("GitHub app is not installed")
+	// ErrGitHubAppNotInstalled is returned when the Evergreen GitHub App has no
+	// installation for the requested owner/repo.
+	ErrGitHubAppNotInstalled = errors.New("GitHub app is not installed")
 )
 
 // GitHubAppInstallation holds information about a GitHub app, notably its
@@ -182,7 +184,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				return true
 			}
 
-			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+			grip.Error(req.Context(), message.WrapError(err, makeLogMsg(map[string]any{
 				"message": "GitHub endpoint encountered unretryable error",
 			})))
 
@@ -192,7 +194,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		if resp == nil {
 			errMsg := "GitHub app endpoint returned nil response"
 			span.SetAttributes(attribute.String(githubAppErrorAttribute, errMsg))
-			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+			grip.Error(req.Context(), message.WrapError(err, makeLogMsg(map[string]any{
 				"message": errMsg,
 			})))
 			return true
@@ -206,7 +208,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			}
 		}
 
-		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
+		grip.ErrorWhen(req.Context(), resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
 			"message":     "GitHub app endpoint returned response but is not retryable",
 			"status_code": resp.StatusCode,
 		}))
@@ -232,7 +234,7 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 			return 0, errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 		}
 		if resp.StatusCode == http.StatusNotFound {
-			return 0, errors.Wrapf(gitHubAppNotInstalledError, "installation id for '%s/%s' not found", owner, repo)
+			return 0, errors.Wrapf(ErrGitHubAppNotInstalled, "installation id for '%s/%s' not found", owner, repo)
 		}
 		return 0, errors.Wrapf(err, "finding installation id for '%s/%s'", owner, repo)
 	}

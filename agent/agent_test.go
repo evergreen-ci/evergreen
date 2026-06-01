@@ -34,7 +34,7 @@ import (
 )
 
 func init() {
-	grip.EmergencyPanic(errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
+	grip.EmergencyPanic(context.Background(), errors.Wrap(command.RegisterCommand("command.mock", command.MockCommandFactory), "initializing mock command for testing"))
 }
 
 const defaultProjYml = `
@@ -1514,6 +1514,28 @@ post:
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
+func (s *AgentSuite) TestOOMTrackerRunsForSuccessStatusWithFailedDetailStatus() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.CloudProvider = "provider"
+	s.tc.taskConfig.Project.OomTracker = true
+
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	// Simulate the task status being overridden to failed via the HTTP endpoint
+	// while the originally computed status is still successful.
+	s.tc.setUserEndTaskResponse(&triggerEndTaskResp{Status: evergreen.TaskFailed})
+
+	_, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	s.NoError(err)
+	s.Require().NotNil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+}
+
 func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 	const buildID = "build_id"
 	const versionID = "not_a_task_group_version"
@@ -1770,7 +1792,7 @@ task_groups:
 	// Fake out the data so that the previous task already set up the task
 	// group, made the task group directory, and the next task is part of the
 	// same task group.
-	_, err := s.a.createTaskDirectory(s.tc, s.tc.taskConfig.WorkDir)
+	_, err := s.a.createTaskDirectory(context.Background(), s.tc, s.tc.taskConfig.WorkDir)
 	s.Require().NoError(err)
 	s.tc.ranSetupGroup = true
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
@@ -3143,6 +3165,6 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 	}
 
 	if displayLogs {
-		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
+		grip.Infof(t.Context(), "Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
 }

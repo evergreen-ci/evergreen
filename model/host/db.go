@@ -128,6 +128,9 @@ var (
 	ipAddressIDKey           = bsonutil.MustHaveTag(IPAddress{}, "ID")
 	ipAddressAllocationIDKey = bsonutil.MustHaveTag(IPAddress{}, "AllocationID")
 	ipAddressHostTagKey      = bsonutil.MustHaveTag(IPAddress{}, "HostTag")
+
+	instanceTagKeyKey   = bsonutil.MustHaveTag(Tag{}, "Key")
+	instanceTagValueKey = bsonutil.MustHaveTag(Tag{}, "Value")
 )
 
 var (
@@ -256,34 +259,6 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 	return idlehostsByDistroID, nil
 }
 
-// hostsCanRunTasksQuery produces a query that returns all hosts
-// that are capable of accepting and running tasks.
-func hostsCanRunTasksQuery(distroID string) bson.M {
-	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
-
-	// Yes this query looks weird but it's a temporary stop gap to ensure we are able to avoid a MongoDB
-	// query planner issue. This query is meant to be a temporary fix until we can update to a newer version of
-	// MongoDB that does not have this bug. https://github.com/evergreen-ci/evergreen/pull/8010
-	// TODO: https://jira.mongodb.org/browse/DEVPROD-8360
-	return bson.M{
-		"$or": []bson.M{
-			{
-				distroIDKey:  distroID,
-				StartedByKey: evergreen.User,
-				StatusKey:    evergreen.HostRunning,
-			},
-			{
-				distroIDKey:  distroID,
-				StartedByKey: evergreen.User,
-				StatusKey:    evergreen.HostStarting,
-				bootstrapKey: distro.BootstrapMethodUserData,
-			},
-		},
-	}
-
-}
-
 func idleStartedTaskHostsQuery(distroID string) bson.M {
 	query := bson.M{
 		StatusKey:      bson.M{"$in": evergreen.StartedHostStatus},
@@ -328,12 +303,55 @@ func CountActiveHostsInDistro(ctx context.Context, distroID string) (int, error)
 	return num, errors.Wrap(err, "counting active task hosts in distro")
 }
 
-// CountHostsCanRunTasks returns the number of hosts that can accept
-// and run tasks for a given distro. This number is surfaced on the
-// task queue.
-func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
-	return num, errors.Wrap(err, "counting hosts that can run tasks")
+// CountHostsCanRunTasksByDistro returns the number of hosts per distro that
+// can accept and run tasks, using a single aggregation over all distros at
+// once. The returned map is keyed by distro ID.
+func CountHostsCanRunTasksByDistro(ctx context.Context, env evergreen.Environment) (map[string]int, error) {
+	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				StartedByKey: evergreen.User,
+				"$or": []bson.M{
+					{
+						StatusKey: evergreen.HostRunning,
+					},
+					{
+						StatusKey:    evergreen.HostStarting,
+						bootstrapKey: distro.BootstrapMethodUserData,
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":   "$" + distroIDKey,
+				"count": bson.M{"$sum": 1},
+			},
+		},
+	}
+
+	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(StartedByStatusIndex))
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating hosts that can run tasks by distro")
+	}
+
+	type distroHostCount struct {
+		DistroID string `bson:"_id"`
+		Count    int    `bson:"count"`
+	}
+	var results []distroHostCount
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "reading host counts by distro")
+	}
+
+	counts := make(map[string]int, len(results))
+	for _, r := range results {
+		counts[r.DistroID] = r.Count
+	}
+	return counts, nil
 }
 
 // CountHostsCanOrWillRunTasksInDistro counts all task hosts in a distro that
@@ -866,7 +884,7 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 
 	for _, id := range ids {
 		event.LogHostCreatedError(ctx, id, "stale building host took too long to start")
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message": "stale building host took too long to start",
 			"host_id": id,
 			"distro":  distroID,
@@ -1224,7 +1242,7 @@ func (h *Host) AddVolumeToHost(ctx context.Context, newVolume *VolumeAttachment)
 		return errors.Wrap(err, "decoding host")
 	}
 
-	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(ctx, h.Id),
+	grip.Error(ctx, message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(ctx, h.Id),
 		message.Fields{
 			"host_id":   h.Id,
 			"volume_id": newVolume.VolumeID,
@@ -1252,7 +1270,7 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 		return errors.Wrap(err, "decoding host")
 	}
 
-	grip.Error(message.WrapError(UnsetVolumeHost(ctx, volumeId),
+	grip.Error(ctx, message.WrapError(UnsetVolumeHost(ctx, volumeId),
 		message.Fields{
 			"host_id":   h.Id,
 			"volume_id": volumeId,
@@ -1446,7 +1464,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		if err := toInsert.InsertWithEnv(sessCtx, env); err != nil {
 			return nil, errors.Wrapf(err, "inserting new host '%s'", toInsert.Id)
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":  "inserted host to replace intent host",
 			"host_id":  toInsert.Id,
 			"host_tag": toInsert.Tag,
@@ -1460,7 +1478,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 		return errors.Wrap(err, "atomic removal of old host and insertion of new host")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                   "successfully replaced host document",
 		"host_id":                   toInsert.Id,
 		"host_tag":                  toInsert.Tag,
@@ -1696,7 +1714,7 @@ func ClearExpiredTemporaryExemptions(ctx context.Context) error {
 		return err
 	}
 
-	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
+	grip.InfoWhen(ctx, res.ModifiedCount > 0, message.Fields{
 		"message":   "cleared expired temporary exemptions from hosts",
 		"num_hosts": res.ModifiedCount,
 	})
@@ -1738,7 +1756,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 		})
 		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
 		if res != nil && res.ModifiedCount > 0 {
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":   "marked newly-added hosts as permanently exempt",
 				"num_hosts": res.ModifiedCount,
 			})
@@ -1756,7 +1774,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	})
 	catcher.Wrap(err, "marking newly-removed hosts as no longer permanently exempt")
 	if res != nil && res.ModifiedCount > 0 {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "marked newly-removed hosts as no longer permanently exempt",
 			"num_hosts": res.ModifiedCount,
 		})

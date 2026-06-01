@@ -21,13 +21,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -46,7 +44,8 @@ func (r *mutationResolver) BbCreateTicket(ctx context.Context, taskID string, ex
 	if err != nil {
 		return false, err
 	}
-	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution)
+	username := mustHaveUser(ctx).Username()
+	httpStatus, err := data.BbFileTicket(ctx, taskID, *execution, username)
 	if err != nil {
 		return false, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -404,7 +403,10 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
+			IncludeProjectIdentifier: true,
+			IncludeVersionCost:       true,
+		})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id, err.Error()))
 		}
@@ -531,6 +533,11 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.Co
 
 	}
 	if err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message":     "project was partially copied",
+			"old_project": project.ProjectIdToCopy,
+			"new_project": project.NewProjectIdentifier,
+		}))
 		// Use AddError to bypass gqlgen restriction that data and errors cannot be returned in the same response
 		// https://github.com/99designs/gqlgen/issues/1191
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
@@ -629,17 +636,40 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVarsToRepoInput) (bool, error) {
 	usr := mustHaveUser(ctx)
+
+	project, err := model.FindBranchProjectRef(ctx, opts.ProjectID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", opts.ProjectID, err.Error()))
+	}
+	if project == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", opts.ProjectID))
+	}
+	if project.RepoRefId == "" {
+		return false, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' is not attached to a repo", opts.ProjectID))
+	}
+
+	if !usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      project.RepoRefId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}) {
+		return false, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to edit settings for repo '%s'", usr.Username(), project.RepoRefId))
+	}
+
 	if err := data.PromoteVarsToRepo(ctx, opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectID, err.Error()))
-
 	}
 	return true, nil
 }
 
 // SaveProjectSettingsForSection is the resolver for the saveProjectSettingsForSection field.
 func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, projectSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
-	projectId := utility.FromStringPtr(projectSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
+	projectId, err := getAuthorizedSettingsID(ctx, projectSettings, "projectId")
+	if err != nil {
+		return nil, err
+	}
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
@@ -649,9 +679,12 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 
 // SaveRepoSettingsForSection is the resolver for the saveRepoSettingsForSection field.
 func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoSettings *restModel.APIProjectSettings, section ProjectSettingsSection) (*restModel.APIProjectSettings, error) {
-	projectId := utility.FromStringPtr(repoSettings.ProjectRef.Id)
 	usr := mustHaveUser(ctx)
-	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
+	repoId, err := getAuthorizedSettingsID(ctx, repoSettings, "repoId")
+	if err != nil {
+		return nil, err
+	}
+	changes, err := data.SaveProjectSettingsForSection(ctx, repoId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -762,15 +795,16 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.AddInstanceTags = addedTags
 		opts.DeleteInstanceTags = deletedTags
 	}
-	if spawnHost.Volume != nil {
-		v, err = host.FindVolumeByID(ctx, *spawnHost.Volume)
+	if spawnHost.VolumeID != nil {
+		volume := utility.FromStringPtr(spawnHost.VolumeID)
+		v, err = host.FindVolumeByID(ctx, volume)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", utility.FromStringPtr(spawnHost.Volume), err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("fetching volume '%s': %s", volume, err.Error()))
 		}
 		if v.AvailabilityZone != h.Zone {
 			return nil, InputValidationError.Send(ctx, "mounted volume and spawn host must be in the same availability zone")
 		}
-		opts.AttachVolume = *spawnHost.Volume
+		opts.AttachVolume = volume
 	}
 	if spawnHost.PublicKey != nil {
 		if h.Status != evergreen.HostRunning {
@@ -917,8 +951,9 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("applying expiration options to volume '%s': %s", vol.ID, err.Error()))
 	}
-	if spawnVolumeInput.Host != nil {
-		statusCode, err := cloud.AttachVolume(ctx, vol.ID, utility.FromStringPtr(spawnVolumeInput.Host))
+	if spawnVolumeInput.HostID != nil {
+		host := utility.FromStringPtr(spawnVolumeInput.HostID)
+		statusCode, err := cloud.AttachVolume(ctx, vol.ID, host)
 		if err != nil {
 			return false, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, "attaching volume '%s' to host: %s", vol.ID, err.Error()))
 		}
@@ -971,7 +1006,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	if err != nil {
 		if httpStatus == http.StatusInternalServerError {
 			var parsedUrl, _ = url.Parse("/graphql/query")
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"method":  "POST",
 				"url":     parsedUrl,
 				"code":    httpStatus,
@@ -1112,7 +1147,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	if err := model.ResetTaskOrDisplayTask(ctx, evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("restarting task '%s': %s", taskID, err.Error()))
 	}
-	t, err = task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, nil)
+	t, err = task.FindByIdExecution(ctx, taskID, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}
@@ -1175,20 +1210,33 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 // QuarantineTest is the resolver for the quarantineTest field.
-func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*QuarantineTestPayload, error) {
-	t, err := task.FindOneId(ctx, opts.TaskID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", opts.TaskID, err.Error()))
-	}
-	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", opts.TaskID))
-	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, opts.TestName, true); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("quarantining test '%s' on task '%s' on build variant '%s' on project '%s' : %s", opts.TestName, opts.TaskID, t.BuildVariant, t.Project, err.Error()))
-	}
-	return &QuarantineTestPayload{
-		Success: true,
-	}, nil
+func (r *mutationResolver) QuarantineTest(ctx context.Context, opts QuarantineTestInput) (*restModel.APITest, error) {
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, true)
+}
+
+// UnquarantineTest is the resolver for the unquarantineTest field.
+func (r *mutationResolver) UnquarantineTest(ctx context.Context, opts UnquarantineTestInput) (*restModel.APITest, error) {
+	return setTestQuarantineState(ctx, opts.TaskID, opts.TestName, false)
+}
+
+// QuarantineTask is the resolver for the quarantineTask field.
+func (r *mutationResolver) QuarantineTask(ctx context.Context, opts QuarantineTaskInput) (*restModel.APITask, error) {
+	return setTaskQuarantineState(ctx, opts.TaskID, true)
+}
+
+// UnquarantineTask is the resolver for the unquarantineTask field.
+func (r *mutationResolver) UnquarantineTask(ctx context.Context, opts UnquarantineTaskInput) (*restModel.APITask, error) {
+	return setTaskQuarantineState(ctx, opts.TaskID, false)
+}
+
+// QuarantineVariant is the resolver for the quarantineVariant field.
+func (r *mutationResolver) QuarantineVariant(ctx context.Context, opts QuarantineVariantInput) (*restModel.APIVariantQuarantineStatus, error) {
+	return setVariantQuarantineState(ctx, opts.ProjectIdentifier, opts.BuildVariant, true)
+}
+
+// UnquarantineVariant is the resolver for the unquarantineVariant field.
+func (r *mutationResolver) UnquarantineVariant(ctx context.Context, opts UnquarantineVariantInput) (*restModel.APIVariantQuarantineStatus, error) {
+	return setVariantQuarantineState(ctx, opts.ProjectIdentifier, opts.BuildVariant, false)
 }
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
@@ -1238,31 +1286,6 @@ func (r *mutationResolver) CreatePublicKey(ctx context.Context, publicKeyInput P
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
-}
-
-// DeleteCursorAPIKey is the resolver for the deleteCursorAPIKey field.
-func (r *mutationResolver) DeleteCursorAPIKey(ctx context.Context) (*DeleteCursorAPIKeyPayload, error) {
-	usr := mustHaveUser(ctx)
-
-	sageConfig := &evergreen.SageConfig{}
-	if err := sageConfig.Get(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
-	}
-
-	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
-	}
-	defer sageClient.Close()
-
-	result, err := sageClient.DeleteCursorAPIKey(ctx, usr.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting Cursor API key: %s", err.Error()))
-	}
-
-	return &DeleteCursorAPIKeyPayload{
-		Success: result.Success,
-	}, nil
 }
 
 // DeleteSubscriptions is the resolver for the deleteSubscriptions field.
@@ -1383,32 +1406,6 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	return true, nil
 }
 
-// SetCursorAPIKey is the resolver for the setCursorAPIKey field.
-func (r *mutationResolver) SetCursorAPIKey(ctx context.Context, apiKey string) (*SetCursorAPIKeyPayload, error) {
-	usr := mustHaveUser(ctx)
-
-	sageConfig := &evergreen.SageConfig{}
-	if err := sageConfig.Get(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
-	}
-
-	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
-	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "Sage service is not configured")
-	}
-	defer sageClient.Close()
-
-	result, err := sageClient.SetCursorAPIKey(ctx, usr.Id, apiKey)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting Cursor API key: %s", err.Error()))
-	}
-
-	return &SetCursorAPIKeyPayload{
-		Success:     result.Success,
-		KeyLastFour: utility.ToStringPtr(result.KeyLastFour),
-	}, nil
-}
-
 // UpdateBetaFeatures is the resolver for the updateBetaFeatures field.
 func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBetaFeaturesInput) (*UpdateBetaFeaturesPayload, error) {
 	usr := mustHaveUser(ctx)
@@ -1422,23 +1419,6 @@ func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBe
 	betaFeatures.BuildFromService(usr.BetaFeatures)
 	return &UpdateBetaFeaturesPayload{
 		BetaFeatures: &betaFeatures,
-	}, nil
-}
-
-// UpdateParsleySettings is the resolver for the updateParsleySettings field.
-func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error) {
-	usr := mustHaveUser(ctx)
-	newSettings := opts.ParsleySettings.ToService()
-
-	changes := parsley.MergeExistingParsleySettings(usr.ParsleySettings, newSettings)
-	if err := usr.UpdateParsleySettings(ctx, changes); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings for user '%s': %s", usr.Id, err.Error()))
-	}
-
-	parsleySettings := restModel.APIParsleySettings{}
-	parsleySettings.BuildFromService(usr.ParsleySettings)
-	return &UpdateParsleySettingsPayload{
-		ParsleySettings: &parsleySettings,
 	}, nil
 }
 

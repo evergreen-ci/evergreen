@@ -109,7 +109,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 
 		if len(tasksToUpdate) > 0 {
 			if err := task.BulkUpdateNumDependents(ctx, tasksToUpdate); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message":   "error updating number of dependents",
 					"num_tasks": len(tasksToUpdate),
 				}))
@@ -261,7 +261,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 				}
 				return errors.WithStack(MarkEnd(ctx, settings, t, origin, time.Now(), detail))
 			} else {
-				grip.Critical(message.Fields{
+				grip.Critical(ctx, message.Fields{
 					"message":     "TryResetTask called with nil TaskEndDetail",
 					"origin":      origin,
 					"task_id":     taskId,
@@ -286,7 +286,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 					}
 					execTasks[execTask.Id] = execTask.Status
 				}
-				grip.Error(message.Fields{
+				grip.Error(ctx, message.Fields{
 					"message":    "attempt to restart unfinished display task",
 					"task":       t.Id,
 					"status":     t.Status,
@@ -524,7 +524,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		s = task.StepbackInfo{
 			LastPassingStepbackTaskId: lastPassing.Id,
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                       "starting bisect stepback",
 			"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
 			"task_id":                       t.Id,
@@ -542,7 +542,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	} else if t.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = t.Id
 	} else {
-		grip.Warningf("stopping task '%s' stepback due to status '%s'", t.Id, t.Status)
+		grip.Warningf(ctx, "stopping task '%s' stepback due to status '%s'", t.Id, t.Status)
 		return nil
 	}
 
@@ -572,7 +572,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                       "bisect stepback",
 		"last_failing_stepback_task_id": s.LastFailingStepbackTaskId,
 		"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
@@ -621,7 +621,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 			BuildVariant:              generated.BuildVariant,
 			LastPassingStepbackTaskId: lastPassingGenerated.GeneratedBy,
 		}
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":                       "starting bisect stepback on generator task",
 			"last_passing_stepback_task_id": s.LastPassingStepbackTaskId,
 			"generator_task_id":             generator.Id,
@@ -643,7 +643,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	} else if generated.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = generator.Id
 	} else {
-		grip.Warningf("stopping task '%s' stepback due to status '%s'", generated.Id, generated.Status)
+		grip.Warningf(ctx, "stopping task '%s' stepback due to status '%s'", generated.Id, generated.Status)
 		return nil
 	}
 
@@ -680,7 +680,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":                         "bisect stepback on generator task",
 		"last_failing_stepback_task_id":   s.LastFailingStepbackTaskId,
 		"last_passing_stepback_task_id":   s.LastPassingStepbackTaskId,
@@ -719,7 +719,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	detailsCopy := *detail
 	if t.Status == detailsCopy.Status {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message": "tried to mark task as finished twice",
 			"task":    t.Id,
 		})
@@ -729,7 +729,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	t.Details = detailsCopy
 
 	if utility.IsZeroTime(t.StartTime) {
-		grip.Warning(message.Fields{
+		grip.Warning(ctx, message.Fields{
 			"message":      "task is missing start time",
 			"task_id":      t.Id,
 			"execution":    t.Execution,
@@ -741,7 +741,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	startPhaseAt := time.Now()
 	err := t.MarkEnd(ctx, finishTime, &detailsCopy)
 
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
+	grip.NoticeWhen(ctx, time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
 		"function":      "MarkEnd",
 		"step":          "t.MarkEnd",
@@ -752,10 +752,13 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	// Add cost attributes to the context for otel tracing
 	if !t.TaskCost.IsZero() {
 		costAttrs := []attribute.KeyValue{
+			attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
 			attribute.Float64(evergreen.TaskOnDemandCostOtelAttribute, t.TaskCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
 			attribute.Float64(evergreen.TaskEBSOnDemandThroughputCostOtelAttribute, t.TaskCost.OnDemandEBSThroughputCost),
 			attribute.Float64(evergreen.TaskEBSAdjustedThroughputCostOtelAttribute, t.TaskCost.AdjustedEBSThroughputCost),
+			attribute.Float64(evergreen.TaskEBSOnDemandStorageCostOtelAttribute, t.TaskCost.OnDemandEBSStorageCost),
+			attribute.Float64(evergreen.TaskEBSAdjustedStorageCostOtelAttribute, t.TaskCost.AdjustedEBSStorageCost),
 		}
 		ctx = utility.ContextWithAppendedAttributes(ctx, costAttrs)
 		span.SetAttributes(costAttrs...)
@@ -779,7 +782,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		event.LogTaskFinished(ctx, t.Id, t.Execution, status)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "marking task finished",
 		"included_on":        evergreen.ContainerHealthDashboard,
 		"task_id":            t.Id,
@@ -809,6 +812,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return TryResetTask(ctx, settings, t.Id, caller, "", detail)
 	}
 
+	emitTaskCompletedSpan(ctx, t)
 	return catcher.Resolve()
 }
 
@@ -856,7 +860,7 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 		catcher.Wrapf(err, "finding project for task '%s'", t.Id)
 	}
 	if catcher.HasErrors() {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "unable to perform stepback/deactivate previous",
 			"project": t.Project,
 			"task_id": t.Id,
@@ -876,7 +880,7 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 		} else {
 			err = evalStepback(ctx, t, status, pRef, project)
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "problem evaluating stepback",
 			"project": t.Project,
 			"task_id": t.Id,
@@ -887,7 +891,7 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 	if t.Status == evergreen.TaskSucceeded && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
 		shouldDeactivatePrevious := getDeactivatePrevious(t, pRef, project)
 		if shouldDeactivatePrevious {
-			grip.Error(message.WrapError(DeactivatePreviousTasks(ctx, t, caller), message.Fields{
+			grip.Error(ctx, message.WrapError(DeactivatePreviousTasks(ctx, t, caller), message.Fields{
 				"message": "problem evaluating deactivate previous",
 				"project": t.Project,
 				"task_id": t.Id,
@@ -957,7 +961,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 		msg["dependencies_met_time"] = t.DependenciesMetTime
 	}
 
-	grip.Info(msg)
+	grip.Info(ctx, msg)
 	return nil
 }
 
@@ -970,6 +974,11 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 	timeTaken, makespan, err := v.GetTimeSpent(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting time spent")
+	}
+
+	highestExecutionTask, err := v.GetHighestTaskExecution(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting highest execution task")
 	}
 
 	attrs := []attribute.KeyValue{
@@ -985,18 +994,45 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p 
 		attribute.Int(evergreen.VersionMakespanSecondsOtelAttribute, int(makespan.Seconds())),
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
+		attribute.Int(evergreen.VersionHighestExecutionTaskOtelAttribute, highestExecutionTask),
 	}
 
 	if !v.Cost.IsZero() {
 		attrs = append(attrs,
 			attribute.Float64(evergreen.VersionOnDemandCostOtelAttribute, v.Cost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.VersionAdjustedCostOtelAttribute, v.Cost.AdjustedEC2Cost),
+			attribute.Float64(evergreen.VersionEBSOnDemandThroughputCostOtelAttribute, v.Cost.OnDemandEBSThroughputCost),
+			attribute.Float64(evergreen.VersionEBSAdjustedThroughputCostOtelAttribute, v.Cost.AdjustedEBSThroughputCost),
+			attribute.Float64(evergreen.VersionEBSOnDemandStorageCostOtelAttribute, v.Cost.OnDemandEBSStorageCost),
+			attribute.Float64(evergreen.VersionEBSAdjustedStorageCostOtelAttribute, v.Cost.AdjustedEBSStorageCost),
+			attribute.Float64(evergreen.VersionOnDemandS3ArtifactPutCostOtelAttribute, v.Cost.OnDemandS3ArtifactPutCost),
+			attribute.Float64(evergreen.VersionAdjustedS3ArtifactPutCostOtelAttribute, v.Cost.AdjustedS3ArtifactPutCost),
+			attribute.Float64(evergreen.VersionOnDemandS3ArtifactStorageCostOtelAttribute, v.Cost.OnDemandS3ArtifactStorageCost),
+			attribute.Float64(evergreen.VersionAdjustedS3ArtifactStorageCostOtelAttribute, v.Cost.AdjustedS3ArtifactStorageCost),
+			attribute.Float64(evergreen.VersionOnDemandS3LogPutCostOtelAttribute, v.Cost.OnDemandS3LogPutCost),
+			attribute.Float64(evergreen.VersionAdjustedS3LogPutCostOtelAttribute, v.Cost.AdjustedS3LogPutCost),
+			attribute.Float64(evergreen.VersionOnDemandS3LogStorageCostOtelAttribute, v.Cost.OnDemandS3LogStorageCost),
+			attribute.Float64(evergreen.VersionAdjustedS3LogStorageCostOtelAttribute, v.Cost.AdjustedS3LogStorageCost),
 		)
 	}
 	if !v.PredictedCost.IsZero() {
 		attrs = append(attrs,
 			attribute.Float64(evergreen.VersionPredictedOnDemandCostOtelAttribute, v.PredictedCost.OnDemandEC2Cost),
 			attribute.Float64(evergreen.VersionPredictedAdjustedCostOtelAttribute, v.PredictedCost.AdjustedEC2Cost),
+		)
+	}
+	if !v.S3Usage.IsZero() {
+		var avgFilePutCost float64
+		if v.S3Usage.Artifacts.Count > 0 {
+			avgFilePutCost = v.Cost.AdjustedS3ArtifactPutCost / float64(v.S3Usage.Artifacts.Count)
+		}
+		attrs = append(attrs,
+			attribute.Int(evergreen.VersionS3ArtifactPutRequestsOtelAttribute, v.S3Usage.Artifacts.PutRequests),
+			attribute.Int64(evergreen.VersionS3ArtifactUploadBytesOtelAttribute, v.S3Usage.Artifacts.UploadBytes),
+			attribute.Int(evergreen.VersionS3ArtifactCountOtelAttribute, v.S3Usage.Artifacts.Count),
+			attribute.Float64(evergreen.VersionS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+			attribute.Int(evergreen.VersionS3LogPutRequestsOtelAttribute, v.S3Usage.Logs.PutRequests),
+			attribute.Int64(evergreen.VersionS3LogUploadBytesOtelAttribute, v.S3Usage.Logs.UploadBytes),
 		)
 	}
 
@@ -1688,13 +1724,6 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			}
 			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
-
-			grip.Error(message.WrapError(emitMergeQueueCompletionMetrics(ctx, rootPatch, taskVersion, psu.patchFamilyFinishedCollectiveStatus), message.Fields{
-				"message":           "error emitting merge queue completion metrics",
-				"version_id":        taskVersion.Id,
-				"patch_id":          rootPatch.Id.Hex(),
-				"collective_status": psu.patchFamilyFinishedCollectiveStatus,
-			}))
 		}
 	}
 
@@ -1759,8 +1788,9 @@ func gatherMergeQueueTaskMetrics(tasks []task.Task) mergeQueueTaskMetrics {
 	return metrics
 }
 
-// emitMergeQueueCompletionMetrics emits OpenTelemetry metrics for merge queue version completion.
-func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Version, collectiveStatus string) error {
+// EmitMergeQueueCompletionMetrics emits the patch_completed span for a merge queue patch.
+// endTimeSource is attached as an attribute so Honeycomb dashboards can filter by accuracy.
+func EmitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Version, collectiveStatus string, endTime time.Time, endTimeSource string) error {
 	if p.Alias != evergreen.CommitQueueAlias || v.Requester != evergreen.GithubMergeRequester {
 		return nil
 	}
@@ -1777,13 +1807,6 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	if queueEntryTime.IsZero() {
 		queueEntryTime = p.CreateTime
 		queueEntrySource = "create_time"
-	}
-
-	// Calculate the collective finish time across the patch family (parent + children).
-	// This matches the API's finish_time to represent when the entire patch family completed.
-	_, collectiveFinishTime, err := p.GetCollectiveTimes(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting collective finish time for merge queue metrics")
 	}
 
 	baseAttrs := patch.BuildMergeQueueSpanAttributes(
@@ -1803,9 +1826,10 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	defer span.End()
 
 	span.SetAttributes(attribute.String(patch.MergeQueueAttrQueueEntrySource, queueEntrySource))
+	span.SetAttributes(attribute.String(patch.MergeQueueAttrEndTimeSource, endTimeSource))
 
-	if !collectiveFinishTime.IsZero() && !queueEntryTime.IsZero() {
-		timeInQueue := collectiveFinishTime.Sub(queueEntryTime).Milliseconds()
+	if !endTime.IsZero() && !queueEntryTime.IsZero() {
+		timeInQueue := endTime.Sub(queueEntryTime).Milliseconds()
 		span.SetAttributes(attribute.Int64(patch.MergeQueueAttrTimeInQueueMs, timeInQueue))
 	}
 
@@ -1821,7 +1845,7 @@ func emitMergeQueueCompletionMetrics(ctx context.Context, p *patch.Patch, v *Ver
 	for _, versionID := range versionIDs {
 		startTime, err := task.GetFirstTaskStartTimeForVersion(ctx, versionID)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":    "error getting first task start time for merge queue version",
 				"version_id": versionID,
 				"patch_id":   p.Id.Hex(),
@@ -1944,6 +1968,65 @@ func EmitMergeQueueDestroyedSpans(ctx context.Context, updatedPatchIDs []string,
 	}
 }
 
+// EmitMergeQueueCompletionMetricsFromWebhook emits the patch_completed span for merge queue patches using the webhook's removal time as the end time.
+func EmitMergeQueueCompletionMetricsFromWebhook(ctx context.Context, updatedPatchIDs []string) {
+	for _, patchID := range updatedPatchIDs {
+		p, err := patch.FindOneId(ctx, patchID)
+		if err != nil || p == nil {
+			continue
+		}
+		claimed, err := patch.ClaimMergeQueueMetricsEmit(ctx, p.Id)
+		if err != nil || !claimed {
+			continue
+		}
+		v, err := VersionFindOneId(ctx, p.Version)
+		if err != nil || v == nil {
+			_ = patch.SetMergeQueueMetricsEmitStatus(ctx, p.Id, patch.MergeQueueMetricsEmitStatusFailed)
+			continue
+		}
+		if err := EmitMergeQueueCompletionMetrics(ctx, p, v, p.Status, p.GithubMergeData.RemovedFromQueueAt, patch.MergeQueueEndTimeSourceGitHubWebhookDestroyed); err != nil {
+			_ = patch.SetMergeQueueMetricsEmitStatus(ctx, p.Id, patch.MergeQueueMetricsEmitStatusFailed)
+			grip.Debug(ctx, message.WrapError(err, message.Fields{
+				"message":  "error emitting merge queue completion metrics from webhook",
+				"patch_id": patchID,
+			}))
+		}
+	}
+}
+
+// emitTaskCompletedSpan emits a standalone span at task end.
+func emitTaskCompletedSpan(ctx context.Context, t *task.Task) {
+	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{})
+	_, span := tracer.Start(ctx, evergreen.TaskCompletedOtelSpanName,
+		trace.WithNewRoot(),
+		trace.WithAttributes(buildTaskCompletedSpanAttributes(t)...))
+	span.End()
+}
+
+// buildTaskCompletedSpanAttributes returns trace attributes for a task's completion span.
+func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
+	attrs := []attribute.KeyValue{
+		attribute.String(evergreen.VersionIDOtelAttribute, t.Version),
+		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
+		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
+		attribute.String(evergreen.TaskVariantOtelAttribute, t.BuildVariant),
+	}
+	if !utility.IsZeroTime(t.ActivatedTime) && !utility.IsZeroTime(t.ScheduledTime) {
+		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute,
+			t.ScheduledTime.Sub(t.ActivatedTime).Milliseconds()))
+	}
+	if len(t.DependsOn) > 0 && !utility.IsZeroTime(t.DependenciesMetTime) && !utility.IsZeroTime(t.ScheduledTime) {
+		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForDepsMsOtelAttribute,
+			t.DependenciesMetTime.Sub(t.ScheduledTime).Milliseconds()))
+	}
+	if !utility.IsZeroTime(t.StartTime) && !utility.IsZeroTime(t.FinishTime) {
+		attrs = append(attrs, attribute.Int64(evergreen.TaskDurationMsOtelAttribute,
+			t.FinishTime.Sub(t.StartTime).Milliseconds()))
+	}
+	return attrs
+}
+
 // UpdateVersionAndPatchStatusForBuilds updates the status of all versions,
 // patches and builds associated with the given input list of build IDs.
 func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string) error {
@@ -2060,24 +2143,32 @@ func MarkHostTaskDispatched(ctx context.Context, t *task.Task, h *host.Host) err
 }
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
+	// Get exec tasks before resetting parent task first.
+	var execTaskIdsToRestart []string
 	if t.DisplayOnly {
-		execTaskIdsToRestart, err := task.FindExecTasksToReset(ctx, t)
+		ids, err := task.FindExecTasksToReset(ctx, t)
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks to restart")
 		}
-		if err = MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
+		execTaskIdsToRestart = ids
+	}
+
+	// Reset the parent display task before its execution tasks to prevent
+	// weird race conditions of execution tasks running while the parent is resetting.
+	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrap(err, "resetting task in database")
+	}
+
+	if t.DisplayOnly {
+		if err := MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
 			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 
-		grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, t, execTaskIdsToRestart, caller), message.Fields{
+		grip.Error(ctx, message.WrapError(logExecutionTasksRestarted(ctx, t, execTaskIdsToRestart, caller), message.Fields{
 			"message":                      "could not log task restart events for some execution tasks",
 			"display_task_id":              t.Id,
 			"restarted_execution_task_ids": execTaskIdsToRestart,
 		}))
-	}
-
-	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
-		return errors.Wrap(err, "resetting task in database")
 	}
 
 	if err := UpdateUnblockedDependencies(ctx, []task.Task{*t}); err != nil {
@@ -2231,7 +2322,7 @@ func doRestartFailedTasks(ctx context.Context, tasks []string, user string, resu
 	for _, id := range tasks {
 		if err := TryResetTask(ctx, evergreen.GetEnvironment().Settings(), id, user, evergreen.RESTV2Package, nil); err != nil {
 			tasksErrored = append(tasksErrored, id)
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"task":    id,
 				"status":  "failed",
 				"message": "error restarting task",
@@ -2262,7 +2353,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return nil
 	}
 
-	if err = h.ClearRunningTask(ctx); err != nil {
+	if err = h.ClearRunningAndSetLastTask(ctx, t); err != nil {
 		return errors.Wrapf(err, "clearing running task from host '%s'", h.Id)
 	}
 
@@ -2270,7 +2361,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return errors.Wrapf(err, "resetting stranded task '%s'", t.Id)
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully fixed stranded host task",
 		"task":               t.Id,
 		"execution":          t.Execution,
@@ -2310,7 +2401,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":            "successfully fixed stale task",
 		"task":               t.Id,
 		"execution":          t.Execution,
@@ -2435,7 +2526,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 			return errors.Wrap(err, "getting display task for task")
 		}
 		if originalDisplayTask == nil {
-			grip.Error(message.Fields{
+			grip.Error(ctx, message.Fields{
 				"message":         "task may hold a display task that doesn't exist",
 				"task_id":         t.Id,
 				"display_task_id": t.DisplayTaskId,
@@ -2460,7 +2551,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 
 	if !originalDisplayTask.IsFinished() && updatedDisplayTask.IsFinished() {
 		event.LogTaskFinished(ctx, originalDisplayTask.Id, originalDisplayTask.Execution, updatedDisplayTask.GetDisplayStatus())
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":   "display task finished",
 			"task_id":   originalDisplayTask.Id,
 			"status":    originalDisplayTask.Status,
@@ -2699,7 +2790,7 @@ func UpdateOtelMetadata(ctx context.Context, t *task.Task, diskDevices []string,
 			task.ById(t.Id),
 			bson.M{"$set": update},
 		)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "problem updating otel metadata",
 			"task_id": t.Id,
 			"update":  update,

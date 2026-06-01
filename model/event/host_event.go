@@ -107,7 +107,7 @@ func LogHostEvent(ctx context.Context, hostId string, eventType string, eventDat
 	}
 
 	if err := event.Log(ctx); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeHost,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
@@ -134,7 +134,7 @@ func LogManyHostsCreated(ctx context.Context, hostIDs []string) {
 		events = append(events, e)
 	}
 	if err := LogManyEvents(ctx, events); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeHost,
 			"message":       "error logging events",
 			"source":        "event-log-fail",
@@ -328,7 +328,7 @@ func LogAlertableInstanceTypeWarningSent(ctx context.Context, hostID string) {
 }
 
 func LogHostScriptExecuted(ctx context.Context, hostID string, logs string) {
-	LogHostEvent(ctx, hostID, EventHostScriptExecuted, HostEventData{Logs: logs})
+	LogHostEvent(ctx, hostID, EventHostScriptExecuted, HostEventData{Logs: logs, Successful: true})
 }
 
 func LogHostScriptExecuteFailed(ctx context.Context, hostID, logs string, err error) {

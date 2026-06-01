@@ -42,6 +42,7 @@ type ServiceFlags struct {
 	S3LifecycleSyncDisabled            bool `bson:"s3_lifecycle_sync_disabled" json:"s3_lifecycle_sync_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `bson:"use_merge_queue_path_filtering_disabled" json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
+	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -50,6 +51,8 @@ type ServiceFlags struct {
 	EmailNotificationsDisabled   bool `bson:"email_notifications_disabled" json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `bson:"webhook_notifications_disabled" json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+
+	BackgroundCommandFailureEnabled bool `bson:"background_command_failure_enabled" json:"background_command_failure_enabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -98,6 +101,8 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			s3LifecycleSyncDisabledKey:            c.S3LifecycleSyncDisabled,
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
+			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
+			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

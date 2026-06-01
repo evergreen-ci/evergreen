@@ -34,7 +34,6 @@
       },
       "admins": ["annie.black"],
       "spawn_host_script_path": "",
-      "tracks_push_events": true,
       "perf_enabled": true,
       "build_baron_settings": {
         "ticket_create_project": "EVG",
@@ -98,6 +97,9 @@
             "_id": "sandbox_repo_id",
             "vars": {
               "hello": "{REDACTED_BEFORE}"
+            },
+            "vars_descriptions": {
+              "hello": "Old repo variable description"
             }
           }
         },
@@ -114,6 +116,9 @@
             "_id": "sandbox_repo_id",
             "vars": {
               "hello": "{REDACTED_AFTER}"
+            },
+            "vars_descriptions": {
+              "hello": "New repo variable description"
             }
           }
         }

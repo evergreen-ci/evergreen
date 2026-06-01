@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "variantQuarantineStatus": {
+            "projectIdentifier": "sandbox",
+            "buildVariant": "ubuntu",
+            "tasks": [
+              {
+                "taskName": "task_a",
+                "tests": [
+                  {
+                    "testName": "test_1",
+                    "isManuallyQuarantined": true
+                  },
+                  {
+                    "testName": "test_2",
+                    "isManuallyQuarantined": false
+                  }
+                ]
+              },
+              {
+                "taskName": "task_b",
+                "tests": [
+                  {
+                    "testName": "test_3",
+                    "isManuallyQuarantined": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

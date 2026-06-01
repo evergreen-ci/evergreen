@@ -111,6 +111,9 @@ func Fetch() cli.Command {
 			requireAtLeastOneFlag(sourceFlagName, artifactsFlagName, artifactNameFlagName),
 		),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			confPath := c.Parent().String(ConfFlagName)
 			wd := c.String(dirFlagName)
 			taskID := c.String(taskFlagName)
@@ -135,10 +138,7 @@ func Fetch() cli.Command {
 				execution = utility.ToIntPtr(stringAsInt)
 			}
 
-			moduleTokensMap := parseModuleTokens(moduleTokens)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			moduleTokensMap := parseModuleTokens(ctx, moduleTokens)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -156,8 +156,6 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			cleanupWhyIsMyDataMissingFile(wd)
-
 			if shouldFetchSource {
 				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
 					return err
@@ -172,7 +170,7 @@ func Fetch() cli.Command {
 
 			if revokeTokens {
 				err = revokeFetchTokens(ctx, client, taskID, token, moduleTokensMap)
-				grip.Warning(message.WrapError(err, message.Fields{
+				grip.Warning(ctx, message.WrapError(err, message.Fields{
 					"message": "could not revoke GitHub tokens after fetching data",
 					"task":    taskID,
 				}))
@@ -182,21 +180,13 @@ func Fetch() cli.Command {
 	}
 }
 
-func cleanupWhyIsMyDataMissingFile(dir string) {
-	filePath := filepath.Join(dir, evergreen.WhyIsMyDataMissingName)
-	err := os.Remove(filePath)
-	if err != nil && !os.IsNotExist(err) {
-		grip.Warningf("could not remove %s: %v", filePath, err)
-	}
-}
-
-func parseModuleTokens(moduleTokens []string) map[string]string {
+func parseModuleTokens(ctx context.Context, moduleTokens []string) map[string]string {
 	moduleTokensMap := make(map[string]string)
 	for _, token := range moduleTokens {
 		// Parse the string formatted as 'moduleName:token'.
 		parts := strings.Split(token, ":")
 		if len(parts) != 2 {
-			grip.Warningf("invalid module token format")
+			grip.Warningf(ctx, "invalid module token format")
 			continue
 		}
 		moduleTokensMap[parts[0]] = parts[1]
@@ -229,7 +219,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	}
 	mfest, err := comm.GetManifestByTask(ctx, taskId)
 	if err != nil && !strings.Contains(err.Error(), "no manifest found") {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":       "problem getting manifest",
 			"task":          taskId,
 			"task_version":  task.Version,
@@ -252,7 +242,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 		}
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
-	err = cloneSource(task, pRef, project, cloneDir, token, useAppToken, moduleTokens, mfest)
+	err = cloneSource(ctx, task, pRef, project, cloneDir, token, useAppToken, moduleTokens, mfest)
 	if err != nil {
 		return err
 	}
@@ -275,9 +265,12 @@ type cloneOptions struct {
 	token      string
 	depth      uint
 	isAppToken bool
+	// wikiModule clones only the remote default branch (HEAD) with no revision checkout;
+	// branch, ref, and manifest are ignored, matching agent git.get_project.
+	wikiModule bool
 }
 
-func clone(opts cloneOptions) error {
+func clone(ctx context.Context, opts cloneOptions) error {
 	// Check repository existence if no token is provided
 	if opts.token == "" {
 		resp, err := http.Get(thirdparty.FormGitURLForApp(opts.owner, opts.repository, opts.token))
@@ -305,7 +298,7 @@ func clone(opts cloneOptions) error {
 	}
 
 	cloneArgs = append(cloneArgs, opts.rootDir)
-	grip.Debug(cloneArgs)
+	grip.Debug(ctx, cloneArgs)
 
 	c := exec.Command("git", cloneArgs...)
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
@@ -314,9 +307,19 @@ func clone(opts cloneOptions) error {
 		return err
 	}
 
+	// If the module is a wiki, we do not support other clone options.
+	if opts.wikiModule {
+		if opts.isAppToken {
+			if err = resetGitRemoteToSSH(opts.owner, opts.repository, opts.rootDir); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	// try to check out the revision we want
 	checkoutArgs := []string{"checkout", opts.revision}
-	grip.Debug(checkoutArgs)
+	grip.Debug(ctx, checkoutArgs)
 
 	c = exec.Command("git", checkoutArgs...)
 	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
@@ -331,7 +334,7 @@ func clone(opts cloneOptions) error {
 
 		// we have to go deeper
 		fetchArgs := []string{"fetch", "--unshallow"}
-		grip.Debug(fetchArgs)
+		grip.Debug(ctx, fetchArgs)
 
 		c = exec.Command("git", fetchArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
@@ -341,7 +344,7 @@ func clone(opts cloneOptions) error {
 		}
 		// now it's unshallow, so try again to check it out
 		checkoutRetryArgs := []string{"checkout", opts.revision}
-		grip.Debug(checkoutRetryArgs)
+		grip.Debug(ctx, checkoutRetryArgs)
 
 		c = exec.Command("git", checkoutRetryArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
@@ -362,10 +365,10 @@ func clone(opts cloneOptions) error {
 	return nil
 }
 
-func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project,
+func cloneSource(ctx context.Context, task *service.RestTask, project *model.ProjectRef, config *model.Project,
 	cloneDir, token string, useAppToken bool, moduleTokens map[string]string, mfest *manifest.Manifest) error {
 	// Fetch the outermost repo for the task
-	err := clone(cloneOptions{
+	err := clone(ctx, cloneOptions{
 		owner:      project.Owner,
 		repository: project.Repo,
 		revision:   task.Revision,
@@ -400,6 +403,34 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			moduleToken = token
 		}
 
+		modulePrefix := module.Prefix
+		if task.ModulePaths != nil && task.ModulePaths[module.Name] != "" {
+			modulePrefix = task.ModulePaths[module.Name]
+		}
+
+		moduleBase := filepath.Join(cloneDir, modulePrefix, module.Name)
+
+		owner, repo, err := module.GetOwnerAndRepo()
+		if err != nil {
+			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
+		}
+
+		if model.IsWikiRepo(repo) {
+			fmt.Printf("Fetching wiki module %s at default branch (HEAD only)\n", moduleName)
+			err = clone(ctx, cloneOptions{
+				owner:      owner,
+				repository: repo,
+				rootDir:    filepath.ToSlash(moduleBase),
+				token:      moduleToken,
+				isAppToken: useAppToken,
+				wikiModule: true,
+			})
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		revision := module.Branch
 		if mfest != nil {
 			mfestModule, ok := mfest.Modules[moduleName]
@@ -411,19 +442,9 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			}
 		}
 
-		modulePrefix := module.Prefix
-		if task.ModulePaths != nil && task.ModulePaths[module.Name] != "" {
-			modulePrefix = task.ModulePaths[module.Name]
-		}
-
-		moduleBase := filepath.Join(cloneDir, modulePrefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
 
-		owner, repo, err := module.GetOwnerAndRepo()
-		if err != nil {
-			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
-		}
-		err = clone(cloneOptions{
+		err = clone(ctx, cloneOptions{
 			owner:      owner,
 			repository: repo,
 			revision:   revision,
@@ -690,7 +711,8 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					}
 				}
 
-				fileName := truncateFilename(filepath.Join(folder, justFile))
+				truncatedFileName := truncateFilename(justFile)
+				fileName := filepath.Join(folder, truncatedFileName)
 				fileNamesUsed.Lock()
 				for {
 					fileNamesUsed.nameCounts[fileName]++

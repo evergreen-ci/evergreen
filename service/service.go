@@ -16,8 +16,8 @@ import (
 )
 
 // GetServer produces an HTTP server instance for a handler.
-func GetServer(addr string, n http.Handler) *http.Server {
-	grip.Notice(message.Fields{
+func GetServer(ctx context.Context, addr string, n http.Handler) *http.Server {
+	grip.Notice(ctx, message.Fields{
 		"action":  "starting service",
 		"service": addr,
 		"build":   evergreen.BuildRevision,
@@ -38,6 +38,7 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(ctx, uis.env.UserManager(), uis.umconf))
+	app.AddMiddleware(evergreen.NewHTTPRequestOtelMiddleware())
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.env.UserManager()))
 
 	clients := gimlet.NewApp()
@@ -56,7 +57,6 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 
 	opts := route.HandlerOpts{
 		APIQueue:            as.queue,
-		URL:                 as.Settings.Ui.Url,
 		GithubSecret:        []byte(as.Settings.GithubWebhookSecret),
 		TaskDispatcher:      as.taskDispatcher,
 		TaskAliasDispatcher: as.taskAliasDispatcher,
@@ -138,7 +138,6 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{
 		APIQueue:            as.queue,
-		URL:                 as.Settings.Ui.Url,
 		GithubSecret:        []byte(as.Settings.GithubWebhookSecret),
 		TaskDispatcher:      as.taskDispatcher,
 		TaskAliasDispatcher: as.taskAliasDispatcher,

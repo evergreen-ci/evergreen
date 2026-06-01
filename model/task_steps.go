@@ -18,7 +18,7 @@ type TaskExecutionStep struct {
 
 // GetTaskExecutionSteps builds a flat list of execution steps for a task,
 // mirroring the logic used in the "list-steps" command in the task debugger CLI.
-func GetTaskExecutionSteps(project *Project, taskName string) ([]TaskExecutionStep, error) {
+func GetTaskExecutionSteps(project *Project, taskName, variantName string) ([]TaskExecutionStep, error) {
 	task := project.FindProjectTask(taskName)
 	if task == nil {
 		return nil, errors.Errorf("task '%s' not found in project", taskName)
@@ -31,17 +31,51 @@ func GetTaskExecutionSteps(project *Project, taskName string) ([]TaskExecutionSt
 
 	var blocks []commandBlock
 
-	if project.Pre != nil {
-		if cmds := project.Pre.List(); len(cmds) > 0 {
-			blocks = append(blocks, commandBlock{blockType: "pre", commands: cmds})
-		}
+	var tg *TaskGroup
+	if variantName != "" {
+		tg = project.FindTaskGroupForTask(variantName, taskName)
 	}
 
-	blocks = append(blocks, commandBlock{blockType: "", commands: task.Commands})
+	// If variantName is provided and the task belongs to a task group on that
+	// variant, the task group's setup/teardown blocks are used instead of the
+	// project-level pre/post blocks.
+	if tg != nil {
+		if tg.SetupGroup != nil {
+			if cmds := tg.SetupGroup.List(); len(cmds) > 0 {
+				blocks = append(blocks, commandBlock{blockType: "setup_group", commands: cmds})
+			}
+		}
+		if tg.SetupTask != nil {
+			if cmds := tg.SetupTask.List(); len(cmds) > 0 {
+				blocks = append(blocks, commandBlock{blockType: "setup_task", commands: cmds})
+			}
+		}
 
-	if project.Post != nil {
-		if cmds := project.Post.List(); len(cmds) > 0 {
-			blocks = append(blocks, commandBlock{blockType: "post", commands: cmds})
+		blocks = append(blocks, commandBlock{blockType: "", commands: task.Commands})
+
+		if tg.TeardownTask != nil {
+			if cmds := tg.TeardownTask.List(); len(cmds) > 0 {
+				blocks = append(blocks, commandBlock{blockType: "teardown_task", commands: cmds})
+			}
+		}
+		if tg.TeardownGroup != nil {
+			if cmds := tg.TeardownGroup.List(); len(cmds) > 0 {
+				blocks = append(blocks, commandBlock{blockType: "teardown_group", commands: cmds})
+			}
+		}
+	} else {
+		if project.Pre != nil {
+			if cmds := project.Pre.List(); len(cmds) > 0 {
+				blocks = append(blocks, commandBlock{blockType: "pre", commands: cmds})
+			}
+		}
+
+		blocks = append(blocks, commandBlock{blockType: "", commands: task.Commands})
+
+		if project.Post != nil {
+			if cmds := project.Post.List(); len(cmds) > 0 {
+				blocks = append(blocks, commandBlock{blockType: "post", commands: cmds})
+			}
 		}
 	}
 

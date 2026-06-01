@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -23,7 +22,6 @@ type tasksByProjectHandler struct {
 	status       string
 	limit        int
 	key          string
-	url          string
 	parsleyURL   string
 }
 
@@ -59,7 +57,6 @@ func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
 func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	vals := r.URL.Query()
-	tph.url = util.HttpsUrl(r.Host)
 
 	tph.project = vars["project_id"]
 	tph.commitHash = vars["commit_hash"]
@@ -124,7 +121,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tph.url,
+				BaseURL:         GetURL(ctx),
 				Key:             tasks[tph.limit].Id,
 				Limit:           tph.limit,
 			},
@@ -143,7 +140,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeAMI:               true,
 			IncludeProjectIdentifier: true,
 			IncludeArtifacts:         true,
-			LogURL:                   tph.url,
+			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tph.parsleyURL,
 		})
 		if err != nil {

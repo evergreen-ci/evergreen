@@ -68,15 +68,28 @@ type TaskConfig struct {
 	TaskOutput         evergreen.S3Credentials
 	ModulePaths        map[string]string
 	S3Usage            *s3usage.S3Usage
+	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
+	// owned by Devprod that we want to calculate s3 costs for.
+	DevprodOwnedAWSAccountIDs []string
+	// awsAccountIDByKey caches resolved AWS account IDs keyed by AWS access key ID,
+	// so repeated s3.put commands using the same key avoid redundant STS calls.
+	awsAccountIDByKey map[string]string
+	// TestResultsCreatedAt is the time the first test results were
+	// uploaded for this task execution. Subsequent uploads reuse this
+	// value to ensure all results land in the same S3 partition.
+	TestResultsCreatedAt time.Time
 	// HasTestResults is true if the task has sent at least one test result.
 	HasTestResults bool
 	// HasFailingTestResult is true if the task has sent at least one test
 	// result and at least one of those tests failed.
-	HasFailingTestResult bool
-	TaskGroup            *model.TaskGroup
-	CommandCleanups      []CommandCleanup
-	MaxExecTimeoutSecs   int
-	PSLoggingDisabled    bool
+	HasFailingTestResult            bool
+	TaskGroup                       *model.TaskGroup
+	CommandCleanups                 []CommandCleanup
+	MaxExecTimeoutSecs              int
+	PSLoggingDisabled               bool
+	BackgroundCommandFailureEnabled bool
+	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
+	BackgroundFailures chan<- error
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
@@ -253,6 +266,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		NewExpansions:         agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
 		DynamicExpansions:     util.Expansions{},
 		AssumeRoleInformation: map[string]AssumeRoleInformation{},
+		awsAccountIDByKey:     map[string]string{},
 		InternalRedactions:    agentutil.NewDynamicExpansions(internalRedactions),
 		ProjectVars:           opts.ExpansionsAndVars.Vars,
 		Redacted:              redacted,
@@ -265,6 +279,10 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		taskConfig.PatchOrVersionDescription = opts.Patch.Description
 	} else if opts.Version != nil {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message
+	}
+
+	if opts.ExpansionsAndVars != nil {
+		taskConfig.DevprodOwnedAWSAccountIDs = opts.ExpansionsAndVars.DevprodOwnedAWSAccountIDs
 	}
 
 	if opts.ExpansionsAndVars != nil && opts.ExpansionsAndVars.Expansions != nil {
@@ -280,6 +298,38 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	}
 
 	return taskConfig, nil
+}
+
+// ApplyFunctionVarsToExpansions expands the given function vars and puts them into
+// NewExpansions so they're available during command execution. It returns
+// a cleanup function that restores the previous expansion values. The caller
+// is expected to call cleanup when the function ends because the function variables go out of scope.
+func (tc *TaskConfig) ApplyFunctionVarsToExpansions(vars map[string]string, cmdName string) (cleanup func(), err error) {
+	prevExp := map[string]string{}
+	for key, val := range vars {
+		prevExp[key] = tc.Expansions.Get(key)
+
+		newVal, err := tc.Expansions.ExpandString(val)
+		if err != nil {
+			return nil, errors.Wrapf(err, "expanding '%s'", val)
+		}
+		tc.NewExpansions.Put(key, newVal)
+	}
+
+	cleanup = func() {
+		// Ensure that function vars do not persist in the expansions after the
+		// function is over, unless they were updated using expansions.update.
+		if cmdName == "expansions.update" {
+			for k := range tc.DynamicExpansions.Map() {
+				if _, ok := vars[k]; ok {
+					delete(prevExp, k)
+				}
+			}
+		}
+		tc.NewExpansions.Update(prevExp)
+		tc.DynamicExpansions = *util.NewExpansions(map[string]string{})
+	}
+	return cleanup, nil
 }
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
@@ -313,6 +363,24 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 		attributes[evergreen.TaskActivatedTimeOtelAttribute] = tc.Task.ActivatedTime.Format(time.RFC3339)
 	}
 	return attributes
+}
+
+// GetOrSetCachedAWSAccountID returns the AWS account ID for key, resolving and caching on first use. Resolve errors are not cached.
+func (t *TaskConfig) GetOrSetCachedAWSAccountID(key string, resolve func() (string, error)) (string, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.awsAccountIDByKey == nil {
+		t.awsAccountIDByKey = map[string]string{}
+	}
+	if id, ok := t.awsAccountIDByKey[key]; ok {
+		return id, nil
+	}
+	id, err := resolve()
+	if err != nil {
+		return "", err
+	}
+	t.awsAccountIDByKey[key] = id
+	return id, nil
 }
 
 // TaskAttributes returns a list of common otel attributes for tasks.

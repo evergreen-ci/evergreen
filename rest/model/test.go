@@ -31,6 +31,8 @@ type APITest struct {
 	Duration float64    `json:"duration"`
 	// The exit code of the process that ran this test
 	ExitCode int `json:"-"`
+	// Whether this test is currently manually quarantined in the test selection service.
+	IsManuallyQuarantined bool `json:"is_manually_quarantined"`
 }
 
 // TestLogs is a struct for storing the information about logs that will be
@@ -47,6 +49,8 @@ type TestLogs struct {
 	TestName      *string `json:"log_test_name"`
 	RenderingType *string `json:"rendering_type"`
 	Version       int32   `json:"version"`
+	// Logs to merge (used for resmoke test results that have multiple log files).
+	LogsToMerge []string `json:"logs_to_merge,omitempty"`
 }
 
 func (at *APITest) BuildFromService(st any) error {
@@ -66,6 +70,7 @@ func (at *APITest) BuildFromService(st any) error {
 		at.StartTime = utility.ToTimePtr(v.TestStartTime)
 		at.EndTime = utility.ToTimePtr(v.TestEndTime)
 		at.Duration = v.Duration().Seconds()
+		at.IsManuallyQuarantined = v.IsManuallyQuarantined
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
@@ -87,6 +92,7 @@ func (at *APITest) BuildFromService(st any) error {
 			if at.Logs.LineNum == 0 {
 				at.Logs.LineNum = int(v.LogInfo.LineNumCedar)
 			}
+			at.Logs.LogsToMerge = utility.FromStringPtrSlice(v.LogInfo.LogsToMerge)
 		}
 	case string:
 		at.TaskID = utility.ToStringPtr(v)

@@ -44,6 +44,10 @@ type GeneratedProject struct {
 	Task           *task.Task
 	ActivationInfo *specificActivationInfo
 	NewTVPairs     *TaskVariantPairs
+	// ExplicitlyGeneratedTasks tracks task/variant pairs from the generated
+	// JSON before dependency resolution. Tasks that get pulled in solely as dependencies of
+	// generated tasks are excluded so that they don't get a GeneratedBy field set.
+	ExplicitlyGeneratedTasks map[TVPair]bool
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
@@ -166,7 +170,7 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 	g.Task = t
 
 	if g.Task.GeneratedTasks {
-		grip.Debug(message.Fields{
+		grip.Debug(ctx, message.Fields{
 			"message": "skipping attempting to update parser project because another generator marked the task complete",
 			"task":    g.Task.Id,
 			"version": g.Task.Version,
@@ -274,11 +278,18 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 
 	newTVPairs, activationInfo := g.GetNewTasksAndActivationInfo(ctx, v, p)
 
+	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
+	if err != nil {
+		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
+	}
+	if projectRef == nil {
+		return errors.Errorf("project '%s' not found", p.Identifier)
+	}
+
 	if v.Requester == evergreen.GithubPRRequester {
 		numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(newTVPairs)
-		checkRunLimit := settings.GitHubCheckRun.CheckRunLimit
-		if numCheckRuns > checkRunLimit {
-			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
+		if err := VerifyCheckRunLimit(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, projectRef.HasGitHubAppAuth(ctx)); err != nil {
+			return err
 		}
 	}
 
@@ -298,15 +309,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		} else {
 			newTVPairsForNewVariants.DisplayTasks = append(newTVPairsForNewVariants.DisplayTasks, dispTask)
 		}
-	}
-
-	// This will only be populated for patches, not mainline commits.
-	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
-	if err != nil {
-		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
-	}
-	if projectRef == nil {
-		return errors.Errorf("project '%s' not found", p.Identifier)
 	}
 
 	// Compile a lookup table of task IDs for all tasks to be created, both in
@@ -337,7 +339,9 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		// If the parent generator is required to finish, then its generated
 		// tasks inherit that requirement.
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
+		ExplicitlyGeneratedTasks:            g.ExplicitlyGeneratedTasks,
 	}
+	// This will only be populated for patches, not mainline commits.
 	if evergreen.IsPatchRequester(v.Requester) {
 		patchDoc, err := patch.FindOneId(ctx, v.Id)
 		if err != nil {
@@ -503,9 +507,20 @@ func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *V
 		newTVPairs = appendTasks(newTVPairs, bv, p)
 	}
 
+	// Remember which tasks are explicitly generated before dependency expansion
+	// adds tasks that already exist in YAML. Only explicitly generated tasks should
+	// set GeneratedBy.
+	g.ExplicitlyGeneratedTasks = make(map[TVPair]bool, len(newTVPairs.ExecTasks)+len(newTVPairs.DisplayTasks))
+	for _, pair := range newTVPairs.ExecTasks {
+		g.ExplicitlyGeneratedTasks[pair] = true
+	}
+	for _, pair := range newTVPairs.DisplayTasks {
+		g.ExplicitlyGeneratedTasks[pair] = true
+	}
+
 	var err error
 	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants)
-	grip.Warning(message.WrapError(err, message.Fields{
+	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
 	}))
@@ -829,15 +844,6 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 		}
 	}
 	return intermediateProject, nil
-}
-
-func variantExistsInGeneratedProject(variants []parserBV, variant string) bool {
-	for bv := range variants {
-		if variants[bv].Name == variant {
-			return true
-		}
-	}
-	return false
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.

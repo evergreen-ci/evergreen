@@ -283,6 +283,140 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	assert.Len(t, mergedProjects, 1)
 	assert.Equal(t, "ident_enabled", mergedProjects[0].Id)
 }
+
+func TestFindAllMergedEnabledTrackedProjectRefs(t *testing.T) {
+	t.Run("MergesSharedRepoRefAcrossMultipleProjects", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		repoRef := &RepoRef{ProjectRef{
+			Id:                  "shared_repo",
+			SpawnHostScriptPath: "shared-path",
+		}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+
+		project1 := &ProjectRef{
+			Id:        "project_a",
+			Enabled:   true,
+			RepoRefId: "shared_repo",
+		}
+		project2 := &ProjectRef{
+			Id:        "project_b",
+			Enabled:   true,
+			RepoRefId: "shared_repo",
+		}
+		require.NoError(t, project1.Insert(t.Context()))
+		require.NoError(t, project2.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+
+		for _, p := range results {
+			assert.Equal(t, "shared-path", p.SpawnHostScriptPath, "expected repo settings to be merged into project '%s'", p.Id)
+		}
+	})
+
+	t.Run("MissingRepoRefShouldError", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		project := &ProjectRef{
+			Id:        "orphan",
+			Enabled:   true,
+			RepoRefId: "nonexistent_repo",
+		}
+		require.NoError(t, project.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		require.Error(t, err)
+		assert.Nil(t, results)
+		assert.Contains(t, err.Error(), "nonexistent_repo")
+	})
+
+	t.Run("MergesDifferentRepoRefsForDifferentProjects", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		repoRefA := &RepoRef{ProjectRef{
+			Id:                  "repo_a",
+			SpawnHostScriptPath: "path-a",
+		}}
+		repoRefB := &RepoRef{ProjectRef{
+			Id:                  "repo_b",
+			SpawnHostScriptPath: "path-b",
+		}}
+		require.NoError(t, repoRefA.Replace(t.Context()))
+		require.NoError(t, repoRefB.Replace(t.Context()))
+
+		projectA := &ProjectRef{
+			Id:        "project_a",
+			Enabled:   true,
+			RepoRefId: "repo_a",
+		}
+		projectB := &ProjectRef{
+			Id:        "project_b",
+			Enabled:   true,
+			RepoRefId: "repo_b",
+		}
+		require.NoError(t, projectA.Insert(t.Context()))
+		require.NoError(t, projectB.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+
+		merged := make(map[string]string)
+		for _, p := range results {
+			merged[p.Id] = p.SpawnHostScriptPath
+		}
+		assert.Equal(t, "path-a", merged["project_a"])
+		assert.Equal(t, "path-b", merged["project_b"])
+	})
+
+	t.Run("FiltersHiddenAndDisabledProjects", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+		repoRef := &RepoRef{ProjectRef{Id: "repo1"}}
+		require.NoError(t, repoRef.Replace(t.Context()))
+
+		visible := &ProjectRef{
+			Id:        "visible",
+			Enabled:   true,
+			RepoRefId: "repo1",
+		}
+		disabled := &ProjectRef{
+			Id:        "disabled",
+			Enabled:   false,
+			RepoRefId: "repo1",
+		}
+		hidden := &ProjectRef{
+			Id:        "hidden",
+			Enabled:   true,
+			Hidden:    utility.TruePtr(),
+			RepoRefId: "repo1",
+		}
+		noRepoSettings := &ProjectRef{
+			Id:      "no_repo",
+			Enabled: true,
+		}
+		require.NoError(t, visible.Insert(t.Context()))
+		require.NoError(t, disabled.Insert(t.Context()))
+		require.NoError(t, hidden.Insert(t.Context()))
+		require.NoError(t, noRepoSettings.Insert(t.Context()))
+
+		results, err := FindAllMergedEnabledTrackedProjectRefs(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+
+		ids := make(map[string]bool)
+		for _, p := range results {
+			ids[p.Id] = true
+		}
+		assert.True(t, ids["visible"], "enabled non-hidden project should be returned")
+		assert.True(t, ids["no_repo"], "enabled project without RepoRefId should be returned")
+		assert.False(t, ids["disabled"], "disabled project should not be returned")
+		assert.False(t, ids["hidden"], "hidden project should not be returned")
+	})
+}
+
 func TestGetNumberOfEnabledProjects(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
@@ -814,7 +948,6 @@ func TestAttachToNewRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		PRTestingEnabled: utility.TruePtr(),
-		TracksPushEvents: utility.TruePtr(),
 	}
 	assert.NoError(t, pRef.Insert(t.Context()))
 	repoRef := RepoRef{ProjectRef{
@@ -853,17 +986,10 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NotEqual(t, "myRepo", pRefFromDB.RepoRefId)
 	assert.Equal(t, "newOwner", pRefFromDB.Owner)
 	assert.Equal(t, "newRepo", pRefFromDB.Repo)
-	assert.Nil(t, pRefFromDB.TracksPushEvents)
 
 	newRepoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
 	assert.NoError(t, err)
 	assert.NotNil(t, newRepoRef)
-
-	assert.True(t, newRepoRef.DoesTrackPushEvents())
-
-	mergedRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
-	assert.NoError(t, err)
-	assert.True(t, mergedRef.DoesTrackPushEvents())
 
 	userFromDB, err := user.FindOneById(t.Context(), "me")
 	assert.NoError(t, err)
@@ -935,7 +1061,6 @@ func TestAttachToRepo(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 		GithubChecksEnabled: utility.TruePtr(),
-		TracksPushEvents:    utility.TruePtr(),
 		Enabled:             true,
 	}
 	assert.NoError(t, pRef.Insert(t.Context()))
@@ -964,12 +1089,10 @@ func TestAttachToRepo(t *testing.T) {
 	assert.True(t, pRefFromDB.Enabled)
 	assert.True(t, pRefFromDB.CommitQueue.IsEnabled())
 	assert.True(t, pRefFromDB.IsGithubChecksEnabled())
-	assert.Nil(t, pRefFromDB.TracksPushEvents)
 
 	repoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
 	assert.NoError(t, err)
 	require.NotNil(t, repoRef)
-	assert.True(t, repoRef.DoesTrackPushEvents())
 
 	u, err = user.FindOneById(t.Context(), "me")
 	assert.NoError(t, err)
@@ -1111,7 +1234,6 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, pRefFromDB.IsGitTagVersionsEnabled())
 			assert.True(t, pRefFromDB.IsGithubChecksEnabled())
 			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubPRTriggerAliases)
-			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
 			dbUser, err = user.FindOneById(t.Context(), "me")
 			assert.NoError(t, err)
@@ -1280,7 +1402,6 @@ func TestDetachFromRepo(t *testing.T) {
 				Id:                     pRef.RepoRefId,
 				Owner:                  pRef.Owner,
 				Repo:                   pRef.Repo,
-				TracksPushEvents:       utility.TruePtr(),
 				PRTestingEnabled:       utility.TruePtr(),
 				GitTagVersionsEnabled:  utility.FalsePtr(),
 				GithubChecksEnabled:    utility.TruePtr(),
@@ -1380,25 +1501,77 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Empty(t, varsFromDb.PrivateVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
-		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
+		ProjectPagePullRequestsSection: func(t *testing.T, id string) {
 			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Len(t, aliases, 5)
-			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubAndCQSection, "me"))
-
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPagePullRequestsSection, "me"))
 			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
-			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
-			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+			assert.Nil(t, pRefFromDb.ManualPRTestingEnabled)
+
 			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
-			assert.NoError(t, err)
-			assert.Len(t, aliases, 1)
-			// assert that only patch aliases are left
-			for _, a := range aliases {
-				assert.NotContains(t, evergreen.InternalAliases, a.Alias)
-			}
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
+		},
+		ProjectPageGitTagsSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGitTagsSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
+			assert.Nil(t, pRefFromDb.GitTagVersionsEnabled)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
+			assert.Nil(t, pRefFromDb.GitTagAuthorizedTeams)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
+		},
+		ProjectPageMergeQueueSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageMergeQueueSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
+			assert.False(t, pRefFromDb.CommitQueue.IsEnabled())
+			assert.Nil(t, pRefFromDb.CommitQueue.Enabled)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
+		},
+		ProjectPageCommitChecksSection: func(t *testing.T, id string) {
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			assert.Len(t, aliases, 5)
+			require.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageCommitChecksSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
+			require.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+
+			// These should be cleared so we default to repo.
+			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
+
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
+			require.NoError(t, err)
+			require.Len(t, aliases, 1)
+			assert.NotContains(t, evergreen.InternalAliases, aliases[0].Alias)
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageNotificationsSection, "me"))
@@ -2039,7 +2212,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongodb", repoRef.Owner)
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Empty(t, repoRef.Branch)
-	assert.True(t, repoRef.DoesTrackPushEvents())
 	assert.True(t, repoRef.IsPRTestingEnabled())
 	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
 	assert.Equal(t, "", repoRef.Identifier)

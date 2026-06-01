@@ -78,7 +78,10 @@ type APITask struct {
 	// The status of this task that is displayed in the UI (possible values are
 	// "will-run", "unscheduled", "blocked", "dispatched", "started", "success",
 	// "failed", "aborted", "system-failed", "system-unresponsive",
-	// "system-timed-out", "task-timed-out", "known-issue")
+	// "system-timed-out", "task-timed-out", "known-issue").
+	// Populated from the task's DisplayStatusCache field in the DB. The BSON field
+	// name differs (display_status_cache vs display_status) to avoid breaking existing
+	// workflows; do not change the BSON tag.
 	DisplayStatus *string `json:"display_status"`
 	// Object containing additional information about the status
 	Details ApiTaskEndDetail `json:"status_details"`
@@ -127,6 +130,7 @@ type APITask struct {
 	BaseTask             APIBaseTaskInfo `json:"base_task"`
 	ResetWhenFinished    bool            `json:"reset_when_finished"`
 	HasAnnotations       bool            `json:"has_annotations"`
+	IsAutomaticRestart   bool            `json:"is_automatic_restart"`
 	TestSelectionEnabled bool            `json:"test_selection_enabled"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
@@ -364,7 +368,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Execution:               t.Execution,
 		Order:                   t.RevisionOrderNumber,
 		Status:                  utility.ToStringPtr(t.Status),
-		DisplayStatus:           utility.ToStringPtr(t.GetDisplayStatus()),
+		DisplayStatus:           utility.ToStringPtr(t.DisplayStatusCache),
 		ExpectedDuration:        NewAPIDuration(t.ExpectedDuration),
 		GenerateTask:            t.GenerateTask,
 		GeneratedBy:             t.GeneratedBy,
@@ -387,6 +391,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 			PRClosed:   t.AbortInfo.PRClosed,
 		},
 		HasAnnotations:       t.HasAnnotations,
+		IsAutomaticRestart:   t.IsAutomaticRestart,
 		TestSelectionEnabled: t.TestSelectionEnabled,
 	}
 
@@ -405,12 +410,14 @@ func (at *APITask) buildTask(t *task.Task) error {
 
 	if !t.TaskCost.IsZero() {
 		taskCost := t.TaskCost
+		taskCost.Total = taskCost.TotalAdjusted()
 		at.TaskCost = &taskCost
 	}
 
 	// Populate expected cost fields if they exist (not zero)
 	if !t.PredictedTaskCost.IsZero() {
 		predictedCost := t.PredictedTaskCost
+		predictedCost.Total = predictedCost.TotalAdjusted()
 		at.PredictedTaskCost = &predictedCost
 	}
 
@@ -597,6 +604,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 
 	if at.TaskCost != nil {
 		st.TaskCost = *at.TaskCost
+		st.TaskCost.Total = 0
 	}
 
 	if at.S3Usage != nil {

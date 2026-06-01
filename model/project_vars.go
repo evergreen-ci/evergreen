@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
@@ -33,6 +32,7 @@ var (
 	projectVarsParametersKey = bsonutil.MustHaveTag(ProjectVars{}, "Parameters")
 	privateVarsMapKey        = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 	adminOnlyVarsMapKey      = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
+	varsDescriptionsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "VarsDescriptions")
 )
 
 const (
@@ -66,6 +66,9 @@ type ProjectVars struct {
 
 	// AdminOnlyVars keeps track of variables that are only accessible by project admins.
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
+
+	// VarsDescriptions contains descriptions for each variable.
+	VarsDescriptions map[string]string `bson:"vars_descriptions,omitempty" json:"vars_descriptions,omitempty"`
 }
 
 // ParameterMappings is a wrapper around a slice of mappings between names and
@@ -195,6 +198,22 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 	return projectVars, nil
 }
 
+// FindOneProjectVarsWithoutParameterStore finds the project variables document for a given project ID, without
+// fetching the variable values from ParameterStore. This is used in cases where we don't need the variable values
+// and want to avoid the overhead of fetching from ParameterStore.
+func FindOneProjectVarsWithoutParameterStore(ctx context.Context, projectId string) (*ProjectVars, error) {
+	projectVars := &ProjectVars{}
+	q := db.Query(bson.M{projectVarIdKey: projectId})
+	err := db.FindOneQ(ctx, ProjectVarsCollection, q, projectVars)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return projectVars, nil
+}
+
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
 func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars, error) {
 	project, err := FindBranchProjectRef(ctx, projectID)
@@ -280,29 +299,56 @@ func GetAWSKeyForProject(ctx context.Context, projectId string) (*AWSSSHKey, err
 	}, nil
 }
 
-// defaultParameterStoreAccessTimeout is the default timeout for accessing
-// Parameter Store. In general, the context timeout should prefer to be
-// inherited from a higher-level context (e.g. a REST request's context), so
-// this timeout should only be used as a last resort if the context cannot
-// easily be passed down.
-const defaultParameterStoreAccessTimeout = 30 * time.Second
-
 // Upsert creates or updates a project vars document and stores all the project
-// variables in the DB. If Parameter Store is enabled for the project, it also
-// stores the variables in Parameter Store.
+// variables as parameters in Parameter Store.
 func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
-	defer cancel()
+	// Ignore the context cancellation to ensure that the parameters are synced
+	// into Parameter Store and updated in the DB. The Parameter Store and DB
+	// updates should be as atomic as possible.
+	ctx = context.WithoutCancel(ctx)
 
-	pm, err := projectVars.upsertParameterStore(ctx)
+	before, err := FindOneProjectVars(ctx, projectVars.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
+	}
+	if before == nil {
+		before = &ProjectVars{Id: projectVars.Id}
+	}
+
+	varsToUpsert, varsToDelete := getProjectVarsDiff(before, projectVars)
+
+	paramMappingsToUpsert, err := projectVars.upsertParameterStore(ctx, before.Parameters, varsToUpsert)
 	if err != nil {
 		return nil, errors.Wrap(err, "upserting project variables into Parameter Store")
 	}
-	projectVars.Parameters = *pm
 
+	paramMappingsToDelete := getParamMappingsToDelete(before.Parameters, varsToDelete)
+
+	// Update the DB with the final parameter state.
+	// The DB update must happen before deleting any parameters from Parameter
+	// Store for correctness. If the order of operations were inverted (i.e.
+	// deleting from Parameter Store, then updating the DB), then there would be
+	// a risk that the Parameter Store deletion is interrupted partway through,
+	// which could result in the DB holding some lingering references to
+	// parameters that don't exist anymore.
+	projectVars.Parameters = getUpdatedParamMappings(before.Parameters, paramMappingsToUpsert, paramMappingsToDelete)
+	changeInfo, err := projectVars.upsertDB(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "upserting project vars in DB")
+	}
+
+	if err := projectVars.deleteParameterStore(ctx, paramMappingsToDelete); err != nil {
+		return nil, errors.Wrap(err, "deleting project variables from Parameter Store")
+	}
+
+	return changeInfo, nil
+}
+
+func (projectVars *ProjectVars) upsertDB(ctx context.Context) (*adb.ChangeInfo, error) {
 	setUpdate := bson.M{
-		privateVarsMapKey:   projectVars.PrivateVars,
-		adminOnlyVarsMapKey: projectVars.AdminOnlyVars,
+		privateVarsMapKey:      projectVars.PrivateVars,
+		adminOnlyVarsMapKey:    projectVars.AdminOnlyVars,
+		varsDescriptionsMapKey: projectVars.VarsDescriptions,
 	}
 	update := bson.M{}
 	if len(projectVars.Parameters) > 0 {
@@ -322,53 +368,10 @@ func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, er
 	)
 }
 
-// upsertParameterStore upserts the diff of added/updated/deleted project
-// variables into Parameter Store.
-func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) (*ParameterMappings, error) {
-	projectID := projectVars.Id
-	after := projectVars
-
-	before, err := FindOneProjectVars(ctx, projectID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
-	}
-	if before == nil {
-		before = &ProjectVars{Id: projectID}
-	}
-
-	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
-
-	pm, err := projectVars.syncParameterDiff(ctx, before.Parameters, varsToUpsert, varsToDelete)
-	if err != nil {
-		return nil, errors.Wrap(err, "syncing project vars diff to Parameter Store")
-	}
-
-	return pm, nil
-}
-
-// syncParameterDiff syncs the diff of project variables to Parameter Store. It
-// adds/updates varsToUpsert to Parameter Store, deletes varsToDelete from
-// Parameter Store, and updates the project variable parameter mappings.
-func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string, varsToDelete map[string]struct{}) (*ParameterMappings, error) {
-	paramMappingsToUpsert, err := projectVars.upsertParameters(ctx, pm, varsToUpsert)
-	if err != nil {
-		return nil, errors.Wrap(err, "upserting project variables into Parameter Store")
-	}
-
-	paramMappingsToDelete, err := projectVars.deleteParameters(ctx, pm, varsToDelete)
-	if err != nil {
-		return nil, errors.Wrap(err, "deleting project variables from Parameter Store")
-	}
-
-	updatedParamMappings := getUpdatedParamMappings(pm, paramMappingsToUpsert, paramMappingsToDelete)
-
-	return &updatedParamMappings, nil
-}
-
-// upsertParameters upserts the parameter mappings for project variables into
+// upsertParameterStore upserts the parameter mappings for project variables into
 // Parameter Store. It returns the parameter mappings for the upserted
 // variables.
-func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
+func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
 	projectID := projectVars.Id
 	nameToExistingParamMapping := pm.NameMap()
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
@@ -417,10 +420,9 @@ func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm Paramet
 	return paramMappingsToUpsert, nil
 }
 
-// deleteParameters deletes parameters corresponding to deleted project variables
-// from Parameter Store. It returns the parameter mappings for the deleted
-// variables.
-func (projectVars *ProjectVars) deleteParameters(ctx context.Context, pm ParameterMappings, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
+// getParamMappingsToDelete returns the subset of parameter mappings that
+// correspond to the variables being deleted.
+func getParamMappingsToDelete(pm ParameterMappings, varsToDelete map[string]struct{}) map[string]ParameterMapping {
 	nameToExistingParamMapping := pm.NameMap()
 	paramMappingsToDelete := make(map[string]ParameterMapping, len(varsToDelete))
 	for varToDelete := range varsToDelete {
@@ -428,20 +430,23 @@ func (projectVars *ProjectVars) deleteParameters(ctx context.Context, pm Paramet
 			paramMappingsToDelete[varToDelete] = paramMapping
 		}
 	}
+	return paramMappingsToDelete
+}
 
+// deleteParameterStore deletes parameters corresponding to deleted project variables
+// from Parameter Store.
+func (projectVars *ProjectVars) deleteParameterStore(ctx context.Context, paramMappingsToDelete map[string]ParameterMapping) error {
 	namesToDelete := make([]string, 0, len(paramMappingsToDelete))
 	for _, m := range paramMappingsToDelete {
 		namesToDelete = append(namesToDelete, m.ParameterName)
 	}
 
-	if len(namesToDelete) > 0 {
-		paramMgr := evergreen.GetEnvironment().ParameterManager()
-		if err := paramMgr.Delete(ctx, namesToDelete...); err != nil {
-			return nil, err
-		}
+	if len(namesToDelete) == 0 {
+		return nil
 	}
 
-	return paramMappingsToDelete, nil
+	paramMgr := evergreen.GetEnvironment().ParameterManager()
+	return paramMgr.Delete(ctx, namesToDelete...)
 }
 
 // getProjectVarsDiff returns the diff of added/updated/deleted project
@@ -494,14 +499,12 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 }
 
 // Insert creates a new project vars document and stores all the project
-// variables in the DB. If Parameter Store is enabled for the project, it also
-// stores the variables in Parameter Store.
+// variables as parameters in Parameter Store.
 func (projectVars *ProjectVars) Insert(ctx context.Context) error {
-	// This has to be done after inserting the initial document because it
-	// upserts the project vars doc. If this ran first, it would cause the DB
-	// insert to fail due to the ID already existing.
-	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
-	defer cancel()
+	// Ignore the context cancellation to ensure that the parameters are synced
+	// into Parameter Store and inserted into the DB. These two operations should
+	// be as atomic as possible.
+	ctx = context.WithoutCancel(ctx)
 
 	pm, err := insertParameterStore(ctx, projectVars)
 	if err != nil {
@@ -518,105 +521,67 @@ func (projectVars *ProjectVars) Insert(ctx context.Context) error {
 
 // insertParameterStore inserts all project variables into Parameter Store.
 func insertParameterStore(ctx context.Context, vars *ProjectVars) (*ParameterMappings, error) {
-	before := &ProjectVars{Id: vars.Id}
-	after := vars
-	varsToUpsert, _ := getProjectVarsDiff(before, after)
-
-	pm, err := vars.syncParameterDiff(ctx, ParameterMappings{}, varsToUpsert, nil)
+	paramMappingsToUpsert, err := vars.upsertParameterStore(ctx, ParameterMappings{}, vars.Vars)
 	if err != nil {
-		return nil, errors.Wrap(err, "syncing project vars diff to Parameter Store")
+		return nil, errors.Wrap(err, "upserting project variables into Parameter Store")
 	}
 
-	return pm, nil
+	pm := getUpdatedParamMappings(ParameterMappings{}, paramMappingsToUpsert, nil)
+	return &pm, nil
 }
 
 // FindAndModify is almost the same functionally as Upsert, except that it only
 // deletes project vars that are explicitly provided in varsToDelete. In other
 // words, even if a project variable is omitted from projectVars, it won't be
 // deleted unless that variable is explicitly listed in varsToDelete. If this
-// succeeds, projectVars will contain all the project variables, including those
-// that were not explicitly modified.
+// succeeds, the resulting projectVars will contain all the project variables,
+// including those that were not explicitly modified.
 func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete []string) (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeoutCause(ctx, defaultParameterStoreAccessTimeout, errors.New("parameter store access timeout"))
-	defer cancel()
+	// Ignore the context cancellation to ensure that the parameters are synced
+	// into Parameter Store and updated in the DB. The Parameter Store and DB
+	// updates should be as atomic as possible.
+	ctx = context.WithoutCancel(ctx)
 
-	pm, err := projectVars.findAndModifyParameterStore(ctx, varsToDelete)
+	before, err := FindOneProjectVars(ctx, projectVars.Id)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding and modifying project vars in Parameter Store")
+		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
 	}
-	projectVars.Parameters = *pm
-
-	setUpdate := bson.M{}
-	unsetUpdate := bson.M{}
-	update := bson.M{}
-	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
-		len(projectVars.AdminOnlyVars) == 0 && len(projectVars.Parameters) == 0 && len(varsToDelete) == 0 {
-		return nil, nil
-	}
-	for key, val := range projectVars.PrivateVars {
-		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
-	}
-	for key, val := range projectVars.AdminOnlyVars {
-		setUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, key)] = val
-	}
-	if len(projectVars.Parameters) > 0 {
-		setUpdate[projectVarsParametersKey] = projectVars.Parameters
-	} else {
-		unsetUpdate[projectVarsParametersKey] = 1
-	}
-	if len(setUpdate) > 0 {
-		update["$set"] = setUpdate
+	if before == nil {
+		before = &ProjectVars{Id: projectVars.Id}
 	}
 
-	for _, val := range varsToDelete {
-		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
-		unsetUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, val)] = 1
-	}
-	if len(unsetUpdate) > 0 {
-		update["$unset"] = unsetUpdate
+	// Ignore the vars that are deleted between before and after because
+	// FindAndModify only deletes variables that are explicitly specified in
+	// varsToDelete.
+	varsToUpsert, _ := getProjectVarsDiff(before, projectVars)
+
+	varSetToDelete := map[string]struct{}{}
+	for _, varName := range varsToDelete {
+		varSetToDelete[varName] = struct{}{}
 	}
 
-	if len(projectVars.PrivateVars) != 0 && len(projectVars.AdminOnlyVars) != 0 {
-		// Initialize the private and admin-only vars maps if they don't exist.
-		initializeUpdate := bson.M{}
-		originalProjectVars, err := FindOneProjectVars(ctx, projectVars.Id)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
-		}
-		if originalProjectVars == nil {
-			return nil, errors.Errorf("project vars for project '%s' not found", projectVars.Id)
-		}
-		if originalProjectVars.PrivateVars == nil {
-			initializeUpdate[privateVarsMapKey] = bson.M{}
-		}
-		if originalProjectVars.AdminOnlyVars == nil {
-			initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
-		}
-		if len(initializeUpdate) > 0 {
-			err := db.Update(ctx,
-				ProjectVarsCollection,
-				bson.M{projectVarIdKey: projectVars.Id},
-				bson.M{"$set": initializeUpdate},
-			)
-			if err != nil {
-				return nil, errors.Wrap(err, "initializing private and admin-only vars in DB")
-			}
-		}
+	paramMappingsToUpsert, err := projectVars.upsertParameterStore(ctx, before.Parameters, varsToUpsert)
+	if err != nil {
+		return nil, errors.Wrap(err, "upserting project variables into Parameter Store")
 	}
 
-	change, err := db.FindAndModify(ctx,
-		ProjectVarsCollection,
-		bson.M{projectVarIdKey: projectVars.Id},
-		nil,
-		adb.Change{
-			Update:    update,
-			ReturnNew: true,
-			Upsert:    true,
-		},
-		projectVars,
-	)
+	paramMappingsToDelete := getParamMappingsToDelete(before.Parameters, varSetToDelete)
+
+	// Update the DB with the final parameter state.
+	// The DB update must happen before deleting any parameters from Parameter
+	// Store for correctness. If the order of operations were inverted (i.e.
+	// deleting from Parameter Store, then updating the DB), then there would be
+	// a risk that FindAndModify is interrupted partway through, which could
+	// result in the DB holding some lingering references to parameters that
+	// don't exist anymore.
+	projectVars.Parameters = getUpdatedParamMappings(before.Parameters, paramMappingsToUpsert, paramMappingsToDelete)
+	change, err := projectVars.findAndModifyDB(ctx, varsToDelete)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding and modifying project vars in DB")
+	}
+
+	if err := projectVars.deleteParameterStore(ctx, paramMappingsToDelete); err != nil {
+		return nil, errors.Wrap(err, "deleting project variables from Parameter Store")
 	}
 
 	// FindAndModify is expected to return all the project's vars. However,
@@ -633,70 +598,129 @@ func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete 
 	return change, nil
 }
 
-// findAndModifyParameterStore is almost the same functionally as Upsert, except
-// that it only deletes project vars that are explicitly provided in
-// varsToDelete. In other words, even if a project variable is omitted from
-// projectVars, it won't be deleted unless that variable is explicitly listed in
-// varsToDelete.
-func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context, varsToDelete []string) (*ParameterMappings, error) {
-	projectID := projectVars.Id
-
-	before, err := FindOneProjectVars(ctx, projectID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
+func (projectVars *ProjectVars) findAndModifyDB(ctx context.Context, varsToDelete []string) (*adb.ChangeInfo, error) {
+	setUpdate := bson.M{}
+	unsetUpdate := bson.M{}
+	update := bson.M{}
+	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
+		len(projectVars.AdminOnlyVars) == 0 && len(projectVars.Parameters) == 0 &&
+		len(projectVars.VarsDescriptions) == 0 && len(varsToDelete) == 0 {
+		return nil, nil
 	}
-	if before == nil {
-		before = &ProjectVars{Id: projectID}
+	for key, val := range projectVars.PrivateVars {
+		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
 	}
-
-	// Ignore the vars that are deleted between before and after because
-	// FindAndModify only deletes variables that are explicitly specified in
-	// varsToDelete.
-	after := projectVars
-	varsToUpsert, _ := getProjectVarsDiff(before, after)
-
-	varSetToDelete := map[string]struct{}{}
-	for _, varName := range varsToDelete {
-		varSetToDelete[varName] = struct{}{}
+	for key, val := range projectVars.AdminOnlyVars {
+		setUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, key)] = val
 	}
-
-	pm, err := projectVars.syncParameterDiff(ctx, before.Parameters, varsToUpsert, varSetToDelete)
-	if err != nil {
-		return nil, errors.Wrap(err, "syncing project vars diff to Parameter Store")
+	for key, val := range projectVars.VarsDescriptions {
+		setUpdate[bsonutil.GetDottedKeyName(varsDescriptionsMapKey, key)] = val
+	}
+	if len(projectVars.Parameters) > 0 {
+		setUpdate[projectVarsParametersKey] = projectVars.Parameters
+	} else {
+		unsetUpdate[projectVarsParametersKey] = 1
+	}
+	if len(setUpdate) > 0 {
+		update["$set"] = setUpdate
 	}
 
-	return pm, nil
+	for _, val := range varsToDelete {
+		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
+		unsetUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, val)] = 1
+		unsetUpdate[bsonutil.GetDottedKeyName(varsDescriptionsMapKey, val)] = 1
+	}
+	if len(unsetUpdate) > 0 {
+		update["$unset"] = unsetUpdate
+	}
+
+	if len(projectVars.PrivateVars) != 0 || len(projectVars.AdminOnlyVars) != 0 || len(projectVars.VarsDescriptions) != 0 {
+		// Initialize the private, admin-only, and description vars maps if they don't exist.
+		initializeUpdate := bson.M{}
+		originalProjectVars, err := FindOneProjectVarsWithoutParameterStore(ctx, projectVars.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
+		}
+		if originalProjectVars == nil {
+			return nil, errors.Errorf("project vars for project '%s' not found", projectVars.Id)
+		}
+		if originalProjectVars.PrivateVars == nil {
+			initializeUpdate[privateVarsMapKey] = bson.M{}
+		}
+		if originalProjectVars.AdminOnlyVars == nil {
+			initializeUpdate[adminOnlyVarsMapKey] = bson.M{}
+		}
+		if originalProjectVars.VarsDescriptions == nil {
+			initializeUpdate[varsDescriptionsMapKey] = bson.M{}
+		}
+		if len(initializeUpdate) > 0 {
+			if err := db.Update(ctx,
+				ProjectVarsCollection,
+				bson.M{projectVarIdKey: projectVars.Id},
+				bson.M{"$set": initializeUpdate},
+			); err != nil {
+				return nil, errors.Wrap(err, "initializing private vars, admin-only vars, and descriptions in DB")
+			}
+		}
+	}
+
+	return db.FindAndModify(ctx,
+		ProjectVarsCollection,
+		bson.M{projectVarIdKey: projectVars.Id},
+		nil,
+		adb.Change{
+			Update:    update,
+			ReturnNew: true,
+			Upsert:    true,
+		},
+		projectVars,
+	)
 }
 
-// Clears clears all variables for a project.
+// Clear clears all variables for a project.
 func (projectVars *ProjectVars) Clear(ctx context.Context) error {
+	// Ignore the context cancellation to ensure that the parameters are deleted
+	// from Parameter Store and the DB. The Parameter Store and DB updates
+	// should be as atomic as possible.
+	ctx = context.WithoutCancel(ctx)
+
+	before, err := FindOneProjectVars(ctx, projectVars.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
+	}
+	if before == nil {
+		before = &ProjectVars{Id: projectVars.Id}
+	}
+
 	projectVars.Vars = map[string]string{}
 	projectVars.PrivateVars = map[string]bool{}
 	projectVars.AdminOnlyVars = map[string]bool{}
+	projectVars.VarsDescriptions = map[string]string{}
 
-	// Ignore the context cancellation to ensure that the parameters are
-	// deleted from Parameter Store and cleared from the database, this should be as
-	// 'atomic' as possible.
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultParameterStoreAccessTimeout)
-	defer cancel()
-	if _, err := projectVars.upsertParameterStore(ctx); err != nil {
+	if err := projectVars.clearDB(ctx); err != nil {
+		return err
+	}
+
+	_, varsToDelete := getProjectVarsDiff(before, projectVars)
+	paramMappingsToDelete := getParamMappingsToDelete(before.Parameters, varsToDelete)
+	if err := projectVars.deleteParameterStore(ctx, paramMappingsToDelete); err != nil {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
 	}
 
-	err := db.Update(ctx, ProjectVarsCollection,
+	return nil
+}
+
+func (projectVars *ProjectVars) clearDB(ctx context.Context) error {
+	return db.Update(ctx, ProjectVarsCollection,
 		bson.M{ProjectRefIdKey: projectVars.Id},
 		bson.M{
 			"$unset": bson.M{
 				privateVarsMapKey:        1,
 				adminOnlyVarsMapKey:      1,
 				projectVarsParametersKey: 1,
+				varsDescriptionsMapKey:   1,
 			},
 		})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (projectVars *ProjectVars) GetVars(ctx context.Context, t *task.Task) map[string]string {
@@ -720,7 +744,7 @@ func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 	}
 	u, err := user.FindOneById(ctx, t.ActivatedBy)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
 			"task_id": t.Id,
 		}))
@@ -742,9 +766,10 @@ func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 // with the empty string.
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
-		Vars:          map[string]string{},
-		PrivateVars:   map[string]bool{},
-		AdminOnlyVars: map[string]bool{},
+		Vars:             map[string]string{},
+		PrivateVars:      map[string]bool{},
+		AdminOnlyVars:    map[string]bool{},
+		VarsDescriptions: map[string]string{},
 	}
 	if projectVars == nil {
 		return res
@@ -759,6 +784,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	if projectVars.PrivateVars == nil {
 		res.PrivateVars = map[string]bool{}
 	}
+	if projectVars.VarsDescriptions == nil {
+		res.VarsDescriptions = map[string]string{}
+	}
 	// Redact private variables
 	for k, v := range projectVars.Vars {
 		if val, ok := projectVars.PrivateVars[k]; ok && val {
@@ -769,6 +797,9 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 		}
 		if val, ok := projectVars.AdminOnlyVars[k]; ok && val {
 			res.AdminOnlyVars[k] = projectVars.AdminOnlyVars[k]
+		}
+		if desc, ok := projectVars.VarsDescriptions[k]; ok {
+			res.VarsDescriptions[k] = desc
 		}
 	}
 
@@ -786,6 +817,9 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if projectVars.AdminOnlyVars == nil {
 		projectVars.AdminOnlyVars = map[string]bool{}
 	}
+	if projectVars.VarsDescriptions == nil {
+		projectVars.VarsDescriptions = map[string]string{}
+	}
 	if repoVars == nil {
 		return
 	}
@@ -800,6 +834,9 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 			if v, ok := repoVars.AdminOnlyVars[key]; ok {
 				projectVars.AdminOnlyVars[key] = v
+			}
+			if desc, ok := repoVars.VarsDescriptions[key]; ok {
+				projectVars.VarsDescriptions[key] = desc
 			}
 			if pm, ok := nameToParamMapping[key]; ok {
 				projectVars.Parameters = append(projectVars.Parameters, pm)

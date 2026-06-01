@@ -1,14 +1,18 @@
 package cloud
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -119,4 +123,70 @@ func TestTerminateSpawnHostIntentHostSetsTerminationTime(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 	assert.False(t, dbHost.TerminationTime.IsZero(), "termination_time must be set")
+}
+
+func TestGenerateConfigScript(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection))
+
+	setupFixtures := func(t *testing.T, remotePath string) {
+		t.Helper()
+		require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection))
+
+		pRef := &model.ProjectRef{
+			Id:         "test-proj",
+			Identifier: "test-proj",
+			RemotePath: remotePath,
+		}
+		require.NoError(t, pRef.Insert(ctx))
+
+		v := &model.Version{
+			Id:                   "test-version",
+			Identifier:           "test-proj",
+			Requester:            evergreen.RepotrackerVersionRequester,
+			ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		}
+		require.NoError(t, v.Insert(ctx))
+
+		pp := &model.ParserProject{Id: "test-version"}
+		require.NoError(t, pp.Insert(ctx))
+
+		tsk := &task.Task{
+			Id:      "test-task",
+			Project: "test-proj",
+			Version: "test-version",
+		}
+		require.NoError(t, tsk.Insert(ctx))
+	}
+
+	t.Run("DefaultConfigDoesNotCollideWithCLIConfig", func(t *testing.T) {
+		setupFixtures(t, ".evergreen.yml")
+
+		script, configPath, err := generateConfigScript(ctx, "test-task", &evergreen.Settings{}, "/home/user")
+		require.NoError(t, err)
+
+		cliConfigPath := filepath.Join("/home/user", evergreen.DefaultEvergreenConfig)
+		assert.NotEqual(t, cliConfigPath, configPath)
+		assert.Equal(t, filepath.Join("/home/user", debugProjectConfigDir, ".evergreen.yml"), configPath)
+		assert.Contains(t, script, configPath)
+	})
+
+	t.Run("NestedRemotePath", func(t *testing.T) {
+		setupFixtures(t, ".evergreen/config.yml")
+
+		script, configPath, err := generateConfigScript(ctx, "test-task", &evergreen.Settings{}, "/home/user")
+		require.NoError(t, err)
+
+		assert.Equal(t, filepath.Join("/home/user", debugProjectConfigDir, ".evergreen/config.yml"), configPath)
+		assert.True(t, strings.Contains(script, filepath.Join("/home/user", debugProjectConfigDir, ".evergreen")))
+	})
+
+	t.Run("NonCollidingRemotePath", func(t *testing.T) {
+		setupFixtures(t, "evergreen.yml")
+
+		_, configPath, err := generateConfigScript(ctx, "test-task", &evergreen.Settings{}, "/home/user")
+		require.NoError(t, err)
+
+		assert.Equal(t, filepath.Join("/home/user", debugProjectConfigDir, "evergreen.yml"), configPath)
+	})
 }

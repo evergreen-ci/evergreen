@@ -13,6 +13,8 @@ In short:
 
 **Batchtime:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks on mainline commits. It will only activate the build/tasks for latest commit. If used with activate true, batchtime will be ignored and the builds/tasks will run every time.
 
+**Disable**: if set to true, this prevents the task from being created at all. This cannot be overridden.
+
 **Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity. (This is not a yaml setting.)
 
 The yaml settings **only apply to mainline commits.** If more than one is set, more specific details on how these
@@ -81,6 +83,19 @@ buildvariants:
 ```
 
 For more on cron and batchtime, see [build variants](../Project-Configuration/Project-Configuration-Files/#build-variants).
+
+## Disable
+
+To cause a task to not be created at all, set `disable: true`.
+
+- This behaves similarly to commenting out the task but will not
+  trigger any validation errors.
+- Disabling a task prevents it from being warned on for not being used.
+- If a task is disabled and is depended on by another task, the
+  dependent task will simply exclude the disabled task from its
+  dependencies.
+- If a task is disabled, it will not be activated by cron or batchtime,
+  even if they are set up for the task.
 
 ## Periodic Builds
 

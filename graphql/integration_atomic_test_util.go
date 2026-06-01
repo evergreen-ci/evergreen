@@ -18,9 +18,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,7 +36,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
+	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -49,9 +54,10 @@ const (
 	// Use this for GraphQL tests that are written in Golang (e.g. directive_test.go).
 	testUser = "test_user"
 
-	adminUser      = "admin_user"
-	privilegedUser = "privileged_user"
-	regularUser    = "regular_user"
+	adminUser       = "admin_user"
+	privilegedUser  = "privileged_user"
+	regularUser     = "regular_user"
+	branchAdminUser = "branch_admin_user"
 )
 
 type AtomicGraphQLState struct {
@@ -151,13 +157,13 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 					var actual bytes.Buffer
 					err = json.Indent(&actual, b, "", "  ")
 					if err != nil {
-						grip.Error(errors.Wrap(err, "actual value was not json"))
+						grip.Error(ctx, errors.Wrap(err, "actual value was not json"))
 						return
 					}
-					grip.Info("=== expected ===")
-					grip.Info(string(testCase.Result))
-					grip.Info("=== actual ===")
-					grip.Info(actual.Bytes())
+					grip.Info(ctx, "=== expected ===")
+					grip.Info(ctx, string(testCase.Result))
+					grip.Info(ctx, "=== actual ===")
+					grip.Info(ctx, actual.Bytes())
 				}
 			}
 			name := testCase.QueryFile
@@ -263,6 +269,25 @@ func setupUsers(t *testing.T) {
 		},
 	}
 	assert.NoError(t, regularUser.Insert(t.Context()))
+
+	// Branch admin user has edit access to the sandbox branch project but
+	// not to its attached repo. Used to verify repo-boundary checks on
+	// mutations that act on attached repos (e.g. promoteVarsToRepo).
+	branchAdminUsr := user.DBUser{
+		Id:           branchAdminUser,
+		DispName:     "Branch Admin User",
+		EmailAddress: "branch_admin_user@mongodb.com",
+		LoginCache: user.LoginCache{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+		APIKey: "branch_admin_api_key",
+		SystemRoles: []string{
+			evergreen.BasicProjectAccessRole,
+			"project_sandbox",
+		},
+	}
+	assert.NoError(t, branchAdminUsr.Insert(t.Context()))
 }
 
 func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
@@ -369,10 +394,11 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		Name:  "superuser",
 		Scope: superUserScope.ID,
 		Permissions: map[string]int{
-			evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value,
-			evergreen.PermissionProjectCreate: evergreen.ProjectCreate.Value,
-			evergreen.PermissionDistroCreate:  evergreen.DistroCreate.Value,
-			evergreen.PermissionRoleModify:    evergreen.RoleModify.Value,
+			evergreen.PermissionAdminSettings:     evergreen.AdminSettingsEdit.Value,
+			evergreen.PermissionProjectCreate:     evergreen.ProjectCreate.Value,
+			evergreen.PermissionDistroCreate:      evergreen.DistroCreate.Value,
+			evergreen.PermissionRoleModify:        evergreen.RoleModify.Value,
+			evergreen.PermissionNotificationsSend: evergreen.NotificationsSend.Value,
 		},
 	}
 	err = roleManager.UpdateRole(t.Context(), superUserRole)
@@ -523,7 +549,7 @@ func escapeGQLQuery(in string) string {
 
 // setupDBIndexes ensures that the indexes required for the tests are created.
 func setupDBIndexes() error {
-	if err := db.EnsureIndex(host.Collection, mongo.IndexModel{Keys: host.DistroIdStatusIndex}); err != nil {
+	if err := db.EnsureIndex(host.Collection, mongo.IndexModel{Keys: host.StartedByStatusIndex}); err != nil {
 		return errors.Wrap(err, "setting up host collection indexes")
 	}
 	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: model.TaskHistoryIndex}); err != nil {
@@ -620,6 +646,13 @@ func directorySpecificTestSetup(t *testing.T, state AtomicGraphQLState) {
 		"mutation/spawnVolume":          {spawnTestHostAndVolume, addSubnets},
 		"mutation/updateVolume":         {spawnTestHostAndVolume},
 		"mutation/schedulePatch":        {persistTestSettings},
+		"mutation/quarantineTest":       {setupQuarantineTestMutation},
+		"mutation/unquarantineTest":     {setupQuarantineTestMutation},
+		"mutation/quarantineTask":       {setupQuarantineTaskMutation},
+		"mutation/unquarantineTask":     {setupQuarantineTaskMutation},
+		"mutation/quarantineVariant":    {setupQuarantineVariantMutation},
+		"mutation/unquarantineVariant":  {setupQuarantineVariantMutation},
+		"query/variantQuarantineStatus": {setupVariantQuarantineStatusQuery},
 		"distro/availableRegions":       {setupEnvironmentSettings},
 	}
 	if m[state.Directory] != nil {
@@ -633,7 +666,14 @@ func directorySpecificTestCleanup(t *testing.T, directory string) {
 	type cleanupFn func(*testing.T)
 	// Map the directory name to the test cleanup function
 	m := map[string][]cleanupFn{
-		"mutation/spawnVolume": {clearSubnets},
+		"mutation/spawnVolume":          {clearSubnets},
+		"mutation/quarantineTest":       {teardownQuarantineTestMutation},
+		"mutation/unquarantineTest":     {teardownQuarantineTestMutation},
+		"mutation/quarantineTask":       {teardownQuarantineTestMutation},
+		"mutation/unquarantineTask":     {teardownQuarantineTestMutation},
+		"mutation/quarantineVariant":    {teardownQuarantineTestMutation},
+		"mutation/unquarantineVariant":  {teardownQuarantineTestMutation},
+		"query/variantQuarantineStatus": {teardownQuarantineTestMutation},
 	}
 	if m[directory] != nil {
 		for _, exec := range m[directory] {
@@ -666,11 +706,12 @@ func spawnTestHostAndVolume(t *testing.T) {
 	}
 	require.NoError(t, mountedVolume.Insert(t.Context()))
 	h := host.Host{
-		Id:     "i-1104943f",
-		Host:   "i-1104943f",
-		User:   adminUser,
-		Secret: "",
-		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		Id:        "i-1104943f",
+		Host:      "i-1104943f",
+		User:      adminUser,
+		StartedBy: adminUser,
+		Secret:    "",
+		Tag:       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Distro: distro.Distro{
 			Id: "i-1104943f",
 			Aliases: []string{
@@ -725,4 +766,134 @@ func setupEnvironmentSettings(t *testing.T) {
 		"eu-west-1",
 		"ap-southeast-2",
 	}
+}
+
+var (
+	quarantineMutationTSSMock        *httptest.Server
+	quarantineMutationOriginalTSSURL string
+)
+
+func setupQuarantineTestMutation(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{}"))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
+
+	tsk := &task.Task{
+		Id:             "quarantine_target",
+		Project:        "sandbox_project_id",
+		BuildVariant:   "ubuntu",
+		DisplayName:    "my_task",
+		Status:         evergreen.TaskSucceeded,
+		HasTestResults: true,
+		TaskOutputInfo: &task.TaskOutput{
+			TestResults: task.TestResultOutput{Version: task.TestResultServiceLocal},
+		},
+	}
+	require.NoError(t, tsk.Insert(t.Context()))
+
+	tr := testresult.TestResult{
+		TaskID:         tsk.Id,
+		TestName:       "TestFoo",
+		Status:         evergreen.TestSucceededStatus,
+		TestStartTime:  time.Now().Add(-time.Hour),
+		TaskCreateTime: time.Now().Add(-time.Hour),
+		TestEndTime:    time.Now(),
+	}
+	svc := task.NewLocalService(evergreen.GetEnvironment())
+	require.NoError(t, svc.AppendTestResultMetadata(
+		resultTestutil.MakeAppendTestResultMetadataReq(t.Context(), []testresult.TestResult{tr}, tsk.Id),
+	))
+}
+
+func teardownQuarantineTestMutation(t *testing.T) {
+	if quarantineMutationTSSMock != nil {
+		quarantineMutationTSSMock.Close()
+		quarantineMutationTSSMock = nil
+	}
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationOriginalTSSURL
+}
+
+func setupQuarantineTaskMutation(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	var quarantined atomic.Bool
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, data.TransitionTaskEndpoint) {
+			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+		if strings.Contains(r.URL.Path, data.GetVariantStateEndpoint) {
+			state := "stable"
+			if quarantined.Load() {
+				state = "manually_quarantined"
+			}
+			_, _ = fmt.Fprintf(w, `{"my_task":{"task_name":"my_task","test_stats":{"TestFoo":{"state":"%s"}}}}`, state)
+			return
+		}
+		_, _ = w.Write([]byte("{}"))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
+
+	tsk := &task.Task{
+		Id:           "quarantine_target",
+		Project:      "sandbox_project_id",
+		BuildVariant: "ubuntu",
+		DisplayName:  "my_task",
+		Status:       evergreen.TaskSucceeded,
+	}
+	require.NoError(t, tsk.Insert(t.Context()))
+}
+
+func setupQuarantineVariantMutation(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	var quarantined atomic.Bool
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if strings.Contains(r.URL.Path, data.TransitionVariantEndpoint) {
+			quarantined.Store(r.URL.Query().Get("is_manually_quarantined") == "true")
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+		if strings.Contains(r.URL.Path, data.GetVariantStateEndpoint) {
+			state := "stable"
+			if quarantined.Load() {
+				state = "manually_quarantined"
+			}
+			_, _ = fmt.Fprintf(w, `{"my_task":{"task_name":"my_task","test_stats":{"TestFoo":{"state":"%s"}}}}`, state)
+			return
+		}
+		_, _ = w.Write([]byte("{}"))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
+}
+
+func setupVariantQuarantineStatusQuery(t *testing.T) {
+	quarantineMutationOriginalTSSURL = evergreen.GetEnvironment().Settings().TestSelection.URL
+	quarantineMutationTSSMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"task_a": {
+				"task_name": "task_a",
+				"test_stats": {
+					"test_1": {"state": "manually_quarantined"},
+					"test_2": {"state": "stable"}
+				}
+			},
+			"task_b": {
+				"task_name": "task_b",
+				"test_stats": {
+					"test_3": {"state": "stable", "override_state": "manually_quarantined"}
+				}
+			}
+		}`))
+	}))
+	evergreen.GetEnvironment().Settings().TestSelection.URL = quarantineMutationTSSMock.URL
 }

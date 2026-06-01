@@ -15,7 +15,7 @@ import (
 
 // EndTask marks the task as finished with the given status
 func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "started EndTask",
 		"task_id": taskData.ID,
 	})
@@ -33,7 +33,7 @@ func (c *hostCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	if err = utility.ReadJSON(resp.Body, taskEndResp); err != nil {
 		return nil, errors.Wrap(err, "reading end task reply from response")
 	}
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "finished EndTask",
 		"task_id": taskData.ID,
 	})

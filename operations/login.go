@@ -11,6 +11,12 @@ func Login() cli.Command {
 	return cli.Command{
 		Name:  "login",
 		Usage: "authenticate the CLI with evergreen",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  noBrowserFlagName,
+				Usage: "authenticate without opening a browser. Saves it to your configuration file",
+			},
+		},
 		Action: func(c *cli.Context) error {
 			if _, err := login(c); err != nil {
 				return errors.Wrap(err, "logging in")
@@ -30,6 +36,12 @@ func login(c *cli.Context) (*ClientSettings, error) {
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading configuration")
+	}
+	if c.Bool(noBrowserFlagName) {
+		conf.OAuth.DoNotUseBrowser = true
+		if err := conf.Write(""); err != nil {
+			return nil, errors.Wrap(err, "saving configuration")
+		}
 	}
 
 	if err = conf.SetOAuthToken(ctx); err != nil {

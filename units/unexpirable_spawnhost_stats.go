@@ -68,7 +68,7 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 
 	stats := j.getStats(hosts)
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":           "unexpirable spawn host stats",
 		"job_id":            j.ID(),
 		"total_uptime_secs": stats.totalUptime.Seconds(),
@@ -76,7 +76,7 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 	})
 
 	for distroID, uptimeSecs := range stats.uptimeSecsByDistro {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":     "unexpirable spawn host stats by distro",
 			"job_id":      j.ID(),
 			"distro":      distroID,
@@ -85,7 +85,7 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 		})
 	}
 	for instanceType, uptimeSecs := range stats.uptimeSecsByInstanceType {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":       "unexpirable spawn host stats by instance type",
 			"job_id":        j.ID(),
 			"instance_type": instanceType,

@@ -622,7 +622,7 @@ func (d *Distro) GetRegionsList(allowedRegions []string) []string {
 	for _, doc := range d.ProviderSettingsList {
 		region, ok := doc.Lookup("region").StringValueOK()
 		if !ok {
-			grip.Debug(message.Fields{
+			grip.Debug(context.Background(), message.Fields{
 				"message":  "provider settings list missing region",
 				"distro":   d.Id,
 				"settings": doc,
@@ -682,8 +682,9 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		catcher.Errorf("'%s' is not a valid host allocator version", resolved.Version)
 	}
 
-	// If release mode is enabled, multiply the distro max hosts by this factor.
-	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.DistroMaxHostsFactor > 0 {
+	// If release mode is enabled and the distro supports auto-tuning, multiply the distro max hosts by this factor.
+	// If it doesn't, we should assume that the distro has set its maximum hosts very intentionally.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.DistroMaxHostsFactor > 0 && d.HostAllocatorSettings.AutoTuneMaximumHosts {
 		resolved.MaximumHosts = int(math.Ceil(float64(resolved.MaximumHosts) * s.ReleaseMode.DistroMaxHostsFactor))
 	}
 

@@ -76,15 +76,18 @@ type Mock struct {
 
 	ReportS3UsageShouldFail bool
 	ReportedS3Usage         s3usage.S3Usage
-	AttachedFiles           map[string][]*artifact.File
-	LogID                   string
-	LocalTestResults        []testresult.TestResult
-	HasTestResults          bool
-	ResultsFailed           bool
-	TestResultStats         testresult.TaskTestResultsStats
-	FailedTestSample        []string
-	TestLogs                []*testlog.TestLog
-	TestLogCount            int
+
+	ReportHighExecTimeoutShouldFail bool
+	ReportedHighExecTimeoutSecs     int
+	AttachedFiles                   map[string][]*artifact.File
+	LogID                           string
+	LocalTestResults                []testresult.TestResult
+	HasTestResults                  bool
+	ResultsFailed                   bool
+	TestResultStats                 testresult.TaskTestResultsStats
+	FailedTestSample                []string
+	TestLogs                        []*testlog.TestLog
+	TestLogCount                    int
 
 	taskLogs   map[string][]log.LogLine
 	PatchFiles map[string]string
@@ -244,7 +247,7 @@ func (c *Mock) GetProject(ctx context.Context, td TaskData) (*serviceModel.Proje
 
 	data, err = os.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
-		grip.Error(err)
+		grip.Error(ctx, err)
 	}
 	proj := &serviceModel.Project{}
 	_, err = serviceModel.LoadProjectInto(ctx, data, nil, "", proj)
@@ -465,6 +468,14 @@ func (c *Mock) ReportS3Usage(ctx context.Context, td TaskData, usage s3usage.S3U
 	return nil
 }
 
+func (c *Mock) ReportHighExecTimeout(_ context.Context, _ TaskData, execTimeoutSecs int) error {
+	if c.ReportHighExecTimeoutShouldFail {
+		return errors.New("reporting high exec timeout")
+	}
+	c.ReportedHighExecTimeoutSecs = execTimeoutSecs
+	return nil
+}
+
 func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchModel.Parameter, taskData TaskData) error {
 	c.DownstreamParams = downstreamParams
 	return nil
@@ -599,7 +610,7 @@ func newMockSender(name string, appendLine func(log.LogLine) error) *mockSender 
 	}
 }
 
-func (s *mockSender) Send(m message.Composer) {
+func (s *mockSender) Send(_ context.Context, m message.Composer) {
 	ts := time.Now().UnixNano()
 
 	if !s.Level().ShouldLog(m) {

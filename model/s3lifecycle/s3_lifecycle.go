@@ -107,7 +107,7 @@ func DiscoverAdminManagedBuckets(ctx context.Context, settings *evergreen.Settin
 func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, client cloud.S3LifecycleClient) bool {
 	existingRules, err := FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "error checking for existing bucket lifecycle rules",
 			"bucket":  bucketName,
 		}))
@@ -118,7 +118,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		return false
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message": "discovering lifecycle rules for new bucket",
 		"bucket":  bucketName,
 		"project": projectID,
@@ -126,7 +126,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 
 	awsRules, err := client.GetBucketLifecycleConfiguration(ctx, bucketName, region, roleARN, externalID)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "failed to discover bucket lifecycle rules",
 			"bucket":  bucketName,
 			"project": projectID,
@@ -151,7 +151,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		}
 
 		if err := doc.Upsert(ctx); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
+			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to cache lifecycle rule",
 				"bucket":  bucketName,
 				"prefix":  awsRule.Prefix,
@@ -159,7 +159,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		}
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":     "successfully cached lifecycle rules for bucket",
 		"bucket":      bucketName,
 		"rules_count": len(awsRules),
@@ -276,6 +276,11 @@ func FindAllRulesForBucket(ctx context.Context, bucketName string) ([]S3Lifecycl
 	}
 
 	return findS3LifecycleRules(ctx, bson.M{BucketNameKey: bucketName})
+}
+
+// FindAllRules retrieves all S3 lifecycle rules across all buckets.
+func FindAllRules(ctx context.Context) ([]S3LifecycleRuleDoc, error) {
+	return findS3LifecycleRules(ctx, bson.M{})
 }
 
 // FindDistinctBucketNames returns all unique bucket names for the given bucket type.

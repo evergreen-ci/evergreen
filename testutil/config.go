@@ -27,7 +27,7 @@ const (
 
 func init() {
 	if ExecutionEnvironmentType != "test" {
-		grip.Alert(message.Fields{
+		grip.Alert(context.Background(), message.Fields{
 			"op":      "called init() in testutil for production code.",
 			"test.v":  flag.Lookup("test.v"),
 			"v":       flag.Lookup("v"),
@@ -46,7 +46,7 @@ func Setup() {
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
 		env, err := evergreen.NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
 
-		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+		grip.EmergencyPanic(ctx, message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
 		}))
@@ -59,7 +59,7 @@ func Setup() {
 			SSMClient:      fakeparameter.NewFakeSSMClient(),
 			DB:             env.DB(),
 		})
-		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+		grip.EmergencyPanic(ctx, message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment's parameter manager",
 		}))
 
@@ -189,6 +189,9 @@ func MockConfig() *evergreen.Settings {
 		OktaServiceConfig: evergreen.OktaServiceConfig{
 			ClientID:     "service_id",
 			ClientSecret: "service_secret",
+			Scopes:       []string{"scope1", "scope2"},
+			Audience:     "audience",
+			Issuer:       "issuer",
 		},
 		AWSInstanceRole: "role",
 		Banner:          "banner",
@@ -198,13 +201,19 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			RetryFailedLogMoveLookbackMonths: 2,
+			RetryFailedLogMoveMaxJobsPerRun:  50,
 			TestResultsBucket: evergreen.BucketConfig{
-				Name: "test_results",
-				Type: evergreen.BucketTypeS3,
+				Name:              "test_results",
+				Type:              evergreen.BucketTypeS3,
+				DBName:            "test_results_db",
+				TestResultsPrefix: "tr/prefix/",
+				RoleARN:           "arn:aws:iam::123456789012:role/test-results",
 			},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",
+				Bucket: "credentials_bucket",
 			},
 		},
 		ConfigDir: "cfg_dir",
@@ -225,6 +234,10 @@ func MockConfig() *evergreen.Settings {
 		},
 		DebugSpawnHosts: evergreen.DebugSpawnHostsConfig{
 			SetupScript: "echo 'test setup script'",
+		},
+		Diagnostics: evergreen.DiagnosticsConfig{
+			S3BucketName: "diagnostics-bucket",
+			S3Prefix:     "pprof",
 		},
 		DomainName: "example.com",
 		Expansions: map[string]string{"k2": "v2"},

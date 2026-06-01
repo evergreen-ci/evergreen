@@ -15,7 +15,9 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -2881,92 +2883,82 @@ func TestValidateAliasCoverage(t *testing.T) {
 	}
 }
 
-func TestValidateCheckRuns(t *testing.T) {
-	for testName, testCase := range map[string]func(*testing.T, *model.Project){
-		"NoPRAliases": func(t *testing.T, p *model.Project) {
-			alias1 := model.ProjectAlias{
-				ID:          mgobson.NewObjectId(),
-				Alias:       evergreen.CommitQueueAlias,
-				VariantTags: []string{"notTheVariantTag"},
-				TaskTags:    []string{"taskTag1", "taskTag2"},
-				Source:      model.AliasSourceConfig,
-			}
-			alias2 := model.ProjectAlias{
-				ID:      mgobson.NewObjectId(),
-				Alias:   evergreen.CommitQueueAlias,
-				Variant: "nonsense",
-				Task:    ".*",
-				Source:  model.AliasSourceConfig,
-			}
+func TestValidateGitHubAppCheckRuns(t *testing.T) {
+	testutil.Setup()
+	require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
 
-			errs := validateCheckRuns(p, model.ProjectAliases{alias1, alias2})
-			require.Empty(t, errs)
-		},
-		"CheckRunsBelowLimit": func(t *testing.T, p *model.Project) {
-			alias1 := model.ProjectAlias{
-				ID:      mgobson.NewObjectId(),
-				Alias:   evergreen.GithubPRAlias,
-				Variant: "variant1",
-				Task:    ".*",
-				Source:  model.AliasSourceConfig,
-			}
-
-			errs := validateCheckRuns(p, model.ProjectAliases{alias1})
-			require.Empty(t, errs)
-		},
-		"CheckRunsAboveLimit": func(t *testing.T, p *model.Project) {
-			alias1 := model.ProjectAlias{
-				ID:      mgobson.NewObjectId(),
-				Alias:   evergreen.GithubPRAlias,
-				Variant: ".*",
-				Task:    ".*",
-				Source:  model.AliasSourceConfig,
-			}
-
-			errs := validateCheckRuns(p, model.ProjectAliases{alias1})
-			require.Len(t, errs, 1)
-			assert.Equal(t, Warning, errs[0].Level)
-			assert.Contains(t, errs[0].Message, "total number of checkRuns (2) exceeds maximum limit (1)")
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			p := &model.Project{
-				Tasks: []model.ProjectTask{
+	projectWithCheckRuns := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "bv",
+				Tasks: []model.BuildVariantTaskUnit{
 					{
-						Name: "myTask",
-					},
-					{
-						Name: "myOtherTask",
+						Name:           "task",
+						CreateCheckRun: &model.CheckRun{PathToOutputs: "output.json"},
 					},
 				},
-				BuildVariants: model.BuildVariants{
-					{
-						Name: "variant1",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name: "myTask",
-								CreateCheckRun: &model.CheckRun{
-									PathToOutputs: "myPath",
-								},
-							},
-						},
-					},
-					{
-						Name: "variant2",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name: "myOtherTask",
-								CreateCheckRun: &model.CheckRun{
-									PathToOutputs: "myPath",
-								},
-							},
-						},
-					},
-				},
-			}
-			testCase(t, p)
-		})
+			},
+		},
 	}
+
+	// Build a project with enough check runs to exceed the threshold (must be strictly greater than).
+	manyCheckRunTasks := make([]model.BuildVariantTaskUnit, model.CheckRunGitHubAppAuthThreshold+1)
+	for i := range manyCheckRunTasks {
+		manyCheckRunTasks[i] = model.BuildVariantTaskUnit{
+			Name:           fmt.Sprintf("task%d", i),
+			CreateCheckRun: &model.CheckRun{PathToOutputs: "output.json"},
+		}
+	}
+	projectWithManyCheckRuns := &model.Project{
+		BuildVariants: []model.BuildVariant{
+			{Name: "bv", Tasks: manyCheckRunTasks},
+		},
+	}
+
+	projectWithoutCheckRuns := &model.Project{}
+
+	ref := &model.ProjectRef{Id: "my-project"}
+	settings := &evergreen.Settings{}
+
+	t.Run("NoCheckRunsNoAppAuth", func(t *testing.T) {
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithoutCheckRuns, ref, false)
+		assert.Empty(t, errs)
+	})
+	t.Run("FewCheckRunsNoAppAuthShouldNotWarn", func(t *testing.T) {
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithCheckRuns, ref, false)
+		assert.Empty(t, errs)
+	})
+	t.Run("ManyCheckRunsNoAppAuthShouldWarn", func(t *testing.T) {
+		errs := validateGitHubAppCheckRuns(t.Context(), settings, projectWithManyCheckRuns, ref, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "exceeds maximum limit without a configured GitHub App")
+	})
+	t.Run("CheckRunsWithAppAuth", func(t *testing.T) {
+		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
+			Id:    ref.Id,
+			AppID: 12345,
+		}))
+		defer func() {
+			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+		}()
+		settingsWithLimit := &evergreen.Settings{GitHubCheckRun: evergreen.GitHubCheckRunConfig{CheckRunLimit: 100}}
+		errs := validateGitHubAppCheckRuns(t.Context(), settingsWithLimit, projectWithCheckRuns, ref, false)
+		assert.Empty(t, errs)
+	})
+	t.Run("CheckRunsWithRepoAppAuth", func(t *testing.T) {
+		refWithRepo := &model.ProjectRef{Id: "my-project", RepoRefId: "my-repo"}
+		require.NoError(t, db.Insert(t.Context(), githubapp.GitHubAppAuthCollection, &githubapp.GithubAppAuth{
+			Id:    refWithRepo.RepoRefId,
+			AppID: 12345,
+		}))
+		defer func() {
+			require.NoError(t, db.Clear(githubapp.GitHubAppAuthCollection))
+		}()
+		settingsWithLimit := &evergreen.Settings{GitHubCheckRun: evergreen.GitHubCheckRunConfig{CheckRunLimit: 100}}
+		errs := validateGitHubAppCheckRuns(t.Context(), settingsWithLimit, projectWithCheckRuns, refWithRepo, false)
+		assert.Empty(t, errs)
+	})
 }
 
 func TestValidateProjectAliases(t *testing.T) {

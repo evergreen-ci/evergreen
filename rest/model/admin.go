@@ -25,6 +25,7 @@ func NewConfigModel() *APIAdminSettings {
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
 		Cost:                &APICostConfig{},
+		Diagnostics:         &APIDiagnosticsConfig{},
 		FWS:                 &APIFWSConfig{},
 		Graphite:            &APIGraphiteConfig{},
 		HostInit:            &APIHostInitConfig{},
@@ -74,6 +75,7 @@ type APIAdminSettings struct {
 	ConfigDir               *string                       `json:"configdir,omitempty"`
 	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
 	DebugSpawnHosts         *APIDebugSpawnHostsConfig     `json:"debug_spawn_hosts,omitempty"`
+	Diagnostics             *APIDiagnosticsConfig         `json:"diagnostics,omitempty"`
 	DomainName              *string                       `json:"domain_name,omitempty"`
 	Expansions              map[string]string             `json:"expansions,omitempty"`
 	Cost                    *APICostConfig                `json:"cost,omitempty"`
@@ -693,8 +695,11 @@ func (a *APIAuthConfig) ToService() (any, error) {
 }
 
 type APIOktaServiceConfig struct {
-	ClientID     *string `json:"client_id"`
-	ClientSecret *string `json:"client_secret"`
+	ClientID     *string  `json:"client_id"`
+	ClientSecret *string  `json:"client_secret"`
+	Scopes       []string `json:"scopes"`
+	Audience     *string  `json:"audience"`
+	Issuer       *string  `json:"issuer"`
 }
 
 func (a *APIOktaServiceConfig) BuildFromService(h any) error {
@@ -702,6 +707,9 @@ func (a *APIOktaServiceConfig) BuildFromService(h any) error {
 	case evergreen.OktaServiceConfig:
 		a.ClientID = utility.ToStringPtr(v.ClientID)
 		a.ClientSecret = utility.ToStringPtr(v.ClientSecret)
+		a.Scopes = v.Scopes
+		a.Audience = utility.ToStringPtr(v.Audience)
+		a.Issuer = utility.ToStringPtr(v.Issuer)
 	default:
 		return errors.Errorf("programmatic error: expected Okta service config but got type %T", h)
 	}
@@ -712,17 +720,22 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 	return evergreen.OktaServiceConfig{
 		ClientID:     utility.FromStringPtr(a.ClientID),
 		ClientSecret: utility.FromStringPtr(a.ClientSecret),
+		Scopes:       a.Scopes,
+		Audience:     utility.FromStringPtr(a.Audience),
+		Issuer:       utility.FromStringPtr(a.Issuer),
 	}, nil
 }
 
 type APIBucketsConfig struct {
-	LogBucket              APIBucketConfig  `json:"log_bucket"`
-	LogBucketLongRetention APIBucketConfig  `json:"log_bucket_long_retention"`
-	LogBucketFailedTasks   APIBucketConfig  `json:"log_bucket_failed_tasks"`
-	LongRetentionProjects  []string         `json:"long_retention_projects"`
-	TestResultsBucket      APIBucketConfig  `json:"test_results_bucket"`
-	InternalBuckets        []string         `json:"internal_buckets"`
-	Credentials            APIS3Credentials `json:"credentials"`
+	LogBucket                        APIBucketConfig  `json:"log_bucket"`
+	LogBucketLongRetention           APIBucketConfig  `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks             APIBucketConfig  `json:"log_bucket_failed_tasks"`
+	LongRetentionProjects            []string         `json:"long_retention_projects"`
+	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
+	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
+	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
+	InternalBuckets                  []string         `json:"internal_buckets"`
+	Credentials                      APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -762,6 +775,8 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
+		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackMonths)
+		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
 
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
 		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
@@ -808,7 +823,9 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
 			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
-		LongRetentionProjects: a.LongRetentionProjects,
+		LongRetentionProjects:            a.LongRetentionProjects,
+		RetryFailedLogMoveLookbackMonths: utility.FromIntPtr(a.RetryFailedLogMoveLookbackMonths),
+		RetryFailedLogMoveMaxJobsPerRun:  utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket: evergreen.BucketConfig{
 			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
 			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
@@ -2050,6 +2067,7 @@ type APIServiceFlags struct {
 	S3LifecycleSyncDisabled            bool `json:"s3_lifecycle_sync_disabled"`
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
+	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2058,6 +2076,8 @@ type APIServiceFlags struct {
 	EmailNotificationsDisabled   bool `json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
+
+	BackgroundCommandFailureEnabled bool `json:"background_command_failure_enabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2502,6 +2522,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.S3LifecycleSyncDisabled = v.S3LifecycleSyncDisabled
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
+		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
+		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2548,6 +2570,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		S3LifecycleSyncDisabled:            as.S3LifecycleSyncDisabled,
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
+		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
+		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 	}, nil
 }
 
@@ -2823,6 +2847,7 @@ type APITracerSettings struct {
 	CollectorEndpoint         *string `json:"collector_endpoint"`
 	CollectorInternalEndpoint *string `json:"collector_internal_endpoint"`
 	CollectorAPIKey           *string `json:"collector_api_key"`
+	TraceURLTemplate          *string `json:"trace_url_template"`
 }
 
 func (c *APITracerSettings) BuildFromService(h any) error {
@@ -2832,6 +2857,7 @@ func (c *APITracerSettings) BuildFromService(h any) error {
 		c.CollectorEndpoint = &v.CollectorEndpoint
 		c.CollectorInternalEndpoint = &v.CollectorInternalEndpoint
 		c.CollectorAPIKey = &v.CollectorAPIKey
+		c.TraceURLTemplate = &v.TraceURLTemplate
 	default:
 		return errors.Errorf("programmatic error: expected tracer config but got type %T", h)
 	}
@@ -2844,9 +2870,33 @@ func (c *APITracerSettings) ToService() (any, error) {
 		CollectorEndpoint:         utility.FromStringPtr(c.CollectorEndpoint),
 		CollectorInternalEndpoint: utility.FromStringPtr(c.CollectorInternalEndpoint),
 		CollectorAPIKey:           utility.FromStringPtr(c.CollectorAPIKey),
+		TraceURLTemplate:          utility.FromStringPtr(c.TraceURLTemplate),
 	}
 
 	return config, nil
+}
+
+type APIDiagnosticsConfig struct {
+	S3BucketName *string `json:"s3_bucket_name"`
+	S3Prefix     *string `json:"s3_prefix"`
+}
+
+func (c *APIDiagnosticsConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.DiagnosticsConfig:
+		c.S3BucketName = utility.ToStringPtr(v.S3BucketName)
+		c.S3Prefix = utility.ToStringPtr(v.S3Prefix)
+	default:
+		return errors.Errorf("programmatic error: expected DiagnosticsConfig but got type %T", h)
+	}
+	return nil
+}
+
+func (c *APIDiagnosticsConfig) ToService() (any, error) {
+	return evergreen.DiagnosticsConfig{
+		S3BucketName: utility.FromStringPtr(c.S3BucketName),
+		S3Prefix:     utility.FromStringPtr(c.S3Prefix),
+	}, nil
 }
 
 type APIGitHubCheckRunConfig struct {
@@ -3144,9 +3194,12 @@ func (a *APIS3UploadCostConfig) ToService() (any, error) {
 }
 
 type APIS3StorageCostConfig struct {
-	StandardStorageCostDiscount float64 `json:"standard_storage_cost_discount"`
-	IAStorageCostDiscount       float64 `json:"i_a_storage_cost_discount"`
-	ArchiveStorageCostDiscount  float64 `json:"archive_storage_cost_discount"`
+	StandardStorageCostDiscount              float64  `json:"standard_storage_cost_discount"`
+	IAStorageCostDiscount                    float64  `json:"i_a_storage_cost_discount"`
+	ArchiveStorageCostDiscount               float64  `json:"archive_storage_cost_discount"`
+	DefaultMaxArtifactExpirationDays         int      `json:"default_max_artifact_expiration_days"`
+	DevprodOwnedAWSAccountIds                []string `json:"devprod_owned_aws_account_ids"`
+	ArtifactAwsAccountsWithoutLifecycleRules []string `json:"artifact_aws_accounts_without_lifecycle_rules"`
 }
 
 func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
@@ -3155,6 +3208,9 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 		a.StandardStorageCostDiscount = v.StandardStorageCostDiscount
 		a.IAStorageCostDiscount = v.IAStorageCostDiscount
 		a.ArchiveStorageCostDiscount = v.ArchiveStorageCostDiscount
+		a.DefaultMaxArtifactExpirationDays = v.DefaultMaxArtifactExpirationDays
+		a.DevprodOwnedAWSAccountIds = v.DevprodOwnedAWSAccountIDs
+		a.ArtifactAwsAccountsWithoutLifecycleRules = v.ArtifactAWSAccountsWithoutLifecycleRules
 		return nil
 	default:
 		return errors.Errorf("incorrect type %T", v)
@@ -3163,9 +3219,12 @@ func (a *APIS3StorageCostConfig) BuildFromService(h any) error {
 
 func (a *APIS3StorageCostConfig) ToService() (any, error) {
 	return evergreen.S3StorageCostConfig{
-		StandardStorageCostDiscount: a.StandardStorageCostDiscount,
-		IAStorageCostDiscount:       a.IAStorageCostDiscount,
-		ArchiveStorageCostDiscount:  a.ArchiveStorageCostDiscount,
+		StandardStorageCostDiscount:              a.StandardStorageCostDiscount,
+		IAStorageCostDiscount:                    a.IAStorageCostDiscount,
+		ArchiveStorageCostDiscount:               a.ArchiveStorageCostDiscount,
+		DefaultMaxArtifactExpirationDays:         a.DefaultMaxArtifactExpirationDays,
+		DevprodOwnedAWSAccountIDs:                a.DevprodOwnedAWSAccountIds,
+		ArtifactAWSAccountsWithoutLifecycleRules: a.ArtifactAwsAccountsWithoutLifecycleRules,
 	}, nil
 }
 

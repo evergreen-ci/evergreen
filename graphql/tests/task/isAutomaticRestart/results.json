@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "query_file": "is_automatic_restart.graphql",
+      "result": {
+        "data": {
+          "automaticRestartTask": {
+            "isAutomaticRestart": true
+          },
+          "regularTask": {
+            "isAutomaticRestart": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -55,6 +55,8 @@ should be part of a Guild, as this is refreshed every day and better
 supports employees moving teams. Guilds can also dynamically add users
 who match certain characteristics.
 
+To verify what permissions have been granted to a specific user, use the [permission-details API endpoint](../API/REST-V2-Usage#tag/users/paths/~1users~1{user_id}~1permission-details/get).
+
 ## Project Settings
 
 The Project Settings file displays information about the Project itself,
@@ -128,6 +130,7 @@ while still allowing for other kinds of versions (periodic builds, patches, etc)
 
 Additionally, admins can **Force Repotracker Run** to check for new commits if needed
 (Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
+(Users for the project can also trigger the repotracker via an undocumented rest route.)
 
 The repotracker does not guarantee every commit runs their corresponding version, please see [run every mainline commit](#run-every-mainline-commit) for more details.
 
@@ -163,9 +166,12 @@ file via an expansion.
 Options:
 
 - Checking **private** makes the variable redacted so the value won't be
-  visible on the projects page or by API routes. Additionally, private
-  variables will be redacted from task logs. After saving them, private
-  variables cannot be retrieved.
+  visible on the projects page or by API routes. Note that private
+  variables may still be accessible on [debug spawn hosts](../Hosts/Debug-Spawn-Hosts.md) by users,
+  since these hosts run tasks on behalf of the user, which requires fetching expansions as part of that
+  process. For values that must not be accessible even on debug hosts, use **admin only** instead, as these will be restricted even on debug spawn hosts.
+  Additionally, private variables will be redacted from task logs. After
+  saving them, private variables cannot be retrieved.
 - Checking **admin only** restricts the variable so it is only available
   to tasks in mainline commits, periodic builds, or trigger versions, or
   to tasks activated by a project admin.
@@ -229,7 +235,7 @@ Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
 ### GitHub Pull Request Testing
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the GitHub "Pull Request Testing" tab.
 
 Enabling "Automated Testing" will have Evergreen automatically create a patch for
 each pull request opened in the repository as well as each subsequent
@@ -270,7 +276,7 @@ on your project's branch you want to accept as the merge base via the 'Oldest Al
 
 ### GitHub Commit Checks
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the GitHub "Commit Checks" tab.
 
 This supports GitHub checks on commits (i.e. to be visible at
 `https://github.com/<owner>/<repo>/commits`). Task/variant
@@ -279,7 +285,7 @@ the status of those tasks on the mainline commit version.
 
 ### Run Every Mainline Commit
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the "General Settings" tab.
 
 Although a version gets created for every commit on a project with the repotracker, it does not necessarily activate each version. Evergreen runs a job periodically that activates the latest repotracker version. This is to avoid running unnecessary versions if there are a lot of commits in a short period of time. If you would like to activate every version created by the repotracker, you can enable "Run Every Mainline Commit". This will ensure that every version created by the repotracker gets activated and runs its tasks.
 
@@ -291,7 +297,7 @@ Although a version gets created for every commit on a project with the repotrack
 
 ### Triggering Versions With Git Tags
 
-Definitions for this section exist under the "GitHub" tab.
+Definitions for this section exist under the GitHub "Git Tags" tab.
 
 This allows for versions to be created automatically from pushed git tags,
 and these versions will have the following properties:
@@ -535,7 +541,13 @@ performance of tasks and tests.
 
 ### Project-Level Notifications
 
-Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
+Project admins can subscribe to notifications for when some events happen within the project.
+
+Subscriptions defined at the repo level apply to all untracked branches and all branches that are attached to the repo.
+**These are merged with project-level subscriptions**, meaning users could receive duplicate notifications if both the repo and branch
+are subscribed to the same event.
+
+Admins can set up events when:
 
 - Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR,
   periodic build).
@@ -826,3 +838,19 @@ To enable test selection by default for all patch tasks, go to "Test Selection" 
 enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
 patch tasks by default. This default can still be overridden by choosing specific variants/tasks in which to enable test
 selection from [the CLI](../CLI.md#test-selection).
+
+## GitHub App Settings
+
+Project and repo settings include a GitHub App Settings tab where you can save a GitHub App ID and private key. These
+credentials allow Evergreen to act on behalf of your GitHub App for certain features.
+
+![github_app_creds.png](../images/github_app_creds.png)
+
+Configuring a GitHub App is required or recommended for the following:
+
+- **[GitHub check runs](Github-Integrations#github-check-runs)**: Required to define more than 10 check runs in a
+  project. The app must have `checks:write` permission.
+- **[Dynamic GitHub access tokens](Github-Integrations#dynamic-github-access-tokens)**: Required to use the
+  `github.generate_token` command to generate short-lived GitHub tokens.
+- **[Included files](Project-Configuration-Files#include)**: Recommended. Using a GitHub App for included file
+  retrieval reduces pressure on shared GitHub API rate limits.

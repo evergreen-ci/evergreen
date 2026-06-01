@@ -18,6 +18,8 @@ import (
 )
 
 func Validate() cli.Command {
+	const yamlAnchorsFlagName = "yaml-anchors"
+
 	return cli.Command{
 		Name:  "validate",
 		Usage: "verify that an evergreen project config is valid",
@@ -33,14 +35,21 @@ func Validate() cli.Command {
 		}, cli.StringFlag{
 			Name:  joinFlagNames(projectFlagName, "p"),
 			Usage: "specify project identifier in order to run validation requiring project settings",
+		}, cli.BoolFlag{
+			Name:  yamlAnchorsFlagName,
+			Usage: "(BETA) enable cross-file YAML anchors in included files",
 		}),
 		Before: mergeBeforeFuncs(autoUpdateCLI, setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			confPath := c.Parent().String(ConfFlagName)
 			path := c.String(pathFlagName)
 			quiet := c.Bool(quietFlagName)
 			errorOnWarnings := c.Bool(errorOnWarningsFlagName)
 			projectID := c.String(projectFlagName)
+			enableAnchors := c.Bool(yamlAnchorsFlagName)
 			localModulePaths := c.StringSlice(localModulesFlagName)
 			localModuleMap, err := getLocalModulesFromInput(localModulePaths)
 			if err != nil {
@@ -54,9 +63,9 @@ func Validate() cli.Command {
 
 			if projectID == "" {
 				cwd, err := os.Getwd()
-				grip.Error(errors.Wrap(err, "getting current working directory"))
+				grip.Error(ctx, errors.Wrap(err, "getting current working directory"))
 				cwd, err = filepath.EvalSymlinks(cwd)
-				grip.Error(errors.Wrapf(err, "resolving symlinks for current working directory '%s'", cwd))
+				grip.Error(ctx, errors.Wrapf(err, "resolving symlinks for current working directory '%s'", cwd))
 				projectID = conf.FindDefaultProject(cwd, false)
 			}
 
@@ -72,12 +81,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID))
+					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
+			return validateFile(conf, path, quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID)
 		},
 	}
 }
@@ -95,8 +104,8 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
-	projectYaml, err := loadProjectYAML(path, quiet, errorOnWarnings, localModuleMap, projectID)
+func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings, enableAnchors bool, localModuleMap map[string]string, projectID string) error {
+	projectYaml, err := loadProjectYAML(path, quiet, errorOnWarnings, enableAnchors, localModuleMap, projectID)
 	if err != nil {
 		return err
 	}
@@ -105,7 +114,7 @@ func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool
 
 // loadProjectYAML reads and parses the project config file, performs local validation,
 // and returns the marshalled YAML bytes for remote validation.
-func loadProjectYAML(path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
+func loadProjectYAML(path string, quiet, errorOnWarnings, enableAnchors bool, localModuleMap map[string]string, projectID string) ([]byte, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading file '%s'", path)
@@ -113,14 +122,15 @@ func loadProjectYAML(path string, quiet, errorOnWarnings bool, localModuleMap ma
 	project := &model.Project{}
 	ctx := context.Background()
 	opts := &model.GetProjectOpts{
-		LocalModules: localModuleMap,
-		ReadFileFrom: model.ReadFromLocal,
+		LocalModules:      localModuleMap,
+		ReadFileFrom:      model.ReadFromLocal,
+		EnableYAMLAnchors: enableAnchors,
 	}
 	if !quiet {
 		opts.UnmarshalStrict = true
 	}
 	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project, projectID)
-	grip.Info(validationErrs)
+	grip.Info(ctx, validationErrs)
 	if validationErrs.Has(validator.Error) {
 		return nil, errors.Errorf("%s is an invalid configuration", path)
 	}
@@ -156,13 +166,13 @@ func validateProjectRemotely(conf *ClientSettings, projectYaml []byte, path stri
 		return errors.Wrapf(err, "validating project '%s'", projectID)
 	}
 
-	grip.Info(projErrors)
+	grip.Info(ctx, projErrors)
 	if projErrors.Has(validator.Error) || (errorOnWarnings && projErrors.Has(validator.Warning)) {
 		return errors.Errorf("%s is an invalid configuration", path)
 	} else if projErrors.Has(validator.Warning) {
-		grip.Infof("%s is valid with warnings", path)
+		grip.Infof(ctx, "%s is valid with warnings", path)
 	} else {
-		grip.Infof("%s is valid", path)
+		grip.Infof(ctx, "%s is valid", path)
 	}
 
 	return nil

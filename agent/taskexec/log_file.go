@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -18,6 +19,8 @@ const (
 	sessionSubDir = "session"
 	setupSubDir   = "setup"
 	outputLogFile = "output.log"
+
+	setupLogPath = "/tmp/debug-setup.log"
 )
 
 // logFile manages writing log lines to a local file.
@@ -104,7 +107,7 @@ type logManager struct {
 
 // newLogManager creates a log manager for either session or setup logs.
 func newLogManager(isSetupPhase bool) (*logManager, error) {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := util.GetUserHome()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting user home directory")
 	}
@@ -152,7 +155,7 @@ func (lm *logManager) Close() error {
 
 // ClearSessionLogs removes session log files (called when selecting a new task).
 func ClearSessionLogs() error {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := util.GetUserHome()
 	if err != nil {
 		return errors.Wrap(err, "getting user home directory")
 	}
@@ -163,20 +166,20 @@ func ClearSessionLogs() error {
 	return nil
 }
 
-// ReadAllLogs reads all lines from the output log file.
+// ReadAllLogs reads all lines from the output log file. When isSetup is true,
+// it reads from the setup script log at /tmp/debug-setup.log.
 func ReadAllLogs(isSetup bool) ([]string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting user home directory")
-	}
-
-	subDir := sessionSubDir
+	var path string
 	if isSetup {
-		subDir = setupSubDir
+		path = setupLogPath
+	} else {
+		homeDir, err := util.GetUserHome()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting user home directory")
+		}
+		path = filepath.Join(homeDir, logBaseDir, logSubDir, sessionSubDir, outputLogFile)
 	}
-	logDir := filepath.Join(homeDir, logBaseDir, logSubDir, subDir)
 
-	path := filepath.Join(logDir, outputLogFile)
 	lines, err := readLogFileLines(path)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/executor"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -31,7 +30,30 @@ var (
 	commandNameAttribute        = fmt.Sprintf("%s.command_name", commandsAttribute)
 	commandDisplayNameAttribute = fmt.Sprintf("%s.command_display_name", commandsAttribute)
 	functionNameAttribute       = fmt.Sprintf("%s.function_name", commandsAttribute)
+
+	backgroundCommandFailureAttribute      = fmt.Sprintf("%s.background_failure", commandsAttribute)
+	backgroundCommandFailureCountAttribute = fmt.Sprintf("%s.background_failure_count", commandsAttribute)
+	backgroundCommandFailuresAttribute     = fmt.Sprintf("%s.background_failures", commandsAttribute)
 )
+
+// drainBackgroundFailures consolidates the consume-and-log step shared by the two
+// task-level pass/fail decision points so they don't drift apart over time; the
+// call sites still own the divergent attribute target and failure status.
+func drainBackgroundFailures(ctx context.Context, ch <-chan error, taskLog grip.Journaler) (count int, msgs []string) {
+	if ch == nil {
+		return 0, nil
+	}
+	for {
+		select {
+		case bgErr := <-ch:
+			taskLog.Errorf(ctx, "Background command failed: %s", bgErr)
+			count++
+			msgs = append(msgs, bgErr.Error())
+		default:
+			return count, msgs
+		}
+	}
+}
 
 type runCommandsOptions struct {
 	// block is the name of the block that the command runs in.
@@ -80,7 +102,7 @@ func (a *Agent) runCommandsInBlock(ctx context.Context, tc *taskContext, cmdBloc
 			tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 		},
 		HandlePanic: func(panicErr error, originalErr error, op string) error {
-			return a.logPanic(tc, panicErr, originalErr, op)
+			return a.logPanic(ctx, tc, panicErr, originalErr, op)
 		},
 		RunCommandOrFunc: func(ctx context.Context, commandInfo model.PluginCommandConf, cmds []command.Command, block command.BlockType, canFailTask bool) error {
 			opts := runCommandsOptions{
@@ -117,17 +139,20 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		defer functionSpan.End()
 	}
 
+	// Captured before per-command shadowing so drain attributes land on a live span.
+	blockCtx := ctx
+
 	for _, cmd := range cmds {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "canceled while running command list")
 		}
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
-			tc.logger.Task().Infof("Skipping command %s on variant %s.", cmd.FullDisplayName(), tc.taskConfig.BuildVariant.Name)
+			tc.logger.Task().Infof(ctx, "Skipping command %s on variant %s.", cmd.FullDisplayName(), tc.taskConfig.BuildVariant.Name)
 			continue
 		}
 
-		tc.logger.Task().Infof("Running command %s.", cmd.FullDisplayName())
+		tc.logger.Task().Infof(ctx, "Running command %s.", cmd.FullDisplayName())
 
 		ctx, commandSpan := a.tracer.Start(ctx, cmd.Name(), trace.WithAttributes(
 			attribute.String(commandNameAttribute, cmd.Name()),
@@ -149,14 +174,26 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			commandSpan.End()
 			// Only retry on failure for non-merge queue tasks.
 			if cmd.RetryOnFailure() && !evergreen.IsGithubMergeQueueRequester(tc.taskConfig.Task.Requester) {
-				tc.logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
+				tc.logger.Task().Infof(ctx, "Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
 				if restartErr := a.comm.MarkFailedTaskToRestart(ctx, tc.task); restartErr != nil {
-					tc.logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
+					tc.logger.Task().Errorf(ctx, "Encountered error marking task to restart upon completion: %s", restartErr)
 				}
 			}
 			return errors.Wrap(err, "running command")
 		}
 		commandSpan.End()
+
+		// Anything reaching this channel must fail the task; continue_on_err filtering happens at the trigger.
+		count, msgs := drainBackgroundFailures(ctx, tc.backgroundFailures, tc.logger.Task())
+		if count > 0 {
+			span := trace.SpanFromContext(blockCtx)
+			span.SetAttributes(
+				attribute.Bool(backgroundCommandFailureAttribute, true),
+				attribute.Int(backgroundCommandFailureCountAttribute, count),
+				attribute.StringSlice(backgroundCommandFailuresAttribute, msgs),
+			)
+			return errors.New("background command failed")
+		}
 	}
 	return nil
 }
@@ -165,32 +202,11 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 // single sub-command within a function.
 func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmd command.Command, options runCommandsOptions) error {
-	prevExp := map[string]string{}
-	for key, val := range commandInfo.Vars {
-		prevVal := tc.taskConfig.Expansions.Get(key)
-		prevExp[key] = prevVal
-
-		newVal, err := tc.taskConfig.Expansions.ExpandString(val)
-		if err != nil {
-			return errors.Wrapf(err, "expanding '%s'", val)
-		}
-		tc.taskConfig.NewExpansions.Put(key, newVal)
+	cleanup, err := tc.taskConfig.ApplyFunctionVarsToExpansions(commandInfo.Vars, cmd.Name())
+	if err != nil {
+		return err
 	}
-	defer func() {
-		// This defer ensures that the function vars do not persist in the expansions after the function is over
-		// unless they were updated using expansions.update
-		if cmd.Name() == "expansions.update" {
-			updatedExpansions := tc.taskConfig.DynamicExpansions.Map()
-			for k := range updatedExpansions {
-				if _, ok := commandInfo.Vars[k]; ok {
-					// If expansions.update updated this key, don't reset it
-					delete(prevExp, k)
-				}
-			}
-		}
-		tc.taskConfig.NewExpansions.Update(prevExp)
-		tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
-	}()
+	defer cleanup()
 
 	tc.setCurrentCommand(cmd)
 	switch options.block {
@@ -198,7 +214,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		// Only set the idle timeout in cases where the idle timeout is actually
 		// respected. In all other blocks, setting the idle timeout should have
 		// no effect.
-		tc.setCurrentIdleTimeout(cmd)
+		tc.setCurrentIdleTimeout(ctx, cmd)
 	}
 	a.comm.UpdateLastMessageTime()
 	defer func() {
@@ -216,7 +232,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 
 	start := time.Now()
 	defer func() {
-		tc.logger.Task().Infof("Finished command %s in %s.", cmd.FullDisplayName(), time.Since(start).String())
+		tc.logger.Task().Infof(ctx, "Finished command %s in %s.", cmd.FullDisplayName(), time.Since(start).String())
 	}()
 
 	// This method must return soon after the context errors (e.g. due to
@@ -234,7 +250,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 			if pErr == nil {
 				return
 			}
-			_ = a.logPanic(tc, pErr, nil, op)
+			_ = a.logPanic(ctx, tc, pErr, nil, op)
 
 			cmdChan <- pErr
 		}()
@@ -245,7 +261,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 	select {
 	case err := <-cmdChan:
 		if err != nil {
-			tc.logger.Task().Errorf("Command %s failed: %s.", cmd.FullDisplayName(), err)
+			tc.logger.Task().Errorf(ctx, "Command %s failed: %s.", cmd.FullDisplayName(), err)
 			tc.addFailingCommand(cmd)
 			if options.block == command.PostBlock {
 				tc.setPostErrored(true)
@@ -270,7 +286,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 			tc.setPostErrored(true)
 		}
 
-		tc.logger.Task().Errorf("Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
+		tc.logger.Task().Errorf(ctx, "Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")
 	}
 

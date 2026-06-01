@@ -13,9 +13,12 @@ enum ProjectSettingsSection {
   TEST_SELECTION
 
   # GitHub sections.
-  GITHUB_AND_COMMIT_QUEUE
   GITHUB_APP_SETTINGS
   GITHUB_PERMISSIONS
+  PULL_REQUESTS
+  GIT_TAGS
+  MERGE_QUEUE
+  COMMIT_CHECKS
 }
 
 ###### INPUTS ######
@@ -46,6 +49,7 @@ input ProjectInput {
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
+  waterfallDisabled: Boolean
   displayName: String
   enabled: Boolean
   externalLinks: [ExternalLinkInput!]
@@ -79,7 +83,6 @@ input ProjectInput {
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
   testSelection: TestSelectionSettingsInput
-  tracksPushEvents: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfigInput

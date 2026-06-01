@@ -250,21 +250,22 @@ func (m *ec2Manager) setupClient(ctx context.Context) error {
 	return m.client.Create(ctx, m.role, m.region)
 }
 
-// getResources returns a slice of the AWS resources for the given host
-func (m *ec2Manager) getResources(ctx context.Context, h *host.Host) ([]string, error) {
-	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+// ec2HostResources returns the host instance ID and attached volume IDs for EC2
+// APIs that accept a Resources list (e.g. CreateTags, DeleteTags).
+func ec2HostResources(ctx context.Context, client AWSClient, h *host.Host) ([]string, error) {
+	volumeIDs, err := client.GetVolumeIDs(ctx, h)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting volume IDs for host '%s'", h.Id)
 	}
-
-	resources := []string{h.Id}
+	resources := make([]string, 0, 1+len(volumeIDs))
+	resources = append(resources, h.Id)
 	resources = append(resources, volumeIDs...)
 	return resources, nil
 }
 
 // addTags adds or updates the specified tags in the client and db
 func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag) error {
-	resources, err := m.getResources(ctx, h)
+	resources, err := ec2HostResources(ctx, m.client, h)
 	if err != nil {
 		return errors.Wrap(err, "getting host resources")
 	}
@@ -282,7 +283,7 @@ func (m *ec2Manager) addTags(ctx context.Context, h *host.Host, tags []host.Tag)
 
 // deleteTags removes the specified tags by their keys in the client and db
 func (m *ec2Manager) deleteTags(ctx context.Context, h *host.Host, keys []string) error {
-	resources, err := m.getResources(ctx, h)
+	resources, err := ec2HostResources(ctx, m.client, h)
 	if err != nil {
 		return errors.Wrap(err, "getting host resources")
 	}
@@ -337,7 +338,7 @@ func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string)
 func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpiration bool) error {
 	expireOnValue := expireInDays(evergreen.SpawnHostExpireDays)
 	if !host.IsIntentHostId(h.Id) {
-		resources, err := m.getResources(ctx, h)
+		resources, err := ec2HostResources(ctx, m.client, h)
 		if err != nil {
 			return errors.Wrap(err, "getting host resources")
 		}
@@ -372,7 +373,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		// (including unexpirable host information like persistent DNS names and
 		// IP addresses) if the unexpirable host is running.
 		_, err = m.GetInstanceState(ctx, h)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":    "could not get instance info to assign persistent DNS name",
 			"dashboard":  "evergreen sleep schedule health",
 			"host_id":    h.Id,
@@ -382,7 +383,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		return nil
 	}
 
-	grip.Error(message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
+	grip.Error(ctx, message.WrapError(deleteHostPersistentDNSName(ctx, m.env, h, m.client), message.Fields{
 		"message":    "could not delete host's persistent DNS name",
 		"op":         "delete",
 		"dashboard":  "evergreen sleep schedule health",
@@ -424,6 +425,60 @@ func (m *ec2Manager) setSleepScheduleOptions(ctx context.Context, h *host.Host, 
 // extendExpiration extends a host's expiration time by the number of hours specified
 func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extension time.Duration) error {
 	return errors.Wrapf(h.SetExpirationTime(ctx, h.ExpirationTime.Add(extension)), "extending expiration time in DB for host '%s'", h.Id)
+}
+
+// extendExpireOnByDay extends the expire-on tag on a task host by one day by
+// updating both the EC2 tag and the cached value in the database.
+func extendExpireOnByDay(ctx context.Context, client AWSClient, h *host.Host) error {
+	newExpireOn, err := h.NextExpireOnTagValue()
+	if err != nil {
+		return errors.Wrap(err, "computing new expire-on tag value")
+	}
+
+	resources, err := ec2HostResources(ctx, client, h)
+	if err != nil {
+		return err
+	}
+	if _, err = client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: resources,
+		Tags: []types.Tag{
+			{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(newExpireOn)},
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "updating expire-on tag on EC2 for host '%s'", h.Id)
+	}
+
+	return errors.Wrap(h.BumpExpireOnTag(ctx, newExpireOn), "bumping expire-on tag in DB")
+}
+
+// tagHostIDOnVolumes tags the host's EBS volumes with its EC2 instance ID.
+func tagHostIDOnVolumes(ctx context.Context, client AWSClient, h *host.Host) error {
+	var devices []types.InstanceBlockDeviceMapping
+	if err := utility.Retry(ctx, func() (bool, error) {
+		var err error
+		devices, err = client.GetInstanceBlockDevices(ctx, h)
+		return err != nil, err
+	}, awsClientDefaultRetryOptions()); err != nil {
+		return errors.Wrap(err, "getting instance block devices")
+	}
+
+	volumeIDs := make([]string, 0, len(devices))
+	for _, device := range devices {
+		if device.Ebs != nil && device.Ebs.VolumeId != nil {
+			volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
+		}
+	}
+	if len(volumeIDs) == 0 {
+		return nil
+	}
+
+	_, err := client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: volumeIDs,
+		Tags: []types.Tag{
+			{Key: aws.String(evergreen.TagHostID), Value: aws.String(h.Id)},
+		},
+	})
+	return errors.Wrapf(err, "adding host-id tag to volumes for host '%s'", h.Id)
 }
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
@@ -468,6 +523,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 		if err == nil {
 			catcher.Wrap(h.SetTemporaryExemption(ctx, exemptUntil), "setting temporary exemption")
 		}
+	}
+	if opts.ExtendExpireOnByDay {
+		catcher.Wrap(extendExpireOnByDay(ctx, m.client, h), "extending expire-on tag by one day")
 	}
 	if opts.NewName != "" {
 		catcher.Add(h.SetDisplayName(ctx, opts.NewName))
@@ -560,7 +618,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	}
 
 	// Cache instance information so we can make fewer calls to AWS's API.
-	grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache...), message.Fields{
+	grip.Error(ctx, message.WrapError(cacheAllHostData(ctx, m.env, m.client, hostsToCache...), message.Fields{
 		"message":   "error bulk updating cached host data",
 		"num_hosts": len(hostIDsToCache),
 		"host_ids":  hostIDsToCache,
@@ -593,7 +651,7 @@ func (m *ec2Manager) GetInstanceState(ctx context.Context, h *host.Host) (CloudI
 	if info.Status = ec2StateToEvergreenStatus(instance.State); info.Status == StatusRunning {
 		// Cache instance information so we can make fewer calls to AWS's API.
 		pair := hostInstancePair{host: h, instance: instance}
-		grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{
+		grip.Error(ctx, message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{
 			"message": "can't update host cached data",
 			"type":    "ec2",
 			"host_id": h.Id,
@@ -615,7 +673,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	}
 
 	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
-		grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
+		grip.Error(ctx, message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
 			"message": "problem deleting Jasper credentials during host termination",
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
@@ -626,15 +684,23 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		return errors.Wrap(err, "creating client")
 	}
 
-	if !IsEC2InstanceID(h.Id) {
-		return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
+	instanceID := h.Id
+	if !IsEC2InstanceID(instanceID) {
+		instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+		if err != nil {
+			if isEC2InstanceNotFound(err) {
+				return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("no cloud instance found for host '%s'", h.Id)), "terminating instance in DB")
+			}
+			return errors.Wrapf(err, "finding cloud instance for host '%s'", h.Id)
+		}
+		instanceID = aws.ToString(instance.InstanceId)
 	}
 
 	// Any host that has been unexpirable will have been given a DNS name, which we need to clean up.
 	if h.PersistentDNSName != "" {
 		dnsName := h.PersistentDNSName
 		err := deleteHostPersistentDNSName(ctx, m.env, h, m.client)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":    "could not delete host's persistent DNS name",
 			"op":         "delete",
 			"dashboard":  "evergreen sleep schedule health",
@@ -642,7 +708,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 			"started_by": h.StartedBy,
 			"dns_name":   dnsName,
 		}))
-		grip.InfoWhen(err == nil, message.Fields{
+		grip.InfoWhen(ctx, err == nil, message.Fields{
 			"message":    "deleted host's persistent DNS name",
 			"op":         "delete",
 			"dashboard":  "evergreen sleep schedule health",
@@ -653,10 +719,10 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	}
 
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
-		InstanceIds: []string{h.Id},
+		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message":       "error terminating instance",
 			"user":          user,
 			"host_id":       h.Id,
@@ -667,7 +733,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	}
 
 	for _, stateChange := range resp.TerminatingInstances {
-		grip.Info(message.Fields{
+		grip.Info(ctx, message.Fields{
 			"message":       "terminated instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
@@ -677,7 +743,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
-	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
+	grip.Error(ctx, message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
 		"host_id":        h.Id,
@@ -696,7 +762,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 
 		if volDB.Expiration.Before(time.Now().Add(evergreen.UnattachedVolumeExpiration)) {
 			if err = m.modifyVolumeExpiration(ctx, volDB, time.Now().Add(evergreen.UnattachedVolumeExpiration)); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+				grip.Error(ctx, message.WrapError(err, message.Fields{
 					"message": "error updating volume expiration",
 					"user":    user,
 					"host_id": h.Id,
@@ -707,7 +773,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}
 
 		if err = host.UnsetVolumeHost(ctx, volDB.ID); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"host_id":   h.Id,
 				"volume_id": volDB.ID,
 				"op":        "terminating host",
@@ -743,13 +809,13 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		status := ec2StateToEvergreenStatus(instance.CurrentState)
 		switch status {
 		case StatusStopping:
-			grip.Error(message.WrapError(h.SetStopping(ctx, user), message.Fields{
+			grip.Error(ctx, message.WrapError(h.SetStopping(ctx, user), message.Fields{
 				"message": "could not mark host as stopping, continuing to poll instance status anyways",
 				"host_id": h.Id,
 				"user":    user,
 			}))
 		case StatusStopped:
-			grip.Info(message.Fields{
+			grip.Info(ctx, message.Fields{
 				"message":       "stopped instance",
 				"user":          user,
 				"host_provider": h.Distro.Provider,
@@ -761,7 +827,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 			return errors.Errorf("instance is in unexpected state '%s'", status)
 		}
 	}
-	grip.WarningWhen(len(out.StoppingInstances) != 1, message.Fields{
+	grip.WarningWhen(ctx, len(out.StoppingInstances) != 1, message.Fields{
 		"message":                "StopInstances should have returned exactly one instance in the success response",
 		"num_stopping_instances": len(out.StoppingInstances),
 		"user":                   user,
@@ -791,7 +857,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		return errors.Wrap(err, "checking if spawn host stopped")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "stopped instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,
@@ -842,7 +908,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Wrap(err, "checking if spawn host started")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "started instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,
@@ -893,7 +959,7 @@ func (m *ec2Manager) RebootInstance(ctx context.Context, h *host.Host, user stri
 		return errors.Wrap(err, "checking if spawn host rebooted")
 	}
 
-	grip.Info(message.Fields{
+	grip.Info(ctx, message.Fields{
 		"message":       "rebooted instance",
 		"user":          user,
 		"host_provider": h.Distro.Provider,
