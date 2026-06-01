@@ -49,10 +49,10 @@ Follow these steps to start a debugging session:
    evergreen debug daemon status
    ```
 
-2. **Load your project's configuration file.** This tells the debugger where to find your task definitions. The file is pre-loaded into the `~/debug_project_config/` directory on the spawn host.
+2. **Load your project's configuration file.** This tells the debugger where to find your task definitions. The file is pre-loaded into the `debug_project_config/` subdirectory of the distro's working directory on the spawn host (typically `/data/mci/debug_project_config/`).
 
    ```bash
-   evergreen debug load ~/debug_project_config/evergreen.yml
+   evergreen debug load /data/mci/debug_project_config/evergreen.yml
    ```
 
 3. **Select the task you want to debug.** Use the exact task name as it appears in your Evergreen configuration.
@@ -87,7 +87,7 @@ Your task failed at [step](#understanding-step-numbers) 5. Here's how to debug i
 
 ```bash
 # Load config and select your task
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 evergreen debug select my_failing_task
 
 # Execute up to the problem step
@@ -125,7 +125,7 @@ evergreen debug next
 If you know steps 1-3 work fine and want to debug step 4:
 
 ```bash
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 evergreen debug select my_task
 
 # Jump straight to step 4 and execute it
@@ -139,10 +139,10 @@ You can modify your `evergreen.yml` file and reload it between steps to test con
 
 ```bash
 # Edit your evergreen.yml file
-vim ~/debug_project_config/evergreen.yml
+vim /data/mci/debug_project_config/evergreen.yml
 
 # Reload the modified configuration
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 
 # Your task selection, step position, and custom expansions are all preserved
 # Continue debugging with the updated configuration
@@ -172,7 +172,7 @@ The hot reload preserves:
 Load a project configuration file. The path can be relative or absolute. Must be run before selecting a task.
 
 ```bash
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 evergreen debug load /home/user/project/evergreen.yml
 ```
 
