@@ -14,6 +14,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
+	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
@@ -70,9 +71,11 @@ type Agent struct {
 	tracer              trace.Tracer
 	otelGrpcConn        *grpc.ClientConn
 	closers []closerOp
-	// currentContainer holds the active per-task isolation container, if any.
-	// Set and cleared by maybeStartContainer/destroyContainer.
-	currentContainer interface{ Destroy(context.Context) error }
+	// currentContainer holds the active task-group isolation container, if any.
+	// Created at task-group setup, reused across tasks in the group, and
+	// destroyed in runTeardownGroupCommands. Set/cleared by
+	// maybeStartContainer/destroyContainer.
+	currentContainer *agentcontainer.TaskContainer
 }
 
 // Options contains startup options for an Agent.
@@ -249,6 +252,13 @@ func (a *Agent) loop(ctx context.Context) error {
 			grip.Error(ctx, errors.Wrap(tc.logger.Close(), "closing logger"))
 		}
 	}()
+	// Destroy any active isolation container when the loop exits (ctx
+	// cancellation, agent shutdown, or unrecoverable error), so we don't
+	// leak containers that would otherwise only be cleaned up by teardown
+	// group commands which may never run on an abnormal exit path.
+	defer func() {
+		a.destroyContainer(ctx, tc.taskConfig)
+	}()
 
 	for {
 		select {
@@ -404,6 +414,15 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		}))
 		return processNextResponse{
 			tc: tc,
+			// Trigger teardown on the next iteration so the task-group isolation
+			// container is destroyed rather than leaked. Note: this causes
+			// runTeardownGroupCommands to execute real teardown-group scripts in
+			// addition to destroying the container. On a broken host that is
+			// acceptable: teardown scripts failing is logged and non-fatal, and
+			// the container cleanup is the primary goal. The loop-exit defer also
+			// calls destroyContainer as a fallback if the agent exits before the
+			// next iteration runs.
+			needTeardownGroup: true,
 		}, nil
 	}
 	if shouldExit {
@@ -723,7 +742,6 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		tc.logger.Execution().Errorf(ctx, "Failed to start isolation container, task will run without isolation: %s", err)
 		// Do not fail the task — degrade gracefully.
 	}
-	defer a.destroyContainer(ctx, tc.taskConfig)
 
 	grip.Info(ctx, message.Fields{
 		"message": "running task",
@@ -1101,6 +1119,10 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
+	// Destroy the task-group isolation container after teardown commands
+	// complete but before the task directory is removed, so that the bind
+	// mount is released before we attempt to delete its source path.
+	defer a.destroyContainer(ctx, tc.taskConfig)
 	// Only killProcs if tc.taskConfig is not nil. This avoids passing an
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runTeardownGroupCommands.
