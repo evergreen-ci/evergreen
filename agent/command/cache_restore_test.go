@@ -3,6 +3,9 @@ package command
 import (
 	"testing"
 
+	"github.com/aws/smithy-go"
+	"github.com/evergreen-ci/pail"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -96,4 +99,47 @@ func TestCacheRestoreParseParams(t *testing.T) {
 		c := &cacheRestore{}
 		require.NoError(t, c.ParseParams(params))
 	})
+}
+
+func TestClassifyCacheDownloadErr(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		err      error
+		expected cacheDownloadOutcome
+	}{
+		{
+			name:     "KeyNotFoundIsMiss",
+			err:      pail.NewKeyNotFoundError("no such key"),
+			expected: cacheDownloadMiss,
+		},
+		{
+			name:     "AccessDeniedIsMaybeMiss",
+			err:      &smithy.GenericAPIError{Code: "AccessDenied", Fault: smithy.FaultClient},
+			expected: cacheDownloadMaybeMiss,
+		},
+		{
+			name:     "WrappedAccessDeniedIsMaybeMiss",
+			err:      errors.Wrap(&smithy.GenericAPIError{Code: "AccessDenied", Fault: smithy.FaultClient}, "downloading"),
+			expected: cacheDownloadMaybeMiss,
+		},
+		{
+			name:     "OtherClientErrorIsFatal",
+			err:      &smithy.GenericAPIError{Code: "InvalidRequest", Fault: smithy.FaultClient},
+			expected: cacheDownloadFatal,
+		},
+		{
+			name:     "ServerErrorIsRetried",
+			err:      &smithy.GenericAPIError{Code: "InternalError", Fault: smithy.FaultServer},
+			expected: cacheDownloadRetry,
+		},
+		{
+			name:     "NonAPIErrorIsRetried",
+			err:      errors.New("connection reset by peer"),
+			expected: cacheDownloadRetry,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, classifyCacheDownloadErr(tc.err))
+		})
+	}
 }
