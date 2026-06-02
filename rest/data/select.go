@@ -18,8 +18,10 @@ import (
 
 // Test selection service endpoint identifiers.
 const (
+	SelectTestsEndpoint       = "select_tests"
 	TransitionTaskEndpoint    = "transition_task"
 	TransitionVariantEndpoint = "transition_variant"
+	GetTestsStateEndpoint     = "get_tests_state"
 	GetVariantStateEndpoint   = "get_variant_state"
 )
 
@@ -93,8 +95,8 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	if err != nil {
 		logTSSError(ctx, err, resp, message.Fields{
 			"message":       "selecting tests",
-			"endpoint":      "select_tests",
-			"project":       req.Project,
+			"endpoint":      SelectTestsEndpoint,
+			"project_id":    req.Project,
 			"requester":     req.Requester,
 			"build_variant": req.BuildVariant,
 			"task_id":       req.TaskID,
@@ -152,8 +154,8 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 	if err != nil {
 		logTSSError(ctx, err, resp, message.Fields{
 			"message":       "getting tests quarantine status",
-			"endpoint":      "get_tests_state",
-			"project":       projectID,
+			"endpoint":      GetTestsStateEndpoint,
+			"project_id":    projectID,
 			"build_variant": bvName,
 			"task_name":     taskName,
 		})
@@ -221,8 +223,8 @@ func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (
 	if err != nil {
 		logTSSError(ctx, err, resp, message.Fields{
 			"message":       "getting variant quarantine status",
-			"endpoint":      "get_variant_state",
-			"project":       projectID,
+			"endpoint":      GetVariantStateEndpoint,
+			"project_id":    projectID,
 			"build_variant": bvName,
 		})
 		return nil, wrapTSSError(err)
