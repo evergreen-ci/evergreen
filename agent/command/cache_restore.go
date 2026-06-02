@@ -160,13 +160,11 @@ func classifyCacheDownloadErr(err error) cacheDownloadOutcome {
 		return cacheDownloadMiss
 	}
 	var apiErr smithy.APIError
-	if errors.As(err, &apiErr) {
-		if apiErr.ErrorCode() == "AccessDenied" {
-			return cacheDownloadMaybeMiss
-		}
-		if apiErr.ErrorFault() == smithy.FaultClient {
-			return cacheDownloadFatal
-		}
+	if errors.As(err, &apiErr) && apiErr.ErrorCode() == "AccessDenied" {
+		return cacheDownloadMaybeMiss
+	}
+	if isS3ClientError(err) {
+		return cacheDownloadFatal
 	}
 	return cacheDownloadRetry
 }

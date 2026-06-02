@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -219,6 +220,14 @@ func retryS3Op(ctx context.Context, logger grip.Journaler, description string, o
 		MinDelay:    s3OpSleep,
 		MaxDelay:    s3OpRetryMaxSleep,
 	})
+}
+
+// isS3ClientError reports whether err is an S3 API error caused by a client
+// (4xx) fault. Such errors won't succeed on retry, so callers should treat them
+// as terminal rather than burning the retry budget.
+func isS3ClientError(err error) bool {
+	var apiErr smithy.APIError
+	return errors.As(err, &apiErr) && apiErr.ErrorFault() == smithy.FaultClient
 }
 
 // setCacheHit records whether a cache was hit in the cache-hit expansion that
