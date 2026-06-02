@@ -433,14 +433,14 @@ func (rh *hostProvisioningOptionsGetHandler) Parse(ctx context.Context, r *http.
 }
 
 func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	script, err := data.GenerateHostProvisioningScript(ctx, rh.env, rh.hostID)
+	script, containerImage, err := data.GenerateHostProvisioningScript(ctx, rh.env, rh.hostID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "generating host provisioning script"))
 	}
-	apiOpts := model.APIHostProvisioningOptions{
-		Content: script,
-	}
-	return gimlet.NewJSONResponse(apiOpts)
+	return gimlet.NewJSONResponse(model.APIHostProvisioningOptions{
+		Content:        script,
+		ContainerImage: containerImage,
+	})
 }
 
 // POST /hosts/{host_id}/is_up
