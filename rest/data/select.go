@@ -23,9 +23,6 @@ const (
 	GetVariantStateEndpoint   = "get_variant_state"
 )
 
-// logTSSError logs a failed test selection service call, including the HTTP
-// status code when available so failures can be triaged by status (e.g.
-// distinguishing a mesh or auth 403 from a 5xx or an unreachable service).
 func logTSSError(ctx context.Context, err error, resp *http.Response, info message.Fields) {
 	if resp != nil {
 		info["status"] = resp.StatusCode

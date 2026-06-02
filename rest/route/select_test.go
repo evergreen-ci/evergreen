@@ -124,14 +124,11 @@ func TestSelectTestsHandlerProjectField(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := t.Context()
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
 			req, err := http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBufferString(tc.body))
 			require.NoError(t, err)
-			h, ok := makeSelectTestsHandler(env).(*selectTestsHandler)
+			h, ok := makeSelectTestsHandler(&mock.Environment{}).(*selectTestsHandler)
 			require.True(t, ok)
-			require.NoError(t, h.Parse(ctx, req))
+			require.NoError(t, h.Parse(t.Context(), req))
 			assert.Equal(t, tc.expectedProject, h.selectTests.Project)
 		})
 	}

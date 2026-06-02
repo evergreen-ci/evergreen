@@ -54,10 +54,10 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 	catcher.NewWhen(t.selectTests.BuildVariant == "", "build variant is required")
 	catcher.NewWhen(t.selectTests.TaskID == "", "task ID is required")
 	catcher.NewWhen(t.selectTests.TaskName == "", "task name is required")
-	if catcher.HasErrors() {
+	if err := catcher.Resolve(); err != nil {
 		// Log invalid requests so they're visible server-side; otherwise the
 		// caller (e.g. resmoke) gets a 400 with no corresponding Evergreen log.
-		grip.Warning(ctx, message.WrapError(catcher.Resolve(), message.Fields{
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message":       "invalid test selection request",
 			"project":       t.selectTests.Project,
 			"requester":     t.selectTests.Requester,
@@ -65,8 +65,9 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 			"task_id":       t.selectTests.TaskID,
 			"task_name":     t.selectTests.TaskName,
 		}))
+		return err
 	}
-	return catcher.Resolve()
+	return nil
 }
 
 func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
@@ -74,17 +75,6 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
-	grip.Info(ctx, message.Fields{
-		"message":       "test selection request",
-		"project":       t.selectTests.Project,
-		"requester":     t.selectTests.Requester,
-		"build_variant": t.selectTests.BuildVariant,
-		"task_id":       t.selectTests.TaskID,
-		"task_name":     t.selectTests.TaskName,
-		"num_requested": len(t.selectTests.Tests),
-		"num_selected":  len(selectedTests),
-		"strategies":    t.selectTests.Strategies,
-	})
 
 	rhResp := t.selectTests
 	rhResp.Tests = selectedTests
