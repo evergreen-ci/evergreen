@@ -1481,7 +1481,8 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessageForIgnoredVariants(ctx co
 // sendGitHubSuccessMessages sends a successful status to GitHub with the given message for all
 // Evergreen rules configured for the given project.
 func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef) {
-	rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
+	owner, repo, branch := j.gitHubStatusRuleTarget(patchDoc, projectRef)
+	rules := j.getEvergreenRulesForStatuses(ctx, owner, repo, branch)
 	for _, rule := range rules {
 		var update amboy.Job
 		if j.IntentType == patch.GithubIntentType {
@@ -1507,6 +1508,14 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 		update.Run(ctx)
 		j.AddError(update.Error())
 	}
+}
+
+func (j *patchIntentProcessor) gitHubStatusRuleTarget(patchDoc *patch.Patch, projectRef *model.ProjectRef) (owner, repo, branch string) {
+	if j.IntentType == patch.GithubMergeIntentType {
+		return patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch
+	}
+
+	return patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch
 }
 
 // getEvergreenRulesForStatuses returns the rules we want to send Evergreen statuses for.

@@ -2307,3 +2307,42 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 		})
 	}
 }
+
+func TestGitHubStatusRuleTarget(t *testing.T) {
+	projectRef := &model.ProjectRef{
+		Owner:  "project-owner",
+		Repo:   "project-repo",
+		Branch: "project-branch",
+	}
+
+	t.Run("MergeQueuePatchUsesMergeQueueRepository", func(t *testing.T) {
+		j := &patchIntentProcessor{IntentType: patch.GithubMergeIntentType}
+		patchDoc := &patch.Patch{
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:        "merge-owner",
+				Repo:       "merge-repo",
+				BaseBranch: "merge-base-branch",
+			},
+		}
+
+		owner, repo, branch := j.gitHubStatusRuleTarget(patchDoc, projectRef)
+		assert.Equal(t, "merge-owner", owner)
+		assert.Equal(t, "merge-repo", repo)
+		assert.Equal(t, "merge-base-branch", branch)
+	})
+
+	t.Run("GitHubPRPatchUsesExistingPRTarget", func(t *testing.T) {
+		j := &patchIntentProcessor{IntentType: patch.GithubIntentType}
+		patchDoc := &patch.Patch{
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner: "pr-owner",
+				BaseRepo:  "pr-repo",
+			},
+		}
+
+		owner, repo, branch := j.gitHubStatusRuleTarget(patchDoc, projectRef)
+		assert.Equal(t, "pr-owner", owner)
+		assert.Equal(t, "project-repo", repo)
+		assert.Equal(t, "project-branch", branch)
+	})
+}
