@@ -1589,17 +1589,43 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 	catcher := grip.NewBasicCatcher()
 	if tc.task.ID != "" && tc.taskConfig != nil && tc.taskConfig.Distro != nil {
-		logger.Infof(ctx, "Cleaning up processes for task: '%s'.", tc.task.ID)
-		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
-			catcher.Wrap(err, "cleaning up spawned processes")
-			// If the host is in a state where ps is timing out we need human intervention.
-			if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
-				disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
-				logger.CriticalWhen(ctx, disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
+		if tc.taskConfig.ContainerID != "" {
+			// Kill user-owned processes inside the container's PID namespace.
+			// Host-side pkill cannot reach container-namespaced processes, so
+			// we use docker exec. PID 1 (sleep infinity, running as root) is
+			// preserved by the -U scoping.
+			if tc.taskConfig.Distro.ExecUser == "" {
+				// ExecUser is required for container isolation (enforced at distro
+				// validation), but degrade gracefully for pre-validation distros.
+				logger.Warningf(ctx, "Skipping in-container process cleanup for task '%s': distro has container isolation enabled but ExecUser is not set.", tc.task.ID)
+			} else {
+				logger.Infof(ctx, "Killing in-container processes for task '%s' (container '%s').", tc.task.ID, tc.taskConfig.ContainerID)
+				if err := agentutil.KillSpawnedProcsInContainer(ctx, tc.taskConfig.ContainerID, tc.taskConfig.Distro.ExecUser); err != nil {
+					if errors.Is(err, agentutil.ErrContainerExecUnavailable) {
+						// Container is unreachable (not running, paused, etc.) —
+						// warn but do not fail; no processes can be leaking.
+						logger.Warningf(ctx, "Could not reach container '%s' for process cleanup for task '%s': %s", tc.taskConfig.ContainerID, tc.task.ID, err)
+					} else {
+						catcher.Wrap(err, "killing in-container spawned processes")
+						logger.Critical(ctx, errors.Wrap(err, "killing in-container spawned processes"))
+					}
+				} else {
+					logger.Infof(ctx, "Completed in-container process cleanup for task '%s'.", tc.task.ID)
+				}
 			}
-			logger.Critical(ctx, errors.Wrap(err, "cleaning up spawned processes"))
+		} else {
+			logger.Infof(ctx, "Cleaning up processes for task: '%s'.", tc.task.ID)
+			if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
+				catcher.Wrap(err, "cleaning up spawned processes")
+				// If the host is in a state where ps is timing out we need human intervention.
+				if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
+					disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
+					logger.CriticalWhen(ctx, disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
+				}
+				logger.Critical(ctx, errors.Wrap(err, "cleaning up spawned processes"))
+			}
+			logger.Infof(ctx, "Cleaned up processes for task: '%s'.", tc.task.ID)
 		}
-		logger.Infof(ctx, "Cleaned up processes for task: '%s'.", tc.task.ID)
 	}
 
 	// On container-enabled distros, skip the Docker artifact sweep regardless

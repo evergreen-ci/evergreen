@@ -81,6 +81,50 @@ func killUserProcesses(ctx context.Context, execUser string) error {
 	return nil
 }
 
+const (
+	// dockerExecContainerNotRunningExitCode is returned by `docker exec` when
+	// the exec invocation itself fails at the daemon level — most commonly
+	// because the container is not running, but also for a paused container,
+	// a transient daemon error, or an invalid container reference. We treat
+	// this as a benign no-op for the kill use case: if we cannot exec into the
+	// container, we cannot know whether processes are leaking, but failing hard
+	// here would mask the original task failure with a cleanup error. Callers
+	// should log a warning so the dead-container state is visible in agent logs.
+	dockerExecContainerNotRunningExitCode = 125
+)
+
+// KillSpawnedProcsInContainer kills all processes owned by execUser inside a
+// running isolation container. This is the container-mode equivalent of the
+// host-side killUserProcesses: it runs pkill inside the container's PID
+// namespace via docker exec so that PID 1 (sleep infinity, running as root)
+// is preserved while user-owned processes from the previous task are cleaned up.
+func KillSpawnedProcsInContainer(ctx context.Context, containerID, execUser string) error {
+	if containerID == "" {
+		return errors.New("containerID cannot be empty")
+	}
+	if execUser == "" {
+		return errors.New("execUser cannot be empty")
+	}
+	cmd := jasper.NewCommand().Add([]string{"docker", "exec", containerID, "pkill", "-SIGKILL", "-U", execUser})
+	if err := cmd.Run(ctx); err != nil {
+		exitCode, _ := cmd.Wait(ctx)
+		switch exitCode {
+		case pkillNoMatchingProcessesExitCode:
+			// No user processes found — nothing to kill, not an error.
+		case dockerExecContainerNotRunningExitCode:
+			// docker exec failed at the daemon level (container not running,
+			// paused, invalid reference, or transient daemon error). Return a
+			// sentinel error so callers can log a warning — we cannot kill
+			// processes we cannot reach, but we also do not want to mask the
+			// original task failure with a cleanup error.
+			return ErrContainerExecUnavailable
+		default:
+			return errors.Wrapf(err, "killing processes for user '%s' in container '%s'", execUser, containerID)
+		}
+	}
+	return nil
+}
+
 func getPIDsToKill(ctx context.Context, key, workingDir string, logger grip.Journaler) ([]int, error) {
 	var pidsToKill []int
 
