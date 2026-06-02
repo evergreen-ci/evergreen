@@ -2423,6 +2423,24 @@ var StartedByStatusIndex = bson.D{
 	},
 }
 
+// StartedByCreationTimeIndex is the started_by_1_creation_time_1 partial index (active task
+// hosts only). IdleEphemeralGroupedByDistroID hints this so its sort by creation_time is served
+// by the index, avoiding a blocking in-memory sort that spills to disk under load. status is
+// deliberately NOT a key field: the query matches status with an $or (running/starting), and a
+// range field between the started_by equality prefix and the creation_time sort key defeats the
+// index sort. Keeping creation_time directly after started_by lets the index provide the order,
+// with status (and the other predicates) applied as residual filters within the partial set.
+var StartedByCreationTimeIndex = bson.D{
+	{
+		Key:   StartedByKey,
+		Value: 1,
+	},
+	{
+		Key:   CreateTimeKey,
+		Value: 1,
+	},
+}
+
 // DistroIdStatusIndex is the distro_id_1_status_1 index.
 var DistroIdStatusIndex = bson.D{
 	{
