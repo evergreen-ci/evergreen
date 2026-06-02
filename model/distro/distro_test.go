@@ -737,6 +737,27 @@ func TestCostData(t *testing.T) {
 func TestContainerIsolationSettingsValidation(t *testing.T) {
 	t.Run("ValidLinuxConfig", func(t *testing.T) {
 		d := Distro{
+			Id:       "test-distro",
+			Arch:     "linux_amd64",
+			ExecUser: "mci-exec",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled: true,
+					Image:   "ubuntu:22.04",
+				},
+			},
+		}
+		assert.NoError(t, d.ValidateBootstrapSettings())
+	})
+
+	t.Run("ContainerIsolationWithoutExecUserRejected", func(t *testing.T) {
+		d := Distro{
 			Id:   "test-distro",
 			Arch: "linux_amd64",
 			BootstrapSettings: BootstrapSettings{
@@ -752,7 +773,7 @@ func TestContainerIsolationSettingsValidation(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, d.ValidateBootstrapSettings())
+		assert.ErrorContains(t, d.ValidateBootstrapSettings(), "ExecUser")
 	})
 
 	t.Run("EnabledWithoutImage", func(t *testing.T) {

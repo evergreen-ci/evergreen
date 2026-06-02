@@ -271,6 +271,7 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	if ci := d.BootstrapSettings.ContainerIsolation; ci.Enabled {
 		catcher.NewWhen(!d.IsLinux(), "container isolation is only supported on Linux")
 		catcher.NewWhen(ci.Image == "", "container image cannot be empty when container isolation is enabled")
+		catcher.NewWhen(d.ExecUser == "", "container isolation requires ExecUser to be set; it is used to scope between-task process cleanup inside the container's PID namespace")
 	}
 
 	return catcher.Resolve()
