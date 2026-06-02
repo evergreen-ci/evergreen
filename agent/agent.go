@@ -1557,6 +1557,22 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		logger.Infof(ctx, "Cleaned up processes for task: '%s'.", tc.task.ID)
 	}
 
+	// On container-enabled distros, skip the Docker artifact sweep regardless
+	// of whether this specific task's container started successfully. The
+	// pre-pulled evergreen-task-image is a host-level resource that must
+	// persist across all tasks; sweeping it forces a full re-pull on every
+	// subsequent task. Container.Destroy handles the task's own container.
+	// Docker-using workloads are tier-split onto non-isolation distros, so
+	// no Docker artifacts accumulate from tasks on isolation hosts.
+	//
+	// Note: tc.taskConfig.Distro.ContainerIsolation is non-nil only when
+	// the server has container isolation enabled for this distro; the
+	// agent-facing ContainerIsolationSettings struct has no Enabled field.
+	if tc.taskConfig != nil && tc.taskConfig.Distro != nil && tc.taskConfig.Distro.ContainerIsolation != nil {
+		logger.Info(ctx, "Skipping Docker artifact cleanup: distro has container isolation enabled; pre-pulled task image is preserved for subsequent tasks.")
+		return catcher.Resolve()
+	}
+
 	logger.Info(ctx, "Cleaning up Docker artifacts.")
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, globals.DockerTimeout)
