@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -48,11 +49,23 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrap(err, "parsing request body")
 	}
 	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(t.selectTests.Project == "", "project is required")
+	catcher.NewWhen(t.selectTests.Project == "", "project ID is required")
 	catcher.NewWhen(t.selectTests.Requester == "", "requester is required")
 	catcher.NewWhen(t.selectTests.BuildVariant == "", "build variant is required")
 	catcher.NewWhen(t.selectTests.TaskID == "", "task ID is required")
 	catcher.NewWhen(t.selectTests.TaskName == "", "task name is required")
+	if catcher.HasErrors() {
+		// Log invalid requests so they're visible server-side; otherwise the
+		// caller (e.g. resmoke) gets a 400 with no corresponding Evergreen log.
+		grip.Warning(ctx, message.WrapError(catcher.Resolve(), message.Fields{
+			"message":       "invalid test selection request",
+			"project":       t.selectTests.Project,
+			"requester":     t.selectTests.Requester,
+			"build_variant": t.selectTests.BuildVariant,
+			"task_id":       t.selectTests.TaskID,
+			"task_name":     t.selectTests.TaskName,
+		}))
+	}
 	return catcher.Resolve()
 }
 
@@ -61,6 +74,18 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
+	grip.Info(ctx, message.Fields{
+		"message":       "test selection request",
+		"project":       t.selectTests.Project,
+		"requester":     t.selectTests.Requester,
+		"build_variant": t.selectTests.BuildVariant,
+		"task_id":       t.selectTests.TaskID,
+		"task_name":     t.selectTests.TaskName,
+		"num_requested": len(t.selectTests.Tests),
+		"num_selected":  len(selectedTests),
+		"strategies":    t.selectTests.Strategies,
+	})
+
 	rhResp := t.selectTests
 	rhResp.Tests = selectedTests
 	return gimlet.NewJSONResponse(rhResp)

@@ -23,6 +23,16 @@ const (
 	GetVariantStateEndpoint   = "get_variant_state"
 )
 
+// logTSSError logs a failed test selection service call, including the HTTP
+// status code when available so failures can be triaged by status (e.g.
+// distinguishing a mesh or auth 403 from a 5xx or an unreachable service).
+func logTSSError(ctx context.Context, err error, resp *http.Response, info message.Fields) {
+	if resp != nil {
+		info["status"] = resp.StatusCode
+	}
+	grip.Error(ctx, message.WrapError(err, info))
+}
+
 // wrapTSSError wraps test selection service errors with the response body in the message. Callers handle logging and adding context.
 func wrapTSSError(err error) error {
 	if err == nil {
@@ -84,6 +94,15 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 		defer resp.Body.Close()
 	}
 	if err != nil {
+		logTSSError(ctx, err, resp, message.Fields{
+			"message":       "selecting tests",
+			"endpoint":      "select_tests",
+			"project":       req.Project,
+			"requester":     req.Requester,
+			"build_variant": req.BuildVariant,
+			"task_id":       req.TaskID,
+			"task_name":     req.TaskName,
+		})
 		return nil, wrapTSSError(err)
 	}
 	selectedTests := make([]string, 0, len(selectedTestPtrs))
@@ -134,6 +153,13 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 		defer resp.Body.Close()
 	}
 	if err != nil {
+		logTSSError(ctx, err, resp, message.Fields{
+			"message":       "getting tests quarantine status",
+			"endpoint":      "get_tests_state",
+			"project":       projectID,
+			"build_variant": bvName,
+			"task_name":     taskName,
+		})
 		return nil, wrapTSSError(err)
 	}
 	if result == nil {
@@ -196,6 +222,12 @@ func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (
 		defer resp.Body.Close()
 	}
 	if err != nil {
+		logTSSError(ctx, err, resp, message.Fields{
+			"message":       "getting variant quarantine status",
+			"endpoint":      "get_variant_state",
+			"project":       projectID,
+			"build_variant": bvName,
+		})
 		return nil, wrapTSSError(err)
 	}
 	if result == nil {
