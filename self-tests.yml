@@ -193,6 +193,7 @@ functions:
         bucket: mciuploads
         remote_path: evergreen/self-tests/go-mod-cache
         key_files:
+          - evergreen/go.mod
           - evergreen/go.sum
         key_expansions:
           - ${distro_arch}
@@ -220,6 +221,7 @@ functions:
         bucket: mciuploads
         remote_path: evergreen/self-tests/go-mod-cache
         key_files:
+          - evergreen/go.mod
           - evergreen/go.sum
         key_expansions:
           - ${distro_arch}
