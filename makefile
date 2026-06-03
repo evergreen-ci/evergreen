@@ -246,9 +246,11 @@ phony += lint build test coverage coverage-html list-tests
 # start module management targets
 mod-tidy:
 	$(gobin) mod tidy
+mod-download:
+	$(gobin) mod download
 verify-mod-tidy:
 	$(gobin) run cmd/verify-mod-tidy/verify-mod-tidy.go -goBin="$(gobin)"
-phony += mod-tidy verify-mod-tidy
+phony += mod-tidy mod-download verify-mod-tidy
 # end module management targets
 
 # convenience targets for runing tests and coverage tasks on a
