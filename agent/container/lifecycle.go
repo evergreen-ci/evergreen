@@ -20,8 +20,26 @@ const (
 	EnvFileMountTarget = "/var/run/evergreen-env"
 
 	// envFileBaseDir is the host-side root for per-task env tmpfs directories.
+	// Override with SetEnvFileBaseDir for local dev environments (e.g. macOS
+	// with colima where /var/run is not shared into the Docker VM).
 	envFileBaseDir = "/var/run/evergreen-env"
 )
+
+// activeEnvFileBaseDir is the runtime base dir, defaulting to envFileBaseDir.
+// Override via SetEnvFileBaseDir before any container operations.
+var activeEnvFileBaseDir = envFileBaseDir
+
+// SetEnvFileBaseDir overrides the host-side base directory for env tmpfs dirs.
+// Must be called before CreateAndStart. Intended for local dev environments
+// where /var/run is not accessible inside the Docker daemon's VM (e.g. macOS
+// with colima). Has no effect on production Linux hosts.
+func SetEnvFileBaseDir(dir string) error {
+	if !filepath.IsAbs(dir) {
+		return errors.Errorf("env base dir must be absolute, got %q", dir)
+	}
+	activeEnvFileBaseDir = dir
+	return nil
+}
 
 // Mount is a host→container bind mount layered on top of the workdir mount.
 // Used by the GOAL-279 design's host-bind toolchain delivery (e.g. host /opt
@@ -84,7 +102,7 @@ type TaskContainer struct {
 
 // envHostDir returns the host-side tmpfs directory path for the given task ID.
 func envHostDir(taskID string) string {
-	return filepath.Join(envFileBaseDir, taskID)
+	return filepath.Join(activeEnvFileBaseDir, taskID)
 }
 
 // CreateAndStart creates a Docker container for task isolation and starts it.

@@ -33,7 +33,14 @@ func main() {
 	cpus := flag.Int64("cpus", 0, "CPU limit in whole cores (0 for none)")
 	defaultOpt, _ := os.UserHomeDir()
 	optPath := flag.String("opt-path", filepath.Join(defaultOpt, "poc-opt"), "Host directory bind-mounted read-only at /opt inside the container")
+	envBaseDir := flag.String("env-base-dir", "", "Override the env tmpfs base directory (default: /var/run/evergreen-env). Use /tmp/evergreen-env on macOS with colima since /var/run is not shared into the VM.")
 	flag.Parse()
+
+	if *envBaseDir != "" {
+		if err := container.SetEnvFileBaseDir(*envBaseDir); err != nil {
+			log.Fatalf("setting env base dir: %v", err)
+		}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
