@@ -345,7 +345,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 	patches, err := patch.Find(r.Context(), query)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrapf(err, "finding patches for user %s", dbUser.Id))
+			errors.Wrapf(err, "finding patches for user '%s'", dbUser.Id))
 		return
 	}
 	gimlet.WriteJSON(r.Context(), w, patches)

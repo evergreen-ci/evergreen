@@ -612,7 +612,7 @@ func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string,
 		})
 
 		if err != nil {
-			return "", errors.Wrapf(err, "executing patch display template for id %s", p.Id.Hex())
+			return "", errors.Wrapf(err, "executing patch display template for id '%s'", p.Id.Hex())
 		}
 	}
 

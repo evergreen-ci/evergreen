@@ -155,7 +155,7 @@ func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) 
 	for _, h := range settings.Hosts {
 		dbHost, err := host.FindOneId(ctx, h.Name)
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding host named %s", h.Name)
+			return nil, errors.Wrapf(err, "finding host named '%s'", h.Name)
 		}
 		provisionChange := needsReprovisioning(d, dbHost)
 

@@ -97,7 +97,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 			maxHosts)
 
 		if err != nil {
-			return 0, len(freeHosts), errors.Wrapf(err, "calculating hosts for distro %s", distro.Id)
+			return 0, len(freeHosts), errors.Wrapf(err, "calculating hosts for distro '%s'", distro.Id)
 		}
 
 		// add up total number of hosts needed for all groups

@@ -203,9 +203,9 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			})
 			return imageName, errors.Wrap(err, "importing image")
 		}
-		return imageName, errors.Errorf("unrecognized image build method: %s", options.Method)
+		return imageName, errors.Errorf("unrecognized image build method: '%s'", options.Method)
 	}
-	return "", errors.Wrapf(err, "inspecting image %s", imageName)
+	return "", errors.Wrapf(err, "inspecting image '%s'", imageName)
 }
 
 func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, url string) error {
@@ -219,7 +219,7 @@ func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, 
 	var resp io.ReadCloser
 	resp, err = dockerClient.ImageImport(ctx, source, name, image.ImportOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "importing image from %s", url)
+		return errors.Wrapf(err, "importing image from '%s'", url)
 	}
 
 	// Wait until ImageImport finishes
@@ -279,7 +279,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, s3URLPrefix 
 	// build the image
 	resp, err := dockerClient.ImageBuild(ctx, nil, options)
 	if err != nil {
-		return "", errors.Wrapf(err, "building Docker image from base image %s", baseImage)
+		return "", errors.Wrapf(err, "building Docker image from base image '%s'", baseImage)
 	}
 	grip.Info(ctx, message.Fields{
 		"operation": "BuildImageWithAgent",
@@ -328,7 +328,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		// Generate the host secret for container if none exists.
 		if containerHost.Secret == "" {
 			if err = containerHost.CreateSecret(ctx, false); err != nil {
-				return errors.Wrapf(err, "creating secret for %s", containerHost.Id)
+				return errors.Wrapf(err, "creating secret for '%s'", containerHost.Id)
 			}
 		}
 		// Build path to Evergreen executable.

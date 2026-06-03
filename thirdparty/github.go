@@ -900,7 +900,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 			return nil, parseGithubErrorResponse(resp)
 		}
 	} else {
-		err = errors.Wrapf(err, "nil response from repo %s/%s for %s", owner, repo, githash)
+		err = errors.Wrapf(err, "nil response from repo '%s/%s' for '%s'", owner, repo, githash)
 		grip.Error(ctx, message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
 			"repo":    owner + "/" + repo,
