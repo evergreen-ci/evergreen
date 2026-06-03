@@ -2052,7 +2052,7 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 
 func setupIdleHostQueryIndex(t *testing.T) {
 	require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
-		Keys: StartedByStatusIndex,
+		Keys: StartedByCreationTimeIndex,
 	}))
 }
 
