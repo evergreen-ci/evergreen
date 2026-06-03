@@ -290,7 +290,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		for _, moduleName := range taskConfig.BuildVariant.Modules {
 			expanded, err := opts.ExpansionsAndVars.Expansions.ExpandString(moduleName)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to expand module '%s'", moduleName)
+				return nil, errors.Wrapf(err, "expanding module '%s'", moduleName)
 			}
 			expandedModules = append(expandedModules, expanded)
 		}

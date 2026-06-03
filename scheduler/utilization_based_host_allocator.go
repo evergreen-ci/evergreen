@@ -98,7 +98,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 			maxHosts)
 
 		if err != nil {
-			return 0, len(freeHosts), errors.Wrapf(err, "error calculating hosts for distro %s", distro.Id)
+			return 0, len(freeHosts), errors.Wrapf(err, "calculating hosts for distro %s", distro.Id)
 		}
 
 		// add up total number of hosts needed for all groups
@@ -151,7 +151,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	if containerPool != nil {
 		parentDistro, err := distro.FindOneId(ctx, containerPool.Distro)
 		if err != nil {
-			return 0, 0, errors.Wrap(err, "error finding parent distros")
+			return 0, 0, errors.Wrap(err, "finding parent distros")
 		}
 		if parentDistro == nil {
 			return 0, 0, errors.Errorf("distro '%s' not found", containerPool.Distro)

@@ -504,7 +504,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	}
 
 	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
-		return errors.Wrapf(err, "unable to upload launch template for host '%s'", h.Id)
+		return errors.Wrapf(err, "uploading launch template for host '%s'", h.Id)
 	}
 
 	instanceID, err := m.requestFleet(ctx, h, ec2Settings)

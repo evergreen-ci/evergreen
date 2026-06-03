@@ -797,7 +797,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
 	err := d.Insert(ctx)
 	if err != nil {
-		return errors.Wrap(err, "Error inserting distro")
+		return errors.Wrap(err, "inserting distro")
 	}
 	return d.AddPermissions(ctx, creator)
 }

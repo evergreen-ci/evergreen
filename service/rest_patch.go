@@ -38,7 +38,7 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 	err := projCtx.Patch.FetchPatchFiles(r.Context())
 	if err != nil {
 		restapi.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "error occurred fetching patch data"))
+			errors.Wrap(err, "fetching patch data"))
 		return
 	}
 
