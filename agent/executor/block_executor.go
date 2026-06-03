@@ -104,7 +104,7 @@ func RunCommandsInBlock(ctx context.Context, deps BlockExecutorDeps, cmdBlock Co
 	start := time.Now()
 	defer func() {
 		if err != nil {
-			deps.TaskLogger.Error(ctx, errors.Wrapf(err, "running '%s' commands failed", legacyBlockName))
+			deps.TaskLogger.Error(ctx, errors.Wrapf(err, "Running %s commands failed", legacyBlockName))
 		}
 		deps.TaskLogger.Infof(ctx, "Finished running %s commands in %s.", legacyBlockName, time.Since(start).String())
 	}()
