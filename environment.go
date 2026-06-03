@@ -35,6 +35,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
@@ -121,6 +122,10 @@ type Environment interface {
 	Session(ctx context.Context) db.Session
 	CedarSession(ctx context.Context) db.Session
 	Client() *mongo.Client
+	// SecondaryReadClient returns the MongoDB client configured with
+	// SecondaryPreferred read routing. Reads may be replication-lagged.
+	// Returns the primary client when ServiceFlags.SecondaryReadsDisabled is set.
+	SecondaryReadClient() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
 	// Evergreen.
@@ -322,6 +327,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	secondaryClient         *mongo.Client
 	cedarClient             *mongo.Client
 	sharedDBClient          *mongo.Client
 	mu                      sync.RWMutex
@@ -503,6 +509,41 @@ func (e *envState) Client() *mongo.Client {
 	defer e.mu.RUnlock()
 
 	return e.client
+}
+
+// SecondaryReadClient returns a MongoDB client configured with SecondaryPreferred read routing.
+// Returns the normal client if secondary reads are disabled by admin settings.
+//
+// The secondary client is initialized lazily on first call so tests that never
+// take the secondary path don't pay for a second mongo topology. This is safe
+// because mongo.Connect does not perform a blocking handshake — it constructs
+// the client and starts topology discovery in the background — so the first
+// caller pays only the cost of a write-lock acquisition. The first secondary
+// query then waits for server selection (bounded by serverSelectionTimeout,
+// typically sub-100ms since the secondary URL is the same as the primary's).
+// If Connect itself errors, we log and fall back to the primary client; the
+// next call retries.
+func (e *envState) SecondaryReadClient() *mongo.Client {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.settings == nil || e.settings.ServiceFlags.SecondaryReadsDisabled {
+		return e.client
+	}
+
+	if e.secondaryClient == nil {
+		client, err := mongo.Connect(e.ctx, e.settings.Database.mongoOptions(e.settings.Database.Url, withReadPreference(readpref.SecondaryPreferred())))
+		if err != nil {
+			grip.Warning(e.ctx, message.WrapError(err, message.Fields{
+				"message":   "failed to initialize secondary read client; falling back to primary",
+				"operation": "SecondaryReadClient",
+			}))
+			return e.client
+		}
+		e.secondaryClient = client
+	}
+
+	return e.secondaryClient
 }
 
 // DB returns a database that is dedicated to this instance of Evergreen.
