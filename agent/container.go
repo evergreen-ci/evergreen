@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/docker/docker/client"
 	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
 	"github.com/evergreen-ci/evergreen/agent/internal"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -150,17 +152,122 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 // The container is identified by its name in logs rather than the task ID,
 // since the container was created for the first task in the group and its name
 // does not change across task-group members.
+//
+// If a.retainContainerUntil is in the future, the container is intentionally
+// left running for on-call post-mortem inspection (retain_on_failure_secs).
+// The agent reference is cleared so subsequent task dispatch is unaffected;
+// the reaper removes the container at next startup.
 func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig) {
 	if a.currentContainer == nil {
+		// Clear any stale retention window even if there is no container to
+		// destroy. Without this, a window set for a prior container could
+		// survive into a future task group and incorrectly retain a container
+		// that did NOT fail.
+		a.retainContainerUntil = time.Time{}
 		return
 	}
 	containerName := a.currentContainer.Name
+
+	if !a.retainContainerUntil.IsZero() && time.Now().Before(a.retainContainerUntil) {
+		grip.Infof(ctx, "Retaining isolation container '%s' until %s for on-call inspection (retain_on_failure_secs). The orphan reaper will remove it at next agent startup.",
+			containerName, a.retainContainerUntil.Format(time.RFC3339))
+		// Close the Docker client connection (it is no longer needed for
+		// lifecycle management) but do NOT remove the container or its tmpfs.
+		// The tmpfs remains mounted inside the container so on-call can read
+		// the env-file; the container itself is left running for docker exec.
+		// The orphan reaper at next agent startup handles the final cleanup.
+		a.currentContainer.Close()
+		a.currentContainer = nil
+		a.retainContainerUntil = time.Time{}
+		if conf != nil {
+			conf.ContainerID = ""
+			conf.EnvFileHostDir = ""
+		}
+		return
+	}
+
 	if err := a.currentContainer.Destroy(ctx); err != nil {
 		grip.Warningf(ctx, "Failed to destroy isolation container '%s': %s", containerName, err)
 	}
 	a.currentContainer = nil
+	a.retainContainerUntil = time.Time{}
 	if conf != nil {
 		conf.ContainerID = ""
 		conf.EnvFileHostDir = ""
 	}
+}
+
+// checkContainerOOM uses docker inspect to read the OOMKilled flag from the
+// container state. Returns (true, nil) when the container was OOM-killed,
+// (false, nil) when it was not, and (false, err) when inspect fails.
+func checkContainerOOM(ctx context.Context, containerID string) (bool, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return false, fmt.Errorf("creating Docker client for OOM check: %w", err)
+	}
+	defer cli.Close()
+
+	inspectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	info, err := cli.ContainerInspect(inspectCtx, containerID)
+	if err != nil {
+		return false, fmt.Errorf("inspecting container '%s': %w", containerID, err)
+	}
+	if info.State == nil {
+		return false, nil
+	}
+	return info.State.OOMKilled, nil
+}
+
+// scheduleContainerRetention sets the retention window on the agent when a
+// task fails with an active isolation container. The container is kept alive
+// for ContainerRetainOnFailureSecs seconds after the task ends so on-call can
+// docker exec into it for post-mortem inspection.
+//
+// Timing note: the window is measured from task failure time, not from when
+// destroyContainer actually fires (which is at group teardown, potentially
+// seconds to minutes later). For task groups where teardown fires within the
+// window, the container is left running until the reaper; for teardown after
+// the window, normal destroy runs. Both outcomes are acceptable for Phase 0
+// on-call use: the container is either available or cleanly removed.
+func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName string) {
+	if a.opts.ContainerRetainOnFailureSecs <= 0 || a.currentContainer == nil {
+		return
+	}
+	a.retainContainerUntil = time.Now().Add(time.Duration(a.opts.ContainerRetainOnFailureSecs) * time.Second)
+	grip.Infof(ctx, "Task failed with isolation container '%s' active; scheduling retention until %s (retain_on_failure_secs=%d). Use `docker exec -it %s bash` for inspection.",
+		containerName, a.retainContainerUntil.Format(time.RFC3339),
+		a.opts.ContainerRetainOnFailureSecs, containerName)
+}
+
+// augmentOOMTrackerWithContainerSignal supplements the existing dmesg-based
+// OOM report with the container-native OOMKilled signal from docker inspect.
+// This is more reliable than dmesg under containers because dmesg PIDs are
+// host-side (not matching container-namespaced PIDs) and the dmesg buffer can
+// accumulate messages from prior containers.
+//
+// This check is intentionally independent of tc.oomTrackerEnabled(cloudProvider).
+// That gate controls the dmesg-based report (a project-level setting for host
+// processes). The container OOMKilled signal is a container-specific fact from
+// docker inspect, always worth surfacing when a container is active regardless
+// of project OOM-tracker preferences.
+func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if a.currentContainer == nil {
+		return
+	}
+	oomKilled, err := checkContainerOOM(ctx, a.currentContainer.ID)
+	if err != nil {
+		tc.logger.Execution().Warningf(ctx, "Could not check container OOM status via docker inspect: %s", err)
+		return
+	}
+	if !oomKilled {
+		tc.logger.Execution().Debugf(ctx, "docker inspect: container '%s' OOMKilled=false.", a.currentContainer.Name)
+		return
+	}
+	tc.logger.Execution().Infof(ctx, "docker inspect: container '%s' OOMKilled=true; task was OOM-killed.", a.currentContainer.Name)
+	if detail.OOMTracker == nil {
+		detail.OOMTracker = &apimodels.OOMTrackerInfo{}
+	}
+	detail.OOMTracker.Detected = true
 }

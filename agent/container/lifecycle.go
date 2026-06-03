@@ -182,6 +182,13 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	}, nil
 }
 
+// Close releases the underlying Docker client connection without removing the
+// container or its tmpfs. Use when the container is intentionally left running
+// (e.g. retain_on_failure_secs) and lifecycle management is complete.
+func (tc *TaskContainer) Close() {
+	_ = tc.cli.Close()
+}
+
 // Destroy force-removes the container and cleans up the env tmpfs, then closes
 // the Docker client.
 func (tc *TaskContainer) Destroy(ctx context.Context) error {
