@@ -33,7 +33,7 @@ type timeoutStr struct {
 func timeoutUpdateFactory() Command { return &timeout{} }
 func (c *timeout) Name() string     { return "timeout.update" }
 
-// ParseParams parses the params into the the timeout struct.
+// ParseParams parses the params into the timeout struct.
 func (c *timeout) ParseParams(params map[string]any) error {
 	c.params = params
 	return nil
