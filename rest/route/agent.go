@@ -552,14 +552,15 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /task/{task_id}/distro_view
 type getDistroViewHandler struct {
 	hostID string
+	env    evergreen.Environment
 }
 
-func makeGetDistroView() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+func makeGetDistroView(env evergreen.Environment) gimlet.RouteHandler {
+	return &getDistroViewHandler{env: env}
 }
 
 func (h *getDistroViewHandler) Factory() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+	return &getDistroViewHandler{env: h.env}
 }
 
 func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -590,11 +591,29 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		Mountpoints:         foundHost.Distro.Mountpoints,
 		ExecUser:            foundHost.Distro.ExecUser,
 	}
+	// Populate container isolation only when the distro has it enabled AND
+	// the admin kill switch (ContainerIsolationDisabled) is not set.
 	if ci := foundHost.Distro.BootstrapSettings.ContainerIsolation; ci.Enabled {
-		dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
-			Image:    ci.Image,
-			MemoryMB: ci.MemoryMB,
-			CPUs:     ci.CPUs,
+		if h.env != nil && h.env.Settings().ServiceFlags.ContainerIsolationDisabled {
+			// Kill switch wins over per-distro settings, including RequireIsolation.
+			// Log a warning when the kill switch suppresses a fail-closed distro so
+			// the override is visible and operators can correlate host-mode tasks
+			// with the kill switch being active.
+			if ci.RequireIsolation {
+				grip.Warning(ctx, message.Fields{
+					"message":  "container_isolation_disabled kill switch is overriding a require_isolation distro; tasks will run in host-mode",
+					"host_id":  h.hostID,
+					"distro":   foundHost.Distro.Id,
+					"image":    ci.Image,
+				})
+			}
+		} else {
+			dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
+				Image:            ci.Image,
+				MemoryMB:         ci.MemoryMB,
+				CPUs:             ci.CPUs,
+				RequireIsolation: ci.RequireIsolation,
+			}
 		}
 	}
 	return gimlet.NewJSONResponse(dv)

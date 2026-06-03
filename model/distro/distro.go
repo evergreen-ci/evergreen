@@ -175,6 +175,10 @@ type ContainerIsolationSettings struct {
 	Image    string `bson:"image" json:"image" mapstructure:"image"`
 	MemoryMB int64  `bson:"memory_mb,omitempty" json:"memory_mb,omitempty" mapstructure:"memory_mb,omitempty"`
 	CPUs     int64  `bson:"cpus,omitempty" json:"cpus,omitempty" mapstructure:"cpus,omitempty"`
+	// RequireIsolation opts into fail-closed behavior. When true, container
+	// creation or image-pull failure fails the task immediately rather than
+	// degrading to host-mode. Default (false) is fail-open.
+	RequireIsolation bool `bson:"require_isolation,omitempty" json:"require_isolation,omitempty" mapstructure:"require_isolation,omitempty"`
 }
 
 type HomeVolumeSettings struct {
@@ -272,6 +276,8 @@ func (d *Distro) ValidateBootstrapSettings() error {
 		catcher.NewWhen(!d.IsLinux(), "container isolation is only supported on Linux")
 		catcher.NewWhen(ci.Image == "", "container image cannot be empty when container isolation is enabled")
 		catcher.NewWhen(d.ExecUser == "", "container isolation requires ExecUser to be set; it is used to scope between-task process cleanup inside the container's PID namespace")
+	} else if d.BootstrapSettings.ContainerIsolation.RequireIsolation {
+		catcher.New("require_isolation has no effect when container isolation is not enabled")
 	}
 
 	return catcher.Resolve()
