@@ -162,9 +162,11 @@ input ProjectTasksPairInput {
 
 type ProjectTasksPair {
   projectId: String!
+  displayName: String!
   allowedTasks: [String!]!
   allowedBVs: [String!]!
 }
+
 input ReleaseModeConfigInput {
   distroMaxHostsFactor: Float
   targetTimeSecondsOverride: Int
@@ -217,39 +219,39 @@ type CostConfig {
 }
 
 input S3UploadCostConfigInput {
-    uploadCostDiscount: Float
+  uploadCostDiscount: Float
 }
 
 type S3UploadCostConfig {
-    uploadCostDiscount: Float
+  uploadCostDiscount: Float
 }
 
 input S3StorageCostConfigInput {
-    standardStorageCostDiscount: Float
-    iAStorageCostDiscount: Float
-    archiveStorageCostDiscount: Float
-    defaultMaxArtifactExpirationDays: Int
-    devprodOwnedAwsAccountIds: [String!]
-    artifactAwsAccountsWithoutLifecycleRules: [String!]
+  standardStorageCostDiscount: Float
+  iAStorageCostDiscount: Float
+  archiveStorageCostDiscount: Float
+  defaultMaxArtifactExpirationDays: Int
+  devprodOwnedAwsAccountIds: [String!]
+  artifactAwsAccountsWithoutLifecycleRules: [String!]
 }
 
 type S3StorageCostConfig {
-    standardStorageCostDiscount: Float
-    iAStorageCostDiscount: Float
-    archiveStorageCostDiscount: Float
-    defaultMaxArtifactExpirationDays: Int
-    devprodOwnedAwsAccountIds: [String!]
-    artifactAwsAccountsWithoutLifecycleRules: [String!]
+  standardStorageCostDiscount: Float
+  iAStorageCostDiscount: Float
+  archiveStorageCostDiscount: Float
+  defaultMaxArtifactExpirationDays: Int
+  devprodOwnedAwsAccountIds: [String!]
+  artifactAwsAccountsWithoutLifecycleRules: [String!]
 }
 
 input S3CostConfigInput {
-    upload: S3UploadCostConfigInput
-    storage: S3StorageCostConfigInput
+  upload: S3UploadCostConfigInput
+  storage: S3StorageCostConfigInput
 }
 
 type S3CostConfig {
-    upload: S3UploadCostConfig
-    storage: S3StorageCostConfig
+  upload: S3UploadCostConfig
+  storage: S3StorageCostConfig
 }
 
 input EBSCostConfigInput {
