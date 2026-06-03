@@ -12,6 +12,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,6 +27,13 @@ func TestSleepSchedulerJob(t *testing.T) {
 		assert.Contains(t, j.ID(), "ts")
 		assert.NotZero(t, j.env)
 	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ctx = testutil.TestSpan(ctx, t)
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection))
@@ -483,26 +492,35 @@ func TestSleepSchedulerJob(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
+			tctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			ctx = testutil.TestSpan(ctx, t)
+			tctx = testutil.TestSpan(tctx, t)
 
 			require.NoError(t, db.ClearCollections(host.Collection))
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
 
-			oldServiceFlags, err := evergreen.GetServiceFlags(ctx)
+			// Reset the queue group so each test has a clean queue.
+			qg, err := queue.NewLocalQueueGroup(tctx, queue.LocalQueueGroupOptions{
+				DefaultQueue: queue.LocalQueueOptions{
+					Constructor: func(ctx context.Context) (amboy.Queue, error) {
+						return queue.NewLocalLimitedSize(2, 1024), nil
+					},
+				},
+			})
+			require.NoError(t, err)
+			env.RemoteGroup = qg
+
+			oldServiceFlags, err := evergreen.GetServiceFlags(tctx)
 			require.NoError(t, err)
 			newServiceFlags := *oldServiceFlags
-			require.NoError(t, evergreen.SetServiceFlags(ctx, newServiceFlags))
+			require.NoError(t, evergreen.SetServiceFlags(tctx, newServiceFlags))
 			defer func() {
-				assert.NoError(t, evergreen.SetServiceFlags(ctx, *oldServiceFlags))
+				assert.NoError(t, evergreen.SetServiceFlags(tctx, *oldServiceFlags))
 			}()
 
 			j, ok := NewSleepSchedulerJob(env, "ts").(*sleepSchedulerJob)
 			require.True(t, ok)
 
-			tCase(ctx, t, env, j)
+			tCase(tctx, t, env, j)
 		})
 	}
 }
