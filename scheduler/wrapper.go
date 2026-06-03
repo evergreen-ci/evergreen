@@ -32,14 +32,14 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	distro, err := distro.FindOneId(ctx, conf.DistroID)
 	if err != nil {
-		return errors.Wrap(err, "problem finding distro")
+		return errors.Wrap(err, "finding distro")
 	}
 	if distro == nil {
 		return errors.Errorf("distro '%s' not found", conf.DistroID)
 	}
 
 	if err = underwaterUnschedule(ctx, distro.Id); err != nil {
-		return errors.Wrap(err, "problem unscheduling underwater tasks")
+		return errors.Wrap(err, "unscheduling underwater tasks")
 	}
 
 	if distro.Disabled {
@@ -88,7 +88,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	finder := GetTaskFinder(conf.TaskFinder)
 	tasks, err := finder(ctx, *distro)
 	if err != nil {
-		return errors.Wrapf(err, "problem while running task finder for distro '%s'", distro.Id)
+		return errors.Wrapf(err, "running task finder for distro '%s'", distro.Id)
 	}
 	grip.Info(ctx, message.Fields{
 		"runner":        RunnerName,
@@ -155,7 +155,7 @@ func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) 
 	for _, h := range settings.Hosts {
 		dbHost, err := host.FindOneId(ctx, h.Name)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding host named %s", h.Name)
+			return nil, errors.Wrapf(err, "finding host named '%s'", h.Name)
 		}
 		provisionChange := needsReprovisioning(d, dbHost)
 

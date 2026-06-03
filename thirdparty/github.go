@@ -726,7 +726,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		return errors.Wrap(err, "error retrieving admin settings")
+		return errors.Wrap(err, "retrieving admin settings")
 	}
 	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
@@ -900,7 +900,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 			return nil, parseGithubErrorResponse(resp)
 		}
 	} else {
-		err = errors.Wrapf(err, "nil response from repo %s/%s for %s", owner, repo, githash)
+		err = errors.Wrapf(err, "nil response from repo '%s/%s' for '%s'", owner, repo, githash)
 		grip.Error(ctx, message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
 			"repo":    owner + "/" + repo,
@@ -1078,7 +1078,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, owner, repo, tag string) (st
 		}
 	}
 	if err != nil {
-		return "", errors.Wrapf(err, "error getting tag for ref '%s'", ref)
+		return "", errors.Wrapf(err, "getting tag for ref '%s'", ref)
 	}
 
 	var sha string
@@ -1090,7 +1090,7 @@ func GetTaggedCommitFromGithub(ctx context.Context, owner, repo, tag string) (st
 	case tagObjectType:
 		annotatedTag, err := getObjectTag(ctx, owner, repo, tagSha)
 		if err != nil {
-			return "", errors.Wrapf(err, "error getting tag '%s' with SHA '%s'", tag, tagSha)
+			return "", errors.Wrapf(err, "getting tag '%s' with SHA '%s'", tag, tagSha)
 		}
 		sha = annotatedTag.GetObject().GetSHA()
 	default:
@@ -1175,7 +1175,7 @@ func getObjectTag(ctx context.Context, owner, repo, sha string) (*github.Tag, er
 		}
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting tag with SHA '%s'", sha)
+		return nil, errors.Wrapf(err, "getting tag with SHA '%s'", sha)
 	}
 
 	return tag, nil
@@ -1216,7 +1216,7 @@ func userInTeam(ctx context.Context, teams []string, org, user, owner, repo stri
 			}
 		}
 		if err != nil {
-			return false, errors.Wrapf(err, "error getting membership for user '%s' in team '%s'", user, team)
+			return false, errors.Wrapf(err, "getting membership for user '%s' in team '%s'", user, team)
 		}
 		if membership != nil && membership.GetState() == "active" {
 			return true, nil
@@ -1580,7 +1580,7 @@ func GetGithubPullRequestDiff(ctx context.Context, gh GithubPatch) (string, []Su
 	}
 	summaries, err := GetPatchSummaries(diff)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to get patch summary")
+		return "", nil, errors.Wrap(err, "getting patch summary")
 	}
 
 	return diff, summaries, nil

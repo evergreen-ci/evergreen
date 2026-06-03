@@ -245,7 +245,7 @@ func findBrowserCommand() ([]string, error) {
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if err := p.loadProject(ctx, conf); err != nil {
-		return nil, errors.Wrap(err, "failed to resolve project")
+		return nil, errors.Wrap(err, "resolving project")
 	}
 
 	// If reusing a previous definition, ignore defaults.
@@ -612,7 +612,7 @@ func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string,
 		})
 
 		if err != nil {
-			return "", errors.Wrapf(err, "executing patch display template for id %s", p.Id.Hex())
+			return "", errors.Wrapf(err, "executing patch display template for id '%s'", p.Id.Hex())
 		}
 	}
 
@@ -712,7 +712,7 @@ func loadGitData(dir, remote, branch, ref, commits string, format bool, extraArg
 	if err != nil {
 		mergeBase, err = gitMergeBase(dir, branch+"@{upstream}", ref, commits)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error getting merge base, "+
+			return nil, errors.Wrapf(err, "getting merge base, "+
 				"may need to create local branch '%s' and have it track your Evergreen project", branch)
 		}
 	}
@@ -926,7 +926,7 @@ func gitExecCmd(args []string) (string, error) {
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Wrapf(err, "command 'git %s' failed", strings.Join(args, " "))
+		return "", errors.Wrapf(err, "running command 'git %s'", strings.Join(args, " "))
 	}
 	return string(out), nil
 }

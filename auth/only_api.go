@@ -35,14 +35,14 @@ func NewOnlyAPIUserManager() (gimlet.UserManager, error) {
 		GetOrCreateUser: func(ctx context.Context, u gimlet.User) (gimlet.User, error) {
 			user, err := findOnlyAPIUser(ctx, u.Username())
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to get API-only user and cannot create new one")
+				return nil, errors.Wrap(err, "getting API-only user; cannot create new one")
 			}
 			return user, nil
 		},
 	}
 	cache, err := usercache.NewExternal(opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create user cache")
+		return nil, errors.Wrap(err, "creating user cache")
 	}
 	return cached.NewUserManager(cache)
 }

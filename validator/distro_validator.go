@@ -154,7 +154,7 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 		bytes, err := doc.MarshalBSON()
 		if err != nil {
 			errs = append(errs, ValidationError{
-				Message: errors.Wrap(err, "error marshalling provider setting into bson").Error(),
+				Message: errors.Wrap(err, "marshalling provider setting into bson").Error(),
 				Level:   Error,
 			})
 			continue
@@ -163,7 +163,7 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 		settings := &cloud.EC2ProviderSettings{}
 		if err := bson.Unmarshal(bytes, settings); err != nil {
 			errs = append(errs, ValidationError{
-				Message: errors.Wrap(err, "error unmarshalling bson into provider settings").Error(),
+				Message: errors.Wrap(err, "unmarshalling bson into provider settings").Error(),
 				Level:   Error,
 			})
 			continue
@@ -171,7 +171,7 @@ func validateMultipleProviderSettings(d *distro.Distro) ValidationErrors {
 		if err := settings.Validate(); err != nil {
 
 			errs = append(errs, ValidationError{
-				Message: errors.Wrapf(err, "error validating settings for region '%s'", region).Error(),
+				Message: errors.Wrapf(err, "validating settings for region '%s'", region).Error(),
 				Level:   Error,
 			})
 		}
@@ -189,7 +189,7 @@ func validateSingleProviderSettings(d *distro.Distro) error {
 	}
 
 	if err := settings.Validate(); err != nil {
-		return errors.Wrap(err, "error validating settings")
+		return errors.Wrap(err, "validating settings")
 	}
 	return nil
 }
@@ -265,7 +265,7 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 // architectures.
 func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if err := distro.ValidateArch(d.Arch); err != nil {
-		return ValidationErrors{{Level: Error, Message: errors.Wrap(err, "error validating arch").Error()}}
+		return ValidationErrors{{Level: Error, Message: errors.Wrap(err, "validating arch").Error()}}
 	}
 	return nil
 }

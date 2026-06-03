@@ -556,5 +556,5 @@ func UpsertOneFromExisting(ctx context.Context, oldUsr *DBUser, newEmail string)
 		PubKeysKey:          newUsr.PublicKeys(),
 	}})
 
-	return newUsr, errors.Wrapf(err, "unable to insert new user '%s'", newUsername)
+	return newUsr, errors.Wrapf(err, "inserting new user '%s'", newUsername)
 }
