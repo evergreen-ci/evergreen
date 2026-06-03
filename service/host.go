@@ -50,7 +50,7 @@ func (uis *UIServer) handleBackendError(message string, statusCode int) func(htt
 	}
 }
 
-// returns dockerfle as text
+// returns dockerfile as text
 func getDockerfile(w http.ResponseWriter, r *http.Request) {
 	parts := []string{
 		"ARG BASE_IMAGE",
