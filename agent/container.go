@@ -2,12 +2,95 @@ package agent
 
 import (
 	"context"
+	"strings"
+	"time"
 
+	dockercontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
+
+// tryReapOrphanContainers removes any evergreen-task-* containers left behind
+// by a prior agent crash or host reboot. Called once at agent startup when
+// the --cleanup flag is set, before any tasks are dispatched. Best-effort:
+// if Docker is not running (non-container-enabled host) the function returns
+// silently; individual removal failures are warned but do not block startup.
+// reaperTimeout bounds the total time the orphan-container reaper spends
+// connecting to Docker, listing containers, and removing them. Using a
+// background-derived context (not the agent's Start ctx) ensures that a
+// shutdown signal arriving during the --cleanup phase doesn't silently skip
+// the reap entirely: the agent ctx would be cancelled before any Docker call
+// completes, leaving orphans on the host.
+const reaperTimeout = 30 * time.Second
+
+func (a *Agent) tryReapOrphanContainers(ctx context.Context) {
+	defer recovery.LogStackTraceAndContinue("reap orphan containers")
+
+	// Use a bounded background context so the reaper completes even if the
+	// parent ctx is cancelled during a shutdown race. The parent ctx is still
+	// used for mid-loop cancellation checks so a clean agent shutdown during
+	// removal doesn't log spurious warnings.
+	reaperCtx, cancel := context.WithTimeout(context.Background(), reaperTimeout)
+	defer cancel()
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		grip.Infof(ctx, "Orphan container reaper: Docker client unavailable, skipping: %s", err)
+		return
+	}
+	defer cli.Close()
+
+	if _, err := cli.Info(reaperCtx); err != nil {
+		grip.Infof(ctx, "Orphan container reaper: Docker daemon not reachable, skipping: %s", err)
+		return
+	}
+
+	// The name filter is a substring match. GOAL-279 containers are named
+	// evergreen-task-<task-id>, a prefix distinctive enough that accidental
+	// collisions with human-created containers are unlikely. A label-based
+	// filter would be more precise but requires labelling containers at
+	// creation time (a larger change deferred to Phase 1).
+	containers, err := cli.ContainerList(reaperCtx, dockercontainer.ListOptions{
+		All:     true,
+		Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: "evergreen-task-"}),
+	})
+	if err != nil {
+		grip.Warningf(ctx, "Orphan container reaper: could not list containers: %s", err)
+		return
+	}
+
+	for _, c := range containers {
+		shortID := c.ID
+		if len(shortID) > 12 {
+			shortID = shortID[:12]
+		}
+		names := containerNames(c.Names)
+		if err := cli.ContainerRemove(reaperCtx, c.ID, dockercontainer.RemoveOptions{Force: true}); err != nil {
+			if ctx.Err() != nil {
+				// Context cancelled during shutdown — not a real removal failure.
+				return
+			}
+			grip.Warningf(ctx, "Orphan container reaper: could not remove container '%s' (%s): %s", shortID, names, err)
+		} else {
+			grip.Infof(ctx, "Orphan container reaper: removed stale container '%s' (%s).", shortID, names)
+		}
+	}
+}
+
+// containerNames strips the leading '/' that the Docker API prepends to
+// container names and joins them for display.
+func containerNames(names []string) string {
+	clean := make([]string, len(names))
+	for i, n := range names {
+		clean[i] = strings.TrimPrefix(n, "/")
+	}
+	return strings.Join(clean, ",")
+}
 
 // maybeStartContainer ensures a Docker container is running for task isolation
 // when the distro has container isolation enabled. It sets conf.ContainerID so
