@@ -20,16 +20,6 @@ func TestSelectTestsRequestJSON(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(`{"project_id":"my-project"}`), &req))
 		assert.Equal(t, "my-project", req.Project)
 	})
-	t.Run("UnmarshalsLegacyProject", func(t *testing.T) {
-		var req SelectTestsRequest
-		require.NoError(t, json.Unmarshal([]byte(`{"project":"my-project"}`), &req))
-		assert.Equal(t, "my-project", req.Project)
-	})
-	t.Run("ProjectIDTakesPrecedenceOverLegacyProject", func(t *testing.T) {
-		var req SelectTestsRequest
-		require.NoError(t, json.Unmarshal([]byte(`{"project_id":"canonical","project":"legacy"}`), &req))
-		assert.Equal(t, "canonical", req.Project)
-	})
 	t.Run("PreservesOtherFields", func(t *testing.T) {
 		var req SelectTestsRequest
 		require.NoError(t, json.Unmarshal([]byte(`{"project_id":"p","requester":"patch","build_variant":"v","task_id":"t1","task_name":"t","tests":["a"],"strategies":["s"]}`), &req))

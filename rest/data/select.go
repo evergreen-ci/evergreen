@@ -19,6 +19,7 @@ import (
 // Test selection service endpoint identifiers.
 const (
 	SelectTestsEndpoint       = "select_tests"
+	TransitionTestsEndpoint   = "transition_tests"
 	TransitionTaskEndpoint    = "transition_task"
 	TransitionVariantEndpoint = "transition_variant"
 	GetTestsStateEndpoint     = "get_tests_state"
@@ -28,6 +29,10 @@ const (
 func logTSSError(ctx context.Context, err error, resp *http.Response, info message.Fields) {
 	if resp != nil {
 		info["status"] = resp.StatusCode
+	}
+	var openAPIErr *testselection.GenericOpenAPIError
+	if errors.As(err, &openAPIErr) {
+		info["response_body"] = string(openAPIErr.Body())
 	}
 	grip.Error(ctx, message.WrapError(err, info))
 }
@@ -94,7 +99,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 	}
 	if err != nil {
 		logTSSError(ctx, err, resp, message.Fields{
-			"message":       "selecting tests",
+			"message":       "error selecting tests",
 			"endpoint":      SelectTestsEndpoint,
 			"project_id":    req.Project,
 			"requester":     req.Requester,
@@ -127,6 +132,16 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 	if resp != nil {
 		defer resp.Body.Close()
 	}
+	if err != nil {
+		logTSSError(ctx, err, resp, message.Fields{
+			"message":       "error setting test quarantine status",
+			"endpoint":      TransitionTestsEndpoint,
+			"project_id":    projectID,
+			"build_variant": bvName,
+			"task_name":     taskName,
+			"test_name":     testName,
+		})
+	}
 	return wrapTSSError(err)
 }
 
@@ -153,7 +168,7 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 	}
 	if err != nil {
 		logTSSError(ctx, err, resp, message.Fields{
-			"message":       "getting tests quarantine status",
+			"message":       "error getting tests quarantine status",
 			"endpoint":      GetTestsStateEndpoint,
 			"project_id":    projectID,
 			"build_variant": bvName,
@@ -188,6 +203,15 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string,
 	if resp != nil {
 		defer resp.Body.Close()
 	}
+	if err != nil {
+		logTSSError(ctx, err, resp, message.Fields{
+			"message":       "error setting task quarantine status",
+			"endpoint":      TransitionTaskEndpoint,
+			"project_id":    projectID,
+			"build_variant": bvName,
+			"task_name":     taskName,
+		})
+	}
 	return wrapTSSError(err)
 }
 
@@ -203,6 +227,14 @@ func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManu
 		Execute()
 	if resp != nil {
 		defer resp.Body.Close()
+	}
+	if err != nil {
+		logTSSError(ctx, err, resp, message.Fields{
+			"message":       "error setting variant quarantine status",
+			"endpoint":      TransitionVariantEndpoint,
+			"project_id":    projectID,
+			"build_variant": bvName,
+		})
 	}
 	return wrapTSSError(err)
 }
@@ -222,7 +254,7 @@ func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (
 	}
 	if err != nil {
 		logTSSError(ctx, err, resp, message.Fields{
-			"message":       "getting variant quarantine status",
+			"message":       "error getting variant quarantine status",
 			"endpoint":      GetVariantStateEndpoint,
 			"project_id":    projectID,
 			"build_variant": bvName,
