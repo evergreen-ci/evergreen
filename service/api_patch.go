@@ -308,7 +308,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	patchFileId := mgobson.NewObjectId().Hex()
 	err = db.WriteGridFile(r.Context(), patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed to write patch file to db"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing patch file to db"))
 		return
 	}
 

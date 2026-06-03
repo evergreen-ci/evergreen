@@ -245,7 +245,7 @@ func findBrowserCommand() ([]string, error) {
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if err := p.loadProject(ctx, conf); err != nil {
-		return nil, errors.Wrap(err, "failed to resolve project")
+		return nil, errors.Wrap(err, "resolving project")
 	}
 
 	// If reusing a previous definition, ignore defaults.
