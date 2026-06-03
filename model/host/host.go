@@ -252,7 +252,6 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
-
 // Validate checks that the settings from the config file are sane.
 func (opts *DockerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()

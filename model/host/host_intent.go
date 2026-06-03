@@ -124,20 +124,3 @@ parentLoop:
 	}
 	return matched, notMatched
 }
-
-
-func makeContainerIntentsForParent(parent ContainersOnParents, newContainersNeeded int, hostOptions CreateOptions) []Host {
-	// find out how many more containers this parent can fit
-	containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - len(parent.Containers)
-	containersToCreate := containerSpace
-	// only create containers as many as we need
-	if newContainersNeeded < containerSpace {
-		containersToCreate = newContainersNeeded
-	}
-	containerHostIntents := []Host{}
-	for i := 0; i < containersToCreate; i++ {
-		hostOptions.ParentID = parent.ParentHost.Id
-		containerHostIntents = append(containerHostIntents, *NewIntent(hostOptions))
-	}
-	return containerHostIntents
-}
