@@ -227,6 +227,7 @@ func (a *Agent) Start(ctx context.Context) error {
 	}
 	if a.opts.Cleanup {
 		a.tryCleanupDirectory(ctx, a.opts.WorkingDirectory)
+		a.tryReapOrphanContainers(ctx)
 	}
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
