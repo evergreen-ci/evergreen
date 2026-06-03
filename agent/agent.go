@@ -76,6 +76,10 @@ type Agent struct {
 	// destroyed in runTeardownGroupCommands. Set/cleared by
 	// maybeStartContainer/destroyContainer.
 	currentContainer *agentcontainer.TaskContainer
+	// retainContainerUntil, when non-zero, causes destroyContainer to skip
+	// actual removal and leave the container running for on-call inspection.
+	// Set by the task failure handler when ContainerRetainOnFailureSecs > 0.
+	retainContainerUntil time.Time
 }
 
 // Options contains startup options for an Agent.
@@ -99,6 +103,14 @@ type Options struct {
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
 	SingleTaskDistro           bool
+	// ContainerRetainOnFailureSecs is how long an isolation container is kept
+	// alive after a task failure so on-call can docker exec into it for
+	// post-mortem inspection. Default is 300s during Phase 0/1; set to 0 to
+	// disable retention once container.failure_snapshot coverage is trusted.
+	// Note: the CLI flag default is 300, but the zero value of this field is 0
+	// (no retention). Code that constructs Options{} directly (e.g. tests)
+	// gets zero — retention disabled — unless explicitly set.
+	ContainerRetainOnFailureSecs int
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -1207,6 +1219,18 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 		} else {
 			tc.logger.Execution().Debugf(ctx, "Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
+	}
+	// Supplement the dmesg-based OOM report with the container-native signal.
+	if detail.Status == evergreen.TaskFailed || detail.TimedOut {
+		a.augmentOOMTrackerWithContainerSignal(ctx, tc, detail)
+		if a.currentContainer != nil {
+			a.scheduleContainerRetention(ctx, a.currentContainer.Name)
+		}
+	} else {
+		// Task succeeded — clear any retention window set by a prior failed
+		// task in this group so the container is cleanly destroyed at teardown
+		// rather than leaked until the orphan reaper.
+		a.retainContainerUntil = time.Time{}
 	}
 
 	if rcInfo := tc.resourceMonitor.report(); rcInfo != nil {
