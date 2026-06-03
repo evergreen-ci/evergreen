@@ -33,9 +33,10 @@ func TestHostDrawdown(t *testing.T) {
 	ctx := testutil.TestSpan(t.Context(), t)
 
 	// Configuring the mock environment is expensive, so do it once and reuse it
-	// across subtests. The host collection is reset between subtests, and the
-	// drawdown job only reads/writes the database, so there is no shared state
-	// to leak through the environment.
+	// across subtests. The relevant DB collections (host, distro, task) are
+	// dropped between subtests (see testFlaggingIdleHostsSetupTest), and the
+	// drawdown job only reads/writes the database, so there is no test-relevant
+	// shared state to leak through the environment.
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
