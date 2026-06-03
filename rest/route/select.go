@@ -48,7 +48,7 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 		return errors.Wrap(err, "parsing request body")
 	}
 	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(t.selectTests.Project == "", "project is required")
+	catcher.NewWhen(t.selectTests.Project == "", "project ID is required")
 	catcher.NewWhen(t.selectTests.Requester == "", "requester is required")
 	catcher.NewWhen(t.selectTests.BuildVariant == "", "build variant is required")
 	catcher.NewWhen(t.selectTests.TaskID == "", "task ID is required")
@@ -61,6 +61,7 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
+
 	rhResp := t.selectTests
 	rhResp.Tests = selectedTests
 	return gimlet.NewJSONResponse(rhResp)
