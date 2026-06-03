@@ -361,9 +361,10 @@ type DistroView struct {
 
 // ContainerIsolationSettings is the agent-facing view of container isolation config.
 type ContainerIsolationSettings struct {
-	Image    string `json:"image"`
-	MemoryMB int64  `json:"memory_mb,omitempty"`
-	CPUs     int64  `json:"cpus,omitempty"`
+	Image            string `json:"image"`
+	MemoryMB         int64  `json:"memory_mb,omitempty"`
+	CPUs             int64  `json:"cpus,omitempty"`
+	RequireIsolation bool   `json:"require_isolation,omitempty"`
 }
 
 // HostView includes a relevant subset of information the agent's own host.

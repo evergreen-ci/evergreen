@@ -81,7 +81,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().Wrap(requireTask).RouteHandler(makeHostListRouteManager())
 	app.AddRoute("/task/{task_id}/").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeFetchTask())
 	app.AddRoute("/task/{task_id}/display_task").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDisplayTaskHandler())
-	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetDistroView())
+	app.AddRoute("/task/{task_id}/distro_view").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetDistroView(env))
 	app.AddRoute("/task/{task_id}/host_view").Version(2).Get().Wrap(requireTask, requireHost).RouteHandler(makeGetHostView())
 	app.AddRoute("/task/{task_id}/downstreamParams").Version(2).Post().Wrap(requireTask).RouteHandler(makeSetDownstreamParams())
 	app.AddRoute("/task/{task_id}/expansions_and_vars").Version(2).Get().Wrap(requireUserOrTask).RouteHandler(makeGetExpansionsAndVars(settings))

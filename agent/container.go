@@ -11,6 +11,7 @@ import (
 	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -122,7 +123,19 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		CPUs:     ci.CPUs,
 	})
 	if err != nil {
-		return errors.Wrap(err, "starting isolation container")
+		if ci.RequireIsolation {
+			// Fail-closed: the distro requires isolation; propagate the error
+			// so the task fails rather than running without container protection.
+			return errors.Wrap(err, "starting isolation container (fail-closed: require_isolation is set)")
+		}
+		// Fail-open default: log the degraded event and continue on the host.
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "container_isolation_degraded",
+			"task_id": conf.Task.Id,
+			"image":   ci.Image,
+			"note":    "task will run without container isolation",
+		}))
+		return nil
 	}
 	conf.ContainerID = tc.ID
 	conf.EnvFileHostDir = tc.EnvFileHostDir
