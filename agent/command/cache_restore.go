@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -78,17 +79,28 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 	}()
 
 	// Download directly rather than checking Exists first: a missing object
-	// surfaces as a key-not-found error, which is a terminal cache miss, so we
-	// avoid an extra S3 round-trip.
+	// surfaces as a terminal cache miss, so we avoid an extra S3 round-trip (and
+	// a HEAD request would face the same 403/404 ambiguity handled below).
 	miss := false
 	downloadDesc := fmt.Sprintf("download cache object '%s'", remoteKey)
 	err = retryS3Op(ctx, logger.Task(), downloadDesc, func() (bool, error) {
 		downloadErr := c.bucket.Download(ctx, remoteKey, localPath)
-		if pail.IsKeyNotFoundError(downloadErr) {
-			miss = true
+		if downloadErr == nil {
 			return false, nil
 		}
-		return downloadErr != nil, downloadErr
+		switch classifyCacheDownloadErr(downloadErr) {
+		case cacheDownloadMaybeMiss:
+			logger.Task().Warningf(ctx, "cache.restore: got access-denied downloading '%s/%s', treating as a cache miss; if a cache was expected here, verify the credentials grant s3:GetObject on this path.", c.Bucket, remoteKey)
+			miss = true
+			return false, nil
+		case cacheDownloadMiss:
+			miss = true
+			return false, nil
+		case cacheDownloadFatal:
+			return false, downloadErr
+		default:
+			return true, downloadErr
+		}
 	})
 	if err != nil {
 		return errors.Wrapf(err, "downloading cache object '%s'", remoteKey)
@@ -118,6 +130,43 @@ func (c *cacheRestore) Execute(ctx context.Context, comm client.Communicator, lo
 	logger.Task().Infof(ctx, "cache.restore: cache hit for key '%s', extracted into '%s'.", key, conf.WorkDir)
 	setCacheHit(conf, c.CacheName, true)
 	return nil
+}
+
+// cacheDownloadOutcome classifies a cache object download error so the retry
+// loop can decide whether to retry, treat it as a miss, or fail.
+type cacheDownloadOutcome int
+
+const (
+	// cacheDownloadRetry is a transient error worth retrying.
+	cacheDownloadRetry cacheDownloadOutcome = iota
+	// cacheDownloadFatal is a non-retryable error that should fail the command.
+	cacheDownloadFatal
+	// cacheDownloadMiss means the object is absent, a normal cache miss.
+	cacheDownloadMiss
+	// cacheDownloadMaybeMiss is an access-denied response. It's treated as a
+	// miss but warned about, since it may instead be a permission
+	// misconfiguration (see classifyCacheDownloadErr).
+	cacheDownloadMaybeMiss
+)
+
+// classifyCacheDownloadErr decides how cache.restore should react to a non-nil
+// download error. A 404 NoSuchKey is a clean miss, but S3 only returns it when
+// the credentials hold bucket-wide s3:ListBucket; caches scoped to a bucket
+// sub-path typically lack that, so S3 masks a missing object as a 403
+// AccessDenied, which is treated as a (warned) miss. Other client (4xx) errors
+// won't succeed on retry and are fatal; everything else is retried.
+func classifyCacheDownloadErr(err error) cacheDownloadOutcome {
+	if pail.IsKeyNotFoundError(err) {
+		return cacheDownloadMiss
+	}
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) && apiErr.ErrorCode() == "AccessDenied" {
+		return cacheDownloadMaybeMiss
+	}
+	if isS3ClientError(err) {
+		return cacheDownloadFatal
+	}
+	return cacheDownloadRetry
 }
 
 func (c *cacheRestore) extract(ctx context.Context, archivePath, dest string) error {

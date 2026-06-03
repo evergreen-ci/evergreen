@@ -100,6 +100,9 @@ func (c *cacheSave) Execute(ctx context.Context, comm client.Communicator, logge
 	uploadDesc := fmt.Sprintf("upload cache object '%s'", remoteKey)
 	err = retryS3Op(ctx, logger.Task(), uploadDesc, func() (bool, error) {
 		uploadErr := c.bucket.Upload(ctx, remoteKey, localPath)
+		if uploadErr == nil {
+			return false, nil
+		}
 		// Skip-existing semantics: S3 reports PreconditionFailed when the
 		// object already exists and IfNotExists is set on the request. That is
 		// not an error for caching, it just means another task saved first.
@@ -108,7 +111,12 @@ func (c *cacheSave) Execute(ctx context.Context, comm client.Communicator, logge
 			alreadyExists = true
 			return false, nil
 		}
-		return uploadErr != nil, uploadErr
+		// Other client errors (4xx) won't succeed on retry, so fail fast rather
+		// than burning the full retry budget.
+		if isS3ClientError(uploadErr) {
+			return false, uploadErr
+		}
+		return true, uploadErr
 	})
 	if err != nil {
 		return errors.Wrapf(err, "uploading cache object '%s'", remoteKey)

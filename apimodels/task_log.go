@@ -19,7 +19,7 @@ const (
 	LogInfoPrefix  = "I"
 )
 
-// The LogMessage type is used by the the GraphQL resolver and HTML logs.
+// The LogMessage type is used by the GraphQL resolver and HTML logs.
 type LogMessage struct {
 	Type      string    `bson:"t" json:"t"`
 	Severity  string    `bson:"s" json:"s"`

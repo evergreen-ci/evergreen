@@ -1021,7 +1021,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
-			// If the entire diff can't be retrieve, fall back to trying to get
+			// If the entire diff can't be retrieved, fall back to trying to get
 			// just the list of changed files. Having the names of changed files
 			// (even if not the entire diff) is important for path filtering.
 			return isMember, j.getChangedFilenamesForLargePRs(ctx, patchDoc)
