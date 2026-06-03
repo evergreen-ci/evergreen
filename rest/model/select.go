@@ -6,7 +6,7 @@ package model
 // this information directly to the test selector.
 type SelectTestsRequest struct {
 	// Project is the project identifier.
-	Project string `json:"project"`
+	Project string `json:"project_id"`
 	// Requester is the Evergreen requester type.
 	Requester string `json:"requester"`
 	// BuildVariant is the Evergreen build variant.

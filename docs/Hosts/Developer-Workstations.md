@@ -16,7 +16,8 @@ workstations can use the same configuration as build hosts, but also have:
   which is a distribution of the open source components of
   VSCode. This runs remotely on the workstation and proxies through
   the Evergreen application layer for a fully featured remote editing
-  experience.
+  experience. **Code Server is only supported on Ubuntu 18.04
+  workstations; it is not available on Ubuntu 22.04 workstations.**
 
 - Evergreen supports an "unexpirable" spawn host which isn't
   subjected to the termination deadline of most spawn hosts. While
