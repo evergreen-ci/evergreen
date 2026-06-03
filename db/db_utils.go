@@ -43,6 +43,35 @@ func GetGlobalSessionFactory() SessionFactory {
 	}
 }
 
+// GetGlobalSecondarySessionFactory initializes a session factory that routes
+// reads through the SecondaryPreferred client. Reads issued through this
+// factory may be replication-lagged. Do not use inside transactions or
+// read-then-write flows.
+func GetGlobalSecondarySessionFactory() SessionFactory {
+	env := evergreen.GetEnvironment()
+	return &shimSecondaryFactoryImpl{
+		env: env,
+		db:  env.Settings().Database.DB,
+	}
+}
+
+type shimSecondaryFactoryImpl struct {
+	env evergreen.Environment
+	db  string
+}
+
+func (s *shimSecondaryFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Database, error) {
+	if s.env == nil {
+		return nil, nil, errors.New("undefined environment")
+	}
+	client := s.env.SecondaryReadClient()
+	if client == nil {
+		return nil, nil, errors.New("secondary read client is not defined")
+	}
+	session := db.WrapClient(ctx, client).Clone()
+	return session, session.DB(s.db), nil
+}
+
 // GetSession creates a database session and connection that uses the associated
 // context in its operations.
 func (s *shimFactoryImpl) GetSession(ctx context.Context) (db.Session, db.Database, error) {
@@ -203,13 +232,22 @@ func Count(ctx context.Context, collection string, query any) (int, error) {
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
 func FindOneQ(ctx context.Context, collection string, q Q, out any) error {
+	return findOneQ(ctx, GetGlobalSessionFactory(), collection, q, out)
+}
+
+// FindAllQ runs a Q query against the given collection, applying the results to "out."
+func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
+	return findAllQ(ctx, GetGlobalSessionFactory(), collection, q, out)
+}
+
+func findOneQ(ctx context.Context, factory SessionFactory, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
+	session, db, err := factory.GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -225,15 +263,14 @@ func FindOneQ(ctx context.Context, collection string, q Q, out any) error {
 		One(out)
 }
 
-// FindAllQ runs a Q query against the given collection, applying the results to "out."
-func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
+func findAllQ(ctx context.Context, factory SessionFactory, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
 		defer cancel()
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
+	session, db, err := factory.GetSession(ctx)
 	if err != nil {
 		return err
 	}
@@ -252,6 +289,22 @@ func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
 // CountQ runs a Q count query against the given collection.
 func CountQ(ctx context.Context, collection string, q Q) (int, error) {
 	return Count(ctx, collection, q.filter)
+}
+
+func countQ(ctx context.Context, factory SessionFactory, collection string, q Q) (int, error) {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := factory.GetSession(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer session.Close()
+
+	return db.C(collection).Find(q.filter).Count()
 }
 
 // RemoveAllQ removes all docs that satisfy the query
@@ -282,7 +335,7 @@ func WriteGridFile(ctx context.Context, fsPrefix, name string, source io.Reader)
 	})
 
 	if err != nil {
-		return errors.Wrap(err, "problem constructing bucket access")
+		return errors.Wrap(err, "constructing bucket access")
 	}
 	return errors.Wrap(bucket.Put(ctx, name, source), "problem writing file")
 }
@@ -296,7 +349,7 @@ func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, err
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "problem constructing bucket access")
+		return nil, errors.Wrap(err, "constructing bucket access")
 	}
 
 	return bucket.Get(ctx, name)
@@ -306,7 +359,11 @@ func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, err
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
 func Aggregate(ctx context.Context, collection string, pipeline any, out any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession(ctx)
+	return aggregate(ctx, GetGlobalSessionFactory(), collection, pipeline, out)
+}
+
+func aggregate(ctx context.Context, factory SessionFactory, collection string, pipeline, out any) error {
+	session, db, err := factory.GetSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
 		grip.Error(ctx, err)
@@ -317,6 +374,27 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 	pipe := db.C(collection).Pipe(pipeline)
 
 	return errors.WithStack(pipe.All(out))
+}
+
+// FindOneQSecondary is the SecondaryPreferred sibling of FindOneQ. Reads may
+// be replication-lagged; do not use for read-after-write or inside transactions.
+func FindOneQSecondary(ctx context.Context, collection string, q Q, out any) error {
+	return findOneQ(ctx, GetGlobalSecondarySessionFactory(), collection, q, out)
+}
+
+// FindAllQSecondary is the SecondaryPreferred sibling of FindAllQ.
+func FindAllQSecondary(ctx context.Context, collection string, q Q, out any) error {
+	return findAllQ(ctx, GetGlobalSecondarySessionFactory(), collection, q, out)
+}
+
+// CountQSecondary is the SecondaryPreferred sibling of CountQ.
+func CountQSecondary(ctx context.Context, collection string, q Q) (int, error) {
+	return countQ(ctx, GetGlobalSecondarySessionFactory(), collection, q)
+}
+
+// AggregateSecondary is the SecondaryPreferred sibling of Aggregate.
+func AggregateSecondary(ctx context.Context, collection string, pipeline any, out any) error {
+	return aggregate(ctx, GetGlobalSecondarySessionFactory(), collection, pipeline, out)
 }
 
 // =============================================

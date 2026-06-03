@@ -32,12 +32,12 @@ func whatChanged() ([]string, error) {
 	mergeBaseCmd := exec.Command("git", "merge-base", "main@{upstream}", "HEAD")
 	base, err := mergeBaseCmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting merge-base")
+		return nil, errors.Wrap(err, "getting merge-base")
 	}
 	diffCmd := exec.Command("git", "diff", strings.TrimSpace(string(base)), "--name-only", "--diff-filter=d")
 	files, err := diffCmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting diff")
+		return nil, errors.Wrap(err, "getting diff")
 	}
 	var split []string
 	// if there is no diff, this is not a patch build
@@ -96,7 +96,7 @@ func getAllTargets() ([]string, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 	allPackages, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting diff")
+		return nil, errors.Wrap(err, "getting diff")
 	}
 	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
 	for _, p := range split {

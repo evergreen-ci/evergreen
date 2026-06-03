@@ -540,7 +540,7 @@ func AddBuildBreakSubscriptions(ctx context.Context, v *model.Version, projectRe
 	if v.AuthorID != "" && v.TriggerID == "" {
 		author, err := user.FindOne(ctx, user.ById(v.AuthorID))
 		if err != nil {
-			catcher.Add(errors.Wrap(err, "unable to retrieve user"))
+			catcher.Add(errors.Wrap(err, "retrieving user"))
 		} else if author.Settings.Notifications.BuildBreakID != "" {
 			return nil
 		}
@@ -573,7 +573,7 @@ func AddBuildBreakSubscriptions(ctx context.Context, v *model.Version, projectRe
 func makeBuildBreakSubscriber(ctx context.Context, userID string) (*event.Subscriber, error) {
 	u, err := user.FindOne(ctx, user.ById(userID))
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to find user")
+		return nil, errors.Wrap(err, "finding user")
 	}
 	if u == nil {
 		return nil, errors.Errorf("user '%s' does not exist", userID)
@@ -611,7 +611,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	// create a version document
 	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create shell version")
+		return nil, errors.Wrap(err, "creating shell version")
 	}
 	if err = verifyOrderNum(ctx, v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
@@ -634,12 +634,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	if metadata.Alias == evergreen.GitTagAlias {
 		aliases, err = model.FindMatchingGitTagAliasesInProject(ctx, projectInfo.Ref.Id, metadata.GitTag.Tag)
 		if err != nil {
-			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
+			return v, errors.Wrapf(err, "finding project alias for tag '%s'", metadata.GitTag.Tag)
 		}
 	} else if metadata.Alias != "" {
 		aliases, err = model.FindAliasInProjectRepoOrConfig(ctx, projectInfo.Ref.Id, metadata.Alias)
 		if err != nil {
-			return v, errors.Wrap(err, "error finding project alias")
+			return v, errors.Wrap(err, "finding project alias")
 		}
 	}
 	var aliasErr string
@@ -1002,7 +1002,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		taskStatuses := []model.BatchTimeTaskStatus{}
 		if evergreen.ShouldConsiderBatchtime(v.Requester) {
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, ignoreBuildVariant, v.CreateTime, time.Now())
-			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
+			batchTimeCatcher.Add(errors.Wrapf(err, "getting activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
 				tId, ok := taskNameToId[bvt.Name]
@@ -1010,7 +1010,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 					continue
 				}
 				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(ctx, &bvt, v.CreateTime, time.Now())
-				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
+				batchTimeCatcher.Add(errors.Wrapf(err, "getting activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,
 					model.BatchTimeTaskStatus{

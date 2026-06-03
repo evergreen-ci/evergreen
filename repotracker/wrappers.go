@@ -44,7 +44,7 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 			"message":            "problem fetching repotracker",
 			"runner":             RunnerName,
 		}))
-		return errors.Wrap(err, "problem fetching repotracker")
+		return errors.Wrap(err, "fetching repotracker")
 	}
 
 	if err = tracker.FetchRevisions(ctx); err != nil {

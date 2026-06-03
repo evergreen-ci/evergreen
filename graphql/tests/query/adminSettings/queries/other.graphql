@@ -13,6 +13,7 @@ query Other {
     singleTaskDistro {
       projectTasksPairs {
         projectId
+        displayName
         allowedTasks
         allowedBVs
       }

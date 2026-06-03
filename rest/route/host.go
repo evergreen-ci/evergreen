@@ -480,7 +480,7 @@ func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
 
 	info := apimodels.DisableInfo{}
 	if err := utility.ReadJSON(body, &info); err != nil {
-		return errors.Wrap(err, "unable to parse request body")
+		return errors.Wrap(err, "parsing request body")
 	}
 	h.reason = info.Reason
 

@@ -188,7 +188,7 @@ func BootstrapCredentialsCollection(ctx context.Context, client *mongo.Client, d
 
 	depot, err := certdepot.BootstrapDepotWithMongoClient(ctx, client, bootstrapConfig)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not bootstrap %s collection", evergreen.CredentialsCollection)
+		return nil, errors.Wrapf(err, "could not bootstrap '%s' collection", evergreen.CredentialsCollection)
 	}
 	return depot, nil
 }
@@ -241,6 +241,15 @@ func (e *Environment) CedarSession(_ context.Context) db.Session {
 }
 
 func (e *Environment) Client() *mongo.Client {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.MongoClient
+}
+
+// SecondaryReadClient returns the same client as Client() in the mock —
+// tests run against a single-node MongoDB, so there is no real secondary.
+// This satisfies the interface without requiring test-specific config.
+func (e *Environment) SecondaryReadClient() *mongo.Client {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.MongoClient
