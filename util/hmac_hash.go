@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CalculateHMACHash calculates a sha256 HMAC has of the body with the given
+// CalculateHMACHash calculates a sha256 HMAC hash of the body with the given
 // secret. The body must NOT be modified after calculating this hash.
 // The string result will be prefixed with "sha256=", followed by the HMAC hash.
 // When validating this hash, use a constant-time compare to avoid vulnerability

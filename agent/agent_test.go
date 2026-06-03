@@ -81,7 +81,7 @@ func (s *AgentSuite) TearDownSuite() {
 	if runtime.GOOS == "windows" {
 		// This is a hack to give extra time for processes in Windows to finish
 		// using the temporary working directory before the Go testing framework
-		// cna attempt to clean it up. When using (testing.T).TempDir, the Go
+		// can attempt to clean it up. When using (testing.T).TempDir, the Go
 		// testing framework will automatically clean up the directory at the
 		// end of the test, and will fail the test if it cannot clean it up.
 		// Furthermore, some agent tests are intentionally testing that the
