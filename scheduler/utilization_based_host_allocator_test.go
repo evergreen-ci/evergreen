@@ -1062,7 +1062,6 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 	s.Equal(1, free)
 }
 
-
 func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 	name := fmt.Sprintf("%s_%s_%s_%s", "tg1", "", "", "")
 
