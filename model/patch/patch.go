@@ -103,9 +103,13 @@ type Patch struct {
 	Alias                string                               `bson:"alias"`
 	Triggers             TriggerInfo                          `bson:"triggers"`
 	MergePatch           string                               `bson:"merge_patch"`
-	GithubPatchData      thirdparty.GithubPatch               `bson:"github_patch_data,omitempty"`
-	GithubMergeData      thirdparty.GithubMergeGroup          `bson:"github_merge_data,omitempty"`
-	GitInfo              *GitMetadata                         `bson:"git_info,omitempty"`
+	// GithubPatchData stores GitHub PR patch metadata.
+	GithubPatchData thirdparty.GithubPatch `bson:"github_patch_data,omitempty"`
+	// GithubMergeData stores GitHub merge queue metadata.
+	GithubMergeData thirdparty.GithubMergeGroup `bson:"github_merge_data,omitempty"`
+	// GitHubParentPRCheckout stores parent PR checkout metadata.
+	GitHubParentPRCheckout *GitHubParentPRCheckout `bson:"github_parent_pr_checkout,omitempty"`
+	GitInfo                *GitMetadata            `bson:"git_info,omitempty"`
 	// DisplayNewUI is only used when roundtripping the patch via the CLI
 	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 	// MergeStatus is only used in gitServePatch to send the status of this
@@ -142,6 +146,18 @@ type PatchSet struct {
 	PatchFileId    string               `bson:"patch_file_id,omitempty"`
 	CommitMessages []string             `bson:"commit_messages,omitempty"`
 	Summary        []thirdparty.Summary `bson:"summary"`
+}
+
+// GitHubParentPRCheckout stores parent PR checkout metadata.
+type GitHubParentPRCheckout struct {
+	PRNumber  int    `bson:"pr_number,omitempty"`
+	BaseOwner string `bson:"base_owner,omitempty"`
+	BaseRepo  string `bson:"base_repo,omitempty"`
+	HeadOwner string `bson:"head_owner,omitempty"`
+	HeadRepo  string `bson:"head_repo,omitempty"`
+	HeadHash  string `bson:"head_hash,omitempty"`
+	ForModule string `bson:"for_module,omitempty"`
+	ForSource bool   `bson:"for_source,omitempty"`
 }
 
 type TriggerInfo struct {
