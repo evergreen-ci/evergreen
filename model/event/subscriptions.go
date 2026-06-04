@@ -581,12 +581,14 @@ func RemoveSubscription(ctx context.Context, id string) error {
 						"message":         "deleting webhook secret from Parameter Store on subscription removal",
 						"subscription_id": id,
 						"parameter_name":  ws.SecretParameter,
+						"ticket":          "DEVPROD-15500",
 					}))
 				} else {
 					grip.Debug(ctx, message.Fields{
-						"message":         "deleted webhook secret from Parameter Store on subscription removal",
+						"message":         "webhook secret removed from Parameter Store",
 						"subscription_id": id,
 						"parameter_name":  ws.SecretParameter,
+						"ticket":          "DEVPROD-15500",
 					})
 				}
 			}
@@ -1096,60 +1098,6 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 	return nil
 }
 
-// populateWebhookSecrets loads webhook secrets from Parameter Store, falling back to MongoDB for unmigrated subscriptions.
-func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) error {
-	for i := range subscriptions {
-		if subscriptions[i].Subscriber.Type != EvergreenWebhookSubscriberType {
-			continue
-		}
-
-		webhookSub, ok := subscriptions[i].Subscriber.Target.(*WebhookSubscriber)
-		if !ok {
-			continue
-		}
-
-		if webhookSub.SecretParameter != "" {
-			secret, err := getWebhookSecretFromParameterStore(ctx, webhookSub.SecretParameter)
-			if err != nil {
-				grip.Debug(ctx, message.Fields{
-					"message":         "failed to read webhook secret from Parameter Store, falling back to MongoDB",
-					"subscription_id": subscriptions[i].ID,
-					"error":           err.Error(),
-				})
-				// Secret is already populated from the DB read — leave it as-is.
-			} else {
-				webhookSub.Secret = secret
-			}
-		}
-
-		if webhookSub.AuthorizationParameter != "" {
-			authValue, err := getWebhookSecretFromParameterStore(ctx, webhookSub.AuthorizationParameter)
-			if err != nil {
-				grip.Debug(ctx, message.Fields{
-					"message":         "failed to read webhook Authorization header from Parameter Store, falling back to MongoDB",
-					"subscription_id": subscriptions[i].ID,
-					"error":           err.Error(),
-				})
-				// Authorization header is already populated from the DB read — leave it as-is.
-			} else {
-				webhookSub.SetHeader("Authorization", string(authValue))
-			}
-		}
-
-	}
-	return nil
-}
-
-// GetWebhookSecretParameterPath returns the Parameter Store path for a webhook subscription's secret.
-func GetWebhookSecretParameterPath(subscriptionID string) string {
-	return fmt.Sprintf("webhooks/%s/secret", subscriptionID)
-}
-
-// GetWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
-func GetWebhookAuthParameterPath(subscriptionID string) string {
-	return fmt.Sprintf("webhooks/%s/authorization", subscriptionID)
-}
-
 // saveWebhookParameter saves value to Parameter Store and sets *paramField to the parameter name on success.
 func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []byte, paramField *string) {
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
@@ -1185,6 +1133,62 @@ func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []
 		"ticket":          "DEVPROD-15500",
 	})
 }
+
+// populateWebhookSecrets loads webhook secrets from Parameter Store, falling back to MongoDB for unmigrated subscriptions.
+func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) error {
+	for i := range subscriptions {
+		if subscriptions[i].Subscriber.Type != EvergreenWebhookSubscriberType {
+			continue
+		}
+
+		webhookSub, ok := subscriptions[i].Subscriber.Target.(*WebhookSubscriber)
+		if !ok {
+			continue
+		}
+
+		if webhookSub.SecretParameter != "" {
+			secret, err := getWebhookSecretFromParameterStore(ctx, webhookSub.SecretParameter)
+			if err != nil {
+				grip.Debug(ctx, message.Fields{
+					"message":         "failed to read webhook secret from Parameter Store, falling back to MongoDB",
+					"subscription_id": subscriptions[i].ID,
+					"error":           err.Error(),
+					"ticket":          "DEVPROD-15500",
+				})
+				// Secret is already populated from the DB read — leave it as-is.
+			} else {
+				webhookSub.Secret = secret
+			}
+		}
+
+		if webhookSub.AuthorizationParameter != "" {
+			authValue, err := getWebhookSecretFromParameterStore(ctx, webhookSub.AuthorizationParameter)
+			if err != nil {
+				grip.Debug(ctx, message.Fields{
+					"message":         "failed to read webhook Authorization header from Parameter Store, falling back to MongoDB",
+					"subscription_id": subscriptions[i].ID,
+					"error":           err.Error(),
+				})
+				// Authorization header is already populated from the DB read — leave it as-is.
+			} else {
+				webhookSub.SetHeader("Authorization", string(authValue))
+			}
+		}
+
+	}
+	return nil
+}
+
+// GetWebhookSecretParameterPath returns the Parameter Store path for a webhook subscription's secret.
+func GetWebhookSecretParameterPath(subscriptionID string) string {
+	return fmt.Sprintf("webhooks/%s/secret", subscriptionID)
+}
+
+// GetWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
+func GetWebhookAuthParameterPath(subscriptionID string) string {
+	return fmt.Sprintf("webhooks/%s/authorization", subscriptionID)
+}
+
 
 // verifyWebhookSecretInParameterStore confirms the stored secret matches the expected value.
 func verifyWebhookSecretInParameterStore(ctx context.Context, paramName string, expected []byte) error {

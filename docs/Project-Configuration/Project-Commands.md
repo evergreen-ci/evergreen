@@ -381,6 +381,144 @@ Parameters:
 - `files`: a list .xml files to parse and upload. Filepath globs can
   also be supplied to collect results from multiple files.
 
+## cache.restore
+
+`cache.restore` downloads and extracts a previously saved build cache from S3.
+It is typically used with [`cache.save`](#cachesave) to avoid recomputing
+expensive build artifacts (dependency downloads, compiled toolchains, etc.)
+across runs: run `cache.restore` first to fetch the cache, then `cache.save`
+later in the same task to populate it on a miss.
+
+The command computes a cache key as a SHA-256 over the contents of each
+`key_files` entry followed by each `key_expansions` value, then looks for
+`<bucket>/<remote_path>/<sha256_hex>/<name>.tgz`. If the object exists, it is
+extracted into the [task's working directory](./Best-Practices.md#task-directory)
+and the expansion `<name>_cache_hit` is set to `"true"`. If it does not exist
+(or is empty), the command succeeds and sets `<name>_cache_hit` to `""`; a cache
+miss is never an error.
+
+```yaml
+- command: cache.restore
+  params:
+    name: go-modules
+    role_arn: ${role_arn}
+    bucket: my-cache-bucket
+    remote_path: my-project/caches
+    key_files:
+      - go.sum
+    key_expansions:
+      - ${distro_arch}
+```
+
+Parameters:
+
+- `name`: cache identifier, matching `[a-zA-Z0-9-]+`. It names the local tarball
+  (`<name>.tgz`) and the cache-hit expansion (`<name>_cache_hit`).
+- `bucket`: the S3 bucket holding the cache.
+- `remote_path`: the S3 key prefix under which caches are stored. Multiple
+  caches can share one `remote_path`; the cache key directory and `<name>.tgz`
+  filename keep them distinct.
+- `key_files`: optional list of file paths whose contents are folded into the
+  cache key, relative to the working directory.
+- `key_expansions`: required list (at least one entry) of string values folded
+  into the cache key. To pin a static cache that only busts when you rename it,
+  pass a stable value such as `${project_id}`.
+- `aws_key`, `aws_secret`, `aws_session_token`, `role_arn`, `region`:
+  S3 credentials and region, with the same semantics as [`s3.put`](#s3put).
+  Use either `role_arn` (recommended) or `aws_key` + `aws_secret`.
+
+The cache key is order-sensitive and contains nothing implicit: the OS,
+architecture, and distro are folded in only if you add them to `key_expansions`.
+For architecture-scoped caches (compiled toolchains, build artifacts, etc.), use
+`${distro_arch}`, which resolves to `<GOOS>_<GOARCH>` (e.g. `linux_amd64`); use
+`${distro_id}` instead if a cache must be pinned to an exact distro. The
+`<name>_cache_hit` expansion
+converts dashes in `name` to underscores so it is a usable shell variable (for
+example, `name: mise-and-go` sets `mise_and_go_cache_hit`).
+
+See [`cache.save`](#cachesave) for an end-to-end restore/install/save example.
+
+## cache.save
+
+`cache.save` bundles paths into a tar.gz archive and uploads it to S3 so a
+later run can restore them with [`cache.restore`](#cacherestore). It is
+typically run after [`cache.restore`](#cacherestore) in the same task: the
+restore fetches an existing cache, and the save populates it when the restore
+missed. It recomputes the cache key from the same `key_files` and
+`key_expansions`, so the two commands resolve to the same S3 object without
+sharing hidden state.
+
+If the `<name>_cache_hit` expansion is `"true"` (set by a preceding
+`cache.restore` hit), `cache.save` does nothing and succeeds. Otherwise it
+creates `<name>.tgz` from `paths` and uploads it with skip-existing semantics:
+if another task already saved an object at the same key, the upload is skipped
+and the command still succeeds.
+
+```yaml
+- command: cache.save
+  params:
+    name: go-modules
+    role_arn: ${role_arn}
+    bucket: my-cache-bucket
+    remote_path: my-project/caches
+    key_files:
+      - go.sum
+    key_expansions:
+      - ${distro_arch}
+    paths:
+      - .cache/go-mod
+```
+
+Parameters:
+
+- `name`, `bucket`, `remote_path`, `key_files`, `key_expansions`, and the S3
+  credential parameters are identical to [`cache.restore`](#cacherestore) and
+  must match so the key resolves to the same object.
+- `paths`: required list (at least one entry) of file or directory paths,
+  relative to the working directory, to bundle into the tarball.
+
+A realistic restore-then-save flow wraps both commands in a function so they
+share parameters, using the cache-hit expansion to skip the expensive install
+step on a hit:
+
+```yaml
+functions:
+  go-mod-cache:
+    - command: cache.restore
+      params:
+        name: go-modules
+        role_arn: ${role_arn}
+        bucket: my-cache-bucket
+        remote_path: my-project/caches
+        key_files: [go.sum]
+        key_expansions: ["${distro_arch}"]
+
+tasks:
+  - name: build
+    commands:
+      - func: go-mod-cache
+      - command: subprocess.exec
+        params:
+          binary: bash
+          include_expansions_in_env:
+            - go_modules_cache_hit
+          args:
+            - "-c"
+            - |
+              if [ "${go_modules_cache_hit}" != "true" ]; then
+                go mod download
+              fi
+      - command: cache.save
+        params:
+          name: go-modules
+          role_arn: ${role_arn}
+          bucket: my-cache-bucket
+          remote_path: my-project/caches
+          key_files: [go.sum]
+          key_expansions: ["${distro_arch}"]
+          paths: [.cache/go-mod]
+```
+
 ## downstream_expansions.set
 
 downstream_expansions.set is used by parent patches to pass key-value
@@ -1225,6 +1363,9 @@ Parameters:
 
 `s3.get` downloads a file from Amazon s3.
 
+> See also [`cache.restore`](#cacherestore) / [`cache.save`](#cachesave) for
+> S3-backed caching of build artifacts keyed by file contents and expansions.
+
 ```yaml
 # Temporary credentials:
 - command: s3.get
@@ -1299,6 +1440,9 @@ Parameters:
 
 This command uploads a file to Amazon s3, for use in later tasks or
 distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
+
+> See also [`cache.restore`](#cacherestore) / [`cache.save`](#cachesave) for
+> S3-backed caching of build artifacts keyed by file contents and expansions.
 
 ```yaml
 # Temporary credentials:

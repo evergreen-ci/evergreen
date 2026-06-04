@@ -374,7 +374,7 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 	for _, t := range m.Tasks {
 		expTask, err := expandParserBVTask(t, v.Expansions)
 		if err != nil {
-			return nil, errors.Wrapf(err, "processing task %s", t.Name)
+			return nil, errors.Wrapf(err, "processing task '%s'", t.Name)
 		}
 		v.Tasks = append(v.Tasks, expTask)
 	}

@@ -4,6 +4,7 @@ Watch the demo [here](https://drive.google.com/file/d/10g7cg9EisS-t_QKjLRrg5bKQU
 
 > **Notice:**
 > The task debugger is currently in **beta**. Features and behavior may change.
+> **Tip:** You can use [Claude Code as an AI debugging assistant](#using-claude-code-for-debugging) to automatically investigate failures, identify root causes, and fix them.
 
 ## Why Use the Task Debugger?
 
@@ -49,10 +50,10 @@ Follow these steps to start a debugging session:
    evergreen debug daemon status
    ```
 
-2. **Load your project's configuration file.** This tells the debugger where to find your task definitions. The file is pre-loaded into the `~/debug_project_config/` directory on the spawn host.
+2. **Load your project's configuration file.** This tells the debugger where to find your task definitions. The file is pre-loaded into the `debug_project_config/` subdirectory of the distro's working directory on the spawn host (typically `/data/mci/debug_project_config/`).
 
    ```bash
-   evergreen debug load ~/debug_project_config/evergreen.yml
+   evergreen debug load /data/mci/debug_project_config/evergreen.yml
    ```
 
 3. **Select the task you want to debug.** Use the exact task name as it appears in your Evergreen configuration.
@@ -87,7 +88,7 @@ Your task failed at [step](#understanding-step-numbers) 5. Here's how to debug i
 
 ```bash
 # Load config and select your task
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 evergreen debug select my_failing_task
 
 # Execute up to the problem step
@@ -125,7 +126,7 @@ evergreen debug next
 If you know steps 1-3 work fine and want to debug step 4:
 
 ```bash
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 evergreen debug select my_task
 
 # Jump straight to step 4 and execute it
@@ -139,10 +140,10 @@ You can modify your `evergreen.yml` file and reload it between steps to test con
 
 ```bash
 # Edit your evergreen.yml file
-vim ~/debug_project_config/evergreen.yml
+vim /data/mci/debug_project_config/evergreen.yml
 
 # Reload the modified configuration
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 
 # Your task selection, step position, and custom expansions are all preserved
 # Continue debugging with the updated configuration
@@ -172,7 +173,7 @@ The hot reload preserves:
 Load a project configuration file. The path can be relative or absolute. Must be run before selecting a task.
 
 ```bash
-evergreen debug load ~/debug_project_config/evergreen.yml
+evergreen debug load /data/mci/debug_project_config/evergreen.yml
 evergreen debug load /home/user/project/evergreen.yml
 ```
 
@@ -225,7 +226,7 @@ evergreen debug run-all
 
 #### `evergreen debug run-until <step>`
 
-Run from the current position up to and including the specified [step](#understanding-step-numbers). Stops immediately on the first step that fails.
+Run from the current position up to the specified [step](#understanding-step-numbers). Stops immediately on the first step that fails.
 
 ```bash
 evergreen debug run-until 5
@@ -501,3 +502,41 @@ When investigating issues, check the following:
 2. Relevant daemon logs from `~/.evergreen-local/daemon.log`
 3. Relevant execution logs from `evergreen debug logs`
 4. Relevant execution logs from the setup phase from `evergreen debug logs --setup`
+
+## Using Claude Code for Debugging
+
+You can use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) as an AI debugging assistant during your debug session. The `evergreen-task-debugger` skill gives Claude full context about the task debugger CLI and instructs it to proactively investigate failures, identify root causes, apply fixes, and verify them.
+
+### Install the Skill
+
+Follow the [agent-skills quick start guide](https://github.com/10gen/agent-skills#quick-start-claude-code) to set up Claude Code with skills, then install the task debugger skill:
+
+```bash
+claude plugin install evergreen-task-debugger@mongodb-internal
+```
+
+### Usage
+
+From any directory, start Claude Code and invoke the skill with your task ID:
+
+```bash
+/evergreen-task-debugger <task_id>
+```
+
+Claude Code will:
+
+1. Start the debug daemon and load the task
+2. Identify which steps failed and pull their logs
+3. Read relevant source files and configs to understand the failure
+4. Suggest a fix (or apply it directly if it's a config/script edit)
+5. Ask you to confirm before re-running the step to verify
+
+### What Claude Code Can Do
+
+- Start the debug daemon and load your task automatically
+- Analyze step logs and read source files to identify root causes
+- Edit configs, scripts, and source code to fix issues
+- Re-run failed steps to verify fixes (with your confirmation)
+- Iterate if the first fix doesn't work
+- Test with different expansion values via `set-var`
+- Hot-reload modified configurations and continue debugging

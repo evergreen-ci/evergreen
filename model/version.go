@@ -78,7 +78,7 @@ type Version struct {
 	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
-	// We use a bool ptr in order to to distinguish the unset value from the default value
+	// We use a bool ptr in order to distinguish the unset value from the default value
 	Activated *bool `bson:"activated,omitempty" json:"activated,omitempty"`
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags

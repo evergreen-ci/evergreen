@@ -58,6 +58,6 @@ func main() {
 		Remote:  remote,
 		Exclude: exclude,
 	}); err != nil {
-		grip.EmergencyFatal(ctx, errors.Wrapf(err, "pushing contents from local path %s to remote path %s in bucket %s", local, remote, bucketName))
+		grip.EmergencyFatal(ctx, errors.Wrapf(err, "pushing contents from local path '%s' to remote path '%s' in bucket '%s'", local, remote, bucketName))
 	}
 }
