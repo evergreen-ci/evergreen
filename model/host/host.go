@@ -3160,6 +3160,15 @@ func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 	}, nil
 }
 
+// CountDebugSpawnhosts returns the number of active spawn hosts in debug mode.
+func CountDebugSpawnhosts(ctx context.Context) (int, error) {
+	return Count(ctx, bson.M{
+		UserHostKey: true,
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		IsDebugKey:  true,
+	})
+}
+
 // CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated
 // with a given users that are considered up and should never expire.
 func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (int, error) {
