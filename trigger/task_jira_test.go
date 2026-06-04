@@ -251,7 +251,8 @@ func TestJiraDescription(t *testing.T) {
 	Convey("With a failed task context", t, func() {
 		j := jiraBuilder{
 			data: jiraTemplateData{
-				UIRoot: "http://evergreen.ui",
+				UIRoot:        "http://evergreen.ui",
+				ParsleyLogURL: "http://parsley.ui",
 				Project: &model.ProjectRef{
 					DisplayName: projectName,
 					Id:          projectId,
@@ -340,15 +341,15 @@ func TestJiraDescription(t *testing.T) {
 			So(tests, ShouldContain, "FunUnitTest")
 
 			So(len(logfiles), ShouldEqual, 2)
-			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley))
-			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(j.data.UIRoot, j.data.ParsleyLogURL, evergreen.LogViewerParsley))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(j.data.UIRoot, j.data.ParsleyLogURL, evergreen.LogViewerParsley))
 
 			So(len(taskURLs), ShouldEqual, 1)
 			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0")
 		})
 
 		Convey("the description should be successfully generated - HTML Links for logs", func() {
-			evergreen.GetEnvironment().Settings().Ui.ParsleyUrl = ""
+			j.data.ParsleyLogURL = ""
 			d, err := j.getDescription()
 			So(err, ShouldBeNil)
 			So(d, ShouldNotEqual, "")
@@ -381,7 +382,7 @@ func TestJiraDescription(t *testing.T) {
 			})
 		})
 		Convey("the description should match the URL and logline regexes - HTML Links for logs", func() {
-			evergreen.GetEnvironment().Settings().Ui.ParsleyUrl = ""
+			j.data.ParsleyLogURL = ""
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
 
@@ -411,8 +412,8 @@ func TestJiraDescription(t *testing.T) {
 			So(tests, ShouldContain, "FunUnitTest")
 
 			So(len(logfiles), ShouldEqual, 2)
-			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML))
-			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[0].GetLogURL(j.data.UIRoot, j.data.ParsleyLogURL, evergreen.LogViewerHTML))
+			So(logfiles, ShouldContain, j.data.Task.LocalTestResults[1].GetLogURL(j.data.UIRoot, j.data.ParsleyLogURL, evergreen.LogViewerHTML))
 
 			So(len(taskURLs), ShouldEqual, 1)
 			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0")

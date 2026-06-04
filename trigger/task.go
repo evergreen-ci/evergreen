@@ -925,28 +925,30 @@ func matchingFailureType(requested, actual string) bool {
 
 func (j *taskTriggers) makeJIRATaskPayload(ctx context.Context, subID, project, testNames string) (*message.JiraIssue, error) {
 	return JIRATaskPayload(ctx, JiraIssueParameters{
-		SubID:     subID,
-		Project:   project,
-		UiURL:     j.uiConfig.Url,
-		EventID:   j.event.ID,
-		TestNames: testNames,
-		Mappings:  j.jiraMappings,
-		Task:      j.task,
-		Host:      j.host,
+		SubID:         subID,
+		Project:       project,
+		UiURL:         j.uiConfig.Url,
+		ParsleyLogURL: j.uiConfig.ParsleyUrl,
+		EventID:       j.event.ID,
+		TestNames:     testNames,
+		Mappings:      j.jiraMappings,
+		Task:          j.task,
+		Host:          j.host,
 	})
 }
 
 // JiraIssueParameters specify a task payload.
 type JiraIssueParameters struct {
-	SubID     string
-	Project   string
-	UiURL     string
-	UiV2URL   string
-	EventID   string
-	TestNames string
-	Mappings  *evergreen.JIRANotificationsConfig
-	Task      *task.Task
-	Host      *host.Host
+	SubID         string
+	Project       string
+	UiURL         string
+	UiV2URL       string
+	ParsleyLogURL string
+	EventID       string
+	TestNames     string
+	Mappings      *evergreen.JIRANotificationsConfig
+	Task          *task.Task
+	Host          *host.Host
 }
 
 // JIRATaskPayload creates a Jira issue for a given task.
@@ -979,6 +981,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		Context:         ctx,
 		UIRoot:          params.UiURL,
 		UIv2Url:         params.UiV2URL,
+		ParsleyLogURL:   params.ParsleyLogURL,
 		SubscriptionID:  params.SubID,
 		EventID:         params.EventID,
 		Task:            params.Task,
