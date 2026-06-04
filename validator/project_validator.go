@@ -649,7 +649,7 @@ func validateProjectConfigPlugins(ctx context.Context, pc *model.ProjectConfig) 
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
-				Message: errors.Wrap(err, "error validating build baron config").Error(),
+				Message: errors.Wrap(err, "validating build baron config").Error(),
 				Level:   Error,
 			},
 		)
@@ -1059,7 +1059,7 @@ func validateReferentialIntegrity(ctx context.Context, settings *evergreen.Setti
 	validationErrs := ValidationErrors{}
 	singleTaskDistroAllowlist, err := GetAllowedSingleTaskDistroTasksForProject(ctx, ref.Id, settings)
 	if err != nil {
-		return []ValidationError{{Message: errors.Wrap(err, "problem getting allowed tasks for single task distros").Error()}}
+		return []ValidationError{{Message: errors.Wrap(err, "getting allowed tasks for single task distros").Error()}}
 	}
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
 	distroIDs, distroAliases, singleTaskDistroIDs, distroWarnings, err := getDistrosForProject(ctx, ref.Id)

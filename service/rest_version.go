@@ -226,11 +226,11 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 func (r *recentVersionsContent) populateBuildsAndTasks(ctx context.Context, versionIds []string, versionIdx map[string]int) error {
 	builds, err := build.FindBuildsByVersions(ctx, versionIds)
 	if err != nil {
-		return errors.Wrap(err, "Error finding recent versions")
+		return errors.Wrap(err, "finding recent versions")
 	}
 	tasks, err := task.FindTasksFromVersions(ctx, versionIds)
 	if err != nil {
-		return errors.Wrap(err, "Error finding recent tasks for recent versions")
+		return errors.Wrap(err, "finding recent tasks for recent versions")
 	}
 
 	for _, b := range builds {

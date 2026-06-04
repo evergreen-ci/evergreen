@@ -30,6 +30,16 @@ func numHostsDecommissionedForDrawdown(ctx context.Context, t *testing.T, env ev
 }
 
 func TestHostDrawdown(t *testing.T) {
+	ctx := testutil.TestSpan(t.Context(), t)
+
+	// Configuring the mock environment is expensive, so do it once and reuse it
+	// across subtests. The relevant DB collections (host, distro, task) are
+	// dropped between subtests (see testFlaggingIdleHostsSetupTest), and the
+	// drawdown job only reads/writes the database, so there is no test-relevant
+	// shared state to leak through the environment.
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro){
 		"DecommissionsHostsDownToCap": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
@@ -414,9 +424,7 @@ func TestHostDrawdown(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			ctx = testutil.TestSpan(ctx, t)
+			tctx := testutil.TestSpan(ctx, t)
 			testFlaggingIdleHostsSetupTest(t)
 
 			d := distro.Distro{
@@ -426,16 +434,14 @@ func TestHostDrawdown(t *testing.T) {
 					MinimumHosts: 0,
 				},
 			}
-			require.NoError(t, d.Insert(ctx))
+			require.NoError(t, d.Insert(tctx))
 			taskQueue := model.TaskQueue{
 				Distro: d.Id,
 				Queue:  []model.TaskQueueItem{},
 			}
-			require.NoError(t, taskQueue.Save(ctx))
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, taskQueue.Save(tctx))
 
-			tCase(ctx, t, env, d)
+			tCase(tctx, t, env, d)
 		})
 	}
 }

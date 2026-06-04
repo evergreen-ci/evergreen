@@ -172,7 +172,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 	// any already-done pushes
 	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
 	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "problem querying task %s with version id %s", t.Id, t.Version))
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "querying task %s with version id %s", t.Id, t.Version))
 	}
 
 	// Check for an already-pushed file with this same file path,

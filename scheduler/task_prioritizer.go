@@ -98,7 +98,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(ctx context.Context,
 		startAt = time.Now()
 		err := comparator.setupForSortingTasks(ctx)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "Error running setup for sorting tasks")
+			return nil, nil, errors.Wrap(err, "running setup for sorting tasks")
 		}
 		setupRuntime += time.Since(startAt)
 
@@ -146,7 +146,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(ctx context.Context,
 func (cbtc *CmpBasedTaskComparator) setupForSortingTasks(ctx context.Context) error {
 	for _, setupFunc := range cbtc.setupFuncs {
 		if err := setupFunc(ctx, cbtc); err != nil {
-			return errors.Wrap(err, "Error running setup for sorting")
+			return errors.Wrap(err, "running setup for sorting")
 		}
 	}
 	return nil

@@ -185,20 +185,48 @@ functions:
         directory: evergreen
         token: ${github_token}
         shallow_clone: true
+    - command: cache.restore
+      type: setup
+      params:
+        name: go-modules
+        role_arn: ${assume_role_arn}
+        bucket: mciuploads
+        remote_path: evergreen/self-tests/go-mod-cache
+        key_files:
+          - evergreen/go.mod
+          - evergreen/go.sum
+        key_expansions:
+          - ${distro_arch}
     - command: shell.exec
       type: setup
       params:
         working_dir: evergreen
-        include_expansions_in_env: ["GOROOT", "github_token"]
+        include_expansions_in_env: ["GOROOT", "github_token", "go_modules_cache_hit"]
         shell: bash
         script: |
-          # Downloading modules is flaky in the ubuntu1604-arm64 distros, because the TCP connection is sometimes reset
-          # by the peer for unknown reasons (this does not happen in other distros). Retry the module download multiple
-          # times to reduce the flakiness.
-          for i in {1..5}; do
-            make mod-tidy
-            [[ $? -eq 0 ]] && break;
-          done
+          # On a cache miss, download the modules into the module cache so cache.save can upload it below. Downloading
+          # modules is flaky in the ubuntu1604-arm64 distros, because the TCP connection is sometimes reset by the peer
+          # for unknown reasons (this does not happen in other distros). Retry the module download multiple times to
+          # reduce the flakiness.
+          if [ "$go_modules_cache_hit" != "true" ]; then
+            for i in {1..5}; do
+              make mod-download && break
+            done
+          fi
+    - command: cache.save
+      type: setup
+      params:
+        name: go-modules
+        role_arn: ${assume_role_arn}
+        bucket: mciuploads
+        remote_path: evergreen/self-tests/go-mod-cache
+        key_files:
+          - evergreen/go.mod
+          - evergreen/go.sum
+        key_expansions:
+          - ${distro_arch}
+        paths:
+          - evergreen/bin/.mod-cache
 
   assume-role:
     command: ec2.assume_role
@@ -855,6 +883,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+      test_timeout: 15m
     tasks:
       - name: ".smoke"
       - name: ".test"
