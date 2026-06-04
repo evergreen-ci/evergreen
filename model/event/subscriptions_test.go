@@ -591,6 +591,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookSavesSecretToParameterStore() {
 
 	// Both the secret bytes and the Parameter Store path are persisted to MongoDB during
 	// Phase 1. The secret stays in MongoDB as a fallback until the Phase 2 cleanup job removes it.
+	// TODO(DEVPROD-15500): remove this assertion once Phase 2 cleanup job removes secrets from MongoDB.
 	raw := bson.M{}
 	s.Require().NoError(db.FindOneQ(s.T().Context(), SubscriptionsCollection, db.Query(bson.M{"_id": "webhook-sub"}), &raw))
 	subscriberRaw, ok := raw["subscriber"].(bson.M)
@@ -636,22 +637,22 @@ func (s *subscriptionsSuite) TestFindSubscriptionByIDPopulatesSecretFromParamete
 func (s *subscriptionsSuite) TestFindSubscriptionByIDFallsBackToMongoDBSecret() {
 	// Simulate a legacy subscription with secret in MongoDB but no SecretParameter.
 	// Insert directly to bypass the Upsert write path which saves to PS.
-	raw := bson.M{
-		"_id":     "legacy-webhook",
-		"type":    ResourceTypePatch,
-		"trigger": TriggerOutcome,
-		"filter":  bson.M{"id": "test"},
-		"subscriber": bson.M{
-			"type": EvergreenWebhookSubscriberType,
-			"target": bson.M{
-				"url":    "https://legacy.example.com",
-				"secret": []byte("legacy-secret"),
+	sub := Subscription{
+		ID:           "legacy-webhook",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type: EvergreenWebhookSubscriberType,
+			Target: &WebhookSubscriber{
+				URL:    "https://legacy.example.com",
+				Secret: []byte("legacy-secret"),
 			},
 		},
-		"owner":      "me",
-		"owner_type": string(OwnerTypePerson),
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(SubscriptionsCollection).InsertOne(s.T().Context(), raw)
+	_, err := evergreen.GetEnvironment().DB().Collection(SubscriptionsCollection).InsertOne(s.T().Context(), sub)
 	s.Require().NoError(err)
 
 	found, err := FindSubscriptionByID(s.T().Context(), "legacy-webhook")
@@ -730,25 +731,26 @@ func (s *subscriptionsSuite) TestRemoveSubscriptionDeletesWebhookSecretFromParam
 	s.Empty(fakeParams, "webhook secret should be removed from Parameter Store when its subscription is deleted")
 }
 
+// TODO(DEVPROD-15500): remove this test once the migration job has backfilled all legacy subscriptions.
 func (s *subscriptionsSuite) TestRemoveSubscriptionDoesNotTouchParameterStoreForLegacyWebhook() {
 	// Simulate a legacy webhook subscription with the secret in MongoDB but no SecretParameter set.
 	// Insert directly to bypass the Upsert write path, which would otherwise save to Parameter Store.
-	raw := bson.M{
-		"_id":     "legacy-webhook-delete",
-		"type":    ResourceTypePatch,
-		"trigger": TriggerOutcome,
-		"filter":  bson.M{"id": "test"},
-		"subscriber": bson.M{
-			"type": EvergreenWebhookSubscriberType,
-			"target": bson.M{
-				"url":    "https://legacy.example.com",
-				"secret": []byte("legacy-secret"),
+	sub := Subscription{
+		ID:           "legacy-webhook-delete",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type: EvergreenWebhookSubscriberType,
+			Target: &WebhookSubscriber{
+				URL:    "https://legacy.example.com",
+				Secret: []byte("legacy-secret"),
 			},
 		},
-		"owner":      "me",
-		"owner_type": string(OwnerTypePerson),
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(SubscriptionsCollection).InsertOne(s.T().Context(), raw)
+	_, err := evergreen.GetEnvironment().DB().Collection(SubscriptionsCollection).InsertOne(s.T().Context(), sub)
 	s.Require().NoError(err)
 
 	allParams, err := fakeparameter.FindByIDs(s.T().Context())

@@ -1,6 +1,7 @@
 package event
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"regexp"
@@ -577,12 +578,14 @@ func RemoveSubscription(ctx context.Context, id string) error {
 						"message":         "deleting webhook secret from Parameter Store on subscription removal",
 						"subscription_id": id,
 						"parameter_name":  ws.SecretParameter,
+						"ticket":          "DEVPROD-15500",
 					}))
 				} else {
 					grip.Debug(ctx, message.Fields{
 						"message":         "webhook secret removed from Parameter Store",
 						"subscription_id": id,
 						"parameter_name":  ws.SecretParameter,
+						"ticket":          "DEVPROD-15500",
 					})
 				}
 			}
@@ -1044,15 +1047,29 @@ func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []
 			"subscription_id": subID,
 			"parameter_path":  paramPath,
 			"error":           err.Error(),
+			"ticket":          "DEVPROD-15500",
 		})
 		*paramField = ""
 		return
 	}
 	*paramField = param.Name
+	if err := verifyWebhookSecretInParameterStore(ctx, param.Name, value); err != nil {
+		grip.Warning(ctx, message.Fields{
+			"message":         "verifying webhook parameter in Parameter Store, falling back to MongoDB",
+			"subscription_id": subID,
+			"parameter_name":  param.Name,
+			"error":           err.Error(),
+			"ticket":          "DEVPROD-15500",
+		})
+		_ = deleteWebhookSecretFromParameterStore(ctx, param.Name)
+		*paramField = ""
+		return
+	}
 	grip.Debug(ctx, message.Fields{
 		"message":         "saved webhook parameter to Parameter Store",
 		"subscription_id": subID,
 		"parameter_name":  param.Name,
+		"ticket":          "DEVPROD-15500",
 	})
 }
 
@@ -1075,6 +1092,7 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 					"message":         "failed to read webhook secret from Parameter Store, falling back to MongoDB",
 					"subscription_id": subscriptions[i].ID,
 					"error":           err.Error(),
+					"ticket":          "DEVPROD-15500",
 				})
 				// Secret is already populated from the DB read — leave it as-is.
 			} else {
@@ -1089,6 +1107,18 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 // GetWebhookSecretParameterPath returns the Parameter Store path for a webhook subscription's secret.
 func GetWebhookSecretParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/secret", subscriptionID)
+}
+
+// verifyWebhookSecretInParameterStore confirms the stored secret matches the expected value.
+func verifyWebhookSecretInParameterStore(ctx context.Context, paramName string, expected []byte) error {
+	storedSecret, err := getWebhookSecretFromParameterStore(ctx, paramName)
+	if err != nil {
+		return errors.Wrap(err, "reading back webhook secret from Parameter Store")
+	}
+	if !bytes.Equal(storedSecret, expected) {
+		return errors.New("Parameter Store value does not match intended secret")
+	}
+	return nil
 }
 
 // deleteWebhookSecretFromParameterStore removes a webhook secret from Parameter Store. Empty input is a no-op.
