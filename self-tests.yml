@@ -172,7 +172,7 @@ variables:
           role_arn: ${client_assume_role_arn}
           local_files_include_filter_prefix: evergreen/clients
           local_files_include_filter: "*_*/evergreen*"
-          remote_file: evergreen/clients/latest/${clients_path_env|staging}/
+          remote_file: evergreen/clients/latest${environment-suffix}/
           content_type: binary/octet-stream
           bucket: evg-bucket-evergreen
           permissions: public-read
