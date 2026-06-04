@@ -1173,21 +1173,21 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 }
 
 func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
-	projectRef := &ProjectRef{}
-	err := db.FindOneQ(ctx, ProjectRefCollection, query, projectRef)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
-	return projectRef, err
-
+	return findOneProjectRefQWith(ctx, query, db.FindOneQ)
 }
 
 // findOneProjectRefQSecondary is the SecondaryPreferred sibling of findOneProjectRefQ.
 // Results may be replication-lagged; use only on lag-tolerant read paths (no read-after-write).
 func findOneProjectRefQSecondary(ctx context.Context, query db.Q) (*ProjectRef, error) {
+	return findOneProjectRefQWith(ctx, query, db.FindOneQSecondary)
+}
+
+// findOneProjectRefQWith runs a single-project-ref query through the given finder
+// (db.FindOneQ for the primary, db.FindOneQSecondary for a replica read), so the
+// decode and not-found handling live in one place.
+func findOneProjectRefQWith(ctx context.Context, query db.Q, findOne func(context.Context, string, db.Q, any) error) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOneQSecondary(ctx, ProjectRefCollection, query, projectRef)
+	err := findOne(ctx, ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1634,60 +1634,26 @@ func FindAnyRestrictedProjectRef(ctx context.Context) (*ProjectRef, error) {
 // still exist and the project is not hidden).
 // Can't hide a repo without hiding the branches, so don't need to aggregate here.
 func FindAllMergedTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
-	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
-	if err != nil {
-		return nil, err
-	}
-
-	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
+	return findProjectRefsQ(ctx, byTracked(), true)
 }
 
 // FindAllMergedTrackedProjectRefsSecondary is the SecondaryPreferred sibling of FindAllMergedTrackedProjectRefs.
 // Results may be replication-lagged; use only on lag-tolerant read paths.
 func FindAllMergedTrackedProjectRefsSecondary(ctx context.Context) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
-	err := db.FindAllQSecondary(ctx, ProjectRefCollection, q, &projectRefs)
-	if err != nil {
-		return nil, err
-	}
-
-	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
+	return findProjectRefsQSecondary(ctx, byTracked(), true)
 }
 
 // FindAllMergedEnabledTrackedProjectRefs returns all enabled project refs in the db
 // that are currently being tracked (i.e. their project files
 // still exist and the project is not hidden).
 func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	q := db.Query(bson.M{
-		ProjectRefHiddenKey:  bson.M{"$ne": true},
-		ProjectRefEnabledKey: true,
-	})
-	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
-	if err != nil {
-		return nil, err
-	}
-
-	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
+	return findProjectRefsQ(ctx, byEnabledTracked(), true)
 }
 
 // FindAllMergedEnabledTrackedProjectRefsSecondary is the SecondaryPreferred sibling of FindAllMergedEnabledTrackedProjectRefs.
 // Results may be replication-lagged; use only on lag-tolerant read paths.
 func FindAllMergedEnabledTrackedProjectRefsSecondary(ctx context.Context) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	q := db.Query(bson.M{
-		ProjectRefHiddenKey:  bson.M{"$ne": true},
-		ProjectRefEnabledKey: true,
-	})
-	err := db.FindAllQSecondary(ctx, ProjectRefCollection, q, &projectRefs)
-	if err != nil {
-		return nil, err
-	}
-
-	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
+	return findProjectRefsQSecondary(ctx, byEnabledTracked(), true)
 }
 
 func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef) ([]ProjectRef, error) {
@@ -1753,13 +1719,7 @@ func FindProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, err
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return findProjectRefsQ(
-		ctx,
-		bson.M{
-			ProjectRefIdKey: bson.M{
-				"$in": ids,
-			},
-		}, false)
+	return findProjectRefsQ(ctx, byIds(ids...), false)
 }
 
 // FindProjectRefsByIdsSecondary is the SecondaryPreferred sibling of FindProjectRefsByIds.
@@ -1768,38 +1728,30 @@ func FindProjectRefsByIdsSecondary(ctx context.Context, ids ...string) ([]Projec
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return findProjectRefsQSecondary(
-		ctx,
-		bson.M{
-			ProjectRefIdKey: bson.M{
-				"$in": ids,
-			},
-		}, false)
+	return findProjectRefsQSecondary(ctx, byIds(ids...), false)
 }
 
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	q := db.Query(filter)
-	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
-	if err != nil {
-		return nil, err
-	}
-
-	if merged {
-		return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
-	}
-	return projectRefs, nil
+	return findProjectRefsQWith(ctx, filter, merged, db.FindAllQ)
 }
 
 // findProjectRefsQSecondary is the SecondaryPreferred sibling of findProjectRefsQ.
 // Results may be replication-lagged; use only on lag-tolerant read paths.
 func findProjectRefsQSecondary(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
+	return findProjectRefsQWith(ctx, filter, merged, db.FindAllQSecondary)
+}
+
+// findProjectRefsQWith runs a multi-project-ref query through the given finder
+// (db.FindAllQ for the primary, db.FindAllQSecondary for a replica read), so the
+// query and merge handling live in one place.
+func findProjectRefsQWith(ctx context.Context, filter bson.M, merged bool, findAll func(context.Context, string, db.Q, any) error) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
-	err := db.FindAllQSecondary(ctx, ProjectRefCollection, q, &projectRefs)
+	err := findAll(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
+
 	if merged {
 		return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
 	}
@@ -1810,6 +1762,24 @@ func byOwnerAndRepo(owner, repoName string) bson.M {
 	return bson.M{
 		ProjectRefOwnerKey: owner,
 		ProjectRefRepoKey:  repoName,
+	}
+}
+
+// byIds returns a query matching project refs with any of the given ids.
+func byIds(ids ...string) bson.M {
+	return bson.M{ProjectRefIdKey: bson.M{"$in": ids}}
+}
+
+// byTracked returns a query matching tracked (non-hidden) project refs.
+func byTracked() bson.M {
+	return bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}}
+}
+
+// byEnabledTracked returns a query matching enabled, tracked (non-hidden) project refs.
+func byEnabledTracked() bson.M {
+	return bson.M{
+		ProjectRefHiddenKey:  bson.M{"$ne": true},
+		ProjectRefEnabledKey: true,
 	}
 }
 
