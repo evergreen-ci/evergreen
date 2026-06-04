@@ -87,7 +87,7 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		projectRef, err := model.FindBranchProjectRef(r.Context(), projectId)
+		projectRef, err := model.FindBranchProjectRefSecondary(r.Context(), projectId)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 		}

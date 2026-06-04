@@ -806,7 +806,7 @@ func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pRef, err := model.FindMergedProjectRef(ctx, projectID, "", false)
+	pRef, err := model.FindMergedProjectRefSecondary(ctx, projectID, "", false)
 	if err != nil {
 		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
