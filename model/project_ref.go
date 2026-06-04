@@ -1183,10 +1183,27 @@ func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
 
 }
 
+// findOneProjectRefQSecondary is the SecondaryPreferred sibling of findOneProjectRefQ.
+// Results may be replication-lagged; use only on lag-tolerant read paths (no read-after-write).
+func findOneProjectRefQSecondary(ctx context.Context, query db.Q) (*ProjectRef, error) {
+	projectRef := &ProjectRef{}
+	err := db.FindOneQSecondary(ctx, ProjectRefCollection, query, projectRef)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return projectRef, err
+}
+
 // FindBranchProjectRef gets a project ref given the project identifier.
 // This returns only branch-level settings; to include repo settings, use FindMergedProjectRef.
 func FindBranchProjectRef(ctx context.Context, identifier string) (*ProjectRef, error) {
 	return findOneProjectRefQ(ctx, byId(identifier))
+}
+
+// FindBranchProjectRefSecondary is the SecondaryPreferred sibling of FindBranchProjectRef.
+// Use only on lag-tolerant read paths (UI/REST/GraphQL queries, etc.), never in a read-after-write flow.
+func FindBranchProjectRefSecondary(ctx context.Context, identifier string) (*ProjectRef, error) {
+	return findOneProjectRefQSecondary(ctx, byId(identifier))
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
@@ -1197,6 +1214,21 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
 	}
+	return mergeProjectRefAfterFetch(ctx, pRef, identifier, version, includeProjectConfig)
+}
+
+// FindMergedProjectRefSecondary is the SecondaryPreferred sibling of FindMergedProjectRef.
+// Use only on lag-tolerant read paths.
+func FindMergedProjectRefSecondary(ctx context.Context, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
+	pRef, err := FindBranchProjectRefSecondary(ctx, identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
+	}
+	return mergeProjectRefAfterFetch(ctx, pRef, identifier, version, includeProjectConfig)
+}
+
+// mergeProjectRefAfterFetch applies repo-ref and parser-project merges to a fetched project ref.
+func mergeProjectRefAfterFetch(ctx context.Context, pRef *ProjectRef, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	if pRef == nil {
 		return nil, nil
 	}
@@ -1208,13 +1240,14 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
-		pRef, err = mergeBranchAndRepoSettings(pRef, repoRef)
-		if err != nil {
-			return nil, errors.Wrapf(err, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
+		mergedRef, mergeErr := mergeBranchAndRepoSettings(pRef, repoRef)
+		if mergeErr != nil {
+			return nil, errors.Wrapf(mergeErr, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
 		}
+		pRef = mergedRef
 	}
 	if includeProjectConfig && pRef.IsVersionControlEnabled() {
-		err = pRef.MergeWithProjectConfig(ctx, version)
+		err := pRef.MergeWithProjectConfig(ctx, version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "merging project config with project ref '%s'", pRef.Identifier)
 		}
