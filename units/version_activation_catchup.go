@@ -69,7 +69,7 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 		return
 	}
 
-	projects, err := model.FindAllMergedTrackedProjectRefsSecondary(ctx)
+	projects, err := model.FindAllMergedTrackedProjectRefs(ctx)
 	if err != nil {
 		j.AddError(err)
 		return
