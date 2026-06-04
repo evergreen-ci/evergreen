@@ -86,7 +86,10 @@ func (j *taskStatsCollector) Run(ctx context.Context) {
 	if len(tasks) == 0 {
 		return
 	}
+	j.logStats(ctx, tasks)
+}
 
+func (j *taskStatsCollector) logStats(ctx context.Context, tasks []task.Task) {
 	for _, msg := range getWaitTimeMessages(tasks) {
 		j.logger.Info(ctx, msg)
 	}
