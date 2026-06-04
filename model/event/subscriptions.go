@@ -1,6 +1,7 @@
 package event
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"regexp"
@@ -1159,16 +1160,42 @@ func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []
 			"subscription_id": subID,
 			"parameter_path":  paramPath,
 			"error":           err.Error(),
+			"ticket":          "DEVPROD-15500",
 		})
 		*paramField = ""
 		return
 	}
 	*paramField = param.Name
+	if err := verifyWebhookSecretInParameterStore(ctx, param.Name, value); err != nil {
+		grip.Warning(ctx, message.Fields{
+			"message":         "verifying webhook parameter in Parameter Store, falling back to MongoDB",
+			"subscription_id": subID,
+			"parameter_name":  param.Name,
+			"error":           err.Error(),
+			"ticket":          "DEVPROD-15500",
+		})
+		_ = deleteWebhookSecretFromParameterStore(ctx, param.Name)
+		*paramField = ""
+		return
+	}
 	grip.Debug(ctx, message.Fields{
 		"message":         "saved webhook parameter to Parameter Store",
 		"subscription_id": subID,
 		"parameter_name":  param.Name,
+		"ticket":          "DEVPROD-15500",
 	})
+}
+
+// verifyWebhookSecretInParameterStore confirms the stored secret matches the expected value.
+func verifyWebhookSecretInParameterStore(ctx context.Context, paramName string, expected []byte) error {
+	storedSecret, err := getWebhookSecretFromParameterStore(ctx, paramName)
+	if err != nil {
+		return errors.Wrap(err, "reading back webhook secret from Parameter Store")
+	}
+	if !bytes.Equal(storedSecret, expected) {
+		return errors.New("Parameter Store value does not match intended secret")
+	}
+	return nil
 }
 
 // deleteWebhookSecretFromParameterStore removes a webhook secret from Parameter Store. Empty input is a no-op.
