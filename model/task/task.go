@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/ec2mount"
@@ -4671,6 +4672,57 @@ func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 		return true
 	}
 	return false
+}
+
+// GetS3ArtifactUsageFromDB reconstructs artifact S3 usage from stored artifact entries.
+// Used on the crash path when the agent never sends a final S3 usage report.
+// Only devprod-owned uploads (determined by IAM role ARN) are counted, consistent with
+// how IncrementArtifacts filters during normal task execution.
+func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMetrics, error) {
+	entries, err := artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(t.Id, t.Execution))
+	if err != nil {
+		return s3usage.ArtifactMetrics{}, errors.Wrap(err, "finding artifact entries")
+	}
+
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		return s3usage.ArtifactMetrics{}, errors.Wrap(err, "getting cost config")
+	}
+
+	var files []s3usage.FileMetrics
+	var totalPuts int
+	var totalBytes int64
+	for _, entry := range entries {
+		for _, f := range entry.Files {
+			if f.PutRequests == 0 {
+				continue
+			}
+			if !evergreen.IsDevprodOwnedArtifactIAMRole(f.AWSRoleARN, costConfig.S3Cost.Storage.DevprodOwnedAWSAccountIDs) {
+				continue
+			}
+			totalPuts += f.PutRequests
+			totalBytes += f.FileSize
+			files = append(files, s3usage.FileMetrics{
+				FileSizeBytes: f.FileSize,
+				PutRequests:   f.PutRequests,
+			})
+		}
+	}
+
+	if len(files) == 0 {
+		return s3usage.ArtifactMetrics{}, nil
+	}
+
+	maxPuts, minPuts := s3usage.ComputePerFileExtremes(files)
+	return s3usage.ArtifactMetrics{
+		S3UploadMetrics: s3usage.S3UploadMetrics{
+			PutRequests: totalPuts,
+			UploadBytes: totalBytes,
+		},
+		Count:                      len(files),
+		ArtifactWithMaxPutRequests: maxPuts,
+		ArtifactWithMinPutRequests: minPuts,
+	}, nil
 }
 
 // HasValidDistro determines if the task has a valid distro.

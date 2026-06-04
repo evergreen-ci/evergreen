@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/ec2mount"
@@ -5684,5 +5685,84 @@ func TestHasValidDistro(t *testing.T) {
 			DistroId:    "",
 		}
 		assert.True(t, task.HasValidDistro(ctx))
+	})
+}
+
+func TestGetS3ArtifactUsageFromDB(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(artifact.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(artifact.Collection))
+	})
+
+	t.Run("NoArtifactsReturnsZeroMetrics", func(t *testing.T) {
+		tsk := &Task{Id: mgobson.NewObjectId().Hex(), Execution: 0}
+		metrics, err := tsk.GetS3ArtifactUsageFromDB(ctx)
+		require.NoError(t, err)
+		assert.Zero(t, metrics)
+	})
+
+	t.Run("SingleEntryAggregatesMetrics", func(t *testing.T) {
+		entry := artifact.Entry{
+			TaskId:    mgobson.NewObjectId().Hex(),
+			Execution: 0,
+			Files: []artifact.File{
+				{Name: "a", PutRequests: 3, FileSize: 100},
+				{Name: "b", PutRequests: 1, FileSize: 200},
+				{Name: "c", PutRequests: 5, FileSize: 50},
+			},
+		}
+		require.NoError(t, entry.Upsert(ctx))
+
+		tsk := &Task{Id: entry.TaskId, Execution: 0}
+		metrics, err := tsk.GetS3ArtifactUsageFromDB(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 9, metrics.PutRequests)
+		assert.Equal(t, int64(350), metrics.UploadBytes)
+		assert.Equal(t, 3, metrics.Count)
+		assert.Equal(t, 5, metrics.ArtifactWithMaxPutRequests)
+		assert.Equal(t, 1, metrics.ArtifactWithMinPutRequests)
+	})
+
+	t.Run("ZeroPutRequestsFileNotCounted", func(t *testing.T) {
+		entry := artifact.Entry{
+			TaskId:    mgobson.NewObjectId().Hex(),
+			Execution: 0,
+			Files: []artifact.File{
+				{Name: "a", PutRequests: 4, FileSize: 300},
+				{Name: "b", PutRequests: 0, FileSize: 500},
+			},
+		}
+		require.NoError(t, entry.Upsert(ctx))
+
+		tsk := &Task{Id: entry.TaskId, Execution: 0}
+		metrics, err := tsk.GetS3ArtifactUsageFromDB(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 4, metrics.PutRequests)
+		assert.Equal(t, int64(300), metrics.UploadBytes)
+		assert.Equal(t, 1, metrics.Count)
+	})
+
+	t.Run("ExecutionIsolation", func(t *testing.T) {
+		taskID := mgobson.NewObjectId().Hex()
+		entry0 := artifact.Entry{
+			TaskId:    taskID,
+			Execution: 0,
+			Files:     []artifact.File{{Name: "a", PutRequests: 2, FileSize: 100}},
+		}
+		entry1 := artifact.Entry{
+			TaskId:    taskID,
+			Execution: 1,
+			Files:     []artifact.File{{Name: "b", PutRequests: 7, FileSize: 400}},
+		}
+		require.NoError(t, entry0.Upsert(ctx))
+		require.NoError(t, entry1.Upsert(ctx))
+
+		tsk := &Task{Id: taskID, Execution: 1}
+		metrics, err := tsk.GetS3ArtifactUsageFromDB(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 7, metrics.PutRequests)
+		assert.Equal(t, int64(400), metrics.UploadBytes)
+		assert.Equal(t, 1, metrics.Count)
 	})
 }

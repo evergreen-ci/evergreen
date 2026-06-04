@@ -608,13 +608,6 @@ retryLoop:
 		return err
 	}
 
-	if totalRetryPuts > 0 {
-		grip.Debug(ctx, errors.Wrap(
-			comm.ReportS3Usage(ctx, s3pc.taskData, *conf.S3Usage, false),
-			"reporting S3 usage",
-		))
-	}
-
 	logger.Task().WarningWhen(ctx, strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
 	processedCount := skippedFilesCount + len(uploadedFiles)
