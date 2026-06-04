@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -751,6 +752,12 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 		if reusePatch == nil {
 			return errors.Errorf("no previous patch available")
 		}
+	} else if !patch.IsValidId(patchId) {
+		// Mainline (waterfall) version IDs have no patch document; reconstruct VariantsTasks from activated tasks.
+		if failedOnly {
+			return errors.Errorf("repeating failed tasks from mainline version '%s' is not supported", patchId)
+		}
+		return setToPreviousMainlineVersionDefinition(ctx, patchDoc, patchId)
 	} else {
 		reusePatch, err = patch.FindOneId(ctx, patchId)
 		if err != nil {
@@ -772,6 +779,49 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 		return errors.Wrapf(err, "filtering tasks for '%s'", patchId)
 	}
 
+	return nil
+}
+
+// setToPreviousMainlineVersionDefinition reproduces a mainline (waterfall) version's
+// per-variant task mapping on patchDoc. Display-task wrappers are not reconstructed;
+// execution tasks are scheduled directly.
+func setToPreviousMainlineVersionDefinition(ctx context.Context, patchDoc *patch.Patch, versionId string) error {
+	grip.Debug(ctx, message.Fields{
+		"message":    "cloning mainline waterfall version via --repeat-patch",
+		"version_id": versionId,
+	})
+	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(ctx, versionId)
+	if err != nil {
+		return errors.Wrapf(err, "querying activated tasks for version '%s'", versionId)
+	}
+	if len(activatedTasks) == 0 {
+		return errors.Errorf("no activated tasks found for version '%s'", versionId)
+	}
+
+	variantToTasks := map[string][]string{}
+	var allTasks []string
+	for _, t := range activatedTasks {
+		variantToTasks[t.BuildVariant] = append(variantToTasks[t.BuildVariant], t.DisplayName)
+		allTasks = append(allTasks, t.DisplayName)
+	}
+
+	buildVariants := make([]string, 0, len(variantToTasks))
+	for variant := range variantToTasks {
+		buildVariants = append(buildVariants, variant)
+	}
+	sort.Strings(buildVariants)
+	sort.Strings(allTasks)
+
+	variantsTasks := make([]patch.VariantTasks, 0, len(buildVariants))
+	for _, variant := range buildVariants {
+		tasks := variantToTasks[variant]
+		sort.Strings(tasks)
+		variantsTasks = append(variantsTasks, patch.VariantTasks{Variant: variant, Tasks: tasks})
+	}
+
+	patchDoc.Tasks = allTasks
+	patchDoc.BuildVariants = buildVariants
+	patchDoc.VariantsTasks = variantsTasks
 	return nil
 }
 
