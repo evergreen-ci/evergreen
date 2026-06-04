@@ -1040,6 +1040,24 @@ func TestNumHostsByTaskSpec(t *testing.T) {
 		assert.Equal(t, 1, count)
 	})
 
+	t.Run("BusyHostRunningTaskGroupCounts", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		h := Host{
+			Id:                      "busy_with_task_group",
+			Status:                  evergreen.HostRunning,
+			RunningTask:             "current_task",
+			RunningTaskGroup:        group,
+			RunningTaskBuildVariant: buildVariant,
+			RunningTaskProject:      project,
+			RunningTaskVersion:      version,
+		}
+		require.NoError(t, h.Insert(t.Context()))
+
+		count, err := NumHostsByTaskSpec(t.Context(), group, buildVariant, project, version)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+
 	t.Run("BusyHostRunningUnrelatedTaskDoesNotCount", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 		h := Host{
