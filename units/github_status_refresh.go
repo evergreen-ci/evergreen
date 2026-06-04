@@ -70,7 +70,7 @@ func makeGithubStatusRefreshJob() *githubStatusRefreshJob {
 func (j *githubStatusRefreshJob) shouldUpdate(ctx context.Context) (bool, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, "error retrieving admin settings")
+		return false, errors.Wrap(err, "retrieving admin settings")
 	}
 	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{

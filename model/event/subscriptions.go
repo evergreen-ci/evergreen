@@ -581,12 +581,14 @@ func RemoveSubscription(ctx context.Context, id string) error {
 						"message":         "deleting webhook secret from Parameter Store on subscription removal",
 						"subscription_id": id,
 						"parameter_name":  ws.SecretParameter,
+						"ticket":          "DEVPROD-15500",
 					}))
 				} else {
 					grip.Debug(ctx, message.Fields{
 						"message":         "webhook secret removed from Parameter Store",
 						"subscription_id": id,
 						"parameter_name":  ws.SecretParameter,
+						"ticket":          "DEVPROD-15500",
 					})
 				}
 			}
@@ -1151,6 +1153,7 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 					"message":         "failed to read webhook secret from Parameter Store, falling back to MongoDB",
 					"subscription_id": subscriptions[i].ID,
 					"error":           err.Error(),
+					"ticket":          "DEVPROD-15500",
 				})
 				// Secret is already populated from the DB read — leave it as-is.
 			} else {

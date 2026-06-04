@@ -245,8 +245,13 @@ func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 
 	j.sender.Send(ctx, c)
 	grip.Info(ctx, message.Fields{
-		"ticket":  thirdparty.GithubInvestigation,
-		"message": "called github status send",
-		"caller":  githubStatusUpdateJobName,
+		"ticket":      thirdparty.GithubInvestigation,
+		"message":     "called github status send",
+		"caller":      githubStatusUpdateJobName,
+		"owner":       status.Owner,
+		"repo":        status.Repo,
+		"ref":         status.Ref,
+		"update_type": j.UpdateType,
+		"patch_id":    j.FetchID,
 	})
 }

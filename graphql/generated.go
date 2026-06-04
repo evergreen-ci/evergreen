@@ -68,6 +68,7 @@ type ResolverRoot interface {
 	Project() ProjectResolver
 	ProjectLite() ProjectLiteResolver
 	ProjectSettings() ProjectSettingsResolver
+	ProjectTasksPair() ProjectTasksPairResolver
 	ProjectVars() ProjectVarsResolver
 	Query() QueryResolver
 	RepoSettings() RepoSettingsResolver
@@ -1475,6 +1476,7 @@ type ComplexityRoot struct {
 	ProjectTasksPair struct {
 		AllowedBVs   func(childComplexity int) int
 		AllowedTasks func(childComplexity int) int
+		DisplayName  func(childComplexity int) int
 		ProjectID    func(childComplexity int) int
 	}
 
@@ -2635,6 +2637,9 @@ type ProjectSettingsResolver interface {
 
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
 	Vars(ctx context.Context, obj *model.APIProjectSettings) (*model.APIProjectVars, error)
+}
+type ProjectTasksPairResolver interface {
+	DisplayName(ctx context.Context, obj *model.APIProjectTasksPair) (string, error)
 }
 type ProjectVarsResolver interface {
 	AdminOnlyVars(ctx context.Context, obj *model.APIProjectVars) ([]string, error)
@@ -8840,6 +8845,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ProjectTasksPair.AllowedTasks(childComplexity), true
+	case "ProjectTasksPair.displayName":
+		if e.complexity.ProjectTasksPair.DisplayName == nil {
+			break
+		}
+
+		return e.complexity.ProjectTasksPair.DisplayName(childComplexity), true
 	case "ProjectTasksPair.projectId":
 		if e.complexity.ProjectTasksPair.ProjectID == nil {
 			break
@@ -51883,6 +51894,35 @@ func (ec *executionContext) fieldContext_ProjectTasksPair_projectId(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectTasksPair_displayName(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectTasksPair_displayName,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ProjectTasksPair().DisplayName(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectTasksPair_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectTasksPair",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectTasksPair_allowedTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -59473,6 +59513,8 @@ func (ec *executionContext) fieldContext_SingleTaskDistroConfig_projectTasksPair
 			switch field.Name {
 			case "projectId":
 				return ec.fieldContext_ProjectTasksPair_projectId(ctx, field)
+			case "displayName":
+				return ec.fieldContext_ProjectTasksPair_displayName(ctx, field)
 			case "allowedTasks":
 				return ec.fieldContext_ProjectTasksPair_allowedTasks(ctx, field)
 			case "allowedBVs":
@@ -102063,17 +102105,53 @@ func (ec *executionContext) _ProjectTasksPair(ctx context.Context, sel ast.Selec
 		case "projectId":
 			out.Values[i] = ec._ProjectTasksPair_projectId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "displayName":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectTasksPair_displayName(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "allowedTasks":
 			out.Values[i] = ec._ProjectTasksPair_allowedTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "allowedBVs":
 			out.Values[i] = ec._ProjectTasksPair_allowedBVs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))

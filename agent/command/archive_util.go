@@ -390,7 +390,7 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 					info, err := di.Info()
 					if err != nil {
-						return errors.WithStack(errors.Wrapf(err, "getting file info while walking glob path for filter %s and path %s", filematch, path))
+						return errors.WithStack(errors.Wrapf(err, "getting file info while walking glob path for filter '%s' and path '%s'", filematch, path))
 					}
 
 					addUniqueFile(path, info)

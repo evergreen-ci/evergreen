@@ -93,12 +93,11 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 			distro,
 			taskGroupData,
 			distro.HostAllocatorSettings.FutureHostFraction,
-			hostAllocatorData.ContainerPool,
 			hostAllocatorData.DistroQueueInfo.MaxDurationThreshold,
 			maxHosts)
 
 		if err != nil {
-			return 0, len(freeHosts), errors.Wrapf(err, "error calculating hosts for distro %s", distro.Id)
+			return 0, len(freeHosts), errors.Wrapf(err, "calculating hosts for distro '%s'", distro.Id)
 		}
 
 		// add up total number of hosts needed for all groups
@@ -132,7 +131,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 // evalHostUtilization calculates the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to achieve that minus the
 // number of free hosts
-func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, int, error) {
+func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, maxDurationThreshold time.Duration, maxHosts int) (int, int, error) {
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
 	numLongRunningTasks := taskGroupInfo.CountDurationOverThreshold
@@ -146,17 +145,6 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	// Why do we do this here?
 	if ctx.Err() != nil {
 		return 0, 0, errors.New("context canceled, not evaluating host utilization")
-	}
-
-	if containerPool != nil {
-		parentDistro, err := distro.FindOneId(ctx, containerPool.Distro)
-		if err != nil {
-			return 0, 0, errors.Wrap(err, "error finding parent distros")
-		}
-		if parentDistro == nil {
-			return 0, 0, errors.Errorf("distro '%s' not found", containerPool.Distro)
-		}
-		maxHosts = parentDistro.HostAllocatorSettings.MaximumHosts * containerPool.MaxContainers
 	}
 
 	// Determine the number of expected free hosts by summing the number of free hosts with the
@@ -188,7 +176,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 
 	// enforce the max hosts cap
-	if isMaxHostsCapacity(maxHosts, containerPool, numNewHosts, len(existingHosts)) {
+	if isMaxHostsCapacity(maxHosts, numNewHosts, len(existingHosts)) {
 		numNewHosts = maxHosts - len(existingHosts)
 	}
 
@@ -393,17 +381,7 @@ func getSoonToBeFreeHosts(ctx context.Context, existingHosts []host.Host, future
 	return freeHosts, nil
 }
 
-// isMaxHostsCapacity returns true if the max number of containers are already running
-func isMaxHostsCapacity(maxHosts int, pool *evergreen.ContainerPool, numNewHosts, numExistingHosts int) bool {
-
-	if pool != nil {
-		if numNewHosts > (maxHosts*pool.MaxContainers)-numExistingHosts {
-			return true
-		}
-	}
-
-	if numNewHosts+numExistingHosts > maxHosts {
-		return true
-	}
-	return false
+// isMaxHostsCapacity returns true if spawning numNewHosts would exceed the distro's maximum host count.
+func isMaxHostsCapacity(maxHosts, numNewHosts, numExistingHosts int) bool {
+	return numNewHosts+numExistingHosts > maxHosts
 }
