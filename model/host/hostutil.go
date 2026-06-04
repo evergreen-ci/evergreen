@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"crypto/rand"
 	"math"
-	"math/rand"
+	"math/big"
 	"net"
 	"path/filepath"
 	"regexp"
@@ -543,12 +544,16 @@ func (h *Host) SetupServiceUserCommands(ctx context.Context) (string, error) {
 
 const passwordCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
-func generatePassword(length int) string {
+func generatePassword(length int) (string, error) {
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = passwordCharset[rand.Int()%len(passwordCharset)]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(passwordCharset))))
+		if err != nil {
+			return "", errors.Wrap(err, "generating secure random number")
+		}
+		b[i] = passwordCharset[n.Int64()]
 	}
-	return string(b)
+	return string(b), nil
 }
 
 // CreateServicePassword creates the password for the host's service user.
@@ -556,7 +561,11 @@ func (h *Host) CreateServicePassword(ctx context.Context) error {
 	var password string
 	var valid bool
 	for i := 0; i < 1000; i++ {
-		password = generatePassword(12)
+		var err error
+		password, err = generatePassword(12)
+		if err != nil {
+			return errors.Wrap(err, "generating service password")
+		}
 		if valid = ValidateRDPPassword(password); valid {
 			break
 		}
