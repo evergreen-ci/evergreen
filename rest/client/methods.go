@@ -2027,6 +2027,12 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 }
 
 // requestValidOAuthToken removes an invalid cached token and retries once so users can recover from a poisoned token file.
+// A poisoned token file can be caused by a fradulent zero time. The OIDC/OAuth
+// libraries treat a zero time as a valid token, which is never the case for
+// our tokens.
+// The zero time can be caused by another library running the oauth flow themselves (evergreen.py)
+// or by the dex library writing the token file with incorrect state (their
+// Close function always writes the token file, even if it's invalid).
 func requestValidOAuthToken(ctx context.Context, baseOpts []dex.ClientOption, loader dex.TokenLoader, flow oauthFlow) (*oauth2.Token, string, error) {
 	token, tokenPath, err := requestOAuthToken(ctx, baseOpts, loader, flow)
 	if err != nil {
