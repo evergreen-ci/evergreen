@@ -44,7 +44,7 @@ func TestMakeHost(t *testing.T) {
 	d := distro.Distro{
 		Id:       "archlinux-test",
 		Aliases:  []string{"archlinux-alias"},
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("ami", "ami-123456"),
 			birch.EC.String("region", "us-east-1"),
@@ -298,7 +298,7 @@ func TestHostCreateHandler(t *testing.T) {
 	d := distro.Distro{
 		Id:       "archlinux-test",
 		Aliases:  []string{"archlinux-alias"},
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("ami", "ami-123456"),
 			birch.EC.String("region", "us-east-1"),

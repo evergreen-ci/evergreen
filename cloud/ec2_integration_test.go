@@ -22,7 +22,7 @@ func fetchTestDistro() distro.Distro {
 		Id:       "test_distro",
 		Arch:     "linux_amd64",
 		WorkDir:  "/data/mci",
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("ami", "ami-97785bed"),
 			birch.EC.String("instance_type", "t2.micro"),

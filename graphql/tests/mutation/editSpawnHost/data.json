@@ -74,7 +74,7 @@
         "aliases": ["ubuntu1604", "ubuntu1604-build"],
         "arch": "linux_amd64",
         "work_dir": "/data/mci",
-        "provider": "ec2-ondemand",
+        "provider": "ec2-fleet",
         "provider_settings": [
           {
             "region": "us-east-1",

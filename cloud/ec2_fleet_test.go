@@ -35,7 +35,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "i-12345", h.Id)
 		},
 		"SpawnHostWithOnDemandProvider": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+			h.Distro.Provider = evergreen.ProviderNameEc2Fleet
 			spawnedHost, err := m.SpawnHost(ctx, h)
 			require.NoError(t, err)
 			require.NotNil(t, spawnedHost)
@@ -505,7 +505,7 @@ func TestGetManagerForEc2OnDemandUsesFleet(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
-	mgr, err := GetManager(ctx, env, ManagerOpts{Provider: evergreen.ProviderNameEc2OnDemand})
+	mgr, err := GetManager(ctx, env, ManagerOpts{Provider: evergreen.ProviderNameEc2Fleet})
 	require.NoError(t, err)
 	require.NotNil(t, mgr)
 	_, ok := mgr.(*ec2FleetManager)

@@ -103,7 +103,7 @@ func (s *EC2Suite) SetupTest() {
 			birch.EC.Double("bid_price", 0.001),
 			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 		)},
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 	}
 
 	s.h = &host.Host{
@@ -546,7 +546,7 @@ func (s *EC2Suite) TestGetInstanceInfoNoReservationForIntentStyleHostID() {
 func (s *EC2Suite) TestGetInstanceInformation() {
 	s.Require().NoError(s.h.Insert(s.ctx))
 
-	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	s.h.Distro.Provider = evergreen.ProviderNameEc2Fleet
 	info, err := s.onDemandManager.GetInstanceState(s.ctx, s.h)
 	s.NoError(err)
 	s.Equal(StatusRunning, info.Status)
@@ -834,28 +834,28 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		{
 			Id: "i-1",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-3",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-4",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
@@ -1069,7 +1069,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		{
 			Id: "i-1",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 			Status: evergreen.HostStarting,
@@ -1077,7 +1077,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 			Status: evergreen.HostStarting,
@@ -1254,7 +1254,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	d1 := distro.Distro{
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("region", evergreen.DefaultEC2Region),
 			birch.EC.String("aws_access_key_id", "key"),

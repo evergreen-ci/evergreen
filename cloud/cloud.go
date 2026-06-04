@@ -130,7 +130,7 @@ type ManagerOpts struct {
 // provider.
 func GetSettings(provider string) (ProviderSettings, error) {
 	switch provider {
-	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Fleet:
+	case evergreen.ProviderNameEc2Fleet:
 		return &EC2ProviderSettings{}, nil
 	case evergreen.ProviderNameStatic:
 		return &StaticSettings{}, nil
@@ -148,22 +148,6 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 	var provider Manager
 
 	switch mgrOpts.Provider {
-	case evergreen.ProviderNameEc2OnDemand:
-		grip.Warning(ctx, message.Fields{
-			"message":  "deprecated ec2-ondemand provider used; routing to ec2FleetManager",
-			"ticket":   "DEVPROD-25338",
-			"provider": mgrOpts.Provider,
-			"region":   mgrOpts.Region,
-			"account":  mgrOpts.Account,
-		})
-		provider = &ec2FleetManager{
-			env: env,
-			EC2FleetManagerOptions: &EC2FleetManagerOptions{
-				client:  &awsClientImpl{},
-				account: mgrOpts.Account,
-				region:  mgrOpts.Region,
-			},
-		}
 	case evergreen.ProviderNameEc2Fleet:
 		provider = &ec2FleetManager{
 			env: env,
