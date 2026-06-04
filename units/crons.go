@@ -804,7 +804,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllMergedTrackedProjectRefs(ctx)
+		projects, err := model.FindAllMergedTrackedProjectRefsSecondary(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}

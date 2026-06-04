@@ -90,7 +90,7 @@ func (j *githubAPILimitJob) logProjectAppRateLimit(ctx context.Context) {
 	}
 	ghAppsByAppID := map[int64]projectAndAppAuth{}
 
-	pRefs, err := model.FindAllMergedEnabledTrackedProjectRefs(ctx)
+	pRefs, err := model.FindAllMergedEnabledTrackedProjectRefsSecondary(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding project refs using GitHub app for API"))
 		return
