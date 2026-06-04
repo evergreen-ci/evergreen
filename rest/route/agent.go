@@ -719,28 +719,6 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 	}
 }
 
-// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
-// for the given file key.
-func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
-	pailRules := make([]pail.LifecycleRule, 0, len(rules))
-	for _, ruleDoc := range rules {
-		var expDays *int32
-		if ruleDoc.ExpirationDays != nil {
-			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
-		}
-		pailRules = append(pailRules, pail.LifecycleRule{
-			Prefix:         ruleDoc.FilterPrefix,
-			Status:         ruleDoc.RuleStatus,
-			ExpirationDays: expDays,
-		})
-	}
-	rule := pail.FindMatchingRule(pailRules, fileKey)
-	if rule == nil || rule.ExpirationDays == nil {
-		return 0, false
-	}
-	return int(*rule.ExpirationDays), true
-}
-
 // POST /rest/v2/task/{task_id}/s3_usage
 type reportS3UsageHandler struct {
 	taskID  string
@@ -768,7 +746,13 @@ func (h *reportS3UsageHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
+	ctx, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName)
+	defer span.End()
+
 	t := MustHaveTask(ctx)
+
+	// Non-zero S3Usage on a system-failed task means the crash path already called TrackVersionS3CostForTask.
+	crashPathAlreadyTracked := !t.S3Usage.IsZero() && t.Status == evergreen.TaskSystemFailed
 
 	t.S3Usage = h.s3Usage
 
@@ -789,23 +773,38 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	logBucketName := ""
-	if t.TaskOutputInfo != nil {
-		logBucketName = t.TaskOutputInfo.TaskLogs.BucketConfig.Name
-	}
-
-	if err := t.SaveS3Usage(ctx, lookup, logBucketName); err != nil {
+	if err := t.SaveS3Usage(ctx, lookup, t.LogBucketName()); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
-	// Skip if the server already incremented the version cost via endAndResetSystemFailedTask; that
-	// path sets status to system-failed and the agent request arriving late would double-count.
-	if h.final && t.Status != evergreen.TaskSystemFailed {
+	if h.final && !crashPathAlreadyTracked {
 		grip.Error(ctx, errors.Wrapf(model.TrackVersionS3CostForTask(ctx, t.Id, t.Version, evergreen.TaskSucceeded, t.TaskCost, t.S3Usage),
 			"tracking version S3 cost for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
+// for the given file key.
+func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
+	pailRules := make([]pail.LifecycleRule, 0, len(rules))
+	for _, ruleDoc := range rules {
+		var expDays *int32
+		if ruleDoc.ExpirationDays != nil {
+			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
+		}
+		pailRules = append(pailRules, pail.LifecycleRule{
+			Prefix:         ruleDoc.FilterPrefix,
+			Status:         ruleDoc.RuleStatus,
+			ExpirationDays: expDays,
+		})
+	}
+	rule := pail.FindMatchingRule(pailRules, fileKey)
+	if rule == nil || rule.ExpirationDays == nil {
+		return 0, false
+	}
+	return int(*rule.ExpirationDays), true
 }
 
 // POST /rest/v2/task/{task_id}/high_exec_timeout

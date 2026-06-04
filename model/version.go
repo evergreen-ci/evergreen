@@ -363,7 +363,7 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 	return v.BuildVariants, nil
 }
 
-// versionS3CostBSONFields returns BSON pairs for the 8 S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.
+// versionS3CostBSONFields returns BSON pairs for the S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.
 func versionS3CostBSONFields(prefix string, c cost.Cost) bson.D {
 	return bson.D{
 		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3ArtifactPutCostKey), Value: c.OnDemandS3ArtifactPutCost},

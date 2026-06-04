@@ -518,8 +518,9 @@ const (
 	TaskEBSOnDemandStorageCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_storage_cost"
 	TaskEBSAdjustedStorageCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_storage_cost"
 
-	// S3 cost tracking otel span name — shared by per-file and aggregate events
-	S3CostTrackingOtelSpanName = "s3-cost-tracking"
+	// S3 cost tracking otel span name and span-level identity attributes
+	S3CostTrackingOtelSpanName        = "s3-cost-tracking"
+	TaskS3CostTaskStatusOtelAttribute = "evergreen.task.s3_cost.task_status"
 
 	// S3 cost tracking otel attributes — task-level artifact aggregates
 	TaskS3ArtifactPutRequestsOtelAttribute         = "evergreen.task.s3_cost.artifact_put_requests"
@@ -534,8 +535,6 @@ const (
 	TaskS3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
 	TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_max_put_requests_cost"
 	TaskS3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
-
-	TaskS3CostTaskStatusOtelAttribute = "evergreen.task.s3_cost.task_status"
 
 	// S3 cost tracking otel attributes — task-level log aggregates
 	TaskS3LogPutRequestsOtelAttribute         = "evergreen.task.s3_cost.log_put_requests"

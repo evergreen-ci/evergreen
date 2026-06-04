@@ -13,9 +13,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
-
+	"github.com/evergreen-ci/evergreen/model/s3lifecycle"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -2384,6 +2385,7 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		if err := finishStaleAbortedTask(ctx, settings, t); err != nil {
 			return errors.Wrapf(err, "finishing stale aborted task '%s'", t.Id)
 		}
+		saveAndTrackCrashPathS3Cost(ctx, t)
 	} else {
 		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
 			if !t.IsPartOfDisplay(ctx) {
@@ -2411,12 +2413,62 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 	return nil
 }
 
-func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
-	// The agent is dead and the task was aborted; increment the version's S3 cost from the
-	// last intermediate state saved to the task document.
-	grip.Error(ctx, errors.Wrapf(TrackVersionS3CostForTask(ctx, t.Id, t.Version, evergreen.TaskSystemFailed, t.TaskCost, t.S3Usage),
-		"tracking version S3 cost for stale aborted task '%s'", t.Id))
+// saveAndTrackCrashPathS3Cost reconstructs log S3 usage and records costs for a task that died
+// without reaching teardown. Errors are logged but do not block task cleanup.
+func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
+	allRules, err := s3lifecycle.FindAllRules(ctx)
+	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "getting S3 lifecycle rules for crash-path storage cost calculation, skipping storage cost",
+			"task_id": t.Id,
+		}))
+	} else {
+		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+		for _, rule := range allRules {
+			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
+		}
+		lookup = func(_ context.Context, bucket, fileKey string) (int, bool) {
+			rules := rulesByBucket[bucket]
+			pailRules := make([]pail.LifecycleRule, 0, len(rules))
+			for _, ruleDoc := range rules {
+				var expDays *int32
+				if ruleDoc.ExpirationDays != nil {
+					expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
+				}
+				pailRules = append(pailRules, pail.LifecycleRule{
+					Prefix:         ruleDoc.FilterPrefix,
+					Status:         ruleDoc.RuleStatus,
+					ExpirationDays: expDays,
+				})
+			}
+			rule := pail.FindMatchingRule(pailRules, fileKey)
+			if rule == nil || rule.ExpirationDays == nil {
+				return 0, false
+			}
+			return int(*rule.ExpirationDays), true
+		}
+	}
 
+	if logUsage, err := t.GetS3LogUsageFromS3(ctx); err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "getting S3 log usage for crash-path task",
+			"task_id": t.Id,
+		}))
+	} else {
+		t.S3Usage.Logs = logUsage
+		if err := t.SaveS3Usage(ctx, lookup, t.LogBucketName()); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message": "saving S3 log usage for crash-path task",
+				"task_id": t.Id,
+			}))
+		}
+	}
+	grip.Error(ctx, errors.Wrapf(TrackVersionS3CostForTask(ctx, t.Id, t.Version, evergreen.TaskSystemFailed, t.TaskCost, t.S3Usage),
+		"tracking version S3 cost for crash-path task '%s'", t.Id))
+}
+
+func finishStaleAbortedTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
 	failureDetails := &apimodels.TaskEndDetail{
 		Status:      evergreen.TaskFailed,
 		Type:        evergreen.CommandTypeSystem,
@@ -2436,10 +2488,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 		return nil
 	}
 
-	// The agent is dead (heartbeat timeout or host terminated) and will never reach teardown group,
-	// so increment the version's S3 cost from the last intermediate state saved to the task document.
-	grip.Error(ctx, errors.Wrapf(TrackVersionS3CostForTask(ctx, t.Id, t.Version, evergreen.TaskSystemFailed, t.TaskCost, t.S3Usage),
-		"tracking version S3 cost for system-failed task '%s'", t.Id))
+	saveAndTrackCrashPathS3Cost(ctx, t)
 
 	unschedulableTask := time.Since(t.ActivatedTime) > task.UnschedulableThreshold
 

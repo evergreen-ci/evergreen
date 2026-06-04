@@ -167,8 +167,8 @@ github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810 h1:Q+MNMS3rHQw6bG
 github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810/go.mod h1:A+sGkHeCogvvRBXUrF/Ghu5Gec6lyLtb1MKZN/xfWmI=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
-github.com/evergreen-ci/pail v0.0.0-20260603160329-d42d169cab98 h1:kMGvulzi5DKq0i/KMbtPYg4aRkqfF2utfP/xDzcDcpc=
-github.com/evergreen-ci/pail v0.0.0-20260603160329-d42d169cab98/go.mod h1:lj8oxBSqzEoapX1apBDy88B7wRjj27QQu9EXk2i3AOM=
+github.com/evergreen-ci/pail v0.0.0-20260604154253-3a0a16ca645b h1:pBA59fJULrn125C8DUotbePM4vY2QBykP2iREb1t6Lk=
+github.com/evergreen-ci/pail v0.0.0-20260604154253-3a0a16ca645b/go.mod h1:lj8oxBSqzEoapX1apBDy88B7wRjj27QQu9EXk2i3AOM=
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581 h1:JOYnqPypLzZdjlFxS2ynWGKFPTrx0HAJwe6mi9P/lhk=
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581/go.mod h1:visOo9VGGrTN+jNPSg56zhbCH81sSlMRnXpJCYb+kt4=
 github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6 h1:leuRlgINHoR0/takPgoHYrfHt5mAtXcLdKdfQ0KVnyQ=

@@ -1379,6 +1379,32 @@ func TestReportS3Usage(t *testing.T) {
 				assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
 			},
 		},
+		"FinalCallSkipsVersionIncrementWhenCrashPathAlreadyTracked": {
+			insertTask: &task.Task{
+				Id:      "t4",
+				Status:  evergreen.TaskSystemFailed,
+				Version: "v4",
+				// Non-zero S3Usage signals the crash path already ran TrackVersionS3CostForTask.
+				S3Usage: s3usage.S3Usage{
+					Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 3, UploadBytes: 256}},
+				},
+			},
+			insertVersion: &model.Version{Id: "v4"},
+			s3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 512},
+					Count:           1,
+				},
+			},
+			final:      true,
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				dbVersion, err := model.VersionFindOneId(ctx, "v4")
+				require.NoError(t, err)
+				require.NotNil(t, dbVersion)
+				assert.Equal(t, 0, dbVersion.S3Usage.Artifacts.PutRequests, "version should not be incremented when crash path already tracked costs")
+			},
+		},
 		"FinalCallSavesUsageAndReturnsOk": {
 			insertTask:    &task.Task{Id: "t3", Status: evergreen.TaskStarted, Version: "v3"},
 			insertVersion: &model.Version{Id: "v3"},

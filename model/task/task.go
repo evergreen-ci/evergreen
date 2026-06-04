@@ -4295,10 +4295,15 @@ func (t *Task) UpdateTaskCost(ctx context.Context) {
 	}
 
 	financeConfig, costData, d, err := t.getFinanceConfigAndDistro(ctx)
-	if err == nil {
-		t.calculateRuntimeCost(financeConfig, costData)
-		t.calculateEBSThroughputCost(ctx, financeConfig, d)
+	if err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message": "computing task cost",
+			"task_id": t.Id,
+		}))
+		return
 	}
+	t.calculateRuntimeCost(financeConfig, costData)
+	t.calculateEBSThroughputCost(ctx, financeConfig, d)
 }
 
 // ec2EBSSetFields populates m with dotted-path $set entries for the EC2 and EBS cost fields under prefix.

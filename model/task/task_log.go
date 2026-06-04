@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -208,4 +210,74 @@ func getBucketConfigForProject(project string, originalBucketConfig evergreen.Bu
 		return env.Settings().Buckets.LogBucketLongRetention
 	}
 	return originalBucketConfig
+}
+
+// GetS3LogUsageFromS3 reconstructs log S3 usage for the crash path, when the agent never
+// reached teardown. Chunk count approximates PUT count (exact under 10MB, lower bound otherwise).
+func (t *Task) GetS3LogUsageFromS3(ctx context.Context) (s3usage.LogMetrics, error) {
+	output, ok := t.GetTaskOutputSafe()
+	if !ok {
+		return s3usage.LogMetrics{}, nil
+	}
+
+	bucketConfig := getBucketConfigForProject(t.Project, output.TaskLogs.BucketConfig)
+	bucket, err := newBucket(ctx, bucketConfig, nil)
+	if err != nil {
+		return s3usage.LogMetrics{}, errors.Wrap(err, "creating log bucket")
+	}
+
+	id := output.TaskLogs.ID()
+	// The LCP of all three log type prefixes covers agent, system, and task
+	// logs in a single ListObjectsV2 call.
+	prefix := fmt.Sprintf("%s/%s/%d/%s", t.Project, t.Id, t.Execution, id)
+	it, err := bucket.List(ctx, prefix)
+	if err != nil {
+		return s3usage.LogMetrics{}, errors.Wrap(err, "listing log chunks")
+	}
+
+	agentLogName := getLogName(*t, TaskLogTypeAgent, id)
+	systemLogName := getLogName(*t, TaskLogTypeSystem, id)
+	taskLogName := getLogName(*t, TaskLogTypeTask, id)
+
+	var usage s3usage.LogMetrics
+	for it.Next(ctx) {
+		item := it.Item()
+		size := item.Size()
+		usage.PutRequests++
+		usage.UploadBytes += size
+
+		name := item.Name()
+		switch {
+		case strings.HasPrefix(name, agentLogName+"/"):
+			usage.Agent.Bytes += size
+			if usage.Agent.LogKey == "" {
+				usage.Agent.LogKey = agentLogName
+			}
+		case strings.HasPrefix(name, systemLogName+"/"):
+			usage.System.Bytes += size
+			if usage.System.LogKey == "" {
+				usage.System.LogKey = systemLogName
+			}
+		case strings.HasPrefix(name, taskLogName+"/"):
+			usage.Task.Bytes += size
+			if usage.Task.LogKey == "" {
+				usage.Task.LogKey = taskLogName
+			}
+		}
+	}
+	if err := it.Err(); err != nil {
+		return s3usage.LogMetrics{}, errors.Wrap(err, "iterating log chunks")
+	}
+
+	return usage, nil
+}
+
+// LogBucketName returns the S3 bucket name for this task's logs, applying the
+// long-retention redirect if the project is in the long-retention list.
+func (t *Task) LogBucketName() string {
+	output, ok := t.GetTaskOutputSafe()
+	if !ok {
+		return ""
+	}
+	return getBucketConfigForProject(t.Project, output.TaskLogs.BucketConfig).Name
 }
