@@ -83,7 +83,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		return
 	}
 
-	ref, err := model.FindMergedProjectRef(ctx, j.ProjectID, "", true)
+	ref, err := model.FindMergedProjectRefSecondary(ctx, j.ProjectID, "", true)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
 		return

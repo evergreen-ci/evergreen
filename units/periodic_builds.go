@@ -68,7 +68,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 	var err error
 	// Use a fully merged project for the rest of the job, since we need it for creating the version
-	j.project, err = model.FindMergedProjectRef(ctx, j.ProjectID, "", true)
+	j.project, err = model.FindMergedProjectRefSecondary(ctx, j.ProjectID, "", true)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
 		return
