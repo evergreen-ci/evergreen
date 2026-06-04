@@ -143,7 +143,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Copy over the test results.
 	if err := srcTask.PopulateTestResults(r.Context()); err != nil {
-		err = errors.Wrapf(err, "Error finding test results for task '%s'", srcTask.Id)
+		err = errors.Wrapf(err, "finding test results for task '%s'", srcTask.Id)
 		grip.Error(r.Context(), err)
 		gimlet.WriteJSONInternalError(r.Context(), w, responseError{Message: err.Error()})
 		return

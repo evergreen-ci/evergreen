@@ -410,7 +410,7 @@ func (c *communicatorImpl) getUser(ctx context.Context, userID string) (*model.A
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error sending request to get user '%s'", userID)
+		return nil, errors.Wrapf(err, "sending request to get user '%s'", userID)
 	}
 	defer resp.Body.Close()
 
@@ -420,7 +420,7 @@ func (c *communicatorImpl) getUser(ctx context.Context, userID string) (*model.A
 
 	user := &model.APIDBUser{}
 	if err = utility.ReadJSON(resp.Body, user); err != nil {
-		return nil, errors.Wrap(err, "error reading JSON response body")
+		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 
 	return user, nil
@@ -755,7 +755,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "error sending request to get service flags")
+		return nil, errors.Wrap(err, "sending request to get service flags")
 	}
 	defer resp.Body.Close()
 
@@ -765,7 +765,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 
 	flags := &model.APIServiceFlags{}
 	if err = utility.ReadJSON(resp.Body, flags); err != nil {
-		return nil, errors.Wrap(err, "error reading JSON response body")
+		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 
 	return flags, nil

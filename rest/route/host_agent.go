@@ -357,7 +357,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		case evergreen.DispatcherVersionRevisedWithDependencies:
 			queueItem, err = dispatcher.RefreshFindNextTask(ctx, d.Id, spec, amiUpdatedTime)
 			if err != nil {
-				return nil, false, errors.Wrap(err, "problem getting next task")
+				return nil, false, errors.Wrap(err, "getting next task")
 			}
 		default:
 			return nil, false, errors.Errorf("invalid dispatcher version '%s' for host '%s'", d.DispatcherSettings.Version, currentHost.Id)

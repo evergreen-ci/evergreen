@@ -693,7 +693,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 
 	proc, err := client.CreateProcess(ctx, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem creating process")
+		return nil, errors.Wrap(err, "creating process")
 	}
 
 	catcher := grip.NewBasicCatcher()

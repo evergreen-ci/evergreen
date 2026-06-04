@@ -1,13 +1,11 @@
 package host
 
 import (
-	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
 const defaultMaxImagesPerParent = 3
@@ -125,82 +123,4 @@ parentLoop:
 		}
 	}
 	return matched, notMatched
-}
-
-// generateParentCreateOptions generates host options for a parent host
-func generateParentCreateOptions(parentDistro distro.Distro, pool *evergreen.ContainerPool) CreateOptions {
-	options := CreateOptions{
-		Distro:                parentDistro,
-		HasContainers:         true,
-		UserName:              evergreen.User,
-		ContainerPoolSettings: pool,
-	}
-	return options
-}
-
-func MakeContainersAndParents(ctx context.Context, d distro.Distro, pool *evergreen.ContainerPool, newContainersNeeded int, hostOptions CreateOptions) ([]Host, []Host, error) {
-	// get the parents that are running and split into ones that already have a container from this distro
-	currentHosts, err := GetContainersOnParents(ctx, d)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting containers on parents for distro '%s'", d.Id)
-	}
-	maxImages := defaultMaxImagesPerParent
-	if pool.MaxImages > 0 {
-		maxImages = pool.MaxImages
-	}
-	matched, notMatched := partitionParents(currentHosts, d.Id, maxImages)
-	existingHosts := append(matched, notMatched...)
-
-	// add containers to existing parents
-	containersToInsert := []Host{}
-	parentsToInsert := []Host{}
-	containersLeftToCreate := newContainersNeeded
-	for _, parent := range existingHosts {
-		intents := makeContainerIntentsForParent(parent, containersLeftToCreate, hostOptions)
-		containersToInsert = append(containersToInsert, intents...)
-		containersLeftToCreate -= len(intents)
-		if containersLeftToCreate <= 0 {
-			return containersToInsert, parentsToInsert, nil
-		}
-	}
-
-	// create new parents and add containers to them
-	numNewParents, _, err := getNumNewParentsAndHostsToSpawn(ctx, pool, containersLeftToCreate, false)
-	if err != nil {
-		return nil, nil, err
-	}
-	parentDistro, err := distro.FindByIdWithDefaultSettings(ctx, pool.Distro)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "finding distro")
-	}
-	if parentDistro == nil {
-		return nil, nil, errors.Errorf("distro '%s' not found", pool.Distro)
-	}
-
-	for i := 0; i < numNewParents; i++ {
-		newParent := NewIntent(generateParentCreateOptions(*parentDistro, pool))
-		parentsToInsert = append(parentsToInsert, *newParent)
-		parentInfo := ContainersOnParents{ParentHost: *newParent}
-		intents := makeContainerIntentsForParent(parentInfo, containersLeftToCreate, hostOptions)
-		containersToInsert = append(containersToInsert, intents...)
-		containersLeftToCreate -= len(intents)
-	}
-
-	return containersToInsert, parentsToInsert, nil
-}
-
-func makeContainerIntentsForParent(parent ContainersOnParents, newContainersNeeded int, hostOptions CreateOptions) []Host {
-	// find out how many more containers this parent can fit
-	containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - len(parent.Containers)
-	containersToCreate := containerSpace
-	// only create containers as many as we need
-	if newContainersNeeded < containerSpace {
-		containersToCreate = newContainersNeeded
-	}
-	containerHostIntents := []Host{}
-	for i := 0; i < containersToCreate; i++ {
-		hostOptions.ParentID = parent.ParentHost.Id
-		containerHostIntents = append(containerHostIntents, *NewIntent(hostOptions))
-	}
-	return containerHostIntents
 }

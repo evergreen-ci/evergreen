@@ -44,7 +44,7 @@ func (v *validateProjectHandler) Parse(ctx context.Context, r *http.Request) err
 
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		return errors.Wrap(err, "Error reading request body")
+		return errors.Wrap(err, "reading request body")
 	}
 
 	if !json.Valid(bytes) {

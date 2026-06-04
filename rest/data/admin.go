@@ -33,11 +33,11 @@ func GetNecessaryServiceFlags(ctx context.Context) (evergreen.ServiceFlags, erro
 
 	// we should only return the service flags that are necessary at the moment
 	// instead of returning all the service flags
-	neccessaryFlags := evergreen.ServiceFlags{
+	necessaryFlags := evergreen.ServiceFlags{
 		StaticAPIKeysDisabled:  flags.StaticAPIKeysDisabled,
 		JWTTokenForCLIDisabled: flags.JWTTokenForCLIDisabled,
 	}
-	return neccessaryFlags, nil
+	return necessaryFlags, nil
 }
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it

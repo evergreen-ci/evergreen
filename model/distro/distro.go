@@ -424,10 +424,6 @@ func (d *Distro) MaxDurationPerHost() time.Duration {
 		return d.PlannerSettings.maxDurationPerHost
 	}
 
-	if d.ContainerPool != "" {
-		return evergreen.MaxDurationPerDistroHostWithContainers
-	}
-
 	return evergreen.MaxDurationPerDistroHost
 }
 
@@ -737,13 +733,6 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(config.ValidateAndDefault())
 
-	if d.ContainerPool != "" {
-		if s.ContainerPools.GetContainerPool(d.ContainerPool) == nil {
-			catcher.Errorf("could not find pool '%s' for distro '%s'", d.ContainerPool, d.Id)
-		}
-		resolved.maxDurationPerHost = evergreen.MaxDurationPerDistroHostWithContainers
-	}
-
 	if resolved.Version == "" {
 		resolved.Version = evergreen.PlannerVersionTunable
 	}
@@ -797,7 +786,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
 	err := d.Insert(ctx)
 	if err != nil {
-		return errors.Wrap(err, "Error inserting distro")
+		return errors.Wrap(err, "inserting distro")
 	}
 	return d.AddPermissions(ctx, creator)
 }
