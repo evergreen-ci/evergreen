@@ -292,7 +292,7 @@ const (
 	TagExpireOn          = "expire-on"
 	TagAllowRemoteAccess = "AllowRemoteAccess"
 	TagIsDebug           = "IsDebug"
-	TagHostID            = "host-id"
+	TagHostName          = "host-name"
 	TagTaskID            = "task-id"
 	TagTaskExecution     = "task-execution"
 	TagBuildID           = "build-id"

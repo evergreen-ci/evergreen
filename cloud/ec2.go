@@ -490,10 +490,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		"distro":        h.Distro.Id,
 	})
 
-	if err = tagHostIDOnVolumes(ctx, m.client, h); err != nil {
-		return nil, errors.Wrap(err, "tagging host ID on volumes")
-	}
-
 	return h, nil
 }
 
@@ -696,36 +692,6 @@ func extendExpireOnByDay(ctx context.Context, client AWSClient, h *host.Host) er
 	}
 
 	return errors.Wrap(h.BumpExpireOnTag(ctx, newExpireOn), "bumping expire-on tag in DB")
-}
-
-// tagHostIDOnVolumes tags the host's EBS volumes with its EC2 instance ID.
-func tagHostIDOnVolumes(ctx context.Context, client AWSClient, h *host.Host) error {
-	var devices []types.InstanceBlockDeviceMapping
-	if err := utility.Retry(ctx, func() (bool, error) {
-		var err error
-		devices, err = client.GetInstanceBlockDevices(ctx, h)
-		return err != nil, err
-	}, awsClientDefaultRetryOptions()); err != nil {
-		return errors.Wrap(err, "getting instance block devices")
-	}
-
-	volumeIDs := make([]string, 0, len(devices))
-	for _, device := range devices {
-		if device.Ebs != nil && device.Ebs.VolumeId != nil {
-			volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
-		}
-	}
-	if len(volumeIDs) == 0 {
-		return nil
-	}
-
-	_, err := client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: volumeIDs,
-		Tags: []types.Tag{
-			{Key: aws.String(evergreen.TagHostID), Value: aws.String(h.Id)},
-		},
-	})
-	return errors.Wrapf(err, "adding host-id tag to volumes for host '%s'", h.Id)
 }
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
@@ -1288,6 +1254,12 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	volumeTags := []types.Tag{
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
+	}
+	if volume.Host != "" {
+		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
+		// Clear before inserting so the DB field isn't left as the intent host tag;
+		// AddVolumeToHost sets volume.Host to the real host ID after attachment.
+		volume.Host = ""
 	}
 	input := &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),
