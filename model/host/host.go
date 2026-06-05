@@ -252,21 +252,6 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
-// FromDistroSettings loads the Docker container options from the provider
-// settings.
-func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
-	if len(d.ProviderSettingsList) != 0 {
-		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
-		if err != nil {
-			return errors.Wrap(err, "marshalling provider settings into BSON")
-		}
-		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "unmarshalling BSON into Docker provider settings")
-		}
-	}
-	return nil
-}
-
 // Validate checks that the settings from the config file are sane.
 func (opts *DockerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
@@ -3173,6 +3158,15 @@ func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 		NumUsersWithVolumes:   volRes[0].NumUsersWithVolumes,
 		InstanceTypes:         instanceTypes,
 	}, nil
+}
+
+// CountDebugSpawnhosts returns the number of active spawn hosts in debug mode.
+func CountDebugSpawnhosts(ctx context.Context) (int, error) {
+	return Count(ctx, bson.M{
+		UserHostKey: true,
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		IsDebugKey:  true,
+	})
 }
 
 // CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated

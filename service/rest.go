@@ -33,7 +33,7 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	pctx, err := model.LoadContext(r.Context(), vars["task_id"], vars["build_id"], vars["version_id"], vars["patch_id"], vars["project_id"])
 	if err != nil {
 		// Some database lookup failed when fetching the data - log it
-		ra.LoggedError(rw, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
+		ra.LoggedError(rw, r, http.StatusInternalServerError, errors.Wrap(err, "loading project context"))
 		return
 	}
 

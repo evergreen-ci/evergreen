@@ -165,7 +165,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 	if so.IsDebug {
-		debugScript, err := getDebugSetupScript(ctx, so, settings, d.HomeDir())
+		debugScript, err := getDebugSetupScript(ctx, so, settings, d.WorkDir)
 		if err != nil {
 			return nil, errors.Wrap(err, "generating debug setup script")
 		}
@@ -232,9 +232,10 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 // getDebugSetupScript returns the debug setup script to use. The
 // admin-configured debug script always runs. If a step number is also
 // specified, the debug setup-phase script is appended after it.
-func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, homeDir string) (string, error) {
+func getDebugSetupScript(ctx context.Context, so SpawnOptions, settings *evergreen.Settings, workDir string) (string, error) {
 	script := settings.DebugSpawnHosts.SetupScript
-	configScript, configPath, err := generateConfigScript(ctx, so.ProvisionOptions.TaskId, settings, homeDir)
+	configBaseDir := workDir
+	configScript, configPath, err := generateConfigScript(ctx, so.ProvisionOptions.TaskId, settings, configBaseDir)
 	if err != nil {
 		return "", errors.Wrap(err, "generating config YAML script")
 	}

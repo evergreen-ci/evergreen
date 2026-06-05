@@ -10,7 +10,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -756,17 +759,8 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
-		assert.InDelta(t, 0.08, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
-		assert.InDelta(t, 0.03, v.Cost.OnDemandS3LogPutCost, 0.001)
 		assert.InDelta(t, 5.0, v.PredictedCost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 4.0, v.PredictedCost.AdjustedEC2Cost, 0.01)
-		assert.InDelta(t, 0.30, v.PredictedCost.AdjustedS3ArtifactPutCost, 0.001)
-		assert.InDelta(t, 0.06, v.PredictedCost.AdjustedS3LogPutCost, 0.001)
-		assert.Equal(t, 150, v.S3Usage.Artifacts.PutRequests)
-		assert.Equal(t, int64(8000), v.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 15, v.S3Usage.Artifacts.Count)
-		assert.Equal(t, 30, v.S3Usage.Logs.PutRequests)
-		assert.Equal(t, int64(1500), v.S3Usage.Logs.UploadBytes)
 	})
 
 	t.Run("ExcludesDisplayOnlyTasks", func(t *testing.T) {
@@ -789,8 +783,6 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		require.NoError(t, err)
 		assert.InDelta(t, 10.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 8.0, v.Cost.AdjustedEC2Cost, 0.01)
-		assert.InDelta(t, 0.05, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
-		assert.Equal(t, 100, v.S3Usage.Artifacts.PutRequests)
 	})
 
 	t.Run("IncludesOldTaskExecutions", func(t *testing.T) {
@@ -813,9 +805,6 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
 		assert.InDelta(t, 12.0, v.Cost.AdjustedEC2Cost, 0.01)
-		assert.InDelta(t, 0.015, v.Cost.OnDemandS3LogPutCost, 0.001)
-		assert.Equal(t, 40, v.S3Usage.Logs.PutRequests)
-		assert.Equal(t, int64(2500), v.S3Usage.Logs.UploadBytes)
 	})
 
 	t.Run("TasksWithoutS3DataAreAggregatedSafely", func(t *testing.T) {
@@ -838,12 +827,6 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		err := v.UpdateAggregateTaskCosts(ctx)
 		require.NoError(t, err)
 		assert.InDelta(t, 15.0, v.Cost.OnDemandEC2Cost, 0.01)
-		assert.InDelta(t, 0.03, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
-		assert.Equal(t, float64(0), v.Cost.OnDemandS3LogPutCost)
-		assert.Equal(t, 50, v.S3Usage.Artifacts.PutRequests)
-		assert.Equal(t, int64(3000), v.S3Usage.Artifacts.UploadBytes)
-		assert.Equal(t, 5, v.S3Usage.Artifacts.Count)
-		assert.Equal(t, 0, v.S3Usage.Logs.PutRequests)
 	})
 
 	t.Run("AggregatesEBSCosts", func(t *testing.T) {
@@ -880,50 +863,84 @@ func TestUpdateAggregateTaskCosts(t *testing.T) {
 		assert.InDelta(t, 0.24, v.Cost.AdjustedEBSStorageCost, 0.001)
 	})
 
-	t.Run("AggregatesS3Costs", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(VersionCollection, taskCollection))
-		v := &Version{Id: "v6"}
+}
+
+func TestIncrementVersionS3CostAndUsage(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("WithS3CostAndUsageShouldIncrementVersionFields", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection))
+		v := &Version{Id: mgobson.NewObjectId().Hex()}
 		require.NoError(t, v.Insert(ctx))
 
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t1", "version": "v6", "display_only": false,
-			"cost": bson.M{
-				"on_demand_ec2_cost":                 1.0,
-				"on_demand_s3_artifact_put_cost":     0.10,
-				"adjusted_s3_artifact_put_cost":      0.07,
-				"on_demand_s3_log_put_cost":          0.04,
-				"adjusted_s3_log_put_cost":           0.028,
-				"on_demand_s3_artifact_storage_cost": 0.50,
-				"adjusted_s3_artifact_storage_cost":  0.35,
-				"on_demand_s3_log_storage_cost":      0.20,
-				"adjusted_s3_log_storage_cost":       0.14,
-			},
-		}))
-		require.NoError(t, db.Insert(ctx, taskCollection, bson.M{
-			"_id": "t2", "version": "v6", "display_only": false,
-			"cost": bson.M{
-				"on_demand_ec2_cost":                 1.0,
-				"on_demand_s3_artifact_put_cost":     0.05,
-				"adjusted_s3_artifact_put_cost":      0.035,
-				"on_demand_s3_log_put_cost":          0.02,
-				"adjusted_s3_log_put_cost":           0.014,
-				"on_demand_s3_artifact_storage_cost": 0.25,
-				"adjusted_s3_artifact_storage_cost":  0.175,
-				"on_demand_s3_log_storage_cost":      0.10,
-				"adjusted_s3_log_storage_cost":       0.07,
-			},
-		}))
+		taskCost := cost.Cost{
+			OnDemandS3ArtifactPutCost: 0.05,
+			AdjustedS3ArtifactPutCost: 0.035,
+			OnDemandS3LogPutCost:      0.02,
+			AdjustedS3LogPutCost:      0.014,
+		}
+		usage := s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 100, UploadBytes: 5000}, Count: 10},
+			Logs:      s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 20, UploadBytes: 1000}},
+		}
 
-		err := v.UpdateAggregateTaskCosts(ctx)
+		require.NoError(t, IncrementVersionS3CostAndUsage(ctx, v.Id, taskCost, usage))
+
+		updated, err := VersionFindOneId(ctx, v.Id)
 		require.NoError(t, err)
-		assert.InDelta(t, 0.15, v.Cost.OnDemandS3ArtifactPutCost, 0.001)
-		assert.InDelta(t, 0.105, v.Cost.AdjustedS3ArtifactPutCost, 0.001)
-		assert.InDelta(t, 0.06, v.Cost.OnDemandS3LogPutCost, 0.001)
-		assert.InDelta(t, 0.042, v.Cost.AdjustedS3LogPutCost, 0.001)
-		assert.InDelta(t, 0.75, v.Cost.OnDemandS3ArtifactStorageCost, 0.001)
-		assert.InDelta(t, 0.525, v.Cost.AdjustedS3ArtifactStorageCost, 0.001)
-		assert.InDelta(t, 0.30, v.Cost.OnDemandS3LogStorageCost, 0.001)
-		assert.InDelta(t, 0.21, v.Cost.AdjustedS3LogStorageCost, 0.001)
+		require.NotNil(t, updated)
+		assert.InDelta(t, 0.05, updated.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.035, updated.Cost.AdjustedS3ArtifactPutCost, 0.001)
+		assert.InDelta(t, 0.02, updated.Cost.OnDemandS3LogPutCost, 0.001)
+		assert.InDelta(t, 0.014, updated.Cost.AdjustedS3LogPutCost, 0.001)
+		assert.Zero(t, updated.Cost.OnDemandEC2Cost)
+		assert.Zero(t, updated.Cost.AdjustedEC2Cost)
+		assert.Equal(t, 100, updated.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(5000), updated.S3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, 10, updated.S3Usage.Artifacts.Count)
+		assert.Equal(t, 20, updated.S3Usage.Logs.PutRequests)
+		assert.Equal(t, int64(1000), updated.S3Usage.Logs.UploadBytes)
+	})
+
+	t.Run("MultipleCallsShouldAccumulateS3Fields", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection))
+		v := &Version{Id: mgobson.NewObjectId().Hex()}
+		require.NoError(t, v.Insert(ctx))
+
+		first := cost.Cost{OnDemandS3ArtifactPutCost: 0.05}
+		firstUsage := s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 100, UploadBytes: 5000}, Count: 10},
+		}
+		require.NoError(t, IncrementVersionS3CostAndUsage(ctx, v.Id, first, firstUsage))
+
+		second := cost.Cost{OnDemandS3ArtifactPutCost: 0.03}
+		secondUsage := s3usage.S3Usage{
+			Artifacts: s3usage.ArtifactMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 50, UploadBytes: 2000}, Count: 5},
+		}
+		require.NoError(t, IncrementVersionS3CostAndUsage(ctx, v.Id, second, secondUsage))
+
+		updated, err := VersionFindOneId(ctx, v.Id)
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		assert.InDelta(t, 0.08, updated.Cost.OnDemandS3ArtifactPutCost, 0.001)
+		assert.Equal(t, 150, updated.S3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(7000), updated.S3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, 15, updated.S3Usage.Artifacts.Count)
+	})
+
+	t.Run("ZeroCostAndUsageShouldSkipDBWrite", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(VersionCollection))
+		v := &Version{Id: mgobson.NewObjectId().Hex()}
+		require.NoError(t, v.Insert(ctx))
+
+		require.NoError(t, IncrementVersionS3CostAndUsage(ctx, v.Id, cost.Cost{}, s3usage.S3Usage{}))
+
+		// Version should remain at zero — the function short-circuits without touching the DB.
+		updated, err := VersionFindOneId(ctx, v.Id)
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+		assert.Zero(t, updated.Cost.OnDemandS3ArtifactPutCost)
+		assert.Zero(t, updated.S3Usage.Artifacts.PutRequests)
 	})
 }
 

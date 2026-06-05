@@ -14,6 +14,7 @@ const (
 	LogTypeTask   = "task_log"
 	LogTypeAgent  = "agent_log"
 	LogTypeSystem = "system_log"
+	LogTypeTest   = "test_log"
 )
 
 // LogTypeMetrics holds the S3 key and byte count for a single log type.
@@ -28,6 +29,7 @@ type LogMetrics struct {
 	Task            LogTypeMetrics `bson:"task_log,omitempty" json:"task_log,omitempty"`
 	Agent           LogTypeMetrics `bson:"agent_log,omitempty" json:"agent_log,omitempty"`
 	System          LogTypeMetrics `bson:"system_log,omitempty" json:"system_log,omitempty"`
+	Test            LogTypeMetrics `bson:"test_log,omitempty" json:"test_log,omitempty"`
 }
 
 // S3Usage tracks S3 API usage for cost calculation.
@@ -280,6 +282,10 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 }
 
 // IncrementLogs increments log upload metrics and accumulates per-type bytes for storage cost tracking.
+// Callers that invoke IncrementLogs concurrently on the same instance must serialize the calls
+// externally (e.g., by holding a shared sync.Mutex before calling).
+// For test logs, LogKey stores the most recently written key; all test logs for a task share the
+// same bucket/prefix so any key yields the same lifecycle rule for cost calculation.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
@@ -299,6 +305,14 @@ func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, log
 		if logKey != "" {
 			s.Logs.System.LogKey = logKey
 		}
+	case LogTypeTest:
+		s.Logs.Test.Bytes += uploadBytes
+		if logKey != "" {
+			s.Logs.Test.LogKey = logKey
+		}
+	default:
+		// Unrecognized log type: global totals are still incremented above but
+		// per-type byte tracking is skipped.
 	}
 }
 

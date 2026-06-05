@@ -224,7 +224,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 		projCtx, err := uis.loadProjectContext(w, r)
 		if err != nil {
 			// Some database lookup failed when fetching the data - log it
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "loading project context"))
 			return
 		}
 		if projCtx.ProjectRef != nil {

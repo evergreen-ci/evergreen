@@ -176,6 +176,7 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		{Key: evergreen.TagExpireOn, Value: expireOn, CanBeModified: false},
 		{Key: evergreen.TagAllowRemoteAccess, Value: "true", CanBeModified: false},
 		{Key: evergreen.TagIsDebug, Value: fmt.Sprintf("%t", intentHost.IsDebug), CanBeModified: false},
+		{Key: evergreen.TagHostName, Value: intentHost.Tag, CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
@@ -759,6 +760,50 @@ func isEC2InstanceNotFound(err error) bool {
 		return true
 	}
 	return false
+}
+
+// terminatePreexistingInstance terminates any EC2 instances that were launched
+// by prior attempts to provision the given intent host. When the provisioning
+// job crashes between RunInstances/CreateFleet and the DB host-ID swap,
+// retrying the job creates a second instance while the first is left orphaned.
+// Calling this before each launch prevents the leak.
+func terminatePreexistingInstance(ctx context.Context, client AWSClient, intentHostID string) error {
+	// Exclude shutting-down and terminated states so a prior termination call doesn't hide a newer live instance.
+	resp, err := client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		Filters: []types.Filter{
+			{Name: aws.String("tag:" + evergreen.TagName), Values: []string{intentHostID}},
+			{Name: aws.String("instance-state-name"), Values: []string{
+				string(types.InstanceStateNamePending),
+				string(types.InstanceStateNameRunning),
+			}},
+		},
+	})
+	if err != nil {
+		return errors.Wrapf(err, "checking for pre-existing cloud instances for host '%s'", intentHostID)
+	}
+
+	var instanceIDs []string
+	for _, reservation := range resp.Reservations {
+		for _, instance := range reservation.Instances {
+			instanceIDs = append(instanceIDs, aws.ToString(instance.InstanceId))
+		}
+	}
+	// This will noop on the first provisioning attempt since no prior instance exists.
+	if len(instanceIDs) == 0 {
+		return nil
+	}
+
+	grip.Warning(ctx, message.Fields{
+		"message":      "terminating pre-existing cloud instances from prior launch attempts",
+		"host_id":      intentHostID,
+		"instance_ids": instanceIDs,
+	})
+	if _, err = client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
+		InstanceIds: instanceIDs,
+	}); err != nil {
+		return errors.Wrapf(err, "terminating pre-existing instances for host '%s'", intentHostID)
+	}
+	return nil
 }
 
 func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
