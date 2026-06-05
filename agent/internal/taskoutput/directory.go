@@ -23,6 +23,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
@@ -50,6 +51,7 @@ type DirectoryOpts struct {
 	RedactorOpts redactor.RedactionOptions
 	Logger       client.LoggerProducer
 	TraceClient  otlptrace.Client
+	S3Usage      *s3usage.S3Usage
 }
 
 // NewDirectory returns a new task output directory with the specified root for
@@ -60,6 +62,7 @@ func NewDirectory(opts DirectoryOpts) *Directory {
 		redactorOpts: opts.RedactorOpts,
 		output:       opts.Tsk.TaskOutputInfo,
 		traceClient:  opts.TraceClient,
+		s3Usage:      opts.S3Usage,
 	}
 	root := filepath.Join(opts.Root, "build")
 	handlers := map[string]directoryHandler{}
@@ -121,6 +124,7 @@ type directoryHandlerOpts struct {
 	tsk          *task.Task
 	redactorOpts redactor.RedactionOptions
 	traceClient  otlptrace.Client
+	s3Usage      *s3usage.S3Usage
 }
 
 // directoryHandlerFactory abstracts the creation of a directory handler.
