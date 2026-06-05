@@ -167,48 +167,22 @@ func checkDependenciesMet(ctx context.Context, t *task.Task, cache map[string]ta
 
 }
 
-// CreateIntentHosts creates task intent hosts for a distro. It returns the created
-// hosts. The pool parameter is assumed to be the one from the distro passed in.
-func CreateIntentHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
+// CreateIntentHosts creates task intent hosts for a distro. It returns the created hosts.
+func CreateIntentHosts(ctx context.Context, d distro.Distro, newHostsNeeded int) ([]host.Host, error) {
 	startTime := time.Now()
 
 	if newHostsNeeded == 0 {
 		return []host.Host{}, nil
 	}
-	numHostsToSpawn := newHostsNeeded
 	hostsSpawned := []host.Host{}
 
 	if ctx.Err() != nil {
 		return nil, errors.New("scheduling run canceled")
 	}
 
-	// if distro is container distro, check if there are enough parent hosts to support new containers
-	if pool != nil {
-		hostOptions, err := getCreateOptionsFromDistro(d)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting Docker options from distro '%s'", d.Id)
-		}
-		newContainers, newParents, err := host.MakeContainersAndParents(ctx, d, pool, newHostsNeeded, *hostOptions)
-		if err != nil {
-			return nil, errors.Wrapf(err, "creating container intents for distro '%s'", d.Id)
-		}
-		hostsSpawned = append(hostsSpawned, newContainers...)
-		hostsSpawned = append(hostsSpawned, newParents...)
-		grip.Info(ctx, message.Fields{
-			"runner":             RunnerName,
-			"distro":             d.Id,
-			"pool":               pool.Id,
-			"pool_distro":        pool.Distro,
-			"num_new_parents":    len(newParents),
-			"num_new_containers": len(newContainers),
-			"operation":          "spawning new parents",
-			"duration_secs":      time.Since(startTime).Seconds(),
-		})
-	} else { // create intent documents for regular hosts
-		for i := 0; i < numHostsToSpawn; i++ {
-			intent := generateIntentHost(d)
-			hostsSpawned = append(hostsSpawned, *intent)
-		}
+	for i := 0; i < newHostsNeeded; i++ {
+		intent := generateIntentHost(d)
+		hostsSpawned = append(hostsSpawned, *intent)
 	}
 
 	if err := host.InsertMany(ctx, hostsSpawned); err != nil {
@@ -229,23 +203,6 @@ func CreateIntentHosts(ctx context.Context, d distro.Distro, newHostsNeeded int,
 		"num_hosts":     len(hostsSpawned),
 	})
 	return hostsSpawned, nil
-}
-
-func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
-	dockerOptions := &host.DockerOptions{}
-	if err := dockerOptions.FromDistroSettings(d, ""); err != nil {
-		return nil, errors.Wrapf(err, "getting Docker options from distro '%s'", d.Id)
-	}
-	if err := dockerOptions.Validate(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	hostOptions := host.CreateOptions{
-		Distro:        d,
-		UserName:      evergreen.User,
-		DockerOptions: *dockerOptions,
-	}
-	return &hostOptions, nil
 }
 
 // generateIntentHost creates a host intent document for a regular host

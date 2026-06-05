@@ -335,7 +335,7 @@ func WriteGridFile(ctx context.Context, fsPrefix, name string, source io.Reader)
 	})
 
 	if err != nil {
-		return errors.Wrap(err, "problem constructing bucket access")
+		return errors.Wrap(err, "constructing bucket access")
 	}
 	return errors.Wrap(bucket.Put(ctx, name, source), "problem writing file")
 }
@@ -349,7 +349,7 @@ func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, err
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "problem constructing bucket access")
+		return nil, errors.Wrap(err, "constructing bucket access")
 	}
 
 	return bucket.Get(ctx, name)

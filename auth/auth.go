@@ -55,7 +55,7 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 func makeOktaManager(settings *evergreen.Settings, config *evergreen.OktaConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	manager, err := NewOktaUserManager(config, settings.Ui.Url, settings.Ui.LoginDomain)
 	if err != nil {
-		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up okta authentication")
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "setting up Okta authentication")
 	}
 	return manager, evergreen.UserManagerInfo{
 		CanClearTokens: true,
@@ -66,7 +66,7 @@ func makeOktaManager(settings *evergreen.Settings, config *evergreen.OktaConfig)
 func makeNaiveManager(config *evergreen.NaiveAuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	manager, err := NewNaiveUserManager(config)
 	if err != nil {
-		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up naive authentication")
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "setting up naive authentication")
 	}
 	return manager, evergreen.UserManagerInfo{}, nil
 }
@@ -74,7 +74,7 @@ func makeNaiveManager(config *evergreen.NaiveAuthConfig) (gimlet.UserManager, ev
 func makeOnlyAPIManager() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	manager, err := NewOnlyAPIUserManager()
 	if err != nil {
-		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up API-only authentication")
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "setting up API-only authentication")
 	}
 	return manager, evergreen.UserManagerInfo{}, nil
 }
@@ -82,7 +82,7 @@ func makeOnlyAPIManager() (gimlet.UserManager, evergreen.UserManagerInfo, error)
 func makeGithubManager(settings *evergreen.Settings, config *evergreen.GithubAuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	manager, err := NewGithubUserManager(config, settings.Ui.LoginDomain)
 	if err != nil {
-		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up github authentication")
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "setting up GitHub authentication")
 	}
 	return manager, evergreen.UserManagerInfo{}, nil
 }
@@ -196,7 +196,7 @@ func getUserByID(ctx context.Context, id string) (gimlet.User, error) {
 func getUserByIdWithExpiration(ctx context.Context, id string, expireAfter time.Duration) (gimlet.User, bool, error) {
 	u, err := user.FindOneById(ctx, id)
 	if err != nil {
-		return nil, false, errors.Wrap(err, "problem getting user from cache")
+		return nil, false, errors.Wrap(err, "getting user from cache")
 	}
 	if u == nil {
 		return nil, false, errors.Errorf("user with id '%s' not found", id)

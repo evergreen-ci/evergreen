@@ -667,7 +667,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 
 	// Clone the project.
 	if err := c.fetchSource(ctx, logger, comm, conf, opts); err != nil {
-		return errors.Wrap(err, "problem running fetch command")
+		return errors.Wrap(err, "running fetch command")
 	}
 
 	// Retrieve the patch for the version if one exists.
