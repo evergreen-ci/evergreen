@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/utility"
@@ -55,6 +57,8 @@ func TestAppendTestLog(t *testing.T) {
 		input          []string
 		expectedOutput []string
 		redactOpts     redactor.RedactionOptions
+		s3Usage        *s3usage.S3Usage
+		s3UsageMu      *sync.Mutex
 	}{
 		{
 			name:           "Newlines",
@@ -71,12 +75,19 @@ func TestAppendTestLog(t *testing.T) {
 				InternalRedactions: util.NewDynamicExpansions(map[string]string{"another_secret": "DEADC0DE"}),
 			},
 		},
+		{
+			name:           "NonNilS3UsageAndMutex",
+			input:          []string{"log line 1"},
+			expectedOutput: []string{"log line 1"},
+			s3Usage:        &s3usage.S3Usage{},
+			s3UsageMu:      &sync.Mutex{},
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			tsk.TaskOutputInfo.TestLogs.BucketConfig.Name = t.TempDir()
 			testLog.Lines = testCase.input
 
-			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog, nil, nil))
+			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog, testCase.s3Usage, testCase.s3UsageMu))
 			it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{testLog.Name}})
 			require.NoError(t, err)
 
