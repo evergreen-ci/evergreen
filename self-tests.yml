@@ -167,6 +167,17 @@ variables:
           bucket: evg-bucket-evergreen
           permissions: public-read
           preserve_path: true
+      - command: s3.put
+        params:
+          role_arn: ${client_assume_role_arn}
+          local_files_include_filter_prefix: evergreen/clients
+          local_files_include_filter: "*_*/evergreen*"
+          remote_file: evergreen/clients/latest${environment-suffix}/
+          content_type: binary/octet-stream
+          bucket: evg-bucket-evergreen
+          permissions: public-read
+          preserve_path: true
+          patchable: false
 
 #######################################
 #              Functions              #
@@ -201,7 +212,8 @@ functions:
       type: setup
       params:
         working_dir: evergreen
-        include_expansions_in_env: ["GOROOT", "github_token", "go_modules_cache_hit"]
+        include_expansions_in_env:
+          ["GOROOT", "github_token", "go_modules_cache_hit"]
         shell: bash
         script: |
           # On a cache miss, download the modules into the module cache so cache.save can upload it below. Downloading
@@ -883,6 +895,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
+      test_timeout: 15m
     tasks:
       - name: ".smoke"
       - name: ".test"

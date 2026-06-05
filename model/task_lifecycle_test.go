@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -6769,4 +6770,41 @@ func TestBuildTaskCompletedSpanAttributesConditionalFields(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildTaskCompletedSpanAttributesCostFields(t *testing.T) {
+	t.Run("NonZeroCostProducesCostAttrs", func(t *testing.T) {
+		t1 := task.Task{
+			TaskCost: cost.Cost{
+				AdjustedEC2Cost:           1.23,
+				AdjustedEBSThroughputCost: 0.45,
+				AdjustedEBSStorageCost:    0.67,
+			},
+		}
+		attrs := buildTaskCompletedSpanAttributes(&t1)
+
+		ec2Val, hasEC2 := findAttr(attrs, evergreen.TaskAdjustedCostOtelAttribute)
+		require.True(t, hasEC2)
+		assert.Equal(t, 1.23, ec2Val.AsFloat64())
+
+		ebsThroughputVal, hasEBSThroughput := findAttr(attrs, evergreen.TaskEBSAdjustedThroughputCostOtelAttribute)
+		require.True(t, hasEBSThroughput)
+		assert.Equal(t, 0.45, ebsThroughputVal.AsFloat64())
+
+		ebsStorageVal, hasEBSStorage := findAttr(attrs, evergreen.TaskEBSAdjustedStorageCostOtelAttribute)
+		require.True(t, hasEBSStorage)
+		assert.Equal(t, 0.67, ebsStorageVal.AsFloat64())
+	})
+
+	t.Run("ZeroCostOmitsCostAttrs", func(t *testing.T) {
+		t1 := task.Task{}
+		attrs := buildTaskCompletedSpanAttributes(&t1)
+
+		_, hasEC2 := findAttr(attrs, evergreen.TaskAdjustedCostOtelAttribute)
+		assert.False(t, hasEC2)
+		_, hasEBSThroughput := findAttr(attrs, evergreen.TaskEBSAdjustedThroughputCostOtelAttribute)
+		assert.False(t, hasEBSThroughput)
+		_, hasEBSStorage := findAttr(attrs, evergreen.TaskEBSAdjustedStorageCostOtelAttribute)
+		assert.False(t, hasEBSStorage)
+	})
 }

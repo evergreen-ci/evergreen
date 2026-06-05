@@ -119,4 +119,29 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 		"message": "virtual workstations",
 		"stats":   count,
 	})
+
+	spawnStats, err := host.AggregateSpawnhostData(ctx)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "aggregating spawn host data"))
+	}
+	debugHostCount, countErr := host.CountDebugSpawnhosts(ctx)
+	if countErr != nil {
+		j.AddError(errors.Wrap(countErr, "counting debug spawn hosts"))
+		return
+	}
+	j.logger.Info(ctx, message.Fields{
+		"message":                 "spawn host usage stats",
+		"stats":                   "spawn-hosts",
+		"total_hosts":             spawnStats.TotalHosts,
+		"total_stopped_hosts":     spawnStats.TotalStoppedHosts,
+		"total_unexpirable_hosts": spawnStats.TotalUnexpirableHosts,
+		"num_users_with_hosts":    spawnStats.NumUsersWithHosts,
+		"total_volumes":           spawnStats.TotalVolumes,
+		"total_volume_size":       spawnStats.TotalVolumeSize,
+		"num_users_with_volumes":  spawnStats.NumUsersWithVolumes,
+		"instance_types":          spawnStats.InstanceTypes,
+		"debug_hosts":             debugHostCount,
+		"non_debug_hosts":         spawnStats.TotalHosts - debugHostCount,
+	})
+
 }

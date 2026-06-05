@@ -837,6 +837,12 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		})
 
 		if err := triggerIntent.Insert(ctx); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":            "inserting trigger intent for child patch",
+				"source":             "patch-trigger",
+				"parent_patch_id":    p.Id.Hex(),
+				"downstream_project": group.project,
+			}))
 			return errors.Wrap(err, "inserting trigger intent")
 		}
 
@@ -846,6 +852,14 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	if err := p.SetChildPatches(ctx); err != nil {
 		return errors.Wrap(err, "setting child patch IDs")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":           "created downstream patch trigger intents",
+		"source":            "patch-trigger",
+		"parent_patch_id":   p.Id.Hex(),
+		"parent_project_id": p.Project,
+		"child_patch_ids":   p.Triggers.ChildPatches,
+		"num_children":      len(p.Triggers.ChildPatches),
+	})
 
 	for _, intent := range triggerIntents {
 		triggerIntent, ok := intent.(*patch.TriggerIntent)
@@ -859,6 +873,12 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			// we need the child patch intents to exist when the parent patch is finalized.
 			job.Run(ctx)
 			if err := job.Error(); err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"message":         "processing child patch",
+					"source":          "patch-trigger",
+					"parent_patch_id": p.Id.Hex(),
+					"child_patch_id":  intent.ID(),
+				}))
 				return errors.Wrap(err, "processing child patch")
 			}
 		} else {
