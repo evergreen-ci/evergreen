@@ -10,7 +10,7 @@
 // Usage:
 //
 //	mkdir configs && cd configs
-//	evergreen admin all-configs --include-disabled   # dump configs into ./configs
+//	evergreen admin all-configs   # dump enabled projects' configs into ./configs
 //	cd .. && go run ./cmd/feature-tracker --dir configs --out feature-report
 package main
 
