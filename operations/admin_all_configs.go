@@ -18,8 +18,7 @@ func fetchAllProjectConfigs() cli.Command {
 	)
 
 	return cli.Command{
-		Name:    "all-configs",
-		Aliases: []string{"all-configs"},
+		Name: "all-configs",
 		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:  includeDisabledFlagName,
@@ -110,5 +109,5 @@ func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model
 		}
 	}
 
-	return nil
+	return catcher.Resolve()
 }
