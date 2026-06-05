@@ -76,7 +76,7 @@ func TestAppendTestLog(t *testing.T) {
 			tsk.TaskOutputInfo.TestLogs.BucketConfig.Name = t.TempDir()
 			testLog.Lines = testCase.input
 
-			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog))
+			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog, nil, nil))
 			it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{testLog.Name}})
 			require.NoError(t, err)
 

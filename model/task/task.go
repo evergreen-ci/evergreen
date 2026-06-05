@@ -4365,7 +4365,7 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 	if logBucketName == "" || lookup == nil {
 		return
 	}
-	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System} {
+	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System, t.S3Usage.Logs.Test} {
 		if lm.LogKey == "" {
 			continue
 		}
