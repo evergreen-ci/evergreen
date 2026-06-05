@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -1108,13 +1109,37 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 func CreateManifest(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
 	newManifest, err := constructManifest(ctx, v, projectRef, modules)
 	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":     "constructing manifest",
+			"source":      "manifest-creation",
+			"version_id":  v.Id,
+			"project_id":  projectRef.Id,
+			"num_modules": len(modules),
+		}))
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
 	if newManifest == nil {
 		return nil, nil
 	}
 	_, err = newManifest.TryInsert(ctx)
-	return newManifest, errors.Wrap(err, "inserting manifest")
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":     "inserting manifest",
+			"source":      "manifest-creation",
+			"version_id":  v.Id,
+			"project_id":  projectRef.Id,
+			"num_modules": len(newManifest.Modules),
+		}))
+		return newManifest, errors.Wrap(err, "inserting manifest")
+	}
+	grip.Info(ctx, message.Fields{
+		"message":     "successfully created manifest",
+		"source":      "manifest-creation",
+		"version_id":  v.Id,
+		"project_id":  projectRef.Id,
+		"num_modules": len(newManifest.Modules),
+	})
+	return newManifest, nil
 }
 
 type VersionsByCreateTime []Version
