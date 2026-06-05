@@ -4360,7 +4360,7 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 	// Reset before accumulating so this function is idempotent when called more than once per task.
 	t.TaskCost.OnDemandS3LogStorageCost = 0
 	t.TaskCost.AdjustedS3LogStorageCost = 0
-	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System} {
+	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System, t.S3Usage.Logs.Test} {
 		if lm.LogKey == "" {
 			continue
 		}

@@ -535,6 +535,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 			Redacted:           tc.taskConfig.Redacted,
 			InternalRedactions: tc.taskConfig.InternalRedactions,
 		},
+		S3Usage: tc.taskConfig.S3Usage,
 	}
 	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(opts)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {

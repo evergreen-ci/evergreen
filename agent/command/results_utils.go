@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -55,9 +56,10 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		InternalRedactions: conf.InternalRedactions,
 	}
 
+	var s3UsageMu sync.Mutex
 	succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", logs, logger.Task(),
 		func(log *testlog.TestLog) error {
-			return taskoutput.AppendTestLog(ctx, &conf.Task, opts, log)
+			return taskoutput.AppendTestLog(ctx, &conf.Task, opts, log, conf.S3Usage, &s3UsageMu)
 		},
 	)
 	if err != nil {

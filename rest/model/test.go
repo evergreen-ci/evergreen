@@ -53,11 +53,24 @@ type TestLogs struct {
 	LogsToMerge []string `json:"logs_to_merge,omitempty"`
 }
 
-func (at *APITest) BuildFromService(st any) error {
-	env := evergreen.GetEnvironment()
+// APITestArgs contains values used to populate generated test log links.
+type APITestArgs struct {
+	EvergreenBaseURL string
+	ParsleyLogURL    string
+}
+
+func (at *APITest) BuildFromService(st any, args *APITestArgs) error {
+	buildArgs := APITestArgs{}
+	if args != nil {
+		buildArgs = *args
+	}
 
 	switch v := st.(type) {
 	case *testresult.TestResult:
+		if buildArgs.EvergreenBaseURL == "" {
+			return errors.New("evergreen base URL is required to build test log links")
+		}
+
 		at.ID = utility.ToStringPtr(v.TestName)
 		at.Execution = v.Execution
 		if v.GroupID != "" {
@@ -74,12 +87,12 @@ func (at *APITest) BuildFromService(st any) error {
 
 		at.TestFile = utility.ToStringPtr(v.GetDisplayTestName())
 		at.Logs = TestLogs{
-			URL:      utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerHTML)),
-			URLRaw:   utility.ToStringPtr(v.GetLogURL(env, evergreen.LogViewerRaw)),
+			URL:      utility.ToStringPtr(v.GetLogURL(buildArgs.EvergreenBaseURL, buildArgs.ParsleyLogURL, evergreen.LogViewerHTML)),
+			URLRaw:   utility.ToStringPtr(v.GetLogURL(buildArgs.EvergreenBaseURL, buildArgs.ParsleyLogURL, evergreen.LogViewerRaw)),
 			LineNum:  v.LineNum,
 			TestName: utility.ToStringPtr(v.GetLogTestName()),
 		}
-		if parsleyURL := v.GetLogURL(env, evergreen.LogViewerParsley); parsleyURL != "" {
+		if parsleyURL := v.GetLogURL(buildArgs.EvergreenBaseURL, buildArgs.ParsleyLogURL, evergreen.LogViewerParsley); parsleyURL != "" {
 			at.Logs.URLParsley = utility.ToStringPtr(parsleyURL)
 		}
 		if v.LogInfo != nil {
