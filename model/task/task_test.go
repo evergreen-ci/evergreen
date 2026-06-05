@@ -5707,9 +5707,9 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 			TaskId:    mgobson.NewObjectId().Hex(),
 			Execution: 0,
 			Files: []artifact.File{
-				{Name: "a", PutRequests: 3, FileSize: 100},
-				{Name: "b", PutRequests: 1, FileSize: 200},
-				{Name: "c", PutRequests: 5, FileSize: 50},
+				{Name: "a", Bucket: "test-bucket", FileKey: "path/a", PutRequests: 3, FileSize: 100},
+				{Name: "b", Bucket: "test-bucket", FileKey: "path/b", PutRequests: 1, FileSize: 200},
+				{Name: "c", Bucket: "test-bucket", FileKey: "path/c", PutRequests: 5, FileSize: 50},
 			},
 		}
 		require.NoError(t, entry.Upsert(ctx))
@@ -5722,6 +5722,9 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 		assert.Equal(t, 3, metrics.Count)
 		assert.Equal(t, 5, metrics.ArtifactWithMaxPutRequests)
 		assert.Equal(t, 1, metrics.ArtifactWithMinPutRequests)
+		require.Len(t, metrics.BytesByBucketAndKey, 1)
+		assert.Equal(t, "test-bucket", metrics.BytesByBucketAndKey[0].Bucket)
+		assert.Len(t, metrics.BytesByBucketAndKey[0].Files, 3)
 	})
 
 	t.Run("ZeroPutRequestsFileNotCounted", func(t *testing.T) {

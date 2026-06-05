@@ -4689,6 +4689,8 @@ func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMe
 		return s3usage.ArtifactMetrics{}, errors.Wrap(err, "getting cost config")
 	}
 
+	type bucketKey struct{ bucket, roleARN string }
+	byBucket := map[bucketKey]*s3usage.BucketFileMetrics{}
 	var files []s3usage.FileMetrics
 	var totalPuts int
 	var totalBytes int64
@@ -4706,11 +4708,21 @@ func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMe
 				FileSizeBytes: f.FileSize,
 				PutRequests:   f.PutRequests,
 			})
+			bk := bucketKey{f.Bucket, f.AWSRoleARN}
+			if _, ok := byBucket[bk]; !ok {
+				byBucket[bk] = &s3usage.BucketFileMetrics{Bucket: f.Bucket, AWSRoleARN: f.AWSRoleARN}
+			}
+			byBucket[bk].Files = append(byBucket[bk].Files, s3usage.FileBytes{FileKey: f.FileKey, Bytes: f.FileSize})
 		}
 	}
 
 	if len(files) == 0 {
 		return s3usage.ArtifactMetrics{}, nil
+	}
+
+	bucketMetrics := make([]s3usage.BucketFileMetrics, 0, len(byBucket))
+	for _, bm := range byBucket {
+		bucketMetrics = append(bucketMetrics, *bm)
 	}
 
 	maxPuts, minPuts := s3usage.ComputePerFileExtremes(files)
@@ -4722,6 +4734,7 @@ func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMe
 		Count:                      len(files),
 		ArtifactWithMaxPutRequests: maxPuts,
 		ArtifactWithMinPutRequests: minPuts,
+		BytesByBucketAndKey:        bucketMetrics,
 	}, nil
 }
 
