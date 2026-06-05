@@ -38,10 +38,14 @@ import (
 // semantics depend on the detector (e.g. number of display tasks, number of
 // task groups, number of times a command is invoked); a count of zero means
 // the feature is unused.
+// Detect receives both the translated project and the parser project it came
+// from. Most features are visible on the translated Project; some (e.g.
+// matrices) only exist on the ParserProject because translation expands them
+// away. pp may be nil if parsing failed.
 type Detector struct {
 	Name        string
 	Description string
-	Detect      func(p *model.Project) int
+	Detect      func(p *model.Project, pp *model.ParserProject) int
 }
 
 // detectors returns the ordered registry of feature detectors. The first three
@@ -53,7 +57,7 @@ func detectors() []Detector {
 		{
 			Name:        "display_tasks",
 			Description: "Display tasks grouping execution tasks in build variants",
-			Detect: func(p *model.Project) int {
+			Detect: func(p *model.Project, _ *model.ParserProject) int {
 				count := 0
 				for _, bv := range p.BuildVariants {
 					count += len(bv.DisplayTasks)
@@ -64,7 +68,7 @@ func detectors() []Detector {
 		{
 			Name:        "task_groups",
 			Description: "Task groups with shared setup/teardown",
-			Detect: func(p *model.Project) int {
+			Detect: func(p *model.Project, _ *model.ParserProject) int {
 				return len(p.TaskGroups)
 			},
 		},
@@ -74,8 +78,24 @@ func detectors() []Detector {
 		{
 			Name:        "modules",
 			Description: "Additional source modules pulled into the build",
-			Detect: func(p *model.Project) int {
+			Detect: func(p *model.Project, _ *model.ParserProject) int {
 				return len(p.Modules)
+			},
+		},
+		{
+			Name:        "matrices",
+			Description: "Matrix build variant definitions (counted on the parser project, before expansion)",
+			Detect: func(_ *model.Project, pp *model.ParserProject) int {
+				if pp == nil {
+					return 0
+				}
+				count := 0
+				for _, bv := range pp.BuildVariants {
+					if bv.Matrix != nil {
+						count++
+					}
+				}
+				return count
 			},
 		},
 
@@ -103,7 +123,7 @@ func commandDetector(name, description, command string) Detector {
 	return Detector{
 		Name:        name,
 		Description: description,
-		Detect: func(p *model.Project) int {
+		Detect: func(p *model.Project, _ *model.ParserProject) int {
 			total := 0
 			for _, n := range p.TasksThatCallCommand(command) {
 				total += n
@@ -170,13 +190,14 @@ func analyzeFile(path string, dets []Detector) result {
 	// The dumped config is a merged parser project whose Include field has been
 	// cleared, so LoadProjectInto needs no network or DB access; nil opts is safe.
 	var project model.Project
-	if _, err := model.LoadProjectInto(context.Background(), data, nil, projectID, &project); err != nil {
+	pp, err := model.LoadProjectInto(context.Background(), data, nil, projectID, &project)
+	if err != nil {
 		res.Err = fmt.Sprintf("parsing project: %v", err)
 		// LoadProjectInto fills the project even on error, so continue and detect.
 	}
 
 	for _, d := range dets {
-		res.Counts[d.Name] = d.Detect(&project)
+		res.Counts[d.Name] = d.Detect(&project, pp)
 	}
 	return res
 }
@@ -343,7 +364,11 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
   table { border-collapse: collapse; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
           margin-bottom: 2.5rem; }
   th, td { border: 1px solid #e2e2e2; padding: 0.4rem 0.7rem; text-align: left; font-size: 0.85rem; }
-  th { background: #f0f0f0; cursor: pointer; position: sticky; top: 0; }
+  th { background: #f0f0f0; position: sticky; top: 0; }
+  th.sortable { cursor: pointer; }
+  th.sortable::after { content: " ↕"; color: #aaa; font-weight: normal; }
+  th.sortable[data-dir="asc"]::after { content: " ↑"; color: #333; }
+  th.sortable[data-dir="desc"]::after { content: " ↓"; color: #333; }
   th.feature { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; height: 9rem; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   tr:nth-child(even) td { background: #fbfbfb; }
@@ -356,12 +381,12 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
 <h1>Evergreen Project Feature Usage</h1>
 <p class="meta">{{.Total}} projects analyzed{{if .ParseErrors}}, {{.ParseErrors}} with parse errors{{end}}.</p>
 
-<table id="adoption">
+<table id="adoption" data-sort-col="2" data-sort-dir="desc">
   <caption>Feature adoption</caption>
   <thead><tr>
-    <th onclick="sortTable('adoption', 0, false)">Feature</th>
+    <th class="sortable" onclick="sortTable('adoption', 0, false)">Feature</th>
     <th>Description</th>
-    <th onclick="sortTable('adoption', 2, true)">Projects using</th>
+    <th class="sortable" data-dir="desc" onclick="sortTable('adoption', 2, true)">Projects using</th>
     <th>%</th>
   </tr></thead>
   <tbody>
@@ -380,7 +405,7 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
   <caption>Per-project feature matrix (counts; click a header to sort)</caption>
   <thead>
     <tr>
-      <th onclick="sortTable('matrix', 0, false)">Project</th>
+      <th class="sortable" onclick="sortTable('matrix', 0, false)">Project</th>
       {{range .Detectors}}<th class="feature" title="{{.Description}}">{{.Name}}</th>{{end}}
       <th>Parse error</th>
     </tr>
@@ -411,6 +436,10 @@ function sortTable(tableId, col, numeric) {
   rows.forEach(r => tbody.appendChild(r));
   table.setAttribute("data-sort-col", col);
   table.setAttribute("data-sort-dir", asc ? "asc" : "desc");
+  // Move the active sort caret to the clicked column.
+  const headers = table.tHead.rows[0].cells;
+  for (const h of headers) h.removeAttribute("data-dir");
+  headers[col].setAttribute("data-dir", asc ? "asc" : "desc");
 }
 </script>
 </body>

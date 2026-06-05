@@ -52,12 +52,12 @@ buildvariants:
 
 func TestDetectorsAgainstSampleConfig(t *testing.T) {
 	var project model.Project
-	_, err := model.LoadProjectInto(context.Background(), []byte(sampleConfig), nil, "sample", &project)
+	pp, err := model.LoadProjectInto(context.Background(), []byte(sampleConfig), nil, "sample", &project)
 	require.NoError(t, err)
 
 	counts := map[string]int{}
 	for _, d := range detectors() {
-		counts[d.Name] = d.Detect(&project)
+		counts[d.Name] = d.Detect(&project, pp)
 	}
 
 	for name, expected := range map[string]int{
@@ -67,6 +67,7 @@ func TestDetectorsAgainstSampleConfig(t *testing.T) {
 		"subprocess_exec": 1,
 		"shell_exec":      1,
 		"modules":         0,
+		"matrices":        0,
 		"cache_save":      0,
 		"host_create":     0,
 	} {
@@ -74,8 +75,49 @@ func TestDetectorsAgainstSampleConfig(t *testing.T) {
 	}
 }
 
+// matrixConfig defines a single matrix build variant. Matrices only exist on
+// the parser project; translation expands them into concrete variants, so the
+// detector must read the parser project rather than the translated project.
+const matrixConfig = `
+axes:
+  - id: os
+    values:
+      - id: linux
+        display_name: Linux
+        run_on: ubuntu2004
+tasks:
+  - name: t1
+    commands:
+      - command: shell.exec
+        params: {script: "echo hi"}
+buildvariants:
+  - matrix_name: build_matrix
+    matrix_spec: {os: "*"}
+    tasks:
+      - name: t1
+`
+
+func TestMatrixDetectorReadsParserProject(t *testing.T) {
+	var matrixDet Detector
+	for _, d := range detectors() {
+		if d.Name == "matrices" {
+			matrixDet = d
+		}
+	}
+	require.NotEmpty(t, matrixDet.Name, "matrices detector should be registered")
+
+	var project model.Project
+	pp, err := model.LoadProjectInto(context.Background(), []byte(matrixConfig), nil, "sample", &project)
+	require.NoError(t, err)
+
+	// The matrix is detectable on the parser project but expanded away on the
+	// translated project, so detecting against the project alone returns 0.
+	assert.Equal(t, 1, matrixDet.Detect(&project, pp))
+	assert.Equal(t, 0, matrixDet.Detect(&project, nil))
+}
+
 func TestComputeAdoptionCountsProjectsNotInvocations(t *testing.T) {
-	dets := []Detector{{Name: "feat", Detect: func(*model.Project) int { return 0 }}}
+	dets := []Detector{{Name: "feat", Detect: func(*model.Project, *model.ParserProject) int { return 0 }}}
 	results := []result{
 		{Project: "a", Counts: map[string]int{"feat": 5}},
 		{Project: "b", Counts: map[string]int{"feat": 0}},
