@@ -139,11 +139,12 @@ func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *
 		return nil, errors.Wrap(err, "getting Jira mappings")
 	}
 	payload, err := trigger.JIRATaskPayload(ctx, trigger.JiraIssueParameters{
-		Project:  jiraOpts.project,
-		UiURL:    settings.Ui.Url,
-		UiV2URL:  settings.Ui.UIv2Url,
-		Mappings: mappings,
-		Task:     t,
+		Project:       jiraOpts.project,
+		UiURL:         settings.Ui.Url,
+		UiV2URL:       settings.Ui.UIv2Url,
+		ParsleyLogURL: settings.Ui.ParsleyUrl,
+		Mappings:      mappings,
+		Task:          t,
 	})
 	if err != nil {
 		return nil, err
