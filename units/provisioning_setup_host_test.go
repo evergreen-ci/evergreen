@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestAttachVolumePassesHostTagToCreateVolume(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
 	t.Cleanup(func() {
