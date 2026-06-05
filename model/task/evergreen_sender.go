@@ -249,13 +249,6 @@ func (s *evergreenSender) timedFlush() {
 
 func (s *evergreenSender) flush(ctx context.Context) error {
 	uploadBytes, puts, err := s.opts.appendLines(ctx, s.buffer)
-	if err != nil {
-		return errors.Wrap(err, "appending lines to log")
-	}
-
-	s.buffer = []log.LogLine{}
-	s.bufferSize = 0
-	s.lastFlush = time.Now()
 
 	if s.opts.S3Usage != nil && puts > 0 {
 		if s.opts.S3UsageMu != nil {
@@ -266,6 +259,14 @@ func (s *evergreenSender) flush(ctx context.Context) error {
 			s.opts.S3UsageMu.Unlock()
 		}
 	}
+
+	if err != nil {
+		return errors.Wrap(err, "appending lines to log")
+	}
+
+	s.buffer = []log.LogLine{}
+	s.bufferSize = 0
+	s.lastFlush = time.Now()
 
 	return nil
 }

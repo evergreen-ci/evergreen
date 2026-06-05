@@ -31,10 +31,10 @@ var defaultTestLogSequenceSize = int64(1e7)
 
 // AppendTestLog appends log lines to the specified test log for the given task
 // run. s3UsageMu, when non-nil, is held while incrementing S3 usage metrics;
-// callers that invoke AppendTestLog concurrently with a shared s3UsageTracker
-// must supply the same mutex across all concurrent calls.
-func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog, s3UsageTracker *s3usage.S3Usage, s3UsageMu *sync.Mutex) error {
-	sender, err := task.NewTestLogSender(ctx, *tsk, task.EvergreenSenderOptions{S3Usage: s3UsageTracker, S3UsageMu: s3UsageMu}, testLog.Name, 0)
+// callers that invoke AppendTestLog concurrently with a shared s3Usage must
+// supply the same mutex across all concurrent calls.
+func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog, s3Usage *s3usage.S3Usage, s3UsageMu *sync.Mutex) error {
+	sender, err := task.NewTestLogSender(ctx, *tsk, task.EvergreenSenderOptions{S3Usage: s3Usage, S3UsageMu: s3UsageMu}, testLog.Name, 0)
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
