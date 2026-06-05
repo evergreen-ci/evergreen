@@ -788,8 +788,6 @@ func terminatePreexistingInstance(ctx context.Context, client AWSClient, intentH
 			{Name: aws.String("instance-state-name"), Values: []string{
 				string(types.InstanceStateNamePending),
 				string(types.InstanceStateNameRunning),
-				string(types.InstanceStateNameStopping),
-				string(types.InstanceStateNameStopped),
 			}},
 		},
 	})
