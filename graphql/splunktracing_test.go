@@ -77,7 +77,7 @@ type capturedOutput struct {
 	spanAttrs map[string]any
 }
 
-func TestSplunkTracingComplexityScore(t *testing.T) {
+func TestGraphQLComplexityLogging(t *testing.T) {
 	schema := NewExecutableSchema(New(""))
 
 	parseOp := func(t *testing.T, queryStr string) *ast.OperationDefinition {
