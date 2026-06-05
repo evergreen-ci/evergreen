@@ -44,6 +44,21 @@ func TestGetS3LogUsageFromS3(t *testing.T) {
 		}
 	}
 
+	writeTestLogChunks := func(t *testing.T, tsk *Task, logPath string, n int) {
+		output, ok := tsk.GetTaskOutputSafe()
+		require.True(t, ok)
+		bucket, err := newBucket(t.Context(), output.TestLogs.BucketConfig, nil)
+		require.NoError(t, err)
+		svc := log.NewLogServiceV0(bucket)
+		logName := getLogNames(*tsk, []string{logPath}, output.TestLogs.ID())[0]
+		for i := 0; i < n; i++ {
+			_, _, err = svc.Append(t.Context(), logName, i+1, []log.LogLine{
+				{Priority: level.Info, Timestamp: time.Now().UnixNano(), Data: "line"},
+			})
+			require.NoError(t, err)
+		}
+	}
+
 	t.Run("UndispatchedTaskReturnsZeroUsage", func(t *testing.T) {
 		tsk := &Task{Id: "no-output", Status: evergreen.TaskUndispatched}
 		usage, err := tsk.GetS3LogUsageFromS3(t.Context())
@@ -91,6 +106,28 @@ func TestGetS3LogUsageFromS3(t *testing.T) {
 		assert.Positive(t, usage.System.Bytes)
 		assert.NotEmpty(t, usage.Task.LogKey)
 		assert.Positive(t, usage.Task.Bytes)
+	})
+
+	t.Run("TestLogsInSeparateBucketAreCounted", func(t *testing.T) {
+		tsk := makeTask(t)
+		tsk.TaskOutputInfo.TestLogs = TestLogOutput{
+			Version: 1,
+			BucketConfig: evergreen.BucketConfig{
+				Type: evergreen.BucketTypeLocal,
+				Name: t.TempDir(),
+			},
+		}
+		writeLogChunks(t, tsk, TaskLogTypeTask, 2)
+		writeTestLogChunks(t, tsk, "TestFoo", 3)
+
+		usage, err := tsk.GetS3LogUsageFromS3(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, 5, usage.PutRequests)
+		assert.Positive(t, usage.UploadBytes)
+		assert.NotEmpty(t, usage.Task.LogKey)
+		assert.Positive(t, usage.Task.Bytes)
+		assert.NotEmpty(t, usage.Test.LogKey)
+		assert.Positive(t, usage.Test.Bytes)
 	})
 
 	t.Run("InvalidBucketTypeReturnsError", func(t *testing.T) {

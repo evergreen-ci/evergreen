@@ -227,8 +227,7 @@ func (t *Task) GetS3LogUsageFromS3(ctx context.Context) (s3usage.LogMetrics, err
 	}
 
 	id := output.TaskLogs.ID()
-	// The LCP of all three log type prefixes covers agent, system, and task
-	// logs in a single ListObjectsV2 call.
+	// The LCP of the agent, system, and task log type prefixes covers all three in a single ListObjectsV2 call.
 	prefix := fmt.Sprintf("%s/%s/%d/%s", t.Project, t.Id, t.Execution, id)
 	it, err := bucket.List(ctx, prefix)
 	if err != nil {
@@ -267,6 +266,33 @@ func (t *Task) GetS3LogUsageFromS3(ctx context.Context) (s3usage.LogMetrics, err
 	}
 	if err := it.Err(); err != nil {
 		return s3usage.LogMetrics{}, errors.Wrap(err, "iterating log chunks")
+	}
+
+	// Test logs may be in a different bucket than task/agent/system logs.
+	if output.TestLogs.BucketConfig.Name != "" {
+		testBucketConfig := getBucketConfigForProject(t.Project, output.TestLogs.BucketConfig)
+		testBucket, err := newBucket(ctx, testBucketConfig, nil)
+		if err != nil {
+			return usage, errors.Wrap(err, "creating test log bucket")
+		}
+		testPrefix := fmt.Sprintf("%s/%s/%d/%s", t.Project, t.Id, t.Execution, output.TestLogs.ID())
+		testIt, err := testBucket.List(ctx, testPrefix)
+		if err != nil {
+			return usage, errors.Wrap(err, "listing test log chunks")
+		}
+		for testIt.Next(ctx) {
+			item := testIt.Item()
+			size := item.Size()
+			usage.PutRequests++
+			usage.UploadBytes += size
+			usage.Test.Bytes += size
+			if usage.Test.LogKey == "" {
+				usage.Test.LogKey = testPrefix
+			}
+		}
+		if err := testIt.Err(); err != nil {
+			return usage, errors.Wrap(err, "iterating test log chunks")
+		}
 	}
 
 	return usage, nil
