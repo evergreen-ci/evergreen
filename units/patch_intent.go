@@ -1247,6 +1247,21 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 		if parentPatch == nil {
 			return nil, nil, errors.Errorf("parent patch '%s' not found", patchDoc.Triggers.ParentPatch)
 		}
+		if parentPatch.IsGithubPRPatch() {
+			patchDoc.GitHubParentPRCheckout = &patch.GitHubParentPRCheckout{
+				PRNumber:  parentPatch.GithubPatchData.PRNumber,
+				BaseOwner: parentPatch.GithubPatchData.BaseOwner,
+				BaseRepo:  parentPatch.GithubPatchData.BaseRepo,
+				HeadOwner: parentPatch.GithubPatchData.HeadOwner,
+				HeadRepo:  parentPatch.GithubPatchData.HeadRepo,
+				HeadHash:  parentPatch.GithubPatchData.HeadHash,
+			}
+			if patchDoc.Triggers.SameBranchAsParent {
+				patchDoc.GitHubParentPRCheckout.ForSource = true
+			} else {
+				patchDoc.GitHubParentPRCheckout.ForModule = intent.ParentAsModule
+			}
+		}
 		for _, p := range parentPatch.Patches {
 			if p.ModuleName == "" {
 				moduleName := intent.ParentAsModule
@@ -1256,11 +1271,17 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 					patchDoc.Githash = parentPatch.Githash
 					moduleName = ""
 				}
+				patchSet := p.PatchSet
+				if parentPatch.IsGithubPRPatch() {
+					// GitHub PR diffs are applied on the agent via pull/N/head, not git apply.
+					patchSet.Patch = ""
+					patchSet.PatchFileId = ""
+				}
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 					// Apply the parent patch's changes if both child and parent are using the
 					// same repo/project/branch
 					ModuleName: moduleName,
-					PatchSet:   p.PatchSet,
+					PatchSet:   patchSet,
 					Githash:    parentPatch.Githash,
 				})
 				break
