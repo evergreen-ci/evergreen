@@ -25,7 +25,8 @@ import (
 
 // Handler returns a gimlet http handler func used as the gql route handler
 func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *http.Request) {
-	srv := handler.New(NewExecutableSchema(New(apiURL)))
+	schema := NewExecutableSchema(New(apiURL))
+	srv := handler.New(schema)
 
 	srv.AddTransport(transport.Websocket{
 		KeepAlivePingInterval: 10 * time.Second,
@@ -59,7 +60,7 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	))
 
 	// Log graphql requests to splunk
-	srv.Use(SplunkTracing{})
+	srv.Use(NewSplunkTracing(schema))
 
 	// Disable queries for service degradation
 	srv.Use(DisableQuery{})

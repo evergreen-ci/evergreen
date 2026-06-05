@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 
+	"github.com/99designs/gqlgen/complexity"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
@@ -15,7 +16,16 @@ import (
 // SplunkTracing is a graphql extension that adds splunk logging to graphql.
 // It is used to log the duration of a query and the user that made the request.
 // It does this by hooking into lifecycle events that gqlgen uses.
-type SplunkTracing struct{}
+type SplunkTracing struct {
+	schema graphql.ExecutableSchema
+}
+
+// NewSplunkTracing returns a SplunkTracing extension that computes query
+// complexity scores for logging. The executable schema is required to resolve
+// per-field complexity weights during calculation.
+func NewSplunkTracing(schema graphql.ExecutableSchema) SplunkTracing {
+	return SplunkTracing{schema: schema}
+}
 
 func (SplunkTracing) ExtensionName() string {
 	return "SplunkTracing"
@@ -25,7 +35,7 @@ func (SplunkTracing) Validate(graphql.ExecutableSchema) error {
 	return nil
 }
 
-func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+func (s SplunkTracing) InterceptResponse(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 	if hasOperationContext := graphql.HasOperationContext(ctx); !hasOperationContext {
 		// There was an invalid operation context, so we can't do anything. This could be because the user made a
 		// malformed request to GraphQL.
@@ -45,6 +55,9 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 		trace.SpanFromContext(ctx).SetAttributes(attribute.String(evergreen.GraphQLAIAgentOtelAttribute, aiAgent))
 	}
 
+	complexityScore := complexity.Calculate(ctx, s.schema, rc.Operation, rc.Variables)
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int("graphql.complexity_score", complexityScore))
+
 	defer func() {
 		usr := gimlet.GetUser(ctx)
 		end := graphql.Now()
@@ -52,16 +65,17 @@ func (SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respons
 		duration := end.Sub(start)
 		redactedRequestVariables := RedactFieldsInMap(rc.Variables, redactedFields)
 		fields := message.Fields{
-			"message":     "graphql.tracing",
-			"query":       rc.Operation.Name,
-			"operation":   rc.Operation.Operation,
-			"variables":   redactedRequestVariables,
-			"duration_ms": duration.Milliseconds(),
-			"request":     gimlet.GetRequestID(ctx),
-			"start":       start,
-			"end":         end,
-			"user":        usr.Username(),
-			"origin":      rc.Headers.Get("Origin"),
+			"message":          "graphql.tracing",
+			"query":            rc.Operation.Name,
+			"operation":        rc.Operation.Operation,
+			"variables":        redactedRequestVariables,
+			"duration_ms":      duration.Milliseconds(),
+			"complexity_score": complexityScore,
+			"request":          gimlet.GetRequestID(ctx),
+			"start":            start,
+			"end":              end,
+			"user":             usr.Username(),
+			"origin":           rc.Headers.Get("Origin"),
 		}
 		if aiAgent != "" {
 			fields["ai_agent"] = aiAgent
