@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	r53Types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -12,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -431,4 +435,67 @@ func TestDeleteHostPersistentDNSName(t *testing.T) {
 			tCase(ctx, t, env, h, &awsClientMock{})
 		})
 	}
+}
+
+func TestTerminatePreexistingInstance(t *testing.T) {
+	const intentHostID = "evg-distro-20260101010101-1234567890"
+	ctx := t.Context()
+
+	instanceOutput := func(ids ...string) *ec2.DescribeInstancesOutput {
+		instances := make([]types.Instance, 0, len(ids))
+		for _, id := range ids {
+			instances = append(instances, types.Instance{InstanceId: aws.String(id)})
+		}
+		return &ec2.DescribeInstancesOutput{
+			Reservations: []types.Reservation{{Instances: instances}},
+		}
+	}
+
+	t.Run("TerminatesWhenInstanceFound", func(t *testing.T) {
+		client := &awsClientMock{
+			DescribeInstancesOutput: instanceOutput("i-preexisting"),
+		}
+		require.NoError(t, terminatePreexistingInstance(ctx, client, intentHostID))
+		require.NotNil(t, client.TerminateInstancesInput)
+		assert.Equal(t, []string{"i-preexisting"}, client.TerminateInstancesInput.InstanceIds)
+	})
+	t.Run("TerminatesAllWhenMultipleInstancesFound", func(t *testing.T) {
+		client := &awsClientMock{
+			DescribeInstancesOutput: instanceOutput("i-first", "i-second"),
+		}
+		require.NoError(t, terminatePreexistingInstance(ctx, client, intentHostID))
+		require.NotNil(t, client.TerminateInstancesInput)
+		assert.ElementsMatch(t, []string{"i-first", "i-second"}, client.TerminateInstancesInput.InstanceIds)
+	})
+	t.Run("NoopWhenInstanceNotFound", func(t *testing.T) {
+		client := &awsClientMock{
+			DescribeInstancesOutput: &ec2.DescribeInstancesOutput{},
+		}
+		require.NoError(t, terminatePreexistingInstance(ctx, client, intentHostID))
+		assert.Nil(t, client.TerminateInstancesInput, "should not call TerminateInstances when no instance exists")
+	})
+	t.Run("ReturnsErrorWhenLookupFails", func(t *testing.T) {
+		client := &awsClientMock{
+			DescribeInstancesError: errors.New("AWS API error"),
+		}
+		assert.Error(t, terminatePreexistingInstance(ctx, client, intentHostID))
+	})
+	t.Run("FiltersOutTerminalInstances", func(t *testing.T) {
+		client := &awsClientMock{
+			DescribeInstancesOutput: &ec2.DescribeInstancesOutput{},
+		}
+		require.NoError(t, terminatePreexistingInstance(ctx, client, intentHostID))
+		require.NotNil(t, client.DescribeInstancesInput)
+		var stateFilter *types.Filter
+		for _, f := range client.DescribeInstancesInput.Filters {
+			if aws.ToString(f.Name) == "instance-state-name" {
+				stateFilter = &f
+				break
+			}
+		}
+		require.NotNil(t, stateFilter, "should filter by instance state")
+		assert.NotContains(t, stateFilter.Values, string(types.InstanceStateNameTerminated))
+		assert.NotContains(t, stateFilter.Values, string(types.InstanceStateNameShuttingDown))
+		assert.Contains(t, stateFilter.Values, string(types.InstanceStateNameRunning))
+	})
 }

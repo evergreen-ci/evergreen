@@ -482,6 +482,10 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	ctx, span := tracer.Start(ctx, "spawnFleetHost")
 	defer span.End()
 
+	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
+		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
+	}
+
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")

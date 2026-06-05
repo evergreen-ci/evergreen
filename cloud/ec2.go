@@ -256,6 +256,10 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	ctx, span := tracer.Start(ctx, "spawnOnDemandHost")
 	defer span.End()
 
+	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
+		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
+	}
+
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),
