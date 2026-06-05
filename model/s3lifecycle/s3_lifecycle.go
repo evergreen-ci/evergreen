@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -101,10 +100,15 @@ func DiscoverAdminManagedBuckets(ctx context.Context, settings *evergreen.Settin
 	return buckets, nil
 }
 
+// S3LifecycleClient fetches lifecycle configurations for an S3 bucket.
+type S3LifecycleClient interface {
+	GetBucketLifecycleConfiguration(ctx context.Context, bucket, region string, roleARN *string, externalID *string) ([]pail.LifecycleRule, error)
+}
+
 // DiscoverAndCacheProjectBucket checks if we have lifecycle rules cached for a bucket and fetches them if not.
 // It returns true if rules were successfully cached (discovery succeeded), false if already cached or discovery failed.
 // This is best-effort - errors are logged but not returned to avoid failing file uploads.
-func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, client cloud.S3LifecycleClient) bool {
+func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, client S3LifecycleClient) bool {
 	existingRules, err := FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
