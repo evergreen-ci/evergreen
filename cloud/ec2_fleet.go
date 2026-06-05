@@ -150,10 +150,6 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		"distro":        h.Distro.Id,
 	})
 
-	if err := tagHostIDOnVolumes(ctx, m.client, h); err != nil {
-		return nil, errors.Wrap(err, "tagging host ID on volumes")
-	}
-
 	return h, nil
 }
 

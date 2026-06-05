@@ -361,6 +361,23 @@ func TestReleaseIPAddressForHost(t *testing.T) {
 	}
 }
 
+func TestMakeTagsIncludesHostNameTag(t *testing.T) {
+	h := &host.Host{
+		Id:  "i-abc123",
+		Tag: "ht_abc123",
+	}
+	tags := makeTags(h)
+
+	var hostNameTagValue string
+	for _, tag := range tags {
+		if tag.Key == evergreen.TagHostName {
+			hostNameTagValue = tag.Value
+			break
+		}
+	}
+	assert.Equal(t, h.Tag, hostNameTagValue, "host-name tag should be set to the evergreen intent host ID (h.Tag), not the EC2 instance ID")
+}
+
 func TestDeleteHostPersistentDNSName(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(host.Collection))
