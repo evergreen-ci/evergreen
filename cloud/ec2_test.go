@@ -1285,6 +1285,42 @@ func (s *EC2Suite) TestCreateVolume() {
 	s.NoError(err)
 }
 
+func (s *EC2Suite) TestCreateVolumeWithHostTagAppliesHostNameTag() {
+	s.volume.Host = "ht_abc123"
+	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
+	s.NoError(err)
+
+	mock, ok := s.impl.client.(*awsClientMock)
+	s.Require().True(ok)
+
+	var hostNameTagValue string
+	for _, spec := range mock.CreateVolumeInput.TagSpecifications {
+		for _, tag := range spec.Tags {
+			if tag.Key != nil && *tag.Key == evergreen.TagHostName {
+				hostNameTagValue = *tag.Value
+			}
+		}
+	}
+	s.Equal("ht_abc123", hostNameTagValue)
+}
+
+func (s *EC2Suite) TestCreateVolumeWithoutHostTagOmitsHostNameTag() {
+	s.volume.Host = ""
+	_, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
+	s.NoError(err)
+
+	mock, ok := s.impl.client.(*awsClientMock)
+	s.Require().True(ok)
+
+	for _, spec := range mock.CreateVolumeInput.TagSpecifications {
+		for _, tag := range spec.Tags {
+			if tag.Key != nil {
+				s.NotEqual(evergreen.TagHostName, *tag.Key, "host-name tag should not be present when volume.Host is empty")
+			}
+		}
+	}
+}
+
 func (s *EC2Suite) TestDeleteVolume() {
 	s.NoError(s.volume.Insert(s.ctx))
 	s.NoError(s.onDemandManager.DeleteVolume(s.ctx, s.volume))

@@ -702,6 +702,25 @@ api:
 
 The "url" keys in each list item should contain the appropriate URL to the binary for each architecture. The "latest*revision" key should contain the githash that was used to build the binary. It should match the output of `evergreen version` for \_all* the binaries at the URLs listed in order for auto-updates to be successful.
 
+#### Static client download manifest
+
+Evergreen also publishes a static manifest for tools that only need to discover client download URLs. It contains one entry for each supported platform.
+
+```json
+{
+  "client_binaries": [
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "url": "https://evg-bucket-evergreen.s3.amazonaws.com/evergreen/clients/latest/linux_amd64/evergreen",
+      "display_name": "Linux 64-bit"
+    }
+  ]
+}
+```
+
+The full manifest is available at `https://evg-bucket-evergreen.s3.amazonaws.com/evergreen/clients/latest/manifest.json`. This file is not used for automatic CLI updates. It does not include `latest_revision`. The urls listed in the manifest are static, you can hardcode them in to your application.
+
 ### Task Debugger
 
 For debugging task commands on spawn hosts, see the [Task Debugger documentation](Hosts/Debug-Spawn-Hosts.md).

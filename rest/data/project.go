@@ -148,7 +148,7 @@ func GetProjectTasksWithOptions(ctx context.Context, projectName string, taskNam
 			IncludeProjectIdentifier: true,
 			IncludeAMI:               true,
 		}); err != nil {
-			return nil, errors.Wrap(err, "error building API tasks")
+			return nil, errors.Wrap(err, "building API tasks")
 		}
 		res = append(res, apiTask)
 	}
@@ -162,7 +162,7 @@ func FindProjectVarsById(ctx context.Context, id string, repoId string, redact b
 	if repoId != "" {
 		repoVars, err = model.FindOneProjectVars(ctx, repoId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem fetching variables for repo '%s'", repoId)
+			return nil, errors.Wrapf(err, "fetching variables for repo '%s'", repoId)
 		}
 		if repoVars == nil {
 			return nil, gimlet.ErrorResponse{
@@ -175,7 +175,7 @@ func FindProjectVarsById(ctx context.Context, id string, repoId string, redact b
 	if id != "" {
 		vars, err = model.FindOneProjectVars(ctx, id)
 		if err != nil {
-			return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
+			return nil, errors.Wrapf(err, "fetching variables for project '%s'", id)
 		}
 		if vars == nil {
 			return nil, gimlet.ErrorResponse{

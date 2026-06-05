@@ -654,6 +654,7 @@ func attachVolume(ctx context.Context, env evergreen.Environment, h *host.Host) 
 				IOPS:             cloud.Gp2EquivalentIOPSForGp3(int32(h.HomeVolumeSize)),
 				Throughput:       cloud.Gp2EquivalentThroughputForGp3(int32(h.HomeVolumeSize)),
 				HomeVolume:       true,
+				Host:             h.Tag,
 			})
 			if err != nil {
 				return errors.Wrapf(err, "creating new volume for host '%s'", h.Id)

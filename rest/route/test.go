@@ -168,13 +168,14 @@ func (tgh *testGetHandler) buildResponse(ctx context.Context, results []testresu
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting response format"))
 	}
 
+	logURL := GetURL(ctx)
 	if key != "" {
 		err := resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         GetURL(ctx),
+				BaseURL:         logURL,
 				Key:             key,
 				Limit:           tgh.limit,
 			},
@@ -184,8 +185,12 @@ func (tgh *testGetHandler) buildResponse(ctx context.Context, results []testresu
 		}
 	}
 
+	args := &model.APITestArgs{
+		EvergreenBaseURL: logURL,
+		ParsleyLogURL:    tgh.env.Settings().Ui.ParsleyUrl,
+	}
 	for i, result := range results {
-		if err := tgh.addDataToResponse(resp, &result); err != nil {
+		if err := tgh.addDataToResponse(resp, &result, args); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding test result at index %d", i))
 		}
 	}
@@ -193,15 +198,15 @@ func (tgh *testGetHandler) buildResponse(ctx context.Context, results []testresu
 	return resp
 }
 
-func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, result any) error {
+func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, result any, args *model.APITestArgs) error {
 	at := &model.APITest{}
-	if err := at.BuildFromService(tgh.taskID); err != nil {
+	if err := at.BuildFromService(tgh.taskID, nil); err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrap(err, "adding task ID to task API model").Error(),
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
-	if err := at.BuildFromService(result); err != nil {
+	if err := at.BuildFromService(result, args); err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrap(err, "adding test result to task API model").Error(),
 			StatusCode: http.StatusInternalServerError,

@@ -45,11 +45,11 @@ func fetchTestDistro() distro.Distro {
 	}
 }
 
-// This spawns (and terminates) an actual on-demand instance in AWS. Since AWS
-// bills for a minimum of 1 minute, this will cost approximately $.0002 each
-// time it is run (t1.micro $0.0116 per hour / 60 minutes). Since the price is
-// low, we run this each time the integration cloud tests are run.
-func TestSpawnEC2InstanceOnDemand(t *testing.T) {
+// This spawns (and terminates) an actual EC2 instance in AWS via CreateFleet.
+// Since AWS bills for a minimum of 1 minute, this will cost approximately
+// $.0002 each time it is run (t1.micro $0.0116 per hour / 60 minutes). Since
+// the price is low, we run this each time the integration cloud tests are run.
+func TestSpawnEC2InstanceFleet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 

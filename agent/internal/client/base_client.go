@@ -608,7 +608,7 @@ func (c *baseCommunicator) AttachFiles(ctx context.Context, taskData TaskData, t
 	return nil
 }
 
-func (c *baseCommunicator) ReportS3Usage(ctx context.Context, taskData TaskData, usage s3usage.S3Usage) error {
+func (c *baseCommunicator) ReportS3Usage(ctx context.Context, taskData TaskData, usage s3usage.S3Usage, final bool) error {
 	if usage.IsZero() {
 		return nil
 	}
@@ -618,6 +618,9 @@ func (c *baseCommunicator) ReportS3Usage(ctx context.Context, taskData TaskData,
 		taskData: &taskData,
 	}
 	info.setTaskPathSuffix("s3_usage")
+	if final {
+		info.path += "?final=true"
+	}
 	resp, err := c.retryRequest(ctx, info, usage)
 	if err != nil {
 		return util.RespError(resp, errors.Wrap(err, "reporting S3 usage").Error())

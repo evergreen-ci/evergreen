@@ -23,6 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
 )
@@ -33,11 +34,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2026-05-27a"
+	ClientVersion = "2026-06-04"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-05-27c"
+	AgentVersion = "2026-06-05a"
 )
 
 const (
@@ -804,7 +805,13 @@ type DBSettings struct {
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
-func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
+type mongoClientOpt func(*options.ClientOptions)
+
+func withReadPreference(rp *readpref.ReadPref) mongoClientOpt {
+	return func(o *options.ClientOptions) { o.SetReadPreference(rp) }
+}
+
+func (s *DBSettings) mongoOptions(url string, extra ...mongoClientOpt) *options.ClientOptions {
 	opts := options.Client().ApplyURI(url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
@@ -817,6 +824,9 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 			AuthMechanism: awsAuthMechanism,
 			AuthSource:    mongoExternalAuthSource,
 		})
+	}
+	for _, opt := range extra {
+		opt(opts)
 	}
 	return opts
 }

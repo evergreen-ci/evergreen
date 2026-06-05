@@ -4,9 +4,51 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestAttachVolumePassesHostTagToCreateVolume(t *testing.T) {
+	require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection))
+	})
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+
+	h := &host.Host{
+		Id:  "i-ec2-instance-id",
+		Tag: "ht_intent_id",
+		Distro: distro.Distro{
+			Arch:     "linux/amd64",
+			Provider: evergreen.ProviderNameMock,
+			BootstrapSettings: distro.BootstrapSettings{
+				Communication: distro.CommunicationMethodSSH,
+			},
+		},
+		HomeVolumeSize: 10,
+		Zone:           "us-east-1a",
+	}
+	require.NoError(t, h.Insert(t.Context()))
+
+	// AttachVolume fails because the mock instance isn't registered, so SetHost
+	// never runs and the volume retains the Host value set at creation.
+	err := attachVolume(t.Context(), env, h)
+	require.Error(t, err)
+	require.NotEmpty(t, h.HomeVolumeID, "volume must have been created before the attach error")
+
+	volume, err := host.FindVolumeByID(t.Context(), h.HomeVolumeID)
+	require.NoError(t, err)
+	require.NotNil(t, volume)
+	assert.Equal(t, h.Tag, volume.Host, "CreateVolume should be called with Host set to the evergreen intent host ID (h.Tag)")
+}
 
 func TestGetMostRecentlyAddedDevice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

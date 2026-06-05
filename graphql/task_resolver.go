@@ -841,12 +841,17 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
+	settings := evergreen.GetEnvironment().Settings()
+	apiTestArgs := &restModel.APITestArgs{
+		EvergreenBaseURL: settings.Api.URL,
+		ParsleyLogURL:    settings.Ui.ParsleyUrl,
+	}
 	for i, t := range taskResults.Results {
 		apiTest := &restModel.APITest{}
-		if err = apiTest.BuildFromService(t.TaskID); err != nil {
+		if err = apiTest.BuildFromService(t.TaskID, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		if err = apiTest.BuildFromService(&t); err != nil {
+		if err = apiTest.BuildFromService(&t, apiTestArgs); err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 

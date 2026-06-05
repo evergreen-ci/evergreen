@@ -28,7 +28,7 @@ func (h *bannerPostHandler) Factory() gimlet.RouteHandler {
 
 func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
-		return errors.Wrap(err, "problem parsing request")
+		return errors.Wrap(err, "parsing request")
 	}
 
 	h.model = model.APIBanner{
