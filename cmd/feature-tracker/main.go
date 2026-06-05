@@ -9,9 +9,8 @@
 //
 // Usage:
 //
-//	mkdir configs && cd configs
-//	evergreen admin all-configs   # dump enabled projects' configs into ./configs
-//	cd .. && go run ./cmd/feature-tracker --dir configs --out feature-report
+//	evergreen admin all-configs --directory configs   # dump enabled projects' configs into ./configs
+//	go run ./cmd/feature-tracker --dir configs --out feature-report
 package main
 
 import (

@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
@@ -13,6 +14,7 @@ import (
 func fetchAllProjectConfigs() cli.Command {
 	const (
 		includeDisabledFlagName = "include-disabled"
+		directoryFlagName       = "directory"
 	)
 
 	return cli.Command{
@@ -23,11 +25,16 @@ func fetchAllProjectConfigs() cli.Command {
 				Name:  includeDisabledFlagName,
 				Usage: "include disabled projects",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(directoryFlagName, "d"),
+				Usage: "directory to write config files to (created if needed; defaults to current directory)",
+			},
 		},
-		Usage:  "download the configuration files of all Evergreen projects to the current directory",
+		Usage:  "download the configuration files of all Evergreen projects",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			includeDisabled := c.BoolT(includeDisabledFlagName)
+			directory := c.String(directoryFlagName)
 			settings, err := NewClientSettings(c.GlobalString("config"))
 			if err != nil {
 				return err
@@ -43,15 +50,21 @@ func fetchAllProjectConfigs() cli.Command {
 				return errors.Wrap(err, "fetching projects from Evergreen")
 			}
 
-			return fetchAndWriteConfigs(context.Background(), rc, projects, includeDisabled)
+			return fetchAndWriteConfigs(context.Background(), rc, projects, includeDisabled, directory)
 		},
 	}
 }
 
-// fetchAndWriteConfig downloads the most recent config for a project
-// and writes it to "project_name.yml" locally.
-func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model.ProjectRef, includeDisabled bool) error {
+// fetchAndWriteConfig downloads the most recent config for a project and writes
+// it to "<directory>/project_name.yml". An empty directory writes to the current
+// directory.
+func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model.ProjectRef, includeDisabled bool, directory string) error {
 	catcher := grip.NewSimpleCatcher()
+	if directory != "" {
+		if err := os.MkdirAll(directory, 0755); err != nil {
+			return errors.Wrapf(err, "creating directory '%s'", directory)
+		}
+	}
 	type projectRepo struct {
 		Owner      string
 		Repo       string
@@ -91,7 +104,7 @@ func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model
 		}
 		configDownloaded[repo] = true
 
-		err = os.WriteFile(p.Identifier+".yml", config, 0644)
+		err = os.WriteFile(filepath.Join(directory, p.Identifier+".yml"), config, 0644)
 		if err != nil {
 			catcher.Wrapf(err, "writing configuration for project '%s'", p.Identifier)
 		}
