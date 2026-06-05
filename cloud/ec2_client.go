@@ -1141,8 +1141,8 @@ type awsClientMock struct { //nolint
 
 	*types.Instance
 	*ec2.DescribeInstancesOutput
-	RequestGetInstanceInfoError  error
-	DescribeInstancesError       error
+	RequestGetInstanceInfoError error
+	DescribeInstancesError      error
 	*ec2.DescribeInstanceTypeOfferingsOutput
 
 	launchTemplates []types.LaunchTemplate
