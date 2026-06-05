@@ -284,6 +284,8 @@ func writeHTML(path string, dets []Detector, results []result) error {
 	defer f.Close()
 
 	adopt := computeAdoption(dets, results)
+	// Default the rendered order to most-used first; the table is re-sortable client-side.
+	sort.SliceStable(adopt, func(i, j int) bool { return adopt[i].Using > adopt[j].Using })
 	parseErrors := 0
 	for _, r := range results {
 		if r.Err != "" {
@@ -346,7 +348,6 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   tr:nth-child(even) td { background: #fbfbfb; }
   .used { background: #d8efd8 !important; font-weight: 600; }
-  .bar { background: #c8e6c9; display: inline-block; height: 0.8rem; vertical-align: middle; margin-left: 0.5rem; }
   .err { color: #b00020; font-size: 0.75rem; }
   caption { text-align: left; font-weight: 600; font-size: 1.05rem; padding-bottom: 0.5rem; }
 </style>
@@ -355,9 +356,14 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
 <h1>Evergreen Project Feature Usage</h1>
 <p class="meta">{{.Total}} projects analyzed{{if .ParseErrors}}, {{.ParseErrors}} with parse errors{{end}}.</p>
 
-<table>
+<table id="adoption">
   <caption>Feature adoption</caption>
-  <thead><tr><th>Feature</th><th>Description</th><th>Projects using</th><th>%</th><th></th></tr></thead>
+  <thead><tr>
+    <th onclick="sortTable('adoption', 0, false)">Feature</th>
+    <th>Description</th>
+    <th onclick="sortTable('adoption', 2, true)">Projects using</th>
+    <th>%</th>
+  </tr></thead>
   <tbody>
   {{range .Adoption}}
     <tr>
@@ -365,7 +371,6 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
       <td>{{.Description}}</td>
       <td class="num">{{.Using}} / {{.Total}}</td>
       <td class="num">{{.Percent}}</td>
-      <td><span class="bar" style="width: {{.Percent}}"></span></td>
     </tr>
   {{end}}
   </tbody>
@@ -375,7 +380,7 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
   <caption>Per-project feature matrix (counts; click a header to sort)</caption>
   <thead>
     <tr>
-      <th onclick="sortTable(0)">Project</th>
+      <th onclick="sortTable('matrix', 0, false)">Project</th>
       {{range .Detectors}}<th class="feature" title="{{.Description}}">{{.Name}}</th>{{end}}
       <th>Parse error</th>
     </tr>
@@ -392,12 +397,11 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
 </table>
 
 <script>
-// Minimal client-side column sort for the per-project matrix.
-function sortTable(col) {
-  const table = document.getElementById("matrix");
+// Minimal client-side column sort, shared by both tables.
+function sortTable(tableId, col, numeric) {
+  const table = document.getElementById(tableId);
   const tbody = table.tBodies[0];
   const rows = Array.from(tbody.rows);
-  const numeric = col > 0;
   const asc = table.getAttribute("data-sort-col") != col || table.getAttribute("data-sort-dir") != "asc";
   rows.sort((a, b) => {
     let x = a.cells[col].innerText, y = b.cells[col].innerText;
