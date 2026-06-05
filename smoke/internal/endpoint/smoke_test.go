@@ -1,8 +1,10 @@
 package endpoint
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -62,6 +64,39 @@ func TestSmokeEndpoints(t *testing.T) {
 	for url, expected := range td.API {
 		makeSmokeGetRequestAndCheck(ctx, t, params, client, "/api"+url, expected)
 	}
+
+	grip.Info(ctx, "Testing /select/tests POST with user auth")
+	checkSelectTestsUserAuth(ctx, t, params, client)
+}
+
+// checkSelectTestsUserAuth POSTs to /rest/v2/select/tests as an authenticated
+// user. Regression guard for DEVPROD-34146: before that fix, this route was
+// wrapped with a middleware that rejected user-auth requests with
+// 400 "task ID is required" because it required {task_id} as a URL path var
+// that this route does not have.
+func checkSelectTestsUserAuth(ctx context.Context, t *testing.T, params smokeTestParams, client *http.Client) {
+	body := []byte(`{"project_id":"smoke","build_variant":"variant","requester":"patch","task_id":"smoke-task","task_name":"smoke-task","tests":["foo"]}`)
+	url := params.AppServerURL + "/rest/v2/select/tests"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set(evergreen.APIUserHeader, params.Username)
+	req.Header.Set(evergreen.APIKeyHeader, params.APIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	// The fix is to never return the auth middleware's
+	// 400 "task ID is required" for this route. Downstream errors (e.g. TSS
+	// unreachable) are fine for smoke purposes — we only guard the
+	// middleware-level regression.
+	assert.NotEqual(t, http.StatusBadRequest, resp.StatusCode,
+		"user-authenticated POST to /select/tests should not get a 400; body %q", string(respBody))
+	assert.NotContains(t, string(respBody), "task ID is required",
+		"response should not contain the old middleware's 'task ID is required'; got status %d body %q", resp.StatusCode, string(respBody))
 }
 
 type smokeTestParams struct {

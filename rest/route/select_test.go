@@ -131,9 +131,7 @@ func TestSelectTestsRouteUserAuth(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rw.Code, "middleware should not short-circuit user-authenticated requests")
 }
 
-// Unauthenticated requests (no user in context, no task auth headers) must be
-// rejected — the new middleware should fall through to the task auth
-// middleware, which returns 401 when there's no task ID/secret either.
+// Unauthenticated requests should be rejected with 401.
 func TestSelectTestsRouteUnauthenticated(t *testing.T) {
 	body := []byte(`{
 		"project_id": "my-project",
