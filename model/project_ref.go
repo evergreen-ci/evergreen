@@ -1177,6 +1177,7 @@ func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
 }
 
 // findOneProjectRefQSecondary is the SecondaryPreferred sibling of findOneProjectRefQ.
+// Don't use right after a write; reads can lag the primary.
 func findOneProjectRefQSecondary(ctx context.Context, query db.Q) (*ProjectRef, error) {
 	return findOneProjectRefQWith(ctx, query, db.FindOneQSecondary)
 }
@@ -1198,6 +1199,7 @@ func FindBranchProjectRef(ctx context.Context, identifier string) (*ProjectRef, 
 }
 
 // FindBranchProjectRefSecondary is the SecondaryPreferred sibling of FindBranchProjectRef.
+// Don't use right after a write; reads can lag the primary.
 func FindBranchProjectRefSecondary(ctx context.Context, identifier string) (*ProjectRef, error) {
 	return findOneProjectRefQSecondary(ctx, byId(identifier))
 }
@@ -1214,6 +1216,7 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 }
 
 // FindMergedProjectRefSecondary is the SecondaryPreferred sibling of FindMergedProjectRef.
+// Don't use right after a write; reads can lag the primary.
 func FindMergedProjectRefSecondary(ctx context.Context, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRefSecondary(ctx, identifier)
 	if err != nil {
@@ -1633,6 +1636,7 @@ func FindAllMergedTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) 
 }
 
 // FindAllMergedTrackedProjectRefsSecondary is the SecondaryPreferred sibling of FindAllMergedTrackedProjectRefs.
+// Don't use right after a write; reads can lag the primary.
 func FindAllMergedTrackedProjectRefsSecondary(ctx context.Context) ([]ProjectRef, error) {
 	return findProjectRefsQSecondary(ctx, byTracked(), true)
 }
@@ -1645,6 +1649,7 @@ func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, 
 }
 
 // FindAllMergedEnabledTrackedProjectRefsSecondary is the SecondaryPreferred sibling of FindAllMergedEnabledTrackedProjectRefs.
+// Don't use right after a write; reads can lag the primary.
 func FindAllMergedEnabledTrackedProjectRefsSecondary(ctx context.Context) ([]ProjectRef, error) {
 	return findProjectRefsQSecondary(ctx, byEnabledTracked(), true)
 }
@@ -1716,6 +1721,7 @@ func FindProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, err
 }
 
 // FindProjectRefsByIdsSecondary is the SecondaryPreferred sibling of FindProjectRefsByIds.
+// Don't use right after a write; reads can lag the primary.
 func FindProjectRefsByIdsSecondary(ctx context.Context, ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -1728,6 +1734,7 @@ func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]Projec
 }
 
 // findProjectRefsQSecondary is the SecondaryPreferred sibling of findProjectRefsQ.
+// Don't use right after a write; reads can lag the primary.
 func findProjectRefsQSecondary(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
 	return findProjectRefsQWith(ctx, filter, merged, db.FindAllQSecondary)
 }
