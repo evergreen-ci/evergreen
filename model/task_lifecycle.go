@@ -2024,6 +2024,13 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskDurationMsOtelAttribute,
 			t.FinishTime.Sub(t.StartTime).Milliseconds()))
 	}
+	if !t.TaskCost.IsZero() {
+		attrs = append(attrs,
+			attribute.Float64(evergreen.TaskAdjustedCostOtelAttribute, t.TaskCost.AdjustedEC2Cost),
+			attribute.Float64(evergreen.TaskEBSAdjustedThroughputCostOtelAttribute, t.TaskCost.AdjustedEBSThroughputCost),
+			attribute.Float64(evergreen.TaskEBSAdjustedStorageCostOtelAttribute, t.TaskCost.AdjustedEBSStorageCost),
+		)
+	}
 	return attrs
 }
 
