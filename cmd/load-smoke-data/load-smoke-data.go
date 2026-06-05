@@ -158,7 +158,7 @@ func getFilesFromPathAndInsert(ctx context.Context, path string, db *mongo.Datab
 	for _, fn := range files {
 		fileInfo, err := os.Stat(fn)
 		if err != nil {
-			return errors.Wrapf(err, "getting file info for %s", fn)
+			return errors.Wrapf(err, "getting file info for '%s'", fn)
 		}
 		switch mode := fileInfo.Mode(); {
 		case mode.IsRegular():

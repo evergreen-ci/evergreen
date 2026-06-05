@@ -355,7 +355,7 @@ func forkDaemon(c *cli.Context, port int) error {
 	if err := waitForDaemon(port); err != nil {
 		// Attempt to kill the orphaned child process.
 		_ = cmd.Process.Signal(syscall.SIGTERM)
-		return errors.Wrapf(err, "daemon failed to start (check logs at %s)", logPath)
+		return errors.Wrapf(err, "daemon failed to start (check logs at '%s')", logPath)
 	}
 
 	grip.Infof(context.Background(), "Daemon started (PID %d, port %d)", pid, port)
@@ -401,7 +401,7 @@ func stopDebugDaemonCmd(c *cli.Context) error {
 	defer func() {
 		for _, f := range []string{pidFile, portFile, logFile} {
 			if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
-				grip.Warning(context.Background(), errors.Wrapf(err, "removing %s", f))
+				grip.Warning(context.Background(), errors.Wrapf(err, "removing '%s'", f))
 			}
 		}
 	}()

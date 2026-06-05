@@ -264,8 +264,7 @@ const (
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
 
 	// maximum turnaround we want to maintain for all hosts for a given distro
-	MaxDurationPerDistroHost               = 30 * time.Minute
-	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
+	MaxDurationPerDistroHost = 30 * time.Minute
 
 	// Spawn hosts
 	SpawnHostExpireDays              = 30

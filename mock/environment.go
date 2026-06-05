@@ -188,7 +188,7 @@ func BootstrapCredentialsCollection(ctx context.Context, client *mongo.Client, d
 
 	depot, err := certdepot.BootstrapDepotWithMongoClient(ctx, client, bootstrapConfig)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not bootstrap %s collection", evergreen.CredentialsCollection)
+		return nil, errors.Wrapf(err, "could not bootstrap '%s' collection", evergreen.CredentialsCollection)
 	}
 	return depot, nil
 }

@@ -81,7 +81,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, 
 		commitRevision,
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error loading commit '%v'", commitRevision)
+		return nil, errors.Wrapf(err, "loading commit '%v'", commitRevision)
 	}
 
 	files := []string{}
