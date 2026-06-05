@@ -130,3 +130,49 @@ func TestSelectTestsRouteUserAuth(t *testing.T) {
 	assert.True(t, called, "next handler should run for a user-authenticated request")
 	assert.Equal(t, http.StatusOK, rw.Code, "middleware should not short-circuit user-authenticated requests")
 }
+
+// Unauthenticated requests (no user in context, no task auth headers) must be
+// rejected — the new middleware should fall through to the task auth
+// middleware, which returns 401 when there's no task ID/secret either.
+func TestSelectTestsRouteUnauthenticated(t *testing.T) {
+	body := []byte(`{
+		"project_id": "my-project",
+		"requester": "patch",
+		"build_variant": "variant",
+		"task_id": "my-task-1234",
+		"task_name": "my-task",
+		"tests": ["test1"]
+	}`)
+	req, err := http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	rw := httptest.NewRecorder()
+	called := false
+	NewUserOrTaskAuthOnlyMiddleware().ServeHTTP(rw, req, func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	assert.False(t, called, "next handler should not run for unauthenticated requests")
+	assert.Equal(t, http.StatusUnauthorized, rw.Code, "unauthenticated requests should be rejected with 401")
+}
+
+func TestSelectTestsHandlerAcceptsLegacyProjectKey(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	j := []byte(`{
+		"project": "my-project",
+		"requester": "patch",
+		"build_variant": "variant",
+		"task_id": "my-task-1234",
+		"task_name": "my-task",
+		"tests": ["test1"]
+	}`)
+	req, _ := http.NewRequest(http.MethodPost, "/select/tests", bytes.NewBuffer(j))
+	sth := makeSelectTestsHandler(env)
+	require.NoError(t, sth.Parse(ctx, req), "request should parse with legacy 'project' key")
+}
