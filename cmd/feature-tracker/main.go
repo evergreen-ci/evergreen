@@ -7,16 +7,11 @@
 // into a model.Project using Evergreen's own parser and runs a registry of
 // feature detectors, then emits a CSV, an HTML report, and a terminal summary.
 //
-// The detector registry is the generalization point: adding a new feature to
-// track is a one-line addition to detectors(). The data source only contains
-// YAML-defined configuration, so project_ref-level toggles (PR testing, GitHub
-// checks, etc.) are out of scope for this tool; they live in a separate DB
-// collection and would need a separate fetch.
-//
 // Usage:
 //
-//	evergreen admin all-configs --include-disabled   # dump configs to ./
-//	go run ./cmd/feature-tracker --dir . --out feature-report
+//	mkdir configs && cd configs
+//	evergreen admin all-configs --include-disabled   # dump configs into ./configs
+//	cd .. && go run ./cmd/feature-tracker --dir configs --out feature-report
 package main
 
 import (
