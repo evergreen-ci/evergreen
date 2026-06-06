@@ -17,6 +17,7 @@ import (
 func setupWebhookMigrationTest(t *testing.T) *mock.Environment {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
+	env.EvergreenSettings.ServiceFlags.WebhookSecretMigrationEnabled = true
 	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, fakeparameter.Collection))
 	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, fakeparameter.Collection))
