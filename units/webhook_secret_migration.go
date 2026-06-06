@@ -78,7 +78,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
-	if flags.WebhookSecretMigrationDisabled {
+	if !flags.WebhookSecretMigrationEnabled {
 		return
 	}
 
@@ -228,7 +228,7 @@ func PopulateWebhookSecretMigrationJobs() amboy.QueueOperation {
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
-		if flags.WebhookSecretMigrationDisabled {
+		if !flags.WebhookSecretMigrationEnabled {
 			return nil
 		}
 

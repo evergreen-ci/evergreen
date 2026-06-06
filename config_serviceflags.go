@@ -43,7 +43,7 @@ type ServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `bson:"use_merge_queue_path_filtering_disabled" json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
-	WebhookSecretMigrationDisabled     bool `bson:"webhook_secret_migration_disabled" json:"webhook_secret_migration_disabled"`
+	WebhookSecretMigrationEnabled      bool `bson:"webhook_secret_migration_enabled" json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupDisabled       bool `bson:"webhook_secret_cleanup_disabled" json:"webhook_secret_cleanup_disabled"`
 
 	// Notification Flags
@@ -105,7 +105,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			useMergeQueuePathFilteringDisabledKey: c.UseMergeQueuePathFilteringDisabled,
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
-			webhookSecretMigrationDisabledKey:     c.WebhookSecretMigrationDisabled,
+			webhookSecretMigrationEnabledKey:      c.WebhookSecretMigrationEnabled,
 			webhookSecretCleanupDisabledKey:       c.WebhookSecretCleanupDisabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
