@@ -1490,7 +1490,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		Revision:   revision,
 		GitTag:     tag,
 		RemotePath: remotePath,
-		Activate:   true,
+		Activate:   pRef.IsWaterfallEnabled(),
 	}
 	var projectInfo model.ProjectInfo
 	if remotePath != "" {

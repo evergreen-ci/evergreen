@@ -174,8 +174,24 @@ func BuildProjectParameterMapForGraphQL(args map[string]any) (map[string]string,
 // BuildProjectParameterMapForLegacy builds the parameters map that can be used as an input to GetProjectIdFromParams.
 // It is used by the legacy middleware.
 func BuildProjectParameterMapForLegacy(query url.Values, vars map[string]string) map[string]string {
+	// Derive the project from whatever object is in the path.
+	hasObjectIDInPath := util.CoalesceString(
+		vars["task_id"], vars[taskIdKey],
+		vars["build_id"], vars[buildIdKey],
+		vars["version_id"], vars[versionIdKey],
+		vars["patch_id"], vars[patchIdKey],
+		vars["log_id"],
+	) != ""
+
+	var projectIDValue string
+	if hasObjectIDInPath {
+		projectIDValue = util.CoalesceString(vars["project_id"], vars[projectIdKey])
+	} else {
+		projectIDValue = util.CoalesceStrings(append(query["project_id"], query[projectIdKey]...), vars["project_id"], vars[projectIdKey])
+	}
+
 	paramsMap := map[string]string{
-		projectIdKey: util.CoalesceStrings(append(query["project_id"], query[projectIdKey]...), vars["project_id"], vars[projectIdKey]),
+		projectIdKey: projectIDValue,
 		repoIdKey:    util.CoalesceStrings(append(query["repo_id"], query[repoIdKey]...), vars["repo_id"], vars[repoIdKey]),
 		versionIdKey: util.CoalesceStrings(append(query["version_id"], query[versionIdKey]...), vars["version_id"], vars[versionIdKey]),
 		patchIdKey:   util.CoalesceStrings(append(query["patch_id"], query[patchIdKey]...), vars["patch_id"], vars[patchIdKey]),

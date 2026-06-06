@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -22,6 +23,17 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 )
+
+// teardownSignalExitCodes are exit codes that typically indicate the agent terminated the process during cleanup
+// (SIGKILL=9, SIGTERM=15). Note: user background processes may legitimately exit with these codes for unrelated reasons.
+var teardownSignalExitCodes = []int{9, 15}
+
+// isTeardownExit reports whether a process exit should be treated as teardown rather than a real failure.
+// ctx.Err() covers exec/idle timeout cancellation only — it does not fire during killProcs-initiated teardown,
+// which sends signals directly without cancelling the task context first.
+func isTeardownExit(ctx context.Context, info jasper.ProcessInfo) bool {
+	return ctx.Err() != nil || slices.Contains(teardownSignalExitCodes, info.ExitCode)
+}
 
 type subprocessExec struct {
 	Binary    string            `mapstructure:"binary"`
@@ -220,7 +232,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		AppendTags(c.FullDisplayName()).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
-			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger)
+			return runJasperProcess(lctx, c.JasperManager(), c.Background, opts, conf.Task.Id, logger, conf.BackgroundFailures, c.ContinueOnError, conf.BackgroundCommandFailureEnabled)
 		})
 
 	if !c.IgnoreStandardOutput {
@@ -250,7 +262,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 
 // runJasperProcess starts a Jasper process. This does not wait for the process
 // to exit.
-func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, opts *options.Create, taskID string, logger client.LoggerProducer) (jasper.Process, error) {
+func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, opts *options.Create, taskID string, logger client.LoggerProducer, bgFailures chan<- error, continueOnError bool, backgroundCommandFailureEnabled bool) (jasper.Process, error) {
 	var cancel context.CancelFunc
 	var ictx context.Context
 	if background {
@@ -265,8 +277,14 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 	// parent process). This thread will have no special nice until it's reset
 	// but that should be a brief window.
 	// Passing 0 as the PID refers to the current thread.
-	if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
-		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+	// Skip entirely if the agent isn't running at elevated priority (e.g. on
+	// debug spawn hosts where it lacks permission to set negative nice).
+	currentNice, niceErr := agentutil.GetNice(0)
+	shouldAdjustNice := niceErr == nil && currentNice < agentutil.DefaultNice
+	if shouldAdjustNice {
+		if niceErr := agentutil.SetNice(0, agentutil.DefaultNice); niceErr != nil {
+			logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting subprocess, subprocess may have non-default nice when it starts. Error: %s", agentutil.DefaultNice, niceErr.Error())
+		}
 	}
 
 	proc, err := jpm.CreateProcess(ictx, opts)
@@ -278,16 +296,44 @@ func runJasperProcess(ctx context.Context, jpm jasper.Manager, background bool, 
 		return proc, errors.WithStack(err)
 	}
 
-	// Once the child processes has started, reset the agent's nice back to the
+	// Once the child process has started, reset the agent's nice back to the
 	// lower nice value to ensure that this agent thread will have its original
 	// CPU priority.
-	if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
-		logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
+	if shouldAdjustNice {
+		if niceErr := agentutil.SetNice(0, agentutil.AgentNice); niceErr != nil {
+			logger.Execution().Warningf(ctx, "Unable to set agent's nice to %d before starting shell subprocess, shell may have non-default nice when it starts. Error: %s", agentutil.AgentNice, niceErr.Error())
+		}
 	}
 
 	if cancel != nil {
 		grip.Warning(ctx, message.WrapError(proc.RegisterTrigger(ctx, func(info jasper.ProcessInfo) {
 			cancel()
+			if !info.Successful {
+				if isTeardownExit(ctx, info) {
+					return
+				}
+				err := errors.Errorf("background command (PID %d) exited with code %d", info.PID, info.ExitCode)
+				// Respect continue_on_err: surface the failure in the task log but do not fail the task.
+				if continueOnError {
+					logger.Task().Warningf(ctx, "Background command failed but continue_on_err is set, task will continue: %s", err)
+					return
+				}
+				if !backgroundCommandFailureEnabled {
+					logger.Task().Infof(ctx, "Background command failed but failure tracking is disabled, task will continue: %s", err)
+					return
+				}
+				select {
+				case bgFailures <- err:
+				default:
+					// Buffer pressure: more failures fired than the agent drained between commands.
+					grip.Debug(ctx, message.Fields{
+						"message":   "background failure channel full, dropping error",
+						"task_id":   taskID,
+						"pid":       info.PID,
+						"exit_code": info.ExitCode,
+					})
+				}
+			}
 		}), "registering canceller for process"))
 	}
 

@@ -57,6 +57,7 @@ type ProjectRef struct {
 	PatchingDisabled       *bool               `bson:"patching_disabled,omitempty" json:"patching_disabled,omitempty"`
 	RepotrackerDisabled    *bool               `bson:"repotracker_disabled,omitempty" json:"repotracker_disabled,omitempty" yaml:"repotracker_disabled"`
 	DispatchingDisabled    *bool               `bson:"dispatching_disabled,omitempty" json:"dispatching_disabled,omitempty" yaml:"dispatching_disabled"`
+	WaterfallDisabled      *bool               `bson:"waterfall_disabled,omitempty" json:"waterfall_disabled,omitempty" yaml:"waterfall_disabled"`
 	StepbackDisabled       *bool               `bson:"stepback_disabled,omitempty" json:"stepback_disabled,omitempty" yaml:"stepback_disabled"`
 	StepbackBisect         *bool               `bson:"stepback_bisect,omitempty" json:"stepback_bisect,omitempty" yaml:"stepback_bisect"`
 	VersionControlEnabled  *bool               `bson:"version_control_enabled,omitempty" json:"version_control_enabled,omitempty" yaml:"version_control_enabled"`
@@ -515,6 +516,7 @@ var (
 	projectRefCommitQueueKey                        = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefPatchingDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefWaterfallDisabledKey                  = bsonutil.MustHaveTag(ProjectRef{}, "WaterfallDisabled")
 	projectRefStepbackDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
 	projectRefStepbackBisectKey                     = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
 	projectRefVersionControlEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
@@ -560,6 +562,10 @@ func (p *ProjectRef) IsRepotrackerDisabled() bool {
 
 func (p *ProjectRef) IsDispatchingDisabled() bool {
 	return utility.FromBoolPtr(p.DispatchingDisabled)
+}
+
+func (p *ProjectRef) IsWaterfallEnabled() bool {
+	return !utility.FromBoolPtr(p.WaterfallDisabled)
 }
 
 func (p *ProjectRef) IsPRTestingEnabled() bool {
@@ -1623,20 +1629,32 @@ func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, 
 }
 
 func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef) ([]ProjectRef, error) {
-	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
+	repoRefIDs := make([]string, 0)
+	seen := make(map[string]bool)
+	for _, pRef := range pRefs {
+		if pRef.UseRepoSettings() && !seen[pRef.RepoRefId] {
+			seen[pRef.RepoRefId] = true
+			repoRefIDs = append(repoRefIDs, pRef.RepoRefId)
+		}
+	}
+
+	repoRefs := map[string]*RepoRef{}
+	if len(repoRefIDs) > 0 {
+		var fetched []RepoRef
+		q := db.Query(bson.M{RepoRefIdKey: bson.M{"$in": repoRefIDs}})
+		if err := db.FindAllQ(ctx, RepoRefCollection, q, &fetched); err != nil {
+			return nil, errors.Wrap(err, "finding repo refs")
+		}
+		for _, r := range fetched {
+			repoRefs[r.Id] = &r
+		}
+	}
+
 	for i, pRef := range pRefs {
 		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
-				var err error
-				repoRef, err = FindOneRepoRef(ctx, pRef.RepoRefId)
-				if err != nil {
-					return nil, errors.Wrapf(err, "finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
-				}
-				if repoRef == nil {
-					return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
-				}
-				repoRefs[pRef.RepoRefId] = repoRef
+				return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 			}
 			mergedProject, err := mergeBranchAndRepoSettings(&pRefs[i], repoRef)
 			if err != nil {
@@ -2246,6 +2264,7 @@ func SaveProjectPageForSection(ctx context.Context, projectId string, p *Project
 			ProjectRefRemotePathKey:              p.RemotePath,
 			projectRefSpawnHostScriptPathKey:     p.SpawnHostScriptPath,
 			projectRefDispatchingDisabledKey:     p.DispatchingDisabled,
+			projectRefWaterfallDisabledKey:       p.WaterfallDisabled,
 			projectRefStepbackDisabledKey:        p.StepbackDisabled,
 			projectRefStepbackBisectKey:          p.StepbackBisect,
 			projectRefVersionControlEnabledKey:   p.VersionControlEnabled,

@@ -300,43 +300,6 @@ func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.API
 	return apiHost, nil
 }
 
-// HostEvents is the resolver for the hostEvents field.
-func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	h, err := host.FindOneByIdOrTag(ctx, hostID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host '%s': %s", hostID, err.Error()))
-	}
-	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
-	}
-	hostQueryOpts := event.PaginatedHostEventsOpts{
-		ID:      h.Id,
-		Tag:     utility.FromStringPtr(hostTag),
-		Limit:   utility.FromIntPtr(limit),
-		Page:    utility.FromIntPtr(page),
-		SortAsc: false,
-	}
-	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", hostID, err.Error()))
-	}
-	// populate eventlogs pointer arrays
-	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
-	for _, e := range events {
-		apiEventLog := restModel.HostAPIEventLogEntry{}
-		err = apiEventLog.BuildFromService(e)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
-		}
-		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
-	}
-	hostevents := HostEvents{
-		EventLogEntries: apiEventLogPointers,
-		Count:           count,
-	}
-	return &hostevents, nil
-}
-
 // Hosts is the resolver for the hosts field.
 func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *string, currentTaskID *string, statuses []string, startedBy *string, sortBy *HostSortBy, sortDir *SortDirection, page *int, limit *int) (*HostsResponse, error) {
 	hostIDParam := ""
@@ -775,35 +738,9 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	return apiSamples, nil
 }
 
-// CursorSettings is the resolver for the cursorSettings field.
-func (r *queryResolver) CursorSettings(ctx context.Context) (*CursorSettings, error) {
-	usr := mustHaveUser(ctx)
-
-	sageConfig := &evergreen.SageConfig{}
-	if err := sageConfig.Get(ctx); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Sage config: %s", err.Error()))
-	}
-
-	sageClient, err := thirdparty.NewSageClient(sageConfig.BaseURL)
-	if err != nil {
-		// Return a default response indicating the feature is not configured.
-		// NewSageClient returns an error when the base URL is empty.
-		return &CursorSettings{
-			KeyConfigured: false,
-			KeyLastFour:   nil,
-		}, nil
-	}
-	defer sageClient.Close()
-
-	result, err := sageClient.GetCursorAPIKeyStatus(ctx, usr.Id)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Cursor API key status: %s", err.Error()))
-	}
-
-	return &CursorSettings{
-		KeyConfigured: result.HasKey,
-		KeyLastFour:   utility.ToStringPtr(result.KeyLastFour),
-	}, nil
+// VariantQuarantineStatus is the resolver for the variantQuarantineStatus field.
+func (r *queryResolver) VariantQuarantineStatus(ctx context.Context, projectIdentifier string, buildVariant string) (*restModel.APIVariantQuarantineStatus, error) {
+	return getVariantQuarantineStatusResponse(ctx, projectIdentifier, buildVariant)
 }
 
 // MyPublicKeys is the resolver for the myPublicKeys field.

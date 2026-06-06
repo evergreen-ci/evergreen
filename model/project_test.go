@@ -380,6 +380,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Id: "h",
 		Distro: distro.Distro{
 			Id:      "d1",
+			Arch:    "linux_amd64",
 			WorkDir: "/home/evg",
 			Expansions: []distro.Expansion{
 				{
@@ -425,7 +426,7 @@ func TestPopulateExpansions(t *testing.T) {
 
 	expansions, err := PopulateExpansions(t.Context(), taskDoc, &h, "")
 	require.NoError(err)
-	require.Len(map[string]string(expansions), 26)
+	require.Len(map[string]string(expansions), 27)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -443,6 +444,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
 	assert.Equal("d1", expansions.Get("distro_id"))
+	assert.Equal("linux_amd64", expansions.Get("distro_arch"))
 	assert.Equal("release", expansions.Get("triggered_by_git_tag"))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
@@ -462,7 +464,7 @@ func TestPopulateExpansions(t *testing.T) {
 
 	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
 	require.NoError(err)
-	require.Len(map[string]string(expansions), 26)
+	require.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
 	assert.Equal("my_repo", expansions.Get("github_repo"))
@@ -488,7 +490,7 @@ func TestPopulateExpansions(t *testing.T) {
 	require.NoError(p.Insert(t.Context()))
 	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
 	require.NoError(err)
-	require.Len(map[string]string(expansions), 28)
+	require.Len(map[string]string(expansions), 29)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("github_merge_queue", expansions.Get("requester"))
@@ -506,7 +508,7 @@ func TestPopulateExpansions(t *testing.T) {
 	require.NoError(p.Insert(t.Context()))
 	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
 	require.NoError(err)
-	require.Len(map[string]string(expansions), 30)
+	require.Len(map[string]string(expansions), 31)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
@@ -535,7 +537,7 @@ func TestPopulateExpansions(t *testing.T) {
 
 	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
 	require.NoError(err)
-	require.Len(map[string]string(expansions), 30)
+	require.Len(map[string]string(expansions), 31)
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("my_repo", expansions.Get("github_repo"))
@@ -564,7 +566,7 @@ func TestPopulateExpansions(t *testing.T) {
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(t.Context(), taskDoc, &h, "")
 	require.NoError(err)
-	require.Len(map[string]string(expansions), 39)
+	require.Len(map[string]string(expansions), 40)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))

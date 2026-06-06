@@ -65,3 +65,4 @@ evergreen
 
 # Agent related files
 CLAUDE.local.md
+.claude/scheduled_tasks.lock

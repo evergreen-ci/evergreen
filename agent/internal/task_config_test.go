@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -153,5 +154,65 @@ func TestApplyFunctionVars(t *testing.T) {
 		assert.Equal(t, "original_value", tc.NewExpansions.Get("existing_key"))
 		cleanup()
 		assert.Equal(t, "original_value", tc.NewExpansions.Get("existing_key"))
+	})
+}
+
+func TestGetOrSetCachedAWSAccountID(t *testing.T) {
+	makeTaskConfig := func() *TaskConfig {
+		return &TaskConfig{}
+	}
+
+	t.Run("CacheMissCallsResolve", func(t *testing.T) {
+		tc := makeTaskConfig()
+		calls := 0
+		id, err := tc.GetOrSetCachedAWSAccountID("AKIAIOSFODNN7EXAMPLE", func() (string, error) {
+			calls++
+			return "123456789012", nil
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "123456789012", id)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("CacheHitSkipsResolve", func(t *testing.T) {
+		tc := makeTaskConfig()
+		calls := 0
+		resolver := func() (string, error) {
+			calls++
+			return "123456789012", nil
+		}
+		_, err := tc.GetOrSetCachedAWSAccountID("AKIAIOSFODNN7EXAMPLE", resolver)
+		require.NoError(t, err)
+		_, err = tc.GetOrSetCachedAWSAccountID("AKIAIOSFODNN7EXAMPLE", resolver)
+		require.NoError(t, err)
+		assert.Equal(t, 1, calls, "resolve should only be called once for the same key")
+	})
+
+	t.Run("DifferentKeysResolveIndependently", func(t *testing.T) {
+		tc := makeTaskConfig()
+		id1, err := tc.GetOrSetCachedAWSAccountID("KEY1", func() (string, error) { return "111111111111", nil })
+		require.NoError(t, err)
+		id2, err := tc.GetOrSetCachedAWSAccountID("KEY2", func() (string, error) { return "222222222222", nil })
+		require.NoError(t, err)
+		assert.Equal(t, "111111111111", id1)
+		assert.Equal(t, "222222222222", id2)
+	})
+
+	t.Run("ResolveErrorNotCached", func(t *testing.T) {
+		tc := makeTaskConfig()
+		calls := 0
+		resolver := func() (string, error) {
+			calls++
+			if calls == 1 {
+				return "", errors.New("transient error")
+			}
+			return "123456789012", nil
+		}
+		_, err := tc.GetOrSetCachedAWSAccountID("AKIAIOSFODNN7EXAMPLE", resolver)
+		assert.Error(t, err)
+		id, err := tc.GetOrSetCachedAWSAccountID("AKIAIOSFODNN7EXAMPLE", resolver)
+		require.NoError(t, err)
+		assert.Equal(t, "123456789012", id)
+		assert.Equal(t, 2, calls, "failed resolve should not be cached")
 	})
 }

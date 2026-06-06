@@ -264,8 +264,7 @@ const (
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
 
 	// maximum turnaround we want to maintain for all hosts for a given distro
-	MaxDurationPerDistroHost               = 30 * time.Minute
-	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
+	MaxDurationPerDistroHost = 30 * time.Minute
 
 	// Spawn hosts
 	SpawnHostExpireDays              = 30
@@ -293,6 +292,7 @@ const (
 	TagExpireOn          = "expire-on"
 	TagAllowRemoteAccess = "AllowRemoteAccess"
 	TagIsDebug           = "IsDebug"
+	TagHostName          = "host-name"
 	TagTaskID            = "task-id"
 	TagTaskExecution     = "task-execution"
 	TagBuildID           = "build-id"
@@ -518,8 +518,9 @@ const (
 	TaskEBSOnDemandStorageCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_storage_cost"
 	TaskEBSAdjustedStorageCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_storage_cost"
 
-	// S3 cost tracking otel span name — shared by per-file and aggregate events
-	S3CostTrackingOtelSpanName = "s3-cost-tracking"
+	// S3 cost tracking otel span name and span-level identity attributes
+	S3CostTrackingOtelSpanName        = "s3-cost-tracking"
+	TaskS3CostTaskStatusOtelAttribute = "evergreen.task.s3_cost.task_status"
 
 	// S3 cost tracking otel attributes — task-level artifact aggregates
 	TaskS3ArtifactPutRequestsOtelAttribute         = "evergreen.task.s3_cost.artifact_put_requests"
@@ -871,6 +872,8 @@ const (
 	AttachResultsCommandName      = "attach.results"
 	AttachArtifactsCommandName    = "attach.artifacts"
 	AttachXUnitResultsCommandName = "attach.xunit_results"
+	CacheRestoreCommandName       = "cache.restore"
+	CacheSaveCommandName          = "cache.save"
 )
 
 var AttachCommands = []string{

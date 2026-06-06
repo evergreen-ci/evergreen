@@ -1586,7 +1586,7 @@ func TestModifyProjectVersions(t *testing.T) {
 			for _, b := range builds {
 				assert.NoError(b.Insert(t.Context()))
 			}
-			rm := makeModifyProjectVersionsHandler("").(*modifyProjectVersionsHandler)
+			rm := makeModifyProjectVersionsHandler().(*modifyProjectVersionsHandler)
 			test(t, rm)
 		})
 	}

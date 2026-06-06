@@ -19,6 +19,7 @@ const (
 	limitFlagName           = "limit"
 	localModulesFlagName    = "local_modules"
 	moduleFlagName          = "module"
+	noBrowserFlagName       = "no-browser"
 	overwriteConfFlagName   = "overwrite"
 	parameterFlagName       = "param"
 	patchAliasFlagName      = "alias"

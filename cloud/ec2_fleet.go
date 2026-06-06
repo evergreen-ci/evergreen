@@ -270,7 +270,7 @@ func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType st
 	}
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
 	if err != nil {
-		return errors.Wrapf(err, "describing instance types offered for region '%s", m.region)
+		return errors.Wrapf(err, "describing instance types offered for region '%s'", m.region)
 	}
 	validTypes := []string{}
 	for _, availableType := range output.InstanceTypeOfferings {
@@ -478,6 +478,10 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	ctx, span := tracer.Start(ctx, "spawnFleetHost")
 	defer span.End()
 
+	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
+		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
+	}
+
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
@@ -500,7 +504,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	}
 
 	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
-		return errors.Wrapf(err, "unable to upload launch template for host '%s'", h.Id)
+		return errors.Wrapf(err, "uploading launch template for host '%s'", h.Id)
 	}
 
 	instanceID, err := m.requestFleet(ctx, h, ec2Settings)

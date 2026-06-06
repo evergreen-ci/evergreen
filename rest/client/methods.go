@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/kanopy-platform/kanopy-oidc-lib/pkg/dex"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -38,6 +40,20 @@ var (
 		"claimed by another client",
 		"refresh token expired",
 	}
+	errInvalidOAuthToken = errors.New("invalid OAuth token")
+)
+
+const (
+	oauthCallbackPort     = "8888"
+	oauthLockWaitTimeout  = 2 * time.Minute
+	oauthLockPollInterval = 200 * time.Millisecond
+)
+
+type oauthFlow int
+
+const (
+	oauthFlowAuthCode oauthFlow = iota
+	oauthFlowDevice
 )
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
@@ -394,7 +410,7 @@ func (c *communicatorImpl) getUser(ctx context.Context, userID string) (*model.A
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error sending request to get user '%s'", userID)
+		return nil, errors.Wrapf(err, "sending request to get user '%s'", userID)
 	}
 	defer resp.Body.Close()
 
@@ -404,7 +420,7 @@ func (c *communicatorImpl) getUser(ctx context.Context, userID string) (*model.A
 
 	user := &model.APIDBUser{}
 	if err = utility.ReadJSON(resp.Body, user); err != nil {
-		return nil, errors.Wrap(err, "error reading JSON response body")
+		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 
 	return user, nil
@@ -739,7 +755,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "error sending request to get service flags")
+		return nil, errors.Wrap(err, "sending request to get service flags")
 	}
 	defer resp.Body.Close()
 
@@ -749,7 +765,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 
 	flags := &model.APIServiceFlags{}
 	if err = utility.ReadJSON(resp.Body, flags); err != nil {
-		return nil, errors.Wrap(err, "error reading JSON response body")
+		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 
 	return flags, nil
@@ -1945,47 +1961,55 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	ctx = oidc.ClientContext(ctx, httpClient)
 
 	loader := &dex.FileTokenLoader{}
-
-	opts = append(opts,
+	baseOpts := append(opts,
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
 		dex.WithFallbackToStdOut(true),
-		dex.WithFlow("device"),
-		dex.WithNoBrowser(doNotUseBrowser),
 	)
+
+	flow := oauthFlowAuthCode
+	if doNotUseBrowser {
+		flow = oauthFlowDevice
+	} else if !callbackPortAvailable(oauthCallbackPort) {
+		grip.Notice(ctx, message.Fields{
+			"message": "OAuth callback port unavailable; using device code flow",
+			"port":    oauthCallbackPort,
+		})
+		flow = oauthFlowDevice
+	}
 
 	// The Dex client logs using logrus. The client doesn't
 	// have any way to turn off debug logs within it's API.
 	// We set the output to io.Discard to suppress debug logs.
 	logrus.SetOutput(io.Discard)
 
-	client, err := dex.NewClient(append(opts, dex.WithTokenLoader(loader))...)
-	if err != nil {
-		return nil, "", err
-	}
-	defer client.Close()
-
-	// Only remove the lock file if the owning process is dead, to avoid
-	// racing with a concurrent process that is actively refreshing.
-	tokenLockFilePath := client.TokenFilePath() + ".lock"
-	if err := removeStaleOAuthLockFile(tokenLockFilePath); err != nil {
-		grip.Warning(ctx, errors.Wrapf(err, "removing stale OAuth token lock file at '%s'", tokenLockFilePath))
+	token, tokenPath, err := requestValidOAuthToken(ctx, baseOpts, loader, flow)
+	if err == nil {
+		return token, tokenPath, nil
 	}
 
-	// This attempt tries to get a token or refreshes using the refresh token.
-	token, err := client.Token()
-	// We have to explicitly check the expiry is valid because the OAuth
-	// library doesn't consider a token with a zero time expiry as expired.
-	if err == nil && token.Expiry.After(time.Now()) {
-		return token, client.TokenFilePath(), nil
+	if err != nil && flow == oauthFlowAuthCode && isPortBindError(err) {
+		grip.Notice(ctx, "OAuth auth-code flow failed due to a port conflict; falling back to device code flow")
+		flow = oauthFlowDevice
+		token, tokenPath, err = requestValidOAuthToken(ctx, baseOpts, loader, flow)
+		if err == nil {
+			return token, tokenPath, nil
+		}
+	}
+
+	if err != nil && isOAuthLockClaimedError(err) {
+		token, tokenPath, err = requestValidOAuthToken(ctx, baseOpts, loader, flow)
+		if err == nil {
+			return token, tokenPath, nil
+		}
 	}
 
 	shouldRetry := false
-	if token != nil && token.Expiry.Before(time.Now()) {
-		// Retry if the token is expired.
+	if errors.Is(err, errInvalidOAuthToken) {
+		shouldRetry = false
+	} else if token != nil && token.Expiry.Before(time.Now()) {
 		shouldRetry = true
 	} else if err != nil {
-		// Otherwise, check the error to see if we should retry.
 		clientErrString := strings.ToLower(err.Error())
 		for _, retryIfFound := range oauthRetryErrors {
 			if strings.Contains(clientErrString, retryIfFound) {
@@ -1996,18 +2020,164 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 	}
 
 	if !shouldRetry {
-		return nil, client.TokenFilePath(), err
+		return nil, tokenPath, err
 	}
 
-	// This client prevents the Dex client from using the refresh token.
-	client, err = dex.NewClient(append(opts, dex.WithTokenLoader(&tokenLoaderWithoutRefresh{loader}))...)
+	return requestValidOAuthToken(ctx, baseOpts, &tokenLoaderWithoutRefresh{loader}, flow)
+}
+
+// requestValidOAuthToken removes an invalid cached token and retries once so users can recover from a poisoned token file.
+// A poisoned token file can be caused by a fradulent zero time. The OIDC/OAuth
+// libraries treat a zero time as a valid token, which is never the case for
+// our tokens.
+// The zero time can be caused by another library running the oauth flow themselves (evergreen.py)
+// or by the dex library writing the token file with incorrect state (their
+// Close function always writes the token file, even if it's invalid).
+func requestValidOAuthToken(ctx context.Context, baseOpts []dex.ClientOption, loader dex.TokenLoader, flow oauthFlow) (*oauth2.Token, string, error) {
+	token, tokenPath, err := requestOAuthToken(ctx, baseOpts, loader, flow)
 	if err != nil {
-		return nil, client.TokenFilePath(), err
+		return token, tokenPath, err
+	}
+	if err := validateOAuthToken(token); err == nil {
+		return token, tokenPath, nil
+	}
+	if err := removeOAuthTokenFile(tokenPath); err != nil {
+		return nil, tokenPath, err
+	}
+
+	token, tokenPath, err = requestOAuthToken(ctx, baseOpts, loader, flow)
+	if err != nil {
+		return token, tokenPath, err
+	}
+	if err := validateOAuthToken(token); err != nil {
+		if removeErr := removeOAuthTokenFile(tokenPath); removeErr != nil {
+			return nil, tokenPath, removeErr
+		}
+		return token, tokenPath, err
+	}
+	return token, tokenPath, nil
+}
+
+func validateOAuthToken(token *oauth2.Token) error {
+	switch {
+	case token == nil:
+		return errors.Wrap(errInvalidOAuthToken, "OAuth token is missing")
+	case token.AccessToken == "":
+		return errors.Wrap(errInvalidOAuthToken, "OAuth token is missing an access token")
+	case token.Expiry.IsZero():
+		return errors.Wrap(errInvalidOAuthToken, "OAuth token is missing an expiry")
+	case !token.Expiry.After(time.Now()):
+		return errors.Wrapf(errInvalidOAuthToken, "OAuth token expired at %s", token.Expiry)
+	default:
+		return nil
+	}
+}
+
+func requestOAuthToken(ctx context.Context, baseOpts []dex.ClientOption, loader dex.TokenLoader, flow oauthFlow) (*oauth2.Token, string, error) {
+	opts := append(append([]dex.ClientOption{}, baseOpts...), oauthFlowOptions(flow)...)
+	opts = append(opts, dex.WithTokenLoader(loader))
+
+	client, err := dex.NewClient(opts...)
+	if err != nil {
+		return nil, "", err
 	}
 	defer client.Close()
 
-	token, err = client.Token()
-	return token, client.TokenFilePath(), err
+	tokenPath := client.TokenFilePath()
+	if err := removeInvalidOAuthTokenCacheIfUnlocked(ctx, tokenPath, oauthLockWaitTimeout); err != nil {
+		return nil, tokenPath, err
+	}
+
+	token, err := client.Token()
+	return token, tokenPath, err
+}
+
+func oauthFlowOptions(flow oauthFlow) []dex.ClientOption {
+	if flow == oauthFlowDevice {
+		return []dex.ClientOption{dex.WithFlow("device"), dex.WithNoBrowser(true)}
+	}
+	return []dex.ClientOption{dex.WithFlow("auth-code")}
+}
+
+func callbackPortAvailable(port string) bool {
+	listener, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
+	if err != nil {
+		return false
+	}
+	return listener.Close() == nil
+}
+
+func isPortBindError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errString := strings.ToLower(err.Error())
+	return strings.Contains(errString, "address already in use") ||
+		strings.Contains(errString, "bind:") ||
+		strings.Contains(errString, "listen tcp")
+}
+
+func isOAuthLockClaimedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, dex.ErrLockClaimed) || strings.Contains(strings.ToLower(err.Error()), "lock claimed by process")
+}
+
+func removeInvalidOAuthTokenCacheIfUnlocked(ctx context.Context, tokenFilePath string, timeout time.Duration) error {
+	if tokenFilePath == "" {
+		return nil
+	}
+	lockPath := tokenFilePath + ".lock"
+	if err := waitForOAuthLockRelease(ctx, lockPath, timeout); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(tokenFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "reading OAuth token file at '%s'", tokenFilePath)
+	}
+	token := &oauth2.Token{}
+	if err := json.Unmarshal(data, token); err == nil && !token.Expiry.IsZero() {
+		return nil
+	}
+	return removeOAuthTokenFile(tokenFilePath)
+}
+
+func removeOAuthTokenFile(tokenFilePath string) error {
+	if tokenFilePath == "" {
+		return nil
+	}
+	if err := os.Remove(tokenFilePath); err != nil && !os.IsNotExist(err) {
+		return errors.Wrapf(err, "removing invalid OAuth token file at '%s'", tokenFilePath)
+	}
+	return nil
+}
+
+func waitForOAuthLockRelease(ctx context.Context, lockFilePath string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if _, err := os.Stat(lockFilePath); os.IsNotExist(err) {
+			return nil
+		}
+		if err := removeStaleOAuthLockFile(lockFilePath); err != nil {
+			return err
+		}
+		if _, err := os.Stat(lockFilePath); os.IsNotExist(err) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(oauthLockPollInterval):
+		}
+	}
+	return errors.Errorf("timed out after %s waiting for OAuth token lock at '%s'", timeout, lockFilePath)
 }
 
 type tokenLoaderWithoutRefresh struct {

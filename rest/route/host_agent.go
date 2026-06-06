@@ -357,7 +357,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		case evergreen.DispatcherVersionRevisedWithDependencies:
 			queueItem, err = dispatcher.RefreshFindNextTask(ctx, d.Id, spec, amiUpdatedTime)
 			if err != nil {
-				return nil, false, errors.Wrap(err, "problem getting next task")
+				return nil, false, errors.Wrap(err, "getting next task")
 			}
 		default:
 			return nil, false, errors.Errorf("invalid dispatcher version '%s' for host '%s'", d.DispatcherSettings.Version, currentHost.Id)
@@ -482,17 +482,21 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
-		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
+		// isTaskGroupNewToHost only fires when the next task is itself in a task group, so the standalone-next-task case is checked explicitly.
+		if details.TaskGroup != "" && (nextTask.TaskGroup == "" || isTaskGroupNewToHost(currentHost, nextTask)) {
 			grip.Debug(ctx, message.Fields{
-				"message":              "next task is a standalone task or part of a different task group; not updating running task group task, because current task group needs to be torn down",
-				"current_task_group":   details.TaskGroup,
-				"task_distro_id":       nextTask.DistroId,
-				"task_id":              nextTask.Id,
-				"next_task_group":      nextTask.TaskGroup,
-				"task_build_variant":   nextTask.BuildVariant,
-				"task_version":         nextTask.Version,
-				"task_project":         nextTask.Project,
-				"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
+				"message":               "next task is a standalone task or part of a different task group instance; not updating running task group task, because current task group needs to be torn down",
+				"current_task_group":    details.TaskGroup,
+				"current_build_variant": currentHost.LastBuildVariant,
+				"current_project":       currentHost.LastProject,
+				"current_version":       currentHost.LastVersion,
+				"task_distro_id":        nextTask.DistroId,
+				"task_id":               nextTask.Id,
+				"next_task_group":       nextTask.TaskGroup,
+				"task_build_variant":    nextTask.BuildVariant,
+				"task_version":          nextTask.Version,
+				"task_project":          nextTask.Project,
+				"task_group_max_hosts":  nextTask.TaskGroupMaxHosts,
 			})
 			return nil, true, nil
 		}

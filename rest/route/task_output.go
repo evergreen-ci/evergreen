@@ -32,6 +32,8 @@ type getTaskOutputLogsBaseHandler struct {
 }
 
 func (h *getTaskOutputLogsBaseHandler) parse(ctx context.Context, r *http.Request) error {
+	h.url = GetURL(ctx)
+
 	vals := r.URL.Query()
 
 	var (
@@ -166,10 +168,8 @@ type getTaskLogsHandler struct {
 	getTaskOutputLogsBaseHandler
 }
 
-func makeGetTaskLogs(url string) *getTaskLogsHandler {
-	return &getTaskLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: url},
-	}
+func makeGetTaskLogs() *getTaskLogsHandler {
+	return &getTaskLogsHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -191,9 +191,7 @@ func makeGetTaskLogs(url string) *getTaskLogsHandler {
 //	@Param			paginate		query		bool	false	"If set to true, paginates the response."
 //	@Success		200				{string}	string
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
-	return &getTaskLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: h.url},
-	}
+	return &getTaskLogsHandler{}
 }
 
 func (h *getTaskLogsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -232,10 +230,8 @@ type getTestLogsHandler struct {
 	getTaskOutputLogsBaseHandler
 }
 
-func makeGetTestLogs(url string) *getTestLogsHandler {
-	return &getTestLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: url},
-	}
+func makeGetTestLogs() *getTestLogsHandler {
+	return &getTestLogsHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -258,9 +254,7 @@ func makeGetTestLogs(url string) *getTestLogsHandler {
 //	@Param			paginate		query		bool	false	"If set to true, paginates the response."
 //	@Success		200				{string}	string
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
-	return &getTestLogsHandler{
-		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: h.url},
-	}
+	return &getTestLogsHandler{}
 }
 
 func (h *getTestLogsHandler) Parse(ctx context.Context, r *http.Request) error {

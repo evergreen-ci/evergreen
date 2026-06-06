@@ -97,6 +97,8 @@ var (
 	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
 	webhookSecretMigrationDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretMigrationDisabled")
 	webhookSecretCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretCleanupDisabled")
+	secondaryReadsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
+	backgroundCommandFailureEnabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCommandFailureEnabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

@@ -251,6 +251,7 @@ type Project {
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
+  waterfallDisabled: Boolean
   displayName: String!
   enabled: Boolean
   externalLinks: [ExternalLink!]
@@ -356,6 +357,7 @@ type ProjectLite {
   debugSpawnHostsDisabled: Boolean
   disabledStatsCache: Boolean
   dispatchingDisabled: Boolean
+  waterfallDisabled: Boolean
   displayName: String!
   enabled: Boolean
   githubChecksEnabled: Boolean

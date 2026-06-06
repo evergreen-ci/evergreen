@@ -17,6 +17,9 @@ const (
 )
 
 func DoProjectActivation(ctx context.Context, projectRef *ProjectRef, ts time.Time) ([]string, error) {
+	if !projectRef.IsWaterfallEnabled() {
+		return nil, nil
+	}
 	if projectRef.RunEveryMainlineCommit {
 		return activateEveryRecentMainlineCommitForProject(ctx, projectRef, ts)
 	}

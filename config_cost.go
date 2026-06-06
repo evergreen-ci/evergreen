@@ -163,6 +163,24 @@ func IsDevprodOwnedArtifactIAMRole(awsRoleARN string, devprodOwnedAWSAccountIDs 
 	return ok && IsInDevProdOwnedAccountList(acctID, devprodOwnedAWSAccountIDs)
 }
 
+// IsDevprodOwnedUpload reports whether an upload belongs to a devprod-owned account.
+// When awsRoleARN is non-empty, the account ID is derived from the ARN. When awsRoleARN
+// is empty, awsAccountID is used directly (for key+secret auth where no ARN is available).
+// Returns true when the owned account list is empty, meaning all uploads are tracked.
+func IsDevprodOwnedUpload(awsRoleARN, awsAccountID string, devprodOwnedAWSAccountIDs []string) bool {
+	if len(devprodOwnedAWSAccountIDs) == 0 {
+		return true
+	}
+	if awsRoleARN != "" {
+		acctID, ok := util.AWSAccountIDFromIAMARN(awsRoleARN)
+		return ok && IsInDevProdOwnedAccountList(acctID, devprodOwnedAWSAccountIDs)
+	}
+	if awsAccountID != "" {
+		return IsInDevProdOwnedAccountList(awsAccountID, devprodOwnedAWSAccountIDs)
+	}
+	return false
+}
+
 // IsConfigured returns true if any finance config field is set.
 func (c *CostConfig) IsConfigured() bool {
 	return c.FinanceFormula != 0 ||

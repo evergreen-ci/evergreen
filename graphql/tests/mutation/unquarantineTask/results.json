@@ -1,0 +1,46 @@
+{
+  "tests": [
+    {
+      "query_file": "nonexistent_task.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "finding project for task 'nonexistent_task': task not found",
+            "path": ["unquarantineTask", "opts", "taskId"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "cannot modify quarantine state on display task 'display_task', select an execution task instead",
+            "path": ["unquarantineTask"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "unquarantineTask": {
+            "id": "quarantine_target",
+            "displayName": "my_task",
+            "buildVariant": "ubuntu"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 )
@@ -78,12 +77,7 @@ func New(apiURL string) Config {
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
-		hostIdParam, hasHostIdParam := args["hostId"].(string)
-		// There's one usage of "host" as a param name so we have to consider that case here. Can be removed when DEVPROD-33014 is complete.
-		hostParam, hasHostParam := args["host"].(string)
-		hasHostId := hasHostIdParam || hasHostParam
-		hostId := util.CoalesceString(hostIdParam, hostParam)
-
+		hostId, hasHostId := args["hostId"].(string)
 		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
 
 		// If no host ID is present, the field is optional and null, so skip the access check.
@@ -356,12 +350,7 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "converting args into map")
 		}
 
-		volumeIdParam, hasVolumeIdParam := args["volumeId"].(string)
-		// There's one usage of "volume" as a param name so we have to consider that case here. Can be removed when DEVPROD-33014 is complete.
-		volumeParam, hasVolumeParam := args["volume"].(string)
-		hasVolumeId := hasVolumeIdParam || hasVolumeParam
-		volumeId := util.CoalesceString(volumeIdParam, volumeParam)
-
+		volumeId, hasVolumeId := args["volumeId"].(string)
 		// If no volume ID is present, the field is optional and null, so skip the access check.
 		if !hasVolumeId {
 			return next(ctx)

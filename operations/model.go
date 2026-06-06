@@ -683,19 +683,11 @@ func (s *ClientSettings) getOAuthToken(ctx context.Context) (*oauth2.Token, stri
 func (s *ClientSettings) SetOAuthToken(ctx context.Context) error {
 	token, path, err := s.getOAuthToken(ctx)
 	if err != nil {
-		// The auth library caches tokens in a file. Sometimes, the tokens are expired and
-		// we need to remove the file to get a new token.
-		if path != "" {
-			if delErr := os.RemoveAll(path); delErr != nil {
-				grip.Warning(ctx, errors.Wrapf(delErr, "removing OAuth token file at '%s'", path))
-			}
-			token, path, err = s.getOAuthToken(ctx)
-			if err != nil {
-				return errors.Wrap(err, "getting OAuth token after removing token file")
-			}
-		} else {
-			return errors.Wrap(err, "getting OAuth token")
-		}
+		// `getOAuthToken` has many fallbacks and retries internally
+		// so reaching this point typically means:
+		// 1. The user's device cannot use the browser and needs to use the device code flow.
+		// 2. The token lock file is stuck in a bad state and needs to be deleted.
+		return errors.Wrap(err, "getting OAuth token; if your device cannot use the browser, try running 'evergreen login --no-browser'. if you've ran this command before, delete the oauth.token_file_path from your configuration file and it's corresponding lock file (same path but with an appended .lock extension) and try again.")
 	}
 
 	s.OAuth.AccessToken = token.AccessToken

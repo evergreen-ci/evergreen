@@ -554,6 +554,8 @@ type APIProjectRef struct {
 	RepotrackerError *APIRepositoryErrorDetails `json:"repotracker_error"`
 	// Disable task dispatching.
 	DispatchingDisabled *bool `json:"dispatching_disabled"`
+	// Disable automatic task activation on the waterfall.
+	WaterfallDisabled *bool `json:"waterfall_disabled"`
 	// Disable stepback.
 	StepbackDisabled *bool `json:"stepback_disabled"`
 	// Enable debug spawn host functionality.
@@ -649,6 +651,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		PatchingDisabled:                 utility.BoolPtrCopy(p.PatchingDisabled),
 		RepotrackerDisabled:              utility.BoolPtrCopy(p.RepotrackerDisabled),
 		DispatchingDisabled:              utility.BoolPtrCopy(p.DispatchingDisabled),
+		WaterfallDisabled:                utility.BoolPtrCopy(p.WaterfallDisabled),
 		StepbackDisabled:                 utility.BoolPtrCopy(p.StepbackDisabled),
 		StepbackBisect:                   utility.BoolPtrCopy(p.StepbackBisect),
 		VersionControlEnabled:            utility.BoolPtrCopy(p.VersionControlEnabled),
@@ -757,6 +760,7 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 	p.PatchingDisabled = utility.BoolPtrCopy(projectRef.PatchingDisabled)
 	p.RepotrackerDisabled = utility.BoolPtrCopy(projectRef.RepotrackerDisabled)
 	p.DispatchingDisabled = utility.BoolPtrCopy(projectRef.DispatchingDisabled)
+	p.WaterfallDisabled = utility.BoolPtrCopy(projectRef.WaterfallDisabled)
 	p.StepbackDisabled = utility.BoolPtrCopy(projectRef.StepbackDisabled)
 	p.StepbackBisect = utility.BoolPtrCopy(projectRef.StepbackBisect)
 	p.VersionControlEnabled = utility.BoolPtrCopy(projectRef.VersionControlEnabled)

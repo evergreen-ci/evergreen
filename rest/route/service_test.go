@@ -383,7 +383,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
-					url:        "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -429,7 +428,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
-					url:        "http://evergreen.example.net",
 					parsleyURL: "http://parsley.example.net",
 				}
 
@@ -473,7 +471,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", prefix, taskToStartAt),
 					limit:      limit,
-					url:        "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -516,7 +513,6 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					commitHash: commit,
 					key:        fmt.Sprintf("%dtask_%d", 0, taskToStartAt),
 					limit:      limit,
-					url:        "http://evergreen.example.net",
 				}
 
 				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
@@ -636,7 +632,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit:      limit,
 					key:        fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
-					url:        "http://evergreen.example.net",
 					parsleyURL: "http://parsley.example.net",
 				}
 
@@ -681,7 +676,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit:      limit,
 					key:        fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
-					url:        "http://evergreen.example.net",
 					parsleyURL: "http://parsley.example.net",
 				}
 
@@ -725,7 +719,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit:      limit,
 					key:        fmt.Sprintf("%dbuild%d", prefix, taskToStartAt),
-					url:        "http://evergreen.example.net",
 					parsleyURL: "http://parsley.example.net",
 				}
 
@@ -768,7 +761,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				tbh := &tasksByBuildHandler{
 					limit:      limit,
 					key:        fmt.Sprintf("%dbuild%d", 0, taskToStartAt),
-					url:        "http://evergreen.example.net",
 					parsleyURL: "http://parsley.example.net",
 				}
 
@@ -805,7 +797,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					limit:              1,
 					key:                "0build0",
 					fetchAllExecutions: true,
-					url:                "http://evergreen.example.net",
 					parsleyURL:         "http://parsley.example.net",
 				}
 
@@ -1040,7 +1031,7 @@ func TestTaskResetPrepare(t *testing.T) {
 func TestTaskGetHandler(t *testing.T) {
 	Convey("With test server with a handler and mock data", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
-		rm := makeGetTaskRoute("https://parsley.net/yee", "https://example.net/test")
+		rm := makeGetTaskRoute("https://parsley.net/yee")
 
 		Convey("and task is in the service context", func() {
 			newTask := task.Task{
@@ -1264,8 +1255,9 @@ func TestParentTaskInfo(t *testing.T) {
 	assert.NoError(t, randomTask.Insert(t.Context()))
 	tbh := &tasksByBuildHandler{
 		limit: 100,
-		url:   "http://evergreen.example.net",
 	}
+	ctx = withRequestHost(ctx, "evergreen.example.net")
+	evergreen.GetEnvironment().Settings().Ui.Url = "http://evergreen.example.net"
 	route := "/rest/v2/builds/test/tasks?fetch_all_executions=false&fetch_parent_ids=true&start_at=execTask0"
 	r, err := http.NewRequest(http.MethodGet, route, nil)
 	assert.NoError(t, err)
@@ -1311,6 +1303,18 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []a
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	baseURL := ""
+	if pages.Next != nil {
+		baseURL = pages.Next.BaseURL
+	} else if pages.Prev != nil {
+		baseURL = pages.Prev.BaseURL
+	}
+	if baseURL != "" {
+		settings := evergreen.GetEnvironment().Settings()
+		settings.Ui.Url = baseURL
+		ctx = withRequestHost(ctx, urlHostname(baseURL))
+	}
 
 	resp := h.Run(ctx)
 	require.NotNil(t, resp)

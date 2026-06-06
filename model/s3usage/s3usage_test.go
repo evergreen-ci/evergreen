@@ -135,6 +135,59 @@ func TestS3Usage(t *testing.T) {
 		assert.False(t, s3Usage.IsZero())
 	})
 
+	t.Run("IncrementArtifactsWithAccountIDOwnedShouldRecord", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		owned := []string{"123456789012"}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+			DevprodOwnedAWSAccountIDs: owned,
+			PutRequests:               7,
+			UploadBytes:               70,
+			FileCount:                 1,
+			MaxPuts:                   7,
+			MinPuts:                   7,
+			Bucket:                    "b",
+			AWSAccountID:              "123456789012",
+			Files:                     []FileMetrics{{RemotePath: "z", FileSizeBytes: 70}},
+		})
+		assert.Equal(t, 7, s3Usage.Artifacts.PutRequests)
+		assert.False(t, s3Usage.IsZero())
+	})
+
+	t.Run("IncrementArtifactsWithAccountIDUnownedShouldSkip", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		owned := []string{"123456789012"}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+			DevprodOwnedAWSAccountIDs: owned,
+			PutRequests:               7,
+			UploadBytes:               70,
+			FileCount:                 1,
+			MaxPuts:                   7,
+			MinPuts:                   7,
+			Bucket:                    "b",
+			AWSAccountID:              "999999999999",
+			Files:                     []FileMetrics{{RemotePath: "z", FileSizeBytes: 70}},
+		})
+		assert.Equal(t, 0, s3Usage.Artifacts.PutRequests)
+		assert.True(t, s3Usage.IsZero())
+	})
+
+	t.Run("IncrementArtifactsWithNoARNAndNoAccountIDShouldSkip", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		owned := []string{"123456789012"}
+		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+			DevprodOwnedAWSAccountIDs: owned,
+			PutRequests:               5,
+			UploadBytes:               50,
+			FileCount:                 1,
+			MaxPuts:                   5,
+			MinPuts:                   5,
+			Bucket:                    "b",
+			Files:                     []FileMetrics{{RemotePath: "z", FileSizeBytes: 50}},
+		})
+		assert.Equal(t, 0, s3Usage.Artifacts.PutRequests)
+		assert.True(t, s3Usage.IsZero())
+	})
+
 	t.Run("IncrementLogs", func(t *testing.T) {
 		s3Usage := S3Usage{}
 		assert.Equal(t, 0, s3Usage.Logs.PutRequests)
@@ -147,6 +200,32 @@ func TestS3Usage(t *testing.T) {
 		s3Usage.IncrementLogs(10, 2048, "", "")
 		assert.Equal(t, 15, s3Usage.Logs.PutRequests)
 		assert.Equal(t, int64(3072), s3Usage.Logs.UploadBytes)
+	})
+
+	t.Run("IncrementLogsPerTypeBytesAndKey", func(t *testing.T) {
+		s3Usage := S3Usage{}
+
+		s3Usage.IncrementLogs(1, 100, LogTypeTask, "proj/task/0/task_logs/task")
+		s3Usage.IncrementLogs(2, 200, LogTypeAgent, "proj/task/0/task_logs/agent")
+		s3Usage.IncrementLogs(3, 300, LogTypeSystem, "proj/task/0/task_logs/system")
+		s3Usage.IncrementLogs(4, 400, LogTypeTest, "proj/task/0/test_logs/mytest")
+
+		assert.Equal(t, 10, s3Usage.Logs.PutRequests)
+		assert.Equal(t, int64(1000), s3Usage.Logs.UploadBytes)
+
+		assert.Equal(t, int64(100), s3Usage.Logs.Task.Bytes)
+		assert.Equal(t, "proj/task/0/task_logs/task", s3Usage.Logs.Task.LogKey)
+		assert.Equal(t, int64(200), s3Usage.Logs.Agent.Bytes)
+		assert.Equal(t, "proj/task/0/task_logs/agent", s3Usage.Logs.Agent.LogKey)
+		assert.Equal(t, int64(300), s3Usage.Logs.System.Bytes)
+		assert.Equal(t, "proj/task/0/task_logs/system", s3Usage.Logs.System.LogKey)
+		assert.Equal(t, int64(400), s3Usage.Logs.Test.Bytes)
+		assert.Equal(t, "proj/task/0/test_logs/mytest", s3Usage.Logs.Test.LogKey)
+
+		// Bytes accumulate across multiple calls; key is overwritten only when non-empty.
+		s3Usage.IncrementLogs(1, 50, LogTypeTest, "")
+		assert.Equal(t, int64(450), s3Usage.Logs.Test.Bytes)
+		assert.Equal(t, "proj/task/0/test_logs/mytest", s3Usage.Logs.Test.LogKey, "key should not be overwritten by empty string")
 	})
 
 	t.Run("NilReceiverIsZero", func(t *testing.T) {

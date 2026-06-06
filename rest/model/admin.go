@@ -2078,6 +2078,9 @@ type APIServiceFlags struct {
 	EmailNotificationsDisabled   bool `json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
+	SecondaryReadsDisabled       bool `json:"secondary_reads_disabled"`
+
+	BackgroundCommandFailureEnabled bool `json:"background_command_failure_enabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2502,6 +2505,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.EmailNotificationsDisabled = v.EmailNotificationsDisabled
 		as.WebhookNotificationsDisabled = v.WebhookNotificationsDisabled
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
+		as.SecondaryReadsDisabled = v.SecondaryReadsDisabled
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
@@ -2525,6 +2529,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
 		as.WebhookSecretMigrationDisabled = v.WebhookSecretMigrationDisabled
 		as.WebhookSecretCleanupDisabled = v.WebhookSecretCleanupDisabled
+		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2551,6 +2556,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		EmailNotificationsDisabled:         as.EmailNotificationsDisabled,
 		WebhookNotificationsDisabled:       as.WebhookNotificationsDisabled,
 		GithubStatusAPIDisabled:            as.GithubStatusAPIDisabled,
+		SecondaryReadsDisabled:             as.SecondaryReadsDisabled,
 		BackgroundStatsDisabled:            as.BackgroundStatsDisabled,
 		TaskLoggingDisabled:                as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:              as.CacheStatsJobDisabled,
@@ -2574,6 +2580,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 		WebhookSecretMigrationDisabled:     as.WebhookSecretMigrationDisabled,
 		WebhookSecretCleanupDisabled:       as.WebhookSecretCleanupDisabled,
+		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 	}, nil
 }
 

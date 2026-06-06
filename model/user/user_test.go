@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -1007,27 +1006,6 @@ func TestViewableProjectSettings(t *testing.T) {
 	assert.Contains(t, projects, "edit2")
 	assert.Contains(t, projects, "view1")
 	assert.NotContains(t, projects, "other")
-}
-
-func TestUpdateParsleySettings(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection))
-
-	usr := DBUser{
-		Id: "me",
-	}
-	require.NoError(t, usr.Insert(t.Context()))
-
-	newSettings := parsley.Settings{
-		SectionsEnabled: utility.FalsePtr(),
-	}
-	err := usr.UpdateParsleySettings(t.Context(), newSettings)
-	require.NoError(t, err)
-	assert.False(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled))
-
-	dbUser, err := FindOneById(t.Context(), usr.Id)
-	require.NoError(t, err)
-	require.NotNil(t, dbUser)
-	assert.False(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled))
 }
 
 func TestUpdateBetaFeatures(t *testing.T) {

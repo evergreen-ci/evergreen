@@ -1,7 +1,0 @@
-mutation {
-  editSpawnHost(
-    spawnHost: { hostId: "i-0f81a2d39744003dd", volume: "vol-two" }
-  ) {
-    id
-  }
-}

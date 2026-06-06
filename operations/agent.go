@@ -158,10 +158,10 @@ func Agent() cli.Command {
 			// env vars to prevent them from being inherited by task
 			// subprocesses (e.g. shell.exec).
 			if err := os.Unsetenv(evergreen.HostIDEnvVar); err != nil {
-				return errors.Wrapf(err, "unsetting %s env var", evergreen.HostIDEnvVar)
+				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostIDEnvVar)
 			}
 			if err := os.Unsetenv(evergreen.HostSecretEnvVar); err != nil {
-				return errors.Wrapf(err, "unsetting %s env var", evergreen.HostSecretEnvVar)
+				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostSecretEnvVar)
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {

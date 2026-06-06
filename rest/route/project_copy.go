@@ -137,6 +137,18 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
+	if !p.usr.HasPermission(ctx, gimlet.PermissionOpts{
+		Resource:      copyToProjectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionProjectSettings,
+		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+	}) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("user '%s' is not authorized to modify variables for project '%s'", p.usr.Id, p.opts.CopyTo),
+		})
+	}
+
 	// Don't redact private variables unless it's a dry run
 	varsToCopy, err := data.FindProjectVarsById(ctx, copyFromProjectId, "", p.opts.DryRun)
 	if err != nil {

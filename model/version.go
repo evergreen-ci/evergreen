@@ -20,8 +20,11 @@ import (
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -78,7 +81,7 @@ type Version struct {
 	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
-	// We use a bool ptr in order to to distinguish the unset value from the default value
+	// We use a bool ptr in order to distinguish the unset value from the default value
 	Activated *bool `bson:"activated,omitempty" json:"activated,omitempty"`
 
 	// GitTags stores tags that were pushed to this version, while TriggeredByGitTag is for versions created by tags
@@ -361,6 +364,20 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 	return v.BuildVariants, nil
 }
 
+// versionS3CostBSONFields returns BSON pairs for the S3-only cost fields; EC2/EBS fields are managed by UpdateAggregateTaskCosts.
+func versionS3CostBSONFields(prefix string, c cost.Cost) bson.D {
+	return bson.D{
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3ArtifactPutCostKey), Value: c.OnDemandS3ArtifactPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3ArtifactPutCostKey), Value: c.AdjustedS3ArtifactPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3LogPutCostKey), Value: c.OnDemandS3LogPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3LogPutCostKey), Value: c.AdjustedS3LogPutCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3ArtifactStorageCostKey), Value: c.OnDemandS3ArtifactStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3ArtifactStorageCostKey), Value: c.AdjustedS3ArtifactStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.OnDemandS3LogStorageCostKey), Value: c.OnDemandS3LogStorageCost},
+		{Key: bsonutil.GetDottedKeyName(prefix, cost.AdjustedS3LogStorageCostKey), Value: c.AdjustedS3LogStorageCost},
+	}
+}
+
 // UpdateAggregateTaskCosts aggregates the actual and predicted costs from all execution tasks
 // in the version and updates the version's Cost and PredictedCost fields in the database.
 func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
@@ -384,24 +401,14 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		}},
 		{"$group": bson.M{
 			"_id": nil,
-			// Actual per-task costs summed for the version.
+			// Actual EC2/EBS per-task costs; S3 actual costs are accumulated per-task by IncrementVersionS3CostAndUsage.
 			"total_on_demand":                bson.M{"$sum": "$" + taskCostKey + "." + taskOnDemandCostKey},
 			"total_adjusted":                 bson.M{"$sum": "$" + taskCostKey + "." + taskAdjustedCostKey},
 			"total_on_demand_ebs_throughput": bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandEBSThroughputCostKey},
 			"total_adjusted_ebs_throughput":  bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedEBSThroughputCostKey},
 			"total_on_demand_ebs_storage":    bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandEBSStorageCostKey},
 			"total_adjusted_ebs_storage":     bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedEBSStorageCostKey},
-
-			"total_on_demand_s3_artifact_put_cost":     bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3ArtifactPutCostKey},
-			"total_adjusted_s3_artifact_put_cost":      bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3ArtifactPutCostKey},
-			"total_on_demand_s3_log_put_cost":          bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3LogPutCostKey},
-			"total_adjusted_s3_log_put_cost":           bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3LogPutCostKey},
-			"total_on_demand_s3_artifact_storage_cost": bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3ArtifactStorageCostKey},
-			"total_adjusted_s3_artifact_storage_cost":  bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3ArtifactStorageCostKey},
-			"total_on_demand_s3_log_storage_cost":      bson.M{"$sum": "$" + taskCostKey + "." + cost.OnDemandS3LogStorageCostKey},
-			"total_adjusted_s3_log_storage_cost":       bson.M{"$sum": "$" + taskCostKey + "." + cost.AdjustedS3LogStorageCostKey},
-
-			// Predicted per-task costs summed for the version (all components).
+			// Predicted per-task costs (all components including S3).
 			"expected_on_demand":                          bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskOnDemandCostKey},
 			"expected_adjusted":                           bson.M{"$sum": "$" + taskPredictedCostKey + "." + taskAdjustedCostKey},
 			"expected_on_demand_ebs_throughput":           bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandEBSThroughputCostKey},
@@ -416,13 +423,6 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			"expected_adjusted_s3_artifact_storage_cost":  bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedS3ArtifactStorageCostKey},
 			"expected_on_demand_s3_log_storage_cost":      bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.OnDemandS3LogStorageCostKey},
 			"expected_adjusted_s3_log_storage_cost":       bson.M{"$sum": "$" + taskPredictedCostKey + "." + cost.AdjustedS3LogStorageCostKey},
-
-			// S3 usage metrics (not dollar costs).
-			"total_artifact_put_requests": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3PutRequestsKey},
-			"total_artifact_upload_bytes": bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3UploadBytesKey},
-			"total_artifact_count":        bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3ArtifactsKey + "." + taskS3ArtifactCountKey},
-			"total_log_put_requests":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3PutRequestsKey},
-			"total_log_upload_bytes":      bson.M{"$sum": "$" + taskS3UsageKey + "." + taskS3LogsKey + "." + taskS3UploadBytesKey},
 		}},
 	}
 
@@ -439,16 +439,6 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		TotalAdjustedEBSThroughput float64 `bson:"total_adjusted_ebs_throughput"`
 		TotalOnDemandEBSStorage    float64 `bson:"total_on_demand_ebs_storage"`
 		TotalAdjustedEBSStorage    float64 `bson:"total_adjusted_ebs_storage"`
-
-		TotalOnDemandS3ArtifactPutCost     float64 `bson:"total_on_demand_s3_artifact_put_cost"`
-		TotalAdjustedS3ArtifactPutCost     float64 `bson:"total_adjusted_s3_artifact_put_cost"`
-		TotalOnDemandS3LogPutCost          float64 `bson:"total_on_demand_s3_log_put_cost"`
-		TotalAdjustedS3LogPutCost          float64 `bson:"total_adjusted_s3_log_put_cost"`
-		TotalOnDemandS3ArtifactStorageCost float64 `bson:"total_on_demand_s3_artifact_storage_cost"`
-		TotalAdjustedS3ArtifactStorageCost float64 `bson:"total_adjusted_s3_artifact_storage_cost"`
-		TotalOnDemandS3LogStorageCost      float64 `bson:"total_on_demand_s3_log_storage_cost"`
-		TotalAdjustedS3LogStorageCost      float64 `bson:"total_adjusted_s3_log_storage_cost"`
-
 		// Predicted costs (summed from task predicted_cost).
 		PredictedOnDemand              float64 `bson:"expected_on_demand"`
 		PredictedAdjusted              float64 `bson:"expected_adjusted"`
@@ -465,44 +455,26 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		PredictedAdjustedS3ArtifactStorageCost float64 `bson:"expected_adjusted_s3_artifact_storage_cost"`
 		PredictedOnDemandS3LogStorageCost      float64 `bson:"expected_on_demand_s3_log_storage_cost"`
 		PredictedAdjustedS3LogStorageCost      float64 `bson:"expected_adjusted_s3_log_storage_cost"`
-
-		TotalArtifactPutRequests int   `bson:"total_artifact_put_requests"`
-		TotalArtifactUploadBytes int64 `bson:"total_artifact_upload_bytes"`
-		TotalArtifactCount       int   `bson:"total_artifact_count"`
-		TotalLogPutRequests      int   `bson:"total_log_put_requests"`
-		TotalLogUploadBytes      int64 `bson:"total_log_upload_bytes"`
 	}
 	if err = cursor.All(ctx, &results); err != nil {
 		return errors.Wrap(err, "reading aggregated task cost results")
 	}
 
 	var total, predicted cost.Cost
-	var s3Total s3usage.S3Usage
 	if len(results) > 0 {
 		total.OnDemandEC2Cost = results[0].TotalOnDemand
 		total.AdjustedEC2Cost = results[0].TotalAdjusted
-		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
-		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
-
 		total.OnDemandEBSThroughputCost = results[0].TotalOnDemandEBSThroughput
 		total.AdjustedEBSThroughputCost = results[0].TotalAdjustedEBSThroughput
 		total.OnDemandEBSStorageCost = results[0].TotalOnDemandEBSStorage
 		total.AdjustedEBSStorageCost = results[0].TotalAdjustedEBSStorage
 
-		total.OnDemandS3ArtifactPutCost = results[0].TotalOnDemandS3ArtifactPutCost
-		total.AdjustedS3ArtifactPutCost = results[0].TotalAdjustedS3ArtifactPutCost
-		total.OnDemandS3LogPutCost = results[0].TotalOnDemandS3LogPutCost
-		total.AdjustedS3LogPutCost = results[0].TotalAdjustedS3LogPutCost
-		total.OnDemandS3ArtifactStorageCost = results[0].TotalOnDemandS3ArtifactStorageCost
-		total.AdjustedS3ArtifactStorageCost = results[0].TotalAdjustedS3ArtifactStorageCost
-		total.OnDemandS3LogStorageCost = results[0].TotalOnDemandS3LogStorageCost
-		total.AdjustedS3LogStorageCost = results[0].TotalAdjustedS3LogStorageCost
-
+		predicted.OnDemandEC2Cost = results[0].PredictedOnDemand
+		predicted.AdjustedEC2Cost = results[0].PredictedAdjusted
 		predicted.OnDemandEBSThroughputCost = results[0].PredictedOnDemandEBSThroughput
 		predicted.AdjustedEBSThroughputCost = results[0].PredictedAdjustedEBSThroughput
 		predicted.OnDemandEBSStorageCost = results[0].PredictedOnDemandEBSStorage
 		predicted.AdjustedEBSStorageCost = results[0].PredictedAdjustedEBSStorage
-
 		predicted.OnDemandS3ArtifactPutCost = results[0].PredictedOnDemandS3ArtifactPutCost
 		predicted.AdjustedS3ArtifactPutCost = results[0].PredictedAdjustedS3ArtifactPutCost
 		predicted.OnDemandS3LogPutCost = results[0].PredictedOnDemandS3LogPutCost
@@ -511,12 +483,6 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 		predicted.AdjustedS3ArtifactStorageCost = results[0].PredictedAdjustedS3ArtifactStorageCost
 		predicted.OnDemandS3LogStorageCost = results[0].PredictedOnDemandS3LogStorageCost
 		predicted.AdjustedS3LogStorageCost = results[0].PredictedAdjustedS3LogStorageCost
-
-		s3Total.Artifacts.PutRequests = results[0].TotalArtifactPutRequests
-		s3Total.Artifacts.UploadBytes = results[0].TotalArtifactUploadBytes
-		s3Total.Artifacts.Count = results[0].TotalArtifactCount
-		s3Total.Logs.PutRequests = results[0].TotalLogPutRequests
-		s3Total.Logs.UploadBytes = results[0].TotalLogUploadBytes
 	}
 
 	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
@@ -544,17 +510,6 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSThroughputCostKey): total.AdjustedEBSThroughputCost,
 			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandEBSStorageCostKey):    total.OnDemandEBSStorageCost,
 			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedEBSStorageCostKey):    total.AdjustedEBSStorageCost,
-
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3ArtifactPutCostKey):     total.OnDemandS3ArtifactPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3ArtifactPutCostKey):     total.AdjustedS3ArtifactPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3LogPutCostKey):          total.OnDemandS3LogPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3LogPutCostKey):          total.AdjustedS3LogPutCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3ArtifactStorageCostKey): total.OnDemandS3ArtifactStorageCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3ArtifactStorageCostKey): total.AdjustedS3ArtifactStorageCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.OnDemandS3LogStorageCostKey):      total.OnDemandS3LogStorageCost,
-			bsonutil.GetDottedKeyName(VersionCostKey, cost.AdjustedS3LogStorageCostKey):      total.AdjustedS3LogStorageCost,
-
-			VersionS3UsageKey: s3Total,
 		},
 	}); err != nil {
 		return errors.Wrap(err, "updating version aggregated task costs")
@@ -562,8 +517,63 @@ func (v *Version) UpdateAggregateTaskCosts(ctx context.Context) error {
 
 	v.Cost = total
 	v.PredictedCost = predicted
-	v.S3Usage = s3Total
 	return nil
+}
+
+// IncrementVersionS3CostAndUsage atomically increments the version's S3 cost and usage fields by one task's contribution.
+func IncrementVersionS3CostAndUsage(ctx context.Context, versionID string, taskCost cost.Cost, s3Usage s3usage.S3Usage) error {
+	if taskCost.IsZero() && s3Usage.IsZero() {
+		return nil
+	}
+	inc := versionS3CostBSONFields(VersionCostKey, taskCost)
+	inc = append(inc,
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3ArtifactsKey, taskS3PutRequestsKey), Value: s3Usage.Artifacts.PutRequests},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3ArtifactsKey, taskS3UploadBytesKey), Value: s3Usage.Artifacts.UploadBytes},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3ArtifactsKey, taskS3ArtifactCountKey), Value: s3Usage.Artifacts.Count},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3LogsKey, taskS3PutRequestsKey), Value: s3Usage.Logs.PutRequests},
+		bson.E{Key: bsonutil.GetDottedKeyName(VersionS3UsageKey, taskS3LogsKey, taskS3UploadBytesKey), Value: s3Usage.Logs.UploadBytes},
+	)
+	return VersionUpdateOne(ctx, bson.D{{Key: VersionIdKey, Value: versionID}}, bson.D{{Key: "$inc", Value: inc}})
+}
+
+// TrackVersionS3CostForTask increments the version's S3 cost and usage by this task's contribution
+// and emits an OTel span. source should be evergreen.TaskSucceeded when the agent ran teardown
+// (full data) or evergreen.TaskSystemFailed when the agent was dead and data is from the last
+// intermediate report.
+func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source string, taskCost cost.Cost, s3Usage s3usage.S3Usage) error {
+	var avgFilePutCost, maxFilePutCost, minFilePutCost float64
+	if s3Usage.Artifacts.Count > 0 && s3Usage.Artifacts.PutRequests > 0 {
+		costPerPut := taskCost.AdjustedS3ArtifactPutCost / float64(s3Usage.Artifacts.PutRequests)
+		avgFilePutCost = taskCost.AdjustedS3ArtifactPutCost / float64(s3Usage.Artifacts.Count)
+		maxFilePutCost = costPerPut * float64(s3Usage.Artifacts.ArtifactWithMaxPutRequests)
+		minFilePutCost = costPerPut * float64(s3Usage.Artifacts.ArtifactWithMinPutRequests)
+	}
+
+	_, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName,
+		trace.WithNewRoot(),
+		trace.WithAttributes(
+			attribute.String(evergreen.TaskIDOtelAttribute, taskID),
+			attribute.String(evergreen.TaskS3CostTaskStatusOtelAttribute, source),
+			attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, s3Usage.Artifacts.PutRequests),
+			attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, s3Usage.Artifacts.UploadBytes),
+			attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, s3Usage.Artifacts.Count),
+			attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, taskCost.OnDemandS3ArtifactPutCost),
+			attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, taskCost.AdjustedS3ArtifactPutCost),
+			attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, taskCost.OnDemandS3ArtifactStorageCost),
+			attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, taskCost.AdjustedS3ArtifactStorageCost),
+			attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, s3Usage.Logs.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, s3Usage.Logs.UploadBytes),
+			attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, taskCost.OnDemandS3LogPutCost),
+			attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, taskCost.AdjustedS3LogPutCost),
+			attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, taskCost.OnDemandS3LogStorageCost),
+			attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, taskCost.AdjustedS3LogStorageCost),
+			attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
+			attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
+			attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
+		))
+	span.End()
+
+	return IncrementVersionS3CostAndUsage(ctx, versionID, taskCost, s3Usage)
 }
 
 // GetHighestTaskExecution returns the highest execution number of all tasks in the version.
@@ -1108,13 +1118,37 @@ func getManifestModule(ctx context.Context, projectRef *ProjectRef, module Modul
 func CreateManifest(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
 	newManifest, err := constructManifest(ctx, v, projectRef, modules)
 	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":     "constructing manifest",
+			"source":      "manifest-creation",
+			"version_id":  v.Id,
+			"project_id":  projectRef.Id,
+			"num_modules": len(modules),
+		}))
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
 	if newManifest == nil {
 		return nil, nil
 	}
 	_, err = newManifest.TryInsert(ctx)
-	return newManifest, errors.Wrap(err, "inserting manifest")
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message":     "inserting manifest",
+			"source":      "manifest-creation",
+			"version_id":  v.Id,
+			"project_id":  projectRef.Id,
+			"num_modules": len(newManifest.Modules),
+		}))
+		return newManifest, errors.Wrap(err, "inserting manifest")
+	}
+	grip.Info(ctx, message.Fields{
+		"message":     "successfully created manifest",
+		"source":      "manifest-creation",
+		"version_id":  v.Id,
+		"project_id":  projectRef.Id,
+		"num_modules": len(newManifest.Modules),
+	})
+	return newManifest, nil
 }
 
 type VersionsByCreateTime []Version

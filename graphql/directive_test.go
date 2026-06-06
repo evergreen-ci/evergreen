@@ -977,25 +977,13 @@ func TestRequireVolumeAccess(t *testing.T) {
 			_, err := config.Directives.RequireVolumeAccess(ctx, obj, next)
 			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access volume 'vol2'")
 		},
-		"SucceedsWhenUserHasPermission (volumeId)": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+		"SucceedsWhenUserHasPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
 			obj := any(map[string]any{"volumeId": "vol1"})
-			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-		},
-		"SucceedsWhenUserHasPermission (volume)": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (any, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := any(map[string]any{"volume": "vol1"})
 			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
@@ -1009,7 +997,7 @@ func TestRequireVolumeAccess(t *testing.T) {
 				nextCalled = true
 				return nil, nil
 			}
-			obj := any(map[string]any{"volume": "vol2"})
+			obj := any(map[string]any{"volumeId": "vol2"})
 			res, err := config.Directives.RequireVolumeAccess(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)

@@ -48,7 +48,6 @@ var (
 	PubKeyNCreatedAtKey       = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
 	FavoriteProjectsKey       = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
 	ParsleyFiltersKey         = bsonutil.MustHaveTag(DBUser{}, "ParsleyFilters")
-	ParsleySettingsKey        = bsonutil.MustHaveTag(DBUser{}, "ParsleySettings")
 	NumScheduledPatchTasksKey = bsonutil.MustHaveTag(DBUser{}, "NumScheduledPatchTasks")
 	BetaFeaturesKey           = bsonutil.MustHaveTag(DBUser{}, "BetaFeatures")
 )
@@ -557,5 +556,5 @@ func UpsertOneFromExisting(ctx context.Context, oldUsr *DBUser, newEmail string)
 		PubKeysKey:          newUsr.PublicKeys(),
 	}})
 
-	return newUsr, errors.Wrapf(err, "unable to insert new user '%s'", newUsername)
+	return newUsr, errors.Wrapf(err, "inserting new user '%s'", newUsername)
 }

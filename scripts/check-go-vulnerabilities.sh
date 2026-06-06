@@ -15,14 +15,17 @@ trap 'echo "Script terminated by signal" >&2; exit 143' TERM
 # TODO: Each ignored package should be removed from this list once the corresponding tracking
 #       ticket has been completed and the vulnerability has been addressed.
 IGNORED_PACKAGES=(
-    "stdlib"                      # DEVPROD-25290 Stdlib vulnerability tracking
-    "rardecode"                   # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
-    "archiver/v3"                 # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
-    "csrf"                        # DEVPROD-25429 CSRF vulnerability tracking
-    "otel/sdk"                    # DEVPROD-28491 OTel SDK vulnerability tracking
-    "filippo.io/edwards25519"     # DEVPROD-28491 Edwards25519 vulnerability tracking
-    "github.com/docker/docker"    # DEVPROD-31135 Docker vulnerability tracking
-    "golang.org/x/net"            # DEVPROD-33048 Go networking packages Lib
+    "stdlib"                            # DEVPROD-25290 Stdlib vulnerability tracking
+    "rardecode"                         # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
+    "archiver/v3"                       # DEVPROD-25293 Archiver / Rardecode vulnerability tracking
+    "csrf"                              # DEVPROD-25429 CSRF vulnerability tracking
+    "otel/sdk"                          # DEVPROD-28491 OTel SDK vulnerability tracking
+    "filippo.io/edwards25519"           # DEVPROD-28491 Edwards25519 vulnerability tracking
+    "github.com/docker/docker"          # DEVPROD-31135 Docker vulnerability tracking
+    "golang.org/x/net"                  # DEVPROD-33048 Go networking packages Lib
+    "golang.org/x/crypto"               # DEVPROD-33754 Go crypto package vulnerability tracking
+    "golang.org/x/sys"                  # DEVPROD-33756 Go sys package vulnerability tracking
+    "github.com/go-jose/go-jose/v4"     # DEVPROD-33891 go-jose vulnerability tracking
 )
 
 # Validate that each ignored package has a tracking ticket

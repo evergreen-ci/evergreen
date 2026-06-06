@@ -1499,6 +1499,28 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "", h.RunningTask)
 		},
+		"a host that just finished a same-named task group from a different version should teardown": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			d.Host1.LastTask = "previous-task"
+			d.Host1.LastGroup = d.Tg1Task1.TaskGroup
+			d.Host1.LastBuildVariant = d.Tg1Task1.BuildVariant
+			d.Host1.LastProject = d.Tg1Task1.Project
+			d.Host1.LastVersion = "different-version"
+			details := &apimodels.GetNextTaskDetails{
+				TaskGroup: d.Tg1Task1.TaskGroup,
+			}
+			t1, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			require.NoError(t, err)
+			assert.Nil(t, t1)
+			assert.True(t, shouldTeardown)
+
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 2, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
 		"a dispatched task should not be updated in the host": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": d.Task3.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskStarted}}))

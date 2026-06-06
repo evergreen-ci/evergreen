@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -21,7 +20,6 @@ type tasksByBuildHandler struct {
 	limit              int
 	key                string
 
-	url        string
 	parsleyURL string
 }
 
@@ -54,7 +52,6 @@ func (tbh *tasksByBuildHandler) Factory() gimlet.RouteHandler {
 
 func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
-	tbh.url = util.HttpsUrl(r.Host)
 	tbh.buildId = gimlet.GetVars(r)["build_id"]
 	if tbh.buildId == "" {
 		return errors.New("build ID cannot be empty")
@@ -93,7 +90,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tbh.url,
+				BaseURL:         GetURL(ctx),
 				Key:             tasks[tbh.limit].Id,
 				Limit:           tbh.limit,
 			},
@@ -111,7 +108,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeAMI:               true,
 			IncludeArtifacts:         true,
 			IncludeProjectIdentifier: true,
-			LogURL:                   tbh.url,
+			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tbh.parsleyURL,
 		}); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
@@ -125,7 +122,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived task '%s'", tasks[i].Id))
 			}
 
-			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, tbh.url, tbh.parsleyURL); err != nil {
+			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, GetURL(ctx), tbh.parsleyURL); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
 			}
 		}
