@@ -8,7 +8,7 @@ Evergreen tracks the infrastructure cost of every task across three categories:
 | EBS      | The disk attached to the EC2 instance. GP3 volumes can be provisioned with higher throughput than the 125 MB/s free tier; the throughput cost above that baseline is also tracked.                              |
 | S3       | Object storage where task artifacts and logs are uploaded. Both the upload requests (PUT costs) and the ongoing storage are tracked.                                                                            |
 
-All costs displayed in Evergreen have applicable discounts applied. Discount rates, the finance formula, and other cost parameters are owned by the Financial Planning and Analysis (FP&A) team.
+All costs displayed in Evergreen have applicable discounts applied. Discount rates, the finance formula, and other cost parameters are owned by the Financial Planning and Analysis (FP&A) team. For more details on the formulas and joint ownership model, see the [Evergreen Task Cost Calculation Joint Ownership Formula Reference](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/548571434/Evergreen+Task+Cost+Calculation+Joint+Ownership+Formula+Reference).
 
 Cost information is shown on the task, version, and patch pages in the Evergreen UI.
 
