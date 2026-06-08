@@ -137,15 +137,8 @@ func (r *versionResolver) Cost(ctx context.Context, obj *restModel.APIVersion) (
 	if obj.Cost == nil {
 		return nil, nil
 	}
-	rounded := cost.Cost{
-		AdjustedEC2Cost:               cost.RoundCost(obj.Cost.AdjustedEC2Cost),
-		AdjustedEBSThroughputCost:     cost.RoundCost(obj.Cost.AdjustedEBSThroughputCost),
-		AdjustedEBSStorageCost:        cost.RoundCost(obj.Cost.AdjustedEBSStorageCost),
-		AdjustedS3ArtifactPutCost:     cost.RoundCost(obj.Cost.AdjustedS3ArtifactPutCost),
-		AdjustedS3LogPutCost:          cost.RoundCost(obj.Cost.AdjustedS3LogPutCost),
-		AdjustedS3ArtifactStorageCost: cost.RoundCost(obj.Cost.AdjustedS3ArtifactStorageCost),
-		AdjustedS3LogStorageCost:      cost.RoundCost(obj.Cost.AdjustedS3LogStorageCost),
-	}
+	rounded := obj.Cost.RoundedBase()
+	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal())
 	return &rounded, nil
 }
 

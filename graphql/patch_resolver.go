@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -360,6 +361,28 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	apiVersion := restModel.APIVersion{}
 	apiVersion.BuildFromService(ctx, *v)
 	return &apiVersion, nil
+}
+
+// Cost returns the patch's cost with values rounded for display.
+func (r *patchResolver) Cost(ctx context.Context, obj *restModel.APIPatch) (*cost.Cost, error) {
+	if obj.Cost == nil {
+		return nil, nil
+	}
+	rounded := obj.Cost.RoundedBase()
+	rounded.ChildPatchesTotalCost = cost.RoundCost(obj.Cost.ChildPatchesTotalCost)
+	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal() + obj.Cost.ChildPatchesTotalCost)
+	return &rounded, nil
+}
+
+// PredictedCost returns the patch's predicted cost with values rounded for display.
+func (r *patchResolver) PredictedCost(ctx context.Context, obj *restModel.APIPatch) (*cost.Cost, error) {
+	if obj.PredictedCost == nil {
+		return nil, nil
+	}
+	rounded := obj.PredictedCost.RoundedBase()
+	rounded.ChildPatchesTotalCost = cost.RoundCost(obj.PredictedCost.ChildPatchesTotalCost)
+	rounded.Total = cost.RoundCost(obj.PredictedCost.AdjustedTotal() + obj.PredictedCost.ChildPatchesTotalCost)
+	return &rounded, nil
 }
 
 // FilteredPatchCount is the resolver for the filteredPatchCount field.
