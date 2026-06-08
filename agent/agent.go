@@ -572,7 +572,8 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	catcher.Wrap(err, "handling setup error")
 	tc.logger.Execution().Error(ctx, err)
 	grip.Infof(ctx, "Task complete: '%s'.", tc.task.ID)
-	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
+	detail := a.endTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
+	shouldExit, err := a.handleTaskResponse(ctx, tc, detail)
 	catcher.Wrap(err, "handling task response")
 	return tc, shouldExit, catcher.Resolve()
 }
@@ -737,7 +738,8 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
 	status := a.runPreAndMain(preAndMainCtx, tc)
-	shouldExit, err = a.handleTaskResponse(tskCtx, tc, status, "")
+	detail := a.endTaskResponse(tskCtx, tc, status, "")
+	shouldExit, err = a.handleTaskResponse(tskCtx, tc, detail)
 	return tc, shouldExit, err
 }
 
@@ -1132,8 +1134,8 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (bool, error) {
-	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription)
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) (bool, error) {
+	resp, err := a.finishTask(ctx, tc, detail)
 	if err != nil {
 		return false, errors.Wrap(err, "marking task complete")
 	}
@@ -1178,8 +1180,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) (*apimodels.EndTaskResponse, error) {
 	if detail.TimedOut {
 		a.runDefaultTimeoutHandler(ctx, tc, detail)
 	}
