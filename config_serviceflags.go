@@ -54,6 +54,10 @@ type ServiceFlags struct {
 	SecondaryReadsDisabled       bool `bson:"secondary_reads_disabled" json:"secondary_reads_disabled"`
 
 	BackgroundCommandFailureEnabled bool `bson:"background_command_failure_enabled" json:"background_command_failure_enabled"`
+
+	// Rate Limiting Flags
+	APIRateLimiterDisabled           bool `bson:"api_rate_limiter_disabled" json:"api_rate_limiter_disabled"`
+	GraphQLComplexityLimiterDisabled bool `bson:"graphql_complexity_limiter_disabled" json:"graphql_complexity_limiter_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -105,6 +109,8 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
+			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,
+			graphqlComplexityLimiterDisabledKey:   c.GraphQLComplexityLimiterDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
