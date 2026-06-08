@@ -1,22 +1,8 @@
-// Command feature-tracker analyzes which Evergreen features each project uses.
-//
-// It consumes a directory of project config files produced by
-// `evergreen admin all-configs`, which downloads each project's most recent
-// merged parser project as YAML (one `<identifier>.yml` per project, with
-// `include`d files already resolved). For every file it re-parses the config
-// into a model.Project using Evergreen's own parser and runs a registry of
-// feature detectors, then emits a CSV, an HTML report, and a terminal summary.
-//
-// Usage:
-//
-//	evergreen admin all-configs --directory configs   # dump enabled projects' configs into ./configs
-//	go run ./cmd/feature-tracker --dir configs --out feature-report
-package main
+package operations
 
 import (
 	"context"
 	"encoding/csv"
-	"flag"
 	"fmt"
 	"html/template"
 	"os"
@@ -26,28 +12,86 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/pkg/errors"
+	"github.com/urfave/cli"
 )
 
-// Detector reports whether a project uses a feature and how heavily. The count
-// semantics depend on the detector (e.g. number of display tasks, number of
-// task groups, number of times a command is invoked); a count of zero means
+// adminFeatureTracker returns the `evergreen admin feature-tracker` subcommand,
+// which analyzes which Evergreen features each project uses. It consumes a
+// directory of project config files produced by `evergreen admin all-configs`.
+func adminFeatureTracker() cli.Command {
+	const (
+		dirFlagName = "directory"
+		outFlagName = "out"
+	)
+	return cli.Command{
+		Name:   "feature-tracker",
+		Usage:  "analyze which Evergreen features each project uses",
+		Before: setPlainLogger,
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(dirFlagName, "d"),
+				Usage: "directory of project configs from `evergreen admin all-configs`",
+				Value: ".",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(outFlagName, "o"),
+				Usage: "output file prefix; writes <prefix>.csv and <prefix>.html",
+				Value: "feature-report",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			dir := c.String(dirFlagName)
+			out := c.String(outFlagName)
+
+			dets := ftDetectors()
+
+			files, err := filepath.Glob(filepath.Join(dir, "*.yml"))
+			if err != nil {
+				return errors.Wrap(err, "globbing config files")
+			}
+			if len(files) == 0 {
+				return errors.Errorf("no *.yml files found in %q; run `evergreen admin all-configs` first", dir)
+			}
+
+			results := make([]ftResult, 0, len(files))
+			for _, f := range files {
+				results = append(results, ftAnalyzeFile(f, dets))
+			}
+			sort.Slice(results, func(i, j int) bool { return results[i].Project < results[j].Project })
+
+			if err := ftWriteCSV(out+".csv", dets, results); err != nil {
+				return errors.Wrap(err, "writing CSV")
+			}
+			if err := ftWriteHTML(out+".html", dets, results); err != nil {
+				return errors.Wrap(err, "writing HTML")
+			}
+			ftPrintSummary(dets, results, out)
+			return nil
+		},
+	}
+}
+
+// ftDetector reports whether a project uses a feature and how heavily. The
+// count semantics depend on the detector (e.g. number of display tasks, number
+// of task groups, number of times a command is invoked); a count of zero means
 // the feature is unused.
 // Detect receives both the translated project and the parser project it came
 // from. Most features are visible on the translated Project; some (e.g.
 // matrices) only exist on the ParserProject because translation expands them
 // away. pp may be nil if parsing failed.
-type Detector struct {
+type ftDetector struct {
 	Name        string
 	Description string
 	Detect      func(p *model.Project, pp *model.ParserProject) int
 }
 
-// detectors returns the ordered registry of feature detectors. The first three
-// are the features under active maintenance-cost review (display tasks, task
-// groups, generate.tasks); the rest are a generalized set demonstrating that
-// any structural feature or command usage can be tracked the same way.
-func detectors() []Detector {
-	return []Detector{
+// ftDetectors returns the ordered registry of feature detectors. The first
+// three are the features under active maintenance-cost review (display tasks,
+// task groups, generate.tasks); the rest are a generalized set demonstrating
+// that any structural feature or command usage can be tracked the same way.
+func ftDetectors() []ftDetector {
+	return []ftDetector{
 		{
 			Name:        "display_tasks",
 			Description: "Display tasks grouping execution tasks in build variants",
@@ -66,7 +110,7 @@ func detectors() []Detector {
 				return len(p.TaskGroups)
 			},
 		},
-		commandDetector("generate_tasks", "generate.tasks command (runtime task generation)", "generate.tasks"),
+		ftCommandDetector("generate_tasks", "generate.tasks command (runtime task generation)", "generate.tasks"),
 
 		// Generalized set: structural features.
 		{
@@ -95,26 +139,26 @@ func detectors() []Detector {
 
 		// Generalized set: command usage. Each counts total invocations across
 		// all tasks (including commands reached indirectly through functions).
-		commandDetector("host_create", "host.create (dynamic host provisioning)", "host.create"),
-		commandDetector("cache_save", "cache.save (new caching command)", "cache.save"),
-		commandDetector("cache_restore", "cache.restore (new caching command)", "cache.restore"),
-		commandDetector("s3_put", "s3.put", "s3.put"),
-		commandDetector("s3_get", "s3.get", "s3.get"),
-		commandDetector("subprocess_exec", "subprocess.exec", "subprocess.exec"),
-		commandDetector("shell_exec", "shell.exec", "shell.exec"),
-		commandDetector("manifest_load", "manifest.load", "manifest.load"),
-		commandDetector("attach_results", "attach.results", "attach.results"),
-		commandDetector("attach_xunit_results", "attach.xunit_results", "attach.xunit_results"),
-		commandDetector("perf_send", "perf.send", "perf.send"),
-		commandDetector("ec2_assume_role", "ec2.assume_role", "ec2.assume_role"),
+		ftCommandDetector("host_create", "host.create (dynamic host provisioning)", "host.create"),
+		ftCommandDetector("cache_save", "cache.save (new caching command)", "cache.save"),
+		ftCommandDetector("cache_restore", "cache.restore (new caching command)", "cache.restore"),
+		ftCommandDetector("s3_put", "s3.put", "s3.put"),
+		ftCommandDetector("s3_get", "s3.get", "s3.get"),
+		ftCommandDetector("subprocess_exec", "subprocess.exec", "subprocess.exec"),
+		ftCommandDetector("shell_exec", "shell.exec", "shell.exec"),
+		ftCommandDetector("manifest_load", "manifest.load", "manifest.load"),
+		ftCommandDetector("attach_results", "attach.results", "attach.results"),
+		ftCommandDetector("attach_xunit_results", "attach.xunit_results", "attach.xunit_results"),
+		ftCommandDetector("perf_send", "perf.send", "perf.send"),
+		ftCommandDetector("ec2_assume_role", "ec2.assume_role", "ec2.assume_role"),
 	}
 }
 
-// commandDetector builds a Detector that counts total invocations of a command
-// across all of a project's tasks. TasksThatCallCommand resolves commands
-// called directly and those reached through functions.
-func commandDetector(name, description, command string) Detector {
-	return Detector{
+// ftCommandDetector builds an ftDetector that counts total invocations of a
+// command across all of a project's tasks. TasksThatCallCommand resolves
+// commands called directly and those reached through functions.
+func ftCommandDetector(name, description, command string) ftDetector {
+	return ftDetector{
 		Name:        name,
 		Description: description,
 		Detect: func(p *model.Project, _ *model.ParserProject) int {
@@ -127,53 +171,19 @@ func commandDetector(name, description, command string) Detector {
 	}
 }
 
-// result holds the per-project detector counts and any parse error.
-type result struct {
+// ftResult holds the per-project detector counts and any parse error.
+type ftResult struct {
 	Project string
 	Counts  map[string]int
 	Err     string
 }
 
-func main() {
-	dir := flag.String("dir", ".", "directory containing <project>.yml configs from `evergreen admin all-configs`")
-	out := flag.String("out", "feature-report", "output file prefix; writes <prefix>.csv and <prefix>.html")
-	flag.Parse()
-
-	dets := detectors()
-
-	files, err := filepath.Glob(filepath.Join(*dir, "*.yml"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "globbing config files: %v\n", err)
-		os.Exit(1)
-	}
-	if len(files) == 0 {
-		fmt.Fprintf(os.Stderr, "no *.yml files found in %q; run `evergreen admin all-configs` first\n", *dir)
-		os.Exit(1)
-	}
-
-	results := make([]result, 0, len(files))
-	for _, f := range files {
-		results = append(results, analyzeFile(f, dets))
-	}
-	sort.Slice(results, func(i, j int) bool { return results[i].Project < results[j].Project })
-
-	if err := writeCSV(*out+".csv", dets, results); err != nil {
-		fmt.Fprintf(os.Stderr, "writing CSV: %v\n", err)
-		os.Exit(1)
-	}
-	if err := writeHTML(*out+".html", dets, results); err != nil {
-		fmt.Fprintf(os.Stderr, "writing HTML: %v\n", err)
-		os.Exit(1)
-	}
-	printSummary(dets, results, *out)
-}
-
-// analyzeFile parses one config file and runs every detector against it. A
+// ftAnalyzeFile parses one config file and runs every detector against it. A
 // parse failure is recorded on the result rather than aborting the run, since
 // one malformed config should not block analysis of the rest.
-func analyzeFile(path string, dets []Detector) result {
+func ftAnalyzeFile(path string, dets []ftDetector) ftResult {
 	projectID := strings.TrimSuffix(filepath.Base(path), ".yml")
-	res := result{Project: projectID, Counts: map[string]int{}}
+	res := ftResult{Project: projectID, Counts: map[string]int{}}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -196,7 +206,7 @@ func analyzeFile(path string, dets []Detector) result {
 	return res
 }
 
-func writeCSV(path string, dets []Detector, results []result) error {
+func ftWriteCSV(path string, dets []ftDetector, results []ftResult) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -228,8 +238,8 @@ func writeCSV(path string, dets []Detector, results []result) error {
 	return w.Error()
 }
 
-// adoption summarizes how many projects use a feature.
-type adoption struct {
+// ftAdoption summarizes how many projects use a feature.
+type ftAdoption struct {
 	Name        string
 	Description string
 	Using       int
@@ -237,9 +247,9 @@ type adoption struct {
 	Percent     string
 }
 
-func computeAdoption(dets []Detector, results []result) []adoption {
+func ftComputeAdoption(dets []ftDetector, results []ftResult) []ftAdoption {
 	total := len(results)
-	out := make([]adoption, 0, len(dets))
+	out := make([]ftAdoption, 0, len(dets))
 	for _, d := range dets {
 		using := 0
 		for _, r := range results {
@@ -251,7 +261,7 @@ func computeAdoption(dets []Detector, results []result) []adoption {
 		if total > 0 {
 			pct = 100 * float64(using) / float64(total)
 		}
-		out = append(out, adoption{
+		out = append(out, ftAdoption{
 			Name:        d.Name,
 			Description: d.Description,
 			Using:       using,
@@ -262,7 +272,7 @@ func computeAdoption(dets []Detector, results []result) []adoption {
 	return out
 }
 
-func printSummary(dets []Detector, results []result, outPrefix string) {
+func ftPrintSummary(dets []ftDetector, results []ftResult, outPrefix string) {
 	parseErrors := 0
 	for _, r := range results {
 		if r.Err != "" {
@@ -272,9 +282,9 @@ func printSummary(dets []Detector, results []result, outPrefix string) {
 
 	fmt.Printf("Analyzed %d projects (%d had parse errors)\n\n", len(results), parseErrors)
 
-	adopt := computeAdoption(dets, results)
+	adopt := ftComputeAdoption(dets, results)
 	// Sort the printed summary by adoption descending for a quick read.
-	sorted := make([]adoption, len(adopt))
+	sorted := make([]ftAdoption, len(adopt))
 	copy(sorted, adopt)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Using > sorted[j].Using })
 
@@ -291,14 +301,14 @@ func printSummary(dets []Detector, results []result, outPrefix string) {
 	fmt.Printf("\nWrote %s.csv and %s.html\n", outPrefix, outPrefix)
 }
 
-func writeHTML(path string, dets []Detector, results []result) error {
+func ftWriteHTML(path string, dets []ftDetector, results []ftResult) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	adopt := computeAdoption(dets, results)
+	adopt := ftComputeAdoption(dets, results)
 	// Default the rendered order to most-used first; the table is re-sortable client-side.
 	sort.SliceStable(adopt, func(i, j int) bool { return adopt[i].Using > adopt[j].Using })
 	parseErrors := 0
@@ -329,8 +339,8 @@ func writeHTML(path string, dets []Detector, results []result) error {
 	}
 
 	data := struct {
-		Detectors   []Detector
-		Adoption    []adoption
+		Detectors   []ftDetector
+		Adoption    []ftAdoption
 		Rows        []row
 		Total       int
 		ParseErrors int
@@ -342,10 +352,10 @@ func writeHTML(path string, dets []Detector, results []result) error {
 		ParseErrors: parseErrors,
 	}
 
-	return htmlTemplate.Execute(f, data)
+	return ftHTMLTemplate.Execute(f, data)
 }
 
-var htmlTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
+var ftHTMLTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
 	"add": func(a, b int) int { return a + b },
 }).Parse(`<!DOCTYPE html>
 <html lang="en">

@@ -1,4 +1,4 @@
-package main
+package operations
 
 import (
 	"context"
@@ -56,7 +56,7 @@ func TestDetectorsAgainstSampleConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	counts := map[string]int{}
-	for _, d := range detectors() {
+	for _, d := range ftDetectors() {
 		counts[d.Name] = d.Detect(&project, pp)
 	}
 
@@ -98,8 +98,8 @@ buildvariants:
 `
 
 func TestMatrixDetectorReadsParserProject(t *testing.T) {
-	var matrixDet Detector
-	for _, d := range detectors() {
+	var matrixDet ftDetector
+	for _, d := range ftDetectors() {
 		if d.Name == "matrices" {
 			matrixDet = d
 		}
@@ -117,14 +117,14 @@ func TestMatrixDetectorReadsParserProject(t *testing.T) {
 }
 
 func TestComputeAdoptionCountsProjectsNotInvocations(t *testing.T) {
-	dets := []Detector{{Name: "feat", Detect: func(*model.Project, *model.ParserProject) int { return 0 }}}
-	results := []result{
+	dets := []ftDetector{{Name: "feat", Detect: func(*model.Project, *model.ParserProject) int { return 0 }}}
+	results := []ftResult{
 		{Project: "a", Counts: map[string]int{"feat": 5}},
 		{Project: "b", Counts: map[string]int{"feat": 0}},
 		{Project: "c", Counts: map[string]int{"feat": 2}},
 	}
 
-	adopt := computeAdoption(dets, results)
+	adopt := ftComputeAdoption(dets, results)
 	require.Len(t, adopt, 1)
 	// Two of three projects use the feature, regardless of invocation counts.
 	assert.Equal(t, 2, adopt[0].Using)
