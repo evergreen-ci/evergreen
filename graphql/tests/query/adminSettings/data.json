@@ -248,7 +248,19 @@
       "_id": "api",
       "url": "http://localhost:9090",
       "corp_url": "",
-      "http_listen_addr": ""
+      "http_listen_addr": "",
+      "rate_limit": {
+        "rest_human_per_hour": 100,
+        "rest_human_burst": 10,
+        "rest_service_per_hour": 200,
+        "rest_service_burst": 20,
+        "graphql_human_per_hour": 300,
+        "graphql_human_burst": 30,
+        "graphql_service_per_hour": 400,
+        "graphql_service_burst": 40,
+        "graphql_complexity_limit": 1000,
+        "elevated_user_ids": ["user1", "user2"]
+      }
     },
     {
       "_id": "ui",

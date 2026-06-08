@@ -1,13 +1,41 @@
+input RateLimitConfigInput {
+  restHumanRequestsPerHour: Int!
+  restHumanBurst: Int!
+  restServiceRequestsPerHour: Int!
+  restServiceBurst: Int!
+  graphqlHumanRequestsPerHour: Int!
+  graphqlHumanBurst: Int!
+  graphqlServiceRequestsPerHour: Int!
+  graphqlServiceBurst: Int!
+  graphqlComplexityLimit: Int!
+  elevatedUserIds: [String!]!
+}
+
+type RateLimitConfig {
+  restHumanRequestsPerHour: Int
+  restHumanBurst: Int
+  restServiceRequestsPerHour: Int
+  restServiceBurst: Int
+  graphqlHumanRequestsPerHour: Int
+  graphqlHumanBurst: Int
+  graphqlServiceRequestsPerHour: Int
+  graphqlServiceBurst: Int
+  graphqlComplexityLimit: Int
+  elevatedUserIds: [String!]
+}
+
 input APIConfigInput {
   httpListenAddr: String!
   url: String!
   corpUrl: String!
+  rateLimit: RateLimitConfigInput
 }
 
 type APIConfig {
   httpListenAddr: String
   url: String
   corpUrl: String
+  rateLimit: RateLimitConfig
 }
 
 input UIConfigInput {
