@@ -58,7 +58,7 @@ func (r *jiraNotificationsConfigResolver) CustomFields(ctx context.Context, obj 
 
 // DisplayName is the resolver for the displayName field.
 func (r *projectTasksPairResolver) DisplayName(ctx context.Context, obj *restModel.APIProjectTasksPair) (string, error) {
-	project, err := model.FindBranchProjectRef(ctx, obj.ProjectID)
+	project, err := model.FindBranchProjectRefSecondary(ctx, obj.ProjectID)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", obj.ProjectID, err.Error()))
 	}
