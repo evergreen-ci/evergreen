@@ -32,7 +32,7 @@ func fetchAllProjectConfigs() cli.Command {
 		Usage:  "download the configuration files of all Evergreen projects",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
-			includeDisabled := c.BoolT(includeDisabledFlagName)
+			includeDisabled := c.Bool(includeDisabledFlagName)
 			directory := c.String(directoryFlagName)
 			settings, err := NewClientSettings(c.GlobalString("config"))
 			if err != nil {
@@ -54,7 +54,7 @@ func fetchAllProjectConfigs() cli.Command {
 	}
 }
 
-// fetchAndWriteConfig downloads the most recent config for a project and writes
+// fetchAndWriteConfigs downloads the most recent config for a project and writes
 // it to "<directory>/project_name.yml". An empty directory writes to the current
 // directory.
 func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model.ProjectRef, includeDisabled bool, directory string) error {

@@ -204,7 +204,6 @@ func writeCSV(path string, dets []Detector, results []result) error {
 	defer f.Close()
 
 	w := csv.NewWriter(f)
-	defer w.Flush()
 
 	header := []string{"project"}
 	for _, d := range dets {
@@ -225,7 +224,8 @@ func writeCSV(path string, dets []Detector, results []result) error {
 			return err
 		}
 	}
-	return nil
+	w.Flush()
+	return w.Error()
 }
 
 // adoption summarizes how many projects use a feature.
@@ -345,7 +345,9 @@ func writeHTML(path string, dets []Detector, results []result) error {
 	return htmlTemplate.Execute(f, data)
 }
 
-var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
+var htmlTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
+	"add": func(a, b int) int { return a + b },
+}).Parse(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -400,8 +402,8 @@ var htmlTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
   <thead>
     <tr>
       <th class="sortable" onclick="sortTable('matrix', 0, false)">Project</th>
-      {{range .Detectors}}<th class="feature" title="{{.Description}}">{{.Name}}</th>{{end}}
-      <th>Parse error</th>
+      {{range $i, $d := .Detectors}}<th class="feature sortable" title="{{$d.Description}}" onclick="sortTable('matrix', {{add $i 1}}, true)">{{$d.Name}}</th>{{end}}
+      <th class="sortable" onclick="sortTable('matrix', {{add (len .Detectors) 1}}, false)">Parse error</th>
     </tr>
   </thead>
   <tbody>
