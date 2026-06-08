@@ -1147,14 +1147,12 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	return false, errors.WithStack(err)
 }
 
-func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail, status string) {
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if tc.hadTimedOut() && ctx.Err() == nil {
-		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	// Check both statuses, as this may have changed via user endpoint or etc.
-	if tc.oomTrackerEnabled(a.opts.CloudProvider) && (detail.Status == evergreen.TaskFailed || status == evergreen.TaskFailed) {
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) && (detail.Status == evergreen.TaskFailed || tc.hadTimedOut()) {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer oomCancel()
@@ -1187,7 +1185,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	}
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
-		a.handleTimeoutAndOOM(ctx, tc, detail, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail)
 
 		tc.logger.Task().Info(ctx, "Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
@@ -1200,7 +1198,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		updateEndTaskFailureDetailsForTestResults(ctx, tc, detail)
 
 	case evergreen.TaskFailed:
-		a.handleTimeoutAndOOM(ctx, tc, detail, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail)
 
 		tc.logger.Task().Info(ctx, "Task completed - FAILURE.")
 		// If the post commands error, ignore the error. runCommandsInBlock

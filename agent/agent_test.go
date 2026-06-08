@@ -1536,6 +1536,70 @@ func (s *AgentSuite) TestOOMTrackerRunsForSuccessStatusWithFailedDetailStatus() 
 	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
 }
 
+func (s *AgentSuite) TestOOMTrackerRunsForTimedOutTaskWithSucceededStatus() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.CloudProvider = "provider"
+	s.tc.taskConfig.Project.OomTracker = true
+
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	// Task timed out but the final status is still succeeded (e.g. a non-failing
+	// timeout phase). The OOM check must still run because a timeout can indicate
+	// an OOM kill even when the task is ultimately marked as succeeded.
+	s.tc.setTimedOut(true, globals.ExecTimeout)
+
+	_, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	s.NoError(err)
+	s.Require().NotNil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+}
+
+func (s *AgentSuite) TestOOMTrackerSkippedWhenUserOverridesToSucceeded() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.CloudProvider = "provider"
+	s.tc.taskConfig.Project.OomTracker = true
+
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	// Agent computed a failure, but the user HTTP endpoint explicitly overrode
+	// the status to succeeded. The OOM check should respect the final status and
+	// not run.
+	s.tc.setUserEndTaskResponse(&triggerEndTaskResp{Status: evergreen.TaskSucceeded})
+
+	_, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskFailed, "")
+	s.NoError(err)
+	s.Nil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
+}
+
+func (s *AgentSuite) TestOOMTrackerRunsForFailedStatusWithNoUserOverride() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.CloudProvider = "provider"
+	s.tc.taskConfig.Project.OomTracker = true
+
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	// No user override: agent-computed failure should trigger the OOM check.
+	// This is the positive companion to TestOOMTrackerSkippedWhenUserOverridesToSucceeded.
+	_, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskFailed, "")
+	s.NoError(err)
+	s.Require().NotNil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+}
+
 func (s *AgentSuite) TestFinishPrevTaskWithoutTaskGroup() {
 	const buildID = "build_id"
 	const versionID = "not_a_task_group_version"
