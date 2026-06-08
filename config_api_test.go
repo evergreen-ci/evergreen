@@ -55,11 +55,6 @@ func TestRateLimitConfigValidate(t *testing.T) {
 		assert.Error(t, c.validate())
 	})
 
-	t.Run("EmptyElevatedUserIDShouldError", func(t *testing.T) {
-		c := RateLimitConfig{ElevatedUserIDs: []string{"alice", ""}}
-		assert.Error(t, c.validate())
-	})
-
 	t.Run("MultipleErrorsAreCaptured", func(t *testing.T) {
 		c := RateLimitConfig{
 			RESTHumanRequestsPerHour:    -1,

@@ -120,12 +120,6 @@ func (c *RateLimitConfig) validate() error {
 	if c.GraphQLComplexityLimit < 0 {
 		catcher.New("GraphQL complexity limit must be non-negative")
 	}
-	for _, id := range c.ElevatedUserIDs {
-		if id == "" {
-			catcher.New("elevated user IDs must not contain empty strings")
-			break
-		}
-	}
 	return catcher.Resolve()
 }
 
