@@ -16,10 +16,10 @@ func TestRateLimitConfigValidate(t *testing.T) {
 
 	t.Run("ValidPositiveValues", func(t *testing.T) {
 		c := RateLimitConfig{
-			RESTHumanRequestsPerHour:   1000,
-			RESTHumanBurst:             50,
-			RESTServiceRequestsPerHour: 5000,
-			RESTServiceBurst:           200,
+			RESTHumanRequestsPerHour:      1000,
+			RESTHumanBurst:                50,
+			RESTServiceRequestsPerHour:    5000,
+			RESTServiceBurst:              200,
 			GraphQLHumanRequestsPerHour:   500,
 			GraphQLHumanBurst:             25,
 			GraphQLServiceRequestsPerHour: 2000,
@@ -62,9 +62,9 @@ func TestRateLimitConfigValidate(t *testing.T) {
 
 	t.Run("MultipleErrorsAreCaptured", func(t *testing.T) {
 		c := RateLimitConfig{
-			RESTHumanRequestsPerHour:      -1,
-			GraphQLHumanRequestsPerHour:   -1,
-			GraphQLComplexityLimit:        -1,
+			RESTHumanRequestsPerHour:    -1,
+			GraphQLHumanRequestsPerHour: -1,
+			GraphQLComplexityLimit:      -1,
 		}
 		err := c.validate()
 		require.Error(t, err)
