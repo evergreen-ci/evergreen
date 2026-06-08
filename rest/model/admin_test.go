@@ -98,6 +98,16 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Api.HttpListenAddr, utility.FromStringPtr(apiSettings.Api.HttpListenAddr))
 	assert.EqualValues(testSettings.Api.URL, utility.FromStringPtr(apiSettings.Api.URL))
 	assert.EqualValues(testSettings.Api.CorpURL, utility.FromStringPtr(apiSettings.Api.CorpURL))
+	assert.EqualValues(testSettings.Api.RateLimit.RESTHumanRequestsPerHour, apiSettings.Api.RateLimit.RESTHumanRequestsPerHour)
+	assert.EqualValues(testSettings.Api.RateLimit.RESTHumanBurst, apiSettings.Api.RateLimit.RESTHumanBurst)
+	assert.EqualValues(testSettings.Api.RateLimit.RESTServiceRequestsPerHour, apiSettings.Api.RateLimit.RESTServiceRequestsPerHour)
+	assert.EqualValues(testSettings.Api.RateLimit.RESTServiceBurst, apiSettings.Api.RateLimit.RESTServiceBurst)
+	assert.EqualValues(testSettings.Api.RateLimit.GraphQLHumanRequestsPerHour, apiSettings.Api.RateLimit.GraphQLHumanRequestsPerHour)
+	assert.EqualValues(testSettings.Api.RateLimit.GraphQLHumanBurst, apiSettings.Api.RateLimit.GraphQLHumanBurst)
+	assert.EqualValues(testSettings.Api.RateLimit.GraphQLServiceRequestsPerHour, apiSettings.Api.RateLimit.GraphQLServiceRequestsPerHour)
+	assert.EqualValues(testSettings.Api.RateLimit.GraphQLServiceBurst, apiSettings.Api.RateLimit.GraphQLServiceBurst)
+	assert.EqualValues(testSettings.Api.RateLimit.GraphQLComplexityLimit, apiSettings.Api.RateLimit.GraphQLComplexityLimit)
+	assert.EqualValues(testSettings.Api.RateLimit.ElevatedUserIDs, apiSettings.Api.RateLimit.ElevatedUserIDs)
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, utility.FromStringPtr(apiSettings.AuthConfig.Naive.Users[0].Username))
 	assert.EqualValues(testSettings.AuthConfig.Okta.ClientID, utility.FromStringPtr(apiSettings.AuthConfig.Okta.ClientID))
@@ -856,6 +866,74 @@ func TestAPICostConfigWithS3Cost(t *testing.T) {
 			assert.Equal(t, 0.5, svc.FinanceFormula)
 			assert.Equal(t, 0.0, svc.S3Cost.Upload.UploadCostDiscount)
 			assert.Equal(t, 0.0, svc.S3Cost.Storage.StandardStorageCostDiscount)
+		})
+	})
+}
+
+func TestAPIRateLimitConfig(t *testing.T) {
+	t.Run("BuildFromService", func(t *testing.T) {
+		t.Run("RoundTrip", func(t *testing.T) {
+			svc := evergreen.RateLimitConfig{
+				RESTHumanRequestsPerHour:      100,
+				RESTHumanBurst:                10,
+				RESTServiceRequestsPerHour:    200,
+				RESTServiceBurst:              20,
+				GraphQLHumanRequestsPerHour:   300,
+				GraphQLHumanBurst:             30,
+				GraphQLServiceRequestsPerHour: 400,
+				GraphQLServiceBurst:           40,
+				GraphQLComplexityLimit:        1000,
+				ElevatedUserIDs:               []string{"user1", "user2"},
+			}
+			api := APIRateLimitConfig{}
+			api.BuildFromService(svc)
+			assert.Equal(t, 100, api.RESTHumanRequestsPerHour)
+			assert.Equal(t, 10, api.RESTHumanBurst)
+			assert.Equal(t, 200, api.RESTServiceRequestsPerHour)
+			assert.Equal(t, 20, api.RESTServiceBurst)
+			assert.Equal(t, 300, api.GraphQLHumanRequestsPerHour)
+			assert.Equal(t, 30, api.GraphQLHumanBurst)
+			assert.Equal(t, 400, api.GraphQLServiceRequestsPerHour)
+			assert.Equal(t, 40, api.GraphQLServiceBurst)
+			assert.Equal(t, 1000, api.GraphQLComplexityLimit)
+			assert.Equal(t, []string{"user1", "user2"}, api.ElevatedUserIDs)
+		})
+
+		t.Run("ZeroValues", func(t *testing.T) {
+			svc := evergreen.RateLimitConfig{}
+			api := APIRateLimitConfig{}
+			api.BuildFromService(svc)
+			assert.Equal(t, 0, api.RESTHumanRequestsPerHour)
+			assert.Equal(t, 0, api.GraphQLComplexityLimit)
+			assert.Nil(t, api.ElevatedUserIDs)
+		})
+	})
+
+	t.Run("ToService", func(t *testing.T) {
+		t.Run("RoundTrip", func(t *testing.T) {
+			api := APIRateLimitConfig{
+				RESTHumanRequestsPerHour:      100,
+				RESTHumanBurst:                10,
+				RESTServiceRequestsPerHour:    200,
+				RESTServiceBurst:              20,
+				GraphQLHumanRequestsPerHour:   300,
+				GraphQLHumanBurst:             30,
+				GraphQLServiceRequestsPerHour: 400,
+				GraphQLServiceBurst:           40,
+				GraphQLComplexityLimit:        1000,
+				ElevatedUserIDs:               []string{"user1", "user2"},
+			}
+			svc := api.ToService()
+			assert.Equal(t, 100, svc.RESTHumanRequestsPerHour)
+			assert.Equal(t, 10, svc.RESTHumanBurst)
+			assert.Equal(t, 200, svc.RESTServiceRequestsPerHour)
+			assert.Equal(t, 20, svc.RESTServiceBurst)
+			assert.Equal(t, 300, svc.GraphQLHumanRequestsPerHour)
+			assert.Equal(t, 30, svc.GraphQLHumanBurst)
+			assert.Equal(t, 400, svc.GraphQLServiceRequestsPerHour)
+			assert.Equal(t, 40, svc.GraphQLServiceBurst)
+			assert.Equal(t, 1000, svc.GraphQLComplexityLimit)
+			assert.Equal(t, []string{"user1", "user2"}, svc.ElevatedUserIDs)
 		})
 	})
 }

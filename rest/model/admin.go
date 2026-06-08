@@ -522,9 +522,10 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 }
 
 type APIapiConfig struct {
-	HttpListenAddr *string `json:"http_listen_addr"`
-	URL            *string `json:"url"`
-	CorpURL        *string `json:"corp_url"`
+	HttpListenAddr *string            `json:"http_listen_addr"`
+	URL            *string            `json:"url"`
+	CorpURL        *string            `json:"corp_url"`
+	RateLimit      APIRateLimitConfig `json:"rate_limit"`
 }
 
 func (a *APIapiConfig) BuildFromService(h any) error {
@@ -533,6 +534,7 @@ func (a *APIapiConfig) BuildFromService(h any) error {
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.URL = utility.ToStringPtr(v.URL)
 		a.CorpURL = utility.ToStringPtr(v.CorpURL)
+		a.RateLimit.BuildFromService(v.RateLimit)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
@@ -544,7 +546,49 @@ func (a *APIapiConfig) ToService() (any, error) {
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		URL:            utility.FromStringPtr(a.URL),
 		CorpURL:        utility.FromStringPtr(a.CorpURL),
+		RateLimit:      a.RateLimit.ToService(),
 	}, nil
+}
+
+type APIRateLimitConfig struct {
+	RESTHumanRequestsPerHour      int      `json:"rest_human_per_hour"`
+	RESTHumanBurst                int      `json:"rest_human_burst"`
+	RESTServiceRequestsPerHour    int      `json:"rest_service_per_hour"`
+	RESTServiceBurst              int      `json:"rest_service_burst"`
+	GraphQLHumanRequestsPerHour   int      `json:"graphql_human_per_hour"`
+	GraphQLHumanBurst             int      `json:"graphql_human_burst"`
+	GraphQLServiceRequestsPerHour int      `json:"graphql_service_per_hour"`
+	GraphQLServiceBurst           int      `json:"graphql_service_burst"`
+	GraphQLComplexityLimit        int      `json:"graphql_complexity_limit"`
+	ElevatedUserIDs               []string `json:"elevated_user_ids"`
+}
+
+func (a *APIRateLimitConfig) BuildFromService(svc evergreen.RateLimitConfig) {
+	a.RESTHumanRequestsPerHour = svc.RESTHumanRequestsPerHour
+	a.RESTHumanBurst = svc.RESTHumanBurst
+	a.RESTServiceRequestsPerHour = svc.RESTServiceRequestsPerHour
+	a.RESTServiceBurst = svc.RESTServiceBurst
+	a.GraphQLHumanRequestsPerHour = svc.GraphQLHumanRequestsPerHour
+	a.GraphQLHumanBurst = svc.GraphQLHumanBurst
+	a.GraphQLServiceRequestsPerHour = svc.GraphQLServiceRequestsPerHour
+	a.GraphQLServiceBurst = svc.GraphQLServiceBurst
+	a.GraphQLComplexityLimit = svc.GraphQLComplexityLimit
+	a.ElevatedUserIDs = svc.ElevatedUserIDs
+}
+
+func (a *APIRateLimitConfig) ToService() evergreen.RateLimitConfig {
+	return evergreen.RateLimitConfig{
+		RESTHumanRequestsPerHour:      a.RESTHumanRequestsPerHour,
+		RESTHumanBurst:                a.RESTHumanBurst,
+		RESTServiceRequestsPerHour:    a.RESTServiceRequestsPerHour,
+		RESTServiceBurst:              a.RESTServiceBurst,
+		GraphQLHumanRequestsPerHour:   a.GraphQLHumanRequestsPerHour,
+		GraphQLHumanBurst:             a.GraphQLHumanBurst,
+		GraphQLServiceRequestsPerHour: a.GraphQLServiceRequestsPerHour,
+		GraphQLServiceBurst:           a.GraphQLServiceBurst,
+		GraphQLComplexityLimit:        a.GraphQLComplexityLimit,
+		ElevatedUserIDs:               a.ElevatedUserIDs,
+	}
 }
 
 type APIAuthConfig struct {

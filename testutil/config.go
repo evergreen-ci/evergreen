@@ -151,6 +151,18 @@ func MockConfig() *evergreen.Settings {
 			HttpListenAddr: "addr",
 			URL:            "api",
 			CorpURL:        "corp",
+			RateLimit: evergreen.RateLimitConfig{
+				RESTHumanRequestsPerHour:      100,
+				RESTHumanBurst:                10,
+				RESTServiceRequestsPerHour:    200,
+				RESTServiceBurst:              20,
+				GraphQLHumanRequestsPerHour:   300,
+				GraphQLHumanBurst:             30,
+				GraphQLServiceRequestsPerHour: 400,
+				GraphQLServiceBurst:           40,
+				GraphQLComplexityLimit:        1000,
+				ElevatedUserIDs:               []string{"user1", "user2"},
+			},
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
