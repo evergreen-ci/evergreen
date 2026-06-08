@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -59,9 +60,12 @@ func NewTestLogSender(ctx context.Context, task Task, senderOpts EvergreenSender
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
+	logName := getLogNames(task, []string{logPath}, output.TestLogs.ID())[0]
 	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) (int64, int, error) {
-		return svc.Append(ctx, getLogNames(task, []string{logPath}, output.TestLogs.ID())[0], sequence, lines)
+		return svc.Append(ctx, logName, sequence, lines)
 	}
+	senderOpts.LogType = s3usage.LogTypeTest
+	senderOpts.LogKey = logName
 
 	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", task.Id, logPath), senderOpts)
 }

@@ -94,8 +94,8 @@ type SharedCommunicator interface {
 	NewPush(context.Context, TaskData, *apimodels.S3CopyRequest) (*model.PushLog, error)
 	UpdatePushStatus(context.Context, TaskData, *model.PushLog) error
 	AttachFiles(context.Context, TaskData, []*artifact.File) error
-	// ReportS3Usage reports the task's S3 usage metrics to the server.
-	ReportS3Usage(context.Context, TaskData, s3usage.S3Usage) error
+	// ReportS3Usage reports the task's accumulated S3 usage to the server. When final is true, the server increments the version cost and emits the OTel span.
+	ReportS3Usage(context.Context, TaskData, s3usage.S3Usage, bool) error
 	// ReportHighExecTimeout reports to the app server that this task
 	// dynamically set an unusually high exec timeout.
 	ReportHighExecTimeout(ctx context.Context, td TaskData, execTimeoutSecs int) error

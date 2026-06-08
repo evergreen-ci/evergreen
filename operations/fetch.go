@@ -3,6 +3,7 @@ package operations
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,7 +27,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
+	werrors "github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -133,7 +134,7 @@ func Fetch() cli.Command {
 			if c.IsSet(executionFlagName) {
 				stringAsInt, err := strconv.Atoi(c.String(executionFlagName))
 				if err != nil {
-					return errors.Wrap(err, "invalid execution number")
+					return werrors.Wrap(err, "invalid execution number")
 				}
 				execution = utility.ToIntPtr(stringAsInt)
 			}
@@ -142,29 +143,30 @@ func Fetch() cli.Command {
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
-				return errors.Wrap(err, "loading configuration")
+				return werrors.Wrap(err, "loading configuration")
 			}
 
 			client, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
+				return werrors.Wrap(err, "setting up REST communicator")
 			}
 			defer client.Close()
 
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
-				return errors.Wrap(err, "setting up legacy Evergreen client")
+				return werrors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
+			errs := []error{}
 			if shouldFetchSource {
 				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
-					return err
+					errs = append(errs, werrors.Wrap(err, "fetching source"))
 				}
 			}
 
 			if shouldFetchArtifacts {
 				if err = fetchArtifacts(rc, taskID, wd, shallow, execution, artifactName); err != nil {
-					return err
+					errs = append(errs, werrors.Wrap(err, "fetching artifacts"))
 				}
 			}
 
@@ -175,7 +177,7 @@ func Fetch() cli.Command {
 					"task":    taskID,
 				}))
 			}
-			return nil
+			return errors.Join(errs...)
 		},
 	}
 }
@@ -206,7 +208,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 		return err
 	}
 	if task == nil {
-		return errors.New("task not found")
+		return werrors.New("task not found")
 	}
 	project, err := rc.GetProject(task.Version)
 	if err != nil {
@@ -275,11 +277,11 @@ func clone(ctx context.Context, opts cloneOptions) error {
 	if opts.token == "" {
 		resp, err := http.Get(thirdparty.FormGitURLForApp(opts.owner, opts.repository, opts.token))
 		if err != nil {
-			return errors.Errorf("failed to check if %s/%s exists: %v", opts.owner, opts.repository, err)
+			return werrors.Errorf("failed to check if %s/%s exists: %v", opts.owner, opts.repository, err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return errors.Errorf("%s/%s does not exist or is private and no token was provided: %d", opts.owner, opts.repository, resp.StatusCode)
+			return werrors.Errorf("%s/%s does not exist or is private and no token was provided: %d", opts.owner, opts.repository, resp.StatusCode)
 		}
 	}
 	var cloneArgs []string
@@ -386,13 +388,13 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 	// Then fetch each of the modules
 	variant := config.FindBuildVariant(task.BuildVariant)
 	if variant == nil {
-		return errors.Errorf("finding build variant '%s' in config", task.BuildVariant)
+		return werrors.Errorf("finding build variant '%s' in config", task.BuildVariant)
 	}
 
 	for _, moduleName := range variant.Modules {
 		module, err := config.GetModuleByName(moduleName)
 		if err != nil || module == nil {
-			return errors.Errorf("variant refers to a module '%s' that doesn't exist", moduleName)
+			return werrors.Errorf("variant refers to a module '%s' that doesn't exist", moduleName)
 		}
 		// Do not error if the module token doesn't exist. If the repo is
 		// public, it can be cloned without a token.
@@ -412,7 +414,7 @@ func cloneSource(ctx context.Context, task *service.RestTask, project *model.Pro
 
 		owner, repo, err := module.GetOwnerAndRepo()
 		if err != nil {
-			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
+			return werrors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
 
 		if model.IsWikiRepo(repo) {
@@ -476,7 +478,7 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 			// if patch is part of a module, apply patch in module root
 			module, err := conf.GetModuleByName(patchPart.ModuleName)
 			if err != nil || module == nil {
-				return errors.Wrapf(err, "finding module '%s'", patchPart.ModuleName)
+				return werrors.Wrapf(err, "finding module '%s'", patchPart.ModuleName)
 			}
 
 			// skip the module if this build variant does not use it
@@ -518,18 +520,18 @@ func resetGitRemoteToSSH(owner, repository, rootDir string) error {
 func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool, execution *int, artifactName string) error {
 	task, err := rc.GetTaskV2(taskId, execution)
 	if err != nil {
-		return errors.Wrapf(err, "getting task '%s'", taskId)
+		return werrors.Wrapf(err, "getting task '%s'", taskId)
 	}
 	if task == nil {
-		return errors.New("task not found")
+		return werrors.New("task not found")
 	}
 
 	urls, err := getUrlsChannel(rc, task, shallow, artifactName)
 	if err != nil {
-		return errors.WithStack(err)
+		return werrors.WithStack(err)
 	}
 
-	return errors.Wrapf(downloadUrls(rootDir, urls, 4), "downloading artifacts for task '%s'", taskId)
+	return werrors.Wrapf(downloadUrls(rootDir, urls, 4), "downloading artifacts for task '%s'", taskId)
 }
 
 // searchDependencies does a depth-first search of the dependencies of the "seed" task, returning
@@ -725,7 +727,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 							break
 						}
 						// something else went wrong.
-						errs <- errors.Wrapf(err, "checking if file '%s' exists", testFileName)
+						errs <- werrors.Wrapf(err, "checking if file '%s' exists", testFileName)
 						fileNamesUsed.Unlock()
 						return
 					}
@@ -735,19 +737,19 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 
 				err = os.MkdirAll(folder, 0777)
 				if err != nil {
-					errs <- errors.Wrapf(err, "creating output directory '%s'", folder)
+					errs <- werrors.Wrapf(err, "creating output directory '%s'", folder)
 					continue
 				}
 
 				out, err := os.Create(fileName)
 				if err != nil {
-					errs <- errors.Wrapf(err, "creating file '%s'", fileName)
+					errs <- werrors.Wrapf(err, "creating file '%s'", fileName)
 					continue
 				}
 				defer out.Close() //nolint:evg-lint
 				resp, err := http.Get(u.url)
 				if err != nil {
-					errs <- errors.Wrapf(err, "downloading URL '%s'", u.url)
+					errs <- werrors.Wrapf(err, "downloading URL '%s'", u.url)
 					continue
 				}
 				defer resp.Body.Close() //nolint:evg-lint
@@ -764,7 +766,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				fmt.Printf("(worker %d) Downloading %s to directory %s%s\n", workerId, justFile, u.path, sizeLog)
 				_, err = io.Copy(out, resp.Body)
 				if err != nil {
-					errs <- errors.Wrapf(err, "copying body from URL '%s' to file '%s'", u.url, fileName)
+					errs <- werrors.Wrapf(err, "copying body from URL '%s' to file '%s'", u.url, fileName)
 					continue
 				}
 				counter++
@@ -777,7 +779,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 	go func() {
 		defer close(done)
 		for e := range errs {
-			hasErrors = errors.New("some files could not be downloaded successfully")
+			hasErrors = werrors.New("some files could not be downloaded successfully")
 			fmt.Println("error: ", e)
 		}
 	}()

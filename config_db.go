@@ -97,6 +97,8 @@ var (
 	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
 	secondaryReadsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
 	backgroundCommandFailureEnabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCommandFailureEnabled")
+	apiRateLimiterDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "APIRateLimiterDisabled")
+	graphqlComplexityLimiterDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "GraphQLComplexityLimiterDisabled")
 
 	// DiagnosticsConfig keys
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")

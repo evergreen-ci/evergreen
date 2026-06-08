@@ -1014,6 +1014,70 @@ func TestUpdateHostRunningTask(t *testing.T) {
 	})
 }
 
+func TestNumHostsByTaskSpec(t *testing.T) {
+	const (
+		group        = "task_group"
+		buildVariant = "build_variant"
+		project      = "project"
+		version      = "version"
+	)
+
+	t.Run("IdleHostBetweenTaskGroupTasksCounts", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		h := Host{
+			Id:               "idle_between_task_group_tasks",
+			Status:           evergreen.HostRunning,
+			LastTask:         "previous_task",
+			LastGroup:        group,
+			LastBuildVariant: buildVariant,
+			LastProject:      project,
+			LastVersion:      version,
+		}
+		require.NoError(t, h.Insert(t.Context()))
+
+		count, err := NumHostsByTaskSpec(t.Context(), group, buildVariant, project, version)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("BusyHostRunningTaskGroupCounts", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		h := Host{
+			Id:                      "busy_with_task_group",
+			Status:                  evergreen.HostRunning,
+			RunningTask:             "current_task",
+			RunningTaskGroup:        group,
+			RunningTaskBuildVariant: buildVariant,
+			RunningTaskProject:      project,
+			RunningTaskVersion:      version,
+		}
+		require.NoError(t, h.Insert(t.Context()))
+
+		count, err := NumHostsByTaskSpec(t.Context(), group, buildVariant, project, version)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("BusyHostRunningUnrelatedTaskDoesNotCount", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+		h := Host{
+			Id:               "busy_with_stale_task_group",
+			Status:           evergreen.HostRunning,
+			RunningTask:      "unrelated_task",
+			LastTask:         "previous_task",
+			LastGroup:        group,
+			LastBuildVariant: buildVariant,
+			LastProject:      project,
+			LastVersion:      version,
+		}
+		require.NoError(t, h.Insert(t.Context()))
+
+		count, err := NumHostsByTaskSpec(t.Context(), group, buildVariant, project, version)
+		require.NoError(t, err)
+		assert.Zero(t, count)
+	})
+}
+
 func TestUpsert(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -2052,7 +2116,7 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 
 func setupIdleHostQueryIndex(t *testing.T) {
 	require.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
-		Keys: StartedByStatusIndex,
+		Keys: StartedByCreationTimeIndex,
 	}))
 }
 
