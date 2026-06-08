@@ -1048,7 +1048,7 @@ func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
 	}
 
 	if len(webhookSub.Secret) > 0 {
-		saveWebhookParameter(ctx, s.ID, GetWebhookSecretParameterPath(s.ID), webhookSub.Secret, &webhookSub.SecretParameter)
+		webhookSub.SecretParameter = saveWebhookParameter(ctx, s.ID, GetWebhookSecretParameterPath(s.ID), webhookSub.Secret)
 		// Keep Secret in MongoDB as a fallback until the Phase 2 cleanup job removes it.
 	}
 
@@ -1067,7 +1067,7 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 	}
 
 	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" {
-		saveWebhookParameter(ctx, s.ID, GetWebhookAuthParameterPath(s.ID), []byte(authValue), &webhookSub.AuthorizationParameter)
+		webhookSub.AuthorizationParameter = saveWebhookParameter(ctx, s.ID, GetWebhookAuthParameterPath(s.ID), []byte(authValue))
 	} else if s.ID != "" {
 		// Authorization header was removed on update. Clean up the old PS entry if
 		// one exists, so we don't leave orphaned parameters in Parameter Store.
@@ -1098,8 +1098,8 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 	return nil
 }
 
-// saveWebhookParameter saves value to Parameter Store and sets *paramField to the parameter name on success.
-func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []byte, paramField *string) {
+// saveWebhookParameter saves value to Parameter Store and returns the parameter name on success, or empty string on failure.
+func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []byte) string {
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 	param, err := paramMgr.Put(ctx, paramPath, string(value))
 	if err != nil {
@@ -1110,10 +1110,8 @@ func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []
 			"error":           err.Error(),
 			"ticket":          "DEVPROD-15500",
 		})
-		*paramField = ""
-		return
+		return ""
 	}
-	*paramField = param.Name
 	if err := verifyWebhookSecretInParameterStore(ctx, param.Name, value); err != nil {
 		grip.Warning(ctx, message.Fields{
 			"message":         "verifying webhook parameter in Parameter Store, falling back to MongoDB",
@@ -1123,8 +1121,7 @@ func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []
 			"ticket":          "DEVPROD-15500",
 		})
 		_ = deleteWebhookSecretFromParameterStore(ctx, param.Name)
-		*paramField = ""
-		return
+		return ""
 	}
 	grip.Debug(ctx, message.Fields{
 		"message":         "saved webhook parameter to Parameter Store",
@@ -1132,6 +1129,7 @@ func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []
 		"parameter_name":  param.Name,
 		"ticket":          "DEVPROD-15500",
 	})
+	return param.Name
 }
 
 // populateWebhookSecrets loads webhook secrets from Parameter Store, falling back to MongoDB for unmigrated subscriptions.
