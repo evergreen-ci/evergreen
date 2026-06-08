@@ -2408,6 +2408,21 @@ var StartedByStatusIndex = bson.D{
 	},
 }
 
+// StartedByCreationTimeIndex is the started_by_1_creation_time_1 index, hinted by
+// IdleEphemeralGroupedByDistroID so its sort by creation_time is served by the index rather than a
+// blocking in-memory sort. status is intentionally omitted: it's matched with an $or, so keying it
+// between started_by and creation_time would break the index sort.
+var StartedByCreationTimeIndex = bson.D{
+	{
+		Key:   StartedByKey,
+		Value: 1,
+	},
+	{
+		Key:   CreateTimeKey,
+		Value: 1,
+	},
+}
+
 // DistroIdStatusIndex is the distro_id_1_status_1 index.
 var DistroIdStatusIndex = bson.D{
 	{
