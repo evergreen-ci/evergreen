@@ -641,21 +641,23 @@ var UserTriggeredOrigins = []string{
 }
 
 const (
-	AuthTokenCookie      = "mci-token"
-	LoginCookieTTL       = 365 * 24 * time.Hour
-	TaskHeader           = "Task-Id"
-	TaskSecretHeader     = "Task-Secret"
-	HostHeader           = "Host-Id"
-	HostSecretHeader     = "Host-Secret"
-	ContentTypeHeader    = "Content-Type"
-	ContentTypeValue     = "application/json"
-	ContentLengthHeader  = "Content-Length"
-	APIUserHeader        = "Api-User"
-	APIKeyHeader         = "Api-Key"
-	SageUserHeader       = "x-authenticated-sage-user"
-	AuthorizationHeader  = "Authorization"
-	EnvironmentHeader    = "X-Evergreen-Environment"
-	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
+	AuthTokenCookie         = "mci-token"
+	LoginCookieTTL          = 365 * 24 * time.Hour
+	TaskHeader              = "Task-Id"
+	TaskSecretHeader        = "Task-Secret"
+	HostHeader              = "Host-Id"
+	HostSecretHeader        = "Host-Secret"
+	ContentTypeHeader       = "Content-Type"
+	ContentTypeValue        = "application/json"
+	ContentLengthHeader     = "Content-Length"
+	APIUserHeader           = "Api-User"
+	APIKeyHeader            = "Api-Key"
+	SageUserHeader          = "x-authenticated-sage-user"
+	AuthorizationHeader     = "Authorization"
+	EnvironmentHeader       = "X-Evergreen-Environment"
+	GraphQLAIAgentHeader    = "X-Graphql-Ai-Agent"
+	RateLimitHeader         = "X-RateLimit"
+	GraphQLComplexityHeader = "X-GraphQL-Complexity"
 )
 
 const (
@@ -1537,3 +1539,12 @@ func ValidateSSHKey(key string) error {
 	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
 		"or the key value is not one of the valid types: %s", validKeyTypes)
 }
+
+// RateLimitSurface represents the surface to which rate limiting is applied.
+type RateLimitSurface string
+
+const (
+	// Rate limit surfaces
+	RateLimitSurfaceREST    RateLimitSurface = "rest"
+	RateLimitSurfaceGraphQL RateLimitSurface = "graphql"
+)
