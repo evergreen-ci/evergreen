@@ -390,7 +390,7 @@ var htmlTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
     <tr>
       <td><code>{{.Name}}</code></td>
       <td>{{.Description}}</td>
-      <td class="num">{{.Using}} / {{.Total}}</td>
+      <td class="num" data-val="{{.Using}}">{{.Using}} / {{.Total}}</td>
       <td class="num">{{.Percent}}</td>
     </tr>
   {{end}}
@@ -425,7 +425,8 @@ function sortTable(tableId, col, numeric) {
   const rows = Array.from(tbody.rows);
   const asc = table.getAttribute("data-sort-col") != col || table.getAttribute("data-sort-dir") != "asc";
   rows.sort((a, b) => {
-    let x = a.cells[col].innerText, y = b.cells[col].innerText;
+    const cx = a.cells[col], cy = b.cells[col];
+    let x = cx.dataset.val ?? cx.innerText, y = cy.dataset.val ?? cy.innerText;
     if (numeric) { x = parseFloat(x) || 0; y = parseFloat(y) || 0; return asc ? x - y : y - x; }
     return asc ? x.localeCompare(y) : y.localeCompare(x);
   });
