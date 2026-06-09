@@ -10,9 +10,7 @@
         "errors": [
           {
             "message": "User 'regular_user' lacks required admin permissions",
-            "path": [
-              "adminSettings"
-            ],
+            "path": ["adminSettings"],
             "extensions": {
               "code": "FORBIDDEN"
             }
@@ -98,10 +96,7 @@
                 "clientId": "client_id",
                 "clientSecret": "client_secret",
                 "issuer": "issuer",
-                "scopes": [
-                  "option1",
-                  "option2"
-                ],
+                "scopes": ["option1", "option2"],
                 "userGroup": "user_group",
                 "expireAfterMinutes": 0
               },
@@ -137,12 +132,8 @@
                 "users": []
               },
               "multi": {
-                "readWrite": [
-                  "okta"
-                ],
-                "readOnly": [
-                  "github"
-                ]
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
               },
               "kanopy": {
                 "headerName": "",
@@ -167,10 +158,7 @@
               "clientId": "service-id",
               "clientSecret": "service-secret",
               "issuer": "issuer",
-              "scopes": [
-                "scope1",
-                "scope2"
-              ]
+              "scopes": ["scope1", "scope2"]
             }
           }
         }
@@ -245,19 +233,16 @@
               "url": "http://localhost:9090",
               "corpUrl": "",
               "rateLimit": {
+                "restHumanRequestsPerHour": 100,
                 "restHumanBurst": 10,
+                "restServiceRequestsPerHour": 200,
                 "restServiceBurst": 20,
+                "graphqlHumanRequestsPerHour": 300,
                 "graphqlHumanBurst": 30,
+                "graphqlServiceRequestsPerHour": 400,
                 "graphqlServiceBurst": 40,
                 "graphqlComplexityLimit": 1000,
-                "elevatedUserIds": [
-                  "user1",
-                  "user2"
-                ],
-                "restHumanRequestsPerHour": 100,
-                "restServiceRequestsPerHour": 200,
-                "graphqlHumanRequestsPerHour": 300,
-                "graphqlServiceRequestsPerHour": 400
+                "elevatedUserIds": ["user1", "user2"]
               }
             },
             "ui": {
@@ -347,10 +332,7 @@
               "defaultLevel": "INFO",
               "thresholdLevel": "DEBUG",
               "logkeeperURL": "logkeeper-url",
-              "redactKeys": [
-                "secret",
-                "password"
-              ]
+              "redactKeys": ["secret", "password"]
             },
             "notify": {
               "bufferIntervalSeconds": 30,
@@ -370,9 +352,7 @@
           "adminSettings": {
             "configDir": "../config",
             "domainName": "localhost",
-            "githubOrgs": [
-              "evergreen-ci"
-            ],
+            "githubOrgs": ["evergreen-ci"],
             "githubPRCreatorOrg": "evergreen-ci",
             "githubWebhookSecret": "webhook_secret",
             "logPath": "/var/log/evergreen",
@@ -385,38 +365,25 @@
                 {
                   "projectId": "evergreen",
                   "displayName": "Evergreen (Project)",
-                  "allowedTasks": [
-                    "compile",
-                    "test"
-                  ],
-                  "allowedBVs": [
-                    "windows",
-                    "ubuntu1604"
-                  ]
+                  "allowedTasks": ["compile", "test"],
+                  "allowedBVs": ["windows", "ubuntu1604"]
                 },
                 {
                   "projectId": "spruce",
                   "displayName": "spruce (Project)",
-                  "allowedTasks": [
-                    "lint",
-                    "storybook"
-                  ],
+                  "allowedTasks": ["lint", "storybook"],
                   "allowedBVs": []
                 },
                 {
                   "projectId": "evergreen_repo",
                   "displayName": "Evergreen Repo (Repo)",
-                  "allowedTasks": [
-                    "check_codegen"
-                  ],
+                  "allowedTasks": ["check_codegen"],
                   "allowedBVs": []
                 },
                 {
                   "projectId": "spruce_repo",
                   "displayName": "evergreen-ci/spruce (Repo)",
-                  "allowedTasks": [
-                    "check_codegen"
-                  ],
+                  "allowedTasks": ["check_codegen"],
                   "allowedBVs": []
                 }
               ]
@@ -432,10 +399,7 @@
                 "testResultsPrefix": "all",
                 "roleARN": ""
               },
-              "longRetentionProjects": [
-                "project1",
-                "project2"
-              ],
+              "longRetentionProjects": ["project1", "project2"],
               "logBucketLongRetention": {
                 "name": "mutation-long-retention-bucket",
                 "testResultsPrefix": null,
@@ -445,11 +409,11 @@
             "ssh": {
               "taskHostKey": {
                 "name": "task host key",
-                "secretARN": "<secret_arn>"
+                "secretARN": "\u003csecret_arn\u003e"
               },
               "spawnHostKey": {
                 "name": "spawn host key",
-                "secretARN": "<secret_arn>"
+                "secretARN": "\u003csecret_arn\u003e"
               }
             },
             "hostJasper": {
@@ -464,12 +428,8 @@
                 {
                   "project": "CUSTOM PROJECT",
                   "fields": {},
-                  "components": [
-                    "component"
-                  ],
-                  "labels": [
-                    "label"
-                  ]
+                  "components": ["component"],
+                  "labels": ["label"]
                 }
               ]
             },
@@ -479,16 +439,14 @@
               "spawnHostsPerUser": 6
             },
             "sleepSchedule": {
-              "permanentlyExemptHosts": [
-                "1135"
-              ]
+              "permanentlyExemptHosts": ["1135"]
             },
             "tracer": {
               "enabled": false,
-              "collectorEndpoint": "<collector_endpoint>",
-              "collectorInternalEndpoint": "<collector_internal_endpoint>",
-              "collectorAPIKey": "<collector_api_key>",
-              "traceUrlTemplate": "<trace_url_template>"
+              "collectorEndpoint": "\u003ccollector_endpoint\u003e",
+              "collectorInternalEndpoint": "\u003ccollector_internal_endpoint\u003e",
+              "collectorAPIKey": "\u003ccollector_api_key\u003e",
+              "traceUrlTemplate": "\u003ctrace_url_template\u003e"
             },
             "projectCreation": {
               "totalProjectLimit": 10,
@@ -589,20 +547,9 @@
                   "domain": "evergreen.example.com"
                 },
                 "defaultSecurityGroup": "sg-12345678",
-                "allowedInstanceTypes": [
-                  "m5.large",
-                  "m5.xlarge",
-                  "c5.large"
-                ],
-                "alertableInstanceTypes": [
-                  "m5.24xlarge",
-                  "c5.24xlarge"
-                ],
-                "allowedRegions": [
-                  "us-east-1",
-                  "us-west-1",
-                  "us-west-2"
-                ],
+                "allowedInstanceTypes": ["m5.large", "m5.xlarge", "c5.large"],
+                "alertableInstanceTypes": ["m5.24xlarge", "c5.24xlarge"],
+                "allowedRegions": ["us-east-1", "us-west-1", "us-west-2"],
                 "maxVolumeSizePerUser": 1000,
                 "accountRoles": [
                   {
@@ -634,173 +581,54 @@
         "data": {
           "adminSettings": {
             "serviceFlagsList": [
-              {
-                "name": "task_dispatch_disabled",
-                "enabled": false
-              },
-              {
-                "name": "host_init_disabled",
-                "enabled": false
-              },
-              {
-                "name": "large_parser_projects_disabled",
-                "enabled": false
-              },
-              {
-                "name": "monitor_disabled",
-                "enabled": false
-              },
-              {
-                "name": "alerts_disabled",
-                "enabled": false
-              },
-              {
-                "name": "agent_start_disabled",
-                "enabled": false
-              },
-              {
-                "name": "repotracker_disabled",
-                "enabled": false
-              },
-              {
-                "name": "scheduler_disabled",
-                "enabled": false
-              },
-              {
-                "name": "check_blocked_tasks_disabled",
-                "enabled": false
-              },
-              {
-                "name": "github_pr_testing_disabled",
-                "enabled": false
-              },
-              {
-                "name": "cli_updates_disabled",
-                "enabled": false
-              },
-              {
-                "name": "background_stats_disabled",
-                "enabled": false
-              },
-              {
-                "name": "task_logging_disabled",
-                "enabled": false
-              },
-              {
-                "name": "cache_stats_job_disabled",
-                "enabled": false
-              },
-              {
-                "name": "cache_stats_endpoint_disabled",
-                "enabled": false
-              },
-              {
-                "name": "task_reliability_disabled",
-                "enabled": false
-              },
-              {
-                "name": "host_allocator_disabled",
-                "enabled": false
-              },
-              {
-                "name": "background_reauth_disabled",
-                "enabled": false
-              },
-              {
-                "name": "cloud_cleanup_disabled",
-                "enabled": false
-              },
-              {
-                "name": "sleep_schedule_disabled",
-                "enabled": false
-              },
-              {
-                "name": "static_api_keys_disabled",
-                "enabled": false
-              },
-              {
-                "name": "jwt_token_for_cli_disabled",
-                "enabled": false
-              },
+              { "name": "task_dispatch_disabled", "enabled": false },
+              { "name": "host_init_disabled", "enabled": false },
+              { "name": "large_parser_projects_disabled", "enabled": false },
+              { "name": "monitor_disabled", "enabled": false },
+              { "name": "alerts_disabled", "enabled": false },
+              { "name": "agent_start_disabled", "enabled": false },
+              { "name": "repotracker_disabled", "enabled": false },
+              { "name": "scheduler_disabled", "enabled": false },
+              { "name": "check_blocked_tasks_disabled", "enabled": false },
+              { "name": "github_pr_testing_disabled", "enabled": false },
+              { "name": "cli_updates_disabled", "enabled": false },
+              { "name": "background_stats_disabled", "enabled": false },
+              { "name": "task_logging_disabled", "enabled": false },
+              { "name": "cache_stats_job_disabled", "enabled": false },
+              { "name": "cache_stats_endpoint_disabled", "enabled": false },
+              { "name": "task_reliability_disabled", "enabled": false },
+              { "name": "host_allocator_disabled", "enabled": false },
+              { "name": "background_reauth_disabled", "enabled": false },
+              { "name": "cloud_cleanup_disabled", "enabled": false },
+              { "name": "sleep_schedule_disabled", "enabled": false },
+              { "name": "static_api_keys_disabled", "enabled": false },
+              { "name": "jwt_token_for_cli_disabled", "enabled": false },
               {
                 "name": "system_failed_task_restart_disabled",
                 "enabled": false
               },
-              {
-                "name": "cpu_degraded_mode_disabled",
-                "enabled": false
-              },
-              {
-                "name": "elastic_ips_disabled",
-                "enabled": false
-              },
-              {
-                "name": "release_mode_disabled",
-                "enabled": false
-              },
-              {
-                "name": "legacy_ui_admin_page_disabled",
-                "enabled": false
-              },
-              {
-                "name": "debug_spawn_host_disabled",
-                "enabled": false
-              },
-              {
-                "name": "s3_lifecycle_sync_disabled",
-                "enabled": false
-              },
+              { "name": "cpu_degraded_mode_disabled", "enabled": false },
+              { "name": "elastic_ips_disabled", "enabled": false },
+              { "name": "release_mode_disabled", "enabled": false },
+              { "name": "legacy_ui_admin_page_disabled", "enabled": false },
+              { "name": "debug_spawn_host_disabled", "enabled": false },
+              { "name": "s3_lifecycle_sync_disabled", "enabled": false },
               {
                 "name": "use_merge_queue_path_filtering_disabled",
                 "enabled": false
               },
-              {
-                "name": "ps_logging_disabled",
-                "enabled": false
-              },
-              {
-                "name": "pod_diagnostics_disabled",
-                "enabled": false
-              },
-              {
-                "name": "event_processing_disabled",
-                "enabled": false
-              },
-              {
-                "name": "jira_notifications_disabled",
-                "enabled": false
-              },
-              {
-                "name": "slack_notifications_disabled",
-                "enabled": false
-              },
-              {
-                "name": "email_notifications_disabled",
-                "enabled": false
-              },
-              {
-                "name": "webhook_notifications_disabled",
-                "enabled": false
-              },
-              {
-                "name": "github_status_api_disabled",
-                "enabled": false
-              },
-              {
-                "name": "secondary_reads_disabled",
-                "enabled": false
-              },
-              {
-                "name": "background_command_failure_enabled",
-                "enabled": false
-              },
-              { 
-                "name": "api_rate_limiter_disabled", 
-                "enabled": false 
-              },
-              { "name": "graphql_complexity_limiter_disabled", 
-               "enabled": false 
-              }
+              { "name": "ps_logging_disabled", "enabled": false },
+              { "name": "pod_diagnostics_disabled", "enabled": false },
+              { "name": "event_processing_disabled", "enabled": false },
+              { "name": "jira_notifications_disabled", "enabled": false },
+              { "name": "slack_notifications_disabled", "enabled": false },
+              { "name": "email_notifications_disabled", "enabled": false },
+              { "name": "webhook_notifications_disabled", "enabled": false },
+              { "name": "github_status_api_disabled", "enabled": false },
+              { "name": "secondary_reads_disabled", "enabled": false },
+              { "name": "background_command_failure_enabled", "enabled": false },
+              { "name": "api_rate_limiter_disabled", "enabled": false },
+              { "name": "graphql_complexity_limiter_disabled", "enabled": false }
             ]
           }
         }

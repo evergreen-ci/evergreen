@@ -8,9 +8,7 @@
         "errors": [
           {
             "message": "User 'regular_user' lacks required admin permissions",
-            "path": [
-              "saveAdminSettings"
-            ],
+            "path": ["saveAdminSettings"],
             "extensions": {
               "code": "FORBIDDEN"
             }
@@ -98,19 +96,16 @@
               "url": "http://localhost:8080",
               "corpUrl": "https://evergreen-staging.corp.mongodb.com",
               "rateLimit": {
+                "restHumanRequestsPerHour": 100,
                 "restHumanBurst": 10,
+                "restServiceRequestsPerHour": 200,
                 "restServiceBurst": 20,
+                "graphqlHumanRequestsPerHour": 300,
                 "graphqlHumanBurst": 30,
+                "graphqlServiceRequestsPerHour": 400,
                 "graphqlServiceBurst": 40,
                 "graphqlComplexityLimit": 1000,
-                "elevatedUserIds": [
-                  "user1",
-                  "user2"
-                ],
-                "restHumanRequestsPerHour": 100,
-                "restServiceRequestsPerHour": 200,
-                "graphqlHumanRequestsPerHour": 300,
-                "graphqlServiceRequestsPerHour": 400
+                "elevatedUserIds": ["user1", "user2"]
               }
             },
             "ui": {
@@ -120,14 +115,8 @@
               "httpListenAddr": ":3000",
               "secret": "test-secret",
               "defaultProject": "evergreen",
-              "corsOrigins": [
-                "http://localhost:3000",
-                "http://localhost:5173"
-              ],
-              "fileStreamingContentTypes": [
-                "text/plain",
-                "application/json"
-              ],
+              "corsOrigins": ["http://localhost:3000", "http://localhost:5173"],
+              "fileStreamingContentTypes": ["text/plain", "application/json"],
               "loginDomain": "localhost",
               "userVoice": "https://uservoice.com",
               "csrfKey": "12345678901234567890123456789012",
@@ -137,12 +126,7 @@
                 "spruceWaterfallEnabled": false
               }
             },
-            "disabledGQLQueries": [
-              "query1",
-              "query2",
-              "query3",
-              "query4"
-            ]
+            "disabledGQLQueries": ["query1", "query2", "query3", "query4"]
           }
         }
       }
@@ -227,10 +211,7 @@
                 "defaultOwner": "default_owner",
                 "defaultRepo": "default_repo",
                 "organization": "organization",
-                "users": [
-                  "user1",
-                  "user2"
-                ]
+                "users": ["user1", "user2"]
               },
               "kanopy": {
                 "headerName": "header_name",
@@ -243,20 +224,13 @@
                 "connectorId": "oauth_connector_id"
               },
               "multi": {
-                "readWrite": [
-                  "okta"
-                ],
-                "readOnly": [
-                  "github"
-                ]
+                "readWrite": ["okta"],
+                "readOnly": ["github"]
               },
               "okta": {
                 "clientId": "",
                 "issuer": "issuer",
-                "scopes": [
-                  "scope1",
-                  "scope2"
-                ],
+                "scopes": ["scope1", "scope2"],
                 "userGroup": "user_group",
                 "expireAfterMinutes": 60
               },
@@ -276,10 +250,7 @@
               "audience": "audience",
               "clientId": "service-id",
               "issuer": "issuer",
-              "scopes": [
-                "scope1",
-                "scope2"
-              ]
+              "scopes": ["scope1", "scope2"]
             }
           }
         }
@@ -337,9 +308,7 @@
               "defaultLevel": "INFO",
               "thresholdLevel": "INFO",
               "logkeeperURL": "new-logkeeper-url",
-              "redactKeys": [
-                "new-redact-key"
-              ]
+              "redactKeys": ["new-redact-key"]
             },
             "notify": {
               "bufferIntervalSeconds": 1,
@@ -365,22 +334,13 @@
             "perfMonitoringURL": "https://perf.mutation.com",
             "pprofPort": "8080",
             "logPath": "/test/logs",
-            "githubOrgs": [
-              "test-org1",
-              "test-org2"
-            ],
+            "githubOrgs": ["test-org1", "test-org2"],
             "singleTaskDistro": {
               "projectTasksPairs": [
                 {
                   "projectId": "test-project",
-                  "allowedTasks": [
-                    "test-task1",
-                    "test-task2"
-                  ],
-                  "allowedBVs": [
-                    "test-bv1",
-                    "test-bv2"
-                  ]
+                  "allowedTasks": ["test-task1", "test-task2"],
+                  "allowedBVs": ["test-bv1", "test-bv2"]
                 }
               ]
             },
@@ -396,10 +356,7 @@
                 "testResultsPrefix": "mutation-test-results",
                 "roleARN": "test arn"
               },
-              "longRetentionProjects": [
-                "project1",
-                "project2"
-              ],
+              "longRetentionProjects": ["project1", "project2"],
               "logBucketLongRetention": {
                 "name": "mutation-long-retention-bucket",
                 "testResultsPrefix": null,
@@ -430,12 +387,8 @@
                   "fields": {
                     "key1": "value1"
                   },
-                  "components": [
-                    "mutation-component"
-                  ],
-                  "labels": [
-                    "mutation-label"
-                  ]
+                  "components": ["mutation-component"],
+                  "labels": ["mutation-label"]
                 }
               ]
             },
@@ -445,10 +398,7 @@
               "spawnHostsPerUser": 10
             },
             "sleepSchedule": {
-              "permanentlyExemptHosts": [
-                "host1",
-                "host2"
-              ]
+              "permanentlyExemptHosts": ["host1", "host2"]
             },
             "tracer": {
               "enabled": true,
@@ -514,20 +464,9 @@
                   "domain": "evergreen.example.com"
                 },
                 "defaultSecurityGroup": "sg-12345678",
-                "allowedInstanceTypes": [
-                  "m5.large",
-                  "m5.xlarge",
-                  "c5.large"
-                ],
-                "alertableInstanceTypes": [
-                  "m5.24xlarge",
-                  "c5.24xlarge"
-                ],
-                "allowedRegions": [
-                  "us-east-1",
-                  "us-west-1",
-                  "us-west-2"
-                ],
+                "allowedInstanceTypes": ["m5.large", "m5.xlarge", "c5.large"],
+                "alertableInstanceTypes": ["m5.24xlarge", "c5.24xlarge"],
+                "allowedRegions": ["us-east-1", "us-west-1", "us-west-2"],
                 "maxVolumeSizePerUser": 1000,
                 "accountRoles": [
                   {
