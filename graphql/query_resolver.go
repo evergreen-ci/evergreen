@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -754,7 +753,7 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 	usr := mustHaveUser(ctx)
 	var err error
 	if userID != nil {
-		usr, err = user.FindOneById(ctx, utility.FromStringPtr(userID))
+		usr, err = loaders.GetUser(ctx, utility.FromStringPtr(userID))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
 		}
@@ -1339,7 +1338,7 @@ func (r *queryResolver) TaskHistoryByCreateTime(ctx context.Context, options Tas
 
 // HasVersion is the resolver for the hasVersion field.
 func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, error) {
-	v, err := model.VersionFindOne(ctx, model.VersionById(patchID).WithFields(model.VersionIdKey))
+	v, err := loaders.GetVersion(ctx, patchID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", patchID, err.Error()))
 	}

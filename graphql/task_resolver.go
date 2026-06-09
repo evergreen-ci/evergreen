@@ -377,7 +377,7 @@ func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITas
 		return nil, nil
 	}
 
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version: %s", err.Error()))
 	}

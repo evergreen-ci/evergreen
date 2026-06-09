@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -164,7 +165,7 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 	}
 	allStatuses := []string{status}
 	for _, cp := range p.Triggers.ChildPatches {
-		cpVersion, err := model.VersionFindOneId(ctx, cp)
+		cpVersion, err := loaders.GetVersion(ctx, cp)
 		if err != nil {
 			return "", errors.Wrapf(err, "finding version for child patch '%s': %s", cp, err.Error())
 		}

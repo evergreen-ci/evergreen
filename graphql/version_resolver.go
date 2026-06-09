@@ -179,7 +179,7 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIVersion) ([]*GeneratedTaskCountResults, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -276,7 +276,7 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -432,7 +432,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	}
 
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -561,7 +561,7 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -594,7 +594,7 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 // Warnings is the resolver for the warnings field.
 func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -623,7 +623,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	}
 
 	// TODO DEVPROD-29422: this is only necessary because APIVersion doesn't include BuildIds, and GetAllWaterfallVersions projects out Version.BuildVariants for performance
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}

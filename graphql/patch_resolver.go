@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -23,7 +22,7 @@ import (
 // AuthorDisplayName is the resolver for the authorDisplayName field.
 func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	author := utility.FromStringPtr(obj.Author)
-	usr, err := user.FindOneById(ctx, author)
+	usr, err := loaders.GetUser(ctx, author)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting user corresponding to author '%s': %s", author, err.Error()))
 	}
@@ -334,7 +333,7 @@ func (r *patchResolver) Version(ctx context.Context, obj *restModel.APIPatch) (*
 	if versionID == "" {
 		return nil, nil
 	}
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := loaders.GetVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
