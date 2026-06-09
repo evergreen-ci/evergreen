@@ -123,9 +123,8 @@ func (s *Subscriber) Validate() error {
 
 type WebhookSubscriber struct {
 	URL string `bson:"url"`
-	// Secret is kept with bson:"secret,omitempty" (not bson:"-") so populateWebhookSecrets can fall
-	// back to the DB value for subscriptions not yet processed by the migration job. Once migrated,
-	// this field is absent from the document. Phase 2 cleanup removes any remaining DB secrets.
+	// Secret is kept with bson:"secret,omitempty" (not bson:"-") so Find can fall back to the DB
+	// value for subscriptions not yet processed by the migration job. Phase 2 cleanup removes remaining DB secrets.
 	Secret                 []byte          `bson:"secret,omitempty"`
 	SecretParameter        string          `bson:"secret_parameter,omitempty"`
 	AuthorizationParameter string          `bson:"authorization_parameter,omitempty"`
@@ -179,7 +178,6 @@ func (s *WebhookSubscriber) GetHeader(key string) string {
 	return ""
 }
 
-// SetHeader sets the value for the given key, updating in place if it exists.
 func (s *WebhookSubscriber) SetHeader(key, value string) {
 	for i := range s.Headers {
 		if s.Headers[i].Key == key {

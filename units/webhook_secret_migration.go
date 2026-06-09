@@ -85,23 +85,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 	// Query as a guard: ResultsNotFound means there is nothing to migrate (not
 	// found, wrong type, or both secret and Authorization header already migrated).
 	sub := &event.Subscription{}
-	if err := db.FindOneQ(ctx, event.SubscriptionsCollection, db.Query(bson.D{
-		{Key: "_id", Value: j.SubscriptionID},
-		{Key: "subscriber.type", Value: event.EvergreenWebhookSubscriberType},
-		{Key: "$or", Value: bson.A{
-			bson.D{
-				{Key: "subscriber.target.secret", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: nil}}},
-				{Key: "subscriber.target.secret_parameter", Value: bson.D{{Key: "$exists", Value: false}}},
-			},
-			bson.D{
-				{Key: "subscriber.target.headers", Value: bson.D{{Key: "$elemMatch", Value: bson.D{
-					{Key: "key", Value: "Authorization"},
-					{Key: "value", Value: bson.D{{Key: "$ne", Value: ""}}},
-				}}}},
-				{Key: "subscriber.target.authorization_parameter", Value: bson.D{{Key: "$exists", Value: false}}},
-			},
-		}},
-	}), sub); err != nil {
+	if err := db.FindOneQ(ctx, event.SubscriptionsCollection, db.Query(append(bson.D{{Key: "_id", Value: j.SubscriptionID}}, unmigratedWebhookQuery...)), sub); err != nil {
 		if !adb.ResultsNotFound(err) {
 			j.AddError(errors.Wrapf(err, "finding subscription '%s'", j.SubscriptionID))
 		}
@@ -116,8 +100,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 	paramMgr := j.env.ParameterManager()
 
 	if len(webhookSub.Secret) > 0 && webhookSub.SecretParameter == "" {
-		// Construct the parameter path inline to avoid a compile-time dependency on PR 1.
-		paramPath := fmt.Sprintf("webhooks/%s/secret", j.SubscriptionID)
+		paramPath := event.GetWebhookSecretParameterPath(j.SubscriptionID)
 		param, err := paramMgr.Put(ctx, paramPath, string(webhookSub.Secret))
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "saving webhook secret to Parameter Store for subscription '%s'", j.SubscriptionID))
@@ -149,7 +132,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 	}
 
 	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationParameter == "" {
-		paramPath := fmt.Sprintf("webhooks/%s/authorization", j.SubscriptionID)
+		paramPath := event.GetWebhookAuthParameterPath(j.SubscriptionID)
 		param, err := paramMgr.Put(ctx, paramPath, authValue)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "saving webhook Authorization header to Parameter Store for subscription '%s'", j.SubscriptionID))
@@ -237,6 +220,9 @@ func PopulateWebhookSecretMigrationJobs() amboy.QueueOperation {
 			return err
 		}
 		if len(ids) == 0 {
+			grip.Info(ctx, message.Fields{
+				"message": "webhook secret migration complete: no unmigrated subscriptions remaining",
+			})
 			return nil
 		}
 
@@ -315,23 +301,7 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 	// Query as a guard: ResultsNotFound means there is nothing to clean up (not
 	// found, wrong type, not yet migrated, or already cleaned up).
 	sub := &event.Subscription{}
-	if err := db.FindOneQ(ctx, event.SubscriptionsCollection, db.Query(bson.D{
-		{Key: "_id", Value: j.SubscriptionID},
-		{Key: "subscriber.type", Value: event.EvergreenWebhookSubscriberType},
-		{Key: "$or", Value: bson.A{
-			bson.D{
-				{Key: "subscriber.target.secret", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: nil}}},
-				{Key: "subscriber.target.secret_parameter", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},
-			},
-			bson.D{
-				{Key: "subscriber.target.headers", Value: bson.D{{Key: "$elemMatch", Value: bson.D{
-					{Key: "key", Value: "Authorization"},
-					{Key: "value", Value: bson.D{{Key: "$ne", Value: ""}}},
-				}}}},
-				{Key: "subscriber.target.authorization_parameter", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},
-			},
-		}},
-	}), sub); err != nil {
+	if err := db.FindOneQ(ctx, event.SubscriptionsCollection, db.Query(append(bson.D{{Key: "_id", Value: j.SubscriptionID}}, migratedWebhookQuery...)), sub); err != nil {
 		if !adb.ResultsNotFound(err) {
 			j.AddError(errors.Wrapf(err, "finding subscription '%s'", j.SubscriptionID))
 		}

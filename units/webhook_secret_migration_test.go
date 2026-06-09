@@ -1,7 +1,6 @@
 package units
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
@@ -365,12 +364,6 @@ func TestFindUnmigratedWebhookSubscriptionIDs(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, ids, 2)
 	})
-}
-
-func TestWebhookSecretMigrationParameterPath(t *testing.T) {
-	subscriptionID := "test-sub-id"
-	expected := "webhooks/" + subscriptionID + "/secret"
-	assert.Equal(t, expected, fmt.Sprintf("webhooks/%s/secret", subscriptionID))
 }
 
 // insertMigratedWebhookSubscription inserts a subscription that has both a

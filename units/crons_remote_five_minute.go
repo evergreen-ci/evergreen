@@ -53,6 +53,7 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 		PopulateGithubAPILimitJob(),
 		PopulateMergeQueueMetricsJobs(),
 		PopulateMergeQueueCompletionMetricsFallbackJobs(),
+		// TODO: DEVPROD-34706 Remove PopulateWebhookSecretMigrationJobs and the WebhookSecretMigrationEnabled flag once migration is verified complete in prod.
 		PopulateWebhookSecretMigrationJobs(),
 	}
 
