@@ -179,7 +179,13 @@ func TestBuildArchive(t *testing.T) {
 				pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 				require.NoError(t, err)
 				excludes := []string{"*.pdb"}
-				_, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false, false)
+				_, err = buildArchive(ctx, buildArchiveOptions{
+					tarWriter: tarWriter,
+					rootPath:  rootPath,
+					paths:     pathsToAdd,
+					excludes:  excludes,
+					logger:    logger,
+				})
 				So(err, ShouldBeNil)
 			})
 		}
@@ -209,7 +215,14 @@ func TestBuildArchiveVerbose(t *testing.T) {
 	pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, []string{"dir1/**"}, []string{})
 	require.NoError(t, err)
 
-	numFiles, err := buildArchive(ctx, tarWriter, rootPath, pathsToAdd, []string{"*.pdb"}, logger, true, false)
+	numFiles, err := buildArchive(ctx, buildArchiveOptions{
+		tarWriter: tarWriter,
+		rootPath:  rootPath,
+		paths:     pathsToAdd,
+		excludes:  []string{"*.pdb"},
+		logger:    logger,
+		verbose:   true,
+	})
 	require.NoError(t, err)
 	assert.Greater(t, numFiles, 0)
 }
@@ -259,7 +272,13 @@ func TestBuildArchivePreserveSymlinks(t *testing.T) {
 		target := filepath.Join(t.TempDir(), "preserve.tgz")
 		f, gz, tarWriter, err := tarGzWriter(target, false)
 		require.NoError(t, err)
-		_, err = buildArchive(ctx, tarWriter, srcDir, contents, nil, logger, false, true)
+		_, err = buildArchive(ctx, buildArchiveOptions{
+			tarWriter:        tarWriter,
+			rootPath:         srcDir,
+			paths:            contents,
+			logger:           logger,
+			preserveSymlinks: true,
+		})
 		require.NoError(t, err)
 		require.NoError(t, tarWriter.Close())
 		require.NoError(t, gz.Close())
@@ -288,7 +307,12 @@ func TestBuildArchivePreserveSymlinks(t *testing.T) {
 		target := filepath.Join(t.TempDir(), "deref.tgz")
 		f, gz, tarWriter, err := tarGzWriter(target, false)
 		require.NoError(t, err)
-		_, err = buildArchive(ctx, tarWriter, srcDir, contents, nil, logger, false, false)
+		_, err = buildArchive(ctx, buildArchiveOptions{
+			tarWriter: tarWriter,
+			rootPath:  srcDir,
+			paths:     contents,
+			logger:    logger,
+		})
 		require.NoError(t, err)
 		require.NoError(t, tarWriter.Close())
 		require.NoError(t, gz.Close())
@@ -319,7 +343,13 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		target := filepath.Join(t.TempDir(), "archive.tgz")
 		f, gz, tarWriter, err := tarGzWriter(target, false)
 		require.NoError(t, err)
-		_, err = buildArchive(ctx, tarWriter, srcDir, contents, nil, logger, false, true)
+		_, err = buildArchive(ctx, buildArchiveOptions{
+			tarWriter:        tarWriter,
+			rootPath:         srcDir,
+			paths:            contents,
+			logger:           logger,
+			preserveSymlinks: true,
+		})
 		require.NoError(t, err)
 		require.NoError(t, tarWriter.Close())
 		require.NoError(t, gz.Close())
@@ -412,7 +442,13 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 				rootPath := filepath.Join(testDir, "testdata", "archive", "artifacts_in")
 				pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 				require.NoError(t, err)
-				found, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false, false)
+				found, err = buildArchive(ctx, buildArchiveOptions{
+					tarWriter: tarWriter,
+					rootPath:  rootPath,
+					paths:     pathsToAdd,
+					excludes:  excludes,
+					logger:    logger,
+				})
 				So(err, ShouldBeNil)
 				So(found, ShouldEqual, 4)
 				So(tarWriter.Close(), ShouldBeNil)

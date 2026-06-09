@@ -364,7 +364,13 @@ func makeCacheArchive(ctx context.Context, workDir string, paths []string, targe
 		logger.Error(ctx, f.Close())
 	}()
 
-	_, err = buildArchive(ctx, tarWriter, workDir, contents, nil, logger, false, preserveSymlinks)
+	_, err = buildArchive(ctx, buildArchiveOptions{
+		tarWriter:        tarWriter,
+		rootPath:         workDir,
+		paths:            contents,
+		logger:           logger,
+		preserveSymlinks: preserveSymlinks,
+	})
 	return errors.Wrap(err, "building cache archive")
 }
 

@@ -59,14 +59,27 @@ func validateSymlinkTarget(linkname, linkPath, rootPath string) error {
 	return nil
 }
 
+// buildArchiveOptions configures how buildArchive writes files into the archive.
+type buildArchiveOptions struct {
+	tarWriter *tar.Writer
+	rootPath  string
+	paths     []archiveContentFile
+	excludes  []string
+	logger    grip.Journaler
+	verbose   bool
+	// preserveSymlinks archives symlinks as symlink entries (preserving their
+	// targets); otherwise they are dereferenced and the target's contents are
+	// stored at the symlink's path.
+	preserveSymlinks bool
+}
+
 // buildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
 // Returns the number of files that were added to the archive.
-// When preserveSymlinks is true, symlinks are archived as symlink entries
-// (preserving their targets); otherwise they are dereferenced and the target's
-// contents are stored at the symlink's path.
-func buildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, pathsToAdd []archiveContentFile,
-	excludes []string, logger grip.Journaler, verbose, preserveSymlinks bool) (int, error) {
+func buildArchive(ctx context.Context, opts buildArchiveOptions) (int, error) {
+	tarWriter, rootPath, logger := opts.tarWriter, opts.rootPath, opts.logger
+	pathsToAdd, excludes := opts.paths, opts.excludes
+	verbose, preserveSymlinks := opts.verbose, opts.preserveSymlinks
 
 	numFilesArchived := 0
 	processed := map[string]bool{}

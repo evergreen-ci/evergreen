@@ -174,7 +174,15 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler, 
 	}()
 
 	// Build the archive
-	out, err := buildArchive(ctx, tarWriter, c.SourceDir, pathsToAdd, c.ExcludeFiles, logger, verbose, false)
+	out, err := buildArchive(ctx, buildArchiveOptions{
+		tarWriter:        tarWriter,
+		rootPath:         c.SourceDir,
+		paths:            pathsToAdd,
+		excludes:         c.ExcludeFiles,
+		logger:           logger,
+		verbose:          verbose,
+		preserveSymlinks: false,
+	})
 
 	return out, errors.WithStack(err)
 }
