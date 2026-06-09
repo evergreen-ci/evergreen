@@ -786,10 +786,6 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 // per-variant task mapping on patchDoc. Display-task wrappers are not reconstructed;
 // execution tasks are scheduled directly.
 func setToPreviousMainlineVersionDefinition(ctx context.Context, patchDoc *patch.Patch, versionId string) error {
-	grip.Debug(ctx, message.Fields{
-		"message":    "cloning mainline waterfall version via --repeat-patch",
-		"version_id": versionId,
-	})
 	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(ctx, versionId)
 	if err != nil {
 		return errors.Wrapf(err, "querying activated tasks for version '%s'", versionId)
