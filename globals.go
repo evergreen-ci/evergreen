@@ -658,12 +658,13 @@ const (
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 
 	// Rate limiting response headers
-	RateLimitLimitHeader         = "X-RateLimit-Limit"
-	RateLimitRemainingHeader     = "X-RateLimit-Remaining"
-	RateLimitResetHeader         = "X-RateLimit-Reset"
-	RetryAfterHeader             = "Retry-After" // standard HTTP header (RFC 9110) set alongside a 429 response
-	GraphQLComplexityLimitHeader = "X-GraphQL-Complexity-Limit"
-	GraphQLComplexityScoreHeader = "X-GraphQL-Complexity-Score"
+	RateLimitLimitHeader            = "X-RateLimit-Limit"
+	RateLimitRemainingHeader        = "X-RateLimit-Remaining"
+	RateLimitResetHeader            = "X-RateLimit-Reset"             // absolute Unix timestamp (seconds) at which the window resets
+	RateLimitExceededHeader         = "X-RateLimit-Exceeded"          // set in warn-only mode (request still served) and on a 429
+	RetryAfterHeader                = "Retry-After"                   // standard HTTP header (RFC 9110), a delta in seconds, set alongside a 429
+	GraphQLComplexityHeader         = "X-GraphQL-Complexity"          // computed complexity score of the operation
+	GraphQLComplexityExceededHeader = "X-GraphQL-Complexity-Exceeded" // set in warn-only mode and on rejection
 )
 
 const (
