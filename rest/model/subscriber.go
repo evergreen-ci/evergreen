@@ -164,7 +164,9 @@ func (s *APISubscriber) ToService() (event.Subscriber, error) {
 				}
 			}
 		}
-		target = apiModel.ToService()
+		ws := apiModel.ToService()
+		// Stored as a pointer so that populateWebhookSecrets can type-assert Target back to *WebhookSubscriber and mutate it in place.
+		target = &ws
 
 	case event.JIRAIssueSubscriberType:
 		apiModel := APIJIRAIssueSubscriber{}

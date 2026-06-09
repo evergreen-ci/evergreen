@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
@@ -73,7 +74,9 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	target.Secret = []byte(evergreen.RedactedValue)
 
 	assert.EqualValues(webhookSubscriber.Type, origWebhookSubscriber.Type)
-	assert.EqualValues(target, origWebhookSubscriber.Target)
+	ws, ok := origWebhookSubscriber.Target.(*event.WebhookSubscriber)
+	require.True(t, ok)
+	assert.EqualValues(target, *ws)
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{

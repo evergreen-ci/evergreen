@@ -651,7 +651,7 @@ func (h *userPermissionDetailsGetHandler) Run(ctx context.Context) gimlet.Respon
 	}
 
 	if h.projectFilter != "" {
-		ref, err := serviceModel.FindBranchProjectRef(ctx, h.projectFilter)
+		ref, err := serviceModel.FindBranchProjectRefSecondary(ctx, h.projectFilter)
 		if err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding project '%s'", h.projectFilter))
 		}
