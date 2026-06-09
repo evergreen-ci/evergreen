@@ -247,7 +247,7 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 		},
 	}
 
-	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(StartedByStatusIndex))
+	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(StartedByCreationTimeIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "grouping idle hosts by distro ID")
 	}
@@ -492,8 +492,8 @@ func allHostsSpawnedByFinishedBuilds(ctx context.Context) ([]Host, error) {
 	return Aggregate(ctx, pipeline)
 }
 
-// ByTaskSpec returns a query that finds all running hosts that are running a
-// task with the given group, buildvariant, project, and version.
+// ByTaskSpec returns a query that finds all running hosts currently assigned to
+// or idle between tasks with the given group, buildvariant, project, and version.
 func ByTaskSpec(group, buildVariant, project, version string) bson.M {
 	return bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning}},
@@ -506,18 +506,19 @@ func ByTaskSpec(group, buildVariant, project, version string) bson.M {
 				RunningTaskVersionKey:      version,
 			},
 			{
-				LTCTaskKey:    bson.M{"$exists": "true"},
-				LTCGroupKey:   group,
-				LTCBVKey:      buildVariant,
-				LTCProjectKey: project,
-				LTCVersionKey: version,
+				RunningTaskKey: bson.M{"$exists": false},
+				LTCTaskKey:     bson.M{"$exists": "true"},
+				LTCGroupKey:    group,
+				LTCBVKey:       buildVariant,
+				LTCProjectKey:  project,
+				LTCVersionKey:  version,
 			},
 		},
 	}
 }
 
-// NumHostsByTaskSpec returns the number of running hosts that are running a task with
-// the given group, buildvariant, project, and version.
+// NumHostsByTaskSpec returns the number of running hosts currently assigned to
+// or idle between tasks with the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(ctx context.Context, group, buildVariant, project, version string) (int, error) {
 	if group == "" || buildVariant == "" || project == "" || version == "" {
 		return 0, errors.Errorf("all arguments must be non-empty strings: (group is '%s', build variant is '%s', "+

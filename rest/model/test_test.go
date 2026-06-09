@@ -5,24 +5,18 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTestBuildFromService(t *testing.T) {
-	ctx := t.Context()
-
-	settings := testutil.TestConfig()
-	require.NoError(t, db.Clear(evergreen.ConfigCollection))
-	settings.Ui.ParsleyUrl = "https://parsley.mongodb.org"
-	require.NoError(t, evergreen.UpdateConfig(ctx, settings))
-
-	env := evergreen.GetEnvironment()
+	args := &APITestArgs{
+		EvergreenBaseURL: "https://request.evergreen.example.com",
+		ParsleyLogURL:    "https://parsley.mongodb.org",
+	}
 	start := time.Now().Add(-10 * time.Minute)
 	end := time.Now()
 
@@ -50,9 +44,9 @@ func TestTestBuildFromService(t *testing.T) {
 					Status:    utility.ToStringPtr(input.Status),
 					TestFile:  utility.ToStringPtr(input.TestName),
 					Logs: TestLogs{
-						URL:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
-						URLRaw:     utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLParsley: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
+						URL:        utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerRaw)),
+						URLParsley: utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerParsley)),
 						LineNum:    input.LineNum,
 						TestName:   utility.ToStringPtr(input.GetLogTestName()),
 					},
@@ -92,9 +86,9 @@ func TestTestBuildFromService(t *testing.T) {
 					GroupID:   utility.ToStringPtr(input.GroupID),
 					Status:    utility.ToStringPtr(input.Status),
 					Logs: TestLogs{
-						URL:           utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
-						URLRaw:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLParsley:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
+						URL:           utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerHTML)),
+						URLRaw:        utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerRaw)),
+						URLParsley:    utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerParsley)),
 						LineNum:       int(input.LogInfo.LineNum),
 						TestName:      utility.ToStringPtr(input.GetLogTestName()),
 						RenderingType: input.LogInfo.RenderingType,
@@ -144,9 +138,9 @@ func TestTestBuildFromService(t *testing.T) {
 					Status:    utility.ToStringPtr(input.Status),
 					TestFile:  utility.ToStringPtr(input.TestName),
 					Logs: TestLogs{
-						URL:           utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
-						URLRaw:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLParsley:    utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
+						URL:           utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerHTML)),
+						URLRaw:        utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerRaw)),
+						URLParsley:    utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerParsley)),
 						LineNum:       int(input.LogInfo.LineNum),
 						TestName:      utility.ToStringPtr(input.GetLogTestName()),
 						RenderingType: input.LogInfo.RenderingType,
@@ -180,9 +174,9 @@ func TestTestBuildFromService(t *testing.T) {
 					Status:    utility.ToStringPtr(input.Status),
 					TestFile:  utility.ToStringPtr(input.TestName),
 					Logs: TestLogs{
-						URL:        utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerHTML)),
-						URLRaw:     utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerRaw)),
-						URLParsley: utility.ToStringPtr(input.GetLogURL(env, evergreen.LogViewerParsley)),
+						URL:        utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerHTML)),
+						URLRaw:     utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerRaw)),
+						URLParsley: utility.ToStringPtr(input.GetLogURL(args.EvergreenBaseURL, args.ParsleyLogURL, evergreen.LogViewerParsley)),
 						LineNum:    input.LineNum,
 						TestName:   utility.ToStringPtr(input.GetLogTestName()),
 					},
@@ -205,7 +199,7 @@ func TestTestBuildFromService(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			at := &APITest{}
 			input, output := test.io()
-			err := at.BuildFromService(input)
+			err := at.BuildFromService(input, args)
 
 			if test.hasErr {
 				assert.Error(t, err)
@@ -215,4 +209,19 @@ func TestTestBuildFromService(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("MissingEvergreenBaseURLShouldError", func(t *testing.T) {
+		at := &APITest{}
+		err := at.BuildFromService(&testresult.TestResult{TestName: "test_file"}, nil)
+		assert.Error(t, err)
+
+		err = at.BuildFromService(&testresult.TestResult{TestName: "test_file"}, &APITestArgs{})
+		assert.Error(t, err)
+	})
+
+	t.Run("TaskIDShouldAllowNilArgs", func(t *testing.T) {
+		at := &APITest{}
+		require.NoError(t, at.BuildFromService("task", nil))
+		assert.Equal(t, utility.ToStringPtr("task"), at.TaskID)
+	})
 }
