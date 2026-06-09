@@ -20,7 +20,7 @@ type SplunkTracing struct {
 	schema graphql.ExecutableSchema
 }
 
-// NewSplunkTracing returns a SplunkTracing extension that computes query
+// ComplexitySplunkTracing returns a SplunkTracing extension that computes query
 // complexity scores for logging. The executable schema is required to resolve
 // per-field complexity weights during calculation.
 func ComplexitySplunkTracing(schema graphql.ExecutableSchema) SplunkTracing {
