@@ -111,7 +111,7 @@ type S3LifecycleClient interface {
 // It returns true if rules were successfully cached (discovery succeeded), false if already cached, if the
 // bucket's account is in accountsWithoutLifecycleRules, or if discovery failed.
 // This is best-effort - errors are logged but not returned to avoid failing file uploads.
-func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, accountsWithoutLifecycleRules []string, client cloud.S3LifecycleClient) bool {
+func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, accountsWithoutLifecycleRules []string, client S3LifecycleClient) bool {
 	// Derive the AWS account ID from the role ARN so we can check it against the skip list.
 	var awsAccountID string
 	if roleARN != nil {
@@ -129,7 +129,6 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 		})
 		return false
 	}
-
 
 	existingRules, err := FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
