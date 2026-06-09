@@ -110,7 +110,6 @@ type ComplexityRoot struct {
 	APIConfig struct {
 		CorpURL        func(childComplexity int) int
 		HttpListenAddr func(childComplexity int) int
-		RateLimit      func(childComplexity int) int
 		URL            func(childComplexity int) int
 	}
 
@@ -199,6 +198,7 @@ type ComplexityRoot struct {
 		PprofPort               func(childComplexity int) int
 		ProjectCreation         func(childComplexity int) int
 		Providers               func(childComplexity int) int
+		RateLimit               func(childComplexity int) int
 		ReleaseMode             func(childComplexity int) int
 		RepoTracker             func(childComplexity int) int
 		RuntimeEnvironments     func(childComplexity int) int
@@ -2925,12 +2925,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIConfig.HttpListenAddr(childComplexity), true
-	case "APIConfig.rateLimit":
-		if e.complexity.APIConfig.RateLimit == nil {
-			break
-		}
-
-		return e.complexity.APIConfig.RateLimit(childComplexity), true
 	case "APIConfig.url":
 		if e.complexity.APIConfig.URL == nil {
 			break
@@ -3340,6 +3334,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Providers(childComplexity), true
+	case "AdminSettings.rateLimit":
+		if e.complexity.AdminSettings.RateLimit == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.RateLimit(childComplexity), true
 	case "AdminSettings.releaseMode":
 		if e.complexity.AdminSettings.ReleaseMode == nil {
 			break
@@ -17514,57 +17514,6 @@ func (ec *executionContext) fieldContext_APIConfig_corpUrl(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _APIConfig_rateLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIapiConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_APIConfig_rateLimit,
-		func(ctx context.Context) (any, error) {
-			return obj.RateLimit, nil
-		},
-		nil,
-		ec.marshalORateLimitConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_APIConfig_rateLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "APIConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "restHumanRequestsPerHour":
-				return ec.fieldContext_RateLimitConfig_restHumanRequestsPerHour(ctx, field)
-			case "restHumanBurst":
-				return ec.fieldContext_RateLimitConfig_restHumanBurst(ctx, field)
-			case "restServiceRequestsPerHour":
-				return ec.fieldContext_RateLimitConfig_restServiceRequestsPerHour(ctx, field)
-			case "restServiceBurst":
-				return ec.fieldContext_RateLimitConfig_restServiceBurst(ctx, field)
-			case "graphqlHumanRequestsPerHour":
-				return ec.fieldContext_RateLimitConfig_graphqlHumanRequestsPerHour(ctx, field)
-			case "graphqlHumanBurst":
-				return ec.fieldContext_RateLimitConfig_graphqlHumanBurst(ctx, field)
-			case "graphqlServiceRequestsPerHour":
-				return ec.fieldContext_RateLimitConfig_graphqlServiceRequestsPerHour(ctx, field)
-			case "graphqlServiceBurst":
-				return ec.fieldContext_RateLimitConfig_graphqlServiceBurst(ctx, field)
-			case "graphqlComplexityLimit":
-				return ec.fieldContext_RateLimitConfig_graphqlComplexityLimit(ctx, field)
-			case "elevatedUserIds":
-				return ec.fieldContext_RateLimitConfig_elevatedUserIds(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type RateLimitConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _AWSAccountRoleMapping_account(ctx context.Context, field graphql.CollectedField, obj *model.APIAWSAccountRoleMapping) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18669,8 +18618,6 @@ func (ec *executionContext) fieldContext_AdminSettings_api(_ context.Context, fi
 				return ec.fieldContext_APIConfig_url(ctx, field)
 			case "corpUrl":
 				return ec.fieldContext_APIConfig_corpUrl(ctx, field)
-			case "rateLimit":
-				return ec.fieldContext_APIConfig_rateLimit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIConfig", field.Name)
 		},
@@ -19842,6 +19789,57 @@ func (ec *executionContext) fieldContext_AdminSettings_providers(_ context.Conte
 				return ec.fieldContext_CloudProviderConfig_docker(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CloudProviderConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_rateLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_rateLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.RateLimit, nil
+		},
+		nil,
+		ec.marshalORateLimitConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_rateLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "restHumanRequestsPerHour":
+				return ec.fieldContext_RateLimitConfig_restHumanRequestsPerHour(ctx, field)
+			case "restHumanBurst":
+				return ec.fieldContext_RateLimitConfig_restHumanBurst(ctx, field)
+			case "restServiceRequestsPerHour":
+				return ec.fieldContext_RateLimitConfig_restServiceRequestsPerHour(ctx, field)
+			case "restServiceBurst":
+				return ec.fieldContext_RateLimitConfig_restServiceBurst(ctx, field)
+			case "graphqlHumanRequestsPerHour":
+				return ec.fieldContext_RateLimitConfig_graphqlHumanRequestsPerHour(ctx, field)
+			case "graphqlHumanBurst":
+				return ec.fieldContext_RateLimitConfig_graphqlHumanBurst(ctx, field)
+			case "graphqlServiceRequestsPerHour":
+				return ec.fieldContext_RateLimitConfig_graphqlServiceRequestsPerHour(ctx, field)
+			case "graphqlServiceBurst":
+				return ec.fieldContext_RateLimitConfig_graphqlServiceBurst(ctx, field)
+			case "graphqlComplexityLimit":
+				return ec.fieldContext_RateLimitConfig_graphqlComplexityLimit(ctx, field)
+			case "elevatedUserIds":
+				return ec.fieldContext_RateLimitConfig_elevatedUserIds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RateLimitConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -37125,6 +37123,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_projectCreation(ctx, field)
 			case "providers":
 				return ec.fieldContext_AdminSettings_providers(ctx, field)
+			case "rateLimit":
+				return ec.fieldContext_AdminSettings_rateLimit(ctx, field)
 			case "releaseMode":
 				return ec.fieldContext_AdminSettings_releaseMode(ctx, field)
 			case "repotracker":
@@ -52557,6 +52557,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_projectCreation(ctx, field)
 			case "providers":
 				return ec.fieldContext_AdminSettings_providers(ctx, field)
+			case "rateLimit":
+				return ec.fieldContext_AdminSettings_rateLimit(ctx, field)
 			case "releaseMode":
 				return ec.fieldContext_AdminSettings_releaseMode(ctx, field)
 			case "repotracker":
@@ -80609,7 +80611,7 @@ func (ec *executionContext) unmarshalInputAPIConfigInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"httpListenAddr", "url", "corpUrl", "rateLimit"}
+	fieldsInOrder := [...]string{"httpListenAddr", "url", "corpUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80637,13 +80639,6 @@ func (ec *executionContext) unmarshalInputAPIConfigInput(ctx context.Context, ob
 				return it, err
 			}
 			it.CorpURL = data
-		case "rateLimit":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rateLimit"))
-			data, err := ec.unmarshalORateLimitConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RateLimit = data
 		}
 	}
 
@@ -81019,7 +81014,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81323,6 +81318,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Providers = data
+		case "rateLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rateLimit"))
+			data, err := ec.unmarshalORateLimitConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RateLimit = data
 		case "releaseMode":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("releaseMode"))
 			data, err := ec.unmarshalOReleaseModeConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIReleaseModeConfig(ctx, v)
@@ -92102,8 +92104,6 @@ func (ec *executionContext) _APIConfig(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._APIConfig_url(ctx, field, obj)
 		case "corpUrl":
 			out.Values[i] = ec._APIConfig_corpUrl(ctx, field, obj)
-		case "rateLimit":
-			out.Values[i] = ec._APIConfig_rateLimit(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -92568,6 +92568,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_projectCreation(ctx, field, obj)
 		case "providers":
 			out.Values[i] = ec._AdminSettings_providers(ctx, field, obj)
+		case "rateLimit":
+			out.Values[i] = ec._AdminSettings_rateLimit(ctx, field, obj)
 		case "releaseMode":
 			out.Values[i] = ec._AdminSettings_releaseMode(ctx, field, obj)
 		case "repotracker":
@@ -121923,13 +121925,19 @@ func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreen
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalORateLimitConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx context.Context, sel ast.SelectionSet, v model.APIRateLimitConfig) graphql.Marshaler {
-	return ec._RateLimitConfig(ctx, sel, &v)
+func (ec *executionContext) marshalORateLimitConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIRateLimitConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RateLimitConfig(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalORateLimitConfigInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx context.Context, v any) (model.APIRateLimitConfig, error) {
+func (ec *executionContext) unmarshalORateLimitConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx context.Context, v any) (*model.APIRateLimitConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
 	res, err := ec.unmarshalInputRateLimitConfigInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalORefreshGitHubStatusesPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRefreshGitHubStatusesPayload(ctx context.Context, sel ast.SelectionSet, v *RefreshGitHubStatusesPayload) graphql.Marshaler {

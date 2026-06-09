@@ -231,19 +231,19 @@
             "api": {
               "httpListenAddr": "",
               "url": "http://localhost:9090",
-              "corpUrl": "",
-              "rateLimit": {
-                "restHumanRequestsPerHour": 100,
-                "restHumanBurst": 10,
-                "restServiceRequestsPerHour": 200,
-                "restServiceBurst": 20,
-                "graphqlHumanRequestsPerHour": 300,
-                "graphqlHumanBurst": 30,
-                "graphqlServiceRequestsPerHour": 400,
-                "graphqlServiceBurst": 40,
-                "graphqlComplexityLimit": 1000,
-                "elevatedUserIds": ["user1", "user2"]
-              }
+              "corpUrl": ""
+            },
+            "rateLimit": {
+              "restHumanRequestsPerHour": 100,
+              "restHumanBurst": 10,
+              "restServiceRequestsPerHour": 200,
+              "restServiceBurst": 20,
+              "graphqlHumanRequestsPerHour": 300,
+              "graphqlHumanBurst": 30,
+              "graphqlServiceRequestsPerHour": 400,
+              "graphqlServiceBurst": 40,
+              "graphqlComplexityLimit": 1000,
+              "elevatedUserIds": ["user1", "user2"]
             },
             "ui": {
               "url": "http://localhost:9090",

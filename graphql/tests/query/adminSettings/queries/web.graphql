@@ -4,18 +4,19 @@ query Web {
       httpListenAddr
       url
       corpUrl
-      rateLimit {
-        restHumanRequestsPerHour
-        restHumanBurst
-        restServiceRequestsPerHour
-        restServiceBurst
-        graphqlHumanRequestsPerHour
-        graphqlHumanBurst
-        graphqlServiceRequestsPerHour
-        graphqlServiceBurst
-        graphqlComplexityLimit
-        elevatedUserIds
-      }
+    }
+
+    rateLimit {
+      restHumanRequestsPerHour
+      restHumanBurst
+      restServiceRequestsPerHour
+      restServiceBurst
+      graphqlHumanRequestsPerHour
+      graphqlHumanBurst
+      graphqlServiceRequestsPerHour
+      graphqlServiceBurst
+      graphqlComplexityLimit
+      elevatedUserIds
     }
 
     ui {

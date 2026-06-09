@@ -39,6 +39,7 @@ func NewConfigModel() *APIAdminSettings {
 		Plugins:             map[string]map[string]any{},
 		ProjectCreation:     &APIProjectCreationConfig{},
 		Providers:           &APICloudProviders{},
+		RateLimit:           &APIRateLimitConfig{},
 		RepoTracker:         &APIRepoTrackerConfig{},
 		ReleaseMode:         &APIReleaseModeConfig{},
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
@@ -101,6 +102,7 @@ type APIAdminSettings struct {
 	PprofPort               *string                       `json:"pprof_port,omitempty"`
 	ProjectCreation         *APIProjectCreationConfig     `json:"project_creation,omitempty"`
 	Providers               *APICloudProviders            `json:"providers,omitempty"`
+	RateLimit               *APIRateLimitConfig           `json:"rate_limit,omitempty"`
 	RepoTracker             *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
 	ReleaseMode             *APIReleaseModeConfig         `json:"release_mode,omitempty"`
 	RuntimeEnvironments     *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
@@ -522,10 +524,9 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 }
 
 type APIapiConfig struct {
-	HttpListenAddr *string            `json:"http_listen_addr"`
-	URL            *string            `json:"url"`
-	CorpURL        *string            `json:"corp_url"`
-	RateLimit      APIRateLimitConfig `json:"rate_limit"`
+	HttpListenAddr *string `json:"http_listen_addr"`
+	URL            *string `json:"url"`
+	CorpURL        *string `json:"corp_url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h any) error {
@@ -534,7 +535,6 @@ func (a *APIapiConfig) BuildFromService(h any) error {
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.URL = utility.ToStringPtr(v.URL)
 		a.CorpURL = utility.ToStringPtr(v.CorpURL)
-		a.RateLimit.BuildFromService(v.RateLimit)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
@@ -546,7 +546,6 @@ func (a *APIapiConfig) ToService() (any, error) {
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		URL:            utility.FromStringPtr(a.URL),
 		CorpURL:        utility.FromStringPtr(a.CorpURL),
-		RateLimit:      a.RateLimit.ToService(),
 	}, nil
 }
 
@@ -563,20 +562,26 @@ type APIRateLimitConfig struct {
 	ElevatedUserIDs               []string `json:"elevated_user_ids"`
 }
 
-func (a *APIRateLimitConfig) BuildFromService(svc evergreen.RateLimitConfig) {
-	a.RESTHumanRequestsPerHour = svc.RESTHumanRequestsPerHour
-	a.RESTHumanBurst = svc.RESTHumanBurst
-	a.RESTServiceRequestsPerHour = svc.RESTServiceRequestsPerHour
-	a.RESTServiceBurst = svc.RESTServiceBurst
-	a.GraphQLHumanRequestsPerHour = svc.GraphQLHumanRequestsPerHour
-	a.GraphQLHumanBurst = svc.GraphQLHumanBurst
-	a.GraphQLServiceRequestsPerHour = svc.GraphQLServiceRequestsPerHour
-	a.GraphQLServiceBurst = svc.GraphQLServiceBurst
-	a.GraphQLComplexityLimit = svc.GraphQLComplexityLimit
-	a.ElevatedUserIDs = svc.ElevatedUserIDs
+func (a *APIRateLimitConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.RateLimitConfig:
+		a.RESTHumanRequestsPerHour = v.RESTHumanRequestsPerHour
+		a.RESTHumanBurst = v.RESTHumanBurst
+		a.RESTServiceRequestsPerHour = v.RESTServiceRequestsPerHour
+		a.RESTServiceBurst = v.RESTServiceBurst
+		a.GraphQLHumanRequestsPerHour = v.GraphQLHumanRequestsPerHour
+		a.GraphQLHumanBurst = v.GraphQLHumanBurst
+		a.GraphQLServiceRequestsPerHour = v.GraphQLServiceRequestsPerHour
+		a.GraphQLServiceBurst = v.GraphQLServiceBurst
+		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
+		a.ElevatedUserIDs = v.ElevatedUserIDs
+	default:
+		return errors.Errorf("programmatic error: expected rate limit config but got type %T", h)
+	}
+	return nil
 }
 
-func (a *APIRateLimitConfig) ToService() evergreen.RateLimitConfig {
+func (a *APIRateLimitConfig) ToService() (any, error) {
 	return evergreen.RateLimitConfig{
 		RESTHumanRequestsPerHour:      a.RESTHumanRequestsPerHour,
 		RESTHumanBurst:                a.RESTHumanBurst,
@@ -588,7 +593,7 @@ func (a *APIRateLimitConfig) ToService() evergreen.RateLimitConfig {
 		GraphQLServiceBurst:           a.GraphQLServiceBurst,
 		GraphQLComplexityLimit:        a.GraphQLComplexityLimit,
 		ElevatedUserIDs:               a.ElevatedUserIDs,
-	}
+	}, nil
 }
 
 type APIAuthConfig struct {

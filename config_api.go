@@ -94,66 +94,11 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 	})
 }
 
-// RateLimitConfig holds per-bucket rate-limit settings that operators can tune at runtime.
-// Zero values for numeric fields disable the corresponding limit.
-type RateLimitConfig struct {
-	RESTHumanRequestsPerHour   int `bson:"rest_human_per_hour" json:"rest_human_per_hour" yaml:"rest_human_per_hour"`
-	RESTHumanBurst             int `bson:"rest_human_burst" json:"rest_human_burst" yaml:"rest_human_burst"`
-	RESTServiceRequestsPerHour int `bson:"rest_service_per_hour" json:"rest_service_per_hour" yaml:"rest_service_per_hour"`
-	RESTServiceBurst           int `bson:"rest_service_burst" json:"rest_service_burst" yaml:"rest_service_burst"`
-
-	GraphQLHumanRequestsPerHour   int `bson:"graphql_human_per_hour" json:"graphql_human_per_hour" yaml:"graphql_human_per_hour"`
-	GraphQLHumanBurst             int `bson:"graphql_human_burst" json:"graphql_human_burst" yaml:"graphql_human_burst"`
-	GraphQLServiceRequestsPerHour int `bson:"graphql_service_per_hour" json:"graphql_service_per_hour" yaml:"graphql_service_per_hour"`
-	GraphQLServiceBurst           int `bson:"graphql_service_burst" json:"graphql_service_burst" yaml:"graphql_service_burst"`
-
-	GraphQLComplexityLimit int      `bson:"graphql_complexity_limit" json:"graphql_complexity_limit" yaml:"graphql_complexity_limit"`
-	ElevatedUserIDs        []string `bson:"elevated_user_ids" json:"elevated_user_ids" yaml:"elevated_user_ids"`
-}
-
-func (c *RateLimitConfig) validate() error {
-	catcher := grip.NewBasicCatcher()
-	validateRateLimitPair(c.RESTHumanRequestsPerHour, c.RESTHumanBurst, "REST human", catcher)
-	validateRateLimitPair(c.RESTServiceRequestsPerHour, c.RESTServiceBurst, "REST service", catcher)
-	validateRateLimitPair(c.GraphQLHumanRequestsPerHour, c.GraphQLHumanBurst, "GraphQL human", catcher)
-	validateRateLimitPair(c.GraphQLServiceRequestsPerHour, c.GraphQLServiceBurst, "GraphQL service", catcher)
-	if c.GraphQLComplexityLimit < 0 {
-		catcher.New("GraphQL complexity limit must be non-negative")
-	}
-	return catcher.Resolve()
-}
-
-func validateRateLimitPair(perHour, burst int, label string, catcher grip.Catcher) {
-	if perHour < 0 {
-		catcher.Errorf("%s requests per hour must be non-negative", label)
-	}
-	if burst < 0 {
-		catcher.Errorf("%s burst must be non-negative", label)
-	}
-	if perHour > 0 && burst > perHour {
-		catcher.Errorf("%s burst (%d) must not exceed requests per hour (%d)", label, burst, perHour)
-	}
-}
-
-var (
-	rateLimitRESTHumanPerHourKey      = bsonutil.MustHaveTag(RateLimitConfig{}, "RESTHumanRequestsPerHour")
-	rateLimitRESTHumanBurstKey        = bsonutil.MustHaveTag(RateLimitConfig{}, "RESTHumanBurst")
-	rateLimitRESTServicePerHourKey    = bsonutil.MustHaveTag(RateLimitConfig{}, "RESTServiceRequestsPerHour")
-	rateLimitRESTServiceBurstKey      = bsonutil.MustHaveTag(RateLimitConfig{}, "RESTServiceBurst")
-	rateLimitGraphQLHumanPerHourKey   = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLHumanRequestsPerHour")
-	rateLimitGraphQLHumanBurstKey     = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLHumanBurst")
-	rateLimitGraphQLServicePerHourKey = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLServiceRequestsPerHour")
-	rateLimitGraphQLServiceBurstKey   = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLServiceBurst")
-	rateLimitComplexityLimitKey       = bsonutil.MustHaveTag(RateLimitConfig{}, "GraphQLComplexityLimit")
-	rateLimitElevatedUserIDsKey       = bsonutil.MustHaveTag(RateLimitConfig{}, "ElevatedUserIDs")
-)
-
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
-	HttpListenAddr string          `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
-	URL            string          `bson:"url" json:"url" yaml:"url"`
-	CorpURL        string          `bson:"corp_url" json:"corp_url" yaml:"corp_url"`
-	RateLimit      RateLimitConfig `bson:"rate_limit" json:"rate_limit" yaml:"rate_limit"`
+	HttpListenAddr string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
+	URL            string `bson:"url" json:"url" yaml:"url"`
+	CorpURL        string `bson:"corp_url" json:"corp_url" yaml:"corp_url"`
 }
 
 func (c *APIConfig) SectionId() string { return "api" }
@@ -166,7 +111,6 @@ var (
 	httpListenAddrKey = bsonutil.MustHaveTag(APIConfig{}, "HttpListenAddr")
 	urlKey            = bsonutil.MustHaveTag(APIConfig{}, "URL")
 	corpURLKey        = bsonutil.MustHaveTag(APIConfig{}, "CorpURL")
-	rateLimitKey      = bsonutil.MustHaveTag(APIConfig{}, "RateLimit")
 )
 
 func (c *APIConfig) Set(ctx context.Context) error {
@@ -175,16 +119,6 @@ func (c *APIConfig) Set(ctx context.Context) error {
 			httpListenAddrKey: c.HttpListenAddr,
 			urlKey:            c.URL,
 			corpURLKey:        c.CorpURL,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitRESTHumanPerHourKey):      c.RateLimit.RESTHumanRequestsPerHour,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitRESTHumanBurstKey):        c.RateLimit.RESTHumanBurst,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitRESTServicePerHourKey):    c.RateLimit.RESTServiceRequestsPerHour,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitRESTServiceBurstKey):      c.RateLimit.RESTServiceBurst,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitGraphQLHumanPerHourKey):   c.RateLimit.GraphQLHumanRequestsPerHour,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitGraphQLHumanBurstKey):     c.RateLimit.GraphQLHumanBurst,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitGraphQLServicePerHourKey): c.RateLimit.GraphQLServiceRequestsPerHour,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitGraphQLServiceBurstKey):   c.RateLimit.GraphQLServiceBurst,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitComplexityLimitKey):       c.RateLimit.GraphQLComplexityLimit,
-			bsonutil.GetDottedKeyName(rateLimitKey, rateLimitElevatedUserIDsKey):       c.RateLimit.ElevatedUserIDs,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -193,5 +127,5 @@ func (c *APIConfig) ValidateAndDefault() error {
 	if c.URL == "" {
 		return errors.New("URL must not be empty")
 	}
-	return c.RateLimit.validate()
+	return nil
 }

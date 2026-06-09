@@ -28,14 +28,12 @@ input APIConfigInput {
   httpListenAddr: String!
   url: String!
   corpUrl: String!
-  rateLimit: RateLimitConfigInput
 }
 
 type APIConfig {
   httpListenAddr: String
   url: String
   corpUrl: String
-  rateLimit: RateLimitConfig
 }
 
 input UIConfigInput {
