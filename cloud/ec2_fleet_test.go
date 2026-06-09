@@ -34,6 +34,25 @@ func TestFleet(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "i-12345", h.Id)
 		},
+		"SpawnFleetHostTerminatesPreexistingInstanceBeforeLaunch": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-distro-20260518093717-1234567890"
+
+			preexistingID := "i-preexisting-from-prior-attempt"
+			client.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+				Reservations: []types.Reservation{{
+					Instances: []types.Instance{{InstanceId: aws.String(preexistingID)}},
+				}},
+			}
+
+			ec2Settings := &EC2ProviderSettings{}
+			require.NoError(t, ec2Settings.FromDistroSettings(h.Distro, ""))
+
+			require.NoError(t, m.spawnFleetHost(ctx, h, ec2Settings))
+
+			require.NotNil(t, client.TerminateInstancesInput)
+			assert.Equal(t, []string{preexistingID}, client.TerminateInstancesInput.InstanceIds, "pre-existing instance should be terminated before new launch")
+			assert.NotEqual(t, preexistingID, h.Id, "spawned host should have a new instance ID")
+		},
 		"GetInstanceStatusesReturnsMultipleHostStatusesAndCachesData": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			h1 := h
 			h2 := host.Host{

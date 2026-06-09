@@ -650,27 +650,169 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
 	}), cmds)
 
-	conf = s.taskConfig4
-	// with merge test-commit checkout
-	module := &patch.ModulePatch{
-		ModuleName: "test-module",
-		Githash:    "1234abcd",
-		PatchSet: patch.PatchSet{
-			Patch: "1234",
+	conf = s.taskConfig3
+	opts.owner = "evergreen-ci"
+	opts.repo = "evergreen"
+	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
+	s.NoError(err)
+	s.Require().Len(cmds, 8)
+	s.Contains(cmds[len(cmds)-1], "git checkout 'main'")
+
+	// A module in a different repo than the PR should use a normal ref checkout.
+	conf = s.taskConfig3
+	opts.owner = "evergreen-ci"
+	opts.repo = "sample"
+	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
+	s.NoError(err)
+	s.Require().Len(cmds, 8)
+	s.Contains(cmds[len(cmds)-1], "git checkout 'main'")
+}
+
+func TestModuleUsesGitHubParentPRCheckout(t *testing.T) {
+	conf := &internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent-patch-id"},
+		GitHubParentPRCheckout: &patch.GitHubParentPRCheckout{
+			PRNumber:  42,
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			HeadOwner: "octocat",
+			HeadRepo:  "evergreen",
+			HeadHash:  "abc123",
+			ForModule: "module1",
 		},
 	}
-	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", module)
-	s.NoError(err)
-	s.Require().Len(cmds, 10)
-	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
-		"set -o xtrace",
-		"set -o errexit",
-		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
-		"cd module",
-		"git fetch origin \"pull/1234/merge:evg-merge-test-",
-		"git checkout 'evg-merge-test-",
-		"git reset --hard 1234abcd",
-	}), cmds)
+	assert.True(t, moduleUsesGitHubParentPRCheckout(conf, &patch.ModulePatch{ModuleName: "module1"}))
+	assert.False(t, moduleUsesGitHubParentPRCheckout(conf, &patch.ModulePatch{ModuleName: "module2"}))
+	assert.False(t, moduleUsesGitHubParentPRCheckout(conf, nil))
+	assert.False(t, moduleUsesGitHubParentPRCheckout(&internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent-patch-id"},
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber: 42,
+			HeadHash: "abc123",
+		},
+	}, &patch.ModulePatch{ModuleName: "module1"}))
+}
+
+func TestUsesGitHubParentPRCheckout(t *testing.T) {
+	gh := thirdparty.GithubPatch{PRNumber: 42, HeadHash: "abc123"}
+	prConf := &internal.TaskConfig{
+		Task:            task.Task{Requester: evergreen.GithubPRRequester},
+		GithubPatchData: gh,
+	}
+	assert.True(t, usesGitHubParentPRCheckout(prConf))
+	childConf := &internal.TaskConfig{
+		Task:            task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent"},
+		GithubPatchData: gh,
+	}
+	assert.False(t, usesGitHubParentPRCheckout(childConf))
+	assert.False(t, shouldSkipApplyingPatches(childConf))
+	childSourceConf := &internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent"},
+		GitHubParentPRCheckout: &patch.GitHubParentPRCheckout{
+			PRNumber:  42,
+			HeadHash:  "abc123",
+			ForSource: true,
+		},
+	}
+	assert.True(t, usesGitHubParentPRCheckout(childSourceConf))
+	assert.True(t, shouldSkipApplyingPatches(childSourceConf))
+	assert.False(t, shouldSkipApplyingPatches(&internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.PatchVersionRequester},
+	}))
+	mqConf := &internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.GithubMergeRequester},
+		GithubMergeData: thirdparty.GithubMergeGroup{
+			HeadSHA: "abc123",
+		},
+	}
+	assert.True(t, usesGitHubParentPRCheckout(mqConf))
+	assert.Equal(t, 0, mqConf.GithubPatchData.PRNumber)
+}
+
+func TestBuildSourceCloneCommandChildPatchUsesTaskRevision(t *testing.T) {
+	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
+	conf := &internal.TaskConfig{
+		Task: task.Task{
+			Requester:     evergreen.PatchVersionRequester,
+			ParentPatchID: "parent-patch-id",
+			Revision:      "child-mainline-sha",
+		},
+		GithubPatchData: thirdparty.GithubPatch{
+			PRNumber: 9001,
+			HeadHash: "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+		},
+		ProjectRef: model.ProjectRef{Owner: "evergreen-ci", Repo: "evergreen", Branch: "main"},
+	}
+	opts := cloneOpts{
+		token:  projectGitHubToken,
+		branch: conf.ProjectRef.Branch,
+		owner:  conf.ProjectRef.Owner,
+		repo:   conf.ProjectRef.Repo,
+		dir:    c.Directory,
+	}
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	require.NoError(t, err)
+	joined := strings.Join(cmds, "\n")
+	assert.Contains(t, joined, "git reset --hard child-mainline-sha")
+	assert.NotContains(t, joined, "pull/9001/head")
+}
+
+func TestBuildSourceCloneCommandChildPatchUsesGitHubParentPRCheckout(t *testing.T) {
+	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
+	conf := &internal.TaskConfig{
+		Task: task.Task{
+			Requester:     evergreen.PatchVersionRequester,
+			ParentPatchID: "parent-patch-id",
+			Revision:      "child-mainline-sha",
+		},
+		GitHubParentPRCheckout: &patch.GitHubParentPRCheckout{
+			PRNumber:  9001,
+			HeadHash:  "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+			ForSource: true,
+		},
+		ProjectRef: model.ProjectRef{Owner: "evergreen-ci", Repo: "evergreen", Branch: "main"},
+	}
+	opts := cloneOpts{
+		token:  projectGitHubToken,
+		branch: conf.ProjectRef.Branch,
+		owner:  conf.ProjectRef.Owner,
+		repo:   conf.ProjectRef.Repo,
+		dir:    c.Directory,
+	}
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	require.NoError(t, err)
+	joined := strings.Join(cmds, "\n")
+	assert.Contains(t, joined, `git fetch origin "pull/9001/head:evg-pr-test-`)
+	assert.Contains(t, joined, `git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73`)
+	assert.NotContains(t, joined, "git reset --hard child-mainline-sha")
+}
+
+func TestBuildModuleCloneCommandGithubPRHead(t *testing.T) {
+	c := &gitFetchProject{Directory: "dir", Token: projectGitHubToken}
+	conf := &internal.TaskConfig{
+		Task: task.Task{Requester: evergreen.PatchVersionRequester, ParentPatchID: "parent-patch-id"},
+		GitHubParentPRCheckout: &patch.GitHubParentPRCheckout{
+			PRNumber:  9001,
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			HeadOwner: "octocat",
+			HeadRepo:  "evergreen",
+			HeadHash:  "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+			ForModule: "module1",
+		},
+	}
+	opts := cloneOpts{
+		token: projectGitHubToken,
+		owner: "evergreen-ci",
+		repo:  "evergreen",
+		dir:   "module",
+	}
+	cmds, err := c.buildModuleCloneCommand(conf, opts, "", &patch.ModulePatch{ModuleName: "module1"})
+	require.NoError(t, err)
+	joined := strings.Join(cmds, "\n")
+	assert.Contains(t, joined, `git fetch origin "pull/9001/head:evg-pr-test-`)
+	assert.Contains(t, joined, `git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73`)
+	assert.NotContains(t, joined, "/merge:")
 }
 
 func TestBuildModuleCloneCommandWiki(t *testing.T) {
