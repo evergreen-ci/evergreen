@@ -106,7 +106,7 @@ func TestGraphQLComplexityLogging(t *testing.T) {
 		ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
 		ctx, span := tp.Tracer("test").Start(ctx, "test")
 
-		NewSplunkTracing(schema).InterceptResponse(ctx, func(ctx context.Context) *graphql.Response {
+		ComplexitySplunkTracing(schema).InterceptResponse(ctx, func(ctx context.Context) *graphql.Response {
 			return &graphql.Response{}
 		})
 		span.End()

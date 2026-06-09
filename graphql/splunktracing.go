@@ -23,7 +23,7 @@ type SplunkTracing struct {
 // NewSplunkTracing returns a SplunkTracing extension that computes query
 // complexity scores for logging. The executable schema is required to resolve
 // per-field complexity weights during calculation.
-func NewSplunkTracing(schema graphql.ExecutableSchema) SplunkTracing {
+func ComplexitySplunkTracing(schema graphql.ExecutableSchema) SplunkTracing {
 	return SplunkTracing{schema: schema}
 }
 
