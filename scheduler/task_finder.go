@@ -52,6 +52,34 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 	// filter out any tasks whose dependencies are not met
 	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
 	dependencyCaches := make(map[string]task.Task)
+	if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
+		// Pre-warm the dependency cache with a single batched lookup so the
+		// DependenciesMet checks below don't each query for their task's
+		// dependencies individually.
+		lookupSet := make(map[string]struct{})
+		for _, t := range undispatchedTasks {
+			dependencyCaches[t.Id] = t
+			for _, dep := range t.DependsOn {
+				lookupSet[dep.TaskId] = struct{}{}
+			}
+		}
+		depIDs := []string{}
+		for id := range lookupSet {
+			if _, ok := dependencyCaches[id]; ok {
+				continue
+			}
+			depIDs = append(depIDs, id)
+		}
+		if len(depIDs) > 0 {
+			deps, err := task.FindWithFields(ctx, task.ByIds(depIDs), task.StatusKey, task.DependsOnKey, task.ActivatedKey)
+			if err != nil {
+				return nil, errors.Wrap(err, "finding task dependencies")
+			}
+			for _, dep := range deps {
+				dependencyCaches[dep.Id] = dep
+			}
+		}
+	}
 	for _, t := range undispatchedTasks {
 		ref, ok := projectRefCache[t.Project]
 		if !ok {
