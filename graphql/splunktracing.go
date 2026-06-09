@@ -56,7 +56,7 @@ func (s SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respo
 	}
 
 	complexityScore := complexity.Calculate(ctx, s.schema, rc.Operation, rc.Variables)
-	trace.SpanFromContext(ctx).SetAttributes(attribute.Int("graphql.complexity_score", complexityScore))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int("graphql.operation.complexity_score", complexityScore))
 
 	defer func() {
 		usr := gimlet.GetUser(ctx)
