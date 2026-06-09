@@ -641,23 +641,29 @@ var UserTriggeredOrigins = []string{
 }
 
 const (
-	AuthTokenCookie         = "mci-token"
-	LoginCookieTTL          = 365 * 24 * time.Hour
-	TaskHeader              = "Task-Id"
-	TaskSecretHeader        = "Task-Secret"
-	HostHeader              = "Host-Id"
-	HostSecretHeader        = "Host-Secret"
-	ContentTypeHeader       = "Content-Type"
-	ContentTypeValue        = "application/json"
-	ContentLengthHeader     = "Content-Length"
-	APIUserHeader           = "Api-User"
-	APIKeyHeader            = "Api-Key"
-	SageUserHeader          = "x-authenticated-sage-user"
-	AuthorizationHeader     = "Authorization"
-	EnvironmentHeader       = "X-Evergreen-Environment"
-	GraphQLAIAgentHeader    = "X-Graphql-Ai-Agent"
-	RateLimitHeader         = "X-RateLimit"
-	GraphQLComplexityHeader = "X-GraphQL-Complexity"
+	AuthTokenCookie      = "mci-token"
+	LoginCookieTTL       = 365 * 24 * time.Hour
+	TaskHeader           = "Task-Id"
+	TaskSecretHeader     = "Task-Secret"
+	HostHeader           = "Host-Id"
+	HostSecretHeader     = "Host-Secret"
+	ContentTypeHeader    = "Content-Type"
+	ContentTypeValue     = "application/json"
+	ContentLengthHeader  = "Content-Length"
+	APIUserHeader        = "Api-User"
+	APIKeyHeader         = "Api-Key"
+	SageUserHeader       = "x-authenticated-sage-user"
+	AuthorizationHeader  = "Authorization"
+	EnvironmentHeader    = "X-Evergreen-Environment"
+	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
+
+	// Rate limiting response headers
+	RateLimitLimitHeader         = "X-RateLimit-Limit"
+	RateLimitRemainingHeader     = "X-RateLimit-Remaining"
+	RateLimitResetHeader         = "X-RateLimit-Reset"
+	RetryAfterHeader             = "Retry-After" // standard HTTP header (RFC 9110) set alongside a 429 response
+	GraphQLComplexityLimitHeader = "X-GraphQL-Complexity-Limit"
+	GraphQLComplexityScoreHeader = "X-GraphQL-Complexity-Score"
 )
 
 const (
