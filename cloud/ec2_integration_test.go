@@ -109,7 +109,7 @@ func TestSpawnEC2InstanceFleet(t *testing.T) {
 
 	// AWS state propagation for fleet-launched instances can lag after TerminateInstance,
 	// so poll until DescribeInstances reflects the terminated state.
-	require.Eventually(t, func() bool {
+	require.Eventually(func() bool {
 		info, err := m.GetInstanceState(ctx, h)
 		if err != nil {
 			return false
