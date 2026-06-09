@@ -292,7 +292,7 @@ const (
 	TagExpireOn          = "expire-on"
 	TagAllowRemoteAccess = "AllowRemoteAccess"
 	TagIsDebug           = "IsDebug"
-	TagHostID            = "host-id"
+	TagHostName          = "host-name"
 	TagTaskID            = "task-id"
 	TagTaskExecution     = "task-execution"
 	TagBuildID           = "build-id"
@@ -518,8 +518,9 @@ const (
 	TaskEBSOnDemandStorageCostOtelAttribute = "evergreen.task.cost.ebs.on_demand_storage_cost"
 	TaskEBSAdjustedStorageCostOtelAttribute = "evergreen.task.cost.ebs.adjusted_storage_cost"
 
-	// S3 cost tracking otel span name — shared by per-file and aggregate events
-	S3CostTrackingOtelSpanName = "s3-cost-tracking"
+	// S3 cost tracking otel span name and span-level identity attributes
+	S3CostTrackingOtelSpanName        = "s3-cost-tracking"
+	TaskS3CostTaskStatusOtelAttribute = "evergreen.task.s3_cost.task_status"
 
 	// S3 cost tracking otel attributes — task-level artifact aggregates
 	TaskS3ArtifactPutRequestsOtelAttribute         = "evergreen.task.s3_cost.artifact_put_requests"

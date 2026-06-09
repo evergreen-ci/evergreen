@@ -30,6 +30,7 @@ func Admin() cli.Command {
 			listEvents(),
 			revert(),
 			fetchAllProjectConfigs(),
+			adminFeatureTracker(),
 			amboyCmd(),
 			fromMdbForLocal(),
 			toMdbForLocal(),

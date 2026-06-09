@@ -195,8 +195,8 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 	tr, err := getFailedTestsFromTemplate(t)
 	s.NoError(err)
 	s.Require().Len(tr, 2)
-	s.Equal(test2.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML), tr[0].LogURL)
-	s.Equal(test3.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML), tr[1].LogURL)
+	s.Equal(test2.GetLogURL(settings.Api.URL, settings.Ui.ParsleyUrl, evergreen.LogViewerHTML), tr[0].LogURL)
+	s.Equal(test3.GetLogURL(settings.Api.URL, settings.Ui.ParsleyUrl, evergreen.LogViewerHTML), tr[1].LogURL)
 }
 
 func TestTruncateString(t *testing.T) {

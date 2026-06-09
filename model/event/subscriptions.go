@@ -1187,7 +1187,6 @@ func GetWebhookAuthParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/authorization", subscriptionID)
 }
 
-
 // verifyWebhookSecretInParameterStore confirms the stored secret matches the expected value.
 func verifyWebhookSecretInParameterStore(ctx context.Context, paramName string, expected []byte) error {
 	storedSecret, err := getWebhookSecretFromParameterStore(ctx, paramName)

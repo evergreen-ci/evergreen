@@ -495,7 +495,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			Revision: v.TriggerSHA,
 		}
 	}
-	upstreamProjectRef, err := model.FindBranchProjectRef(ctx, projectID)
+	upstreamProjectRef, err := model.FindBranchProjectRefSecondary(ctx, projectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream project '%s': %s", projectID, err.Error()))
 	}
@@ -674,7 +674,7 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRef(ctx, obj.Identifier, obj.Id, false)
+	projectRef, err := model.FindMergedProjectRefSecondary(ctx, obj.Identifier, obj.Id, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()))
 	}

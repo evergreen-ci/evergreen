@@ -62,12 +62,16 @@ type TaskConfig struct {
 	InternalRedactions *agentutil.DynamicExpansions
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
-	GithubPatchData    thirdparty.GithubPatch
-	GithubMergeData    thirdparty.GithubMergeGroup
-	Timeout            Timeout
-	TaskOutput         evergreen.S3Credentials
-	ModulePaths        map[string]string
-	S3Usage            *s3usage.S3Usage
+	// GithubPatchData stores GitHub PR patch metadata.
+	GithubPatchData thirdparty.GithubPatch
+	// GithubMergeData stores GitHub merge queue metadata.
+	GithubMergeData thirdparty.GithubMergeGroup
+	// GitHubParentPRCheckout stores parent PR checkout metadata.
+	GitHubParentPRCheckout *patch.GitHubParentPRCheckout
+	Timeout                Timeout
+	TaskOutput             evergreen.S3Credentials
+	ModulePaths            map[string]string
+	S3Usage                *s3usage.S3Usage
 	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
 	// owned by Devprod that we want to calculate s3 costs for.
 	DevprodOwnedAWSAccountIDs []string
@@ -276,6 +280,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	if opts.Patch != nil {
 		taskConfig.GithubPatchData = opts.Patch.GithubPatchData
 		taskConfig.GithubMergeData = opts.Patch.GithubMergeData
+		taskConfig.GitHubParentPRCheckout = opts.Patch.GitHubParentPRCheckout
 		taskConfig.PatchOrVersionDescription = opts.Patch.Description
 	} else if opts.Version != nil {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message

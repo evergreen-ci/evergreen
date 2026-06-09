@@ -247,7 +247,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 
 // populateProjectRefs loads all enabled project refs into the context.
 func (pc *projectContext) populateProjectRefs(ctx context.Context) error {
-	allProjs, err := model.FindAllMergedEnabledTrackedProjectRefs(ctx)
+	allProjs, err := model.FindAllMergedEnabledTrackedProjectRefsSecondary(ctx)
 	if err != nil {
 		return err
 	}

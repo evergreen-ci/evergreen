@@ -247,7 +247,7 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 		},
 	}
 
-	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(StartedByStatusIndex))
+	cur, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline, options.Aggregate().SetHint(StartedByCreationTimeIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "grouping idle hosts by distro ID")
 	}
