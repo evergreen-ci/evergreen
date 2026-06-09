@@ -660,11 +660,11 @@ const (
 	// Rate limiting response headers
 	RateLimitLimitHeader            = "X-RateLimit-Limit"
 	RateLimitRemainingHeader        = "X-RateLimit-Remaining"
-	RateLimitResetHeader            = "X-RateLimit-Reset"             // absolute Unix timestamp (seconds) at which the window resets
-	RateLimitExceededHeader         = "X-RateLimit-Exceeded"          // set in warn-only mode (request still served) and on a 429
-	RetryAfterHeader                = "Retry-After"                   // standard HTTP header (RFC 9110), a delta in seconds, set alongside a 429
-	GraphQLComplexityHeader         = "X-GraphQL-Complexity"          // computed complexity score of the operation
-	GraphQLComplexityExceededHeader = "X-GraphQL-Complexity-Exceeded" // set in warn-only mode and on rejection
+	RateLimitResetHeader            = "X-RateLimit-Reset"             // Absolute Unix timestamp (seconds) at which the window resets.
+	RateLimitExceededHeader         = "X-RateLimit-Exceeded"          // Set in warn-only mode (request still served) and on a 429.
+	RetryAfterHeader                = "Retry-After"                   // Standard HTTP header (RFC 9110), a delta in seconds, set alongside a 429.
+	GraphQLComplexityHeader         = "X-GraphQL-Complexity"          // Computed complexity score of the query.
+	GraphQLComplexityExceededHeader = "X-GraphQL-Complexity-Exceeded" // Set in warn-only mode and on rejection.
 )
 
 const (
@@ -1551,7 +1551,7 @@ func ValidateSSHKey(key string) error {
 type RateLimitSurface string
 
 const (
-	// Rate limit surfaces
-	RateLimitSurfaceREST    RateLimitSurface = "rest"
-	RateLimitSurfaceGraphQL RateLimitSurface = "graphql"
+	RateLimitSurfaceREST       RateLimitSurface = "rest"
+	RateLimitSurfaceGraphQL    RateLimitSurface = "graphql"
+	RateLimitSurfaceComplexity RateLimitSurface = "complexity"
 )
