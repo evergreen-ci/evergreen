@@ -541,7 +541,6 @@ func (e *LocalExecutor) SetStreamWriter(sw *streamWriter) {
 		Expansions:         e.taskConfig.NewExpansions,
 		Redacted:           e.taskConfig.Redacted,
 		InternalRedactions: e.taskConfig.InternalRedactions,
-		PreloadRedactions:  true,
 	})
 
 	producer.setSender(redactedSender)

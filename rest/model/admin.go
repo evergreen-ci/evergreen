@@ -2081,6 +2081,10 @@ type APIServiceFlags struct {
 	SecondaryReadsDisabled       bool `json:"secondary_reads_disabled"`
 
 	BackgroundCommandFailureEnabled bool `json:"background_command_failure_enabled"`
+
+	// Rate Limiting Flags
+	APIRateLimiterDisabled           bool `json:"api_rate_limiter_disabled"`
+	GraphQLComplexityLimiterDisabled bool `json:"graphql_complexity_limiter_disabled"`
 }
 
 type APIProjectTasksPair struct {
@@ -2530,6 +2534,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
 		as.WebhookSecretCleanupDisabled = v.WebhookSecretCleanupDisabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
+		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
+		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2581,6 +2587,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
 		WebhookSecretCleanupDisabled:       as.WebhookSecretCleanupDisabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
+		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
+		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
 	}, nil
 }
 
