@@ -66,9 +66,9 @@ func TestCacheSaveRecomputedKeyMatchesRestore(t *testing.T) {
 	dir := t.TempDir()
 	keyFile := writeCacheKeyFile(t, dir, "go.sum", "checksum")
 
-	restoreKey, err := computeCacheKey([]string{keyFile}, []string{"my-project", "linux"})
+	restoreKey, err := computeCacheKey([]string{keyFile}, []string{"my-project", "linux"}, false)
 	require.NoError(t, err)
-	saveKey, err := computeCacheKey([]string{keyFile}, []string{"my-project", "linux"})
+	saveKey, err := computeCacheKey([]string{keyFile}, []string{"my-project", "linux"}, false)
 	require.NoError(t, err)
 	assert.Equal(t, restoreKey, saveKey)
 }

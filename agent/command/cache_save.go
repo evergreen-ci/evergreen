@@ -82,7 +82,7 @@ func (c *cacheSave) Execute(ctx context.Context, comm client.Communicator, logge
 	logger.Task().Infof(ctx, "cache.save: computed cache key '%s'.", key)
 	logger.Task().Infof(ctx, "cache.save: bundling paths %s into '%s'.", c.Paths, localPath)
 
-	if err := makeCacheArchive(ctx, conf.WorkDir, c.Paths, localPath, logger.Task()); err != nil {
+	if err := makeCacheArchive(ctx, conf.WorkDir, c.Paths, localPath, logger.Task(), c.PreserveSymlinks); err != nil {
 		return errors.Wrap(err, "creating cache archive")
 	}
 

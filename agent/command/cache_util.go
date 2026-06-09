@@ -62,6 +62,13 @@ type cacheCommon struct {
 	// is required so every cache makes an explicit invalidation choice.
 	KeyExpansions []string `mapstructure:"key_expansions" plugin:"expand"`
 
+	// PreserveSymlinks, when true, archives symlinks as symlinks (preserving
+	// their targets) instead of dereferencing them into regular files. It is
+	// folded into the cache key so symlink-aware caches never reuse older
+	// dereferenced ones, and so it must match between cache.save and
+	// cache.restore.
+	PreserveSymlinks bool `mapstructure:"preserve_symlinks"`
+
 	// AwsKey, AwsSecret, and AwsSessionToken are the user's credentials for
 	// authenticating interactions with S3.
 	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
@@ -146,7 +153,7 @@ func (c *cacheCommon) resolveCacheKey(conf *internal.TaskConfig) (string, error)
 	for i, keyFile := range c.KeyFiles {
 		keyFiles[i] = GetWorkingDirectory(conf, keyFile)
 	}
-	return computeCacheKey(keyFiles, c.KeyExpansions)
+	return computeCacheKey(keyFiles, c.KeyExpansions, c.PreserveSymlinks)
 }
 
 // remoteKey returns the S3 object key for a cache with the given content key.
@@ -282,8 +289,10 @@ func validateCacheCredentials(catcher grip.Catcher, roleARN, awsKey, awsSecret, 
 // inputs can't run together: a key file containing "a" plus expansion "b" hashes
 // differently from expansions ["a", "b"]. Nothing about the runtime environment
 // is folded in implicitly; callers include values like "${distro_id}" through
-// keyExpansions if they want that partitioning.
-func computeCacheKey(keyFiles, keyExpansions []string) (string, error) {
+// keyExpansions if they want that partitioning. The preserveSymlinks flag is
+// folded in as a trailing discriminator so symlink-aware caches occupy a
+// distinct key space from older dereferenced ones.
+func computeCacheKey(keyFiles, keyExpansions []string, preserveSymlinks bool) (string, error) {
 	h := sha256.New()
 	writeUint64 := func(n int) {
 		var buf [8]byte
@@ -316,6 +325,13 @@ func computeCacheKey(keyFiles, keyExpansions []string) (string, error) {
 		writeUint64(len(value))
 		h.Write([]byte(value))
 	}
+
+	var preserveSymlinksByte byte
+	if preserveSymlinks {
+		preserveSymlinksByte = 1
+	}
+	h.Write([]byte{preserveSymlinksByte})
+
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
@@ -328,8 +344,10 @@ func cacheHitExpansionName(name string) string {
 
 // makeCacheArchive bundles paths (relative to workDir, or absolute) into a
 // gzipped tarball at target. It reuses the same archive helpers as
-// archive.targz_pack. A path that does not exist on disk is an error.
-func makeCacheArchive(ctx context.Context, workDir string, paths []string, target string, logger grip.Journaler) error {
+// archive.targz_pack. A path that does not exist on disk is an error. When
+// preserveSymlinks is true, symlinks are archived as symlinks rather than
+// dereferenced.
+func makeCacheArchive(ctx context.Context, workDir string, paths []string, target string, logger grip.Journaler, preserveSymlinks bool) error {
 	contents, totalSize, err := gatherCacheContents(workDir, paths)
 	if err != nil {
 		return err
@@ -346,7 +364,7 @@ func makeCacheArchive(ctx context.Context, workDir string, paths []string, targe
 		logger.Error(ctx, f.Close())
 	}()
 
-	_, err = buildArchive(ctx, tarWriter, workDir, contents, nil, logger, false)
+	_, err = buildArchive(ctx, tarWriter, workDir, contents, nil, logger, false, preserveSymlinks)
 	return errors.Wrap(err, "building cache archive")
 }
 

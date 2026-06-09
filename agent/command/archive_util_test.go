@@ -132,7 +132,7 @@ func TestArchiveExtract(t *testing.T) {
 		defer f.Close()
 		defer gz.Close()
 
-		err = extractTarballArchive(ctx, tarReader, outputDir, []string{})
+		err = extractTarballArchive(ctx, tarReader, outputDir, []string{}, false)
 		So(err, ShouldBeNil)
 
 		Convey("extracted data should match the archive contents", func() {
@@ -179,7 +179,7 @@ func TestBuildArchive(t *testing.T) {
 				pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 				require.NoError(t, err)
 				excludes := []string{"*.pdb"}
-				_, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false)
+				_, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false, false)
 				So(err, ShouldBeNil)
 			})
 		}
@@ -209,9 +209,176 @@ func TestBuildArchiveVerbose(t *testing.T) {
 	pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, []string{"dir1/**"}, []string{})
 	require.NoError(t, err)
 
-	numFiles, err := buildArchive(ctx, tarWriter, rootPath, pathsToAdd, []string{"*.pdb"}, logger, true)
+	numFiles, err := buildArchive(ctx, tarWriter, rootPath, pathsToAdd, []string{"*.pdb"}, logger, true, false)
 	require.NoError(t, err)
 	assert.Greater(t, numFiles, 0)
+}
+
+// collectTarHeaders reads every entry from a gzipped tarball into a map keyed
+// by header name, so tests can assert on typeflags and link targets directly.
+func collectTarHeaders(t *testing.T, path string) map[string]*tar.Header {
+	f, gz, tarReader, err := tarGzReader(path)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, gz.Close())
+		assert.NoError(t, f.Close())
+	})
+
+	headers := map[string]*tar.Header{}
+	for {
+		hdr, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		headers[hdr.Name] = hdr
+	}
+	return headers
+}
+
+func TestBuildArchivePreserveSymlinks(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink preservation is not supported on Windows")
+	}
+	logger := logging.NewGrip("test.archive")
+	ctx := t.Context()
+
+	// A directory with a regular file, a relative symlink to it, a symlink to a
+	// subdirectory, and a broken symlink.
+	srcDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "real.txt"), []byte("hello"), 0644))
+	require.NoError(t, os.Symlink("real.txt", filepath.Join(srcDir, "link.txt")))
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "subdir"), 0755))
+	require.NoError(t, os.Symlink("subdir", filepath.Join(srcDir, "dirlink")))
+	require.NoError(t, os.Symlink("does-not-exist", filepath.Join(srcDir, "broken")))
+
+	contents, _, err := gatherCacheContents(srcDir, []string{"."})
+	require.NoError(t, err)
+
+	t.Run("PreservedAsSymlinkEntries", func(t *testing.T) {
+		target := filepath.Join(t.TempDir(), "preserve.tgz")
+		f, gz, tarWriter, err := tarGzWriter(target, false)
+		require.NoError(t, err)
+		_, err = buildArchive(ctx, tarWriter, srcDir, contents, nil, logger, false, true)
+		require.NoError(t, err)
+		require.NoError(t, tarWriter.Close())
+		require.NoError(t, gz.Close())
+		require.NoError(t, f.Close())
+
+		headers := collectTarHeaders(t, target)
+
+		require.Contains(t, headers, "link.txt")
+		assert.Equal(t, byte(tar.TypeSymlink), headers["link.txt"].Typeflag)
+		assert.Equal(t, "real.txt", headers["link.txt"].Linkname)
+
+		require.Contains(t, headers, "dirlink")
+		assert.Equal(t, byte(tar.TypeSymlink), headers["dirlink"].Typeflag)
+		assert.Equal(t, "subdir", headers["dirlink"].Linkname)
+
+		// A broken symlink is preserved verbatim, not dropped.
+		require.Contains(t, headers, "broken")
+		assert.Equal(t, byte(tar.TypeSymlink), headers["broken"].Typeflag)
+		assert.Equal(t, "does-not-exist", headers["broken"].Linkname)
+
+		require.Contains(t, headers, "real.txt")
+		assert.Equal(t, byte(tar.TypeReg), headers["real.txt"].Typeflag)
+	})
+
+	t.Run("DereferencedWhenDisabled", func(t *testing.T) {
+		target := filepath.Join(t.TempDir(), "deref.tgz")
+		f, gz, tarWriter, err := tarGzWriter(target, false)
+		require.NoError(t, err)
+		_, err = buildArchive(ctx, tarWriter, srcDir, contents, nil, logger, false, false)
+		require.NoError(t, err)
+		require.NoError(t, tarWriter.Close())
+		require.NoError(t, gz.Close())
+		require.NoError(t, f.Close())
+
+		headers := collectTarHeaders(t, target)
+
+		// The symlink to a regular file is stored as a regular file with the
+		// target's contents; the broken symlink is dropped entirely.
+		require.Contains(t, headers, "link.txt")
+		assert.Equal(t, byte(tar.TypeReg), headers["link.txt"].Typeflag)
+		assert.NotContains(t, headers, "broken")
+	})
+}
+
+func TestExtractTarballPreserveSymlinks(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink preservation is not supported on Windows")
+	}
+	logger := logging.NewGrip("test.archive")
+	ctx := t.Context()
+
+	// buildArchiveTo writes the given source dir to a gzipped tarball, preserving
+	// symlinks, and returns its path.
+	buildArchiveTo := func(t *testing.T, srcDir string) string {
+		contents, _, err := gatherCacheContents(srcDir, []string{"."})
+		require.NoError(t, err)
+		target := filepath.Join(t.TempDir(), "archive.tgz")
+		f, gz, tarWriter, err := tarGzWriter(target, false)
+		require.NoError(t, err)
+		_, err = buildArchive(ctx, tarWriter, srcDir, contents, nil, logger, false, true)
+		require.NoError(t, err)
+		require.NoError(t, tarWriter.Close())
+		require.NoError(t, gz.Close())
+		require.NoError(t, f.Close())
+		return target
+	}
+
+	t.Run("RelativeSymlinkRoundTrips", func(t *testing.T) {
+		// Mirror an NPM-style layout: a binary under a nested dir and a relative
+		// symlink to it from a sibling .bin directory.
+		srcDir := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "typescript", "bin"), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(srcDir, "typescript", "bin", "tsc"), []byte("#!/bin/sh\n"), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(srcDir, ".bin"), 0755))
+		require.NoError(t, os.Symlink(filepath.Join("..", "typescript", "bin", "tsc"), filepath.Join(srcDir, ".bin", "tsc")))
+
+		archive := buildArchiveTo(t, srcDir)
+		f, err := os.Open(archive)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, f.Close()) })
+
+		destDir := t.TempDir()
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+
+		link := filepath.Join(destDir, ".bin", "tsc")
+		target, err := os.Readlink(link)
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Join("..", "typescript", "bin", "tsc"), target)
+		// The link resolves to the real file inside the extracted tree.
+		contents, err := os.ReadFile(link)
+		require.NoError(t, err)
+		assert.Equal(t, "#!/bin/sh\n", string(contents))
+	})
+
+	t.Run("EscapingSymlinkRejected", func(t *testing.T) {
+		srcDir := t.TempDir()
+		require.NoError(t, os.Symlink(filepath.Join("..", "..", "escape"), filepath.Join(srcDir, "evil")))
+		archive := buildArchiveTo(t, srcDir)
+		f, err := os.Open(archive)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, f.Close()) })
+
+		err = extractTarball(ctx, f, t.TempDir(), nil, true)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "outside the root path")
+	})
+
+	t.Run("AbsoluteSymlinkRejected", func(t *testing.T) {
+		srcDir := t.TempDir()
+		require.NoError(t, os.Symlink("/etc/passwd", filepath.Join(srcDir, "abs")))
+		archive := buildArchiveTo(t, srcDir)
+		f, err := os.Open(archive)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, f.Close()) })
+
+		err = extractTarball(ctx, f, t.TempDir(), nil, true)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "absolute")
+	})
 }
 
 func TestBuildArchiveRoundTrip(t *testing.T) {
@@ -245,7 +412,7 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 				rootPath := filepath.Join(testDir, "testdata", "archive", "artifacts_in")
 				pathsToAdd, _, err := findContentsToArchive(ctx, rootPath, includes, []string{})
 				require.NoError(t, err)
-				found, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false)
+				found, err = buildArchive(ctx, tarWriter, rootPath, pathsToAdd, excludes, logger, false, false)
 				So(err, ShouldBeNil)
 				So(found, ShouldEqual, 4)
 				So(tarWriter.Close(), ShouldBeNil)
@@ -255,7 +422,7 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 				outputDir := t.TempDir()
 				f2, gz2, tarReader, err := tarGzReader(outputFile.Name())
 				require.NoError(t, err)
-				err = extractTarballArchive(context.Background(), tarReader, outputDir, []string{})
+				err = extractTarballArchive(context.Background(), tarReader, outputDir, []string{}, false)
 				defer f2.Close()
 				defer gz2.Close()
 				So(err, ShouldBeNil)
