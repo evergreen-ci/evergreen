@@ -331,6 +331,186 @@ func TestPreloadVersions(t *testing.T) {
 	})
 }
 
+func TestGetProject(t *testing.T) {
+	require.NoError(t, db.Clear(model.ProjectRefCollection))
+
+	testProjects := []model.ProjectRef{
+		{
+			Id:         "project1",
+			Identifier: "project-one",
+			Owner:      "owner1",
+			Repo:       "repo1",
+			Branch:     "main",
+			Enabled:    true,
+		},
+		{
+			Id:         "project2",
+			Identifier: "project-two",
+			Owner:      "owner2",
+			Repo:       "repo2",
+			Branch:     "main",
+			Enabled:    true,
+		},
+		{
+			Id:         "project3",
+			Identifier: "project-three",
+			Owner:      "owner3",
+			Repo:       "repo3",
+			Branch:     "main",
+			Enabled:    false,
+		},
+	}
+	for i := range testProjects {
+		require.NoError(t, testProjects[i].Insert(t.Context()))
+	}
+
+	t.Run("SingleProjectLookup", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		result, err := GetProject(ctx, "project1")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "project1", result.Id)
+		assert.Equal(t, "project-one", result.Identifier)
+		assert.Equal(t, "owner1", result.Owner)
+		assert.Equal(t, "repo1", result.Repo)
+	})
+
+	t.Run("ProjectNotFound", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		result, err := GetProject(ctx, "nonexistent")
+		require.NoError(t, err)
+		assert.Nil(t, result, "should return nil for non-existent project")
+	})
+
+	t.Run("BatchedLookups", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		var wg sync.WaitGroup
+		type getProjectResult struct {
+			projectID string
+			found     bool
+			err       error
+		}
+		resultsChan := make(chan getProjectResult, 3)
+
+		projectIDs := []string{"project1", "project2", "project3"}
+		for _, id := range projectIDs {
+			wg.Add(1)
+			go func(projectID string) {
+				defer wg.Done()
+				result, err := GetProject(ctx, projectID)
+				resultsChan <- getProjectResult{projectID: projectID, found: result != nil, err: err}
+			}(id)
+		}
+
+		wg.Wait()
+		close(resultsChan)
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.projectID] = result.found
+		}
+		assert.Len(t, results, 3)
+		for _, id := range projectIDs {
+			assert.True(t, results[id], "expected to find project '%s'", id)
+		}
+	})
+
+	t.Run("MixedExistingAndNonExisting", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		var wg sync.WaitGroup
+		type getProjectResult struct {
+			projectID string
+			found     bool
+			err       error
+		}
+		resultsChan := make(chan getProjectResult, 3)
+
+		projectIDs := []string{"project1", "nonexistent", "project3"}
+		for _, id := range projectIDs {
+			wg.Add(1)
+			go func(projectID string) {
+				defer wg.Done()
+				result, err := GetProject(ctx, projectID)
+				resultsChan <- getProjectResult{projectID: projectID, found: result != nil, err: err}
+			}(id)
+		}
+
+		wg.Wait()
+		close(resultsChan)
+
+		results := make(map[string]bool)
+		for result := range resultsChan {
+			require.NoError(t, result.err, "lookup should not error")
+			results[result.projectID] = result.found
+		}
+		assert.Len(t, results, 3)
+		assert.True(t, results["project1"], "project1 should be found")
+		assert.False(t, results["nonexistent"], "nonexistent should not be found")
+		assert.True(t, results["project3"], "project3 should be found")
+	})
+}
+
+func TestPreloadProjects(t *testing.T) {
+	require.NoError(t, db.Clear(model.ProjectRefCollection))
+
+	testProjects := []model.ProjectRef{
+		{Id: "preload-p1", Identifier: "preload-project-1", Owner: "owner1", Repo: "repo1", Branch: "main"},
+		{Id: "preload-p2", Identifier: "preload-project-2", Owner: "owner2", Repo: "repo2", Branch: "main"},
+		{Id: "preload-p3", Identifier: "preload-project-3", Owner: "owner3", Repo: "repo3", Branch: "main"},
+	}
+	for i := range testProjects {
+		require.NoError(t, testProjects[i].Insert(t.Context()))
+	}
+
+	t.Run("EmptySliceIsNoOp", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadProjects(ctx, nil)
+			PreloadProjects(ctx, []string{})
+		})
+	})
+
+	t.Run("PrimesCacheSoLaterLoadsSkipDB", func(t *testing.T) {
+		ctx := setupLoaderContext(t.Context())
+
+		PreloadProjects(ctx, []string{"preload-p1", "preload-p2", "preload-p3"})
+
+		// Once preloaded the values should live in the dataloader's thunk cache.
+		// Drop the underlying collection to prove subsequent GetProject calls
+		// don't hit MongoDB.
+		require.NoError(t, db.Clear(model.ProjectRefCollection))
+
+		for _, id := range []string{"preload-p1", "preload-p2", "preload-p3"} {
+			result, err := GetProject(ctx, id)
+			require.NoError(t, err)
+			require.NotNil(t, result, "expected cached project '%s'", id)
+			assert.Equal(t, id, result.Id)
+		}
+	})
+
+	t.Run("DuplicateIDsAreDeduped", func(t *testing.T) {
+		require.NoError(t, db.Clear(model.ProjectRefCollection))
+		for i := range testProjects {
+			require.NoError(t, testProjects[i].Insert(t.Context()))
+		}
+
+		ctx := setupLoaderContext(t.Context())
+		require.NotPanics(t, func() {
+			PreloadProjects(ctx, []string{"preload-p1", "preload-p1", "preload-p2"})
+		})
+
+		result, err := GetProject(ctx, "preload-p1")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "preload-p1", result.Id)
+	})
+}
+
 func TestMiddleware(t *testing.T) {
 	t.Run("InjectsLoadersIntoContext", func(t *testing.T) {
 		var capturedCtx context.Context
@@ -352,6 +532,7 @@ func TestMiddleware(t *testing.T) {
 		// Verify loaders were injected
 		l := For(capturedCtx)
 		require.NotNil(t, l)
+		require.NotNil(t, l.ProjectLoader)
 		require.NotNil(t, l.UserLoader)
 		require.NotNil(t, l.VersionLoader)
 	})
@@ -360,6 +541,7 @@ func TestMiddleware(t *testing.T) {
 func TestNew(t *testing.T) {
 	l := New()
 	require.NotNil(t, l)
+	require.NotNil(t, l.ProjectLoader)
 	require.NotNil(t, l.UserLoader)
 	require.NotNil(t, l.VersionLoader)
 }

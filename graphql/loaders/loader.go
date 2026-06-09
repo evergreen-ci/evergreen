@@ -16,6 +16,7 @@ const loadersKey = ctxKey("dataloaders")
 
 // Loaders contains all dataloader instances for batching GraphQL queries.
 type Loaders struct {
+	ProjectLoader *dataloadgen.Loader[string, *model.ProjectRef]
 	UserLoader    *dataloadgen.Loader[string, *user.DBUser]
 	VersionLoader *dataloadgen.Loader[string, *model.Version]
 }
@@ -26,9 +27,11 @@ const loaderWait = 5 * time.Millisecond
 
 // New instantiates data loaders for the middleware.
 func New() *Loaders {
+	pr := &projectReader{}
 	ur := &userReader{}
 	vr := &versionReader{}
 	return &Loaders{
+		ProjectLoader: dataloadgen.NewMappedLoader(pr.getProjects, dataloadgen.WithWait(loaderWait)),
 		UserLoader:    dataloadgen.NewMappedLoader(ur.getUsers, dataloadgen.WithWait(loaderWait)),
 		VersionLoader: dataloadgen.NewMappedLoader(vr.getVersions, dataloadgen.WithWait(loaderWait)),
 	}
