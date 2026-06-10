@@ -226,6 +226,20 @@ func makeTagTemplate(hostTags []host.Tag) []types.LaunchTemplateTagSpecification
 	return tagTemplates
 }
 
+func makeTagSpecifications(hostTags []host.Tag) []types.TagSpecification {
+	tags := hostToEC2Tags(hostTags)
+	return []types.TagSpecification{
+		{
+			ResourceType: types.ResourceTypeInstance,
+			Tags:         tags,
+		},
+		{
+			ResourceType: types.ResourceTypeVolume,
+			Tags:         tags,
+		},
+	}
+}
+
 func timeTilNextEC2Payment(h *host.Host) time.Duration {
 	if UsesHourlyBilling(&h.Distro) {
 		return timeTilNextHourlyPayment(h)

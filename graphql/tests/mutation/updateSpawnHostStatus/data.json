@@ -10,7 +10,7 @@
         "_id": "ubuntu2204-workstation-x86_64",
         "arch": "linux_amd64",
         "work_dir": "/home/ubuntu",
-        "provider": "ec2-fleet",
+        "provider": "ec2-ondemand",
         "provider_settings": [
           {
             "region": "us-east-1",
@@ -114,7 +114,7 @@
           "config_path": "/etc/icecc/icecc.conf"
         }
       },
-      "host_type": "ec2-fleet",
+      "host_type": "ec2-ondemand",
       "ip_address": "2600:1f18:ae9:dd06:9b7e:3d5a:e690:c65c",
       "ipv4_address": "10.128.4.94",
       "ext_identifier": "",

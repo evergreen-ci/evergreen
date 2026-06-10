@@ -700,7 +700,7 @@ func (h *createVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 	if h.volume.Size == 0 {
 		return errors.New("volume size is required")
 	}
-	h.provider = evergreen.ProviderNameEc2Fleet
+	h.provider = evergreen.ProviderNameEc2OnDemand
 	return nil
 }
 
@@ -766,7 +766,7 @@ func (h *deleteVolumeHandler) Factory() gimlet.RouteHandler {
 func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	h.VolumeID, err = validateID(gimlet.GetVars(r)["volume_id"])
-	h.provider = evergreen.ProviderNameEc2Fleet
+	h.provider = evergreen.ProviderNameEc2OnDemand
 	return err
 }
 
@@ -850,7 +850,7 @@ func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 		return errors.Wrap(err, "invalid volume ID")
 	}
 
-	h.provider = evergreen.ProviderNameEc2Fleet
+	h.provider = evergreen.ProviderNameEc2OnDemand
 
 	return nil
 }

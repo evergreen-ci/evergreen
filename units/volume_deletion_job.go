@@ -49,7 +49,7 @@ func NewVolumeDeletionJob(ts string, v *host.Volume) amboy.Job {
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", volumeDeletionName, v.ID)})
 	j.SetEnqueueAllScopes(true)
 	j.VolumeID = v.ID
-	j.Provider = evergreen.ProviderNameEc2Fleet
+	j.Provider = evergreen.ProviderNameEc2OnDemand
 	return j
 }
 

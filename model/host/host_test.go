@@ -5046,7 +5046,7 @@ func TestGetAMI(t *testing.T) {
 				birch.EC.Double("bid_price", 0.001),
 				birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 			)},
-			Provider: evergreen.ProviderNameEc2Fleet,
+			Provider: evergreen.ProviderNameEc2OnDemand,
 		},
 	}
 	h2 := &Host{
@@ -5065,7 +5065,7 @@ func TestGetSubnetID(t *testing.T) {
 			ProviderSettingsList: []*birch.Document{birch.NewDocument(
 				birch.EC.String("subnet_id", "swish"),
 			)},
-			Provider: evergreen.ProviderNameEc2Fleet,
+			Provider: evergreen.ProviderNameEc2OnDemand,
 		},
 	}
 	h2 := &Host{

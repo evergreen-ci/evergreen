@@ -41,7 +41,7 @@ func TestMountPointsForDistro_WithMountPoints(t *testing.T) {
 	require.NoError(t, doc.UnmarshalBSON(raw))
 
 	d := &distro.Distro{
-		Provider:             evergreen.ProviderNameEc2Fleet,
+		Provider:             evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{doc},
 	}
 	mps, err := MountPointsForDistro(d, evergreen.DefaultEC2Region)
@@ -77,7 +77,7 @@ func TestMountPointsForDistro_RegionFallback(t *testing.T) {
 	}
 
 	d := &distro.Distro{
-		Provider: evergreen.ProviderNameEc2Fleet,
+		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{
 			makeDoc(evergreen.DefaultEC2Region, 100),
 			makeDoc("us-east-2", 200),

@@ -12,7 +12,7 @@ mutation {
         disabled: true
         workDir: "/data/mci"
         mountpoints: ["/"]
-        provider: EC2_FLEET
+        provider: EC2_ON_DEMAND
         providerAccount: "aws"
         providerSettingsList: [
           {

@@ -29,7 +29,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if a new distro passes all of the validation tests, no errors should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a",
-				Provider: evergreen.ProviderNameEc2Fleet,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(
 					birch.EC.String("ami", "a"),
 					birch.EC.String("key_name", "a"),
@@ -62,7 +62,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a",
-				Provider: evergreen.ProviderNameEc2Fleet,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(
 					birch.EC.String("ami", "a"),
 					birch.EC.String("key_name", "a"),
@@ -84,7 +84,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a",
-				Provider: evergreen.ProviderNameEc2Fleet,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(
 					birch.EC.String("ami", "a"),
 					birch.EC.String("key_name", "a"),
@@ -117,7 +117,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a",
-				Provider: evergreen.ProviderNameEc2Fleet,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(
 					birch.EC.String("ami", "a"),
 					birch.EC.String("key_name", "a"),
@@ -228,28 +228,28 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			{Id: "a", Arch: "linux_amd64", User: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: "a"},
-			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet},
-			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
+			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
 				birch.EC.String("key_name", "a"),
 				birch.EC.String("instance_type", "a"),
 				birch.EC.SliceString("security_group_ids", []string{"a"}),
 			)}},
-			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
 				birch.EC.String("ami", "a"),
 				birch.EC.String("key_name", "a"),
 				birch.EC.SliceString("security_group_ids", []string{"a"}),
 			)}},
-			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
 				birch.EC.String("ami", "a"),
 				birch.EC.String("key_name", "a"),
 				birch.EC.String("instance_type", "a"),
 			)}},
-			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
 				birch.EC.String("ami", "a"),
 				birch.EC.String("instance_type", "a"),
 				birch.EC.SliceString("security_group_ids", []string{"a"}),
 			)}},
-			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: []*birch.Document{birch.NewDocument(
 				birch.EC.String("ami", "a"),
 				birch.EC.String("key_name", "a"),
 				birch.EC.String("instance_type", "a"),
@@ -343,9 +343,9 @@ func TestEnsureHasRequiredFieldsWithProviderList(t *testing.T) {
 	invalidList1 := []*birch.Document{invalidDoc, validDoc, invalidDoc2}
 	invalidList2 := []*birch.Document{validDoc, validDoc}
 
-	d1 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: invalidList1}
-	d2 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: invalidList2}
-	d3 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2Fleet, ProviderSettingsList: validList}
+	d1 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: invalidList1}
+	d2 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: invalidList2}
+	d3 := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettingsList: validList}
 
 	for name, test := range map[string]func(*testing.T){
 		"ListWithErrors": func(t *testing.T) {

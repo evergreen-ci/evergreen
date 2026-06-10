@@ -267,7 +267,7 @@ func TestDistroAMIHandler(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(distro.Collection))
 	d := distro.Distro{
 		Id:       "d1",
-		Provider: evergreen.ProviderNameEc2Fleet,
+		Provider: evergreen.ProviderNameEc2OnDemand,
 		ProviderSettingsList: []*birch.Document{
 			birch.NewDocument(
 				birch.EC.String("ami", "ami-1234"),
