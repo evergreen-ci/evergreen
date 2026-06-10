@@ -1069,7 +1069,7 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 	}
 
 	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" {
-		webhookSub.AuthorizationHeaderParameter = saveWebhookParameter(ctx, s.ID, GetWebhookAuthParameterPath(s.ID), []byte(authValue))
+		webhookSub.AuthorizationHeaderParameter = saveWebhookParameter(ctx, s.ID, getWebhookAuthParameterPath(s.ID), []byte(authValue))
 	} else if s.ID != "" {
 		// Authorization header was removed on update. Clean up the old PS entry if
 		// one exists, so we don't leave orphaned parameters in Parameter Store.
@@ -1196,8 +1196,8 @@ func GetWebhookSecretParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/secret", subscriptionID)
 }
 
-// GetWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
-func GetWebhookAuthParameterPath(subscriptionID string) string {
+// getWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
+func getWebhookAuthParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/authorization", subscriptionID)
 }
 
