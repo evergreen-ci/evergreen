@@ -166,6 +166,7 @@ type jiraTemplateData struct {
 	Context            context.Context
 	UIRoot             string
 	UIv2Url            string
+	ParsleyLogURL      string
 	SubscriptionID     string
 	EventID            string
 	Task               *task.Task
@@ -371,10 +372,9 @@ func (j *jiraBuilder) getDescription() (string, error) {
 	tests := []jiraTestFailure{}
 	for _, test := range j.data.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
-			env := evergreen.GetEnvironment()
-			url := test.GetLogURL(env, evergreen.LogViewerParsley)
+			url := test.GetLogURL(j.data.UIRoot, j.data.ParsleyLogURL, evergreen.LogViewerParsley)
 			if url == "" {
-				url = test.GetLogURL(env, evergreen.LogViewerHTML)
+				url = test.GetLogURL(j.data.UIRoot, j.data.ParsleyLogURL, evergreen.LogViewerHTML)
 			}
 
 			tests = append(tests, jiraTestFailure{

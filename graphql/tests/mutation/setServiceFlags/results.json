@@ -61,7 +61,9 @@
             { "name": "webhook_notifications_disabled", "enabled": false },
             { "name": "github_status_api_disabled", "enabled": false },
             { "name": "secondary_reads_disabled", "enabled": false },
-            { "name": "background_command_failure_enabled", "enabled": false }
+            { "name": "background_command_failure_enabled", "enabled": false },
+            { "name": "api_rate_limiter_disabled", "enabled": false },
+            { "name": "graphql_complexity_limiter_disabled", "enabled": false }
           ]
         }
       }

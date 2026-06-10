@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/model/log"
+	"github.com/evergreen-ci/evergreen/model/s3usage"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/mongodb/grip/level"
@@ -29,9 +30,11 @@ import (
 var defaultTestLogSequenceSize = int64(1e7)
 
 // AppendTestLog appends log lines to the specified test log for the given task
-// run.
-func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog) error {
-	sender, err := task.NewTestLogSender(ctx, *tsk, task.EvergreenSenderOptions{}, testLog.Name, 0)
+// run. s3UsageMu, when non-nil, is held while incrementing S3 usage metrics;
+// callers that invoke AppendTestLog concurrently with a shared s3Usage must
+// supply the same mutex across all concurrent calls.
+func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog, s3Usage *s3usage.S3Usage, s3UsageMu *sync.Mutex) error {
+	sender, err := task.NewTestLogSender(ctx, *tsk, task.EvergreenSenderOptions{S3Usage: s3Usage, S3UsageMu: s3UsageMu}, testLog.Name, 0)
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
@@ -61,10 +64,15 @@ func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handle
 	}
 	// This flag exists to improve the performance of test log ingestion.
 	handlerOpts.redactorOpts.PreloadRedactions = true
+	// Shared mutex serializes IncrementLogs calls across the concurrent
+	// goroutines that process file chunks in run().
+	var s3UsageMu sync.Mutex
 	h.createSender = func(ctx context.Context, logPath string, sequence int) (send.Sender, error) {
 		evgSender, err := task.NewTestLogSender(ctx, *handlerOpts.tsk, task.EvergreenSenderOptions{
-			Local: logger.Task().GetSender(),
-			Parse: h.spec.getParser(),
+			Local:     logger.Task().GetSender(),
+			Parse:     h.spec.getParser(),
+			S3Usage:   handlerOpts.s3Usage,
+			S3UsageMu: &s3UsageMu,
 		}, logPath, sequence)
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")

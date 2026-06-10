@@ -150,10 +150,6 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		"distro":        h.Distro.Id,
 	})
 
-	if err := tagHostIDOnVolumes(ctx, m.client, h); err != nil {
-		return nil, errors.Wrap(err, "tagging host ID on volumes")
-	}
-
 	return h, nil
 }
 
@@ -481,6 +477,10 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 
 	ctx, span := tracer.Start(ctx, "spawnFleetHost")
 	defer span.End()
+
+	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
+		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
+	}
 
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {

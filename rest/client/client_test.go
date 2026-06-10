@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -167,6 +168,39 @@ func TestRemoveInvalidOAuthTokenCacheIfUnlocked(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("ZeroExpiryTokenShouldBeRemoved", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tokenFilePath := filepath.Join(tmpDir, "token.json")
+		tokenData, err := json.Marshal(&oauth2.Token{
+			AccessToken:  "access",
+			RefreshToken: "refresh",
+		})
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(tokenFilePath, tokenData, 0600))
+
+		require.NoError(t, removeInvalidOAuthTokenCacheIfUnlocked(t.Context(), tokenFilePath, time.Second))
+
+		_, err = os.Stat(tokenFilePath)
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("ExpiredTokenWithExpiryShouldRemain", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		tokenFilePath := filepath.Join(tmpDir, "token.json")
+		tokenData, err := json.Marshal(&oauth2.Token{
+			AccessToken:  "access",
+			RefreshToken: "refresh",
+			Expiry:       time.Now().Add(-time.Hour),
+		})
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(tokenFilePath, tokenData, 0600))
+
+		require.NoError(t, removeInvalidOAuthTokenCacheIfUnlocked(t.Context(), tokenFilePath, time.Second))
+
+		_, err = os.Stat(tokenFilePath)
+		assert.NoError(t, err)
+	})
+
 	t.Run("InvalidTokenShouldBeRemoved", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tokenFilePath := filepath.Join(tmpDir, "token.json")
@@ -211,6 +245,72 @@ func TestRemoveInvalidOAuthTokenCacheIfUnlocked(t *testing.T) {
 		assert.NoError(t, tokenErr)
 		_, lockErr := os.Stat(lockFilePath)
 		assert.NoError(t, lockErr)
+	})
+}
+
+func TestValidateOAuthToken(t *testing.T) {
+	t.Run("ValidTokenShouldPass", func(t *testing.T) {
+		err := validateOAuthToken(&oauth2.Token{
+			AccessToken: "access",
+			Expiry:      time.Now().Add(time.Hour),
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("NilTokenShouldError", func(t *testing.T) {
+		err := validateOAuthToken(nil)
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, errInvalidOAuthToken))
+		assert.Contains(t, err.Error(), "missing")
+	})
+
+	t.Run("EmptyAccessTokenShouldError", func(t *testing.T) {
+		err := validateOAuthToken(&oauth2.Token{
+			Expiry: time.Now().Add(time.Hour),
+		})
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, errInvalidOAuthToken))
+		assert.Contains(t, err.Error(), "access token")
+	})
+
+	t.Run("ZeroExpiryShouldError", func(t *testing.T) {
+		err := validateOAuthToken(&oauth2.Token{
+			AccessToken: "access",
+		})
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, errInvalidOAuthToken))
+		assert.Contains(t, err.Error(), "expiry")
+	})
+
+	t.Run("ExpiredTokenShouldError", func(t *testing.T) {
+		err := validateOAuthToken(&oauth2.Token{
+			AccessToken: "access",
+			Expiry:      time.Now().Add(-time.Hour),
+		})
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, errInvalidOAuthToken))
+		assert.Contains(t, err.Error(), "expired")
+	})
+}
+
+func TestRemoveOAuthTokenFile(t *testing.T) {
+	t.Run("MissingPathShouldNoop", func(t *testing.T) {
+		assert.NoError(t, removeOAuthTokenFile(""))
+	})
+
+	t.Run("MissingFileShouldNoop", func(t *testing.T) {
+		tokenFilePath := filepath.Join(t.TempDir(), "token.json")
+		assert.NoError(t, removeOAuthTokenFile(tokenFilePath))
+	})
+
+	t.Run("ExistingFileShouldBeRemoved", func(t *testing.T) {
+		tokenFilePath := filepath.Join(t.TempDir(), "token.json")
+		require.NoError(t, os.WriteFile(tokenFilePath, []byte("{}"), 0600))
+
+		require.NoError(t, removeOAuthTokenFile(tokenFilePath))
+
+		_, err := os.Stat(tokenFilePath)
+		assert.True(t, os.IsNotExist(err))
 	})
 }
 

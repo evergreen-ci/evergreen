@@ -32,7 +32,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 // GET /rest/v2/agent/perf_monitoring_url
@@ -720,32 +719,11 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 	}
 }
 
-// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
-// for the given file key.
-func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
-	pailRules := make([]pail.LifecycleRule, 0, len(rules))
-	for _, ruleDoc := range rules {
-		var expDays *int32
-		if ruleDoc.ExpirationDays != nil {
-			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
-		}
-		pailRules = append(pailRules, pail.LifecycleRule{
-			Prefix:         ruleDoc.FilterPrefix,
-			Status:         ruleDoc.RuleStatus,
-			ExpirationDays: expDays,
-		})
-	}
-	rule := pail.FindMatchingRule(pailRules, fileKey)
-	if rule == nil || rule.ExpirationDays == nil {
-		return 0, false
-	}
-	return int(*rule.ExpirationDays), true
-}
-
 // POST /rest/v2/task/{task_id}/s3_usage
 type reportS3UsageHandler struct {
 	taskID  string
 	s3Usage s3usage.S3Usage
+	final   bool
 }
 
 func makeReportS3Usage() gimlet.RouteHandler {
@@ -763,6 +741,7 @@ func (h *reportS3UsageHandler) Parse(ctx context.Context, r *http.Request) error
 	if err := utility.ReadJSON(r.Body, &h.s3Usage); err != nil {
 		return errors.Wrapf(err, "reading S3 usage for task '%s'", h.taskID)
 	}
+	h.final = r.URL.Query().Get("final") == "true"
 	return nil
 }
 
@@ -771,6 +750,9 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	defer span.End()
 
 	t := MustHaveTask(ctx)
+
+	// Non-zero S3Usage on a system-failed task means the crash path already called TrackVersionS3CostForTask.
+	crashPathAlreadyTracked := !t.S3Usage.IsZero() && t.Status == evergreen.TaskSystemFailed
 
 	t.S3Usage = h.s3Usage
 
@@ -791,54 +773,38 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	logBucketName := ""
-	if t.TaskOutputInfo != nil {
-		logBucketName = t.TaskOutputInfo.TaskLogs.BucketConfig.Name
-	}
-
-	if err := t.SaveS3Usage(ctx, lookup, logBucketName); err != nil {
+	if err := t.SaveS3Usage(ctx, lookup, t.LogBucketName()); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
-	v, err := model.VersionFindOneId(ctx, t.Version)
-	if err != nil {
-		grip.Error(ctx, errors.Wrapf(err, "finding version '%s' to update aggregate task costs", t.Version))
-	} else if v != nil {
-		// For task groups, this runs once for the group rather than once per task.
-		grip.Error(ctx, errors.Wrapf(v.UpdateAggregateTaskCosts(ctx), "updating aggregate task costs for version '%s' after S3 usage report", v.Id))
+	if h.final && !crashPathAlreadyTracked {
+		grip.Error(ctx, errors.Wrapf(model.TrackVersionS3CostForTask(ctx, t.Id, t.Version, evergreen.TaskSucceeded, t.TaskCost, t.S3Usage),
+			"tracking version S3 cost for task '%s'", h.taskID))
 	}
-
-	var avgFilePutCost, maxFilePutCost, minFilePutCost float64
-	if t.S3Usage.Artifacts.Count > 0 && t.S3Usage.Artifacts.PutRequests > 0 {
-		costPerPut := t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
-		avgFilePutCost = t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
-		maxFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
-		minFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMinPutRequests)
-	}
-
-	s3Attrs := []attribute.KeyValue{
-		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
-		attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
-		attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
-		attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
-		attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactPutCost),
-		attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactPutCost),
-		attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactStorageCost),
-		attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactStorageCost),
-		attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
-		attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
-		attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, t.TaskCost.OnDemandS3LogPutCost),
-		attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, t.TaskCost.AdjustedS3LogPutCost),
-		attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, t.TaskCost.OnDemandS3LogStorageCost),
-		attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, t.TaskCost.AdjustedS3LogStorageCost),
-		attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
-		attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
-		attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
-	}
-
-	span.SetAttributes(s3Attrs...)
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
+// for the given file key.
+func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
+	pailRules := make([]pail.LifecycleRule, 0, len(rules))
+	for _, ruleDoc := range rules {
+		var expDays *int32
+		if ruleDoc.ExpirationDays != nil {
+			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
+		}
+		pailRules = append(pailRules, pail.LifecycleRule{
+			Prefix:         ruleDoc.FilterPrefix,
+			Status:         ruleDoc.RuleStatus,
+			ExpirationDays: expDays,
+		})
+	}
+	rule := pail.FindMatchingRule(pailRules, fileKey)
+	if rule == nil || rule.ExpirationDays == nil {
+		return 0, false
+	}
+	return int(*rule.ExpirationDays), true
 }
 
 // POST /rest/v2/task/{task_id}/high_exec_timeout
