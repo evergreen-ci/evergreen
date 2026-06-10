@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/ec2mount"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -248,6 +250,247 @@ func getRoleForAccount(settings *evergreen.Settings, account string) (string, er
 
 func (m *ec2Manager) setupClient(ctx context.Context) error {
 	return m.client.Create(ctx, m.role, m.region)
+}
+
+func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
+	ctx, span := tracer.Start(ctx, "spawnOnDemandHost")
+	defer span.End()
+
+	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
+		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
+	}
+
+	input := &ec2.RunInstancesInput{
+		MinCount:            aws.Int32(1),
+		MaxCount:            aws.Int32(1),
+		ImageId:             &ec2Settings.AMI,
+		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
+		BlockDeviceMappings: blockDevices,
+		TagSpecifications:   makeTagSpecifications(makeTags(h)),
+	}
+
+	if ec2Settings.IAMInstanceProfileARN != "" {
+		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
+	}
+
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+	useElasticIP := assignPublicIPv4 && canUseElasticIP(settings, ec2Settings, m.account, h)
+	if useElasticIP && h.IPAllocationID == "" {
+		// If the host can't be allocated an IP address, continue on error
+		// because the host should fall back to using an AWS-provided IP
+		// address. Using an elastic IP address is a best-effort attempt to save
+		// money.
+		grip.Notice(ctx, message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
+			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
+			"host_id": h.Id,
+		}))
+	}
+
+	if assignPublicIPv4 {
+		// Only set an SSH key for the host if the host actually has a public
+		// IPv4 address. Hosts that don't have a public IPv4 address aren't
+		// reachable with SSH even if a key is set.
+		input.KeyName = aws.String(ec2Settings.KeyName)
+	}
+	if ec2Settings.IsVpc {
+		// Fall back to using an AWS-provided IPv4 address if this host needs a
+		// public IPv4 address and it hasn't been allocated a elastic IP
+		// address.
+		useAWSIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
+		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
+			{
+				AssociatePublicIpAddress: aws.Bool(useAWSIPv4Addr),
+				DeviceIndex:              aws.Int32(0),
+				Groups:                   ec2Settings.SecurityGroupIDs,
+				SubnetId:                 &ec2Settings.SubnetId,
+			},
+		}
+		if ec2Settings.IPv6 {
+			input.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
+		}
+	} else {
+		input.SecurityGroups = ec2Settings.SecurityGroupIDs
+	}
+	if ec2Settings.Tenancy != "" {
+		input.Placement = &types.Placement{Tenancy: types.Tenancy(ec2Settings.Tenancy)}
+	}
+
+	if ec2Settings.UserData != "" {
+		expanded, err := expandUserData(ec2Settings.UserData, m.settings.Expansions)
+		if err != nil {
+			return errors.Wrap(err, "expanding user data")
+		}
+		ec2Settings.UserData = expanded
+	}
+
+	userData, err := makeUserData(ctx, m.env, h, ec2Settings.UserData, ec2Settings.MergeUserDataParts)
+	if err != nil {
+		return errors.Wrap(err, "making user data")
+	}
+	ec2Settings.UserData = userData
+
+	if ec2Settings.UserData != "" {
+		if err = validateUserDataSize(ec2Settings.UserData, h.Distro.Id); err != nil {
+			return errors.WithStack(err)
+		}
+		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
+		input.UserData = &userData
+	}
+
+	reservation, err := m.client.RunInstances(ctx, input)
+	if err != nil || reservation == nil {
+		if err == EC2InsufficientCapacityError {
+			previousSubnet := h.GetSubnetID()
+			// try again in another AZ
+			if subnetErr := m.setNextSubnet(ctx, h); subnetErr == nil {
+				return errors.Wrap(err, "got EC2InsufficientCapacityError, will try next available subnet")
+			} else {
+				grip.Error(ctx, message.WrapError(subnetErr, message.Fields{
+					"message":         "couldn't increment subnet",
+					"host_id":         h.Id,
+					"host_provider":   h.Distro.Provider,
+					"distro":          h.Distro.Id,
+					"previous_subnet": previousSubnet,
+				}))
+			}
+		}
+
+		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			grip.Error(ctx, message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host_id": h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
+
+		if h.SpawnOptions.SpawnedByTask {
+			detailErr := task.AddHostCreateDetails(ctx, h.StartedBy, h.Id, h.SpawnOptions.TaskExecutionNumber, err)
+			grip.Error(ctx, message.WrapError(detailErr, message.Fields{
+				"message":       "error adding host create error details",
+				"host_id":       h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
+		}
+
+		if err != nil {
+			return errors.Wrap(err, "RunInstances API call returned an error")
+		}
+
+		msg := "reservation was nil"
+		grip.Error(ctx, message.Fields{
+			"message":       msg,
+			"host_id":       h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		})
+		return errors.New(msg)
+	}
+
+	if len(reservation.Instances) < 1 {
+		if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
+			grip.Error(ctx, message.WrapError(h.DeleteJasperCredentials(ctx, m.env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host_id": h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
+		return errors.New("reservation has no instances")
+	}
+
+	instance := reservation.Instances[0]
+	h.Id = *instance.InstanceId
+
+	return nil
+}
+
+// setNextSubnet sets the subnet in the host's cached distro to the next one that supports this instance type.
+// If the current subnet doesn't support this instance type it's set to the first that does.
+func (m *ec2Manager) setNextSubnet(ctx context.Context, h *host.Host) error {
+	ec2Settings := &EC2ProviderSettings{}
+	if err := ec2Settings.FromDistroSettings(h.Distro, m.region); err != nil {
+		return errors.Wrap(err, "getting provider settings")
+	}
+
+	supportingSubnets, err := typeCache.subnetsWithInstanceType(ctx, m.settings, m.client, instanceRegionPair{instanceType: h.InstanceType, region: ec2Settings.getRegion()})
+	if err != nil {
+		return errors.Wrapf(err, "getting supported subnets for instance type '%s'", h.InstanceType)
+	}
+	if len(supportingSubnets) == 0 {
+		return errors.Errorf("instance type '%s' is not supported by any configured subnet for region '%s'", h.InstanceType, ec2Settings.getRegion())
+	}
+
+	if len(supportingSubnets) == 1 && supportingSubnets[0].SubnetID == ec2Settings.SubnetId {
+		return errors.Errorf("no other subnets support '%s'", h.InstanceType)
+	}
+
+	nextSubnetIndex := 0
+	for i, subnet := range supportingSubnets {
+		if subnet.SubnetID == ec2Settings.SubnetId {
+			nextSubnetIndex = i + 1
+			break
+		}
+	}
+
+	ec2Settings.SubnetId = supportingSubnets[nextSubnetIndex%len(supportingSubnets)].SubnetID
+	newSettingsDocument, err := ec2Settings.ToDocument()
+	if err != nil {
+		return errors.Wrap(err, "convert provider settings to document")
+	}
+
+	return h.UpdateCachedDistroProviderSettings(ctx, []*birch.Document{newSettingsDocument})
+}
+
+// SpawnHost spawns a new host.
+func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
+	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand {
+		return nil, errors.Errorf("can't spawn EC2 instance for distro '%s': distro provider is '%s'",
+			h.Distro.Id, h.Distro.Provider)
+	}
+
+	if err := m.setupClient(ctx); err != nil {
+		return nil, errors.Wrap(err, "creating client")
+	}
+
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.FromDistroSettings(h.Distro, m.region)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting EC2 settings")
+	}
+	if err = ec2Settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s'", h.Distro.Id)
+	}
+	// The KeyName is used by AWS to determine which public key to put on the host.
+	ec2Settings.KeyName, err = getKeyName(ctx, h, m.settings, m.client)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting key name")
+	}
+
+	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
+	if err != nil {
+		return nil, errors.Wrap(err, "making block device mappings")
+	}
+
+	if h.InstanceType != "" {
+		ec2Settings.InstanceType = h.InstanceType
+	} else {
+		h.InstanceType = ec2Settings.InstanceType
+	}
+	if err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices); err != nil {
+		return nil, errors.Wrap(err, "spawning on-demand host")
+	}
+	grip.Debug(ctx, message.Fields{
+		"message":       "spawned on-demand host",
+		"host_id":       h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
+	})
+
+	return h, nil
 }
 
 // ec2HostResources returns the host instance ID and attached volume IDs for EC2

@@ -269,7 +269,7 @@ func TestHostPostHandler(t *testing.T) {
 			d := &distro.Distro{
 				Id:                   "distro",
 				SpawnAllowed:         true,
-				Provider:             evergreen.ProviderNameEc2Fleet,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
 				ProviderSettingsList: []*birch.Document{doc},
 			}
 			require.NoError(t, d.Insert(ctx))
