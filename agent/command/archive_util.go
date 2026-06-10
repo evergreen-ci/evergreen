@@ -173,7 +173,7 @@ FileLoop:
 				continue
 			}
 			hdr.Typeflag = tar.TypeSymlink
-			hdr.Linkname = strings.Replace(target, "\\", "/", -1)
+			hdr.Linkname = target
 			numFilesArchived++
 			if err := tarWriter.WriteHeader(hdr); err != nil {
 				return numFilesArchived, errors.Wrapf(err, "writing tarball header for symlink '%s'", intarball)
