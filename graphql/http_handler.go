@@ -60,7 +60,7 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 	))
 
 	// Log graphql requests to splunk
-	srv.Use(ComplexitySplunkTracing(schema))
+	srv.Use(MakeSplunkTracing(schema))
 
 	// Disable queries for service degradation
 	srv.Use(DisableQuery{})

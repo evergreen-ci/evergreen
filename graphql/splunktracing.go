@@ -20,10 +20,9 @@ type SplunkTracing struct {
 	schema graphql.ExecutableSchema
 }
 
-// ComplexitySplunkTracing returns a SplunkTracing extension that computes query
-// complexity scores for logging. The executable schema is required to resolve
-// per-field complexity weights during calculation.
-func ComplexitySplunkTracing(schema graphql.ExecutableSchema) SplunkTracing {
+// MakeSplunkTracing is a constructor for SplunkTracing that takes in the graphql schema as an argument.
+// The schema is used to calculate the complexity score of a query, which is then logged.
+func MakeSplunkTracing(schema graphql.ExecutableSchema) SplunkTracing {
 	return SplunkTracing{schema: schema}
 }
 
@@ -56,7 +55,7 @@ func (s SplunkTracing) InterceptResponse(ctx context.Context, next graphql.Respo
 	}
 
 	complexityScore := complexity.Calculate(ctx, s.schema, rc.Operation, rc.Variables)
-	trace.SpanFromContext(ctx).SetAttributes(attribute.Int("graphql.operation.complexity_score", complexityScore))
+	trace.SpanFromContext(ctx).SetAttributes(attribute.Int("gql.request.complexity_score", complexityScore))
 
 	defer func() {
 		usr := gimlet.GetUser(ctx)

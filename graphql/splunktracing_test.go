@@ -106,7 +106,8 @@ func TestGraphQLComplexityLogging(t *testing.T) {
 		ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
 		ctx, span := tp.Tracer("test").Start(ctx, "test")
 
-		ComplexitySplunkTracing(schema).InterceptResponse(ctx, func(ctx context.Context) *graphql.Response {
+		splunkTracing := MakeSplunkTracing(schema)
+		splunkTracing.InterceptResponse(ctx, func(ctx context.Context) *graphql.Response {
 			return &graphql.Response{}
 		})
 		span.End()
@@ -134,8 +135,8 @@ func TestGraphQLComplexityLogging(t *testing.T) {
 
 	t.Run("OTelSpanHasComplexityScore", func(t *testing.T) {
 		out := runAndCapture(t, parseOp(t, userSettingsQuery))
-		val, ok := out.spanAttrs["graphql.operation.complexity_score"]
-		require.True(t, ok, "graphql.operation.complexity_score should be present as a span attribute")
+		val, ok := out.spanAttrs["gql.request.complexity_score"]
+		require.True(t, ok, "gql.request.complexity_score should be present as a span attribute")
 		score, ok := val.(int64)
 		require.True(t, ok)
 		assert.Greater(t, score, int64(0))
@@ -144,7 +145,7 @@ func TestGraphQLComplexityLogging(t *testing.T) {
 	t.Run("BothOutputsAgreeOnScore", func(t *testing.T) {
 		out := runAndCapture(t, parseOp(t, userSettingsQuery))
 		logScore := int64(out.logFields["complexity_score"].(int))
-		spanScore := out.spanAttrs["graphql.operation.complexity_score"].(int64)
+		spanScore := out.spanAttrs["gql.request.complexity_score"].(int64)
 		assert.Equal(t, logScore, spanScore)
 	})
 
@@ -152,6 +153,6 @@ func TestGraphQLComplexityLogging(t *testing.T) {
 		simple := runAndCapture(t, parseOp(t, userSettingsQuery))
 		complex := runAndCapture(t, parseOp(t, hostEventsQuery))
 		assert.Greater(t, complex.logFields["complexity_score"].(int), simple.logFields["complexity_score"].(int))
-		assert.Greater(t, complex.spanAttrs["graphql.operation.complexity_score"].(int64), simple.spanAttrs["graphql.operation.complexity_score"].(int64))
+		assert.Greater(t, complex.spanAttrs["gql.request.complexity_score"].(int64), simple.spanAttrs["gql.request.complexity_score"].(int64))
 	})
 }
