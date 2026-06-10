@@ -27,6 +27,12 @@ const (
 )
 
 func logTSSError(ctx context.Context, err error, resp *http.Response, info message.Fields) {
+	// A 404 means the requested resource isn't tracked in the test selection
+	// service yet, which is expected and too noisy for Splunk. The error is
+	// still returned to the caller.
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		return
+	}
 	if resp != nil {
 		info["status"] = resp.StatusCode
 	}

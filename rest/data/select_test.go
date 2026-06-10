@@ -137,6 +137,18 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		assert.Contains(t, err.Error(), "forwarding request to test selection service")
 		assert.Contains(t, err.Error(), "boom")
 	})
+
+	t.Run("NotFoundStillReturnsWrappedError", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "not found", http.StatusNotFound)
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURL(t, srv.URL)
+
+		_, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "forwarding request to test selection service")
+	})
 }
 
 // setTSSURLForTest swaps the TSS URL in env settings and restores it on test cleanup.
