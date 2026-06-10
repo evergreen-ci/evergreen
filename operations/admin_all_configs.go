@@ -92,7 +92,7 @@ func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model
 			continue
 		}
 		if len(versions) == 0 {
-			catcher.Errorf("WARNING: project '%s' has no versions", p.Identifier)
+			grip.Warningf(ctx, "project '%s' has no versions", p.Identifier)
 			continue
 		}
 
