@@ -751,6 +751,18 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		generatorIsGithubCheck = generateTask.IsGithubCheck
 	}
 
+	// Fetch generate tasks estimations for all generator tasks.
+	var generatorDisplayNames []string
+	for _, t := range tasksToCreate {
+		if creationInfo.Project.IsGenerateTask(t.Name) {
+			generatorDisplayNames = append(generatorDisplayNames, t.Name)
+		}
+	}
+	generateTaskEstimations, err := task.GetBatchedGenerateTasksEstimations(ctx, creationInfo.Project.Identifier, creationInfo.BuildVariant.Name, generatorDisplayNames)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting batched generate tasks estimations")
+	}
+
 	// create all the actual tasks
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
@@ -759,6 +771,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
 		}
+		newTask.SetGenerateTasksEstimationsFromMap(generateTaskEstimations)
 
 		projectTask := creationInfo.Project.FindProjectTask(t.Name)
 		if projectTask != nil {
@@ -1089,10 +1102,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	}
 
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
-
-	if err := t.SetGenerateTasksEstimations(ctx); err != nil {
-		return nil, errors.Wrap(err, "setting generate tasks estimations")
-	}
 
 	if buildVarTask.CreateCheckRun != nil {
 		t.CheckRunPath = utility.ToStringPtr(buildVarTask.CreateCheckRun.PathToOutputs)
