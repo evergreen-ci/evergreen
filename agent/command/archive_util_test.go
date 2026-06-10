@@ -384,6 +384,30 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		assert.Equal(t, "#!/bin/sh\n", string(contents))
 	})
 
+	t.Run("ExistingSymlinkIsOverwritten", func(t *testing.T) {
+		srcDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(srcDir, "real.txt"), []byte("payload"), 0644))
+		require.NoError(t, os.Symlink("real.txt", filepath.Join(srcDir, "link.txt")))
+
+		archive := buildArchiveTo(t, srcDir)
+		f, err := os.Open(archive)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, f.Close()) })
+
+		destDir := t.TempDir()
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+
+		// A second extraction into the already-populated tree must overwrite
+		// the existing symlink rather than fail with EEXIST.
+		_, err = f.Seek(0, io.SeekStart)
+		require.NoError(t, err)
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+
+		target, err := os.Readlink(filepath.Join(destDir, "link.txt"))
+		require.NoError(t, err)
+		assert.Equal(t, "real.txt", target)
+	})
+
 	t.Run("EscapingSymlinkRejected", func(t *testing.T) {
 		srcDir := t.TempDir()
 		require.NoError(t, os.Symlink(filepath.Join("..", "..", "escape"), filepath.Join(srcDir, "evil")))
