@@ -300,7 +300,7 @@ func getDependencyTaskCache(ctx context.Context, undispatchedTasks []task.Task, 
 			lookupSet[dep.TaskId] = struct{}{}
 		}
 	}
-	var depIDs []string
+	depIDs := make([]string, 0, len(lookupSet))
 	for id := range lookupSet {
 		if _, ok := cache[id]; ok {
 			continue
