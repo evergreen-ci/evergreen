@@ -133,6 +133,8 @@ buildvariants:
       checkRun_key: apple
 ```
 
+The `path_to_outputs` value is a path relative to the task's working directory (`${workdir}`), **not** the cloned repository. If `git.get_project` clones into a subdirectory (e.g. `directory: src`), the path must include that prefix — for example, `src/output.json` as shown above. A common mistake is writing the file from a script running inside `src/` and configuring `path_to_outputs` without the subdirectory prefix; Evergreen will look for the file at `${workdir}/output.json` and not find it.
+
 The output json file can specify the following fields. Required fields are only required if an output file is specified. Please see [the github docs](https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#create-a-check-run) for the most up to date information on supported fields.
 
 - `title`: required, title of the check
