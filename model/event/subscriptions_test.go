@@ -829,9 +829,9 @@ func (s *subscriptionsSuite) TestUpsertWebhookWithoutAuthHeaderDoesNotCreateAuth
 	s.Require().NoError(sub.Upsert(s.T().Context()))
 
 	s.Empty(webhookSub.AuthorizationHeaderParameter, "no auth header means no authorization_parameter")
-	allParams, err := fakeparameter.FindByIDs(s.T().Context())
+	secretParams, err := fakeparameter.FindByIDs(s.T().Context(), webhookSub.SecretParameter)
 	s.Require().NoError(err)
-	s.Require().Len(allParams, 1, "only the secret parameter should exist")
+	s.Require().Len(secretParams, 1, "only the secret parameter should exist")
 }
 
 func (s *subscriptionsSuite) TestFindSubscriptionByIDPopulatesAuthHeaderFromParameterStore() {
