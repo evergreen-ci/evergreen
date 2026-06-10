@@ -2609,6 +2609,8 @@ type PatchResolver interface {
 
 	Version(ctx context.Context, obj *model.APIPatch) (*model1.Version, error)
 	VersionFull(ctx context.Context, obj *model.APIPatch) (*model.APIVersion, error)
+	Cost(ctx context.Context, obj *model.APIPatch) (*cost.Cost, error)
+	PredictedCost(ctx context.Context, obj *model.APIPatch) (*cost.Cost, error)
 }
 type PatchesResolver interface {
 	FilteredPatchCount(ctx context.Context, obj *Patches) (int, error)
@@ -45957,7 +45959,7 @@ func (ec *executionContext) _Patch_cost(ctx context.Context, field graphql.Colle
 		field,
 		ec.fieldContext_Patch_cost,
 		func(ctx context.Context) (any, error) {
-			return obj.Cost, nil
+			return ec.resolvers.Patch().Cost(ctx, obj)
 		},
 		nil,
 		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
@@ -45970,8 +45972,8 @@ func (ec *executionContext) fieldContext_Patch_cost(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Patch",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "total":
@@ -46006,7 +46008,7 @@ func (ec *executionContext) _Patch_predictedCost(ctx context.Context, field grap
 		field,
 		ec.fieldContext_Patch_predictedCost,
 		func(ctx context.Context) (any, error) {
-			return obj.PredictedCost, nil
+			return ec.resolvers.Patch().PredictedCost(ctx, obj)
 		},
 		nil,
 		ec.marshalOCost2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost,
@@ -46019,8 +46021,8 @@ func (ec *executionContext) fieldContext_Patch_predictedCost(_ context.Context, 
 	fc = &graphql.FieldContext{
 		Object:     "Patch",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "total":
@@ -100230,9 +100232,71 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "cost":
-			out.Values[i] = ec._Patch_cost(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_cost(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "predictedCost":
-			out.Values[i] = ec._Patch_predictedCost(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_predictedCost(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "invalidatedByUpstream":
 			out.Values[i] = ec._Patch_invalidatedByUpstream(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

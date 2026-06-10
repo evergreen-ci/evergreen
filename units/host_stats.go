@@ -123,6 +123,7 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 	spawnStats, err := host.AggregateSpawnhostData(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "aggregating spawn host data"))
+		return
 	}
 	debugHostCount, countErr := host.CountDebugSpawnhosts(ctx)
 	if countErr != nil {

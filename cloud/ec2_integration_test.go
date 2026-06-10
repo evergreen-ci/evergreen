@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -106,7 +107,13 @@ func TestSpawnEC2InstanceFleet(t *testing.T) {
 	assert.NoError(err)
 	require.Len(foundHosts, 1)
 
-	info, err := m.GetInstanceState(ctx, h)
-	assert.NoError(err)
-	assert.NotContains([]CloudStatus{StatusRunning, StatusStopping, StatusStopped}, info.Status)
+	// AWS state propagation for fleet-launched instances can lag after TerminateInstance,
+	// so poll until DescribeInstances reflects the terminated state.
+	require.Eventually(func() bool {
+		info, err := m.GetInstanceState(ctx, h)
+		if err != nil {
+			return false
+		}
+		return info.Status != StatusRunning && info.Status != StatusStopping && info.Status != StatusStopped
+	}, 60*time.Second, 2*time.Second, "AWS should reflect terminated state after TerminateInstance")
 }

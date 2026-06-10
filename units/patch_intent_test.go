@@ -521,6 +521,26 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
 			s.Equal([]string{"diffTask1"}, currentPatchDoc.Tasks)
 		},
+		"MainlineVersionIDBuildsPerVariantMapping": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "v1", false)
+			s.NoError(err)
+
+			s.Equal([]string{"bv1", "bv2"}, currentPatchDoc.BuildVariants)
+			s.Equal([]string{"et1", "t1", "t2", "tgt1", "tgt2", "tgt4"}, currentPatchDoc.Tasks)
+			s.Require().Len(currentPatchDoc.VariantsTasks, 2)
+			s.Equal(patch.VariantTasks{Variant: "bv1", Tasks: []string{"t1", "t2", "tgt1", "tgt2", "tgt4"}}, currentPatchDoc.VariantsTasks[0])
+			s.Equal(patch.VariantTasks{Variant: "bv2", Tasks: []string{"et1"}}, currentPatchDoc.VariantsTasks[1])
+		},
+		"MainlineVersionIDWithFailedOnlyErrors": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "v1", true)
+			s.Require().Error(err)
+			s.Contains(err.Error(), "not supported")
+		},
+		"MainlineVersionIDWithNoActivatedTasksErrors": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "nonexistent_version", false)
+			s.Require().Error(err)
+			s.Contains(err.Error(), "no activated tasks found")
+		},
 	} {
 		s.NoError(db.ClearCollections(task.Collection))
 		t1 := task.Task{
