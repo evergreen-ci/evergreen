@@ -125,13 +125,13 @@ type WebhookSubscriber struct {
 	URL string `bson:"url"`
 	// Secret is kept with bson:"secret,omitempty" (not bson:"-") so Find can fall back to the DB
 	// value for subscriptions not yet processed by the migration job. Phase 2 cleanup removes remaining DB secrets.
-	Secret                 []byte          `bson:"secret,omitempty"`
-	SecretParameter        string          `bson:"secret_parameter,omitempty"`
-	AuthorizationParameter string          `bson:"authorization_parameter,omitempty"`
-	Retries                int             `bson:"retries"`
-	MinDelayMS             int             `bson:"min_delay_ms"`
-	TimeoutMS              int             `bson:"timeout_ms"`
-	Headers                []WebhookHeader `bson:"headers"`
+	Secret                       []byte          `bson:"secret,omitempty"`
+	SecretParameter              string          `bson:"secret_parameter,omitempty"`
+	AuthorizationHeaderParameter string          `bson:"authorization_parameter,omitempty"`
+	Retries                      int             `bson:"retries"`
+	MinDelayMS                   int             `bson:"min_delay_ms"`
+	TimeoutMS                    int             `bson:"timeout_ms"`
+	Headers                      []WebhookHeader `bson:"headers"`
 }
 
 type WebhookHeader struct {
@@ -178,7 +178,7 @@ func (s *WebhookSubscriber) GetHeader(key string) string {
 	return ""
 }
 
-func (s *WebhookSubscriber) SetHeader(key, value string) {
+func (s *WebhookSubscriber) setHeader(key, value string) {
 	for i := range s.Headers {
 		if s.Headers[i].Key == key {
 			s.Headers[i].Value = value

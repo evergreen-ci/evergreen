@@ -131,7 +131,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 		})
 	}
 
-	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationParameter == "" {
+	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationHeaderParameter == "" {
 		paramPath := event.GetWebhookAuthParameterPath(j.SubscriptionID)
 		param, err := paramMgr.Put(ctx, paramPath, authValue)
 		if err != nil {
@@ -328,7 +328,7 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 		})
 	}
 
-	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationParameter != "" {
+	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationHeaderParameter != "" {
 		if err := db.Update(ctx, event.SubscriptionsCollection,
 			bson.D{{Key: "_id", Value: j.SubscriptionID}},
 			bson.D{{Key: "$pull", Value: bson.D{{Key: "subscriber.target.headers", Value: bson.D{{Key: "key", Value: "Authorization"}}}}}},
