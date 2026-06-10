@@ -2676,7 +2676,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
-		ContainerIsolationDisabled:         as.ContainerIsolationDisabled,		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
+		ContainerIsolationDisabled:         as.ContainerIsolationDisabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
 	}, nil

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -591,9 +592,40 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		Mountpoints:         foundHost.Distro.Mountpoints,
 		ExecUser:            foundHost.Distro.ExecUser,
 	}
+	// Prefer live distro settings over the embedded snapshot for fields that
+	// affect task isolation. Hosts provisioned before container isolation was
+	// configured carry a stale snapshot; a live lookup ensures they pick up
+	// the current distro config. ExecUser is also refreshed because the distro
+	// validator couples it to ContainerIsolation.Enabled — they must be
+	// consistent or between-task process cleanup will be skipped.
+	ci := foundHost.Distro.BootstrapSettings.ContainerIsolation
+	if foundHost.Distro.Id == "" {
+		grip.Warning(ctx, message.Fields{
+			"message": "host has no distro ID; skipping live distro lookup for container isolation",
+			"host_id": h.hostID,
+		})
+	} else if liveDistro, err := distro.FindOneForDistroView(ctx, foundHost.Distro.Id); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "falling back to embedded distro snapshot for container isolation settings",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		}))
+	} else if liveDistro != nil {
+		ci = liveDistro.BootstrapSettings.ContainerIsolation
+		if liveDistro.ExecUser != "" {
+			dv.ExecUser = liveDistro.ExecUser
+		}
+	} else {
+		grip.Warning(ctx, message.Fields{
+			"message": "distro not found in live collection; using embedded snapshot for container isolation",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		})
+	}
+
 	// Populate container isolation only when the distro has it enabled AND
 	// the admin kill switch (ContainerIsolationDisabled) is not set.
-	if ci := foundHost.Distro.BootstrapSettings.ContainerIsolation; ci.Enabled {
+	if ci.Enabled {
 		if h.env != nil && h.env.Settings().ServiceFlags.ContainerIsolationDisabled {
 			// Kill switch wins over per-distro settings, including RequireIsolation.
 			// Log a warning when the kill switch suppresses a fail-closed distro so
@@ -601,10 +633,10 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 			// with the kill switch being active.
 			if ci.RequireIsolation {
 				grip.Warning(ctx, message.Fields{
-					"message":  "container_isolation_disabled kill switch is overriding a require_isolation distro; tasks will run in host-mode",
-					"host_id":  h.hostID,
-					"distro":   foundHost.Distro.Id,
-					"image":    ci.Image,
+					"message": "container_isolation_disabled kill switch is overriding a require_isolation distro; tasks will run in host-mode",
+					"host_id": h.hostID,
+					"distro":  foundHost.Distro.Id,
+					"image":   ci.Image,
 				})
 			}
 		} else {
