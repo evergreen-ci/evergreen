@@ -328,6 +328,39 @@ func TestBuildArchivePreserveSymlinks(t *testing.T) {
 	})
 }
 
+func TestValidateSymlinkTarget(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink preservation is not supported on Windows")
+	}
+	root := filepath.Join(string(filepath.Separator), "tmp", "root")
+	for _, tc := range []struct {
+		name     string
+		linkname string
+		linkPath string
+		valid    bool
+	}{
+		{name: "TargetInSameDirectoryAllowed", linkname: "real.txt", linkPath: filepath.Join(root, "link.txt"), valid: true},
+		{name: "TargetOfDotAllowed", linkname: ".", linkPath: filepath.Join(root, "link"), valid: true},
+		{name: "TargetTraversingWithinRootAllowed", linkname: "a/../b", linkPath: filepath.Join(root, "link"), valid: true},
+		{name: "TargetClimbingToRootFromSubdirAllowed", linkname: "../real.txt", linkPath: filepath.Join(root, "sub", "link"), valid: true},
+		// A name that merely starts with dots is not a traversal; the
+		// neighboring validateRelativePath would falsely reject this.
+		{name: "TargetNameStartingWithDotsAllowed", linkname: "..data", linkPath: filepath.Join(root, "link"), valid: true},
+		{name: "TargetOfParentRejected", linkname: "..", linkPath: filepath.Join(root, "link"), valid: false},
+		{name: "TargetEscapingRootRejected", linkname: "../../escape", linkPath: filepath.Join(root, "sub", "link"), valid: false},
+		{name: "AbsoluteTargetRejected", linkname: "/etc/passwd", linkPath: filepath.Join(root, "link"), valid: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateSymlinkTarget(tc.linkname, tc.linkPath, root)
+			if tc.valid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
 func TestExtractTarballPreserveSymlinks(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink preservation is not supported on Windows")
@@ -406,6 +439,48 @@ func TestExtractTarballPreserveSymlinks(t *testing.T) {
 		target, err := os.Readlink(filepath.Join(destDir, "link.txt"))
 		require.NoError(t, err)
 		assert.Equal(t, "real.txt", target)
+	})
+
+	t.Run("ExistingRegularFileIsOverwritten", func(t *testing.T) {
+		srcDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(srcDir, "real.txt"), []byte("payload"), 0644))
+		require.NoError(t, os.Symlink("real.txt", filepath.Join(srcDir, "link.txt")))
+
+		archive := buildArchiveTo(t, srcDir)
+		f, err := os.Open(archive)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, f.Close()) })
+
+		destDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(destDir, "link.txt"), []byte("stale"), 0644))
+		require.NoError(t, extractTarball(ctx, f, destDir, nil, true))
+
+		target, err := os.Readlink(filepath.Join(destDir, "link.txt"))
+		require.NoError(t, err)
+		assert.Equal(t, "real.txt", target)
+	})
+
+	t.Run("ExistingNonEmptyDirectoryFailsExtraction", func(t *testing.T) {
+		// The remove before recreating a symlink is deliberately non-recursive:
+		// extraction must not silently delete a directory tree to make room.
+		srcDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(srcDir, "real.txt"), []byte("payload"), 0644))
+		require.NoError(t, os.Symlink("real.txt", filepath.Join(srcDir, "link.txt")))
+
+		archive := buildArchiveTo(t, srcDir)
+		f, err := os.Open(archive)
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, f.Close()) })
+
+		destDir := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(destDir, "link.txt"), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(destDir, "link.txt", "keep.txt"), []byte("keep"), 0644))
+
+		require.Error(t, extractTarball(ctx, f, destDir, nil, true))
+
+		kept, err := os.ReadFile(filepath.Join(destDir, "link.txt", "keep.txt"))
+		require.NoError(t, err)
+		assert.Equal(t, "keep", string(kept))
 	})
 
 	t.Run("EscapingSymlinkRejected", func(t *testing.T) {

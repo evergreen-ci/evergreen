@@ -57,6 +57,18 @@ func TestCacheSaveParseParams(t *testing.T) {
 		c := &cacheSave{}
 		require.Error(t, c.ParseParams(params))
 	})
+
+	t.Run("PreserveSymlinksDecodedAndDefaultsToFalse", func(t *testing.T) {
+		c := &cacheSave{}
+		require.NoError(t, c.ParseParams(validParams()))
+		assert.False(t, c.PreserveSymlinks)
+
+		params := validParams()
+		params["preserve_symlinks"] = true
+		c = &cacheSave{}
+		require.NoError(t, c.ParseParams(params))
+		assert.True(t, c.PreserveSymlinks)
+	})
 }
 
 // TestCacheSaveRecomputedKeyMatchesRestore verifies cache.save derives the same

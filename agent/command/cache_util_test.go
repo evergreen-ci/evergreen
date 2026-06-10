@@ -79,6 +79,19 @@ func TestComputeCacheKey(t *testing.T) {
 		assert.NotEqual(t, withFile, withoutFile)
 	})
 
+	t.Run("KeyFormatIsStableAcrossReleases", func(t *testing.T) {
+		// These golden values pin the key encoding. If this test fails, the
+		// change invalidates every cache already stored under the old keys, so
+		// only update the constants if that one-time invalidation is intended.
+		goldenFile := writeCacheKeyFile(t, dir, "golden.txt", "golden")
+		without, err := computeCacheKey([]string{goldenFile}, []string{"linux"}, false)
+		require.NoError(t, err)
+		assert.Equal(t, "1d7273dbbd1c9e64bb8da4fe864248f156723956240f58a3ffaf7153fb1b09e8", without)
+		with, err := computeCacheKey([]string{goldenFile}, []string{"linux"}, true)
+		require.NoError(t, err)
+		assert.Equal(t, "945b01d04a1e8f38c6e0c031ea5b44324fae0a866466c8259058dd4a57fc9532", with)
+	})
+
 	t.Run("PreserveSymlinksChangesKey", func(t *testing.T) {
 		// Folding preserve_symlinks into the key partitions symlink-aware caches
 		// from older dereferenced ones with otherwise-identical inputs.
