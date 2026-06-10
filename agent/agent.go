@@ -1150,11 +1150,14 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, detail 
 }
 
 func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	if tc.hadTimedOut() && ctx.Err() == nil {
+	if detail.TimedOut && ctx.Err() == nil {
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	if tc.oomTrackerEnabled(a.opts.CloudProvider) && (detail.Status == evergreen.TaskFailed || tc.hadTimedOut()) {
+	// The OOM check follows the final reported status, so if a user endpoint
+	// overrode a failed task to succeeded, the check is intentionally skipped
+	// unless the task timed out.
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) && (detail.Status == evergreen.TaskFailed || detail.TimedOut) {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer oomCancel()
