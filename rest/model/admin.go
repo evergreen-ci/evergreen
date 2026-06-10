@@ -565,13 +565,13 @@ type APIRateLimitConfig struct {
 func (a *APIRateLimitConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.RateLimitConfig:
-		a.RESTHumanRequestsPerHour = v.RESTHumanRequestsPerHour
-		a.RESTHumanBurst = v.RESTHumanBurst
-		a.RESTServiceRequestsPerHour = v.RESTServiceRequestsPerHour
+		a.RESTHumanRequestsPerHour = v.RESTUserPerHour
+		a.RESTHumanBurst = v.RESTUserBurst
+		a.RESTServiceRequestsPerHour = v.RESTServicePerHour
 		a.RESTServiceBurst = v.RESTServiceBurst
-		a.GraphQLHumanRequestsPerHour = v.GraphQLHumanRequestsPerHour
-		a.GraphQLHumanBurst = v.GraphQLHumanBurst
-		a.GraphQLServiceRequestsPerHour = v.GraphQLServiceRequestsPerHour
+		a.GraphQLHumanRequestsPerHour = v.GraphQLUserPerHour
+		a.GraphQLHumanBurst = v.GraphQLUserBurst
+		a.GraphQLServiceRequestsPerHour = v.GraphQLServicePerHour
 		a.GraphQLServiceBurst = v.GraphQLServiceBurst
 		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
 		a.ElevatedUserIDs = v.ElevatedUserIDs
@@ -583,16 +583,16 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 
 func (a *APIRateLimitConfig) ToService() (any, error) {
 	return evergreen.RateLimitConfig{
-		RESTHumanRequestsPerHour:      a.RESTHumanRequestsPerHour,
-		RESTHumanBurst:                a.RESTHumanBurst,
-		RESTServiceRequestsPerHour:    a.RESTServiceRequestsPerHour,
-		RESTServiceBurst:              a.RESTServiceBurst,
-		GraphQLHumanRequestsPerHour:   a.GraphQLHumanRequestsPerHour,
-		GraphQLHumanBurst:             a.GraphQLHumanBurst,
-		GraphQLServiceRequestsPerHour: a.GraphQLServiceRequestsPerHour,
-		GraphQLServiceBurst:           a.GraphQLServiceBurst,
-		GraphQLComplexityLimit:        a.GraphQLComplexityLimit,
-		ElevatedUserIDs:               a.ElevatedUserIDs,
+		RESTUserPerHour:        a.RESTHumanRequestsPerHour,
+		RESTUserBurst:          a.RESTHumanBurst,
+		RESTServicePerHour:     a.RESTServiceRequestsPerHour,
+		RESTServiceBurst:       a.RESTServiceBurst,
+		GraphQLUserPerHour:     a.GraphQLHumanRequestsPerHour,
+		GraphQLUserBurst:       a.GraphQLHumanBurst,
+		GraphQLServicePerHour:  a.GraphQLServiceRequestsPerHour,
+		GraphQLServiceBurst:    a.GraphQLServiceBurst,
+		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
+		ElevatedUserIDs:        a.ElevatedUserIDs,
 	}, nil
 }
 

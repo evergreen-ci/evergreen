@@ -16,37 +16,37 @@ func TestRateLimitConfigValidate(t *testing.T) {
 
 	t.Run("ValidPositiveValues", func(t *testing.T) {
 		c := RateLimitConfig{
-			RESTHumanRequestsPerHour:      1000,
-			RESTHumanBurst:                50,
-			RESTServiceRequestsPerHour:    5000,
-			RESTServiceBurst:              200,
-			GraphQLHumanRequestsPerHour:   500,
-			GraphQLHumanBurst:             25,
-			GraphQLServiceRequestsPerHour: 2000,
-			GraphQLServiceBurst:           100,
-			GraphQLComplexityLimit:        1000,
-			ElevatedUserIDs:               []string{"alice", "bob"},
+			RESTUserPerHour:        1000,
+			RESTUserBurst:          50,
+			RESTServicePerHour:     5000,
+			RESTServiceBurst:       200,
+			GraphQLUserPerHour:     500,
+			GraphQLUserBurst:       25,
+			GraphQLServicePerHour:  2000,
+			GraphQLServiceBurst:    100,
+			GraphQLComplexityLimit: 1000,
+			ElevatedUserIDs:        []string{"alice", "bob"},
 		}
 		assert.NoError(t, c.ValidateAndDefault())
 	})
 
 	t.Run("NegativePerHourShouldError", func(t *testing.T) {
-		c := RateLimitConfig{RESTHumanRequestsPerHour: -1}
+		c := RateLimitConfig{RESTUserPerHour: -1}
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
 	t.Run("NegativeBurstShouldError", func(t *testing.T) {
-		c := RateLimitConfig{RESTHumanBurst: -1}
+		c := RateLimitConfig{RESTUserBurst: -1}
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
 	t.Run("BurstExceedsPerHourShouldError", func(t *testing.T) {
-		c := RateLimitConfig{RESTHumanRequestsPerHour: 100, RESTHumanBurst: 200}
+		c := RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 200}
 		assert.Error(t, c.ValidateAndDefault())
 	})
 
 	t.Run("BurstEqualsPerHourIsValid", func(t *testing.T) {
-		c := RateLimitConfig{RESTHumanRequestsPerHour: 100, RESTHumanBurst: 100}
+		c := RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 100}
 		assert.NoError(t, c.ValidateAndDefault())
 	})
 
@@ -57,14 +57,14 @@ func TestRateLimitConfigValidate(t *testing.T) {
 
 	t.Run("MultipleErrorsAreCaptured", func(t *testing.T) {
 		c := RateLimitConfig{
-			RESTHumanRequestsPerHour:    -1,
-			GraphQLHumanRequestsPerHour: -1,
-			GraphQLComplexityLimit:      -1,
+			RESTUserPerHour:        -1,
+			GraphQLUserPerHour:     -1,
+			GraphQLComplexityLimit: -1,
 		}
 		err := c.ValidateAndDefault()
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "REST human")
-		assert.Contains(t, err.Error(), "GraphQL human")
+		assert.Contains(t, err.Error(), "REST user")
+		assert.Contains(t, err.Error(), "GraphQL user")
 		assert.Contains(t, err.Error(), "GraphQL complexity limit")
 	})
 }
@@ -77,16 +77,16 @@ func TestRateLimitConfigBSONRoundTrip(t *testing.T) {
 		})
 
 		original := RateLimitConfig{
-			RESTHumanRequestsPerHour:      1000,
-			RESTHumanBurst:                50,
-			RESTServiceRequestsPerHour:    5000,
-			RESTServiceBurst:              200,
-			GraphQLHumanRequestsPerHour:   500,
-			GraphQLHumanBurst:             25,
-			GraphQLServiceRequestsPerHour: 2000,
-			GraphQLServiceBurst:           100,
-			GraphQLComplexityLimit:        1000,
-			ElevatedUserIDs:               []string{"alice", "bob"},
+			RESTUserPerHour:        1000,
+			RESTUserBurst:          50,
+			RESTServicePerHour:     5000,
+			RESTServiceBurst:       200,
+			GraphQLUserPerHour:     500,
+			GraphQLUserBurst:       25,
+			GraphQLServicePerHour:  2000,
+			GraphQLServiceBurst:    100,
+			GraphQLComplexityLimit: 1000,
+			ElevatedUserIDs:        []string{"alice", "bob"},
 		}
 		require.NoError(t, original.Set(t.Context()))
 
