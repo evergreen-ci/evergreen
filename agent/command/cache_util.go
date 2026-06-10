@@ -290,8 +290,11 @@ func validateCacheCredentials(catcher grip.Catcher, roleARN, awsKey, awsSecret, 
 // differently from expansions ["a", "b"]. Nothing about the runtime environment
 // is folded in implicitly; callers include values like "${distro_id}" through
 // keyExpansions if they want that partitioning. The preserveSymlinks flag is
-// folded in as a trailing discriminator so symlink-aware caches occupy a
-// distinct key space from older dereferenced ones.
+// folded in only when enabled, so symlink-aware caches occupy a distinct key
+// space while keys computed before the option existed stay valid. This is
+// unambiguous because the encoding is self-delimiting: no flag-less input can
+// produce the same byte stream as another input plus the trailing
+// discriminator.
 func computeCacheKey(keyFiles, keyExpansions []string, preserveSymlinks bool) (string, error) {
 	h := sha256.New()
 	writeUint64 := func(n int) {
@@ -326,11 +329,9 @@ func computeCacheKey(keyFiles, keyExpansions []string, preserveSymlinks bool) (s
 		h.Write([]byte(value))
 	}
 
-	var preserveSymlinksByte byte
 	if preserveSymlinks {
-		preserveSymlinksByte = 1
+		h.Write([]byte{1})
 	}
-	h.Write([]byte{preserveSymlinksByte})
 
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
