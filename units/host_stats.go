@@ -145,4 +145,13 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 		"non_debug_hosts":         spawnStats.TotalHosts - debugHostCount,
 	})
 
+	spawnHostsByProject, err := host.AggregateSpawnhostCountByProject(ctx)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "aggregating spawn host counts by project"))
+	} else {
+		j.logger.Info(ctx, message.Fields{
+			"message":  "spawn hosts by project",
+			"projects": spawnHostsByProject,
+		})
+	}
 }
