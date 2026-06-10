@@ -176,7 +176,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 				startingHostsWithNoTasks++
 			}
 		}
-		nHosts = distroQueueInfo.LengthWithDependenciesMet - len(existingHosts.ProvisioningSingleTaskHosts())
+		nHosts = distroQueueInfo.LengthWithDependenciesMet - startingHostsWithNoTasks
 	} else {
 		hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 
