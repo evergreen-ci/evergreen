@@ -550,28 +550,28 @@ func (a *APIapiConfig) ToService() (any, error) {
 }
 
 type APIRateLimitConfig struct {
-	RESTHumanRequestsPerHour      int      `json:"rest_human_per_hour"`
-	RESTHumanBurst                int      `json:"rest_human_burst"`
-	RESTServiceRequestsPerHour    int      `json:"rest_service_per_hour"`
-	RESTServiceBurst              int      `json:"rest_service_burst"`
-	GraphQLHumanRequestsPerHour   int      `json:"graphql_human_per_hour"`
-	GraphQLHumanBurst             int      `json:"graphql_human_burst"`
-	GraphQLServiceRequestsPerHour int      `json:"graphql_service_per_hour"`
-	GraphQLServiceBurst           int      `json:"graphql_service_burst"`
-	GraphQLComplexityLimit        int      `json:"graphql_complexity_limit"`
-	ElevatedUserIDs               []string `json:"elevated_user_ids"`
+	RESTUserPerHour        int      `json:"rest_user_per_hour"`
+	RESTUserBurst          int      `json:"rest_user_burst"`
+	RESTServicePerHour     int      `json:"rest_service_per_hour"`
+	RESTServiceBurst       int      `json:"rest_service_burst"`
+	GraphQLUserPerHour     int      `json:"graphql_user_per_hour"`
+	GraphQLUserBurst       int      `json:"graphql_user_burst"`
+	GraphQLServicePerHour  int      `json:"graphql_service_per_hour"`
+	GraphQLServiceBurst    int      `json:"graphql_service_burst"`
+	GraphQLComplexityLimit int      `json:"graphql_complexity_limit"`
+	ElevatedUserIDs        []string `json:"elevated_user_ids"`
 }
 
 func (a *APIRateLimitConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.RateLimitConfig:
-		a.RESTHumanRequestsPerHour = v.RESTUserPerHour
-		a.RESTHumanBurst = v.RESTUserBurst
-		a.RESTServiceRequestsPerHour = v.RESTServicePerHour
+		a.RESTUserPerHour = v.RESTUserPerHour
+		a.RESTUserBurst = v.RESTUserBurst
+		a.RESTServicePerHour = v.RESTServicePerHour
 		a.RESTServiceBurst = v.RESTServiceBurst
-		a.GraphQLHumanRequestsPerHour = v.GraphQLUserPerHour
-		a.GraphQLHumanBurst = v.GraphQLUserBurst
-		a.GraphQLServiceRequestsPerHour = v.GraphQLServicePerHour
+		a.GraphQLUserPerHour = v.GraphQLUserPerHour
+		a.GraphQLUserBurst = v.GraphQLUserBurst
+		a.GraphQLServicePerHour = v.GraphQLServicePerHour
 		a.GraphQLServiceBurst = v.GraphQLServiceBurst
 		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
 		a.ElevatedUserIDs = v.ElevatedUserIDs
@@ -583,13 +583,13 @@ func (a *APIRateLimitConfig) BuildFromService(h any) error {
 
 func (a *APIRateLimitConfig) ToService() (any, error) {
 	return evergreen.RateLimitConfig{
-		RESTUserPerHour:        a.RESTHumanRequestsPerHour,
-		RESTUserBurst:          a.RESTHumanBurst,
-		RESTServicePerHour:     a.RESTServiceRequestsPerHour,
+		RESTUserPerHour:        a.RESTUserPerHour,
+		RESTUserBurst:          a.RESTUserBurst,
+		RESTServicePerHour:     a.RESTServicePerHour,
 		RESTServiceBurst:       a.RESTServiceBurst,
-		GraphQLUserPerHour:     a.GraphQLHumanRequestsPerHour,
-		GraphQLUserBurst:       a.GraphQLHumanBurst,
-		GraphQLServicePerHour:  a.GraphQLServiceRequestsPerHour,
+		GraphQLUserPerHour:     a.GraphQLUserPerHour,
+		GraphQLUserBurst:       a.GraphQLUserBurst,
+		GraphQLServicePerHour:  a.GraphQLServicePerHour,
 		GraphQLServiceBurst:    a.GraphQLServiceBurst,
 		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
 		ElevatedUserIDs:        a.ElevatedUserIDs,
