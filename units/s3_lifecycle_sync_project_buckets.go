@@ -69,6 +69,12 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 		return
 	}
 
+	costConfig := evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		j.AddError(errors.Wrap(err, "getting cost config"))
+		return
+	}
+
 	// Get distinct list of user-specified buckets from collection.
 	bucketNames, err := s3lifecycle.FindDistinctBucketNames(ctx, s3lifecycle.BucketTypeUserSpecified)
 	if err != nil {
@@ -90,7 +96,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 	var failedBuckets []string
 
 	for _, bucketName := range bucketNames {
-		if err := j.syncBucket(ctx, client, bucketName); err != nil {
+		if err := j.syncBucket(ctx, client, bucketName, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "failed to sync bucket",
 				"bucket":  bucketName,
@@ -116,8 +122,8 @@ func (j *s3LifecycleSyncProjectBucketsJob) Run(ctx context.Context) {
 	grip.Info(ctx, msg)
 }
 
-func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, client cloud.S3LifecycleClient, bucketName string) error {
-	// Get existing rules to extract region (all rules for same bucket have same region).
+func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, client cloud.S3LifecycleClient, bucketName string, accountsWithoutLifecycleRules []string) error {
+	// Get existing rules to extract region and account ID (all rules for same bucket share these).
 	existingRules, err := s3lifecycle.FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
 		return errors.Wrapf(err, "finding existing rules for bucket '%s'", bucketName)
@@ -128,6 +134,20 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 			"message": "no existing rules found for bucket, skipping sync",
 			"bucket":  bucketName,
 			"job_id":  j.ID(),
+		})
+		return nil
+	}
+
+	// Skip sync for buckets belonging to accounts where we don't have lifecycle rule access.
+	// AWSAccountID is populated during discovery for role-based auth buckets. Buckets using
+	// key+secret auth or those discovered before this field was added will have an empty
+	// AWSAccountID and are always synced.
+	if awsAccountID := existingRules[0].AWSAccountID; awsAccountID != "" && evergreen.IsAccountWithoutLifecycleRules(awsAccountID, accountsWithoutLifecycleRules) {
+		grip.Info(ctx, message.Fields{
+			"message":    "skipping lifecycle rule sync for bucket in account without lifecycle rules access",
+			"bucket":     bucketName,
+			"account_id": awsAccountID,
+			"job_id":     j.ID(),
 		})
 		return nil
 	}
@@ -223,7 +243,7 @@ func (j *s3LifecycleSyncProjectBucketsJob) syncBucket(ctx context.Context, clien
 }
 
 // convertPailRuleToDoc converts a pail.LifecycleRule to S3LifecycleRuleDoc.
-// Preserves ProjectAssociations from existing rules if available.
+// Preserves ProjectAssociations and AWSAccountID from existing rules if available.
 func convertPailRuleToDoc(bucketName, region string, awsRule pail.LifecycleRule, existingRules []s3lifecycle.S3LifecycleRuleDoc) *s3lifecycle.S3LifecycleRuleDoc {
 	doc := &s3lifecycle.S3LifecycleRuleDoc{
 		BucketName:              bucketName,
@@ -240,10 +260,11 @@ func convertPailRuleToDoc(bucketName, region string, awsRule pail.LifecycleRule,
 		SyncError:               "", // Clear any previous error on successful sync
 	}
 
-	// Preserve ProjectAssociations from existing rule if it exists.
+	// Preserve ProjectAssociations and AWSAccountID from the matching existing rule.
 	for _, existingRule := range existingRules {
 		if existingRule.FilterPrefix == awsRule.Prefix {
 			doc.ProjectAssociations = existingRule.ProjectAssociations
+			doc.AWSAccountID = existingRule.AWSAccountID
 			break
 		}
 	}

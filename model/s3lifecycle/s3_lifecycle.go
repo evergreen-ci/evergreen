@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -38,6 +39,7 @@ var (
 	FilterPrefixKey            = bsonutil.MustHaveTag(S3LifecycleRuleDoc{}, "FilterPrefix")
 	BucketTypeKey              = bsonutil.MustHaveTag(S3LifecycleRuleDoc{}, "BucketType")
 	RegionKey                  = bsonutil.MustHaveTag(S3LifecycleRuleDoc{}, "Region")
+	AWSAccountIDKey            = bsonutil.MustHaveTag(S3LifecycleRuleDoc{}, "AWSAccountID")
 	AdminBucketCategoryKey     = bsonutil.MustHaveTag(S3LifecycleRuleDoc{}, "AdminBucketCategory")
 	ProjectAssociationsKey     = bsonutil.MustHaveTag(S3LifecycleRuleDoc{}, "ProjectAssociations")
 	RuleIDKey                  = bsonutil.MustHaveTag(S3LifecycleRuleDoc{}, "RuleID")
@@ -106,9 +108,28 @@ type S3LifecycleClient interface {
 }
 
 // DiscoverAndCacheProjectBucket checks if we have lifecycle rules cached for a bucket and fetches them if not.
-// It returns true if rules were successfully cached (discovery succeeded), false if already cached or discovery failed.
+// It returns true if rules were successfully cached (discovery succeeded), false if already cached, if the
+// bucket's account is in accountsWithoutLifecycleRules, or if discovery failed.
 // This is best-effort - errors are logged but not returned to avoid failing file uploads.
-func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, client S3LifecycleClient) bool {
+func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region string, roleARN *string, externalID *string, projectID string, accountsWithoutLifecycleRules []string, client S3LifecycleClient) bool {
+	// Derive the AWS account ID from the role ARN so we can check it against the skip list.
+	var awsAccountID string
+	if roleARN != nil {
+		if id, ok := util.AWSAccountIDFromIAMARN(*roleARN); ok {
+			awsAccountID = id
+		}
+	}
+
+	if awsAccountID != "" && evergreen.IsAccountWithoutLifecycleRules(awsAccountID, accountsWithoutLifecycleRules) {
+		grip.Info(ctx, message.Fields{
+			"message":    "skipping lifecycle rule discovery for bucket in account without lifecycle rules access",
+			"bucket":     bucketName,
+			"account_id": awsAccountID,
+			"project":    projectID,
+		})
+		return false
+	}
+
 	existingRules, err := FindAllRulesForBucket(ctx, bucketName)
 	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
@@ -144,6 +165,7 @@ func DiscoverAndCacheProjectBucket(ctx context.Context, bucketName, region strin
 			FilterPrefix:            awsRule.Prefix,
 			BucketType:              BucketTypeUserSpecified,
 			Region:                  region,
+			AWSAccountID:            awsAccountID,
 			RuleID:                  awsRule.ID,
 			RuleStatus:              awsRule.Status,
 			ExpirationDays:          utility.ConvertInt32PtrToIntPtr(awsRule.ExpirationDays),
@@ -193,6 +215,9 @@ type S3LifecycleRuleDoc struct {
 	FilterPrefix string `bson:"filter_prefix" json:"filter_prefix"` // Empty string applies to all objects (default rule)
 	BucketType   string `bson:"bucket_type" json:"bucket_type"`
 	Region       string `bson:"region" json:"region"`
+	// AWSAccountID is the 12-digit AWS account ID that owns this bucket, derived from the IAM role ARN used
+	// during discovery. Empty for buckets that use key+secret authentication.
+	AWSAccountID string `bson:"aws_account_id,omitempty" json:"aws_account_id,omitempty"`
 
 	AdminBucketCategory string   `bson:"admin_bucket_category,omitempty" json:"admin_bucket_category,omitempty"`
 	ProjectAssociations []string `bson:"project_associations" json:"project_associations"`
@@ -231,6 +256,7 @@ func (s *S3LifecycleRuleDoc) Upsert(ctx context.Context) error {
 		FilterPrefixKey:            s.FilterPrefix,
 		BucketTypeKey:              s.BucketType,
 		RegionKey:                  s.Region,
+		AWSAccountIDKey:            s.AWSAccountID,
 		AdminBucketCategoryKey:     s.AdminBucketCategory,
 		ProjectAssociationsKey:     s.ProjectAssociations,
 		RuleIDKey:                  s.RuleID,
