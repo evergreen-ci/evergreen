@@ -209,7 +209,7 @@ func getRedactedGitHubAppCopy(auth ProjectEventGitHubAppAuth, isGHAppKeyModified
 	return redactedAuth
 }
 
-// getModifiedWebhookSecrets returns the set of subscription IDs whose webhook secrets or Authorization headers changed.
+// getModifiedWebhookSubscriberIDs returns the set of subscription IDs whose webhook secrets or Authorization headers changed.
 func getModifiedWebhookSubscriberIDs(before, after []event.Subscription) map[string]struct{} {
 	beforeByID := buildWebhookSubscribers(before)
 	afterByID := buildWebhookSubscribers(after)
