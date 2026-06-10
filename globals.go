@@ -656,6 +656,15 @@ const (
 	AuthorizationHeader  = "Authorization"
 	EnvironmentHeader    = "X-Evergreen-Environment"
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
+
+	// Rate limiting response headers
+	RateLimitLimitHeader            = "X-RateLimit-Limit"
+	RateLimitRemainingHeader        = "X-RateLimit-Remaining"
+	RateLimitResetHeader            = "X-RateLimit-Reset"             // Absolute Unix timestamp (seconds) at which the window resets.
+	RateLimitExceededHeader         = "X-RateLimit-Exceeded"          // Set in warn-only mode (request still served) and on a 429.
+	RetryAfterHeader                = "Retry-After"                   // Standard HTTP header (RFC 9110), a delta in seconds, set alongside a 429.
+	GraphQLComplexityHeader         = "X-GraphQL-Complexity"          // Computed complexity score of the query.
+	GraphQLComplexityExceededHeader = "X-GraphQL-Complexity-Exceeded" // Set in warn-only mode and on rejection.
 )
 
 const (
@@ -1534,3 +1543,12 @@ func ValidateSSHKey(key string) error {
 	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
 		"or the key value is not one of the valid types: %s", validKeyTypes)
 }
+
+// RateLimitSurface represents the surface to which rate limiting is applied.
+type RateLimitSurface string
+
+const (
+	RateLimitSurfaceREST       RateLimitSurface = "rest"
+	RateLimitSurfaceGraphQL    RateLimitSurface = "graphql"
+	RateLimitSurfaceComplexity RateLimitSurface = "complexity"
+)
