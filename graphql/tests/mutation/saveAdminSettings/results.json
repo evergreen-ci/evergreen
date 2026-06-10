@@ -97,16 +97,16 @@
               "corpUrl": "https://evergreen-staging.corp.mongodb.com"
             },
             "rateLimit": {
-              "restUserPerHour": 100,
-              "restUserBurst": 10,
-              "restServicePerHour": 200,
-              "restServiceBurst": 20,
-              "graphqlUserPerHour": 300,
-              "graphqlUserBurst": 30,
-              "graphqlServicePerHour": 400,
-              "graphqlServiceBurst": 40,
+              "elevatedUserIds": ["user1", "user2"],
               "graphqlComplexityLimit": 1000,
-              "elevatedUserIds": ["user1", "user2"]
+              "graphqlServiceBurst": 40,
+              "graphqlServicePerHour": 400,
+              "graphqlUserBurst": 30,
+              "graphqlUserPerHour": 300,
+              "restServiceBurst": 20,
+              "restServicePerHour": 200,
+              "restUserBurst": 10,
+              "restUserPerHour": 100
             },
             "ui": {
               "url": "http://localhost:600",

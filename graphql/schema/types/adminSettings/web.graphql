@@ -1,27 +1,27 @@
 input RateLimitConfigInput {
-  restUserPerHour: Int!
-  restUserBurst: Int!
-  restServicePerHour: Int!
-  restServiceBurst: Int!
-  graphqlUserPerHour: Int!
-  graphqlUserBurst: Int!
-  graphqlServicePerHour: Int!
-  graphqlServiceBurst: Int!
-  graphqlComplexityLimit: Int!
   elevatedUserIds: [String!]!
+  graphqlComplexityLimit: Int!
+  graphqlServiceBurst: Int!
+  graphqlServicePerHour: Int!
+  graphqlUserBurst: Int!
+  graphqlUserPerHour: Int!
+  restServiceBurst: Int!
+  restServicePerHour: Int!
+  restUserBurst: Int!
+  restUserPerHour: Int!
 }
 
 type RateLimitConfig {
-  restUserPerHour: Int
-  restUserBurst: Int
-  restServicePerHour: Int
-  restServiceBurst: Int
-  graphqlUserPerHour: Int
-  graphqlUserBurst: Int
-  graphqlServicePerHour: Int
-  graphqlServiceBurst: Int
-  graphqlComplexityLimit: Int
   elevatedUserIds: [String!]
+  graphqlComplexityLimit: Int
+  graphqlServiceBurst: Int
+  graphqlServicePerHour: Int
+  graphqlUserBurst: Int
+  graphqlUserPerHour: Int
+  restServiceBurst: Int
+  restServicePerHour: Int
+  restUserBurst: Int
+  restUserPerHour: Int
 }
 
 input APIConfigInput {

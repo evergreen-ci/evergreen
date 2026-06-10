@@ -19818,26 +19818,26 @@ func (ec *executionContext) fieldContext_AdminSettings_rateLimit(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "restUserPerHour":
-				return ec.fieldContext_RateLimitConfig_restUserPerHour(ctx, field)
-			case "restUserBurst":
-				return ec.fieldContext_RateLimitConfig_restUserBurst(ctx, field)
-			case "restServicePerHour":
-				return ec.fieldContext_RateLimitConfig_restServicePerHour(ctx, field)
-			case "restServiceBurst":
-				return ec.fieldContext_RateLimitConfig_restServiceBurst(ctx, field)
-			case "graphqlUserPerHour":
-				return ec.fieldContext_RateLimitConfig_graphqlUserPerHour(ctx, field)
-			case "graphqlUserBurst":
-				return ec.fieldContext_RateLimitConfig_graphqlUserBurst(ctx, field)
-			case "graphqlServicePerHour":
-				return ec.fieldContext_RateLimitConfig_graphqlServicePerHour(ctx, field)
-			case "graphqlServiceBurst":
-				return ec.fieldContext_RateLimitConfig_graphqlServiceBurst(ctx, field)
-			case "graphqlComplexityLimit":
-				return ec.fieldContext_RateLimitConfig_graphqlComplexityLimit(ctx, field)
 			case "elevatedUserIds":
 				return ec.fieldContext_RateLimitConfig_elevatedUserIds(ctx, field)
+			case "graphqlComplexityLimit":
+				return ec.fieldContext_RateLimitConfig_graphqlComplexityLimit(ctx, field)
+			case "graphqlServiceBurst":
+				return ec.fieldContext_RateLimitConfig_graphqlServiceBurst(ctx, field)
+			case "graphqlServicePerHour":
+				return ec.fieldContext_RateLimitConfig_graphqlServicePerHour(ctx, field)
+			case "graphqlUserBurst":
+				return ec.fieldContext_RateLimitConfig_graphqlUserBurst(ctx, field)
+			case "graphqlUserPerHour":
+				return ec.fieldContext_RateLimitConfig_graphqlUserPerHour(ctx, field)
+			case "restServiceBurst":
+				return ec.fieldContext_RateLimitConfig_restServiceBurst(ctx, field)
+			case "restServicePerHour":
+				return ec.fieldContext_RateLimitConfig_restServicePerHour(ctx, field)
+			case "restUserBurst":
+				return ec.fieldContext_RateLimitConfig_restUserBurst(ctx, field)
+			case "restUserPerHour":
+				return ec.fieldContext_RateLimitConfig_restUserPerHour(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RateLimitConfig", field.Name)
 		},
@@ -55550,43 +55550,43 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _RateLimitConfig_restUserPerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _RateLimitConfig_elevatedUserIds(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RateLimitConfig_restUserPerHour,
+		ec.fieldContext_RateLimitConfig_elevatedUserIds,
 		func(ctx context.Context) (any, error) {
-			return obj.RESTUserPerHour, nil
+			return obj.ElevatedUserIDs, nil
 		},
 		nil,
-		ec.marshalOInt2int,
+		ec.marshalOString2ᚕstringᚄ,
 		true,
 		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_RateLimitConfig_restUserPerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RateLimitConfig_elevatedUserIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RateLimitConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _RateLimitConfig_restUserBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _RateLimitConfig_graphqlComplexityLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RateLimitConfig_restUserBurst,
+		ec.fieldContext_RateLimitConfig_graphqlComplexityLimit,
 		func(ctx context.Context) (any, error) {
-			return obj.RESTUserBurst, nil
+			return obj.GraphQLComplexityLimit, nil
 		},
 		nil,
 		ec.marshalOInt2int,
@@ -55595,152 +55595,7 @@ func (ec *executionContext) _RateLimitConfig_restUserBurst(ctx context.Context, 
 	)
 }
 
-func (ec *executionContext) fieldContext_RateLimitConfig_restUserBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RateLimitConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RateLimitConfig_restServicePerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RateLimitConfig_restServicePerHour,
-		func(ctx context.Context) (any, error) {
-			return obj.RESTServicePerHour, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RateLimitConfig_restServicePerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RateLimitConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RateLimitConfig_restServiceBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RateLimitConfig_restServiceBurst,
-		func(ctx context.Context) (any, error) {
-			return obj.RESTServiceBurst, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RateLimitConfig_restServiceBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RateLimitConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RateLimitConfig_graphqlUserPerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RateLimitConfig_graphqlUserPerHour,
-		func(ctx context.Context) (any, error) {
-			return obj.GraphQLUserPerHour, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RateLimitConfig_graphqlUserPerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RateLimitConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RateLimitConfig_graphqlUserBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RateLimitConfig_graphqlUserBurst,
-		func(ctx context.Context) (any, error) {
-			return obj.GraphQLUserBurst, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RateLimitConfig_graphqlUserBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RateLimitConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RateLimitConfig_graphqlServicePerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RateLimitConfig_graphqlServicePerHour,
-		func(ctx context.Context) (any, error) {
-			return obj.GraphQLServicePerHour, nil
-		},
-		nil,
-		ec.marshalOInt2int,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RateLimitConfig_graphqlServicePerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlComplexityLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RateLimitConfig",
 		Field:      field,
@@ -55782,14 +55637,14 @@ func (ec *executionContext) fieldContext_RateLimitConfig_graphqlServiceBurst(_ c
 	return fc, nil
 }
 
-func (ec *executionContext) _RateLimitConfig_graphqlComplexityLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _RateLimitConfig_graphqlServicePerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RateLimitConfig_graphqlComplexityLimit,
+		ec.fieldContext_RateLimitConfig_graphqlServicePerHour,
 		func(ctx context.Context) (any, error) {
-			return obj.GraphQLComplexityLimit, nil
+			return obj.GraphQLServicePerHour, nil
 		},
 		nil,
 		ec.marshalOInt2int,
@@ -55798,7 +55653,7 @@ func (ec *executionContext) _RateLimitConfig_graphqlComplexityLimit(ctx context.
 	)
 }
 
-func (ec *executionContext) fieldContext_RateLimitConfig_graphqlComplexityLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlServicePerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RateLimitConfig",
 		Field:      field,
@@ -55811,30 +55666,175 @@ func (ec *executionContext) fieldContext_RateLimitConfig_graphqlComplexityLimit(
 	return fc, nil
 }
 
-func (ec *executionContext) _RateLimitConfig_elevatedUserIds(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+func (ec *executionContext) _RateLimitConfig_graphqlUserBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_RateLimitConfig_elevatedUserIds,
+		ec.fieldContext_RateLimitConfig_graphqlUserBurst,
 		func(ctx context.Context) (any, error) {
-			return obj.ElevatedUserIDs, nil
+			return obj.GraphQLUserBurst, nil
 		},
 		nil,
-		ec.marshalOString2ᚕstringᚄ,
+		ec.marshalOInt2int,
 		true,
 		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_RateLimitConfig_elevatedUserIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlUserBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RateLimitConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_graphqlUserPerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlUserPerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLUserPerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlUserPerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restServiceBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restServiceBurst,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTServiceBurst, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restServiceBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restServicePerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restServicePerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTServicePerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restServicePerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restUserBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restUserBurst,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTUserBurst, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restUserBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restUserPerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restUserPerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTUserPerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restUserPerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -87663,76 +87663,13 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"restUserPerHour", "restUserBurst", "restServicePerHour", "restServiceBurst", "graphqlUserPerHour", "graphqlUserBurst", "graphqlServicePerHour", "graphqlServiceBurst", "graphqlComplexityLimit", "elevatedUserIds"}
+	fieldsInOrder := [...]string{"elevatedUserIds", "graphqlComplexityLimit", "graphqlServiceBurst", "graphqlServicePerHour", "graphqlUserBurst", "graphqlUserPerHour", "restServiceBurst", "restServicePerHour", "restUserBurst", "restUserPerHour"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "restUserPerHour":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restUserPerHour"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RESTUserPerHour = data
-		case "restUserBurst":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restUserBurst"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RESTUserBurst = data
-		case "restServicePerHour":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restServicePerHour"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RESTServicePerHour = data
-		case "restServiceBurst":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restServiceBurst"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RESTServiceBurst = data
-		case "graphqlUserPerHour":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlUserPerHour"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.GraphQLUserPerHour = data
-		case "graphqlUserBurst":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlUserBurst"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.GraphQLUserBurst = data
-		case "graphqlServicePerHour":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlServicePerHour"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.GraphQLServicePerHour = data
-		case "graphqlServiceBurst":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlServiceBurst"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.GraphQLServiceBurst = data
-		case "graphqlComplexityLimit":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlComplexityLimit"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.GraphQLComplexityLimit = data
 		case "elevatedUserIds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("elevatedUserIds"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -87740,6 +87677,69 @@ func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.ElevatedUserIDs = data
+		case "graphqlComplexityLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlComplexityLimit"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLComplexityLimit = data
+		case "graphqlServiceBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlServiceBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLServiceBurst = data
+		case "graphqlServicePerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlServicePerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLServicePerHour = data
+		case "graphqlUserBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlUserBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLUserBurst = data
+		case "graphqlUserPerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlUserPerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLUserPerHour = data
+		case "restServiceBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restServiceBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTServiceBurst = data
+		case "restServicePerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restServicePerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTServicePerHour = data
+		case "restUserBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restUserBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTUserBurst = data
+		case "restUserPerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restUserPerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTUserPerHour = data
 		}
 	}
 
@@ -103912,26 +103912,26 @@ func (ec *executionContext) _RateLimitConfig(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RateLimitConfig")
-		case "restUserPerHour":
-			out.Values[i] = ec._RateLimitConfig_restUserPerHour(ctx, field, obj)
-		case "restUserBurst":
-			out.Values[i] = ec._RateLimitConfig_restUserBurst(ctx, field, obj)
-		case "restServicePerHour":
-			out.Values[i] = ec._RateLimitConfig_restServicePerHour(ctx, field, obj)
-		case "restServiceBurst":
-			out.Values[i] = ec._RateLimitConfig_restServiceBurst(ctx, field, obj)
-		case "graphqlUserPerHour":
-			out.Values[i] = ec._RateLimitConfig_graphqlUserPerHour(ctx, field, obj)
-		case "graphqlUserBurst":
-			out.Values[i] = ec._RateLimitConfig_graphqlUserBurst(ctx, field, obj)
-		case "graphqlServicePerHour":
-			out.Values[i] = ec._RateLimitConfig_graphqlServicePerHour(ctx, field, obj)
-		case "graphqlServiceBurst":
-			out.Values[i] = ec._RateLimitConfig_graphqlServiceBurst(ctx, field, obj)
-		case "graphqlComplexityLimit":
-			out.Values[i] = ec._RateLimitConfig_graphqlComplexityLimit(ctx, field, obj)
 		case "elevatedUserIds":
 			out.Values[i] = ec._RateLimitConfig_elevatedUserIds(ctx, field, obj)
+		case "graphqlComplexityLimit":
+			out.Values[i] = ec._RateLimitConfig_graphqlComplexityLimit(ctx, field, obj)
+		case "graphqlServiceBurst":
+			out.Values[i] = ec._RateLimitConfig_graphqlServiceBurst(ctx, field, obj)
+		case "graphqlServicePerHour":
+			out.Values[i] = ec._RateLimitConfig_graphqlServicePerHour(ctx, field, obj)
+		case "graphqlUserBurst":
+			out.Values[i] = ec._RateLimitConfig_graphqlUserBurst(ctx, field, obj)
+		case "graphqlUserPerHour":
+			out.Values[i] = ec._RateLimitConfig_graphqlUserPerHour(ctx, field, obj)
+		case "restServiceBurst":
+			out.Values[i] = ec._RateLimitConfig_restServiceBurst(ctx, field, obj)
+		case "restServicePerHour":
+			out.Values[i] = ec._RateLimitConfig_restServicePerHour(ctx, field, obj)
+		case "restUserBurst":
+			out.Values[i] = ec._RateLimitConfig_restUserBurst(ctx, field, obj)
+		case "restUserPerHour":
+			out.Values[i] = ec._RateLimitConfig_restUserPerHour(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

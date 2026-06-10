@@ -7,16 +7,16 @@ query Web {
     }
 
     rateLimit {
-      restUserPerHour
-      restUserBurst
-      restServicePerHour
-      restServiceBurst
-      graphqlUserPerHour
-      graphqlUserBurst
-      graphqlServicePerHour
-      graphqlServiceBurst
-      graphqlComplexityLimit
       elevatedUserIds
+      graphqlComplexityLimit
+      graphqlServiceBurst
+      graphqlServicePerHour
+      graphqlUserBurst
+      graphqlUserPerHour
+      restServiceBurst
+      restServicePerHour
+      restUserBurst
+      restUserPerHour
     }
 
     ui {
