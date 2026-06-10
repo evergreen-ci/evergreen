@@ -33,9 +33,10 @@ type Mock struct {
 	MockServiceFlagErr   error
 	MockGetProjectResult *model.APIProjectRef
 
-	GetRecentVersionsResult   []restmodel.APIVersion
-	GetBuildsForVersionResult []restmodel.APIBuild
-	GetTasksForBuildResult    []restmodel.APITask
+	GetRecentVersionsResult             []restmodel.APIVersion
+	GetRecentVersionsResultsByRequester map[string][]restmodel.APIVersion
+	GetBuildsForVersionResult           []restmodel.APIBuild
+	GetTasksForBuildResult              []restmodel.APITask
 
 	SendSlackNotificationData *model.APISlack
 	SendEmailNotificationData *model.APIEmail
@@ -288,7 +289,10 @@ func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, b
 	return nil, nil
 }
 
-func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, branch string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
+func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, requester string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
+	if c.GetRecentVersionsResultsByRequester != nil {
+		return c.GetRecentVersionsResultsByRequester[requester], nil
+	}
 	if c.GetRecentVersionsResult != nil {
 		return c.GetRecentVersionsResult, nil
 	}

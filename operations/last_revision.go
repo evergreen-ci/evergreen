@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
 	"sync"
 	"time"
 
@@ -35,6 +36,7 @@ func LastRevision() cli.Command {
 		saveFlagName                      = "save"
 		reuseFlagName                     = "reuse"
 		listFlagName                      = "list"
+		includePeriodicFlagName           = "include-periodic"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -90,6 +92,10 @@ func LastRevision() cli.Command {
 				Name:  listFlagName,
 				Usage: "instead of searching for a revision, list all saved last revision criteria groups",
 			},
+			cli.BoolFlag{
+				Name:  includePeriodicFlagName,
+				Usage: "include periodic builds when searching for a matching revision",
+			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -138,7 +144,7 @@ func LastRevision() cli.Command {
 				if reuseCriteria && searchCriteriaSpecified {
 					return errors.New("cannot both reuse criteria and also specify other search criteria")
 				}
-				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName) || c.IsSet(projectFlagName)) {
+				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName) || c.IsSet(projectFlagName) || c.IsSet(includePeriodicFlagName)) {
 					// List criteria doesn't accept any other flags.
 					return errors.New("cannot both list criteria and also specify search criteria")
 				}
@@ -159,6 +165,7 @@ func LastRevision() cli.Command {
 			saveCriteriaName := c.String(saveFlagName)
 			reuseCriteriaName := c.String(reuseFlagName)
 			listCriteria := c.Bool(listFlagName)
+			includePeriodicBuilds := c.Bool(includePeriodicFlagName)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -225,9 +232,12 @@ func LastRevision() cli.Command {
 			var matchingVersion *model.APIVersion
 			for numRevisionsSearched := 0; numRevisionsSearched < versionLookbackLimit; numRevisionsSearched += maxVersionBatchSize {
 				numRevisionsToSearch := min(maxVersionBatchSize, versionLookbackLimit-numRevisionsSearched)
-				latestVersions, err := client.GetRecentVersionsForProject(ctx, c.String(projectFlagName), evergreen.RepotrackerVersionRequester, orderNum, numRevisionsToSearch)
+				latestVersions, err := fetchVersionBatch(ctx, client, c.String(projectFlagName), includePeriodicBuilds, orderNum, numRevisionsToSearch)
 				if err != nil {
 					return errors.Wrap(err, "getting latest versions for project")
+				}
+				if len(latestVersions) == 0 {
+					break
 				}
 
 				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, allCriteria)
@@ -265,6 +275,40 @@ func LastRevision() cli.Command {
 			return nil
 		},
 	}
+}
+
+func fetchVersionBatch(ctx context.Context, c client.Communicator, projectID string, includePeriodicBuilds bool, orderNum, limit int) ([]model.APIVersion, error) {
+	if !includePeriodicBuilds {
+		return c.GetRecentVersionsForProject(ctx, projectID, evergreen.RepotrackerVersionRequester, orderNum, limit)
+	}
+
+	type result struct {
+		versions []model.APIVersion
+		err      error
+	}
+	ch := make(chan result, 2)
+	for _, requester := range []string{evergreen.RepotrackerVersionRequester, evergreen.AdHocRequester} {
+		go func(req string) {
+			vs, err := c.GetRecentVersionsForProject(ctx, projectID, req, orderNum, limit)
+			ch <- result{vs, err}
+		}(requester)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	var merged []model.APIVersion
+	for i := 0; i < 2; i++ {
+		r := <-ch
+		catcher.Add(r.err)
+		merged = append(merged, r.versions...)
+	}
+	if err := catcher.Resolve(); err != nil {
+		return nil, err
+	}
+
+	sort.Slice(merged, func(i, j int) bool {
+		return merged[i].Order > merged[j].Order
+	})
+	return merged, nil
 }
 
 func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, jsonOutput bool) error {
