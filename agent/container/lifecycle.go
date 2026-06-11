@@ -2,14 +2,17 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -236,18 +239,75 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 	return envErr
 }
 
+// imagePullTimeout caps the time allowed to pull a container image. Long
+// enough to accommodate large images over a slow link, short enough that a
+// hung or unauthenticated pull doesn't stall the agent silently for the
+// entire task duration.
+const imagePullTimeout = 5 * time.Minute
+
 // ensureImage pulls the image if it is not already present locally.
+// It uses a dedicated timeout so a slow or hung pull doesn't silently block
+// the task context. It also decodes the pull response stream to surface
+// authentication or registry errors that Docker reports in-band rather than
+// as a top-level error return.
 func ensureImage(ctx context.Context, cli *client.Client, img string) error {
 	_, _, err := cli.ImageInspectWithRaw(ctx, img)
 	if err == nil {
 		return nil // Already present.
 	}
-	reader, err := cli.ImagePull(ctx, img, image.PullOptions{})
+
+	pullCtx, cancel := context.WithTimeout(ctx, imagePullTimeout)
+	defer cancel()
+
+	grip.Info(ctx, message.Fields{
+		"message": "pulling container image",
+		"image":   img,
+	})
+
+	reader, err := cli.ImagePull(pullCtx, img, image.PullOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "pulling image '%s'", img)
 	}
 	defer reader.Close()
-	_, _ = io.Copy(io.Discard, reader)
+
+	// Docker streams pull progress and errors as newline-delimited JSON.
+	// ImagePull only returns a top-level error for connection failures; auth
+	// errors and "image not found" come through in the stream as JSONMessage
+	// objects. We use jsonmessage.JSONMessage (the canonical SDK type) which
+	// reads both the current errorDetail field and the legacy top-level error
+	// string, so errors from older daemon versions are not silently swallowed.
+	// We loop until io.EOF rather than dec.More() because More() returns false
+	// on context expiry without propagating the error, making a timed-out pull
+	// indistinguishable from a successful one.
+	dec := json.NewDecoder(reader)
+	for {
+		var msg jsonmessage.JSONMessage
+		if decErr := dec.Decode(&msg); decErr != nil {
+			if decErr == io.EOF {
+				break // Stream ended cleanly.
+			}
+			// If the timeout fired mid-decode, report that as the root cause
+			// rather than a confusing JSON syntax error.
+			if pullCtx.Err() != nil {
+				return errors.Wrapf(pullCtx.Err(), "pulling image '%s'", img)
+			}
+			return errors.Wrap(decErr, "decoding pull response")
+		}
+		if msg.Error != nil {
+			return errors.Wrapf(msg.Error, "pulling image '%s'", img)
+		}
+		// Fall back to the deprecated top-level error string for older daemons
+		// that do not populate the errorDetail field.
+		if msg.ErrorMessage != "" {
+			return errors.Errorf("pulling image '%s': %s", img, msg.ErrorMessage)
+		}
+	}
+
+	grip.Info(ctx, message.Fields{
+		"message": "container image ready",
+		"image":   img,
+	})
+
 	return nil
 }
 
