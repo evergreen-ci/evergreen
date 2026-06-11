@@ -804,7 +804,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookSavesAuthHeaderToParameterStore() 
 	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
 	s.Require().True(ok)
 	s.Require().NotNil(foundWebhook)
-	s.NotEmpty(foundWebhook.AuthorizationHeaderParameter, "authorization_parameter path should be stored in MongoDB")
+	s.NotEmpty(foundWebhook.AuthorizationHeaderParameter, "authorization_header_parameter path should be stored in MongoDB")
 	s.Equal("Bearer my-token", foundWebhook.GetHeader("Authorization"), "Authorization header should be populated from Parameter Store on read")
 }
 
@@ -828,7 +828,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookWithoutAuthHeaderDoesNotCreateAuth
 	}
 	s.Require().NoError(sub.Upsert(s.T().Context()))
 
-	s.Empty(webhookSub.AuthorizationHeaderParameter, "no auth header means no authorization_parameter")
+	s.Empty(webhookSub.AuthorizationHeaderParameter, "no auth header means no authorization_header_parameter")
 	secretParams, err := fakeparameter.FindByIDs(s.T().Context(), webhookSub.SecretParameter)
 	s.Require().NoError(err)
 	s.Require().Len(secretParams, 1, "only the secret parameter should exist")
@@ -870,7 +870,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionByIDPopulatesAuthHeaderFromPara
 // TODO(DEVPROD-15500): remove this test once the migration job has backfilled all legacy subscriptions.
 func (s *subscriptionsSuite) TestFindSubscriptionByIDFallsBackToMongoDBAuthHeader() {
 	// Insert directly (bypassing Upsert) to simulate a legacy subscription that has the
-	// Authorization header in MongoDB but no authorization_parameter set.
+	// Authorization header in MongoDB but no authorization_header_parameter set.
 	sub := Subscription{
 		ID:           "legacy-webhook-auth",
 		ResourceType: ResourceTypePatch,
@@ -960,7 +960,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookDeletesAuthParameterWhenHeaderRemo
 	}
 	s.Require().NoError(sub.Upsert(s.T().Context()))
 	authParamName := webhookSub.AuthorizationHeaderParameter
-	s.Require().NotEmpty(authParamName, "authorization_parameter should be set after initial upsert")
+	s.Require().NotEmpty(authParamName, "authorization_header_parameter should be set after initial upsert")
 
 	updatedWebhookSub := &WebhookSubscriber{
 		URL:    "https://example.com/webhook",
@@ -981,7 +981,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookDeletesAuthParameterWhenHeaderRemo
 	s.Require().NotNil(updated)
 	updatedTarget, ok := updated.Subscriber.Target.(*WebhookSubscriber)
 	s.Require().True(ok)
-	s.Empty(updatedTarget.AuthorizationHeaderParameter, "authorization_parameter should be cleared")
+	s.Empty(updatedTarget.AuthorizationHeaderParameter, "authorization_header_parameter should be cleared")
 	s.Equal("custom-value", updatedTarget.GetHeader("X-Custom-Header"), "non-sensitive header should remain")
 }
 

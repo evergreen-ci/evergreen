@@ -1073,13 +1073,7 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 	} else if s.ID != "" {
 		// Authorization header was removed on update. Clean up the old PS entry if
 		// one exists, so we don't leave orphaned parameters in Parameter Store.
-		existing := Subscription{}
-		err := db.FindOneQ(ctx, SubscriptionsCollection, db.Query(bson.D{
-			{Key: subscriptionIDKey, Value: s.ID},
-		}), &existing)
-		if adb.ResultsNotFound(err) {
-			return nil
-		}
+		existing, err := FindSubscriptionByID(ctx, s.ID)
 		if err != nil {
 			grip.Warning(ctx, message.Fields{
 				"message":         "finding subscription to clean up Authorization header from Parameter Store",
@@ -1089,21 +1083,23 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 			})
 			return nil
 		}
-		if existingWebhookSub, ok := existing.Subscriber.Target.(*WebhookSubscriber); ok && existingWebhookSub != nil && existingWebhookSub.AuthorizationHeaderParameter != "" {
-			if delErr := deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter); delErr != nil {
-				grip.Warning(ctx, message.WrapError(delErr, message.Fields{
-					"message":         "deleting webhook Authorization header from Parameter Store on header removal",
-					"subscription_id": s.ID,
-					"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
-					"ticket":          "DEVPROD-15500",
-				}))
-			} else {
-				grip.Debug(ctx, message.Fields{
-					"message":         "webhook Authorization header removed from Parameter Store",
-					"subscription_id": s.ID,
-					"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
-					"ticket":          "DEVPROD-15500",
-				})
+		if existing != nil {
+			if existingWebhookSub, ok := existing.Subscriber.Target.(*WebhookSubscriber); ok && existingWebhookSub != nil && existingWebhookSub.AuthorizationHeaderParameter != "" {
+				if delErr := deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter); delErr != nil {
+					grip.Warning(ctx, message.WrapError(delErr, message.Fields{
+						"message":         "deleting webhook Authorization header from Parameter Store on header removal",
+						"subscription_id": s.ID,
+						"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
+						"ticket":          "DEVPROD-15500",
+					}))
+				} else {
+					grip.Debug(ctx, message.Fields{
+						"message":         "webhook Authorization header removed from Parameter Store",
+						"subscription_id": s.ID,
+						"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
+						"ticket":          "DEVPROD-15500",
+					})
+				}
 			}
 		}
 	}
