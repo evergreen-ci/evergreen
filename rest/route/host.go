@@ -296,16 +296,19 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 		tasksById[t.Id] = t
 	}
 
-	u := MustHaveUser(ctx)
-	projectPermitted := make(map[string]bool)
-	for _, t := range tasks {
-		if _, checked := projectPermitted[t.Project]; !checked {
-			projectPermitted[t.Project] = u.HasPermission(ctx, gimlet.PermissionOpts{
-				Resource:      t.Project,
-				ResourceType:  evergreen.ProjectResourceType,
-				Permission:    evergreen.PermissionTasks,
-				RequiredLevel: evergreen.TasksView.Value,
-			})
+	var projectPermitted map[string]bool
+	if len(taskIds) > 0 {
+		u := MustHaveUser(ctx)
+		projectPermitted = make(map[string]bool)
+		for _, t := range tasks {
+			if _, checked := projectPermitted[t.Project]; !checked {
+				projectPermitted[t.Project] = u.HasPermission(ctx, gimlet.PermissionOpts{
+					Resource:      t.Project,
+					ResourceType:  evergreen.ProjectResourceType,
+					Permission:    evergreen.PermissionTasks,
+					RequiredLevel: evergreen.TasksView.Value,
+				})
+			}
 		}
 	}
 

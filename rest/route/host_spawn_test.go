@@ -315,7 +315,7 @@ func TestHostPostHandler(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx := t.Context()
 
-			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 			env := &mock.Environment{}
 			assert.NoError(t, env.Configure(ctx))
 			env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 10
@@ -350,6 +350,7 @@ func TestHostPostHandler(t *testing.T) {
 				Id:       "user",
 				Settings: user.UserSettings{Timezone: "Asia/Macau"},
 			}
+			require.NoError(t, u.Insert(ctx))
 			ctx = gimlet.AttachUser(ctx, u)
 
 			tCase(ctx, t, env, rh, u, d)
