@@ -890,6 +890,55 @@ buildvariants:
 	assert.Len(proj.BuildVariants[0].Tasks, 2)
 }
 
+func TestLocalModuleIncludesWithMainlineVersionID(t *testing.T) {
+	// ReferencePatchID set to a mainline version ID (not a BSON ObjectId) must not
+	// trigger a patch DB lookup; LocalModuleIncludes already on opts should be used.
+	yml := `
+modules:
+- name: "something_different"
+  repo: "evergreen"
+  owner: "evergreen-ci"
+  prefix: "src/third_party"
+  branch: "master"
+include:
+- filename: "include.yml"
+  module: "something_different"
+buildvariants:
+- name: "v1"
+  modules:
+  - something_different
+  tasks:
+  - name: "t1"
+tasks:
+- name: t1
+- name: t2
+`
+
+	opts := &GetProjectOpts{
+		ReferencePatchID: "sys_perf_54af8bc8daef529a87f01dba8dcc3a484ca910a3",
+		LocalModuleIncludes: []patch.LocalModuleInclude{
+			{
+				Module:   "something_different",
+				FileName: "include.yml",
+				FileContent: []byte(`
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t2"
+`),
+			},
+		},
+	}
+
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(yml), opts, "id", proj)
+	require.NoError(t, err)
+	require.NotNil(t, proj)
+	require.Len(t, proj.BuildVariants, 1)
+	require.Len(t, proj.BuildVariants[0].Tasks, 2)
+	assert.Equal(t, "t2", proj.BuildVariants[0].Tasks[1].Name)
+}
+
 func TestParseModule(t *testing.T) {
 	assert := assert.New(t)
 	yml := `
