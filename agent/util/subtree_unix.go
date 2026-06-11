@@ -273,3 +273,12 @@ func SetNice(pid, nice int) error {
 	// 0 refers to the current process.
 	return syscall.Setpriority(syscall.PRIO_PROCESS, pid, nice)
 }
+
+// SetOOMScoreAdj writes adj to /proc/self/oom_score_adj, which is added to
+// the kernel's OOM badness score when selecting a kill target.
+func SetOOMScoreAdj(adj int) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+	return os.WriteFile("/proc/self/oom_score_adj", []byte(strconv.Itoa(adj)), 0)
+}
