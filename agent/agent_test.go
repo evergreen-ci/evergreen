@@ -314,7 +314,8 @@ func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
 	for _, status := range evergreen.TaskCompletedStatuses {
-		resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+		detail := s.a.endTaskResponse(s.ctx, s.tc, status, "")
+		resp, err := s.a.finishTask(s.ctx, s.tc, detail)
 		s.Equal(&apimodels.EndTaskResponse{}, resp)
 		s.NoError(err)
 		s.NoError(s.tc.logger.Close())
@@ -328,7 +329,8 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
 	const status = evergreen.TaskSystemFailed
-	resp, err := s.a.finishTask(s.ctx, s.tc, status, "")
+	detail := s.a.endTaskResponse(s.ctx, s.tc, status, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, detail)
 	s.Equal(&apimodels.EndTaskResponse{}, resp)
 	s.NoError(err)
 
@@ -347,7 +349,8 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 
 func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	resp, err := s.a.finishTask(s.ctx, s.tc, detail)
 	s.Nil(resp)
 	s.Error(err)
 }
@@ -1529,7 +1532,75 @@ func (s *AgentSuite) TestOOMTrackerRunsForSuccessStatusWithFailedDetailStatus() 
 	// while the originally computed status is still successful.
 	s.tc.setUserEndTaskResponse(&triggerEndTaskResp{Status: evergreen.TaskFailed})
 
-	_, err := s.a.finishTask(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	_, err := s.a.finishTask(s.ctx, s.tc, detail)
+	s.NoError(err)
+	s.Require().NotNil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+}
+
+func (s *AgentSuite) TestOOMTrackerRunsForTimedOutTaskWithSucceededStatus() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.CloudProvider = "provider"
+	s.tc.taskConfig.Project.OomTracker = true
+
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	// Task timed out but the final status is still succeeded (e.g. a non-failing
+	// timeout phase). The OOM check must still run because a timeout can indicate
+	// an OOM kill even when the task is ultimately marked as succeeded.
+	s.tc.setTimedOut(true, globals.ExecTimeout)
+
+	detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
+	_, err := s.a.finishTask(s.ctx, s.tc, detail)
+	s.NoError(err)
+	s.Require().NotNil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
+	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)
+	s.Equal(pids, s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Pids)
+}
+
+func (s *AgentSuite) TestOOMTrackerSkippedWhenUserOverridesToSucceeded() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.CloudProvider = "provider"
+	s.tc.taskConfig.Project.OomTracker = true
+
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	// Agent computed a failure, but the user HTTP endpoint explicitly overrode
+	// the status to succeeded. The OOM check should respect the final status and
+	// not run.
+	s.tc.setUserEndTaskResponse(&triggerEndTaskResp{Status: evergreen.TaskSucceeded})
+
+	detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
+	_, err := s.a.finishTask(s.ctx, s.tc, detail)
+	s.NoError(err)
+	s.Nil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
+}
+
+func (s *AgentSuite) TestOOMTrackerRunsForFailedStatusWithNoUserOverride() {
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.CloudProvider = "provider"
+	s.tc.taskConfig.Project.OomTracker = true
+
+	pids := []int{1, 2, 3}
+	lines := []string{"line 1", "line 2", "line 3"}
+	s.tc.oomTracker = &mock.OOMTracker{
+		Lines: lines,
+		PIDs:  pids,
+	}
+	// No user override: agent-computed failure should trigger the OOM check.
+	// This is the positive companion to TestOOMTrackerSkippedWhenUserOverridesToSucceeded.
+	detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
+	_, err := s.a.finishTask(s.ctx, s.tc, detail)
 	s.NoError(err)
 	s.Require().NotNil(s.mockCommunicator.EndTaskResult.Detail.OOMTracker)
 	s.True(s.mockCommunicator.EndTaskResult.Detail.OOMTracker.Detected)

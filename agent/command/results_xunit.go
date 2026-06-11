@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -253,9 +254,10 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		InternalRedactions: conf.InternalRedactions,
 	}
 
+	var s3UsageMu sync.Mutex
 	succeeded, err := agentutil.ParallelWorkerExec(ctx, "sending test log", indexedLogs, logger.Task(),
 		func(item *indexedLog) error {
-			err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log)
+			err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, item.log, conf.S3Usage, &s3UsageMu)
 			if err == nil {
 				cumulative.tests[cumulative.logIdxToTestIdx[item.idx]].LineNum = 1
 			}

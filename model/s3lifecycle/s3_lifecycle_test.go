@@ -275,11 +275,13 @@ func TestDiscoverAdminManagedBuckets(t *testing.T) {
 
 // mockS3LifecycleClient is a mock implementation of cloud.S3LifecycleClient for testing.
 type mockS3LifecycleClient struct {
-	rules []pail.LifecycleRule
-	err   error
+	rules     []pail.LifecycleRule
+	err       error
+	callCount int
 }
 
 func (m *mockS3LifecycleClient) GetBucketLifecycleConfiguration(ctx context.Context, bucket, region string, roleARN *string, externalID *string) ([]pail.LifecycleRule, error) {
+	m.callCount++
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -290,6 +292,7 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 	t.Run("NewBucket", func(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
+		roleARN := "arn:aws:iam::111111111111:role/my-role"
 		mockClient := &mockS3LifecycleClient{
 			rules: []pail.LifecycleRule{
 				{
@@ -307,7 +310,7 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 			},
 		}
 
-		discovered := DiscoverAndCacheProjectBucket(t.Context(), "test-bucket", "us-east-1", nil, nil, "test-project", mockClient)
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "test-bucket", "us-east-1", &roleARN, nil, "test-project", nil, mockClient)
 		assert.True(t, discovered, "should trigger discovery for new bucket")
 
 		rules, err := FindAllRulesForBucket(t.Context(), "test-bucket")
@@ -321,12 +324,14 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 		assert.Equal(t, BucketTypeUserSpecified, sandboxRule.BucketType)
 		assert.Equal(t, []string{"test-project"}, sandboxRule.ProjectAssociations)
 		assert.Equal(t, 30, *sandboxRule.ExpirationDays)
+		assert.Equal(t, "111111111111", sandboxRule.AWSAccountID)
 
 		defaultRule, err := FindByBucketAndPrefix(t.Context(), "test-bucket", "")
 		require.NoError(t, err)
 		require.NotNil(t, defaultRule)
 		assert.Equal(t, "test-bucket#", defaultRule.ID)
 		assert.Equal(t, 90, *defaultRule.ExpirationDays)
+		assert.Equal(t, "111111111111", defaultRule.AWSAccountID)
 	})
 
 	t.Run("AlreadyCached", func(t *testing.T) {
@@ -347,7 +352,7 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 			rules: []pail.LifecycleRule{{ID: "should-not-be-called"}},
 		}
 
-		discovered := DiscoverAndCacheProjectBucket(t.Context(), "cached-bucket", "us-east-1", nil, nil, "test-project", mockClient)
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "cached-bucket", "us-east-1", nil, nil, "test-project", nil, mockClient)
 		assert.False(t, discovered, "should skip discovery for cached bucket")
 
 		rules, err := FindAllRulesForBucket(t.Context(), "cached-bucket")
@@ -363,8 +368,8 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 			err: errors.New("AWS API error"),
 		}
 
-		discovered := DiscoverAndCacheProjectBucket(t.Context(), "error-bucket", "us-east-1", nil, nil, "test-project", mockClient)
-		assert.True(t, discovered, "should return true even if AWS call fails")
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "error-bucket", "us-east-1", nil, nil, "test-project", nil, mockClient)
+		assert.False(t, discovered, "should return false when AWS call fails")
 
 		rules, err := FindAllRulesForBucket(t.Context(), "error-bucket")
 		require.NoError(t, err)
@@ -378,11 +383,54 @@ func TestDiscoverAndCacheProjectBucket(t *testing.T) {
 			rules: []pail.LifecycleRule{},
 		}
 
-		discovered := DiscoverAndCacheProjectBucket(t.Context(), "empty-bucket", "us-east-1", nil, nil, "test-project", mockClient)
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "empty-bucket", "us-east-1", nil, nil, "test-project", nil, mockClient)
 		assert.True(t, discovered, "should trigger discovery even if no rules returned")
 
 		rules, err := FindAllRulesForBucket(t.Context(), "empty-bucket")
 		require.NoError(t, err)
 		assert.Len(t, rules, 0)
+	})
+
+	t.Run("AccountWithoutLifecycleRulesAccess", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		roleARN := "arn:aws:iam::999999999999:role/my-role"
+		accountsWithoutLifecycleRules := []string{"999999999999"}
+		mockClient := &mockS3LifecycleClient{
+			rules: []pail.LifecycleRule{{ID: "should-not-be-called"}},
+		}
+
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "restricted-bucket", "us-east-1", &roleARN, nil, "test-project", accountsWithoutLifecycleRules, mockClient)
+		assert.False(t, discovered, "should skip discovery for buckets in accounts without lifecycle rules access")
+
+		rules, err := FindAllRulesForBucket(t.Context(), "restricted-bucket")
+		require.NoError(t, err)
+		assert.Empty(t, rules, "no rules should be cached for restricted account")
+		assert.Zero(t, mockClient.callCount, "should not have called AWS")
+	})
+
+	t.Run("NoRoleARNSkipsAccountCheck", func(t *testing.T) {
+		require.NoError(t, db.Clear(Collection))
+
+		accountsWithoutLifecycleRules := []string{"999999999999"}
+		mockClient := &mockS3LifecycleClient{
+			rules: []pail.LifecycleRule{
+				{
+					ID:             "rule1",
+					Prefix:         "",
+					Status:         "Enabled",
+					ExpirationDays: ptr(int32(30)),
+				},
+			},
+		}
+
+		// Without a role ARN we cannot determine the account ID, so discovery should proceed.
+		discovered := DiscoverAndCacheProjectBucket(t.Context(), "key-secret-bucket", "us-east-1", nil, nil, "test-project", accountsWithoutLifecycleRules, mockClient)
+		assert.True(t, discovered, "should proceed with discovery when no role ARN is present")
+
+		rules, err := FindAllRulesForBucket(t.Context(), "key-secret-bucket")
+		require.NoError(t, err)
+		assert.Len(t, rules, 1)
+		assert.Empty(t, rules[0].AWSAccountID, "account ID should be empty for key+secret auth buckets")
 	})
 }
