@@ -299,10 +299,10 @@ func TestWebhookSecretMigrationJobRun(t *testing.T) {
 			"subscriber": bson.M{
 				"type": event.EvergreenWebhookSubscriberType,
 				"target": bson.M{
-					"url":                     "https://example.com/webhook",
-					"secret":                  []byte("already-in-ps"),
-					"secret_parameter":        "/some/secret/param",
-					"headers":                 bson.A{bson.M{"key": "Authorization", "value": "Bearer token"}},
+					"url":                            "https://example.com/webhook",
+					"secret":                         []byte("already-in-ps"),
+					"secret_parameter":               "/some/secret/param",
+					"headers":                        bson.A{bson.M{"key": "Authorization", "value": "Bearer token"}},
 					"authorization_header_parameter": "/some/auth/param",
 				},
 			},
@@ -478,10 +478,10 @@ func TestWebhookSecretCleanupJobRun(t *testing.T) {
 			"subscriber": bson.M{
 				"type": event.EvergreenWebhookSubscriberType,
 				"target": bson.M{
-					"url":                     "https://example.com/webhook",
-					"secret":                  []byte("old-secret"),
-					"secret_parameter":        "/some/secret/param",
-					"headers":                 bson.A{bson.M{"key": "Authorization", "value": "Bearer old-token"}},
+					"url":                            "https://example.com/webhook",
+					"secret":                         []byte("old-secret"),
+					"secret_parameter":               "/some/secret/param",
+					"headers":                        bson.A{bson.M{"key": "Authorization", "value": "Bearer old-token"}},
 					"authorization_header_parameter": "/some/auth/param",
 				},
 			},
@@ -561,8 +561,8 @@ func TestFindMigratedWebhookSubscriptionIDs(t *testing.T) {
 		"subscriber": bson.M{
 			"type": event.EvergreenWebhookSubscriberType,
 			"target": bson.M{
-				"url":                     "https://example.com/webhook",
-				"headers":                 bson.A{bson.M{"key": "Authorization", "value": "Bearer old"}},
+				"url":                            "https://example.com/webhook",
+				"headers":                        bson.A{bson.M{"key": "Authorization", "value": "Bearer old"}},
 				"authorization_header_parameter": "/auth/param",
 			},
 		},
