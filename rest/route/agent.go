@@ -32,7 +32,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 // GET /rest/v2/agent/perf_monitoring_url
@@ -689,6 +688,14 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 		}
 	}
 
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "getting cost config for lifecycle rule discovery, proceeding without account skip list",
+			"task_id": t.Id,
+		}))
+	}
+
 	cachedBuckets := []string{}
 	for bucketName, file := range bucketsToDiscover {
 		region := evergreen.DefaultS3Region
@@ -703,7 +710,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			externalID = &file.ExternalID
 		}
 
-		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, cloud.NewS3LifecycleClient())
+		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
 		if wasCached {
 			cachedBuckets = append(cachedBuckets, bucketName)
 		}
@@ -718,6 +725,72 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			"num_cached": len(cachedBuckets),
 		})
 	}
+}
+
+// POST /rest/v2/task/{task_id}/s3_usage
+type reportS3UsageHandler struct {
+	taskID  string
+	s3Usage s3usage.S3Usage
+	final   bool
+}
+
+func makeReportS3Usage() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Factory() gimlet.RouteHandler {
+	return &reportS3UsageHandler{}
+}
+
+func (h *reportS3UsageHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.s3Usage); err != nil {
+		return errors.Wrapf(err, "reading S3 usage for task '%s'", h.taskID)
+	}
+	h.final = r.URL.Query().Get("final") == "true"
+	return nil
+}
+
+func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
+	ctx, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName)
+	defer span.End()
+
+	t := MustHaveTask(ctx)
+
+	// Non-zero S3Usage on a system-failed task means the crash path already called TrackVersionS3CostForTask.
+	crashPathAlreadyTracked := !t.S3Usage.IsZero() && t.Status == evergreen.TaskSystemFailed
+
+	t.S3Usage = h.s3Usage
+
+	allRules, err := s3lifecycle.FindAllRules(ctx)
+	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "getting S3 lifecycle rules for storage cost calculation, skipping storage cost calculation",
+			"task_id": t.Id,
+		}))
+	} else {
+		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+		for _, rule := range allRules {
+			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
+		}
+		lookup = func(ctx context.Context, bucket, fileKey string) (int, bool) {
+			return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
+		}
+	}
+
+	if err := t.SaveS3Usage(ctx, lookup, t.LogBucketName()); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
+	}
+
+	if h.final && !crashPathAlreadyTracked {
+		grip.Error(ctx, errors.Wrapf(model.TrackVersionS3CostForTask(ctx, t.Id, t.Version, evergreen.TaskSucceeded, t.TaskCost, t.S3Usage),
+			"tracking version S3 cost for task '%s'", h.taskID))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
@@ -740,105 +813,6 @@ func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKe
 		return 0, false
 	}
 	return int(*rule.ExpirationDays), true
-}
-
-// POST /rest/v2/task/{task_id}/s3_usage
-type reportS3UsageHandler struct {
-	taskID  string
-	s3Usage s3usage.S3Usage
-}
-
-func makeReportS3Usage() gimlet.RouteHandler {
-	return &reportS3UsageHandler{}
-}
-
-func (h *reportS3UsageHandler) Factory() gimlet.RouteHandler {
-	return &reportS3UsageHandler{}
-}
-
-func (h *reportS3UsageHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	if err := utility.ReadJSON(r.Body, &h.s3Usage); err != nil {
-		return errors.Wrapf(err, "reading S3 usage for task '%s'", h.taskID)
-	}
-	return nil
-}
-
-func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
-	ctx, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName)
-	defer span.End()
-
-	t := MustHaveTask(ctx)
-
-	t.S3Usage = h.s3Usage
-
-	allRules, err := s3lifecycle.FindAllRules(ctx)
-	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "getting S3 lifecycle rules for storage cost calculation, skipping storage cost calculation",
-			"task_id": t.Id,
-		}))
-	} else {
-		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
-		for _, rule := range allRules {
-			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
-		}
-		lookup = func(ctx context.Context, bucket, fileKey string) (int, bool) {
-			return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
-		}
-	}
-
-	logBucketName := ""
-	if t.TaskOutputInfo != nil {
-		logBucketName = t.TaskOutputInfo.TaskLogs.BucketConfig.Name
-	}
-
-	if err := t.SaveS3Usage(ctx, lookup, logBucketName); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
-	}
-
-	v, err := model.VersionFindOneId(ctx, t.Version)
-	if err != nil {
-		grip.Error(ctx, errors.Wrapf(err, "finding version '%s' to update aggregate task costs", t.Version))
-	} else if v != nil {
-		// For task groups, this runs once for the group rather than once per task.
-		grip.Error(ctx, errors.Wrapf(v.UpdateAggregateTaskCosts(ctx), "updating aggregate task costs for version '%s' after S3 usage report", v.Id))
-	}
-
-	var avgFilePutCost, maxFilePutCost, minFilePutCost float64
-	if t.S3Usage.Artifacts.Count > 0 && t.S3Usage.Artifacts.PutRequests > 0 {
-		costPerPut := t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.PutRequests)
-		avgFilePutCost = t.TaskCost.AdjustedS3ArtifactPutCost / float64(t.S3Usage.Artifacts.Count)
-		maxFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMaxPutRequests)
-		minFilePutCost = costPerPut * float64(t.S3Usage.Artifacts.ArtifactWithMinPutRequests)
-	}
-
-	s3Attrs := []attribute.KeyValue{
-		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
-		attribute.Int(evergreen.TaskS3ArtifactPutRequestsOtelAttribute, t.S3Usage.Artifacts.PutRequests),
-		attribute.Int64(evergreen.TaskS3ArtifactUploadBytesOtelAttribute, t.S3Usage.Artifacts.UploadBytes),
-		attribute.Int(evergreen.TaskS3ArtifactCountOtelAttribute, t.S3Usage.Artifacts.Count),
-		attribute.Float64(evergreen.TaskOnDemandS3ArtifactPutCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactPutCost),
-		attribute.Float64(evergreen.TaskAdjustedS3ArtifactPutCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactPutCost),
-		attribute.Float64(evergreen.TaskOnDemandS3ArtifactStorageCostOtelAttribute, t.TaskCost.OnDemandS3ArtifactStorageCost),
-		attribute.Float64(evergreen.TaskAdjustedS3ArtifactStorageCostOtelAttribute, t.TaskCost.AdjustedS3ArtifactStorageCost),
-		attribute.Int(evergreen.TaskS3LogPutRequestsOtelAttribute, t.S3Usage.Logs.PutRequests),
-		attribute.Int64(evergreen.TaskS3LogUploadBytesOtelAttribute, t.S3Usage.Logs.UploadBytes),
-		attribute.Float64(evergreen.TaskOnDemandS3LogPutCostOtelAttribute, t.TaskCost.OnDemandS3LogPutCost),
-		attribute.Float64(evergreen.TaskAdjustedS3LogPutCostOtelAttribute, t.TaskCost.AdjustedS3LogPutCost),
-		attribute.Float64(evergreen.TaskOnDemandS3LogStorageCostOtelAttribute, t.TaskCost.OnDemandS3LogStorageCost),
-		attribute.Float64(evergreen.TaskAdjustedS3LogStorageCostOtelAttribute, t.TaskCost.AdjustedS3LogStorageCost),
-		attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
-		attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
-		attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
-	}
-
-	span.SetAttributes(s3Attrs...)
-
-	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // POST /rest/v2/task/{task_id}/high_exec_timeout

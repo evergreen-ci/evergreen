@@ -844,3 +844,24 @@ func (m *userOrTaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Req
 
 	next(rw, r)
 }
+
+// NewUserOrTaskAuthOnlyMiddleware authenticates the request as either a user
+// or a task/host, with no further URL or permission checks. Use it for routes
+// that accept either auth type and don't need per-task gating.
+func NewUserOrTaskAuthOnlyMiddleware() gimlet.Middleware {
+	return &userOrTaskAuthOnlyMiddleware{
+		taskFallback: NewTaskAuthMiddleware(),
+	}
+}
+
+type userOrTaskAuthOnlyMiddleware struct {
+	taskFallback gimlet.Middleware
+}
+
+func (m *userOrTaskAuthOnlyMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	if gimlet.GetUser(r.Context()) == nil {
+		m.taskFallback.ServeHTTP(rw, r, next)
+		return
+	}
+	next(rw, r)
+}

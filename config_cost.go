@@ -153,6 +153,12 @@ func IsInDevProdOwnedAccountList(accountID string, list []string) bool {
 	})
 }
 
+// IsAccountWithoutLifecycleRules reports whether the account ID is in the list of accounts
+// for which we do not have access to fetch S3 lifecycle rules.
+func IsAccountWithoutLifecycleRules(accountID string, accountsWithoutLifecycleRules []string) bool {
+	return IsInDevProdOwnedAccountList(accountID, accountsWithoutLifecycleRules)
+}
+
 // IsDevprodOwnedArtifactIAMRole reports whether an IAM role ARN belongs to an account in the list
 // of devprod owned account IDs.
 func IsDevprodOwnedArtifactIAMRole(awsRoleARN string, devprodOwnedAWSAccountIDs []string) bool {

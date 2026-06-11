@@ -908,7 +908,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 }
 
 func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRef(ctx, *projectId, *patchId, false)
+	projectRef, err := model.FindMergedProjectRefSecondary(ctx, *projectId, *patchId, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
@@ -1644,10 +1644,15 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 	tr := taskResults.Results[0]
 	tr.IsManuallyQuarantined = isManuallyQuarantined
 	apiTest := &restModel.APITest{}
-	if err = apiTest.BuildFromService(tr.TaskID); err != nil {
+	settings := evergreen.GetEnvironment().Settings()
+	apiTestArgs := &restModel.APITestArgs{
+		EvergreenBaseURL: settings.Api.URL,
+		ParsleyLogURL:    settings.Ui.ParsleyUrl,
+	}
+	if err = apiTest.BuildFromService(tr.TaskID, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	if err = apiTest.BuildFromService(&tr); err != nil {
+	if err = apiTest.BuildFromService(&tr, apiTestArgs); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return apiTest, nil

@@ -235,10 +235,15 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
-	// if there's a PR checkout the ref containing the changes
-	if isGitHub(conf) {
+	// If there's a PR checkout the ref containing the changes.
+	if usesGitHubParentPRCheckout(conf) {
 		var suffix, localBranchName, remoteBranchName, commitToTest string
-		if conf.Task.Requester == evergreen.GithubPRRequester {
+		if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
+			suffix = "/head"
+			commitToTest = conf.GitHubParentPRCheckout.HeadHash
+			localBranchName = fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+			remoteBranchName = fmt.Sprintf("pull/%d", conf.GitHubParentPRCheckout.PRNumber)
+		} else if conf.Task.Requester == evergreen.GithubPRRequester {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
 			suffix = "/head"
@@ -293,7 +298,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 		return gitCommands, nil
 	}
 
-	if ref == "" && !isGitHubPRModulePatch(conf, modulePatch) {
+	if ref == "" && !moduleUsesGitHubParentPRCheckout(conf, modulePatch) {
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
@@ -303,13 +308,14 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 	}
 	gitCommands = append(gitCommands, cloneCmd...)
 
-	if isGitHubPRModulePatch(conf, modulePatch) {
-		branchName := fmt.Sprintf("evg-merge-test-%s", utility.RandomString())
-		gitCommands = append(gitCommands,
-			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
-			fmt.Sprintf("git checkout '%s'", branchName),
-			fmt.Sprintf("git reset --hard %s", modulePatch.Githash),
-		)
+	if moduleUsesGitHubParentPRCheckout(conf, modulePatch) {
+		checkout := conf.GitHubParentPRCheckout
+		branchName := fmt.Sprintf("evg-pr-test-%s", utility.RandomString())
+		gitCommands = append(gitCommands, []string{
+			fmt.Sprintf(`git fetch origin "pull/%d/head:%s"`, checkout.PRNumber, branchName),
+			fmt.Sprintf(`git checkout "%s"`, branchName),
+			fmt.Sprintf("git reset --hard %s", checkout.HeadHash),
+		}...)
 	} else {
 		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 	}
@@ -710,8 +716,8 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		return errors.Wrap(err, "fetching project and module source")
 	}
 
-	// Apply patches if this is a patch and we haven't already gotten the changes from a PR
-	if evergreen.IsPatchRequester(conf.Task.Requester) && !isGitHub(conf) {
+	// Apply patches if this is a patch and we haven't already gotten the changes from a PR.
+	if evergreen.IsPatchRequester(conf.Task.Requester) && !shouldSkipApplyingPatches(conf) {
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "getting patch contents")
 			logger.Task().Error(ctx, err.Error())
@@ -895,13 +901,30 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 	return nil
 }
 
-func isGitHubPRModulePatch(conf *internal.TaskConfig, modulePatch *patch.ModulePatch) bool {
-	patchProvided := (modulePatch != nil) && (modulePatch.PatchSet.Patch != "")
-	return isGitHub(conf) && patchProvided
+// usesGitHubParentPRCheckout reports whether the main project checkout should use
+// a GitHub PR or merge-queue ref instead of the task revision.
+func usesGitHubParentPRCheckout(conf *internal.TaskConfig) bool {
+	if conf.GitHubParentPRCheckout != nil && conf.GitHubParentPRCheckout.ForSource {
+		return true
+	}
+	return conf.Task.ParentPatchID == "" &&
+		(conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != "")
 }
 
-func isGitHub(conf *internal.TaskConfig) bool {
-	return conf.GithubPatchData.PRNumber != 0 || conf.GithubMergeData.HeadSHA != ""
+// shouldSkipApplyingPatches reports whether git apply should be skipped for this patch task.
+func shouldSkipApplyingPatches(conf *internal.TaskConfig) bool {
+	return usesGitHubParentPRCheckout(conf)
+}
+
+// moduleUsesGitHubParentPRCheckout reports whether a module clone should use a
+// GitHub PR checkout instead of the module revision.
+func moduleUsesGitHubParentPRCheckout(conf *internal.TaskConfig, modulePatch *patch.ModulePatch) bool {
+	if modulePatch == nil || conf.GitHubParentPRCheckout == nil {
+		return false
+	}
+	return conf.GitHubParentPRCheckout.ForModule == modulePatch.ModuleName &&
+		conf.GitHubParentPRCheckout.PRNumber != 0 &&
+		conf.GitHubParentPRCheckout.HeadHash != ""
 }
 
 // parentRepoForGitHubAppToken returns the repository name to pass when resolving

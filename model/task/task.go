@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/ec2mount"
@@ -2153,36 +2154,24 @@ func (t *Task) MarkEnd(ctx context.Context, finishTime time.Time, detail *apimod
 	}
 
 	// Calculate EC2 runtime costs now that we have the actual runtime.
-	if err := t.UpdateTaskCost(ctx); err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message":   "failed to calculate task cost",
-			"task_id":   t.Id,
-			"execution": t.Execution,
-		}))
-	}
+	t.UpdateTaskCost(ctx)
 
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
 	t.Details = *detail
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
-	return UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				FinishTimeKey:         finishTime,
-				StatusKey:             detail.Status,
-				TimeTakenKey:          t.TimeTaken,
-				TaskCostKey:           t.TaskCost,
-				DetailsKey:            detail,
-				StartTimeKey:          t.StartTime,
-				DisplayStatusCacheKey: t.DisplayStatusCache,
-				TaskOutputInfoKey:     t.TaskOutputInfo,
-			},
-		})
+	setFields := bson.M{
+		FinishTimeKey:         finishTime,
+		StatusKey:             detail.Status,
+		TimeTakenKey:          t.TimeTaken,
+		DetailsKey:            detail,
+		StartTimeKey:          t.StartTime,
+		DisplayStatusCacheKey: t.DisplayStatusCache,
+		TaskOutputInfoKey:     t.TaskOutputInfo,
+	}
+	ec2EBSSetFields(TaskCostKey, t.TaskCost, setFields)
+	return UpdateOne(ctx, bson.M{IdKey: t.Id}, bson.M{"$set": setFields})
 }
 
 // GetDisplayStatus finds and sets DisplayStatus to the task. It should reflect
@@ -4300,30 +4289,33 @@ func getHostRegionForTask(ctx context.Context, t *Task) string {
 	return util.AZToRegion(result.Zone)
 }
 
-func (t *Task) UpdateTaskCost(ctx context.Context) error {
+// UpdateTaskCost computes EC2 and EBS costs from the task's runtime and distro pricing into t.TaskCost.
+func (t *Task) UpdateTaskCost(ctx context.Context) {
 	if t.TimeTaken <= 0 {
-		return nil
+		return
 	}
 
 	financeConfig, costData, d, err := t.getFinanceConfigAndDistro(ctx)
-	if err == nil {
-		t.calculateRuntimeCost(financeConfig, costData)
-		t.calculateEBSThroughputCost(ctx, financeConfig, d)
+	if err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message": "computing task cost",
+			"task_id": t.Id,
+		}))
+		return
 	}
-	costConfig := &evergreen.CostConfig{}
-	if err := costConfig.Get(ctx); err == nil {
-		t.calculateS3PutCosts(costConfig)
-	}
+	t.calculateRuntimeCost(financeConfig, costData)
+	t.calculateEBSThroughputCost(ctx, financeConfig, d)
+}
 
-	if t.TaskCost.IsZero() {
-		return nil
-	}
-
-	return UpdateOne(ctx, bson.M{"_id": t.Id}, bson.M{
-		"$set": bson.M{
-			TaskCostKey: t.TaskCost,
-		},
-	})
+// ec2EBSSetFields populates m with dotted-path $set entries for the EC2 and EBS cost fields under prefix.
+// S3 cost fields are intentionally excluded — they are owned by SaveS3Usage.
+func ec2EBSSetFields(prefix string, c cost.Cost, m bson.M) {
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEC2CostKey)] = c.OnDemandEC2Cost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEC2CostKey)] = c.AdjustedEC2Cost
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSThroughputCostKey)] = c.OnDemandEBSThroughputCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSThroughputCostKey)] = c.AdjustedEBSThroughputCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.OnDemandEBSStorageCostKey)] = c.OnDemandEBSStorageCost
+	m[bsonutil.GetDottedKeyName(prefix, cost.AdjustedEBSStorageCostKey)] = c.AdjustedEBSStorageCost
 }
 
 // calculateRuntimeCost sets the EC2 cost fields on TaskCost based on the task's runtime and distro pricing.
@@ -4365,7 +4357,10 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 	if logBucketName == "" || lookup == nil {
 		return
 	}
-	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System} {
+	// Reset before accumulating so this function is idempotent when called more than once per task.
+	t.TaskCost.OnDemandS3LogStorageCost = 0
+	t.TaskCost.AdjustedS3LogStorageCost = 0
+	for _, lm := range []s3usage.LogTypeMetrics{t.S3Usage.Logs.Task, t.S3Usage.Logs.Agent, t.S3Usage.Logs.System, t.S3Usage.Logs.Test} {
 		if lm.LogKey == "" {
 			continue
 		}
@@ -4414,6 +4409,9 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	if lookup == nil {
 		return
 	}
+	// Reset before accumulating so this function is idempotent when called more than once per task.
+	t.TaskCost.OnDemandS3ArtifactStorageCost = 0
+	t.TaskCost.AdjustedS3ArtifactStorageCost = 0
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
 		for _, fileEntry := range bucketEntry.Files {
 			days, skipCost, usedLookup := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, bucketEntry.AWSRoleARN, lookup, costConfig)
@@ -4674,6 +4672,70 @@ func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 		return true
 	}
 	return false
+}
+
+// GetS3ArtifactUsageFromDB reconstructs artifact S3 usage from stored artifact entries.
+// Used on the crash path when the agent never sends a final S3 usage report.
+// Only devprod-owned uploads (determined by IAM role ARN) are counted, consistent with
+// how IncrementArtifacts filters during normal task execution.
+func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMetrics, error) {
+	entries, err := artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(t.Id, t.Execution))
+	if err != nil {
+		return s3usage.ArtifactMetrics{}, errors.Wrap(err, "finding artifact entries")
+	}
+
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		return s3usage.ArtifactMetrics{}, errors.Wrap(err, "getting cost config")
+	}
+
+	type bucketKey struct{ bucket, roleARN string }
+	byBucket := map[bucketKey]*s3usage.BucketFileMetrics{}
+	var files []s3usage.FileMetrics
+	var totalPuts int
+	var totalBytes int64
+	for _, entry := range entries {
+		for _, f := range entry.Files {
+			if f.PutRequests == 0 {
+				continue
+			}
+			if !evergreen.IsDevprodOwnedArtifactIAMRole(f.AWSRoleARN, costConfig.S3Cost.Storage.DevprodOwnedAWSAccountIDs) {
+				continue
+			}
+			totalPuts += f.PutRequests
+			totalBytes += f.FileSize
+			files = append(files, s3usage.FileMetrics{
+				FileSizeBytes: f.FileSize,
+				PutRequests:   f.PutRequests,
+			})
+			bk := bucketKey{f.Bucket, f.AWSRoleARN}
+			if _, ok := byBucket[bk]; !ok {
+				byBucket[bk] = &s3usage.BucketFileMetrics{Bucket: f.Bucket, AWSRoleARN: f.AWSRoleARN}
+			}
+			byBucket[bk].Files = append(byBucket[bk].Files, s3usage.FileBytes{FileKey: f.FileKey, Bytes: f.FileSize})
+		}
+	}
+
+	if len(files) == 0 {
+		return s3usage.ArtifactMetrics{}, nil
+	}
+
+	bucketMetrics := make([]s3usage.BucketFileMetrics, 0, len(byBucket))
+	for _, bm := range byBucket {
+		bucketMetrics = append(bucketMetrics, *bm)
+	}
+
+	maxPuts, minPuts := s3usage.ComputePerFileExtremes(files)
+	return s3usage.ArtifactMetrics{
+		S3UploadMetrics: s3usage.S3UploadMetrics{
+			PutRequests: totalPuts,
+			UploadBytes: totalBytes,
+		},
+		Count:                      len(files),
+		ArtifactWithMaxPutRequests: maxPuts,
+		ArtifactWithMinPutRequests: minPuts,
+		BytesByBucketAndKey:        bucketMetrics,
+	}, nil
 }
 
 // HasValidDistro determines if the task has a valid distro.
