@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -87,6 +88,27 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusForbidden,
 				Message:    errors.Errorf("not authorized to spawn admin-only distro '%s'", hph.options.DistroID).Error(),
+			})
+		}
+	}
+
+	if hph.options.TaskID != "" {
+		projectID, err := task.FindProjectForTask(ctx, hph.options.TaskID)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", hph.options.TaskID),
+			})
+		}
+		if !user.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      projectID,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksView.Value,
+		}) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    fmt.Sprintf("user '%s' does not have permission to view tasks in project '%s'", user.Id, projectID),
 			})
 		}
 	}

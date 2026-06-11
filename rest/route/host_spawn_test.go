@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -40,6 +41,28 @@ func TestHostPostHandler(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro){
 		"SpawnsHostForTask": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			tsk := &task.Task{
+				Id:      "task",
+				Project: "my-project",
+			}
+			require.NoError(t, tsk.Insert(ctx))
+
+			projectScope := gimlet.Scope{
+				ID:        "my_project_scope",
+				Name:      "my project scope",
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{"my-project"},
+			}
+			require.NoError(t, env.RoleManager().AddScope(ctx, projectScope))
+			taskViewRole := gimlet.Role{
+				ID:          "task_view_role",
+				Name:        "task view",
+				Scope:       projectScope.ID,
+				Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
+			}
+			require.NoError(t, env.RoleManager().UpdateRole(ctx, taskViewRole))
+			require.NoError(t, u.AddRole(ctx, taskViewRole.ID))
+
 			rh.options.TaskID = "task"
 			rh.options.KeyName = "ssh-rsa YWJjZDEyMzQK"
 
@@ -246,11 +269,53 @@ func TestHostPostHandler(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.NotEqual(t, http.StatusOK, resp.Status(), resp.Data())
 		},
+		"RejectsSpawnWithTaskFromUnauthorizedProject": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			tsk := &task.Task{
+				Id:      "secret-task",
+				Project: "secret-project",
+			}
+			require.NoError(t, tsk.Insert(ctx))
+
+			rh.options.TaskID = "secret-task"
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusForbidden, resp.Status(), resp.Data())
+		},
+		"AllowsSpawnWithTaskFromAuthorizedProject": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			tsk := &task.Task{
+				Id:      "my-task",
+				Project: "my-project",
+			}
+			require.NoError(t, tsk.Insert(ctx))
+
+			projectScope := gimlet.Scope{
+				ID:        "my_project_scope",
+				Name:      "my project scope",
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{"my-project"},
+			}
+			require.NoError(t, env.RoleManager().AddScope(ctx, projectScope))
+			taskViewRole := gimlet.Role{
+				ID:          "task_view_role",
+				Name:        "task view",
+				Scope:       projectScope.ID,
+				Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
+			}
+			require.NoError(t, env.RoleManager().UpdateRole(ctx, taskViewRole))
+			require.NoError(t, u.AddRole(ctx, taskViewRole.ID))
+
+			rh.options.TaskID = "my-task"
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx := t.Context()
 
-			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection))
+			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection))
 			env := &mock.Environment{}
 			assert.NoError(t, env.Configure(ctx))
 			env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 10
