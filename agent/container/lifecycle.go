@@ -65,6 +65,12 @@ type Config struct {
 	// ExtraMounts are additional host→container bind mounts layered on top
 	// of the workdir mount. Sources and targets must be absolute paths.
 	ExtraMounts []Mount
+
+	// Logger receives operational messages (image pull progress, container
+	// lifecycle events). If nil, messages fall back to the global grip sender,
+	// which writes to the host's local log and is not visible in the
+	// Evergreen task UI.
+	Logger grip.Journaler
 }
 
 func (c Config) Validate() error {
@@ -126,7 +132,7 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	}
 
 	// Pull the image if not already present.
-	if err := ensureImage(ctx, cli, cfg.Image); err != nil {
+	if err := ensureImage(ctx, cli, cfg.Image, cfg.Logger); err != nil {
 		cli.Close()
 		return nil, errors.Wrap(err, "ensuring container image")
 	}
@@ -250,7 +256,7 @@ const imagePullTimeout = 5 * time.Minute
 // the task context. It also decodes the pull response stream to surface
 // authentication or registry errors that Docker reports in-band rather than
 // as a top-level error return.
-func ensureImage(ctx context.Context, cli *client.Client, img string) error {
+func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.Journaler) error {
 	_, _, err := cli.ImageInspectWithRaw(ctx, img)
 	if err == nil {
 		return nil // Already present.
@@ -259,7 +265,7 @@ func ensureImage(ctx context.Context, cli *client.Client, img string) error {
 	pullCtx, cancel := context.WithTimeout(ctx, imagePullTimeout)
 	defer cancel()
 
-	grip.Info(ctx, message.Fields{
+	logInfo(ctx, log, message.Fields{
 		"message": "pulling container image",
 		"image":   img,
 	})
@@ -303,12 +309,24 @@ func ensureImage(ctx context.Context, cli *client.Client, img string) error {
 		}
 	}
 
-	grip.Info(ctx, message.Fields{
+	logInfo(ctx, log, message.Fields{
 		"message": "container image ready",
 		"image":   img,
 	})
 
 	return nil
+}
+
+// logInfo sends an Info-level message to log if non-nil, otherwise falls back
+// to the global grip sender. This lets callers that have a task-specific
+// logger (whose output is visible in the Evergreen UI) surface container
+// lifecycle events in the task's agent log tab.
+func logInfo(ctx context.Context, log grip.Journaler, msg interface{}) {
+	if log != nil {
+		log.Info(ctx, msg)
+		return
+	}
+	grip.Info(ctx, msg)
 }
 
 func boolPtr(b bool) *bool { return &b }

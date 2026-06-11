@@ -104,7 +104,7 @@ func containerNames(names []string) string {
 // container's identity is wired into conf without creating a new one. A new
 // container is only created at the start of a task group (when a.currentContainer
 // is nil). The container is destroyed in runTeardownGroupCommands.
-func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConfig) error {
+func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConfig, log grip.Journaler) error {
 	if conf.Distro == nil || conf.Distro.ContainerIsolation == nil {
 		return nil
 	}
@@ -123,6 +123,7 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		TaskID:   conf.Task.Id,
 		MemoryMB: ci.MemoryMB,
 		CPUs:     ci.CPUs,
+		Logger:   log,
 	})
 	if err != nil {
 		if ci.RequireIsolation {
@@ -131,7 +132,8 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 			return errors.Wrap(err, "starting isolation container (fail-closed: require_isolation is set)")
 		}
 		// Fail-open default: log the degraded event and continue on the host.
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
+		// Route through the task logger so the warning appears in the Evergreen UI.
+		log.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "container_isolation_degraded",
 			"task_id": conf.Task.Id,
 			"image":   ci.Image,
