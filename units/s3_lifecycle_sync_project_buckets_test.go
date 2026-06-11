@@ -96,10 +96,12 @@ func TestConvertPailRuleToDoc(t *testing.T) {
 		{
 			FilterPrefix:        "sandbox/",
 			ProjectAssociations: []string{"project1", "project2"},
+			AWSAccountID:        "111111111111",
 		},
 		{
 			FilterPrefix:        "other/",
 			ProjectAssociations: []string{"project3"},
+			AWSAccountID:        "111111111111",
 		},
 	}
 
@@ -120,8 +122,9 @@ func TestConvertPailRuleToDoc(t *testing.T) {
 	assert.Len(t, doc.Transitions, 2)
 	assert.Equal(t, "", doc.SyncError)
 
-	// ProjectAssociations should be preserved from existing rule.
+	// ProjectAssociations and AWSAccountID should be preserved from existing rule.
 	assert.Equal(t, []string{"project1", "project2"}, doc.ProjectAssociations)
+	assert.Equal(t, "111111111111", doc.AWSAccountID)
 }
 
 func TestConvertPailRuleToDocWithoutExisting(t *testing.T) {
@@ -139,14 +142,16 @@ func TestConvertPailRuleToDocWithoutExisting(t *testing.T) {
 		{
 			FilterPrefix:        "other/",
 			ProjectAssociations: []string{"project1"},
+			AWSAccountID:        "222222222222",
 		},
 	}
 
 	doc := convertPailRuleToDoc(bucketName, region, awsRule, existingRules)
 
 	assert.Equal(t, "logs/", doc.FilterPrefix)
-	// ProjectAssociations should be nil since no matching existing rule.
+	// ProjectAssociations and AWSAccountID should be empty since no matching existing rule.
 	assert.Nil(t, doc.ProjectAssociations)
+	assert.Empty(t, doc.AWSAccountID)
 }
 
 func TestConvertPailTransitions(t *testing.T) {
@@ -267,7 +272,7 @@ func TestSyncBucket(t *testing.T) {
 	}
 
 	job := makeS3LifecycleSyncProjectBucketsJob()
-	err := job.syncBucket(ctx, mockClient, "test-bucket")
+	err := job.syncBucket(ctx, mockClient, "test-bucket", nil)
 	require.NoError(t, err)
 
 	// Verify sandbox/ rule was updated.
@@ -311,11 +316,102 @@ func TestSyncBucketWithNoExistingRules(t *testing.T) {
 	}
 
 	job := makeS3LifecycleSyncProjectBucketsJob()
-	err := job.syncBucket(ctx, mockClient, "test-bucket")
+	err := job.syncBucket(ctx, mockClient, "test-bucket", nil)
 	require.NoError(t, err)
 
 	// No error, but also no sync should happen since there are no existing rules.
 	logsRule, err := s3lifecycle.FindByBucketAndPrefix(ctx, "test-bucket", "logs/")
 	require.NoError(t, err)
 	assert.Nil(t, logsRule)
+}
+
+// TestSyncBucketAWSAccountIDPreserved verifies that AWSAccountID set during discovery is not
+// zeroed out by a subsequent sync run. This is the regression guard for the bug where
+// convertPailRuleToDoc did not carry AWSAccountID forward from the existing rule.
+func TestSyncBucketAWSAccountIDPreserved(t *testing.T) {
+	require.NoError(t, db.Clear(s3lifecycle.Collection))
+	t.Cleanup(func() {
+		require.NoError(t, db.Clear(s3lifecycle.Collection))
+	})
+
+	// Seed a rule that has AWSAccountID set (as would happen after initial discovery).
+	existing := &s3lifecycle.S3LifecycleRuleDoc{
+		BucketName:          "my-bucket",
+		FilterPrefix:        "sandbox/",
+		BucketType:          s3lifecycle.BucketTypeUserSpecified,
+		Region:              "us-east-1",
+		AWSAccountID:        "111111111111",
+		RuleID:              "original-rule",
+		RuleStatus:          "Enabled",
+		ExpirationDays:      utility.ToIntPtr(30),
+		ProjectAssociations: []string{"project1"},
+		LastSyncedAt:        time.Now().Add(-24 * time.Hour),
+	}
+	require.NoError(t, existing.Upsert(t.Context()))
+
+	mockClient := &mockS3LifecycleClient{
+		rules: map[string][]pail.LifecycleRule{
+			"my-bucket": {
+				{
+					ID:             "updated-rule",
+					Prefix:         "sandbox/",
+					Status:         "Enabled",
+					ExpirationDays: utility.ToInt32Ptr(60),
+				},
+			},
+		},
+	}
+
+	job := makeS3LifecycleSyncProjectBucketsJob()
+	// Account is not in the restricted list, so the sync should proceed.
+	err := job.syncBucket(t.Context(), mockClient, "my-bucket", nil)
+	require.NoError(t, err)
+
+	// The rule should be updated with the new AWS data AND the AWSAccountID must be preserved.
+	rule, err := s3lifecycle.FindByBucketAndPrefix(t.Context(), "my-bucket", "sandbox/")
+	require.NoError(t, err)
+	require.NotNil(t, rule)
+	assert.Equal(t, "updated-rule", rule.RuleID, "rule should be updated from AWS")
+	assert.Equal(t, 60, *rule.ExpirationDays, "expiration should reflect new AWS value")
+	assert.Equal(t, "111111111111", rule.AWSAccountID, "AWSAccountID must survive the sync")
+	assert.Equal(t, []string{"project1"}, rule.ProjectAssociations, "ProjectAssociations must survive the sync")
+}
+
+// TestSyncBucketSkipsAccountWithoutLifecycleRulesAccess verifies that syncBucket skips the AWS
+// call when the bucket's stored AWSAccountID is in the restricted list.
+func TestSyncBucketSkipsAccountWithoutLifecycleRulesAccess(t *testing.T) {
+	require.NoError(t, db.Clear(s3lifecycle.Collection))
+	t.Cleanup(func() {
+		require.NoError(t, db.Clear(s3lifecycle.Collection))
+	})
+
+	// Seed an existing rule whose account is in the skip list.
+	existingRule := &s3lifecycle.S3LifecycleRuleDoc{
+		BucketName:   "restricted-bucket",
+		FilterPrefix: "",
+		BucketType:   s3lifecycle.BucketTypeUserSpecified,
+		Region:       "us-east-1",
+		AWSAccountID: "999999999999",
+		RuleID:       "old-rule",
+		RuleStatus:   "Enabled",
+		LastSyncedAt: time.Now().Add(-24 * time.Hour),
+	}
+	require.NoError(t, existingRule.Upsert(t.Context()))
+
+	mockClient := &mockS3LifecycleClient{
+		rules: map[string][]pail.LifecycleRule{
+			"restricted-bucket": {{ID: "should-not-be-called"}},
+		},
+	}
+
+	accountsWithoutLifecycleRules := []string{"999999999999"}
+	job := makeS3LifecycleSyncProjectBucketsJob()
+	err := job.syncBucket(t.Context(), mockClient, "restricted-bucket", accountsWithoutLifecycleRules)
+	require.NoError(t, err)
+
+	// The existing rule should be unchanged, confirming no AWS call was made.
+	rule, err := s3lifecycle.FindByBucketAndPrefix(t.Context(), "restricted-bucket", "")
+	require.NoError(t, err)
+	require.NotNil(t, rule)
+	assert.Equal(t, "old-rule", rule.RuleID, "rule should be unchanged when sync is skipped")
 }

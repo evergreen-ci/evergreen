@@ -171,6 +171,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	if distro.SingleTaskDistro {
 		// Single tasks distros should spawn a host for each task available to run in the queue.
 		nHosts = distroQueueInfo.LengthWithDependenciesMet - len(provisioningHosts)
+		// Ensure at least MinimumHosts will be running.
+		minimumHosts := distro.HostAllocatorSettings.MinimumHosts
+		if numExisting := len(upHosts); nHosts+numExisting < minimumHosts {
+			nHosts = minimumHosts - numExisting
+		}
 	} else {
 		hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 
