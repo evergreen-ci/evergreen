@@ -245,6 +245,8 @@ func getRedactedSubscriptionsCopy(subscriptions []event.Subscription, modifiedID
 			continue
 		}
 		redacted := *ws
+		redacted.Headers = make([]event.WebhookHeader, len(ws.Headers))
+		copy(redacted.Headers, ws.Headers)
 		_, isModified := modifiedIDs[result[i].ID]
 		redactWebhook(&redacted, isModified, placeholder)
 		result[i].Subscriber.Target = &redacted
@@ -266,9 +268,7 @@ func buildWebhookSubscribers(subscriptions []event.Subscription) map[string]*eve
 	return result
 }
 
-// redactWebhook replaces the secret and Authorization header with a diff-aware placeholder.
-// Modified secrets use the caller-supplied placeholder to show before/after. Unmodified secrets
-// use evergreen.RedactedValue so users know the field exists and was not deleted.
+// redactWebhook replaces the webhook secret and Authorization header with a diff-aware placeholder.
 func redactWebhook(ws *event.WebhookSubscriber, isModified bool, placeholder string) {
 	if len(ws.Secret) > 0 {
 		if isModified {

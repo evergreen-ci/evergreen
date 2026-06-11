@@ -295,10 +295,12 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
 	s.Require().NotNil(eventData)
 
 	for _, settingsEvent := range []ProjectSettingsEvent{eventData.Before, eventData.After} {
+		var foundWebhook bool
 		for _, sub := range settingsEvent.Subscriptions {
 			if sub.Subscriber.Type != event.EvergreenWebhookSubscriberType {
 				continue
 			}
+			foundWebhook = true
 			webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber)
 			s.Require().True(ok)
 			s.Require().NotNil(webhookSub)
@@ -309,6 +311,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
 				}
 			}
 		}
+		s.True(foundWebhook, "should have found webhook subscription")
 	}
 }
 
