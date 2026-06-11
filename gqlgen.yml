@@ -548,6 +548,10 @@ models:
   Patch:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
     fields:
+      cost:
+        resolver: true
+      predictedCost:
+        resolver: true
       projectIdentifier:
         resolver: true
       includedLocalModules:

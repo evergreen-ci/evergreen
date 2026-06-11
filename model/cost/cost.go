@@ -59,41 +59,50 @@ type Cost struct {
 	ChildPatchesTotalCost float64 `bson:"-" json:"child_patches_total_cost,omitempty"`
 }
 
-// TotalAdjusted returns the sum of every adjusted component in this value, excluding on-demand fields,
-// which are an alternate pricing view of the same usage.
-func (c Cost) TotalAdjusted() float64 {
+// AdjustedTotal returns the sum of the 7 base adjusted fields, excluding ChildPatchesTotalCost.
+func (c Cost) AdjustedTotal() float64 {
 	return c.AdjustedEC2Cost +
 		c.AdjustedEBSThroughputCost +
 		c.AdjustedEBSStorageCost +
 		c.AdjustedS3ArtifactPutCost +
 		c.AdjustedS3LogPutCost +
 		c.AdjustedS3ArtifactStorageCost +
-		c.AdjustedS3LogStorageCost +
-		c.ChildPatchesTotalCost
+		c.AdjustedS3LogStorageCost
 }
 
-// SumPerChildVersionAdjustedTotals sums actual and predicted adjusted costs for n children;
+// RoundedBase returns a new Cost with the 7 adjusted fields individually rounded.
+func (c Cost) RoundedBase() Cost {
+	return Cost{
+		AdjustedEC2Cost:               RoundCost(c.AdjustedEC2Cost),
+		AdjustedEBSThroughputCost:     RoundCost(c.AdjustedEBSThroughputCost),
+		AdjustedEBSStorageCost:        RoundCost(c.AdjustedEBSStorageCost),
+		AdjustedS3ArtifactPutCost:     RoundCost(c.AdjustedS3ArtifactPutCost),
+		AdjustedS3LogPutCost:          RoundCost(c.AdjustedS3LogPutCost),
+		AdjustedS3ArtifactStorageCost: RoundCost(c.AdjustedS3ArtifactStorageCost),
+		AdjustedS3LogStorageCost:      RoundCost(c.AdjustedS3LogStorageCost),
+	}
+}
+
+// SumPerChildVersionAdjustedTotals sums actual and predicted adjusted costs across n children.
 func SumPerChildVersionAdjustedTotals(n int, childAt func(int) (actual, predicted *Cost)) (sumActual, sumPred float64) {
 	for i := 0; i < n; i++ {
 		actual, predicted := childAt(i)
 		if actual != nil {
-			sumActual += actual.TotalAdjusted()
+			sumActual += actual.AdjustedTotal() + actual.ChildPatchesTotalCost
 		}
 		if predicted != nil {
-			sumPred += predicted.TotalAdjusted()
+			sumPred += predicted.AdjustedTotal() + predicted.ChildPatchesTotalCost
 		}
 	}
 	return
 }
 
-// RoundCost removes floating-point noise from a cost value. Values >= 0.01
-// are rounded to 2 decimal places; values < 0.01 are rounded to 2 significant
-// figures to preserve meaningful precision for very small costs.
+// RoundCost rounds v to 2 decimal places for values >= $0.10, or 2 significant figures below that threshold.
 func RoundCost(v float64) float64 {
 	if v == 0 {
 		return 0
 	}
-	if v >= 0.01 {
+	if v >= 0.10 {
 		return math.Round(v*100) / 100
 	}
 	magnitude := math.Floor(math.Log10(math.Abs(v)))

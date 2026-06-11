@@ -176,5 +176,5 @@ func (c *cacheRestore) extract(ctx context.Context, archivePath, dest string) er
 	}
 	defer f.Close()
 
-	return errors.Wrap(extractTarball(ctx, f, dest, []string{}), "extracting tarball")
+	return errors.Wrap(extractTarball(ctx, f, dest, []string{}, c.PreserveSymlinks), "extracting tarball")
 }

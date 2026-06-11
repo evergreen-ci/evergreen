@@ -493,6 +493,9 @@ func (s *Subscription) Upsert(ctx context.Context) error {
 	if err := s.saveWebhookSecretIfNeeded(ctx); err != nil {
 		return errors.Wrap(err, "saving webhook secret to Parameter Store")
 	}
+	if err := s.saveWebhookAuthHeaderIfNeeded(ctx); err != nil {
+		return errors.Wrap(err, "saving webhook Authorization header to Parameter Store")
+	}
 
 	update := bson.M{
 		subscriptionResourceTypeKey:   s.ResourceType,
@@ -585,6 +588,23 @@ func RemoveSubscription(ctx context.Context, id string) error {
 						"message":         "webhook secret removed from Parameter Store",
 						"subscription_id": id,
 						"parameter_name":  ws.SecretParameter,
+						"ticket":          "DEVPROD-15500",
+					})
+				}
+			}
+			if ws.AuthorizationHeaderParameter != "" {
+				if delErr := deleteWebhookSecretFromParameterStore(ctx, ws.AuthorizationHeaderParameter); delErr != nil {
+					grip.Warning(ctx, message.WrapError(delErr, message.Fields{
+						"message":         "deleting webhook Authorization header from Parameter Store on subscription removal",
+						"subscription_id": id,
+						"parameter_name":  ws.AuthorizationHeaderParameter,
+						"ticket":          "DEVPROD-15500",
+					}))
+				} else {
+					grip.Debug(ctx, message.Fields{
+						"message":         "deleted webhook Authorization header from Parameter Store on subscription removal",
+						"subscription_id": id,
+						"parameter_name":  ws.AuthorizationHeaderParameter,
 						"ticket":          "DEVPROD-15500",
 					})
 				}
@@ -1037,6 +1057,56 @@ func (s *Subscription) saveWebhookSecretIfNeeded(ctx context.Context) error {
 	return nil
 }
 
+// saveWebhookAuthHeaderIfNeeded saves the webhook Authorization header to Parameter Store on every upsert.
+func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error {
+	if s.Subscriber.Type != EvergreenWebhookSubscriberType {
+		return nil
+	}
+
+	webhookSub, ok := s.Subscriber.Target.(*WebhookSubscriber)
+	if !ok {
+		return nil
+	}
+
+	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" {
+		webhookSub.AuthorizationHeaderParameter = saveWebhookParameter(ctx, s.ID, getWebhookAuthParameterPath(s.ID), []byte(authValue))
+	} else if s.ID != "" {
+		// Authorization header was removed on update. Clean up the old PS entry if
+		// one exists, so we don't leave orphaned parameters in Parameter Store.
+		existing, err := FindSubscriptionByID(ctx, s.ID)
+		if err != nil {
+			grip.Warning(ctx, message.Fields{
+				"message":         "finding subscription to clean up Authorization header from Parameter Store",
+				"subscription_id": s.ID,
+				"error":           err.Error(),
+				"ticket":          "DEVPROD-15500",
+			})
+			return nil
+		}
+		if existing != nil {
+			if existingWebhookSub, ok := existing.Subscriber.Target.(*WebhookSubscriber); ok && existingWebhookSub != nil && existingWebhookSub.AuthorizationHeaderParameter != "" {
+				if delErr := deleteWebhookSecretFromParameterStore(ctx, existingWebhookSub.AuthorizationHeaderParameter); delErr != nil {
+					grip.Warning(ctx, message.WrapError(delErr, message.Fields{
+						"message":         "deleting webhook Authorization header from Parameter Store on header removal",
+						"subscription_id": s.ID,
+						"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
+						"ticket":          "DEVPROD-15500",
+					}))
+				} else {
+					grip.Debug(ctx, message.Fields{
+						"message":         "webhook Authorization header removed from Parameter Store",
+						"subscription_id": s.ID,
+						"parameter_name":  existingWebhookSub.AuthorizationHeaderParameter,
+						"ticket":          "DEVPROD-15500",
+					})
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // saveWebhookParameter saves value to Parameter Store and returns the parameter name on success, or empty string on failure.
 func saveWebhookParameter(ctx context.Context, subID, paramPath string, value []byte) string {
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
@@ -1098,6 +1168,21 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 			}
 		}
 
+		if webhookSub.AuthorizationHeaderParameter != "" {
+			authValue, err := getWebhookSecretFromParameterStore(ctx, webhookSub.AuthorizationHeaderParameter)
+			if err != nil {
+				grip.Debug(ctx, message.Fields{
+					"message":         "failed to read webhook Authorization header from Parameter Store, falling back to MongoDB",
+					"subscription_id": subscriptions[i].ID,
+					"error":           err.Error(),
+					"ticket":          "DEVPROD-15500",
+				})
+				// Authorization header is already populated from the DB read — leave it as-is.
+			} else {
+				webhookSub.setHeader("Authorization", string(authValue))
+			}
+		}
+
 	}
 	return nil
 }
@@ -1107,9 +1192,15 @@ func GetWebhookSecretParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/secret", subscriptionID)
 }
 
-// GetWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
-func GetWebhookAuthParameterPath(subscriptionID string) string {
+// getWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
+func getWebhookAuthParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/authorization", subscriptionID)
+}
+
+// GetWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
+// This exported form is used by the migration job in units/.
+func GetWebhookAuthParameterPath(subscriptionID string) string {
+	return getWebhookAuthParameterPath(subscriptionID)
 }
 
 // verifyWebhookSecretInParameterStore confirms the stored secret matches the expected value.

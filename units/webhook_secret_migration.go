@@ -149,7 +149,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 		}
 		if err := db.Update(ctx, event.SubscriptionsCollection,
 			bson.D{{Key: "_id", Value: j.SubscriptionID}},
-			bson.D{{Key: "$set", Value: bson.D{{Key: "subscriber.target.authorization_parameter", Value: param.Name}}}},
+			bson.D{{Key: "$set", Value: bson.D{{Key: "subscriber.target.authorization_header_parameter", Value: param.Name}}}},
 		); err != nil {
 			j.AddError(errors.Wrapf(err, "updating subscription '%s' after migrating Authorization header", j.SubscriptionID))
 			return
@@ -176,7 +176,7 @@ var unmigratedWebhookQuery = bson.D{
 				{Key: "key", Value: "Authorization"},
 				{Key: "value", Value: bson.D{{Key: "$ne", Value: ""}}},
 			}}}},
-			{Key: "subscriber.target.authorization_parameter", Value: bson.D{{Key: "$exists", Value: false}}},
+			{Key: "subscriber.target.authorization_header_parameter", Value: bson.D{{Key: "$exists", Value: false}}},
 		},
 	}},
 }
@@ -359,7 +359,7 @@ var migratedWebhookQuery = bson.D{
 				{Key: "key", Value: "Authorization"},
 				{Key: "value", Value: bson.D{{Key: "$ne", Value: ""}}},
 			}}}},
-			{Key: "subscriber.target.authorization_parameter", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},
+			{Key: "subscriber.target.authorization_header_parameter", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},
 		},
 	}},
 }

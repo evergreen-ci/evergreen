@@ -123,11 +123,10 @@ func (s *Subscriber) Validate() error {
 
 type WebhookSubscriber struct {
 	URL string `bson:"url"`
-	// Secret is kept with bson:"secret,omitempty" (not bson:"-") so Find can fall back to the DB
-	// value for subscriptions not yet processed by the migration job. Phase 2 cleanup removes remaining DB secrets.
+	// omitempty (not bson:"-") preserves the DB fallback for subscriptions not yet migrated to Parameter Store.
 	Secret                       []byte          `bson:"secret,omitempty"`
 	SecretParameter              string          `bson:"secret_parameter,omitempty"`
-	AuthorizationHeaderParameter string          `bson:"authorization_parameter,omitempty"`
+	AuthorizationHeaderParameter string          `bson:"authorization_header_parameter,omitempty"`
 	Retries                      int             `bson:"retries"`
 	MinDelayMS                   int             `bson:"min_delay_ms"`
 	TimeoutMS                    int             `bson:"timeout_ms"`

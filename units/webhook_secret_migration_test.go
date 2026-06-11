@@ -3,6 +3,7 @@ package units
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -18,6 +19,7 @@ func setupWebhookMigrationTest(t *testing.T) *mock.Environment {
 	require.NoError(t, env.Configure(t.Context()))
 	env.EvergreenSettings.ServiceFlags.WebhookSecretMigrationEnabled = true
 	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, fakeparameter.Collection))
+	require.NoError(t, evergreen.SetServiceFlags(t.Context(), evergreen.ServiceFlags{WebhookSecretMigrationEnabled: true}))
 	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, fakeparameter.Collection))
 	})
@@ -247,7 +249,7 @@ func TestWebhookSecretMigrationJobRun(t *testing.T) {
 		require.True(t, ok)
 		targetRaw, ok := subscriberRaw["target"].(bson.M)
 		require.True(t, ok)
-		authParamName, ok := targetRaw["authorization_parameter"].(string)
+		authParamName, ok := targetRaw["authorization_header_parameter"].(string)
 		require.True(t, ok, "authorization_parameter should be set")
 		require.NotEmpty(t, authParamName)
 
@@ -278,7 +280,7 @@ func TestWebhookSecretMigrationJobRun(t *testing.T) {
 		require.True(t, ok)
 		secretParamName, ok := targetRaw["secret_parameter"].(string)
 		require.True(t, ok, "secret_parameter should be set")
-		authParamName, ok := targetRaw["authorization_parameter"].(string)
+		authParamName, ok := targetRaw["authorization_header_parameter"].(string)
 		require.True(t, ok, "authorization_parameter should be set")
 
 		fakeParams, err := fakeparameter.FindByIDs(t.Context(), secretParamName, authParamName)
@@ -301,7 +303,7 @@ func TestWebhookSecretMigrationJobRun(t *testing.T) {
 					"secret":                  []byte("already-in-ps"),
 					"secret_parameter":        "/some/secret/param",
 					"headers":                 bson.A{bson.M{"key": "Authorization", "value": "Bearer token"}},
-					"authorization_parameter": "/some/auth/param",
+					"authorization_header_parameter": "/some/auth/param",
 				},
 			},
 			"owner":      "test-owner",
@@ -480,7 +482,7 @@ func TestWebhookSecretCleanupJobRun(t *testing.T) {
 					"secret":                  []byte("old-secret"),
 					"secret_parameter":        "/some/secret/param",
 					"headers":                 bson.A{bson.M{"key": "Authorization", "value": "Bearer old-token"}},
-					"authorization_parameter": "/some/auth/param",
+					"authorization_header_parameter": "/some/auth/param",
 				},
 			},
 			"owner":      "test-owner",
@@ -505,7 +507,7 @@ func TestWebhookSecretCleanupJobRun(t *testing.T) {
 		require.True(t, ok)
 		assert.Nil(t, targetRaw["secret"], "secret should be removed from MongoDB")
 		assert.Equal(t, "/some/secret/param", targetRaw["secret_parameter"], "secret_parameter should remain")
-		assert.Equal(t, "/some/auth/param", targetRaw["authorization_parameter"], "authorization_parameter should remain")
+		assert.Equal(t, "/some/auth/param", targetRaw["authorization_header_parameter"], "authorization_parameter should remain")
 
 		// Verify Authorization header was removed from the headers array.
 		headers, ok := targetRaw["headers"].(bson.A)
@@ -561,7 +563,7 @@ func TestFindMigratedWebhookSubscriptionIDs(t *testing.T) {
 			"target": bson.M{
 				"url":                     "https://example.com/webhook",
 				"headers":                 bson.A{bson.M{"key": "Authorization", "value": "Bearer old"}},
-				"authorization_parameter": "/auth/param",
+				"authorization_header_parameter": "/auth/param",
 			},
 		},
 		"owner":      "test-owner",
