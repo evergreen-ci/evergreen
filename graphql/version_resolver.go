@@ -667,9 +667,9 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRefSecondary(ctx, obj.Identifier, obj.Id, false)
+	projectRef, err := loaders.GetProject(ctx, obj.Identifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()), err)
 	}
 	if projectRef == nil {
 		return nil, nil

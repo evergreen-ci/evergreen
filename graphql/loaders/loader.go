@@ -18,6 +18,7 @@ const loadersKey = ctxKey("dataloaders")
 type Loaders struct {
 	UserLoader    *dataloadgen.Loader[string, *user.DBUser]
 	VersionLoader *dataloadgen.Loader[string, *model.Version]
+	ProjectLoader *dataloadgen.Loader[string, *model.ProjectRef]
 }
 
 // loaderWait is how long each dataloader waits for additional keys before
@@ -28,9 +29,11 @@ const loaderWait = 5 * time.Millisecond
 func New() *Loaders {
 	ur := &userReader{}
 	vr := &versionReader{}
+	pr := &projectReader{}
 	return &Loaders{
 		UserLoader:    dataloadgen.NewMappedLoader(ur.getUsers, dataloadgen.WithWait(loaderWait)),
 		VersionLoader: dataloadgen.NewMappedLoader(vr.getVersions, dataloadgen.WithWait(loaderWait)),
+		ProjectLoader: dataloadgen.NewMappedLoader(pr.getProjects, dataloadgen.WithWait(loaderWait)),
 	}
 }
 

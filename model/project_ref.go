@@ -1729,6 +1729,16 @@ func FindProjectRefsByIdsSecondary(ctx context.Context, ids ...string) ([]Projec
 	return findProjectRefsQSecondary(ctx, byIds(ids...), false)
 }
 
+// FindMergedProjectRefsByIdsOrIdentifiers returns merged project refs matching any of the
+// provided values against either the project ref's id or its identifier. It is the batched
+// equivalent of FindMergedProjectRef and is intended to back the GraphQL project dataloader.
+func FindMergedProjectRefsByIdsOrIdentifiers(ctx context.Context, idsOrIdentifiers ...string) ([]ProjectRef, error) {
+	if len(idsOrIdentifiers) == 0 {
+		return nil, nil
+	}
+	return findProjectRefsQ(ctx, byIdsOrIdentifiers(idsOrIdentifiers...), true)
+}
+
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
 	return findProjectRefsQWith(ctx, filter, merged, db.FindAllQ)
 }
@@ -1764,6 +1774,16 @@ func byOwnerAndRepo(owner, repoName string) bson.M {
 // byIds matches project refs with any of the given ids.
 func byIds(ids ...string) bson.M {
 	return bson.M{ProjectRefIdKey: bson.M{"$in": ids}}
+}
+
+// byIdsOrIdentifiers matches project refs whose id or identifier is any of the given values.
+func byIdsOrIdentifiers(idsOrIdentifiers ...string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			{ProjectRefIdKey: bson.M{"$in": idsOrIdentifiers}},
+			{ProjectRefIdentifierKey: bson.M{"$in": idsOrIdentifiers}},
+		},
+	}
 }
 
 // byTracked matches tracked (non-hidden) project refs.
