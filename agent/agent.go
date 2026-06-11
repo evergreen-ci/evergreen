@@ -573,7 +573,8 @@ func (a *Agent) handleSetupError(ctx context.Context, tc *taskContext, err error
 	catcher.Wrap(err, "handling setup error")
 	tc.logger.Execution().Error(ctx, err)
 	grip.Infof(ctx, "Task complete: '%s'.", tc.task.ID)
-	shouldExit, err := a.handleTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
+	detail := a.endTaskResponse(ctx, tc, evergreen.TaskSystemFailed, err.Error())
+	shouldExit, err := a.handleTaskResponse(ctx, tc, detail)
 	catcher.Wrap(err, "handling task response")
 	return tc, shouldExit, catcher.Resolve()
 }
@@ -731,14 +732,18 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		defer shutdown(ctx)
 	}
 
-	go tc.resourceMonitor.start(tskCtx)
+	go func() {
+		defer recovery.LogStackTraceAndContinue("resource monitor")
+		tc.resourceMonitor.start(tskCtx)
+	}()
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
 
 	status := a.runPreAndMain(preAndMainCtx, tc)
-	shouldExit, err = a.handleTaskResponse(tskCtx, tc, status, "")
+	detail := a.endTaskResponse(tskCtx, tc, status, "")
+	shouldExit, err = a.handleTaskResponse(tskCtx, tc, detail)
 	return tc, shouldExit, err
 }
 
@@ -1131,8 +1136,8 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (bool, error) {
-	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription)
+func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) (bool, error) {
+	resp, err := a.finishTask(ctx, tc, detail)
 	if err != nil {
 		return false, errors.Wrap(err, "marking task complete")
 	}
@@ -1146,14 +1151,15 @@ func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status 
 	return false, errors.WithStack(err)
 }
 
-func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail, status string) {
-	if tc.hadTimedOut() && ctx.Err() == nil {
-		status = evergreen.TaskFailed
+func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if detail.TimedOut && ctx.Err() == nil {
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
-	// Check both statuses, as this may have changed via user endpoint or etc.
-	if tc.oomTrackerEnabled(a.opts.CloudProvider) && (detail.Status == evergreen.TaskFailed || status == evergreen.TaskFailed) {
+	// The OOM check follows the final reported status, so if a user endpoint
+	// overrode a failed task to succeeded, the check is intentionally skipped
+	// unless the task timed out.
+	if tc.oomTrackerEnabled(a.opts.CloudProvider) && (detail.Status == evergreen.TaskFailed || detail.TimedOut) {
 		startTime := time.Now()
 		oomCtx, oomCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer oomCancel()
@@ -1179,14 +1185,13 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) (*apimodels.EndTaskResponse, error) {
 	if detail.TimedOut {
 		a.runDefaultTimeoutHandler(ctx, tc, detail)
 	}
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
-		a.handleTimeoutAndOOM(ctx, tc, detail, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail)
 
 		tc.logger.Task().Info(ctx, "Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
@@ -1199,7 +1204,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		updateEndTaskFailureDetailsForTestResults(ctx, tc, detail)
 
 	case evergreen.TaskFailed:
-		a.handleTimeoutAndOOM(ctx, tc, detail, status)
+		a.handleTimeoutAndOOM(ctx, tc, detail)
 
 		tc.logger.Task().Info(ctx, "Task completed - FAILURE.")
 		// If the post commands error, ignore the error. runCommandsInBlock

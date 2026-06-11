@@ -343,12 +343,12 @@ func (apiPatch *APIPatch) populateCostFromVersion(ctx context.Context, versionID
 	}
 	if !v.Cost.IsZero() {
 		versionCost := v.Cost
-		versionCost.Total = versionCost.TotalAdjusted()
+		versionCost.Total = versionCost.AdjustedTotal()
 		apiPatch.Cost = &versionCost
 	}
 	if !v.PredictedCost.IsZero() {
 		predictedCost := v.PredictedCost
-		predictedCost.Total = predictedCost.TotalAdjusted()
+		predictedCost.Total = predictedCost.AdjustedTotal()
 		apiPatch.PredictedCost = &predictedCost
 	}
 	if !v.S3Usage.IsZero() {
@@ -417,7 +417,7 @@ func addChildPatchesCostToParent(apiPatch *APIPatch, childPatches []APIPatch) {
 			*dest = &cost.Cost{}
 		}
 		(*dest).ChildPatchesTotalCost = sum
-		(*dest).Total = (*dest).TotalAdjusted()
+		(*dest).Total = (*dest).AdjustedTotal() + (*dest).ChildPatchesTotalCost
 	}
 	merge(&apiPatch.Cost, actualSum)
 	merge(&apiPatch.PredictedCost, predictedSum)

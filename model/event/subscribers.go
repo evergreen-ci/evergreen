@@ -126,7 +126,7 @@ type WebhookSubscriber struct {
 	// omitempty (not bson:"-") preserves the DB fallback for subscriptions not yet migrated to Parameter Store.
 	Secret                       []byte          `bson:"secret,omitempty"`
 	SecretParameter              string          `bson:"secret_parameter,omitempty"`
-	AuthorizationHeaderParameter string          `bson:"authorization_parameter,omitempty"`
+	AuthorizationHeaderParameter string          `bson:"authorization_header_parameter,omitempty"`
 	Retries                      int             `bson:"retries"`
 	MinDelayMS                   int             `bson:"min_delay_ms"`
 	TimeoutMS                    int             `bson:"timeout_ms"`
