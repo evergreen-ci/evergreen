@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -536,14 +537,15 @@ func TestGetProjectMetadata(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 
 	t.Run("ReturnsNilForDeletedProject", func(t *testing.T) {
+		ctx := loaders.Inject(t.Context())
 		projectId := "deleted_project"
-		patchId := "some_patch_id"
-		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		result, err := getProjectMetadata(ctx, &projectId)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("ReturnsProjectMetadataForExistingProject", func(t *testing.T) {
+		ctx := loaders.Inject(t.Context())
 		projectRef := model.ProjectRef{
 			Id:         "existing_project",
 			Identifier: "existing_project",
@@ -551,10 +553,9 @@ func TestGetProjectMetadata(t *testing.T) {
 			Repo:       "my_repo",
 			Branch:     "main",
 		}
-		assert.NoError(t, projectRef.Insert(t.Context()))
+		assert.NoError(t, projectRef.Insert(ctx))
 		projectId := "existing_project"
-		patchId := "some_patch_id"
-		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		result, err := getProjectMetadata(ctx, &projectId)
 		assert.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Equal(t, "my_owner", utility.FromStringPtr(result.Owner))

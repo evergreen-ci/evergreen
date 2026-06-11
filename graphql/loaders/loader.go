@@ -50,3 +50,10 @@ func Middleware(next http.Handler) http.Handler {
 func For(ctx context.Context) *Loaders {
 	return ctx.Value(loadersKey).(*Loaders)
 }
+
+// Inject returns a copy of ctx with a fresh set of data loaders attached. It is
+// useful for tests that exercise resolver helpers directly without going
+// through Middleware.
+func Inject(ctx context.Context) context.Context {
+	return context.WithValue(ctx, loadersKey, New())
+}

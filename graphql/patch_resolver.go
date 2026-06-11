@@ -248,7 +248,7 @@ func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.AP
 
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getProjectMetadata(ctx, obj.ProjectId, obj.Id)
+	apiProjectRef, err := getProjectMetadata(ctx, obj.ProjectId)
 	return apiProjectRef, err
 }
 

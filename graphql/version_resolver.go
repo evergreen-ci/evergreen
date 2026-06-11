@@ -262,7 +262,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getProjectMetadata(ctx, obj.Project, obj.Id)
+	apiProjectRef, err := getProjectMetadata(ctx, obj.Project)
 	return apiProjectRef, err
 }
 
