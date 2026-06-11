@@ -497,6 +497,34 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 // the real host already exists. If both of those fail, it will attempt to
 // terminate the cloud host.
 func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.Manager) (replaced bool, err error) {
+	// Re-read the intent host to check if it was decommissioned while waiting
+	// for the cloud provider to create the instance. If so, terminate the new
+	// instance rather than registering it as a starting host.
+	intentHost, err := host.FindOneId(ctx, j.HostID)
+	if err != nil {
+		return false, errors.Wrapf(err, "re-reading intent host '%s'", j.HostID)
+	}
+	if intentHost != nil && utility.StringSliceContains(evergreen.DownHostStatus, intentHost.Status) {
+		grip.Info(ctx, message.Fields{
+			"message":        "not registering spawned host because intent host is already down",
+			"host_id":        j.host.Id,
+			"intent_host_id": j.HostID,
+			"status":         intentHost.Status,
+			"job":            j.ID(),
+		})
+		terminateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		grip.Error(ctx, message.WrapError(cloudMgr.TerminateInstance(terminateCtx, j.host, evergreen.User, "intent host was already down when cloud host was ready to register"), message.Fields{
+			"message":        "could not terminate cloud host spawned for down intent host",
+			"host_id":        j.host.Id,
+			"intent_host_id": j.HostID,
+			"distro":         j.host.Distro.Id,
+			"provider":       j.host.Provider,
+			"job":            j.ID(),
+		}))
+		return false, nil
+	}
+
 	if err = host.UnsafeReplace(ctx, j.env, j.HostID, j.host); err == nil {
 		return true, nil
 	}
