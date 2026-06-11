@@ -91,6 +91,18 @@ func TestCacheRestoreParseParams(t *testing.T) {
 		assert.Equal(t, "mise_and_go_cache_hit", cacheHitExpansionName(c.CacheName))
 	})
 
+	t.Run("PreserveSymlinksDecodedAndDefaultsToFalse", func(t *testing.T) {
+		c := &cacheRestore{}
+		require.NoError(t, c.ParseParams(validParams()))
+		assert.False(t, c.PreserveSymlinks)
+
+		params := validParams()
+		params["preserve_symlinks"] = true
+		c = &cacheRestore{}
+		require.NoError(t, c.ParseParams(params))
+		assert.True(t, c.PreserveSymlinks)
+	})
+
 	t.Run("ExpandableNameDeferredToExpansion", func(t *testing.T) {
 		// A templated name passes parse-time validation; the resolved value is
 		// re-validated after expansions are applied.
