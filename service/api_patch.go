@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -167,6 +168,13 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	if pref.IsPatchingDisabled() || !pref.Enabled {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("patching is disabled"))
 		return
+	}
+
+	if data.Path != "" {
+		if err := validatePatchConfigPath(data.Path); err != nil {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
 	}
 
 	patchID := mgobson.NewObjectId()
@@ -524,4 +532,20 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gimlet.WriteJSON(r.Context(), w, PatchAPIResponse{Message: "module removed from patch."})
+}
+
+// validatePatchConfigPath rejects config paths that contain shell
+// metacharacters, directory traversal, or are absolute.
+func validatePatchConfigPath(path string) error {
+	if filepath.IsAbs(path) {
+		return errors.New("patch config path must be relative")
+	}
+	if strings.Contains(path, "..") {
+		return errors.New("patch config path must not contain directory traversal")
+	}
+	const shellMetachars = "`$();&|!{}<>\\\n\r"
+	if strings.ContainsAny(path, shellMetachars) {
+		return errors.New("patch config path contains invalid characters")
+	}
+	return nil
 }
