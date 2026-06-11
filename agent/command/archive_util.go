@@ -304,7 +304,7 @@ tarReaderLoop:
 				rawLinkname := linkname
 				linkFiles = append(linkFiles, func() error {
 					if err := os.MkdirAll(filepath.Dir(namePath), 0755); err != nil {
-						return errors.WithStack(err)
+						return errors.Wrapf(err, "creating directory '%s'", filepath.Dir(namePath))
 					}
 					// Remove any existing entry so restoring into an
 					// already-populated tree (e.g. a second cache.restore in a
@@ -313,7 +313,7 @@ tarReaderLoop:
 					// deliberate: silently deleting a directory tree to make room
 					// for a symlink would be too destructive.
 					if err := os.Remove(namePath); err != nil && !os.IsNotExist(err) {
-						return errors.WithStack(err)
+						return errors.Wrapf(err, "removing existing entry '%s'", namePath)
 					}
 					return os.Symlink(rawLinkname, namePath)
 				})
