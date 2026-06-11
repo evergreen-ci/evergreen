@@ -36,11 +36,12 @@ func logTSSError(ctx context.Context, err error, resp *http.Response, info messa
 	if resp != nil {
 		info["status"] = resp.StatusCode
 	}
+	info["error"] = err.Error()
 	var openAPIErr *testselection.GenericOpenAPIError
 	if errors.As(err, &openAPIErr) {
 		info["response_body"] = string(openAPIErr.Body())
 	}
-	grip.Error(ctx, message.WrapError(err, info))
+	grip.Error(ctx, info)
 }
 
 // wrapTSSError wraps test selection service errors with the response body in the message. Callers handle logging and adding context.
