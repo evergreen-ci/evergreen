@@ -86,8 +86,7 @@ func (s *logServiceV0) Append(ctx context.Context, logName string, sequence int,
 		err = s.bucket.Put(ctx, key, bytes.NewReader(rawLines))
 	}
 	if err != nil {
-		// Bytes that hit the wire are billed even when the upload errors; preserve the count from pail.
-		return uploadedBytes, puts, errors.Wrap(err, "writing log chunk to bucket")
+		return 0, puts, errors.Wrap(err, "writing log chunk to bucket")
 	}
 
 	return uploadedBytes, puts, nil
