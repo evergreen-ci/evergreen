@@ -70,7 +70,9 @@ func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model
 		Branch     string
 		ConfigFile string
 	}
-	configDownloaded := map[projectRepo]bool{}
+	// Maps a repo+config key to the downloaded YAML content so that projects sharing
+	// the same config file get their own output file without a redundant download.
+	configCache := map[projectRepo][]byte{}
 	for _, p := range projects {
 		if !p.Enabled && !includeDisabled {
 			continue
@@ -81,30 +83,30 @@ func fetchAndWriteConfigs(ctx context.Context, c *legacyClient, projects []model
 			Branch:     p.Branch,
 			ConfigFile: p.RemotePath,
 		}
-		if exists := configDownloaded[repo]; exists {
-			grip.Infof(ctx, "Configuration for project '%s' already downloaded", p.Identifier)
-			continue
-		}
-		grip.Infof(ctx, "Downloading configuration for '%s'", p.Identifier)
-		versions, err := c.GetRecentVersions(p.Id)
-		if err != nil {
-			catcher.Wrapf(err, "fetching recent versions for '%s'", p.Identifier)
-			continue
-		}
-		if len(versions) == 0 {
-			grip.Warningf(ctx, "project '%s' has no versions; skipping", p.Identifier)
-			continue
+		var config []byte
+		if cached, exists := configCache[repo]; exists {
+			grip.Infof(ctx, "Reusing already-downloaded configuration for project '%s'", p.Identifier)
+			config = cached
+		} else {
+			grip.Infof(ctx, "Downloading configuration for '%s'", p.Identifier)
+			versions, err := c.GetRecentVersions(p.Id)
+			if err != nil {
+				catcher.Wrapf(err, "fetching recent versions for '%s'", p.Identifier)
+				continue
+			}
+			if len(versions) == 0 {
+				catcher.Errorf("WARNING: project '%s' has no versions", p.Identifier)
+				continue
+			}
+			config, err = c.GetConfig(versions[0])
+			if err != nil {
+				catcher.Wrapf(err, "fetching config for project '%s', version '%s'", p.Identifier, versions[0])
+				continue
+			}
+			configCache[repo] = config
 		}
 
-		config, err := c.GetConfig(versions[0])
-		if err != nil {
-			catcher.Wrapf(err, "fetching config for project '%s', version '%s'", p.Identifier, versions[0])
-			continue
-		}
-		configDownloaded[repo] = true
-
-		err = os.WriteFile(filepath.Join(directory, p.Identifier+".yml"), config, 0644)
-		if err != nil {
+		if err := os.WriteFile(filepath.Join(directory, p.Identifier+".yml"), config, 0644); err != nil {
 			catcher.Wrapf(err, "writing configuration for project '%s'", p.Identifier)
 		}
 	}

@@ -202,6 +202,12 @@ func Agent() cli.Command {
 			grip.Warning(ctx, message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
 				"message": "could not set nice on agent process and all of its threads, some threads may proceed with default nice",
 			}))
+			// -900 puts the agent 900 points below any subprocess running at the
+			// default oom_score_adj of 0, so subprocesses are always preferred
+			// OOM targets while the agent remains eligible as a last resort.
+			grip.Warning(ctx, message.WrapError(agentutil.SetOOMScoreAdj(-900), message.Fields{
+				"message": "could not set oom_score_adj on agent process, agent may be targeted by the OOM killer",
+			}))
 
 			err = agt.Start(ctx)
 			if err != nil {
