@@ -15,14 +15,14 @@ const (
 	// User is the generic user representing the Evergreen application as a
 	// whole entity. If there's a more specific user performing an operation,
 	// prefer to use that instead.
-	User            = "mci"
-	GithubPatchUser = "github_pull_request"
-	GithubMergeUser = "github_merge_queue"
+	User              = "mci"
+	GithubPatchUser   = "github_pull_request"
+	GithubMergeUser   = "github_merge_queue"
+	PeriodicBuildUser = "periodic_build_user"
+	ParentPatchUser   = "parent_patch"
 	// GitHubSageBotLogin is the GitHub login for mongodb-sage-bot, which sets
 	// the PR assignee as the intended human author of the PR.
 	GitHubSageBotLogin = "mongodb-sage-bot[bot]"
-	PeriodicBuildUser  = "periodic_build_user"
-	ParentPatchUser    = "parent_patch"
 
 	HostRunning       = "running"
 	HostTerminated    = "terminated"
