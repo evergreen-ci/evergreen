@@ -2,17 +2,15 @@ package container
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -252,10 +250,10 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 const imagePullTimeout = 5 * time.Minute
 
 // ensureImage pulls the image if it is not already present locally.
-// It uses a dedicated timeout so a slow or hung pull doesn't silently block
-// the task context. It also decodes the pull response stream to surface
-// authentication or registry errors that Docker reports in-band rather than
-// as a top-level error return.
+// It shells out to `docker pull` rather than using the Go Docker API so that
+// credential helpers configured in ~/.docker/config.json (e.g. ecr-login for
+// ECR) are invoked automatically. The Go Docker API requires explicit auth
+// credentials to be passed in and does not invoke credential helpers itself.
 func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.Journaler) error {
 	_, _, err := cli.ImageInspectWithRaw(ctx, img)
 	if err == nil {
@@ -270,43 +268,17 @@ func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.J
 		"image":   img,
 	})
 
-	reader, err := cli.ImagePull(pullCtx, img, image.PullOptions{})
+	out, err := exec.CommandContext(pullCtx, "docker", "pull", img).CombinedOutput()
 	if err != nil {
+		if pullCtx.Err() != nil {
+			return errors.Wrapf(pullCtx.Err(), "pulling image '%s'", img)
+		}
+		// When docker is not in PATH, out is empty; fall back to wrapping err
+		// directly so the caller sees the real cause rather than a blank message.
+		if outStr := strings.TrimSpace(string(out)); outStr != "" {
+			return errors.Errorf("pulling image '%s': %s", img, outStr)
+		}
 		return errors.Wrapf(err, "pulling image '%s'", img)
-	}
-	defer reader.Close()
-
-	// Docker streams pull progress and errors as newline-delimited JSON.
-	// ImagePull only returns a top-level error for connection failures; auth
-	// errors and "image not found" come through in the stream as JSONMessage
-	// objects. We use jsonmessage.JSONMessage (the canonical SDK type) which
-	// reads both the current errorDetail field and the legacy top-level error
-	// string, so errors from older daemon versions are not silently swallowed.
-	// We loop until io.EOF rather than dec.More() because More() returns false
-	// on context expiry without propagating the error, making a timed-out pull
-	// indistinguishable from a successful one.
-	dec := json.NewDecoder(reader)
-	for {
-		var msg jsonmessage.JSONMessage
-		if decErr := dec.Decode(&msg); decErr != nil {
-			if decErr == io.EOF {
-				break // Stream ended cleanly.
-			}
-			// If the timeout fired mid-decode, report that as the root cause
-			// rather than a confusing JSON syntax error.
-			if pullCtx.Err() != nil {
-				return errors.Wrapf(pullCtx.Err(), "pulling image '%s'", img)
-			}
-			return errors.Wrap(decErr, "decoding pull response")
-		}
-		if msg.Error != nil {
-			return errors.Wrapf(msg.Error, "pulling image '%s'", img)
-		}
-		// Fall back to the deprecated top-level error string for older daemons
-		// that do not populate the errorDetail field.
-		if msg.ErrorMessage != "" {
-			return errors.Errorf("pulling image '%s': %s", img, msg.ErrorMessage)
-		}
 	}
 
 	logInfo(ctx, log, message.Fields{
