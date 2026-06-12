@@ -174,17 +174,23 @@ func (uis *UIServer) complexityLimit(next http.HandlerFunc) http.HandlerFunc {
 
 		complexity, err := strconv.Atoi(queryComplexity)
 
-		if complexity > complexityLimit {
-			w.Header().Set(evergreen.GraphQLComplexityExceededHeader, "true")
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("query complexity %d exceeds limit of %d", complexity, complexityLimit))
-			return
-		}
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "converting query complexity"))
 			return
 		}
+		if complexity <= complexityLimit {
+			next(w, r)
+			return
+		}
 
-		next(w, r)
+		w.Header().Set(evergreen.GraphQLComplexityExceededHeader, "true")
+		flags, _ := evergreen.GetServiceFlags(ctx)
+		if flags != nil && flags.GraphQLComplexityLimiterDisabled {
+			next(w, r)
+			return
+		}
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("query complexity %d exceeds limit of %d", complexity, complexityLimit))
+
 	}
 }
 
