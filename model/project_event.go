@@ -123,11 +123,9 @@ type ProjectChangeEvent struct {
 }
 
 // RedactSecrets redacts project secrets from a project change event. Project
-// variables that are not changed are cleared; project variables that are changed
-// are replaced with redacted before/after placeholders. Webhook secrets and
-// Authorization headers follow the same placeholder logic, but unmodified values
-// use evergreen.RedactedValue rather than empty string to indicate the field
-// exists and was not modified.
+// variables that are not changed are cleared and project variables that are
+// changed are replaced with redacted placeholders. Webhook secrets and
+// Authorization headers are always replaced with a redacted placeholder.
 func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
@@ -250,8 +248,7 @@ func getRedactedSubscriptionsCopy(subscriptions []event.Subscription, modifiedID
 		redacted := *ws
 		redacted.Headers = make([]event.WebhookHeader, len(ws.Headers))
 		copy(redacted.Headers, ws.Headers)
-		_, isModified := modifiedIDs[result[i].ID]
-		redactWebhook(&redacted, isModified, placeholder)
+		redactWebhook(&redacted, placeholder)
 		result[i].Subscriber.Target = &redacted
 	}
 	return result
@@ -271,22 +268,14 @@ func buildWebhookSubscribers(subscriptions []event.Subscription) map[string]*eve
 	return result
 }
 
-// redactWebhook replaces the webhook secret and Authorization header with a diff-aware placeholder.
-func redactWebhook(ws *event.WebhookSubscriber, isModified bool, placeholder string) {
+// redactWebhook replaces the webhook secret and Authorization header with the given placeholder.
+func redactWebhook(ws *event.WebhookSubscriber, placeholder string) {
 	if len(ws.Secret) > 0 {
-		if isModified {
-			ws.Secret = []byte(placeholder)
-		} else {
-			ws.Secret = []byte(evergreen.RedactedValue)
-		}
+		ws.Secret = []byte(placeholder)
 	}
 	for i := range ws.Headers {
 		if ws.Headers[i].Key == "Authorization" {
-			if isModified {
-				ws.Headers[i].Value = placeholder
-			} else {
-				ws.Headers[i].Value = evergreen.RedactedValue
-			}
+			ws.Headers[i].Value = placeholder
 		}
 	}
 }

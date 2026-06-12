@@ -294,7 +294,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
 	s.Require().True(ok)
 	s.Require().NotNil(eventData)
 
-	for _, settingsEvent := range []ProjectSettingsEvent{eventData.Before, eventData.After} {
+	checkRedacted := func(settingsEvent ProjectSettingsEvent, expectedRedactedValue string) {
 		var foundWebhook bool
 		for _, sub := range settingsEvent.Subscriptions {
 			if sub.Subscriber.Type != event.EvergreenWebhookSubscriberType {
@@ -304,15 +304,17 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
 			webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber)
 			s.Require().True(ok)
 			s.Require().NotNil(webhookSub)
-			s.Equal(evergreen.RedactedValue, string(webhookSub.Secret), "unmodified webhook secret should be redacted")
+			s.Equal(expectedRedactedValue, string(webhookSub.Secret), "unmodified webhook secret should be redacted")
 			for _, header := range webhookSub.Headers {
 				if header.Key == "Authorization" {
-					s.Equal(evergreen.RedactedValue, header.Value, "unmodified Authorization header should be redacted")
+					s.Equal(expectedRedactedValue, header.Value, "unmodified Authorization header should be redacted")
 				}
 			}
 		}
 		s.True(foundWebhook, "should have found webhook subscription")
 	}
+	checkRedacted(eventData.Before, evergreen.RedactedBeforeValue)
+	checkRedacted(eventData.After, evergreen.RedactedAfterValue)
 }
 
 func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
