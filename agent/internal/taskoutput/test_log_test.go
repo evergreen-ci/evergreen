@@ -215,8 +215,7 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 }
 
 func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	comm := client.NewMock("url")
 
@@ -241,7 +240,7 @@ func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
 
 		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"symlink.log"}})
 		require.NoError(t, err)
-		defer func() { assert.NoError(t, it.Close()) }()
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
 		var persistedLines []string
 		for it.Next() {
 			persistedLines = append(persistedLines, it.Item().Data)
@@ -259,7 +258,7 @@ func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
 
 		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"broken.log"}})
 		require.NoError(t, err)
-		defer func() { assert.NoError(t, it.Close()) }()
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
 		assert.False(t, it.Next(), "broken symlink should produce no ingested lines")
 		require.NoError(t, it.Err())
 	})
@@ -274,7 +273,7 @@ func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
 
 		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"dir_link"}})
 		require.NoError(t, err)
-		defer func() { assert.NoError(t, it.Close()) }()
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
 		assert.False(t, it.Next(), "directory symlink should not produce any ingested log content")
 		require.NoError(t, it.Err())
 

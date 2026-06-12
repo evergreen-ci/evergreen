@@ -118,8 +118,6 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 			return nil
 		}
 
-		h.logFileCount++
-
 		fileInfo, err := info.Info()
 		if err != nil {
 			h.logger.Execution().Warning(ctx, errors.Wrap(err, "getting test log file info"))
@@ -130,7 +128,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		if info.Type()&fs.ModeSymlink != 0 {
 			targetInfo, err := os.Stat(path)
 			if err != nil {
-				h.logger.Execution().Warning(ctx, errors.Wrapf(err, "getting test log symlink target info for '%s'", path))
+				h.logger.Task().Warning(ctx, errors.Wrapf(err, "getting test log symlink target info for '%s'", path))
 				return nil
 			}
 			if targetInfo.IsDir() {
@@ -139,6 +137,8 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 			}
 			fileInfo = targetInfo
 		}
+
+		h.logFileCount++
 
 		fileSize := fileInfo.Size()
 		fileSizes = append(fileSizes, fileSize)
