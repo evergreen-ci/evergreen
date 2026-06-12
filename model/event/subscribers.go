@@ -124,12 +124,13 @@ func (s *Subscriber) Validate() error {
 type WebhookSubscriber struct {
 	URL string `bson:"url"`
 	// omitempty (not bson:"-") preserves the DB fallback for subscriptions not yet migrated to Parameter Store.
-	Secret          []byte          `bson:"secret,omitempty"`
-	SecretParameter string          `bson:"secret_parameter,omitempty"`
-	Retries         int             `bson:"retries"`
-	MinDelayMS      int             `bson:"min_delay_ms"`
-	TimeoutMS       int             `bson:"timeout_ms"`
-	Headers         []WebhookHeader `bson:"headers"`
+	Secret                       []byte          `bson:"secret,omitempty"`
+	SecretParameter              string          `bson:"secret_parameter,omitempty"`
+	AuthorizationHeaderParameter string          `bson:"authorization_header_parameter,omitempty"`
+	Retries                      int             `bson:"retries"`
+	MinDelayMS                   int             `bson:"min_delay_ms"`
+	TimeoutMS                    int             `bson:"timeout_ms"`
+	Headers                      []WebhookHeader `bson:"headers"`
 }
 
 type WebhookHeader struct {
@@ -174,6 +175,16 @@ func (s *WebhookSubscriber) GetHeader(key string) string {
 		}
 	}
 	return ""
+}
+
+func (s *WebhookSubscriber) setHeader(key, value string) {
+	for i := range s.Headers {
+		if s.Headers[i].Key == key {
+			s.Headers[i].Value = value
+			return
+		}
+	}
+	s.Headers = append(s.Headers, WebhookHeader{Key: key, Value: value})
 }
 
 type JIRAIssueSubscriber struct {
