@@ -1,0 +1,17 @@
+{
+  "tasks": [
+    {
+      "_id": "display_task",
+      "execution": 1,
+      "branch": "sandbox_project_id",
+      "display_only": true,
+      "execution_tasks": ["exec1"]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
+    }
+  ]
+}

@@ -137,15 +137,8 @@ func (r *versionResolver) Cost(ctx context.Context, obj *restModel.APIVersion) (
 	if obj.Cost == nil {
 		return nil, nil
 	}
-	rounded := cost.Cost{
-		AdjustedEC2Cost:               cost.RoundCost(obj.Cost.AdjustedEC2Cost),
-		AdjustedEBSThroughputCost:     cost.RoundCost(obj.Cost.AdjustedEBSThroughputCost),
-		AdjustedEBSStorageCost:        cost.RoundCost(obj.Cost.AdjustedEBSStorageCost),
-		AdjustedS3ArtifactPutCost:     cost.RoundCost(obj.Cost.AdjustedS3ArtifactPutCost),
-		AdjustedS3LogPutCost:          cost.RoundCost(obj.Cost.AdjustedS3LogPutCost),
-		AdjustedS3ArtifactStorageCost: cost.RoundCost(obj.Cost.AdjustedS3ArtifactStorageCost),
-		AdjustedS3LogStorageCost:      cost.RoundCost(obj.Cost.AdjustedS3LogStorageCost),
-	}
+	rounded := obj.Cost.RoundedBase()
+	rounded.Total = cost.RoundCost(obj.Cost.AdjustedTotal())
 	return &rounded, nil
 }
 
@@ -495,7 +488,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			Revision: v.TriggerSHA,
 		}
 	}
-	upstreamProjectRef, err := model.FindBranchProjectRef(ctx, projectID)
+	upstreamProjectRef, err := model.FindBranchProjectRefSecondary(ctx, projectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream project '%s': %s", projectID, err.Error()))
 	}
@@ -674,7 +667,7 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRef(ctx, obj.Identifier, obj.Id, false)
+	projectRef, err := model.FindMergedProjectRefSecondary(ctx, obj.Identifier, obj.Id, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()))
 	}

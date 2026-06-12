@@ -166,9 +166,7 @@ func (tr TestResult) Duration() time.Duration {
 // It is not advisable to set URL or URLRaw with the output of this function as
 // those fields are reserved for external logs and used to determine URL
 // generation for other log viewers.
-func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogViewer) string {
-	root := env.Settings().Api.URL
-	parsleyURL := env.Settings().Ui.ParsleyUrl
+func (tr TestResult) GetLogURL(root, parsleyURL string, viewer evergreen.LogViewer) string {
 	deprecatedLogkeeperURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
 
 	switch viewer {

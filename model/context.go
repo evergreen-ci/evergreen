@@ -27,7 +27,7 @@ type Context struct {
 
 // LoadContext builds a Context from the set of given resource ID's
 // by inferring all the relationships between them - for example, e.g. loading a project based on
-// the the task, or the version based on the patch, etc.
+// the task, or the version based on the patch, etc.
 func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, projectId string) (Context, error) {
 	c := Context{}
 

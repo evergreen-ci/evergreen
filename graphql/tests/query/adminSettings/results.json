@@ -352,12 +352,26 @@
               "projectTasksPairs": [
                 {
                   "projectId": "evergreen",
+                  "displayName": "Evergreen (Project)",
                   "allowedTasks": ["compile", "test"],
                   "allowedBVs": ["windows", "ubuntu1604"]
                 },
                 {
                   "projectId": "spruce",
+                  "displayName": "spruce (Project)",
                   "allowedTasks": ["lint", "storybook"],
+                  "allowedBVs": []
+                },
+                {
+                  "projectId": "evergreen_repo",
+                  "displayName": "Evergreen Repo (Repo)",
+                  "allowedTasks": ["check_codegen"],
+                  "allowedBVs": []
+                },
+                {
+                  "projectId": "spruce_repo",
+                  "displayName": "evergreen-ci/spruce (Repo)",
+                  "allowedTasks": ["check_codegen"],
                   "allowedBVs": []
                 }
               ]
@@ -598,7 +612,11 @@
               { "name": "slack_notifications_disabled", "enabled": false },
               { "name": "email_notifications_disabled", "enabled": false },
               { "name": "webhook_notifications_disabled", "enabled": false },
-              { "name": "github_status_api_disabled", "enabled": false }
+              { "name": "github_status_api_disabled", "enabled": false },
+              { "name": "secondary_reads_disabled", "enabled": false },
+              { "name": "background_command_failure_enabled", "enabled": false },
+              { "name": "api_rate_limiter_disabled", "enabled": false },
+              { "name": "graphql_complexity_limiter_disabled", "enabled": false }
             ]
           }
         }

@@ -62,12 +62,16 @@ type TaskConfig struct {
 	InternalRedactions *agentutil.DynamicExpansions
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
-	GithubPatchData    thirdparty.GithubPatch
-	GithubMergeData    thirdparty.GithubMergeGroup
-	Timeout            Timeout
-	TaskOutput         evergreen.S3Credentials
-	ModulePaths        map[string]string
-	S3Usage            *s3usage.S3Usage
+	// GithubPatchData stores GitHub PR patch metadata.
+	GithubPatchData thirdparty.GithubPatch
+	// GithubMergeData stores GitHub merge queue metadata.
+	GithubMergeData thirdparty.GithubMergeGroup
+	// GitHubParentPRCheckout stores parent PR checkout metadata.
+	GitHubParentPRCheckout *patch.GitHubParentPRCheckout
+	Timeout                Timeout
+	TaskOutput             evergreen.S3Credentials
+	ModulePaths            map[string]string
+	S3Usage                *s3usage.S3Usage
 	// DevprodOwnedAWSAccountIDs contains the AWS account IDs of the accounts that are
 	// owned by Devprod that we want to calculate s3 costs for.
 	DevprodOwnedAWSAccountIDs []string
@@ -82,11 +86,14 @@ type TaskConfig struct {
 	HasTestResults bool
 	// HasFailingTestResult is true if the task has sent at least one test
 	// result and at least one of those tests failed.
-	HasFailingTestResult bool
-	TaskGroup            *model.TaskGroup
-	CommandCleanups      []CommandCleanup
-	MaxExecTimeoutSecs   int
-	PSLoggingDisabled    bool
+	HasFailingTestResult            bool
+	TaskGroup                       *model.TaskGroup
+	CommandCleanups                 []CommandCleanup
+	MaxExecTimeoutSecs              int
+	PSLoggingDisabled               bool
+	BackgroundCommandFailureEnabled bool
+	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
+	BackgroundFailures chan<- error
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
@@ -273,6 +280,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	if opts.Patch != nil {
 		taskConfig.GithubPatchData = opts.Patch.GithubPatchData
 		taskConfig.GithubMergeData = opts.Patch.GithubMergeData
+		taskConfig.GitHubParentPRCheckout = opts.Patch.GitHubParentPRCheckout
 		taskConfig.PatchOrVersionDescription = opts.Patch.Description
 	} else if opts.Version != nil {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message
@@ -287,7 +295,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		for _, moduleName := range taskConfig.BuildVariant.Modules {
 			expanded, err := opts.ExpansionsAndVars.Expansions.ExpandString(moduleName)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to expand module '%s'", moduleName)
+				return nil, errors.Wrapf(err, "expanding module '%s'", moduleName)
 			}
 			expandedModules = append(expandedModules, expanded)
 		}

@@ -118,7 +118,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 					"binary data diff, using 0", details[2], details[0])
 				additions = 0
 			} else {
-				return nil, errors.Wrap(err, "Error getting patch additions summary")
+				return nil, errors.Wrap(err, "getting patch additions summary")
 			}
 		}
 
@@ -129,7 +129,7 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []Summary, err error) {
 					"binary data diff, using 0", details[2], details[1])
 				deletions = 0
 			} else {
-				return nil, errors.Wrap(err, "Error getting patch deletions summary")
+				return nil, errors.Wrap(err, "getting patch deletions summary")
 			}
 		}
 

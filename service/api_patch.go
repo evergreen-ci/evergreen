@@ -54,7 +54,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 	if data.GithubAuthor != "" {
 		specifiedUser, err := user.FindByGithubName(ctx, data.GithubAuthor)
 		if err != nil {
-			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for github author '%s'", data.GithubAuthor)
+			return "", http.StatusInternalServerError, errors.Wrapf(err, "looking for github author '%s'", data.GithubAuthor)
 		}
 		if specifiedUser != nil {
 			grip.Info(ctx, message.Fields{
@@ -74,7 +74,7 @@ func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user
 	} else if data.PatchAuthor != "" {
 		specifiedUser, err := user.FindOneById(ctx, data.PatchAuthor)
 		if err != nil {
-			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for author '%s'", data.PatchAuthor)
+			return "", http.StatusInternalServerError, errors.Wrapf(err, "looking for author '%s'", data.PatchAuthor)
 		}
 		if specifiedUser != nil {
 			grip.Info(ctx, message.Fields{
@@ -135,7 +135,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	pref, err := model.FindMergedProjectRef(r.Context(), data.Project, "", true)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "finding project reference '%s'", data.Project))
 		return
 	}
 	if pref == nil {
@@ -234,7 +234,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(err.Error(), units.BuildTasksAndVariantsError) {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 		} else {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "processing patch"))
 		}
 		return
 	}
@@ -308,7 +308,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	patchFileId := mgobson.NewObjectId().Hex()
 	err = db.WriteGridFile(r.Context(), patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed to write patch file to db"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "writing patch file to db"))
 		return
 	}
 
@@ -334,7 +334,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 	n, err := util.GetIntValue(r, "n", 0)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "cannot read value n"))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "reading value n"))
 		return
 	}
 	filterCommitQueue := r.FormValue("filter_commit_queue") == "true"
@@ -345,7 +345,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 	patches, err := patch.Find(r.Context(), query)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrapf(err, "error finding patches for user %s", dbUser.Id))
+			errors.Wrapf(err, "finding patches for user '%s'", dbUser.Id))
 		return
 	}
 	gimlet.WriteJSON(r.Context(), w, patches)

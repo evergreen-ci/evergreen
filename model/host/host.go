@@ -252,21 +252,6 @@ type DockerOptions struct {
 	EnvironmentVars []string `mapstructure:"environment_vars" bson:"environment_vars,omitempty" json:"environment_vars,omitempty"`
 }
 
-// FromDistroSettings loads the Docker container options from the provider
-// settings.
-func (opts *DockerOptions) FromDistroSettings(d distro.Distro, _ string) error {
-	if len(d.ProviderSettingsList) != 0 {
-		bytes, err := d.ProviderSettingsList[0].MarshalBSON()
-		if err != nil {
-			return errors.Wrap(err, "marshalling provider settings into BSON")
-		}
-		if err := bson.Unmarshal(bytes, opts); err != nil {
-			return errors.Wrap(err, "unmarshalling BSON into Docker provider settings")
-		}
-	}
-	return nil
-}
-
 // Validate checks that the settings from the config file are sane.
 func (opts *DockerOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
@@ -2423,6 +2408,21 @@ var StartedByStatusIndex = bson.D{
 	},
 }
 
+// StartedByCreationTimeIndex is the started_by_1_creation_time_1 index, hinted by
+// IdleEphemeralGroupedByDistroID so its sort by creation_time is served by the index rather than a
+// blocking in-memory sort. status is intentionally omitted: it's matched with an $or, so keying it
+// between started_by and creation_time would break the index sort.
+var StartedByCreationTimeIndex = bson.D{
+	{
+		Key:   StartedByKey,
+		Value: 1,
+	},
+	{
+		Key:   CreateTimeKey,
+		Value: 1,
+	},
+}
+
 // DistroIdStatusIndex is the distro_id_1_status_1 index.
 var DistroIdStatusIndex = bson.D{
 	{
@@ -2789,7 +2789,7 @@ func (hosts HostGroup) ProvisioningHosts() HostGroup {
 	out := HostGroup{}
 
 	for _, h := range hosts {
-		if utility.StringSliceContains(evergreen.ProvisioningHostStatus, h.Status) {
+		if utility.StringSliceContains(evergreen.ProvisioningHostStatus, h.Status) && h.RunningTask == "" {
 			out = append(out, h)
 		}
 	}
@@ -3173,6 +3173,15 @@ func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 		NumUsersWithVolumes:   volRes[0].NumUsersWithVolumes,
 		InstanceTypes:         instanceTypes,
 	}, nil
+}
+
+// CountDebugSpawnhosts returns the number of active spawn hosts in debug mode.
+func CountDebugSpawnhosts(ctx context.Context) (int, error) {
+	return Count(ctx, bson.M{
+		UserHostKey: true,
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		IsDebugKey:  true,
+	})
 }
 
 // CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated

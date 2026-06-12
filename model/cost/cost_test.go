@@ -37,7 +37,7 @@ func TestSumPerChildVersionAdjustedTotals(t *testing.T) {
 	})
 }
 
-func TestCostTotalAdjusted(t *testing.T) {
+func TestCostAdjustedTotal(t *testing.T) {
 	c := Cost{
 		AdjustedEC2Cost:               1,
 		AdjustedEBSThroughputCost:     2,
@@ -48,11 +48,12 @@ func TestCostTotalAdjusted(t *testing.T) {
 		AdjustedS3LogStorageCost:      0.4,
 		OnDemandEC2Cost:               100,
 	}
-	assert.InDelta(t, 8.0, c.TotalAdjusted(), 1e-9)
+	assert.InDelta(t, 8.0, c.AdjustedTotal(), 1e-9)
 
 	withChildren := c
 	withChildren.ChildPatchesTotalCost = 2
-	assert.InDelta(t, 10.0, withChildren.TotalAdjusted(), 1e-9)
+	assert.InDelta(t, 8.0, withChildren.AdjustedTotal(), 1e-9)
+	assert.InDelta(t, 10.0, withChildren.AdjustedTotal()+withChildren.ChildPatchesTotalCost, 1e-9)
 }
 
 func TestRoundCost(t *testing.T) {
@@ -69,8 +70,13 @@ func TestRoundCost(t *testing.T) {
 	t.Run("SmallValueRoundsUpToTwoSigFigs", func(t *testing.T) {
 		assert.Equal(t, 0.0058, RoundCost(0.005819905908980206))
 	})
-	t.Run("ValueAboveOneCentRoundsToTwoDecimalPlaces", func(t *testing.T) {
-		// Values >= 0.01 are rounded to 2 decimal places.
+	t.Run("ValueInSubDimeRangeRoundsToTwoSigFigs", func(t *testing.T) {
+		assert.Equal(t, 0.018, RoundCost(0.017745393484928533))
+	})
+	t.Run("ValueBetweenOneCentAndOneDimeRoundsToTwoSigFigs", func(t *testing.T) {
+		assert.Equal(t, 0.025, RoundCost(0.0249999))
+	})
+	t.Run("ValueAboveOneDimeRoundsToTwoDecimalPlaces", func(t *testing.T) {
 		assert.Equal(t, 1.23, RoundCost(1.2345678))
 	})
 }
@@ -132,7 +138,7 @@ func TestCostJSONIncludesEBSThroughputFieldsWhenZero(t *testing.T) {
 
 func TestCostJSONSerializesTotalWhenSet(t *testing.T) {
 	c := Cost{OnDemandEC2Cost: 1, AdjustedEC2Cost: 0.5}
-	c.Total = c.TotalAdjusted()
+	c.Total = c.AdjustedTotal()
 	data, err := json.Marshal(c)
 	require.NoError(t, err)
 	var m map[string]interface{}

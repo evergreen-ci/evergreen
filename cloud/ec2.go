@@ -256,6 +256,10 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	ctx, span := tracer.Start(ctx, "spawnOnDemandHost")
 	defer span.End()
 
+	if err := terminatePreexistingInstance(ctx, m.client, h.Id); err != nil {
+		return errors.Wrap(err, "terminating pre-existing instance from prior attempt")
+	}
+
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),
@@ -1250,6 +1254,12 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	volumeTags := []types.Tag{
 		{Key: aws.String(evergreen.TagOwner), Value: aws.String(volume.CreatedBy)},
 		{Key: aws.String(evergreen.TagExpireOn), Value: aws.String(expireInDays(evergreen.SpawnHostExpireDays))},
+	}
+	if volume.Host != "" {
+		volumeTags = append(volumeTags, types.Tag{Key: aws.String(evergreen.TagHostName), Value: aws.String(volume.Host)})
+		// Clear before inserting so the DB field isn't left as the intent host tag;
+		// AddVolumeToHost sets volume.Host to the real host ID after attachment.
+		volume.Host = ""
 	}
 	input := &ec2.CreateVolumeInput{
 		AvailabilityZone: aws.String(volume.AvailabilityZone),

@@ -521,6 +521,26 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
 			s.Equal([]string{"diffTask1"}, currentPatchDoc.Tasks)
 		},
+		"MainlineVersionIDBuildsPerVariantMapping": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "v1", false)
+			s.NoError(err)
+
+			s.Equal([]string{"bv1", "bv2"}, currentPatchDoc.BuildVariants)
+			s.Equal([]string{"et1", "t1", "t2", "tgt1", "tgt2", "tgt4"}, currentPatchDoc.Tasks)
+			s.Require().Len(currentPatchDoc.VariantsTasks, 2)
+			s.Equal(patch.VariantTasks{Variant: "bv1", Tasks: []string{"t1", "t2", "tgt1", "tgt2", "tgt4"}}, currentPatchDoc.VariantsTasks[0])
+			s.Equal(patch.VariantTasks{Variant: "bv2", Tasks: []string{"et1"}}, currentPatchDoc.VariantsTasks[1])
+		},
+		"MainlineVersionIDWithFailedOnlyErrors": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "v1", true)
+			s.Require().Error(err)
+			s.Contains(err.Error(), "not supported")
+		},
+		"MainlineVersionIDWithNoActivatedTasksErrors": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "nonexistent_version", false)
+			s.Require().Error(err)
+			s.Contains(err.Error(), "no activated tasks found")
+		},
 	} {
 		s.NoError(db.ClearCollections(task.Collection))
 		t1 := task.Task{
@@ -1753,6 +1773,159 @@ tasks:
 	s.Equal("my-task", dbChildPatch.VariantsTasks[0].Tasks[0])
 }
 
+func (s *PatchIntentUnitsSuite) TestBuildTriggerPatchDocGithubPRParentModule() {
+	latestVersion := model.Version{
+		Id:         "childProj-pr-module-version",
+		Identifier: "childProj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	s.Require().NoError(latestVersion.Insert(s.ctx))
+
+	latestVersionParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
+buildvariants:
+- name: my-build-variant
+  display_name: my-build-variant
+  run_on:
+    - some-distro
+  tasks:
+    - my-task
+tasks:
+- name: my-task`), latestVersionParserProject))
+	latestVersionParserProject.Id = latestVersion.Id
+	s.Require().NoError(latestVersionParserProject.Insert(s.ctx))
+
+	parentPatch := &patch.Patch{
+		Id:              mgobson.NewObjectId(),
+		Project:         s.project,
+		Author:          evergreen.GithubPatchUser,
+		Githash:         s.hash,
+		GithubPatchData: s.githubPatchData,
+		Patches: []patch.ModulePatch{{
+			Githash: s.hash,
+			PatchSet: patch.PatchSet{
+				PatchFileId: "parent-patch-file-id",
+				Summary: []thirdparty.Summary{{
+					Name:      "file",
+					Additions: 1,
+				}},
+			},
+		}},
+	}
+	s.Require().NoError(parentPatch.Insert(s.ctx))
+
+	intent := patch.NewTriggerIntent(patch.TriggerIntentOptions{
+		ParentID:        parentPatch.Id.Hex(),
+		ParentProjectID: s.project,
+		ProjectID:       "childProj",
+		ParentAsModule:  "module1",
+		Requester:       evergreen.GithubPRRequester,
+		Author:          evergreen.ParentPatchUser,
+		Definitions: []patch.PatchTriggerDefinition{{
+			Alias:        "patch-alias",
+			ChildProject: "childProj",
+			TaskSpecifiers: []patch.TaskSpecifier{{
+				VariantRegex: "my-build-variant",
+				TaskRegex:    "my-task",
+			}},
+		}},
+	})
+
+	childPatch := intent.NewPatch()
+	j, ok := NewPatchIntentProcessor(s.env, mgobson.ObjectIdHex(intent.ID()), intent).(*patchIntentProcessor)
+	s.Require().True(ok)
+	_, _, err := j.buildTriggerPatchDoc(s.ctx, childPatch)
+	s.NoError(err)
+	s.Zero(childPatch.GithubPatchData)
+	s.Require().NotNil(childPatch.GitHubParentPRCheckout)
+	s.Equal(s.githubPatchData.PRNumber, childPatch.GitHubParentPRCheckout.PRNumber)
+	s.Equal(s.githubPatchData.HeadHash, childPatch.GitHubParentPRCheckout.HeadHash)
+	s.Equal("module1", childPatch.GitHubParentPRCheckout.ForModule)
+	s.False(childPatch.GitHubParentPRCheckout.ForSource)
+	s.Require().Len(childPatch.Patches, 1)
+	s.Equal("module1", childPatch.Patches[0].ModuleName)
+	s.Empty(childPatch.Patches[0].PatchSet.Patch)
+	s.Empty(childPatch.Patches[0].PatchSet.PatchFileId)
+	s.Require().Len(childPatch.Patches[0].PatchSet.Summary, 1)
+}
+
+func (s *PatchIntentUnitsSuite) TestBuildTriggerPatchDocGithubPRParentSameBranch() {
+	latestVersion := model.Version{
+		Id:         "childProj-pr-same-branch-version",
+		Identifier: "childProj",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	s.Require().NoError(latestVersion.Insert(s.ctx))
+
+	latestVersionParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
+buildvariants:
+- name: my-build-variant
+  display_name: my-build-variant
+  run_on:
+    - some-distro
+  tasks:
+    - my-task
+tasks:
+- name: my-task`), latestVersionParserProject))
+	latestVersionParserProject.Id = latestVersion.Id
+	s.Require().NoError(latestVersionParserProject.Insert(s.ctx))
+
+	parentPatch := &patch.Patch{
+		Id:              mgobson.NewObjectId(),
+		Project:         s.project,
+		Author:          evergreen.GithubPatchUser,
+		Githash:         s.hash,
+		GithubPatchData: s.githubPatchData,
+		Patches: []patch.ModulePatch{{
+			Githash: s.hash,
+			PatchSet: patch.PatchSet{
+				PatchFileId: "parent-patch-file-id",
+				Summary: []thirdparty.Summary{{
+					Name:      "file",
+					Additions: 1,
+				}},
+			},
+		}},
+	}
+	s.Require().NoError(parentPatch.Insert(s.ctx))
+
+	intent := patch.NewTriggerIntent(patch.TriggerIntentOptions{
+		ParentID:        parentPatch.Id.Hex(),
+		ParentProjectID: s.project,
+		ProjectID:       "childProj",
+		Requester:       evergreen.GithubPRRequester,
+		Author:          evergreen.ParentPatchUser,
+		Definitions: []patch.PatchTriggerDefinition{{
+			Alias:        "patch-alias",
+			ChildProject: "childProj",
+			TaskSpecifiers: []patch.TaskSpecifier{{
+				VariantRegex: "my-build-variant",
+				TaskRegex:    "my-task",
+			}},
+		}},
+	})
+
+	childPatch := intent.NewPatch()
+	childPatch.Triggers.SameBranchAsParent = true
+	j, ok := NewPatchIntentProcessor(s.env, mgobson.ObjectIdHex(intent.ID()), intent).(*patchIntentProcessor)
+	s.Require().True(ok)
+	_, _, err := j.buildTriggerPatchDoc(s.ctx, childPatch)
+	s.NoError(err)
+	s.Zero(childPatch.GithubPatchData)
+	s.Require().NotNil(childPatch.GitHubParentPRCheckout)
+	s.Equal(s.githubPatchData.PRNumber, childPatch.GitHubParentPRCheckout.PRNumber)
+	s.Equal(s.githubPatchData.HeadHash, childPatch.GitHubParentPRCheckout.HeadHash)
+	s.Empty(childPatch.GitHubParentPRCheckout.ForModule)
+	s.True(childPatch.GitHubParentPRCheckout.ForSource)
+	s.Equal(parentPatch.Githash, childPatch.Githash)
+	s.Require().Len(childPatch.Patches, 1)
+	s.Empty(childPatch.Patches[0].ModuleName)
+	s.Empty(childPatch.Patches[0].PatchSet.Patch)
+	s.Empty(childPatch.Patches[0].PatchSet.PatchFileId)
+	s.Require().Len(childPatch.Patches[0].PatchSet.Summary, 1)
+}
+
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMatchAnyVariantTasks() {
 	roleManager := s.env.RoleManager()
 	childProjScope := gimlet.Scope{
@@ -2306,4 +2479,43 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 			}
 		})
 	}
+}
+
+func TestGitHubStatusRuleTarget(t *testing.T) {
+	projectRef := &model.ProjectRef{
+		Owner:  "project-owner",
+		Repo:   "project-repo",
+		Branch: "project-branch",
+	}
+
+	t.Run("MergeQueuePatchUsesMergeQueueRepository", func(t *testing.T) {
+		j := &patchIntentProcessor{IntentType: patch.GithubMergeIntentType}
+		patchDoc := &patch.Patch{
+			GithubMergeData: thirdparty.GithubMergeGroup{
+				Org:        "merge-owner",
+				Repo:       "merge-repo",
+				BaseBranch: "merge-base-branch",
+			},
+		}
+
+		owner, repo, branch := j.gitHubStatusRuleTarget(patchDoc, projectRef)
+		assert.Equal(t, "merge-owner", owner)
+		assert.Equal(t, "merge-repo", repo)
+		assert.Equal(t, "merge-base-branch", branch)
+	})
+
+	t.Run("GitHubPRPatchUsesExistingPRTarget", func(t *testing.T) {
+		j := &patchIntentProcessor{IntentType: patch.GithubIntentType}
+		patchDoc := &patch.Patch{
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner: "pr-owner",
+				BaseRepo:  "pr-repo",
+			},
+		}
+
+		owner, repo, branch := j.gitHubStatusRuleTarget(patchDoc, projectRef)
+		assert.Equal(t, "pr-owner", owner)
+		assert.Equal(t, "project-repo", repo)
+		assert.Equal(t, "project-branch", branch)
+	})
 }

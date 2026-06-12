@@ -1,0 +1,13 @@
+query {
+  variantQuarantineStatus(projectIdentifier: "sandbox", buildVariant: "ubuntu") {
+    projectIdentifier
+    buildVariant
+    tasks {
+      taskName
+      tests {
+        testName
+        isManuallyQuarantined
+      }
+    }
+  }
+}

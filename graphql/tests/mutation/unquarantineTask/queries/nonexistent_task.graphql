@@ -1,0 +1,5 @@
+mutation {
+  unquarantineTask(opts: { taskId: "nonexistent_task" }) {
+    id
+  }
+}

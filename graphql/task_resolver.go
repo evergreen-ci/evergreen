@@ -29,7 +29,7 @@ func (r *costResolver) Total(ctx context.Context, obj *cost.Cost) (*float64, err
 	if obj == nil {
 		return nil, nil
 	}
-	return utility.ToFloat64Ptr(cost.RoundCost(obj.TotalAdjusted())), nil
+	return utility.ToFloat64Ptr(obj.Total), nil
 }
 
 // AbortInfo is the resolver for the abortInfo field.
@@ -769,15 +769,8 @@ func (r *taskResolver) TaskCost(ctx context.Context, obj *restModel.APITask) (*c
 	if obj.TaskCost == nil {
 		return nil, nil
 	}
-	rounded := cost.Cost{
-		AdjustedEC2Cost:               cost.RoundCost(obj.TaskCost.AdjustedEC2Cost),
-		AdjustedEBSThroughputCost:     cost.RoundCost(obj.TaskCost.AdjustedEBSThroughputCost),
-		AdjustedEBSStorageCost:        cost.RoundCost(obj.TaskCost.AdjustedEBSStorageCost),
-		AdjustedS3ArtifactPutCost:     cost.RoundCost(obj.TaskCost.AdjustedS3ArtifactPutCost),
-		AdjustedS3LogPutCost:          cost.RoundCost(obj.TaskCost.AdjustedS3LogPutCost),
-		AdjustedS3ArtifactStorageCost: cost.RoundCost(obj.TaskCost.AdjustedS3ArtifactStorageCost),
-		AdjustedS3LogStorageCost:      cost.RoundCost(obj.TaskCost.AdjustedS3LogStorageCost),
-	}
+	rounded := obj.TaskCost.RoundedBase()
+	rounded.Total = cost.RoundCost(obj.TaskCost.AdjustedTotal())
 	return &rounded, nil
 }
 
@@ -859,12 +852,17 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
+	settings := evergreen.GetEnvironment().Settings()
+	apiTestArgs := &restModel.APITestArgs{
+		EvergreenBaseURL: settings.Api.URL,
+		ParsleyLogURL:    settings.Ui.ParsleyUrl,
+	}
 	for i, t := range taskResults.Results {
 		apiTest := &restModel.APITest{}
-		if err = apiTest.BuildFromService(t.TaskID); err != nil {
+		if err = apiTest.BuildFromService(t.TaskID, nil); err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
-		if err = apiTest.BuildFromService(&t); err != nil {
+		if err = apiTest.BuildFromService(&t, apiTestArgs); err != nil {
 			return nil, InternalServerError.Send(ctx, err.Error())
 		}
 

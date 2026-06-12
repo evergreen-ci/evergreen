@@ -150,15 +150,24 @@ func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var runningTask *task.Task
 	if foundHost.RunningTask != "" {
-		runningTask, err = task.FindOneIdAndExecution(ctx, foundHost.RunningTask, foundHost.RunningTaskExecution)
+		t, err := task.FindOneIdAndExecution(ctx, foundHost.RunningTask, foundHost.RunningTaskExecution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host's running task '%s' execution '%d'", foundHost.RunningTask, foundHost.RunningTaskExecution))
 		}
-		if runningTask == nil {
+		if t == nil {
 			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("host's running task '%s' execution '%d' not found", foundHost.RunningTask, foundHost.RunningTaskExecution),
 			})
+		}
+		u := MustHaveUser(ctx)
+		if u.HasPermission(ctx, gimlet.PermissionOpts{
+			Resource:      t.Project,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionTasks,
+			RequiredLevel: evergreen.TasksView.Value,
+		}) {
+			runningTask = t
 		}
 	}
 	hostModel := &model.APIHost{}
@@ -287,12 +296,28 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 		tasksById[t.Id] = t
 	}
 
+	var projectPermitted map[string]bool
+	if len(taskIds) > 0 {
+		u := MustHaveUser(ctx)
+		projectPermitted = make(map[string]bool)
+		for _, t := range tasks {
+			if _, checked := projectPermitted[t.Project]; !checked {
+				projectPermitted[t.Project] = u.HasPermission(ctx, gimlet.PermissionOpts{
+					Resource:      t.Project,
+					ResourceType:  evergreen.ProjectResourceType,
+					Permission:    evergreen.PermissionTasks,
+					RequiredLevel: evergreen.TasksView.Value,
+				})
+			}
+		}
+	}
+
 	for _, h := range hosts {
 		apiHost := &model.APIHost{}
 		var runningTask *task.Task
 		if h.RunningTask != "" {
 			t, ok := tasksById[h.RunningTask]
-			if ok {
+			if ok && projectPermitted[t.Project] {
 				runningTask = &t
 			}
 		}
@@ -480,7 +505,7 @@ func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
 
 	info := apimodels.DisableInfo{}
 	if err := utility.ReadJSON(body, &info); err != nil {
-		return errors.Wrap(err, "unable to parse request body")
+		return errors.Wrap(err, "parsing request body")
 	}
 	h.reason = info.Reason
 

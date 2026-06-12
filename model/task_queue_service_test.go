@@ -1442,7 +1442,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	// (6) The remaining 19 standalone tasks
 	//////////////////////////////////////////////////////////////////////////////
 
-	// Make a request for another task, passing an "empty" TaskSpec{} - the returned task should should be TaskQueueItem.Id 0 and be a standalone task.
+	// Make a request for another task, passing an "empty" TaskSpec{} - the returned task should be TaskQueueItem.Id 0 and be a standalone task.
 	spec = TaskSpec{}
 	next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 	s.Equal("0", next.Id)

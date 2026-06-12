@@ -87,9 +87,10 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		projectRef, err := model.FindBranchProjectRef(r.Context(), projectId)
+		projectRef, err := model.FindBranchProjectRefSecondary(r.Context(), projectId)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 		if projectRef == nil {
 			as.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
@@ -99,7 +100,7 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 		_, p, _, err := model.FindLatestVersionWithValidProject(r.Context(), projectRef.Id, false)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrap(err, "Error getting patch"))
+				errors.Wrap(err, "getting patch"))
 			return
 		}
 		if p == nil {
@@ -156,7 +157,7 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 
 // listProjects returns the projects merged with the repo settings
 func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
-	allProjs, err := model.FindAllMergedTrackedProjectRefs(r.Context())
+	allProjs, err := model.FindAllMergedTrackedProjectRefsSecondary(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

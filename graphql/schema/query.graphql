@@ -71,8 +71,13 @@ type Query {
     filters: [TestFilter!]!
   ): [TaskTestResultSample!]
 
+  # test selection
+  variantQuarantineStatus(
+    projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
+    buildVariant: String!
+  ): VariantQuarantineStatus!
+
   # user
-  cursorSettings: CursorSettings
   myPublicKeys: [PublicKey!]!
   user(userId: String): User!
   userConfig: UserConfig

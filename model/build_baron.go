@@ -57,7 +57,7 @@ func (mss *MultiSourceSuggest) Suggest(ctx context.Context, t *task.Task) ([]thi
 // Project page settings takes precedence, otherwise fallback to project config yaml.
 // Returns build baron settings and ok if found.
 func GetBuildBaronSettings(ctx context.Context, projectId string, version string) (evergreen.BuildBaronSettings, bool) {
-	projectRef, err := FindMergedProjectRef(ctx, projectId, version, true)
+	projectRef, err := FindMergedProjectRefSecondary(ctx, projectId, version, true)
 	if err != nil || projectRef == nil {
 		return evergreen.BuildBaronSettings{}, false
 	}

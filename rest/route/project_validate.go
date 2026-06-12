@@ -44,7 +44,7 @@ func (v *validateProjectHandler) Parse(ctx context.Context, r *http.Request) err
 
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		return errors.Wrap(err, "Error reading request body")
+		return errors.Wrap(err, "reading request body")
 	}
 
 	if !json.Valid(bytes) {
@@ -80,7 +80,7 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		gimlet.NewJSONErrorResponse(validator.ValidationErrors{validationErr})
 	}
 
-	projectRef, err := model.FindMergedProjectRef(ctx, v.input.ProjectID, "", false)
+	projectRef, err := model.FindMergedProjectRefSecondary(ctx, v.input.ProjectID, "", false)
 	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, v.input.ProjectID, err)
 
 	if v.input.Quiet {

@@ -1069,6 +1069,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 	expansions.Put("github_repo", projectRef.Repo)
 	if h != nil {
 		expansions.Put("distro_id", h.Distro.Id)
+		expansions.Put("distro_arch", h.Distro.Arch)
 	}
 	if t.ActivatedBy == evergreen.StepbackTaskActivator {
 		expansions.Put("is_stepback", "true")

@@ -1338,14 +1338,16 @@ func TestStartTaskWithOtelMetadata(t *testing.T) {
 func TestReportS3Usage(t *testing.T) {
 	ctx := t.Context()
 	t.Cleanup(func() {
-		require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
+		require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection, model.VersionCollection))
 	})
 
 	for name, tc := range map[string]struct {
-		insertTask *task.Task
-		s3Usage    s3usage.S3Usage
-		wantStatus int
-		assertions func(*testing.T, *task.Task)
+		insertTask    *task.Task
+		insertVersion *model.Version
+		s3Usage       s3usage.S3Usage
+		final         bool
+		wantStatus    int
+		assertions    func(*testing.T, *task.Task)
 	}{
 		"SavesArtifactAndLogUsage": {
 			insertTask: &task.Task{Id: "t1", Status: evergreen.TaskStarted},
@@ -1377,10 +1379,63 @@ func TestReportS3Usage(t *testing.T) {
 				assert.Equal(t, int64(8192), dbTask.S3Usage.Logs.UploadBytes)
 			},
 		},
+		"FinalCallSkipsVersionIncrementWhenCrashPathAlreadyTracked": {
+			insertTask: &task.Task{
+				Id:      "t4",
+				Status:  evergreen.TaskSystemFailed,
+				Version: "v4",
+				// Non-zero S3Usage signals the crash path already ran TrackVersionS3CostForTask.
+				S3Usage: s3usage.S3Usage{
+					Logs: s3usage.LogMetrics{S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 3, UploadBytes: 256}},
+				},
+			},
+			insertVersion: &model.Version{Id: "v4"},
+			s3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 10, UploadBytes: 512},
+					Count:           1,
+				},
+			},
+			final:      true,
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				dbVersion, err := model.VersionFindOneId(ctx, "v4")
+				require.NoError(t, err)
+				require.NotNil(t, dbVersion)
+				assert.Equal(t, 0, dbVersion.S3Usage.Artifacts.PutRequests, "version should not be incremented when crash path already tracked costs")
+			},
+		},
+		"FinalCallSavesUsageAndReturnsOk": {
+			insertTask:    &task.Task{Id: "t3", Status: evergreen.TaskStarted, Version: "v3"},
+			insertVersion: &model.Version{Id: "v3"},
+			s3Usage: s3usage.S3Usage{
+				Artifacts: s3usage.ArtifactMetrics{
+					S3UploadMetrics: s3usage.S3UploadMetrics{PutRequests: 20, UploadBytes: 1024},
+					Count:           2,
+				},
+			},
+			final:      true,
+			wantStatus: http.StatusOK,
+			assertions: func(t *testing.T, dbTask *task.Task) {
+				assert.Equal(t, 20, dbTask.S3Usage.Artifacts.PutRequests)
+				assert.Equal(t, int64(1024), dbTask.S3Usage.Artifacts.UploadBytes)
+				assert.Equal(t, 2, dbTask.S3Usage.Artifacts.Count)
+
+				dbVersion, err := model.VersionFindOneId(ctx, "v3")
+				require.NoError(t, err)
+				require.NotNil(t, dbVersion)
+				assert.Equal(t, 20, dbVersion.S3Usage.Artifacts.PutRequests)
+				assert.Equal(t, int64(1024), dbVersion.S3Usage.Artifacts.UploadBytes)
+				assert.Equal(t, 2, dbVersion.S3Usage.Artifacts.Count)
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection))
+			require.NoError(t, db.ClearCollections(task.Collection, s3lifecycle.Collection, model.VersionCollection))
 			require.NoError(t, tc.insertTask.Insert(ctx))
+			if tc.insertVersion != nil {
+				require.NoError(t, tc.insertVersion.Insert(ctx))
+			}
 
 			foundTask, err := task.FindOneId(ctx, tc.insertTask.Id)
 			require.NoError(t, err)
@@ -1390,6 +1445,7 @@ func TestReportS3Usage(t *testing.T) {
 			handler := makeReportS3Usage().(*reportS3UsageHandler)
 			handler.taskID = tc.insertTask.Id
 			handler.s3Usage = tc.s3Usage
+			handler.final = tc.final
 			resp := handler.Run(taskCtx)
 			assert.Equal(t, tc.wantStatus, resp.Status())
 

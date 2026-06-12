@@ -1,0 +1,41 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "quarantineVariant": {
+            "projectIdentifier": "sandbox",
+            "buildVariant": "ubuntu",
+            "tasks": [
+              {
+                "taskName": "my_task",
+                "tests": [
+                  {
+                    "testName": "TestFoo",
+                    "isManuallyQuarantined": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "nonexistent_project.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "project/repo 'does_not_exist' not found",
+            "path": ["quarantineVariant", "opts", "projectIdentifier"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

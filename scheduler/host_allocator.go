@@ -17,8 +17,6 @@ type HostAllocator func(context.Context, *HostAllocatorData) (newHostsNeeded int
 type HostAllocatorData struct {
 	Distro          distro.Distro
 	ExistingHosts   []host.Host
-	UsesContainers  bool
-	ContainerPool   *evergreen.ContainerPool
 	DistroQueueInfo model.DistroQueueInfo
 }
 

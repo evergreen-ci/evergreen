@@ -65,3 +65,6 @@ evergreen
 
 # Agent related files
 CLAUDE.local.md
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+.claude/worktrees/

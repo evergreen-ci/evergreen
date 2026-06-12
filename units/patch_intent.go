@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -751,6 +752,12 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 		if reusePatch == nil {
 			return errors.Errorf("no previous patch available")
 		}
+	} else if !patch.IsValidId(patchId) {
+		// Mainline (waterfall) version IDs have no patch document; reconstruct VariantsTasks from activated tasks.
+		if failedOnly {
+			return errors.Errorf("repeating failed tasks from mainline version '%s' is not supported", patchId)
+		}
+		return setToPreviousMainlineVersionDefinition(ctx, patchDoc, patchId)
 	} else {
 		reusePatch, err = patch.FindOneId(ctx, patchId)
 		if err != nil {
@@ -772,6 +779,45 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 		return errors.Wrapf(err, "filtering tasks for '%s'", patchId)
 	}
 
+	return nil
+}
+
+// setToPreviousMainlineVersionDefinition reproduces a mainline (waterfall) version's
+// per-variant task mapping on patchDoc. Display-task wrappers are not reconstructed;
+// execution tasks are scheduled directly.
+func setToPreviousMainlineVersionDefinition(ctx context.Context, patchDoc *patch.Patch, versionId string) error {
+	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(ctx, versionId)
+	if err != nil {
+		return errors.Wrapf(err, "querying activated tasks for version '%s'", versionId)
+	}
+	if len(activatedTasks) == 0 {
+		return errors.Errorf("no activated tasks found for version '%s'", versionId)
+	}
+
+	variantToTasks := map[string][]string{}
+	var allTasks []string
+	for _, t := range activatedTasks {
+		variantToTasks[t.BuildVariant] = append(variantToTasks[t.BuildVariant], t.DisplayName)
+		allTasks = append(allTasks, t.DisplayName)
+	}
+
+	buildVariants := make([]string, 0, len(variantToTasks))
+	for variant := range variantToTasks {
+		buildVariants = append(buildVariants, variant)
+	}
+	sort.Strings(buildVariants)
+	sort.Strings(allTasks)
+
+	variantsTasks := make([]patch.VariantTasks, 0, len(buildVariants))
+	for _, variant := range buildVariants {
+		tasks := variantToTasks[variant]
+		sort.Strings(tasks)
+		variantsTasks = append(variantsTasks, patch.VariantTasks{Variant: variant, Tasks: tasks})
+	}
+
+	patchDoc.Tasks = allTasks
+	patchDoc.BuildVariants = buildVariants
+	patchDoc.VariantsTasks = variantsTasks
 	return nil
 }
 
@@ -837,6 +883,12 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		})
 
 		if err := triggerIntent.Insert(ctx); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message":            "inserting trigger intent for child patch",
+				"source":             "patch-trigger",
+				"parent_patch_id":    p.Id.Hex(),
+				"downstream_project": group.project,
+			}))
 			return errors.Wrap(err, "inserting trigger intent")
 		}
 
@@ -846,6 +898,14 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	if err := p.SetChildPatches(ctx); err != nil {
 		return errors.Wrap(err, "setting child patch IDs")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":           "created downstream patch trigger intents",
+		"source":            "patch-trigger",
+		"parent_patch_id":   p.Id.Hex(),
+		"parent_project_id": p.Project,
+		"child_patch_ids":   p.Triggers.ChildPatches,
+		"num_children":      len(p.Triggers.ChildPatches),
+	})
 
 	for _, intent := range triggerIntents {
 		triggerIntent, ok := intent.(*patch.TriggerIntent)
@@ -859,6 +919,12 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			// we need the child patch intents to exist when the parent patch is finalized.
 			job.Run(ctx)
 			if err := job.Error(); err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"message":         "processing child patch",
+					"source":          "patch-trigger",
+					"parent_patch_id": p.Id.Hex(),
+					"child_patch_id":  intent.ID(),
+				}))
 				return errors.Wrap(err, "processing child patch")
 			}
 		} else {
@@ -1021,7 +1087,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
-			// If the entire diff can't be retrieve, fall back to trying to get
+			// If the entire diff can't be retrieved, fall back to trying to get
 			// just the list of changed files. Having the names of changed files
 			// (even if not the entire diff) is important for path filtering.
 			return isMember, j.getChangedFilenamesForLargePRs(ctx, patchDoc)
@@ -1227,6 +1293,21 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 		if parentPatch == nil {
 			return nil, nil, errors.Errorf("parent patch '%s' not found", patchDoc.Triggers.ParentPatch)
 		}
+		if parentPatch.IsGithubPRPatch() {
+			patchDoc.GitHubParentPRCheckout = &patch.GitHubParentPRCheckout{
+				PRNumber:  parentPatch.GithubPatchData.PRNumber,
+				BaseOwner: parentPatch.GithubPatchData.BaseOwner,
+				BaseRepo:  parentPatch.GithubPatchData.BaseRepo,
+				HeadOwner: parentPatch.GithubPatchData.HeadOwner,
+				HeadRepo:  parentPatch.GithubPatchData.HeadRepo,
+				HeadHash:  parentPatch.GithubPatchData.HeadHash,
+			}
+			if patchDoc.Triggers.SameBranchAsParent {
+				patchDoc.GitHubParentPRCheckout.ForSource = true
+			} else {
+				patchDoc.GitHubParentPRCheckout.ForModule = intent.ParentAsModule
+			}
+		}
 		for _, p := range parentPatch.Patches {
 			if p.ModuleName == "" {
 				moduleName := intent.ParentAsModule
@@ -1236,11 +1317,17 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 					patchDoc.Githash = parentPatch.Githash
 					moduleName = ""
 				}
+				patchSet := p.PatchSet
+				if parentPatch.IsGithubPRPatch() {
+					// GitHub PR diffs are applied on the agent via pull/N/head, not git apply.
+					patchSet.Patch = ""
+					patchSet.PatchFileId = ""
+				}
 				patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 					// Apply the parent patch's changes if both child and parent are using the
 					// same repo/project/branch
 					ModuleName: moduleName,
-					PatchSet:   p.PatchSet,
+					PatchSet:   patchSet,
 					Githash:    parentPatch.Githash,
 				})
 				break
@@ -1481,7 +1568,8 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessageForIgnoredVariants(ctx co
 // sendGitHubSuccessMessages sends a successful status to GitHub with the given message for all
 // Evergreen rules configured for the given project.
 func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef) {
-	rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
+	owner, repo, branch := j.gitHubStatusRuleTarget(patchDoc, projectRef)
+	rules := j.getEvergreenRulesForStatuses(ctx, owner, repo, branch)
 	for _, rule := range rules {
 		var update amboy.Job
 		if j.IntentType == patch.GithubIntentType {
@@ -1507,6 +1595,14 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 		update.Run(ctx)
 		j.AddError(update.Error())
 	}
+}
+
+func (j *patchIntentProcessor) gitHubStatusRuleTarget(patchDoc *patch.Patch, projectRef *model.ProjectRef) (owner, repo, branch string) {
+	if j.IntentType == patch.GithubMergeIntentType {
+		return patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch
+	}
+
+	return patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch
 }
 
 // getEvergreenRulesForStatuses returns the rules we want to send Evergreen statuses for.

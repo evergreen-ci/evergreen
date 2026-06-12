@@ -908,7 +908,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 }
 
 func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRef(ctx, *projectId, *patchId, false)
+	projectRef, err := model.FindMergedProjectRefSecondary(ctx, *projectId, *patchId, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
@@ -1537,7 +1537,7 @@ func getWaterfallFromContext(ctx context.Context) (*Waterfall, bool) {
 
 // setTestQuarantineState updates the quarantine state for testName on the
 // given task.
-func setTestQuarantineState(ctx context.Context, taskID, testName string, shouldQuarantine bool) (*restModel.APITest, error) {
+func setTestQuarantineState(ctx context.Context, taskID, testName string, isManuallyQuarantined bool) (*restModel.APITest, error) {
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
@@ -1548,15 +1548,91 @@ func setTestQuarantineState(ctx context.Context, taskID, testName string, should
 	if t.DisplayOnly {
 		return nil, InputValidationError.Send(ctx, "cannot modify test quarantine state on display tasks, select an execution task instead")
 	}
-	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, shouldQuarantine); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to %t for test '%s' on task '%s' on build variant '%s' on project '%s': %s", shouldQuarantine, testName, taskID, t.BuildVariant, t.Project, err.Error()))
+	if err = data.SetTestQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, testName, isManuallyQuarantined); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for test '%s' on task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, testName, taskID, t.BuildVariant, t.Project, err.Error()))
 	}
-	return buildQuarantineMutationResponse(ctx, t, testName, shouldQuarantine)
+	return buildQuarantineMutationResponse(ctx, t, testName, isManuallyQuarantined)
+}
+
+// setTaskQuarantineState quarantines (or unquarantines) every known test of
+// the given task in the test selection service. Display tasks are rejected.
+func setTaskQuarantineState(ctx context.Context, taskID string, isManuallyQuarantined bool) (*restModel.APITask, error) {
+	t, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if t == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	if t.DisplayOnly {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("cannot modify quarantine state on display task '%s', select an execution task instead", taskID))
+	}
+	if err = data.SetTaskQuarantined(ctx, t.Project, t.BuildVariant, t.DisplayName, isManuallyQuarantined); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for task '%s' on build variant '%s' on project '%s': %s", isManuallyQuarantined, taskID, t.BuildVariant, t.Project, err.Error()))
+	}
+	usr := mustHaveUser(ctx)
+	grip.Info(ctx, message.Fields{
+		"message":                 "task quarantine state changed",
+		"user":                    usr.Username(),
+		"task_id":                 taskID,
+		"project":                 t.Project,
+		"build_variant":           t.BuildVariant,
+		"task_name":               t.DisplayName,
+		"is_manually_quarantined": isManuallyQuarantined,
+	})
+	apiTask := &restModel.APITask{}
+	if err = apiTask.BuildFromService(ctx, t, &restModel.APITaskArgs{}); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to API model: %s", taskID, err.Error()))
+	}
+	return apiTask, nil
+}
+
+// setVariantQuarantineState quarantines (or unquarantines) every known test of every known task in a build variant.
+func setVariantQuarantineState(ctx context.Context, projectIdentifier, buildVariant string, isManuallyQuarantined bool) (*restModel.APIVariantQuarantineStatus, error) {
+	projectID, err := model.GetIdForProject(ctx, projectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
+	}
+	if err = data.SetVariantQuarantined(ctx, projectID, buildVariant, isManuallyQuarantined); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting quarantine state to '%t' for build variant '%s' on project '%s': %s", isManuallyQuarantined, buildVariant, projectIdentifier, err.Error()))
+	}
+	usr := mustHaveUser(ctx)
+	grip.Info(ctx, message.Fields{
+		"message":                 "build variant quarantine state changed",
+		"user":                    usr.Username(),
+		"project":                 projectID,
+		"project_identifier":      projectIdentifier,
+		"build_variant":           buildVariant,
+		"is_manually_quarantined": isManuallyQuarantined,
+	})
+	return buildVariantQuarantineStatusResponse(ctx, projectID, projectIdentifier, buildVariant)
+}
+
+func getVariantQuarantineStatusResponse(ctx context.Context, projectIdentifier, buildVariant string) (*restModel.APIVariantQuarantineStatus, error) {
+	projectID, err := model.GetIdForProject(ctx, projectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
+	}
+	return buildVariantQuarantineStatusResponse(ctx, projectID, projectIdentifier, buildVariant)
+}
+
+func buildVariantQuarantineStatusResponse(ctx context.Context, projectID, projectIdentifier, buildVariant string) (*restModel.APIVariantQuarantineStatus, error) {
+	tasks, err := data.GetVariantQuarantineStatus(ctx, projectID, buildVariant)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting variant quarantine status for build variant '%s' on project '%s': %s", buildVariant, projectIdentifier, err.Error()))
+	}
+	apiStatus := &restModel.APIVariantQuarantineStatus{}
+	apiStatus.BuildFromService(restModel.VariantQuarantineStatusBuildArgs{
+		ProjectIdentifier: projectIdentifier,
+		BuildVariant:      buildVariant,
+		Tasks:             tasks,
+	})
+	return apiStatus, nil
 }
 
 // buildQuarantineMutationResponse returns the corresponding APITest for the
-// task with the quarantine state set to isQuarantined.
-func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName string, isQuarantined bool) (*restModel.APITest, error) {
+// task with the quarantine state set to isManuallyQuarantined.
+func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName string, isManuallyQuarantined bool) (*restModel.APITest, error) {
 	// The TestName filter field is interpreted as a regex; anchor and escape testName for an exact match.
 	taskResults, err := t.GetTestResults(ctx, evergreen.GetEnvironment(), &task.FilterOptions{TestName: "^" + regexp.QuoteMeta(testName) + "$"})
 	if err != nil {
@@ -1566,12 +1642,17 @@ func buildQuarantineMutationResponse(ctx context.Context, t *task.Task, testName
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("test '%s' not found on task '%s'", testName, t.Id))
 	}
 	tr := taskResults.Results[0]
-	tr.IsManuallyQuarantined = isQuarantined
+	tr.IsManuallyQuarantined = isManuallyQuarantined
 	apiTest := &restModel.APITest{}
-	if err = apiTest.BuildFromService(tr.TaskID); err != nil {
+	settings := evergreen.GetEnvironment().Settings()
+	apiTestArgs := &restModel.APITestArgs{
+		EvergreenBaseURL: settings.Api.URL,
+		ParsleyLogURL:    settings.Ui.ParsleyUrl,
+	}
+	if err = apiTest.BuildFromService(tr.TaskID, nil); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
-	if err = apiTest.BuildFromService(&tr); err != nil {
+	if err = apiTest.BuildFromService(&tr, apiTestArgs); err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return apiTest, nil

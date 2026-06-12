@@ -1142,6 +1142,7 @@ type awsClientMock struct { //nolint
 	*types.Instance
 	*ec2.DescribeInstancesOutput
 	RequestGetInstanceInfoError error
+	DescribeInstancesError      error
 	*ec2.DescribeInstanceTypeOfferingsOutput
 
 	launchTemplates []types.LaunchTemplate
@@ -1171,8 +1172,14 @@ func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstance
 // DescribeInstances is a mock for ec2.DescribeInstances
 func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	c.DescribeInstancesInput = input
+	if c.DescribeInstancesError != nil {
+		return nil, c.DescribeInstancesError
+	}
 	if c.DescribeInstancesOutput != nil {
 		return c.DescribeInstancesOutput, nil
+	}
+	if len(input.InstanceIds) == 0 {
+		return &ec2.DescribeInstancesOutput{}, nil
 	}
 	ipv6 := types.InstanceIpv6Address{}
 	ipv6.Ipv6Address = aws.String(MockIPV6)

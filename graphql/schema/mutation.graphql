@@ -101,19 +101,24 @@ type Mutation {
   quarantineTest(opts: QuarantineTestInput!): TestResult!
   unquarantineTest(opts: UnquarantineTestInput!): TestResult!
 
+  # task quarantining
+  quarantineTask(opts: QuarantineTaskInput!): Task!
+  unquarantineTask(opts: UnquarantineTaskInput!): Task!
+
+  # variant quarantining
+  quarantineVariant(opts: QuarantineVariantInput!): VariantQuarantineStatus!
+  unquarantineVariant(opts: UnquarantineVariantInput!): VariantQuarantineStatus!
+
   # user
   addFavoriteProject(opts: AddFavoriteProjectInput!): Project!
   clearMySubscriptions: Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
-  deleteCursorAPIKey: DeleteCursorAPIKeyPayload!
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
   removeFavoriteProject(opts: RemoveFavoriteProjectInput!): Project!
   removePublicKey(keyName: String!): [PublicKey!]!
   resetAPIKey: UserConfig
   saveSubscription(subscription: SubscriptionInput!): Boolean!
-  setCursorAPIKey(apiKey: String!): SetCursorAPIKeyPayload!
   updateBetaFeatures(opts: UpdateBetaFeaturesInput!): UpdateBetaFeaturesPayload
-  updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
   updatePublicKey(
     targetKeyName: String!
     updateInfo: PublicKeyInput!

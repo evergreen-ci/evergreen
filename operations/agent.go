@@ -158,10 +158,10 @@ func Agent() cli.Command {
 			// env vars to prevent them from being inherited by task
 			// subprocesses (e.g. shell.exec).
 			if err := os.Unsetenv(evergreen.HostIDEnvVar); err != nil {
-				return errors.Wrapf(err, "unsetting %s env var", evergreen.HostIDEnvVar)
+				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostIDEnvVar)
 			}
 			if err := os.Unsetenv(evergreen.HostSecretEnvVar); err != nil {
-				return errors.Wrapf(err, "unsetting %s env var", evergreen.HostSecretEnvVar)
+				return errors.Wrapf(err, "unsetting '%s' env var", evergreen.HostSecretEnvVar)
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {
@@ -201,6 +201,12 @@ func Agent() cli.Command {
 
 			grip.Warning(ctx, message.WrapError(setNiceAllThreads(agentutil.AgentNice), message.Fields{
 				"message": "could not set nice on agent process and all of its threads, some threads may proceed with default nice",
+			}))
+			// -900 puts the agent 900 points below any subprocess running at the
+			// default oom_score_adj of 0, so subprocesses are always preferred
+			// OOM targets while the agent remains eligible as a last resort.
+			grip.Warning(ctx, message.WrapError(agentutil.SetOOMScoreAdj(-900), message.Fields{
+				"message": "could not set oom_score_adj on agent process, agent may be targeted by the OOM killer",
 			}))
 
 			err = agt.Start(ctx)

@@ -185,12 +185,12 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 
 	taskFiles, err := artifact.GetAllArtifacts(r.Context(), []artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: executionNum}})
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task '%s'", projCtx.Task.Id))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "finding artifacts for task '%s'", projCtx.Task.Id))
 		return
 	}
 	taskFiles, err = artifact.StripHiddenFiles(r.Context(), taskFiles, true)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to strip hidden files for task '%s'", projCtx.Task.Id))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "stripping hidden files for task '%s'", projCtx.Task.Id))
 		return
 	}
 	var tFile *artifact.File

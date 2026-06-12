@@ -59,6 +59,8 @@ type taskContext struct {
 	resourceMonitor *resourceMonitor
 	// s3Usage tracks S3 API usage accumulated during task execution
 	s3Usage s3usage.S3Usage
+	// backgroundFailures is the bidirectional end of the channel whose send-only end is exposed to commands via TaskConfig.
+	backgroundFailures chan error
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup
@@ -478,6 +480,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.TaskOutput = a.opts.SetupData.TaskOutput
 	taskConfig.MaxExecTimeoutSecs = a.opts.SetupData.MaxExecTimeoutSecs
 	taskConfig.PSLoggingDisabled = a.opts.SetupData.PSLoggingDisabled
+	taskConfig.BackgroundCommandFailureEnabled = a.opts.SetupData.BackgroundCommandFailureEnabled
 
 	// Set AWS credentials for task output buckets.
 	awsCreds := pail.CreateAWSStaticCredentials(taskConfig.TaskOutput.Key, taskConfig.TaskOutput.Secret, "")

@@ -256,7 +256,7 @@ func getEC2Data[Output any](ctx context.Context, baseURL, subpath string, parseO
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return zeroOutput, errors.Wrapf(err, "requesting EC2 data from %s", baseURL)
+		return zeroOutput, errors.Wrapf(err, "requesting EC2 data from '%s'", baseURL)
 	}
 
 	return parseOutput(resp)

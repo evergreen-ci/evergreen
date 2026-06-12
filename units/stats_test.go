@@ -3,12 +3,16 @@ package units
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -157,4 +161,134 @@ func (s *StatUnitsSuite) TestSysInfoCollector() {
 		s.True(m.Logged)
 		s.Contains(m.Message.String(), "cgo.calls", m.Message.String())
 	}
+}
+
+func TestGetWaitTimeMessagesOverheadRatio(t *testing.T) {
+	now := time.Now()
+	tasks := []task.Task{
+		{
+			ScheduledTime: now.Add(-10 * time.Minute),
+			StartTime:     now.Add(-5 * time.Minute),
+			FinishTime:    now,
+			DistroId:      "rhel80",
+			Requester:     "patch",
+		},
+	}
+
+	msgs := getWaitTimeMessages(tasks)
+	require.NotEmpty(t, msgs)
+
+	global := findMessage(t, msgs, "", "")
+	require.NotNil(t, global)
+	assert.Equal(t, 0.5, (*global)["p50_overhead_ratio"])
+	assert.Equal(t, 0.5, (*global)["p90_overhead_ratio"])
+}
+
+func TestGetWaitTimeMessagesGroupsByDistro(t *testing.T) {
+	now := time.Now()
+
+	var tasks []task.Task
+	for i := range minDistroTasksForStats {
+		tasks = append(tasks, task.Task{
+			ScheduledTime: now.Add(-10 * time.Minute),
+			StartTime:     now.Add(-time.Duration(5+i) * time.Minute),
+			FinishTime:    now,
+			DistroId:      "rhel80",
+			Requester:     "patch",
+		})
+	}
+
+	tasks = append(tasks, task.Task{
+		ScheduledTime: now.Add(-10 * time.Minute),
+		StartTime:     now.Add(-3 * time.Minute),
+		FinishTime:    now,
+		DistroId:      "ubuntu2204",
+		Requester:     "patch",
+	})
+
+	msgs := getWaitTimeMessages(tasks)
+
+	var distroMsg *message.Fields
+	for i := range msgs {
+		if msgs[i]["stats"] == "queue-wait-by-distro" {
+			distroMsg = &msgs[i]
+			break
+		}
+	}
+	require.NotNil(t, distroMsg)
+
+	distros, ok := (*distroMsg)["distros"].(map[string]message.Fields)
+	require.True(t, ok)
+	assert.Contains(t, distros, "rhel80")
+	assert.NotContains(t, distros, "ubuntu2204")
+	assert.Equal(t, minDistroTasksForStats, distros["rhel80"]["sample_size"])
+}
+
+func TestGetWaitTimeMessagesGroupsByRequester(t *testing.T) {
+	now := time.Now()
+	tasks := []task.Task{
+		{
+			ScheduledTime: now.Add(-10 * time.Minute),
+			StartTime:     now.Add(-5 * time.Minute),
+			FinishTime:    now,
+			DistroId:      "rhel80",
+			Requester:     "patch",
+		},
+		{
+			ScheduledTime: now.Add(-10 * time.Minute),
+			StartTime:     now.Add(-7 * time.Minute),
+			FinishTime:    now,
+			DistroId:      "rhel80",
+			Requester:     "gitter_request",
+		},
+	}
+
+	msgs := getWaitTimeMessages(tasks)
+
+	patch := findMessage(t, msgs, "requester", "patch")
+	require.NotNil(t, patch)
+	assert.Equal(t, 1, (*patch)["sample_size"])
+
+	gitter := findMessage(t, msgs, "requester", "gitter_request")
+	require.NotNil(t, gitter)
+	assert.Equal(t, 1, (*gitter)["sample_size"])
+	assert.Equal(t, 180.0, (*gitter)["p50_wait_seconds"])
+}
+
+func findMessage(t *testing.T, msgs []message.Fields, groupKey, groupValue string) *message.Fields {
+	t.Helper()
+	for i := range msgs {
+		if groupKey == "" {
+			if _, has := msgs[i]["distros"]; has {
+				continue
+			}
+			if _, has := msgs[i]["requester"]; has {
+				continue
+			}
+			return &msgs[i]
+		}
+		if msgs[i][groupKey] == groupValue {
+			return &msgs[i]
+		}
+	}
+	return nil
+}
+
+func TestTopNProjects(t *testing.T) {
+	t.Run("ReturnsTopN", func(t *testing.T) {
+		counts := map[string]int{
+			"project-a": 100,
+			"project-b": 50,
+			"project-c": 30,
+			"project-d": 20,
+			"project-e": 10,
+		}
+		result := topNProjects(counts, 3)
+		assert.Len(t, result, 3)
+		assert.Equal(t, 100, result["project-a"])
+		assert.Equal(t, 50, result["project-b"])
+		assert.Equal(t, 30, result["project-c"])
+		assert.NotContains(t, result, "project-d")
+		assert.NotContains(t, result, "project-e")
+	})
 }

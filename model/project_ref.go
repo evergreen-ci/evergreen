@@ -1173,20 +1173,35 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 }
 
 func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
+	return findOneProjectRefQWith(ctx, query, db.FindOneQ)
+}
+
+// findOneProjectRefQSecondary is the SecondaryPreferred sibling of findOneProjectRefQ.
+// Don't use right after a write; reads can lag the primary.
+func findOneProjectRefQSecondary(ctx context.Context, query db.Q) (*ProjectRef, error) {
+	return findOneProjectRefQWith(ctx, query, db.FindOneQSecondary)
+}
+
+// findOneProjectRefQWith finds one project ref using the given db finder (primary or secondary).
+func findOneProjectRefQWith(ctx context.Context, query db.Q, findOne func(context.Context, string, db.Q, any) error) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOneQ(ctx, ProjectRefCollection, query, projectRef)
+	err := findOne(ctx, ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-
 	return projectRef, err
-
 }
 
 // FindBranchProjectRef gets a project ref given the project identifier.
 // This returns only branch-level settings; to include repo settings, use FindMergedProjectRef.
 func FindBranchProjectRef(ctx context.Context, identifier string) (*ProjectRef, error) {
 	return findOneProjectRefQ(ctx, byId(identifier))
+}
+
+// FindBranchProjectRefSecondary is the SecondaryPreferred sibling of FindBranchProjectRef.
+// Don't use right after a write; reads can lag the primary.
+func FindBranchProjectRefSecondary(ctx context.Context, identifier string) (*ProjectRef, error) {
+	return findOneProjectRefQSecondary(ctx, byId(identifier))
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
@@ -1197,6 +1212,21 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
 	}
+	return mergeProjectRefAfterFetch(ctx, pRef, identifier, version, includeProjectConfig)
+}
+
+// FindMergedProjectRefSecondary is the SecondaryPreferred sibling of FindMergedProjectRef.
+// Don't use right after a write; reads can lag the primary.
+func FindMergedProjectRefSecondary(ctx context.Context, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
+	pRef, err := FindBranchProjectRefSecondary(ctx, identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
+	}
+	return mergeProjectRefAfterFetch(ctx, pRef, identifier, version, includeProjectConfig)
+}
+
+// mergeProjectRefAfterFetch applies repo-ref and parser-project merges to a fetched project ref.
+func mergeProjectRefAfterFetch(ctx context.Context, pRef *ProjectRef, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	if pRef == nil {
 		return nil, nil
 	}
@@ -1208,13 +1238,14 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
-		pRef, err = mergeBranchAndRepoSettings(pRef, repoRef)
-		if err != nil {
-			return nil, errors.Wrapf(err, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
+		mergedRef, mergeErr := mergeBranchAndRepoSettings(pRef, repoRef)
+		if mergeErr != nil {
+			return nil, errors.Wrapf(mergeErr, "merging repo ref '%s' for project '%s'", repoRef.RepoRefId, identifier)
 		}
+		pRef = mergedRef
 	}
 	if includeProjectConfig && pRef.IsVersionControlEnabled() {
-		err = pRef.MergeWithProjectConfig(ctx, version)
+		err := pRef.MergeWithProjectConfig(ctx, version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "merging project config with project ref '%s'", pRef.Identifier)
 		}
@@ -1601,48 +1632,55 @@ func FindAnyRestrictedProjectRef(ctx context.Context) (*ProjectRef, error) {
 // still exist and the project is not hidden).
 // Can't hide a repo without hiding the branches, so don't need to aggregate here.
 func FindAllMergedTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
-	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
-	if err != nil {
-		return nil, err
-	}
+	return findProjectRefsQ(ctx, byTracked(), true)
+}
 
-	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
+// FindAllMergedTrackedProjectRefsSecondary is the SecondaryPreferred sibling of FindAllMergedTrackedProjectRefs.
+// Don't use right after a write; reads can lag the primary.
+func FindAllMergedTrackedProjectRefsSecondary(ctx context.Context) ([]ProjectRef, error) {
+	return findProjectRefsQSecondary(ctx, byTracked(), true)
 }
 
 // FindAllMergedEnabledTrackedProjectRefs returns all enabled project refs in the db
 // that are currently being tracked (i.e. their project files
 // still exist and the project is not hidden).
 func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	q := db.Query(bson.M{
-		ProjectRefHiddenKey:  bson.M{"$ne": true},
-		ProjectRefEnabledKey: true,
-	})
-	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
-	if err != nil {
-		return nil, err
-	}
+	return findProjectRefsQ(ctx, byEnabledTracked(), true)
+}
 
-	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
+// FindAllMergedEnabledTrackedProjectRefsSecondary is the SecondaryPreferred sibling of FindAllMergedEnabledTrackedProjectRefs.
+// Don't use right after a write; reads can lag the primary.
+func FindAllMergedEnabledTrackedProjectRefsSecondary(ctx context.Context) ([]ProjectRef, error) {
+	return findProjectRefsQSecondary(ctx, byEnabledTracked(), true)
 }
 
 func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef) ([]ProjectRef, error) {
-	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
+	repoRefIDs := make([]string, 0)
+	seen := make(map[string]bool)
+	for _, pRef := range pRefs {
+		if pRef.UseRepoSettings() && !seen[pRef.RepoRefId] {
+			seen[pRef.RepoRefId] = true
+			repoRefIDs = append(repoRefIDs, pRef.RepoRefId)
+		}
+	}
+
+	repoRefs := map[string]*RepoRef{}
+	if len(repoRefIDs) > 0 {
+		var fetched []RepoRef
+		q := db.Query(bson.M{RepoRefIdKey: bson.M{"$in": repoRefIDs}})
+		if err := db.FindAllQ(ctx, RepoRefCollection, q, &fetched); err != nil {
+			return nil, errors.Wrap(err, "finding repo refs")
+		}
+		for _, r := range fetched {
+			repoRefs[r.Id] = &r
+		}
+	}
+
 	for i, pRef := range pRefs {
 		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
-				var err error
-				repoRef, err = FindOneRepoRef(ctx, pRef.RepoRefId)
-				if err != nil {
-					return nil, errors.Wrapf(err, "finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
-				}
-				if repoRef == nil {
-					return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
-				}
-				repoRefs[pRef.RepoRefId] = repoRef
+				return nil, errors.Errorf("repo ref '%s' does not exist for project '%s'", pRef.RepoRefId, pRef.Identifier)
 			}
 			mergedProject, err := mergeBranchAndRepoSettings(&pRefs[i], repoRef)
 			if err != nil {
@@ -1679,19 +1717,33 @@ func FindProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, err
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return findProjectRefsQ(
-		ctx,
-		bson.M{
-			ProjectRefIdKey: bson.M{
-				"$in": ids,
-			},
-		}, false)
+	return findProjectRefsQ(ctx, byIds(ids...), false)
+}
+
+// FindProjectRefsByIdsSecondary is the SecondaryPreferred sibling of FindProjectRefsByIds.
+// Don't use right after a write; reads can lag the primary.
+func FindProjectRefsByIdsSecondary(ctx context.Context, ids ...string) ([]ProjectRef, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return findProjectRefsQSecondary(ctx, byIds(ids...), false)
 }
 
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
+	return findProjectRefsQWith(ctx, filter, merged, db.FindAllQ)
+}
+
+// findProjectRefsQSecondary is the SecondaryPreferred sibling of findProjectRefsQ.
+// Don't use right after a write; reads can lag the primary.
+func findProjectRefsQSecondary(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
+	return findProjectRefsQWith(ctx, filter, merged, db.FindAllQSecondary)
+}
+
+// findProjectRefsQWith finds project refs using the given db finder (primary or secondary).
+func findProjectRefsQWith(ctx context.Context, filter bson.M, merged bool, findAll func(context.Context, string, db.Q, any) error) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
-	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
+	err := findAll(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1706,6 +1758,24 @@ func byOwnerAndRepo(owner, repoName string) bson.M {
 	return bson.M{
 		ProjectRefOwnerKey: owner,
 		ProjectRefRepoKey:  repoName,
+	}
+}
+
+// byIds matches project refs with any of the given ids.
+func byIds(ids ...string) bson.M {
+	return bson.M{ProjectRefIdKey: bson.M{"$in": ids}}
+}
+
+// byTracked matches tracked (non-hidden) project refs.
+func byTracked() bson.M {
+	return bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}}
+}
+
+// byEnabledTracked matches enabled, tracked project refs.
+func byEnabledTracked() bson.M {
+	return bson.M{
+		ProjectRefHiddenKey:  bson.M{"$ne": true},
+		ProjectRefEnabledKey: true,
 	}
 }
 

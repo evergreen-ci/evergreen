@@ -5,12 +5,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestSubscriptions(t *testing.T) {
@@ -24,7 +26,7 @@ type subscriptionsSuite struct {
 }
 
 func (s *subscriptionsSuite) SetupTest() {
-	s.NoError(db.ClearCollections(SubscriptionsCollection))
+	s.NoError(db.ClearCollections(SubscriptionsCollection, fakeparameter.Collection))
 
 	t1 := "someone@example.com"
 	t2 := "someone2@example.com"
@@ -560,6 +562,455 @@ func (s *subscriptionsSuite) TestCreateOrUpdateGeneralSubscription() {
 	s.Equal(subscriptions[0].ID, subscription.ID)
 }
 
+func (s *subscriptionsSuite) TestUpsertWebhookSavesSecretToParameterStore() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("my-secret"),
+	}
+	sub := Subscription{
+		ID:           "webhook-sub",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	// Secret should have been saved to Parameter Store.
+	s.Require().NotEmpty(webhookSub.SecretParameter)
+	fakeParams, err := fakeparameter.FindByIDs(s.T().Context(), webhookSub.SecretParameter)
+	s.Require().NoError(err)
+	s.Require().Len(fakeParams, 1)
+	s.Equal("my-secret", fakeParams[0].Value)
+
+	// Both the secret bytes and the Parameter Store path are persisted to MongoDB during
+	// Phase 1. The secret stays in MongoDB as a fallback until the Phase 2 cleanup job removes it.
+	// TODO(DEVPROD-15500): remove this assertion once Phase 2 cleanup job removes secrets from MongoDB.
+	raw := bson.M{}
+	s.Require().NoError(db.FindOneQ(s.T().Context(), SubscriptionsCollection, db.Query(bson.M{"_id": "webhook-sub"}), &raw))
+	subscriberRaw, ok := raw["subscriber"].(bson.M)
+	s.Require().True(ok)
+	targetRaw, ok := subscriberRaw["target"].(bson.M)
+	s.Require().True(ok)
+	storedSecret, ok := targetRaw["secret"].(primitive.Binary)
+	s.Require().True(ok, "secret should be persisted to MongoDB as a fallback during Phase 1")
+	s.Equal([]byte("my-secret"), storedSecret.Data)
+	s.NotEmpty(targetRaw["secret_parameter"], "secret_parameter path should be stored in MongoDB")
+}
+
+func (s *subscriptionsSuite) TestFindSubscriptionByIDPopulatesSecretFromParameterStore() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("ps-secret"),
+	}
+	sub := Subscription{
+		ID:           "webhook-find",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "webhook-find")
+	s.Require().NoError(err)
+	s.Require().NotNil(found)
+	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
+	s.Require().True(ok)
+	s.Require().NotNil(foundWebhook)
+	s.Equal([]byte("ps-secret"), foundWebhook.Secret)
+	s.NotEmpty(foundWebhook.SecretParameter)
+}
+
+func (s *subscriptionsSuite) TestFindSubscriptionByIDFallsBackToMongoDBSecret() {
+	// Simulate a legacy subscription with secret in MongoDB but no SecretParameter.
+	// Insert directly to bypass the Upsert write path which saves to PS.
+	sub := Subscription{
+		ID:           "legacy-webhook",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type: EvergreenWebhookSubscriberType,
+			Target: &WebhookSubscriber{
+				URL:    "https://legacy.example.com",
+				Secret: []byte("legacy-secret"),
+			},
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(SubscriptionsCollection).InsertOne(s.T().Context(), sub)
+	s.Require().NoError(err)
+
+	found, err := FindSubscriptionByID(s.T().Context(), "legacy-webhook")
+	s.Require().NoError(err)
+	s.Require().NotNil(found)
+	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
+	s.Require().True(ok)
+	s.Require().NotNil(foundWebhook)
+	s.Equal([]byte("legacy-secret"), foundWebhook.Secret, "should fall back to MongoDB secret")
+	s.Empty(foundWebhook.SecretParameter, "legacy subscription should not have a parameter path")
+}
+
+func (s *subscriptionsSuite) TestFindSubscriptionsByOwnerPopulatesSecrets() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("owner-secret"),
+	}
+	sub := Subscription{
+		ID:           "webhook-owner",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "webhook-owner-user",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	subs, err := FindSubscriptionsByOwner(s.T().Context(), "webhook-owner-user", OwnerTypePerson)
+	s.Require().NoError(err)
+	s.Require().Len(subs, 1)
+	foundWebhook, ok := subs[0].Subscriber.Target.(*WebhookSubscriber)
+	s.Require().True(ok)
+	s.Require().NotNil(foundWebhook)
+	s.Equal([]byte("owner-secret"), foundWebhook.Secret)
+}
+
+func (s *subscriptionsSuite) TestRemoveSubscriptionDeletesWebhookSecretFromParameterStore() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("delete-me-secret"),
+	}
+	sub := Subscription{
+		ID:           "webhook-delete",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+	paramName := webhookSub.SecretParameter
+	s.Require().NotEmpty(paramName)
+
+	fakeParams, err := fakeparameter.FindByIDs(s.T().Context(), paramName)
+	s.Require().NoError(err)
+	s.Require().Len(fakeParams, 1)
+
+	s.Require().NoError(RemoveSubscription(s.T().Context(), "webhook-delete"))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "webhook-delete")
+	s.Require().NoError(err)
+	s.Nil(found)
+
+	fakeParams, err = fakeparameter.FindByIDs(s.T().Context(), paramName)
+	s.Require().NoError(err)
+	s.Empty(fakeParams, "webhook secret should be removed from Parameter Store when its subscription is deleted")
+}
+
+// TODO(DEVPROD-15500): remove this test once the migration job has backfilled all legacy subscriptions.
+func (s *subscriptionsSuite) TestRemoveSubscriptionDoesNotTouchParameterStoreForLegacyWebhook() {
+	// Simulate a legacy webhook subscription with the secret in MongoDB but no SecretParameter set.
+	// Insert directly to bypass the Upsert write path, which would otherwise save to Parameter Store.
+	sub := Subscription{
+		ID:           "legacy-webhook-delete",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type: EvergreenWebhookSubscriberType,
+			Target: &WebhookSubscriber{
+				URL:    "https://legacy.example.com",
+				Secret: []byte("legacy-secret"),
+			},
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(SubscriptionsCollection).InsertOne(s.T().Context(), sub)
+	s.Require().NoError(err)
+
+	allParams, err := fakeparameter.FindByIDs(s.T().Context())
+	s.Require().NoError(err)
+	s.Require().Empty(allParams)
+
+	s.Require().NoError(RemoveSubscription(s.T().Context(), "legacy-webhook-delete"))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "legacy-webhook-delete")
+	s.Require().NoError(err)
+	s.Nil(found)
+
+	allParams, err = fakeparameter.FindByIDs(s.T().Context())
+	s.Require().NoError(err)
+	s.Empty(allParams, "legacy webhook removal should not touch Parameter Store since no SecretParameter is set")
+}
+
+func (s *subscriptionsSuite) TestUpsertWebhookSavesAuthHeaderToParameterStore() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("my-secret"),
+		Headers: []WebhookHeader{
+			{Key: "Authorization", Value: "Bearer my-token"},
+			{Key: "X-Custom", Value: "custom-value"},
+		},
+	}
+	sub := Subscription{
+		ID:           "webhook-auth-sub",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	s.Require().NotEmpty(webhookSub.AuthorizationHeaderParameter)
+	authParams, err := fakeparameter.FindByIDs(s.T().Context(), webhookSub.AuthorizationHeaderParameter)
+	s.Require().NoError(err)
+	s.Require().Len(authParams, 1)
+	s.Equal("Bearer my-token", authParams[0].Value)
+
+	found, err := FindSubscriptionByID(s.T().Context(), "webhook-auth-sub")
+	s.Require().NoError(err)
+	s.Require().NotNil(found)
+	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
+	s.Require().True(ok)
+	s.Require().NotNil(foundWebhook)
+	s.NotEmpty(foundWebhook.AuthorizationHeaderParameter, "authorization_header_parameter path should be stored in MongoDB")
+	s.Equal("Bearer my-token", foundWebhook.GetHeader("Authorization"), "Authorization header should be populated from Parameter Store on read")
+}
+
+func (s *subscriptionsSuite) TestUpsertWebhookWithoutAuthHeaderDoesNotCreateAuthParameter() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("my-secret"),
+	}
+	sub := Subscription{
+		ID:           "webhook-no-auth",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	s.Empty(webhookSub.AuthorizationHeaderParameter, "no auth header means no authorization_header_parameter")
+	secretParams, err := fakeparameter.FindByIDs(s.T().Context(), webhookSub.SecretParameter)
+	s.Require().NoError(err)
+	s.Require().Len(secretParams, 1, "only the secret parameter should exist")
+}
+
+func (s *subscriptionsSuite) TestFindSubscriptionByIDPopulatesAuthHeaderFromParameterStore() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("my-secret"),
+		Headers: []WebhookHeader{
+			{Key: "Authorization", Value: "Bearer ps-token"},
+		},
+	}
+	sub := Subscription{
+		ID:           "webhook-auth-find",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "webhook-auth-find")
+	s.Require().NoError(err)
+	s.Require().NotNil(found)
+	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
+	s.Require().True(ok)
+	s.Require().NotNil(foundWebhook)
+	s.Equal("Bearer ps-token", foundWebhook.GetHeader("Authorization"))
+	s.NotEmpty(foundWebhook.AuthorizationHeaderParameter)
+}
+
+// TODO(DEVPROD-15500): remove this test once the migration job has backfilled all legacy subscriptions.
+func (s *subscriptionsSuite) TestFindSubscriptionByIDFallsBackToMongoDBAuthHeader() {
+	// Insert directly (bypassing Upsert) to simulate a legacy subscription that has the
+	// Authorization header in MongoDB but no authorization_header_parameter set.
+	sub := Subscription{
+		ID:           "legacy-webhook-auth",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type: EvergreenWebhookSubscriberType,
+			Target: &WebhookSubscriber{
+				URL:    "https://legacy.example.com",
+				Secret: []byte("legacy-secret"),
+				Headers: []WebhookHeader{
+					{Key: "Authorization", Value: "Bearer legacy-token"},
+				},
+			},
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(db.Insert(s.T().Context(), SubscriptionsCollection, sub))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "legacy-webhook-auth")
+	s.Require().NoError(err)
+	s.Require().NotNil(found)
+	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
+	s.Require().True(ok)
+	s.Require().NotNil(foundWebhook)
+	s.Equal("Bearer legacy-token", foundWebhook.GetHeader("Authorization"), "should fall back to MongoDB auth header")
+	s.Empty(foundWebhook.AuthorizationHeaderParameter)
+}
+
+func (s *subscriptionsSuite) TestRemoveSubscriptionDeletesAuthHeaderFromParameterStore() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("delete-me-secret"),
+		Headers: []WebhookHeader{
+			{Key: "Authorization", Value: "Bearer delete-me-token"},
+		},
+	}
+	sub := Subscription{
+		ID:           "webhook-auth-delete",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+	authParamName := webhookSub.AuthorizationHeaderParameter
+	s.Require().NotEmpty(authParamName)
+
+	s.Require().NoError(RemoveSubscription(s.T().Context(), "webhook-auth-delete"))
+
+	found, err := FindSubscriptionByID(s.T().Context(), "webhook-auth-delete")
+	s.Require().NoError(err)
+	s.Nil(found)
+
+	authParams, err := fakeparameter.FindByIDs(s.T().Context(), authParamName)
+	s.Require().NoError(err)
+	s.Empty(authParams, "webhook Authorization header should be removed from Parameter Store when its subscription is deleted")
+}
+
+func (s *subscriptionsSuite) TestUpsertWebhookDeletesAuthParameterWhenHeaderRemoved() {
+	webhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("my-secret"),
+		Headers: []WebhookHeader{
+			{Key: "Authorization", Value: "Bearer original-token"},
+		},
+	}
+	sub := Subscription{
+		ID:           "webhook-auth-header-removed",
+		ResourceType: ResourceTypePatch,
+		Trigger:      TriggerOutcome,
+		Selectors:    []Selector{{Type: SelectorID, Data: "test"}},
+		Filter:       Filter{ID: "test"},
+		Subscriber: Subscriber{
+			Type:   EvergreenWebhookSubscriberType,
+			Target: webhookSub,
+		},
+		Owner:     "me",
+		OwnerType: OwnerTypePerson,
+	}
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+	authParamName := webhookSub.AuthorizationHeaderParameter
+	s.Require().NotEmpty(authParamName, "authorization_header_parameter should be set after initial upsert")
+
+	updatedWebhookSub := &WebhookSubscriber{
+		URL:    "https://example.com/webhook",
+		Secret: []byte("my-secret"),
+		Headers: []WebhookHeader{
+			{Key: "X-Custom-Header", Value: "custom-value"},
+		},
+	}
+	sub.Subscriber.Target = updatedWebhookSub
+	s.Require().NoError(sub.Upsert(s.T().Context()))
+
+	authParams, err := fakeparameter.FindByIDs(s.T().Context(), authParamName)
+	s.Require().NoError(err)
+	s.Empty(authParams, "old Authorization header PS entry should be deleted when header is removed")
+
+	updated, err := FindSubscriptionByID(s.T().Context(), "webhook-auth-header-removed")
+	s.Require().NoError(err)
+	s.Require().NotNil(updated)
+	updatedTarget, ok := updated.Subscriber.Target.(*WebhookSubscriber)
+	s.Require().True(ok)
+	s.Empty(updatedTarget.AuthorizationHeaderParameter, "authorization_header_parameter should be cleared")
+	s.Equal("custom-value", updatedTarget.GetHeader("X-Custom-Header"), "non-sensitive header should remain")
+}
+
+func TestSetHeader(t *testing.T) {
+	t.Run("UpdatesExistingKey", func(t *testing.T) {
+		ws := &WebhookSubscriber{
+			Headers: []WebhookHeader{
+				{Key: "Authorization", Value: "Bearer old-token"},
+				{Key: "X-Custom", Value: "custom"},
+			},
+		}
+		ws.setHeader("Authorization", "Bearer new-token")
+		require.Len(t, ws.Headers, 2)
+		assert.Equal(t, "Bearer new-token", ws.GetHeader("Authorization"))
+		assert.Equal(t, "custom", ws.GetHeader("X-Custom"))
+	})
+
+	t.Run("AddsNewKey", func(t *testing.T) {
+		ws := &WebhookSubscriber{
+			Headers: []WebhookHeader{
+				{Key: "X-Custom", Value: "custom"},
+			},
+		}
+		ws.setHeader("Authorization", "Bearer new-token")
+		require.Len(t, ws.Headers, 2)
+		assert.Equal(t, "Bearer new-token", ws.GetHeader("Authorization"))
+	})
+}
+
 func TestCopyProjectSubscriptions(t *testing.T) {
 	require.NoError(t, db.ClearCollections(SubscriptionsCollection))
 	oldProjectId := "my-project"
@@ -568,8 +1019,8 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			ID:           mgobson.NewObjectId().Hex(),
 			Owner:        oldProjectId,
 			OwnerType:    OwnerTypeProject,
-			ResourceType: "PATCH",
-			Trigger:      "outcome",
+			ResourceType: ResourceTypePatch,
+			Trigger:      TriggerOutcome,
 			Selectors: []Selector{
 				{
 					Type: SelectorProject,
@@ -586,8 +1037,8 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			ID:           mgobson.NewObjectId().Hex(),
 			Owner:        "not-my-project",
 			OwnerType:    OwnerTypeProject,
-			ResourceType: "PATCH",
-			Trigger:      "outcome",
+			ResourceType: ResourceTypePatch,
+			Trigger:      TriggerOutcome,
 			Selectors: []Selector{
 				{
 					Type: SelectorProject,

@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/options"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -457,6 +458,102 @@ func (s *execCmdSuite) TestEnvAddsExpansionsAndDefaults() {
 	for k, v := range s.conf.Expansions.Map() {
 		s.Equal(v, cmd.Env[k])
 	}
+}
+
+func (s *execCmdSuite) TestBackgroundCommandFailureSendsToChannel() {
+	bgFailures := make(chan error, 5)
+	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
+		Args: []string{"bash", "-c", "exit 1"},
+	}, "test-task", s.logger, bgFailures, false, true)
+	s.Require().NoError(err)
+
+	select {
+	case bgErr := <-bgFailures:
+		s.Require().Error(bgErr)
+		s.Contains(bgErr.Error(), "exited with code 1")
+	case <-time.After(5 * time.Second):
+		s.Fail("timed out waiting for background failure to be sent to channel")
+	}
+}
+
+func (s *execCmdSuite) TestBackgroundCommandFailureTrackingDisabledDoesNotSendToChannel() {
+	bgFailures := make(chan error, 5)
+	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
+		Args: []string{"bash", "-c", "exit 1"},
+	}, "test-task", s.logger, bgFailures, false, false)
+	s.Require().NoError(err)
+
+	time.Sleep(1500 * time.Millisecond)
+	s.Empty(bgFailures, "failure should not be queued when background command failure tracking is disabled")
+}
+
+func (s *execCmdSuite) TestBackgroundCommandSuccessDoesNotSendToChannel() {
+	bgFailures := make(chan error, 5)
+	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
+		Args: []string{"bash", "-c", "exit 0"},
+	}, "test-task", s.logger, bgFailures, false, true)
+	s.Require().NoError(err)
+
+	time.Sleep(1500 * time.Millisecond)
+	s.Empty(bgFailures)
+}
+
+func (s *execCmdSuite) TestBackgroundCommandFailureWithContinueOnErrorDoesNotSendToChannel() {
+	bgFailures := make(chan error, 5)
+	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
+		Args: []string{"bash", "-c", "exit 1"},
+	}, "test-task", s.logger, bgFailures, true, true)
+	s.Require().NoError(err)
+
+	time.Sleep(1500 * time.Millisecond)
+	s.Empty(bgFailures)
+}
+
+func (s *execCmdSuite) TestBackgroundCommandSigkillExitDoesNotSendToChannel() {
+	bgFailures := make(chan error, 5)
+	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
+		Args: []string{"bash", "-c", "exit 9"},
+	}, "test-task", s.logger, bgFailures, false, true)
+	s.Require().NoError(err)
+
+	time.Sleep(1500 * time.Millisecond)
+	s.Empty(bgFailures)
+}
+
+func (s *execCmdSuite) TestBackgroundCommandSigtermExitDoesNotSendToChannel() {
+	bgFailures := make(chan error, 5)
+	_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
+		Args: []string{"bash", "-c", "exit 15"},
+	}, "test-task", s.logger, bgFailures, false, true)
+	s.Require().NoError(err)
+
+	time.Sleep(1500 * time.Millisecond)
+	s.Empty(bgFailures)
+}
+
+func (s *execCmdSuite) TestConcurrentBackgroundFailuresSendToChannel() {
+	const numProcs = 5
+	bgFailures := make(chan error, numProcs)
+
+	for i := 0; i < numProcs; i++ {
+		_, err := runJasperProcess(s.ctx, s.jasper, true, &options.Create{
+			Args: []string{"bash", "-c", "exit 1"},
+		}, "test-task", s.logger, bgFailures, false, true)
+		s.Require().NoError(err)
+	}
+
+	received := 0
+	timeout := time.After(5 * time.Second)
+	for received < numProcs {
+		select {
+		case <-bgFailures:
+			received++
+		case <-timeout:
+			s.Failf("timed out", "received %d of %d expected background failures", received, numProcs)
+			return
+		}
+	}
+	s.Equal(numProcs, received)
 }
 
 func TestAddTemp(t *testing.T) {

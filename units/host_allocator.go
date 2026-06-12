@@ -123,15 +123,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	var containerPool *evergreen.ContainerPool
-	if distro.ContainerPool != "" {
-		containerPool = config.ContainerPools.GetContainerPool(distro.ContainerPool)
-		if containerPool == nil {
-			j.AddError(errors.Wrapf(err, "container pool not found for distro '%s'", j.DistroID))
-			return
-		}
-	}
-
 	if err = host.RemoveStaleInitializing(ctx, j.DistroID); err != nil {
 		j.AddError(errors.Wrap(err, "removing stale initializing intent hosts"))
 		return
@@ -172,8 +163,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostAllocatorData := scheduler.HostAllocatorData{
 		Distro:          *distro,
 		ExistingHosts:   upHosts,
-		UsesContainers:  (containerPool != nil),
-		ContainerPool:   containerPool,
 		DistroQueueInfo: distroQueueInfo,
 	}
 
@@ -182,6 +171,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	if distro.SingleTaskDistro {
 		// Single tasks distros should spawn a host for each task available to run in the queue.
 		nHosts = distroQueueInfo.LengthWithDependenciesMet - len(provisioningHosts)
+		// Ensure at least MinimumHosts will be running.
+		minimumHosts := distro.HostAllocatorSettings.MinimumHosts
+		if numExisting := len(upHosts); nHosts+numExisting < minimumHosts {
+			nHosts = minimumHosts - numExisting
+		}
 	} else {
 		hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 
@@ -230,7 +224,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	hostSpawningBegins := time.Now()
 	// Number of new hosts to be allocated
-	hostsSpawned, err := scheduler.CreateIntentHosts(ctx, *distro, nHosts, containerPool)
+	hostsSpawned, err := scheduler.CreateIntentHosts(ctx, *distro, nHosts)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "spawning new hosts"))
 		return

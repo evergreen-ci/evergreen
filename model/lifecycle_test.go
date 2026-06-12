@@ -3265,7 +3265,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 		}
 		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
 	})
-	t.Run("ReturnsFalseForNonPatchVersion", func(t *testing.T) {
+	t.Run("ReturnsTrueForNonPatchVersion", func(t *testing.T) {
 		creationInfo := TaskCreationInfo{
 			ProjectRef: &ProjectRef{
 				TestSelection: TestSelectionSettings{
@@ -3280,7 +3280,7 @@ func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 				IncludeBuildVariants: []*regexp.Regexp{regexp.MustCompile("bv1")},
 			},
 		}
-		assert.False(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
+		assert.True(t, canBuildVariantEnableTestSelection("bv1", creationInfo))
 	})
 	t.Run("ReturnsTrueIfTestSelectionDefaultEnabled", func(t *testing.T) {
 		creationInfo := TaskCreationInfo{
@@ -3376,4 +3376,52 @@ func TestIsTestSelectionEnabledForTask(t *testing.T) {
 			tCase(t, tsk, displayTasks, creationInfo)
 		})
 	}
+}
+
+func TestSetTestSelectionEnabledForTasks(t *testing.T) {
+	creationInfo := TaskCreationInfo{
+		TestSelectionParams: TestSelectionParams{
+			CanBuildVariantEnableTestSelection: true,
+		},
+	}
+	displayTaskIDsToNames := map[string]string{"dt_id": "dt"}
+
+	t.Run("DisplayTaskEnabledWhenAnyExecutionTaskEnabled", func(t *testing.T) {
+		execTasks := map[string]*task.Task{
+			"exec1": {Id: "exec1", DisplayName: "exec1"},
+			"exec2": {Id: "exec2", DisplayName: "exec2"},
+		}
+		dt := &task.Task{Id: "dt_id", DisplayName: "dt", DisplayOnly: true, ExecutionTasks: []string{"exec1", "exec2"}}
+		ci := creationInfo
+		ci.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("exec1")}
+
+		require.NoError(t, setTestSelectionEnabledForTasks(execTasks, []*task.Task{dt}, displayTaskIDsToNames, ci))
+		assert.True(t, execTasks["exec1"].TestSelectionEnabled)
+		assert.False(t, execTasks["exec2"].TestSelectionEnabled)
+		assert.True(t, dt.TestSelectionEnabled, "display task should be enabled when any execution task is")
+	})
+
+	t.Run("DisplayTaskDisabledWhenAllExecutionTasksDisabled", func(t *testing.T) {
+		execTasks := map[string]*task.Task{
+			"exec1": {Id: "exec1", DisplayName: "exec1"},
+			"exec2": {Id: "exec2", DisplayName: "exec2"},
+		}
+		dt := &task.Task{Id: "dt_id", DisplayName: "dt", DisplayOnly: true, ExecutionTasks: []string{"exec1", "exec2"}}
+		ci := creationInfo
+		ci.TestSelectionParams.IncludeTasks = []*regexp.Regexp{regexp.MustCompile("no_match")}
+
+		require.NoError(t, setTestSelectionEnabledForTasks(execTasks, []*task.Task{dt}, displayTaskIDsToNames, ci))
+		assert.False(t, dt.TestSelectionEnabled)
+	})
+
+	t.Run("DisplayTaskIgnoresExecutionTasksNotInMap", func(t *testing.T) {
+		// A display task's ExecutionTasks may reference pre-existing exec tasks
+		// not present in execTasks; the helper should leave the display task
+		// disabled rather than treating missing entries as enabled.
+		execTasks := map[string]*task.Task{}
+		dt := &task.Task{Id: "dt_id", DisplayName: "dt", DisplayOnly: true, ExecutionTasks: []string{"missing_exec"}}
+
+		require.NoError(t, setTestSelectionEnabledForTasks(execTasks, []*task.Task{dt}, displayTaskIDsToNames, creationInfo))
+		assert.False(t, dt.TestSelectionEnabled)
+	})
 }
