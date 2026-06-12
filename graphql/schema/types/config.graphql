@@ -92,6 +92,7 @@ input AdminSettingsInput {
   pprofPort: String
   projectCreation: ProjectCreationConfigInput
   providers: CloudProviderConfigInput
+  rateLimit: RateLimitConfigInput
   releaseMode: ReleaseModeConfigInput
   repotracker: RepotrackerConfigInput
   runtimeEnvironments: RuntimeEnvironmentConfigInput
@@ -149,6 +150,7 @@ type AdminSettings {
   pprofPort: String
   projectCreation: ProjectCreationConfig
   providers: CloudProviderConfig
+  rateLimit: RateLimitConfig
   releaseMode: ReleaseModeConfig
   repotracker: RepotrackerConfig
   runtimeEnvironments: RuntimeEnvironmentConfig
