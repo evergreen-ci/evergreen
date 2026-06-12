@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -864,4 +865,62 @@ func (m *userOrTaskAuthOnlyMiddleware) ServeHTTP(rw http.ResponseWriter, r *http
 		return
 	}
 	next(rw, r)
+}
+
+func NewRateLimitMiddleware() gimlet.Middleware {
+	return &rateLimitMiddleware{}
+}
+
+type rateLimitMiddleware struct {
+	surface evergreen.RateLimitSurface
+}
+
+func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+
+	// Resolve user
+	ctx := r.Context()
+	u := gimlet.GetUser(ctx)
+	if u == nil { // nil user, allow request to pass through.
+		next(rw, r)
+		return
+	}
+	// Pick tier
+	dbUser := MustHaveUser(ctx)
+	isService := false
+
+	if dbUser.OnlyAPI {
+		isService = true
+	}
+	cfg := evergreen.GetEnvironment().Settings().RateLimit
+	perHour, burst := limitsFor(&cfg, m.surface, isService)
+
+	// Skip limiter if rate limits are 0.
+	if perHour == 0 || burst == 0 {
+		next(rw, r)
+		return
+	}
+
+	// Handle elevated users - 2x normal limits.
+	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
+		perHour *= 2
+		burst *= 2
+	}
+
+	// Run request through limiter.
+}
+
+func limitsFor(c *evergreen.RateLimitConfig, surface evergreen.RateLimitSurface, isService bool) (perHour int, burst int) {
+	switch surface {
+	case evergreen.RateLimitSurfaceREST:
+		if isService {
+			return c.RESTServicePerHour, c.RESTServiceBurst
+		}
+		return c.RESTUserPerHour, c.RESTUserBurst
+	case evergreen.RateLimitSurfaceGraphQL:
+		if isService {
+			return c.GraphQLServicePerHour, c.GraphQLServiceBurst
+		}
+		return c.GraphQLUserPerHour, c.GraphQLUserBurst
+	}
+	return 0, 0 // Unknown, default to no rate limit.
 }
