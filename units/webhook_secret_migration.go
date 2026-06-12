@@ -128,6 +128,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 			"message":         "successfully migrated webhook secret to Parameter Store",
 			"subscription_id": j.SubscriptionID,
 			"job_id":          j.ID(),
+			"ticket":          "DEVPROD-15500",
 		})
 	}
 
@@ -158,6 +159,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 			"message":         "successfully migrated webhook Authorization header to Parameter Store",
 			"subscription_id": j.SubscriptionID,
 			"job_id":          j.ID(),
+			"ticket":          "DEVPROD-15500",
 		})
 	}
 }
@@ -222,6 +224,7 @@ func PopulateWebhookSecretMigrationJobs() amboy.QueueOperation {
 		if len(ids) == 0 {
 			grip.Info(ctx, message.Fields{
 				"message": "webhook secret migration complete: no unmigrated subscriptions remaining",
+				"ticket":  "DEVPROD-15500",
 			})
 			return nil
 		}
@@ -230,6 +233,7 @@ func PopulateWebhookSecretMigrationJobs() amboy.QueueOperation {
 		if err != nil {
 			grip.Warning(ctx, message.WrapError(err, message.Fields{
 				"message": "counting remaining unmigrated subscriptions",
+				"ticket":  "DEVPROD-15500",
 			}))
 		}
 
@@ -237,6 +241,7 @@ func PopulateWebhookSecretMigrationJobs() amboy.QueueOperation {
 			"message":                    "enqueuing webhook secret migration jobs",
 			"batch_count":                len(ids),
 			"remaining_unmigrated_count": remainingCount,
+			"ticket":                     "DEVPROD-15500",
 		})
 
 		ts := utility.RoundPartOfHour(5).Format(TSFormat)
@@ -325,6 +330,7 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 			"message":         "removed webhook secret from MongoDB",
 			"subscription_id": j.SubscriptionID,
 			"job_id":          j.ID(),
+			"ticket":          "DEVPROD-15500",
 		})
 	}
 
@@ -340,6 +346,7 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 			"message":         "removed webhook Authorization header from MongoDB",
 			"subscription_id": j.SubscriptionID,
 			"job_id":          j.ID(),
+			"ticket":          "DEVPROD-15500",
 		})
 	}
 }
@@ -404,6 +411,7 @@ func PopulateWebhookSecretCleanupJobs() amboy.QueueOperation {
 		grip.Info(ctx, message.Fields{
 			"message":     "enqueuing webhook secret cleanup jobs",
 			"batch_count": len(ids),
+			"ticket":      "DEVPROD-15500",
 		})
 
 		ts := utility.RoundPartOfHour(5).Format(TSFormat)

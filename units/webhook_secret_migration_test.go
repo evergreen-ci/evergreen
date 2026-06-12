@@ -31,69 +31,73 @@ func setupWebhookMigrationTest(t *testing.T) *mock.Environment {
 // a pre-migration state.
 func insertUnmigratedWebhookSubscription(t *testing.T, id string, secret string) {
 	t.Helper()
-	doc := bson.M{
-		"_id":           id,
-		"resource_type": event.ResourceTypePatch,
-		"trigger":       event.TriggerOutcome,
-		"selectors":     bson.A{bson.M{"type": "id", "data": "test"}},
-		"subscriber": bson.M{
-			"type": event.EvergreenWebhookSubscriberType,
-			"target": bson.M{
-				"url":    "https://example.com/webhook",
-				"secret": []byte(secret),
+	sub := event.Subscription{
+		ID:           id,
+		ResourceType: event.ResourceTypePatch,
+		Trigger:      event.TriggerOutcome,
+		Selectors:    []event.Selector{{Type: event.SelectorID, Data: "test"}},
+		Subscriber: event.Subscriber{
+			Type: event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{
+				URL:    "https://example.com/webhook",
+				Secret: []byte(secret),
 			},
 		},
-		"owner":      "test-owner",
-		"owner_type": "person",
+		Owner:     "test-owner",
+		OwnerType: event.OwnerTypePerson,
 	}
-	require.NoError(t, db.Insert(t.Context(), event.SubscriptionsCollection, doc))
+	require.NoError(t, db.Insert(t.Context(), event.SubscriptionsCollection, sub))
 }
 
 // insertWebhookSubscriptionWithAuthHeader inserts a subscription with an
-// Authorization header but no authorization_parameter, simulating a pre-migration
+// Authorization header but no authorization_header_parameter, simulating a pre-migration
 // state for the auth header.
 func insertWebhookSubscriptionWithAuthHeader(t *testing.T, id, authValue string) {
 	t.Helper()
-	doc := bson.M{
-		"_id":           id,
-		"resource_type": event.ResourceTypePatch,
-		"trigger":       event.TriggerOutcome,
-		"selectors":     bson.A{bson.M{"type": "id", "data": "test"}},
-		"subscriber": bson.M{
-			"type": event.EvergreenWebhookSubscriberType,
-			"target": bson.M{
-				"url":     "https://example.com/webhook",
-				"secret":  []byte("the-secret"),
-				"headers": bson.A{bson.M{"key": "Authorization", "value": authValue}},
+	sub := event.Subscription{
+		ID:           id,
+		ResourceType: event.ResourceTypePatch,
+		Trigger:      event.TriggerOutcome,
+		Selectors:    []event.Selector{{Type: event.SelectorID, Data: "test"}},
+		Subscriber: event.Subscriber{
+			Type: event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{
+				URL:    "https://example.com/webhook",
+				Secret: []byte("the-secret"),
+				Headers: []event.WebhookHeader{
+					{Key: "Authorization", Value: authValue},
+				},
 			},
 		},
-		"owner":      "test-owner",
-		"owner_type": "person",
+		Owner:     "test-owner",
+		OwnerType: event.OwnerTypePerson,
 	}
-	require.NoError(t, db.Insert(t.Context(), event.SubscriptionsCollection, doc))
+	require.NoError(t, db.Insert(t.Context(), event.SubscriptionsCollection, sub))
 }
 
 // insertWebhookSubscriptionWithBothUnmigrated inserts a subscription with both
 // a secret and an Authorization header, neither migrated to Parameter Store.
 func insertWebhookSubscriptionWithBothUnmigrated(t *testing.T, id, secret, authValue string) {
 	t.Helper()
-	doc := bson.M{
-		"_id":           id,
-		"resource_type": event.ResourceTypePatch,
-		"trigger":       event.TriggerOutcome,
-		"selectors":     bson.A{bson.M{"type": "id", "data": "test"}},
-		"subscriber": bson.M{
-			"type": event.EvergreenWebhookSubscriberType,
-			"target": bson.M{
-				"url":     "https://example.com/webhook",
-				"secret":  []byte(secret),
-				"headers": bson.A{bson.M{"key": "Authorization", "value": authValue}},
+	sub := event.Subscription{
+		ID:           id,
+		ResourceType: event.ResourceTypePatch,
+		Trigger:      event.TriggerOutcome,
+		Selectors:    []event.Selector{{Type: event.SelectorID, Data: "test"}},
+		Subscriber: event.Subscriber{
+			Type: event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{
+				URL:    "https://example.com/webhook",
+				Secret: []byte(secret),
+				Headers: []event.WebhookHeader{
+					{Key: "Authorization", Value: authValue},
+				},
 			},
 		},
-		"owner":      "test-owner",
-		"owner_type": "person",
+		Owner:     "test-owner",
+		OwnerType: event.OwnerTypePerson,
 	}
-	require.NoError(t, db.Insert(t.Context(), event.SubscriptionsCollection, doc))
+	require.NoError(t, db.Insert(t.Context(), event.SubscriptionsCollection, sub))
 }
 
 func TestWebhookSecretMigrationJobFactory(t *testing.T) {
