@@ -55,6 +55,8 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 		PopulateMergeQueueCompletionMetricsFallbackJobs(),
 		// TODO: DEVPROD-34706 Remove PopulateWebhookSecretMigrationJobs and the WebhookSecretMigrationEnabled flag once migration is verified complete in prod.
 		PopulateWebhookSecretMigrationJobs(),
+		// Cleanup runs after migration is verified complete in prod. Enable by setting WebhookSecretCleanupEnabled=true.
+		PopulateWebhookSecretCleanupJobs(),
 	}
 
 	queue := j.env.RemoteQueue()

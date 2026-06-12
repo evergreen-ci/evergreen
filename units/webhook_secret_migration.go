@@ -299,7 +299,7 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "getting service flags"))
 		return
 	}
-	if flags.WebhookSecretCleanupDisabled {
+	if !flags.WebhookSecretCleanupEnabled {
 		return
 	}
 
@@ -396,7 +396,7 @@ func PopulateWebhookSecretCleanupJobs() amboy.QueueOperation {
 		if err != nil {
 			return errors.Wrap(err, "getting service flags")
 		}
-		if flags.WebhookSecretCleanupDisabled {
+		if !flags.WebhookSecretCleanupEnabled {
 			return nil
 		}
 

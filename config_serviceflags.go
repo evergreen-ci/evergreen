@@ -44,7 +44,7 @@ type ServiceFlags struct {
 	PSLoggingDisabled                  bool `bson:"ps_logging_disabled" json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 	WebhookSecretMigrationEnabled      bool `bson:"webhook_secret_migration_enabled" json:"webhook_secret_migration_enabled"`
-	WebhookSecretCleanupDisabled       bool `bson:"webhook_secret_cleanup_disabled" json:"webhook_secret_cleanup_disabled"`
+	WebhookSecretCleanupEnabled        bool `bson:"webhook_secret_cleanup_enabled" json:"webhook_secret_cleanup_enabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -110,7 +110,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
 			webhookSecretMigrationEnabledKey:      c.WebhookSecretMigrationEnabled,
-			webhookSecretCleanupDisabledKey:       c.WebhookSecretCleanupDisabled,
+			webhookSecretCleanupDisabledKey:       c.WebhookSecretCleanupEnabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,

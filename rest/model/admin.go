@@ -2069,7 +2069,7 @@ type APIServiceFlags struct {
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
 	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
-	WebhookSecretCleanupDisabled       bool `json:"webhook_secret_cleanup_disabled"`
+	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2532,7 +2532,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
 		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
-		as.WebhookSecretCleanupDisabled = v.WebhookSecretCleanupDisabled
+		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2585,7 +2585,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
-		WebhookSecretCleanupDisabled:       as.WebhookSecretCleanupDisabled,
+		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,

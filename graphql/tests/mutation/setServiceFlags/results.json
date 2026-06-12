@@ -55,7 +55,7 @@
             { "name": "ps_logging_disabled", "enabled": false },
             { "name": "pod_diagnostics_disabled", "enabled": false },
             { "name": "webhook_secret_migration_enabled", "enabled": false },
-            { "name": "webhook_secret_cleanup_disabled", "enabled": false },
+            { "name": "webhook_secret_cleanup_enabled", "enabled": false },
             { "name": "event_processing_disabled", "enabled": false },
             { "name": "jira_notifications_disabled", "enabled": false },
             { "name": "slack_notifications_disabled", "enabled": false },
