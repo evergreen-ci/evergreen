@@ -977,7 +977,7 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"SingleRequesterQueryParam": func(t *testing.T) {
 			h := &getProjectVersionsHandler{}
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=ad_hoc", nil)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=ad_hoc", http.NoBody)
 			require.NoError(t, err)
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
 			require.NoError(t, h.Parse(ctx, req))
@@ -985,7 +985,7 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 		},
 		"MultipleRequesterQueryParams": func(t *testing.T) {
 			h := &getProjectVersionsHandler{}
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=gitter_request&requester=ad_hoc", nil)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=gitter_request&requester=ad_hoc", http.NoBody)
 			require.NoError(t, err)
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
 			require.NoError(t, h.Parse(ctx, req))
@@ -993,7 +993,7 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 		},
 		"DefaultsToRepotrackerWhenNoRequesterSpecified": func(t *testing.T) {
 			h := &getProjectVersionsHandler{}
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", nil)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", http.NoBody)
 			require.NoError(t, err)
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
 			require.NoError(t, h.Parse(ctx, req))
@@ -1029,7 +1029,7 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 		"PatchRequesterIsRejected": func(t *testing.T) {
 			for _, patchRequester := range evergreen.PatchRequesters {
 				h := &getProjectVersionsHandler{}
-				req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester="+patchRequester, nil)
+				req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester="+patchRequester, http.NoBody)
 				require.NoError(t, err)
 				req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
 				assert.Error(t, h.Parse(ctx, req))
