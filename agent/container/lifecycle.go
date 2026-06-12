@@ -2,15 +2,23 @@ package container
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"os/exec"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -249,11 +257,10 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 // entire task duration.
 const imagePullTimeout = 5 * time.Minute
 
-// ensureImage pulls the image if it is not already present locally.
-// It shells out to `docker pull` rather than using the Go Docker API so that
-// credential helpers configured in ~/.docker/config.json (e.g. ecr-login for
-// ECR) are invoked automatically. The Go Docker API requires explicit auth
-// credentials to be passed in and does not invoke credential helpers itself.
+// ensureImage pulls the image if it is not already present locally. For ECR
+// registries it fetches a short-lived auth token via the instance's IAM role
+// and passes it directly to the Docker API, avoiding any dependency on
+// external credential helpers or CLI tooling.
 func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.Journaler) error {
 	_, _, err := cli.ImageInspectWithRaw(ctx, img)
 	if err == nil {
@@ -268,17 +275,45 @@ func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.J
 		"image":   img,
 	})
 
-	out, err := exec.CommandContext(pullCtx, "docker", "pull", img).CombinedOutput()
+	var registryAuth string
+	if isECRImage(img) {
+		registryAuth, err = ecrRegistryAuth(ctx, img)
+		if err != nil {
+			return errors.Wrap(err, "getting ECR registry credentials")
+		}
+	}
+
+	reader, err := cli.ImagePull(pullCtx, img, image.PullOptions{RegistryAuth: registryAuth})
 	if err != nil {
-		if pullCtx.Err() != nil {
-			return errors.Wrapf(pullCtx.Err(), "pulling image '%s'", img)
-		}
-		// When docker is not in PATH, out is empty; fall back to wrapping err
-		// directly so the caller sees the real cause rather than a blank message.
-		if outStr := strings.TrimSpace(string(out)); outStr != "" {
-			return errors.Errorf("pulling image '%s': %s", img, outStr)
-		}
 		return errors.Wrapf(err, "pulling image '%s'", img)
+	}
+	defer reader.Close()
+
+	// Docker streams pull progress and errors as newline-delimited JSON.
+	// ImagePull only returns a top-level error for connection failures; auth
+	// errors and "image not found" come through in the stream as JSONMessage
+	// objects with a non-nil Error field. Loop until io.EOF rather than
+	// dec.More() because More() returns false on context expiry without
+	// propagating the error, making a timed-out pull indistinguishable from
+	// a successful one.
+	dec := json.NewDecoder(reader)
+	for {
+		var msg jsonmessage.JSONMessage
+		if decErr := dec.Decode(&msg); decErr != nil {
+			if decErr == io.EOF {
+				break // Stream ended cleanly.
+			}
+			if pullCtx.Err() != nil {
+				return errors.Wrapf(pullCtx.Err(), "pulling image '%s'", img)
+			}
+			return errors.Wrap(decErr, "decoding pull response")
+		}
+		if msg.Error != nil {
+			return errors.Wrapf(msg.Error, "pulling image '%s'", img)
+		}
+		if msg.ErrorMessage != "" {
+			return errors.Errorf("pulling image '%s': %s", img, msg.ErrorMessage)
+		}
 	}
 
 	logInfo(ctx, log, message.Fields{
@@ -287,6 +322,89 @@ func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.J
 	})
 
 	return nil
+}
+
+// isECRImage reports whether img is hosted on Amazon ECR (private or public).
+func isECRImage(img string) bool {
+	host := imageRegistryHost(img)
+	return strings.Contains(host, ".dkr.ecr.") && strings.HasSuffix(host, ".amazonaws.com")
+}
+
+// imageRegistryHost extracts the registry hostname from a Docker image reference.
+func imageRegistryHost(img string) string {
+	// Format: [host[:port]/]name[:tag|@digest]
+	// A registry prefix is only present when there is a '/' AND the component
+	// before it contains a '.' or ':', or equals "localhost". Without a '/',
+	// the entire string is a Docker Hub name (possibly with a tag), not a host.
+	first, _, hasSlash := strings.Cut(img, "/")
+	if hasSlash && (strings.ContainsAny(first, ".:") || first == "localhost") {
+		return first
+	}
+	return "registry-1.docker.io"
+}
+
+// ecrRegistryAuth fetches a short-lived ECR authorization token via the
+// instance's IAM role and returns it base64-encoded in the format the Docker
+// API expects for RegistryAuth.
+func ecrRegistryAuth(ctx context.Context, img string) (string, error) {
+	host := imageRegistryHost(img)
+
+	// ECR private registry format: <account>.dkr.ecr.<region>.amazonaws.com
+	// Extract the region from the hostname.
+	parts := strings.Split(host, ".")
+	var region string
+	for i, p := range parts {
+		if p == "ecr" && i+1 < len(parts) {
+			region = parts[i+1]
+			break
+		}
+	}
+	if region == "" {
+		return "", errors.Errorf("could not determine AWS region from ECR host '%s'", host)
+	}
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
+	if err != nil {
+		return "", errors.Wrap(err, "loading AWS config")
+	}
+
+	// Use a short dedicated timeout for the token fetch so it doesn't consume
+	// the pull context's budget. 30 seconds is generous for a single API call.
+	ecrCtx, ecrCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer ecrCancel()
+
+	resp, err := ecr.NewFromConfig(cfg).GetAuthorizationToken(ecrCtx, &ecr.GetAuthorizationTokenInput{})
+	if err != nil {
+		return "", errors.Wrap(err, "getting ECR authorization token")
+	}
+	if len(resp.AuthorizationData) == 0 {
+		return "", errors.New("ECR returned no authorization data")
+	}
+
+	token := resp.AuthorizationData[0].AuthorizationToken
+	if token == nil {
+		return "", errors.New("ECR returned a nil authorization token")
+	}
+
+	// AuthorizationToken is base64("AWS:<password>").
+	decoded, err := base64.StdEncoding.DecodeString(aws.ToString(token))
+	if err != nil {
+		return "", errors.Wrap(err, "decoding ECR authorization token")
+	}
+	username, password, ok := strings.Cut(string(decoded), ":")
+	if !ok {
+		return "", errors.New("unexpected ECR authorization token format")
+	}
+
+	authJSON, err := json.Marshal(registry.AuthConfig{
+		Username:      username,
+		Password:      password,
+		ServerAddress: host,
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "encoding registry auth config")
+	}
+	return base64.URLEncoding.EncodeToString(authJSON), nil
 }
 
 // logInfo sends an Info-level message to log if non-nil, otherwise falls back
