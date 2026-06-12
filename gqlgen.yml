@@ -100,7 +100,7 @@ models:
   BannerTheme:
     model: github.com/evergreen-ci/evergreen.BannerTheme
   BetaFeatures:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
+    model: github.com/evergreen-ci/evergreen.BetaFeatures
   BetaFeaturesInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
   BooleanMap:
@@ -542,7 +542,7 @@ models:
   ParserProjectS3ConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParserProjectS3Config
   ParsleyFilter:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
+    model: github.com/evergreen-ci/evergreen/model/parsley.Filter
   ParsleyFilterInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParsleyFilter
   Patch:

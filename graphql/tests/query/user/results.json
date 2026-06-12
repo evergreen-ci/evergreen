@@ -38,6 +38,64 @@
         ],
         "data": null
       }
+    },
+    {
+      "query_file": "current_user.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": {
+          "userLite": {
+            "id": "regular_user",
+            "displayName": "Regular User",
+            "emailAddress": "regular_user@mongodb.com"
+          }
+        }
+      }
+    },
+    {
+      "query_file": "user_all_fields.graphql",
+      "result": {
+        "data": {
+          "userLite": {
+            "id": "bob.smith",
+            "displayName": "Bob Smith",
+            "emailAddress": "bob.smith@mongodb.com",
+            "hasTokenExchangePending": false,
+            "betaFeatures": {
+              "spruceWaterfallEnabled": true
+            },
+            "parsleyFilters": [
+              {
+                "expression": "abc",
+                "exactMatch": true,
+                "caseSensitive": true
+              }
+            ],
+            "settings": {
+              "timezone": "America/New_York",
+              "region": "us-west-1",
+              "githubUser": {
+                "lastKnownAs": "bob_smith_1"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "user_not_found.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "user 'nonexistent-userid' not found",
+            "path": ["userLite"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
     }
   ]
 }

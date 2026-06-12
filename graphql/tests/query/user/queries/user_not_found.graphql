@@ -1,0 +1,5 @@
+{
+  userLite(userId: "nonexistent-userid") {
+    id
+  }
+}

@@ -1,0 +1,7 @@
+{
+  userLite {
+    id
+    displayName
+    emailAddress
+  }
+}
