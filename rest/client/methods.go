@@ -1443,9 +1443,6 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 		path:   fmt.Sprintf("projects/%s/versions", projectID),
 	}
 	queryParams := []string{}
-	for _, r := range requesters {
-		queryParams = append(queryParams, fmt.Sprintf("requester=%s", r))
-	}
 	if startAtOrderNum > 0 {
 		queryParams = append(queryParams, fmt.Sprintf("start=%d", startAtOrderNum))
 	}
@@ -1456,7 +1453,10 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 		info.path = info.path + "?" + strings.Join(queryParams, "&")
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	body := struct {
+		Requesters []string `json:"requesters"`
+	}{Requesters: requesters}
+	resp, err := c.request(ctx, info, body)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get versions for project '%s'", projectID)
 	}

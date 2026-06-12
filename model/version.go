@@ -788,7 +788,6 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 type GetVersionsOptions struct {
 	Start          int       `json:"start"`
 	RevisionEnd    int       `json:"revision_end"`
-	Requester      string    `json:"requester"`
 	Requesters     []string  `json:"requesters"`
 	Limit          int       `json:"limit"`
 	Skip           int       `json:"skip"`
@@ -814,12 +813,8 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 	}
-	if len(opts.Requesters) > 1 {
+	if len(opts.Requesters) > 0 {
 		match[VersionRequesterKey] = bson.M{"$in": opts.Requesters}
-	} else if len(opts.Requesters) == 1 {
-		match[VersionRequesterKey] = opts.Requesters[0]
-	} else if opts.Requester != "" {
-		match[VersionRequesterKey] = opts.Requester
 	}
 	if opts.ByBuildVariant != "" {
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant

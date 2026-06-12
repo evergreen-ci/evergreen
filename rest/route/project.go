@@ -767,7 +767,7 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Param			limit				query	int		false	"The number of versions to be returned per page of pagination. Defaults to 20."
 //	@Param			start				query	int		false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int		false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
-//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue),, and ad_hoc (periodic builds)."
+//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds)."
 //	@Param			include_builds		query	bool	false	"If set, will return some information for each build in the version."
 //	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
 //	@Param			include_tasks		query	bool	false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
@@ -789,6 +789,15 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &h.opts); err != nil {
 			return errors.Wrap(err, "unmarshalling JSON request body into version options")
+		}
+		if len(h.opts.Requesters) == 0 {
+			// Consider the legacy single-value "requester" body field.
+			var legacyBody struct {
+				Requester string `json:"requester"`
+			}
+			if err := json.Unmarshal(b, &legacyBody); err == nil && legacyBody.Requester != "" {
+				h.opts.Requesters = []string{legacyBody.Requester}
+			}
 		}
 	}
 
@@ -847,17 +856,11 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 
 	if requesters := params["requester"]; len(requesters) > 0 {
 		h.opts.Requesters = requesters
-	} else if h.opts.Requester != "" {
-		h.opts.Requesters = []string{h.opts.Requester}
 	}
 	if len(h.opts.Requesters) == 0 {
 		h.opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
 	}
-	for _, r := range h.opts.Requesters {
-		if evergreen.IsPatchRequester(r) {
-			return errors.Errorf("'%s' is not a valid requester for this route", r)
-		}
-	}
+
 	return nil
 }
 

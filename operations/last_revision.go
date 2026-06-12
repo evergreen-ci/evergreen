@@ -235,9 +235,6 @@ func LastRevision() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "getting latest versions for project")
 				}
-				if len(latestVersions) == 0 {
-					break
-				}
 
 				matchingVersion, err = findLatestMatchingVersion(ctx, client, latestVersions, allCriteria)
 				if err != nil {

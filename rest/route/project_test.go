@@ -950,8 +950,8 @@ func TestGetProjectVersions(t *testing.T) {
 	h := getProjectVersionsHandler{
 		projectName: "something-else",
 		opts: serviceModel.GetVersionsOptions{
-			Requester: evergreen.AdHocRequester,
-			Limit:     20,
+			Requesters: []string{evergreen.AdHocRequester},
+			Limit:      20,
 		},
 	}
 	resp := h.Run(ctx)
@@ -999,7 +999,16 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			require.NoError(t, h.Parse(ctx, req))
 			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
 		},
-		"RequesterInBodyUsedWhenNoQueryParam": func(t *testing.T) {
+		"RequestersInBodyUsedWhenNoQueryParam": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			body := []byte(`{"requesters": ["ad_hoc"]}`)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.AdHocRequester}, h.opts.Requesters)
+		},
+		"LegacyRequesterInBodyUsedWhenNoQueryParam": func(t *testing.T) {
 			h := &getProjectVersionsHandler{}
 			body := []byte(`{"requester": "ad_hoc"}`)
 			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
@@ -1008,9 +1017,9 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			require.NoError(t, h.Parse(ctx, req))
 			assert.Equal(t, []string{evergreen.AdHocRequester}, h.opts.Requesters)
 		},
-		"QueryParamOverridesBodyRequester": func(t *testing.T) {
+		"QueryParamOverridesBodyRequesters": func(t *testing.T) {
 			h := &getProjectVersionsHandler{}
-			body := []byte(`{"requester": "ad_hoc"}`)
+			body := []byte(`{"requesters": ["ad_hoc"]}`)
 			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=gitter_request", bytes.NewReader(body))
 			require.NoError(t, err)
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
