@@ -209,7 +209,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				defer f.Close()
 				defer gz.Close()
 
-				So(extractTarballArchive(t.Context(), tarReader, outputDir, []string{}), ShouldBeNil)
+				So(extractTarballArchive(t.Context(), tarReader, outputDir, []string{}, false), ShouldBeNil)
 				assert.DirExists(t, filepath.Join(outputDir, "dir1"))
 				assert.DirExists(t, filepath.Join(outputDir, "dir1", "dir2"))
 			})

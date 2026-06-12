@@ -2789,7 +2789,7 @@ func (hosts HostGroup) ProvisioningHosts() HostGroup {
 	out := HostGroup{}
 
 	for _, h := range hosts {
-		if utility.StringSliceContains(evergreen.ProvisioningHostStatus, h.Status) {
+		if utility.StringSliceContains(evergreen.ProvisioningHostStatus, h.Status) && h.RunningTask == "" {
 			out = append(out, h)
 		}
 	}

@@ -39,11 +39,47 @@ func validateRelativePath(filePath, rootPath string) error {
 	return nil
 }
 
+// validateSymlinkTarget verifies that following a symlink located at linkPath
+// whose raw target is linkname cannot resolve outside rootPath. A relative
+// target is resolved against the symlink's own directory (its real semantics);
+// an absolute target is rejected because it is host-specific and would point
+// outside the extracted tree.
+func validateSymlinkTarget(linkname, linkPath, rootPath string) error {
+	if filepath.IsAbs(linkname) {
+		return errors.New("symlink target is absolute")
+	}
+	resolved := filepath.Join(filepath.Dir(linkPath), linkname)
+	relpath, err := filepath.Rel(rootPath, resolved)
+	if err != nil {
+		return errors.Wrap(err, "getting relative path of symlink target")
+	}
+	if relpath == ".." || strings.HasPrefix(relpath, ".."+string(filepath.Separator)) {
+		return errors.New("symlink target resolves outside the root path")
+	}
+	return nil
+}
+
+// buildArchiveOptions configures how buildArchive writes files into the archive.
+type buildArchiveOptions struct {
+	tarWriter *tar.Writer
+	rootPath  string
+	paths     []archiveContentFile
+	excludes  []string
+	logger    grip.Journaler
+	verbose   bool
+	// preserveSymlinks archives symlinks as symlink entries (preserving their
+	// targets); otherwise they are dereferenced and the target's contents are
+	// stored at the symlink's path.
+	preserveSymlinks bool
+}
+
 // buildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
-// Returns the number of files that were added to the archive
-func buildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, pathsToAdd []archiveContentFile,
-	excludes []string, logger grip.Journaler, verbose bool) (int, error) {
+// Returns the number of files that were added to the archive.
+func buildArchive(ctx context.Context, opts buildArchiveOptions) (int, error) {
+	tarWriter, rootPath, logger := opts.tarWriter, opts.rootPath, opts.logger
+	pathsToAdd, excludes := opts.paths, opts.excludes
+	verbose, preserveSymlinks := opts.verbose, opts.preserveSymlinks
 
 	numFilesArchived := 0
 	processed := map[string]bool{}
@@ -55,10 +91,11 @@ FileLoop:
 		}
 
 		var intarball string
-		// Tarring symlinks doesn't work reliably right now, so if the file is
-		// a symlink, leave intarball path intact but write from the file
-		// underlying the symlink.
-		if file.info.Mode()&os.ModeSymlink > 0 {
+		// When preserveSymlinks is false, tarring symlinks doesn't work reliably,
+		// so leave the intarball path intact but write from the file underlying
+		// the symlink. When preserveSymlinks is true, the symlink is left alone
+		// here and archived as a symlink entry below.
+		if file.info.Mode()&os.ModeSymlink > 0 && !preserveSymlinks {
 			symlinkPath, err := filepath.EvalSymlinks(file.path)
 			if err != nil {
 				logger.Warningf(ctx, "Could not follow symlink '%s', ignoring.", file.path)
@@ -125,6 +162,26 @@ FileLoop:
 			continue
 		}
 
+		if file.info.Mode()&os.ModeSymlink > 0 {
+			// Reachable only when preserveSymlinks is true; otherwise the block
+			// at the top of the loop rewrote file.info to the dereferenced target.
+			// os.Readlink preserves the raw (possibly relative or broken) target,
+			// which is what tools like NPM expect to find on restore.
+			target, err := os.Readlink(file.path)
+			if err != nil {
+				logger.Warningf(ctx, "Could not read symlink '%s', ignoring.", file.path)
+				continue
+			}
+			hdr.Typeflag = tar.TypeSymlink
+			hdr.Linkname = target
+			numFilesArchived++
+			if err := tarWriter.WriteHeader(hdr); err != nil {
+				return numFilesArchived, errors.Wrapf(err, "writing tarball header for symlink '%s'", intarball)
+			}
+			logger.Warning(ctx, errors.Wrap(tarWriter.Flush(), "flushing tar writer"))
+			continue
+		}
+
 		hdr.Size = file.info.Size()
 
 		numFilesArchived++
@@ -155,7 +212,7 @@ FileLoop:
 	return numFilesArchived, nil
 }
 
-func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string) error {
+func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string, preserveSymlinks bool) error {
 	// wrap the reader in a gzip reader and a tar reader
 	gzipReader, err := pgzip.NewReader(reader)
 	if err != nil {
@@ -163,7 +220,7 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	}
 
 	tarReader := tar.NewReader(gzipReader)
-	err = extractTarballArchive(ctx, tarReader, rootPath, excludes)
+	err = extractTarballArchive(ctx, tarReader, rootPath, excludes, preserveSymlinks)
 	if err != nil {
 		return errors.Wrapf(err, "extracting path '%s'", rootPath)
 	}
@@ -171,8 +228,11 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	return nil
 }
 
-// extractTarballArchive unpacks the tar.Reader into rootPath.
-func extractTarballArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
+// extractTarballArchive unpacks the tar.Reader into rootPath. When
+// preserveSymlinks is true, symlink entries are recreated with their original
+// (possibly relative) targets, validated to stay within rootPath; otherwise
+// symlink targets are interpreted relative to rootPath.
+func extractTarballArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string, preserveSymlinks bool) error {
 	// Link files and symlink files are extracted after all other files are extracted.
 	linkFiles := []func() error{}
 tarReaderLoop:
@@ -201,14 +261,23 @@ tarReaderLoop:
 		if err := validateRelativePath(name, rootPath); err != nil {
 			return errors.Wrapf(err, "artifact path name '%s' should be relative to the root path", name)
 		}
-		if linkname != "" {
-			if err := validateRelativePath(linkname, rootPath); err != nil {
-				return errors.Wrapf(err, "artifact path link name '%s' should be relative to the root path", linkname)
-			}
-		}
 
 		namePath := filepath.Join(rootPath, name)
 		linkNamePath := filepath.Join(rootPath, linkname)
+
+		if linkname != "" {
+			// A preserved symlink keeps its raw (possibly relative) target, which
+			// resolves against the symlink's own directory. Every other link
+			// (hard links, and symlinks when preservation is off) is interpreted
+			// relative to the root path.
+			if hdr.Typeflag == tar.TypeSymlink && preserveSymlinks {
+				if err := validateSymlinkTarget(linkname, namePath, rootPath); err != nil {
+					return errors.Wrapf(err, "validating symlink target '%s' for '%s'", linkname, name)
+				}
+			} else if err := validateRelativePath(linkname, rootPath); err != nil {
+				return errors.Wrapf(err, "artifact path link name '%s' should be relative to the root path", linkname)
+			}
+		}
 
 		for _, ignore := range excludes {
 			if match, _ := filepath.Match(ignore, name); match {
@@ -229,9 +298,30 @@ tarReaderLoop:
 			})
 		case tar.TypeSymlink:
 			// Tar entry for a symbolic link.
-			linkFiles = append(linkFiles, func() error {
-				return os.Symlink(linkNamePath, namePath)
-			})
+			if preserveSymlinks {
+				// Recreate the symlink with its raw target so relative links
+				// (e.g. an NPM node_modules/.bin entry) are preserved verbatim.
+				rawLinkname := linkname
+				linkFiles = append(linkFiles, func() error {
+					if err := os.MkdirAll(filepath.Dir(namePath), 0755); err != nil {
+						return errors.Wrapf(err, "creating directory '%s'", filepath.Dir(namePath))
+					}
+					// Remove any existing entry so restoring into an
+					// already-populated tree (e.g. a second cache.restore in a
+					// task group) overwrites like regular-file extraction does,
+					// instead of failing with EEXIST. A non-recursive remove is
+					// deliberate: silently deleting a directory tree to make room
+					// for a symlink would be too destructive.
+					if err := os.Remove(namePath); err != nil && !os.IsNotExist(err) {
+						return errors.Wrapf(err, "removing existing entry '%s'", namePath)
+					}
+					return os.Symlink(rawLinkname, namePath)
+				})
+			} else {
+				linkFiles = append(linkFiles, func() error {
+					return os.Symlink(linkNamePath, namePath)
+				})
+			}
 		case tar.TypeReg, tar.TypeRegA:
 			// Tar entry for a regular file.
 			// First, ensure the file's parent directory exists.

@@ -688,6 +688,14 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 		}
 	}
 
+	costConfig := &evergreen.CostConfig{}
+	if err := costConfig.Get(ctx); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "getting cost config for lifecycle rule discovery, proceeding without account skip list",
+			"task_id": t.Id,
+		}))
+	}
+
 	cachedBuckets := []string{}
 	for bucketName, file := range bucketsToDiscover {
 		region := evergreen.DefaultS3Region
@@ -702,7 +710,7 @@ func discoverAndCacheBucketLifecycleRules(ctx context.Context, t *task.Task, fil
 			externalID = &file.ExternalID
 		}
 
-		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, cloud.NewS3LifecycleClient())
+		wasCached := s3lifecycle.DiscoverAndCacheProjectBucket(ctx, bucketName, region, roleARN, externalID, t.Project, costConfig.S3Cost.Storage.ArtifactAWSAccountsWithoutLifecycleRules, cloud.NewS3LifecycleClient())
 		if wasCached {
 			cachedBuckets = append(cachedBuckets, bucketName)
 		}

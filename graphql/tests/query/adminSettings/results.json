@@ -233,6 +233,18 @@
               "url": "http://localhost:9090",
               "corpUrl": ""
             },
+            "rateLimit": {
+              "elevatedUserIds": ["user1", "user2"],
+              "graphqlComplexityLimit": 1000,
+              "graphqlServiceBurst": 40,
+              "graphqlServicePerHour": 400,
+              "graphqlUserBurst": 30,
+              "graphqlUserPerHour": 300,
+              "restServiceBurst": 20,
+              "restServicePerHour": 200,
+              "restUserBurst": 10,
+              "restUserPerHour": 100
+            },
             "ui": {
               "url": "http://localhost:9090",
               "uiv2Url": "http://localhost:3000",

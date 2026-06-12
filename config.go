@@ -38,7 +38,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2026-06-08"
+	AgentVersion = "2026-06-12"
 )
 
 const (
@@ -109,6 +109,7 @@ type Settings struct {
 	PprofPort               string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	ProjectCreation         ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
 	Providers               CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	RateLimit               RateLimitConfig           `yaml:"rate_limit" bson:"rate_limit" json:"rate_limit" id:"rate_limit"`
 	ReleaseMode             ReleaseModeConfig         `yaml:"release_mode" bson:"release_mode" json:"release_mode" id:"release_mode"`
 	RepoTracker             RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
 	RuntimeEnvironments     RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`

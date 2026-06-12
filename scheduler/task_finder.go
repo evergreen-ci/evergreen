@@ -52,6 +52,14 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 	// filter out any tasks whose dependencies are not met
 	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
 	dependencyCaches := make(map[string]task.Task)
+	if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
+		// Pre-warm the dependency cache so the DependenciesMet checks below
+		// don't each query for their task's dependencies individually.
+		dependencyCaches, err = getDependencyTaskCache(ctx, undispatchedTasks, task.StatusKey, task.DependsOnKey, task.ActivatedKey)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for _, t := range undispatchedTasks {
 		ref, ok := projectRefCache[t.Project]
 		if !ok {
@@ -118,33 +126,11 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 		return nil, err
 	}
 
-	cache := make(map[string]task.Task)
-	lookupSet := make(map[string]struct{})
-	catcher := grip.NewBasicCatcher()
-
-	for _, t := range undispatchedTasks {
-		cache[t.Id] = t
-		for _, dep := range t.DependsOn {
-			lookupSet[dep.TaskId] = struct{}{}
-		}
-	}
-
-	taskIds := []string{}
-	for t := range lookupSet {
-		if _, ok := cache[t]; ok {
-			continue
-		}
-		taskIds = append(taskIds, t)
-	}
-
-	tasksToCache, err := task.FindWithFields(ctx, task.ByIds(taskIds), task.StatusKey, task.DependsOnKey)
+	cache, err := getDependencyTaskCache(ctx, undispatchedTasks, task.StatusKey, task.DependsOnKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding task dependencies")
+		return nil, err
 	}
-
-	for _, t := range tasksToCache {
-		cache[t.Id] = t
-	}
+	catcher := grip.NewBasicCatcher()
 
 	runnabletasks := []task.Task{}
 	for _, t := range undispatchedTasks {
@@ -300,6 +286,37 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 	}))
 
 	return runnabletasks, nil
+}
+
+// getDependencyTaskCache returns a cache of the given undispatched tasks plus
+// the tasks they directly depend on, fetching uncached dependencies with a
+// single batched query that projects the given fields.
+func getDependencyTaskCache(ctx context.Context, undispatchedTasks []task.Task, fields ...string) (map[string]task.Task, error) {
+	cache := make(map[string]task.Task)
+	lookupSet := make(map[string]struct{})
+	for _, t := range undispatchedTasks {
+		cache[t.Id] = t
+		for _, dep := range t.DependsOn {
+			lookupSet[dep.TaskId] = struct{}{}
+		}
+	}
+	depIDs := make([]string, 0, len(lookupSet))
+	for id := range lookupSet {
+		if _, ok := cache[id]; ok {
+			continue
+		}
+		depIDs = append(depIDs, id)
+	}
+	if len(depIDs) > 0 {
+		deps, err := task.FindWithFields(ctx, task.ByIds(depIDs), fields...)
+		if err != nil {
+			return nil, errors.Wrap(err, "finding task dependencies")
+		}
+		for _, dep := range deps {
+			cache[dep.Id] = dep
+		}
+	}
+	return cache, nil
 }
 
 func getProjectRefCache(ctx context.Context) (map[string]model.ProjectRef, error) {
