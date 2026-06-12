@@ -43,6 +43,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
   APIConfigInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIapiConfig
+  RateLimitConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRateLimitConfig
+  RateLimitConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRateLimitConfig
   Arch:
     model: github.com/99designs/gqlgen/graphql.String
     enum_values:
