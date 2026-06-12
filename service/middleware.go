@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -142,54 +141,6 @@ func (uis *UIServer) wrapUserForMCP(next http.HandlerFunc) http.HandlerFunc {
 		ctx := gimlet.AttachUser(r.Context(), user)
 		r = r.WithContext(ctx)
 		next(w, r)
-	}
-}
-
-func (uis *UIServer) complexityLimit(next http.HandlerFunc) http.HandlerFunc {
-	// Similar flow to rate limit.
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		u := gimlet.GetUser(ctx)
-		if u == nil {
-			next(w, r)
-			return
-		}
-
-		// Picking tier skipped for now - complexity limits don't double.
-
-		cfg := evergreen.GetEnvironment().Settings().RateLimit
-		complexityLimit := cfg.GraphQLComplexityLimit
-		if complexityLimit == 0 {
-			next(w, r)
-			return
-		}
-
-		queryComplexity := r.Header.Get("complexity") // TODO verify this is the correct way to retrieve the complexity score
-		if queryComplexity == "" {
-			next(w, r)
-			return
-		}
-
-		w.Header().Set(evergreen.GraphQLComplexityHeader, queryComplexity)
-
-		complexity, err := strconv.Atoi(queryComplexity)
-
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "converting query complexity"))
-			return
-		}
-		if complexity <= complexityLimit {
-			next(w, r)
-			return
-		}
-
-		w.Header().Set(evergreen.GraphQLComplexityExceededHeader, "true")
-		flags, _ := evergreen.GetServiceFlags(ctx)
-		if flags != nil && flags.GraphQLComplexityLimiterDisabled {
-			next(w, r)
-			return
-		}
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("query complexity %d exceeds limit of %d", complexity, complexityLimit))
 	}
 }
 

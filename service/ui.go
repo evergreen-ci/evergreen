@@ -145,7 +145,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)
 	requireSage := route.NewSageMiddleware()
 	rateLimit := route.NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceGraphQL)
-	complexityLimit := gimlet.WrapperMiddleware(uis.complexityLimit)
 
 	app := gimlet.NewApp()
 	app.NoVersions = true
@@ -181,7 +180,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()
 	app.AddRoute("/graphql/query").
-		Wrap(allowsCORS, needsLoginNoRedirect, rateLimit, complexityLimit).
+		Wrap(allowsCORS, needsLoginNoRedirect, rateLimit).
 		Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL, true))).ServeHTTP(w, r)
 		})).
@@ -189,7 +188,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// MCP-only GraphQL (queries only, no mutations)
 	app.AddRoute("/mcp/graphql/query").
-		Wrap(allowsCORS, requireSage, wrapUserForMCP, rateLimit, complexityLimit).
+		Wrap(allowsCORS, requireSage, wrapUserForMCP, rateLimit).
 		Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL, false))).ServeHTTP(w, r)
 		})).
