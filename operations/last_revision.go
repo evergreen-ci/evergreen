@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"sort"
 	"sync"
 	"time"
 
@@ -278,37 +277,11 @@ func LastRevision() cli.Command {
 }
 
 func fetchVersionBatch(ctx context.Context, c client.Communicator, projectID string, includePeriodicBuilds bool, orderNum, limit int) ([]model.APIVersion, error) {
-	if !includePeriodicBuilds {
-		return c.GetRecentVersionsForProject(ctx, projectID, evergreen.RepotrackerVersionRequester, orderNum, limit)
+	requesters := []string{evergreen.RepotrackerVersionRequester}
+	if includePeriodicBuilds {
+		requesters = append(requesters, evergreen.AdHocRequester)
 	}
-
-	type result struct {
-		versions []model.APIVersion
-		err      error
-	}
-	ch := make(chan result, 2)
-	for _, requester := range []string{evergreen.RepotrackerVersionRequester, evergreen.AdHocRequester} {
-		go func(req string) {
-			vs, err := c.GetRecentVersionsForProject(ctx, projectID, req, orderNum, limit)
-			ch <- result{vs, err}
-		}(requester)
-	}
-
-	catcher := grip.NewBasicCatcher()
-	var merged []model.APIVersion
-	for i := 0; i < 2; i++ {
-		r := <-ch
-		catcher.Add(r.err)
-		merged = append(merged, r.versions...)
-	}
-	if err := catcher.Resolve(); err != nil {
-		return nil, err
-	}
-
-	sort.Slice(merged, func(i, j int) bool {
-		return merged[i].Order > merged[j].Order
-	})
-	return merged, nil
+	return c.GetRecentVersionsForProject(ctx, projectID, requesters, orderNum, limit)
 }
 
 func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, jsonOutput bool) error {

@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -289,9 +290,16 @@ func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, b
 	return nil, nil
 }
 
-func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, requester string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
+func (c *Mock) GetRecentVersionsForProject(ctx context.Context, projectID string, requesters []string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
 	if c.GetRecentVersionsResultsByRequester != nil {
-		return c.GetRecentVersionsResultsByRequester[requester], nil
+		var merged []restmodel.APIVersion
+		for _, req := range requesters {
+			merged = append(merged, c.GetRecentVersionsResultsByRequester[req]...)
+		}
+		sort.Slice(merged, func(i, j int) bool {
+			return merged[i].Order > merged[j].Order
+		})
+		return merged, nil
 	}
 	if c.GetRecentVersionsResult != nil {
 		return c.GetRecentVersionsResult, nil

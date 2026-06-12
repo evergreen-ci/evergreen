@@ -971,6 +971,68 @@ func TestGetProjectVersions(t *testing.T) {
 	assert.Contains(string(respJson), `"version_id":"v1"`)
 }
 
+func TestGetProjectVersionsParseRequesters(t *testing.T) {
+	ctx := t.Context()
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"SingleRequesterQueryParam": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=ad_hoc", nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.AdHocRequester}, h.opts.Requesters)
+		},
+		"MultipleRequesterQueryParams": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=gitter_request&requester=ad_hoc", nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester, evergreen.AdHocRequester}, h.opts.Requesters)
+		},
+		"DefaultsToRepotrackerWhenNoRequesterSpecified": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", nil)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
+		},
+		"RequesterInBodyUsedWhenNoQueryParam": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			body := []byte(`{"requester": "ad_hoc"}`)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", bytes.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.AdHocRequester}, h.opts.Requesters)
+		},
+		"QueryParamOverridesBodyRequester": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			body := []byte(`{"requester": "ad_hoc"}`)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester=gitter_request", bytes.NewReader(body))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
+		},
+		"PatchRequesterIsRejected": func(t *testing.T) {
+			for _, patchRequester := range evergreen.PatchRequesters {
+				h := &getProjectVersionsHandler{}
+				req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester="+patchRequester, nil)
+				require.NoError(t, err)
+				req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+				assert.Error(t, h.Parse(ctx, req))
+			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tCase(t)
+		})
+	}
+}
+
 func TestDeleteProject(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

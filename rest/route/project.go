@@ -845,12 +845,18 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		h.opts.CreatedBefore = createdBefore
 	}
 
-	requester := params.Get("requester")
-	if requester != "" {
-		h.opts.Requester = requester
+	if requesters := params["requester"]; len(requesters) > 0 {
+		h.opts.Requesters = requesters
+	} else if h.opts.Requester != "" {
+		h.opts.Requesters = []string{h.opts.Requester}
 	}
-	if h.opts.Requester == "" {
-		h.opts.Requester = evergreen.RepotrackerVersionRequester
+	if len(h.opts.Requesters) == 0 {
+		h.opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
+	}
+	for _, r := range h.opts.Requesters {
+		if evergreen.IsPatchRequester(r) {
+			return errors.Errorf("'%s' is not a valid requester for this route", r)
+		}
 	}
 	return nil
 }

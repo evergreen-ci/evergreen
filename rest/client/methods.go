@@ -1437,14 +1437,14 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	return result, nil
 }
 
-func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
+func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID string, requesters []string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("projects/%s/versions", projectID),
 	}
 	queryParams := []string{}
-	if requester != "" {
-		queryParams = append(queryParams, fmt.Sprintf("requester=%s", requester))
+	for _, r := range requesters {
+		queryParams = append(queryParams, fmt.Sprintf("requester=%s", r))
 	}
 	if startAtOrderNum > 0 {
 		queryParams = append(queryParams, fmt.Sprintf("start=%d", startAtOrderNum))
