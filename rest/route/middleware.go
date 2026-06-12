@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/ratelimit"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -867,16 +867,19 @@ func (m *userOrTaskAuthOnlyMiddleware) ServeHTTP(rw http.ResponseWriter, r *http
 	next(rw, r)
 }
 
-func NewRateLimitMiddleware() gimlet.Middleware {
-	return &rateLimitMiddleware{}
+func NewRateLimitMiddleware(env evergreen.Environment, surface evergreen.RateLimitSurface) gimlet.Middleware {
+	return &rateLimitMiddleware{
+		env:     env,
+		surface: surface,
+	}
 }
 
 type rateLimitMiddleware struct {
+	env     evergreen.Environment
 	surface evergreen.RateLimitSurface
 }
 
 func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-
 	// Resolve user
 	ctx := r.Context()
 	u := gimlet.GetUser(ctx)
@@ -900,13 +903,39 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Handle elevated users - 2x normal limits.
-	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
-		perHour *= 2
-		burst *= 2
+	// Run request through limiter.
+	limiter := ratelimit.NewRateLimiter(m.env.RedisClient())
+	res, err := limiter.Allow(ctx, u.Username(), m.surface, perHour, burst)
+	if err != nil {
+		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking rate limit")))
+		return
 	}
 
-	// Run request through limiter.
+	// Interpret response to set headersrs
+
+	// Informational headers about the current state of the rate limit
+	rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
+	rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
+	rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", res.ResetAfter))
+
+	if res.Allowed > 0 { // Request is allowed, continue as normal.
+		next(rw, r)
+		return
+	}
+
+	rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
+
+	flags, _ := evergreen.GetServiceFlags(ctx)
+
+	// Warn-only mode: header is set + log, but still serve the request
+	if flags != nil && flags.APIRateLimiterDisabled {
+		next(rw, r)
+		return
+	}
+
+	// Rate limit enforced
+	rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", res.ResetAfter)) // TODO dealing with unix conversion
+	http.Error(rw, "rate limit exceeded", http.StatusTooManyRequests)
 }
 
 func limitsFor(c *evergreen.RateLimitConfig, surface evergreen.RateLimitSurface, isService bool) (perHour int, burst int) {
