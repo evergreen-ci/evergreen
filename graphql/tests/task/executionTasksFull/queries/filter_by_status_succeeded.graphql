@@ -1,0 +1,9 @@
+{
+    task(taskId: "burn_in_display_task") {
+      id
+      executionTasksFull(statuses: ["success"]) {
+        id
+        displayStatus
+      }
+    }
+}

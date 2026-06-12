@@ -91,7 +91,12 @@ type Task {
   execution: Int!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
-  executionTasksFull: [Task!]
+  """
+  executionTasksFull returns a display task's execution tasks. When statuses is
+  provided, only execution tasks whose display status matches one of the given
+  statuses are returned, mirroring the filters applied to the tasks table.
+  """
+  executionTasksFull(statuses: [String!]): [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
   files: TaskFiles!
