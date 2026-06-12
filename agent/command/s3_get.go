@@ -366,7 +366,7 @@ func (c *s3get) fetchAndExtractTarball(ctx context.Context, f *os.File) error {
 		return errors.Wrapf(err, "seeking to start of tgz file")
 	}
 
-	if err := extractTarball(ctx, f, c.ExtractTo, []string{}); err != nil {
+	if err := extractTarball(ctx, f, c.ExtractTo, []string{}, false); err != nil {
 		return errors.Wrapf(err, "extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
 	}
 
