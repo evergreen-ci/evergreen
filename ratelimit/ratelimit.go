@@ -5,12 +5,17 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redis_rate/v9"
 	"github.com/pkg/errors"
 )
 
 type Limiter struct {
 	limiter *redis_rate.Limiter
+}
+
+func NewRateLimiter(rdb *redis.Client) *Limiter {
+	return &Limiter{limiter: redis_rate.NewLimiter(rdb)}
 }
 
 // Allow is used for REST and GraphQL rate limits, which have a cost of 1.

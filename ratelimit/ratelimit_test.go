@@ -6,7 +6,6 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/go-redis/redis/v8"
-	"github.com/go-redis/redis_rate/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +13,7 @@ import (
 // newTestLimiter returns a Limiter whose backing Redis client is nil. These
 // tests only exercise validation that happens before Redis is contacted.
 func newTestLimiter() *Limiter {
-	return &Limiter{limiter: redis_rate.NewLimiter(nil)}
+	return NewRateLimiter(nil)
 }
 
 // newRedisTestLimiter returns a Limiter backed by a mock Redis (miniredis)
@@ -23,7 +22,7 @@ func newRedisTestLimiter(t *testing.T) *Limiter {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { assert.NoError(t, rdb.Close()) })
-	return &Limiter{limiter: redis_rate.NewLimiter(rdb)}
+	return NewRateLimiter(rdb)
 }
 
 func TestAllowSurfaceOutsideTypeShouldError(t *testing.T) {
