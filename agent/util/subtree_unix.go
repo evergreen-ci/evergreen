@@ -280,5 +280,8 @@ func SetOOMScoreAdj(adj int) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
+	if adj < -1000 || adj > 1000 {
+		return errors.Errorf("OOM score adjustment %d is out of range [-1000, 1000]", adj)
+	}
 	return os.WriteFile("/proc/self/oom_score_adj", []byte(strconv.Itoa(adj)), 0)
 }
