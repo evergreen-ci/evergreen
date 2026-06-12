@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -901,6 +902,12 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	if perHour == 0 || burst == 0 {
 		next(rw, r)
 		return
+	}
+
+	// Handle elevated users - 2x normal limits (this may change, see DEVPROD-34486)
+	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
+		perHour *= 2
+		burst *= 2
 	}
 
 	// Run request through limiter.
