@@ -1,0 +1,10 @@
+{
+    task(taskId: "display_task_mixed") {
+      id
+      executionTasksFull(options: { statuses: ["success"] }) {
+        id
+        status
+        displayStatus
+      }
+    }
+}
