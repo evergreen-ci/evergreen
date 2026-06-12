@@ -788,8 +788,6 @@ func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.
 
 	buildbaronConfig := APIBuildBaronSettings{}
 	buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings)
-	buildbaronConfig.BFSuggestionPassword = nil
-	buildbaronConfig.BFSuggestionUsername = nil
 	p.BuildBaronSettings = buildbaronConfig
 
 	projectBanner := APIProjectBanner{}

@@ -119,6 +119,8 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = projectModel.BuildPublicFields(ctx, proj); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", proj.Id))
 		}
+		projectModel.BuildBaronSettings.BFSuggestionPassword = nil
+		projectModel.BuildBaronSettings.BFSuggestionUsername = nil
 		if err = resp.AddData(projectModel); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for project '%s'", utility.FromStringPtr(projectModel.Id)))
 		}
