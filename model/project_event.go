@@ -123,8 +123,11 @@ type ProjectChangeEvent struct {
 }
 
 // RedactSecrets redacts project secrets from a project change event. Project
-// variables that are not changed are cleared and project variables that are
-// changed are replaced with redacted placeholders.
+// variables that are not changed are cleared; project variables that are changed
+// are replaced with redacted before/after placeholders. Webhook secrets and
+// Authorization headers follow the same placeholder logic, but unmodified values
+// use evergreen.RedactedValue rather than empty string to indicate the field
+// exists and was not modified.
 func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
