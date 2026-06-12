@@ -190,7 +190,6 @@ func (uis *UIServer) complexityLimit(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("query complexity %d exceeds limit of %d", complexity, complexityLimit))
-
 	}
 }
 
