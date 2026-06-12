@@ -239,3 +239,5 @@ require (
 )
 
 tool github.com/99designs/gqlgen
+
+replace github.com/evergreen-ci/pail => github.com/maddaak/pail v0.0.0-20260610191730-962e81cbeb14

@@ -249,16 +249,19 @@ func (t *Task) GetS3LogUsageFromS3(ctx context.Context) (s3usage.LogMetrics, err
 		switch {
 		case strings.HasPrefix(name, agentLogName+"/"):
 			usage.Agent.Bytes += size
+			usage.Agent.PutRequests++
 			if usage.Agent.LogKey == "" {
 				usage.Agent.LogKey = agentLogName
 			}
 		case strings.HasPrefix(name, systemLogName+"/"):
 			usage.System.Bytes += size
+			usage.System.PutRequests++
 			if usage.System.LogKey == "" {
 				usage.System.LogKey = systemLogName
 			}
 		case strings.HasPrefix(name, taskLogName+"/"):
 			usage.Task.Bytes += size
+			usage.Task.PutRequests++
 			if usage.Task.LogKey == "" {
 				usage.Task.LogKey = taskLogName
 			}
@@ -286,6 +289,7 @@ func (t *Task) GetS3LogUsageFromS3(ctx context.Context) (s3usage.LogMetrics, err
 			usage.PutRequests++
 			usage.UploadBytes += size
 			usage.Test.Bytes += size
+			usage.Test.PutRequests++
 			if usage.Test.LogKey == "" {
 				usage.Test.LogKey = testPrefix
 			}

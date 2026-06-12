@@ -456,7 +456,8 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 		totalFileSize     int64
 	)
 
-	fileRetryPuts := make(map[string]int)
+	filePutRequests := make(map[string]int)
+	fileUploadAttempts := make(map[string]int)
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -526,13 +527,14 @@ retryLoop:
 
 				// pail.PutCounter is implemented by *s3Bucket; the fallback handles other bucket types that don't track PUT counts.
 				var puts int
+				fileUploadAttempts[fpath]++
 				if pc, ok := s3pc.bucket.(pail.PutCounter); ok {
 					puts, err = pc.UploadWithCount(ctx, remoteName, fpath)
 				} else {
 					err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				}
 				totalRetryPuts += puts
-				fileRetryPuts[fpath] += puts
+				filePutRequests[fpath] += puts
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -574,7 +576,7 @@ retryLoop:
 					continue retryLoop
 				}
 
-				metrics, fileSize := s3usage.BuildFileMetrics(logger.Task(), fpath, remoteName, fileRetryPuts[fpath])
+				metrics, fileSize := s3usage.BuildFileMetrics(logger.Task(), fpath, remoteName, filePutRequests[fpath], fileUploadAttempts[fpath])
 				totalFileSize += fileSize
 				uploadedFiles = append(uploadedFiles, metrics)
 
@@ -652,6 +654,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, up
 			AWSKey:          key,
 			AWSSecret:       secret,
 			AWSRoleARN:      s3pc.getRoleARN(),
+			AWSAccountID:    s3pc.resolvedAWSAccountID,
 			ExternalID:      s3pc.externalID,
 			Bucket:          bucket,
 			FileKey:         fileKey,

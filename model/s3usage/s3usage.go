@@ -17,10 +17,11 @@ const (
 	LogTypeTest   = "test_log"
 )
 
-// LogTypeMetrics holds the S3 key and byte count for a single log type.
+// LogTypeMetrics holds the S3 key, byte count, and PUT count for a single log type.
 type LogTypeMetrics struct {
-	LogKey string `bson:"log_key,omitempty" json:"log_key,omitempty"`
-	Bytes  int64  `bson:"bytes,omitempty" json:"bytes,omitempty"`
+	LogKey      string `bson:"log_key,omitempty" json:"log_key,omitempty"`
+	Bytes       int64  `bson:"bytes,omitempty" json:"bytes,omitempty"`
+	PutRequests int    `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
 }
 
 // LogMetrics tracks log upload metrics broken down by log type.
@@ -54,8 +55,10 @@ type BucketFileMetrics struct {
 
 // FileBytes tracks bytes uploaded for a single S3 file key.
 type FileBytes struct {
-	FileKey string `bson:"file_key" json:"file_key"`
-	Bytes   int64  `bson:"bytes" json:"bytes"`
+	FileKey        string `bson:"file_key" json:"file_key"`
+	Bytes          int64  `bson:"bytes" json:"bytes"`
+	PutRequests    int    `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
+	UploadAttempts int    `bson:"upload_attempts,omitempty" json:"upload_attempts,omitempty"`
 }
 
 // ArtifactMetrics tracks artifact upload metrics with an additional file count.
@@ -73,10 +76,11 @@ type ArtifactMetrics struct {
 
 // FileMetrics contains metrics for a single uploaded file.
 type FileMetrics struct {
-	LocalPath     string
-	RemotePath    string
-	FileSizeBytes int64
-	PutRequests   int
+	LocalPath      string
+	RemotePath     string
+	FileSizeBytes  int64
+	PutRequests    int
+	UploadAttempts int
 }
 
 type (
@@ -109,7 +113,7 @@ const (
 
 // BuildFileMetrics constructs a FileMetrics entry for a successfully uploaded file,
 // statting the file for size. If the stat fails, logs a warning and uses zero size.
-func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, puts int) (FileMetrics, int64) {
+func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, putRequests, uploadAttempts int) (FileMetrics, int64) {
 	fileInfo, err := os.Stat(localPath)
 	var fileSize int64
 	if err != nil {
@@ -118,10 +122,11 @@ func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, puts 
 		fileSize = fileInfo.Size()
 	}
 	return FileMetrics{
-		LocalPath:     localPath,
-		RemotePath:    remotePath,
-		FileSizeBytes: fileSize,
-		PutRequests:   puts,
+		LocalPath:      localPath,
+		RemotePath:     remotePath,
+		FileSizeBytes:  fileSize,
+		PutRequests:    putRequests,
+		UploadAttempts: uploadAttempts,
 	}, fileSize
 }
 
@@ -266,53 +271,63 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 		})
 		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}
+fileLoop:
 	for _, f := range opts.Files {
-		found := false
-		for j := range bucketEntry.Files {
-			if bucketEntry.Files[j].FileKey == f.RemotePath {
-				bucketEntry.Files[j].Bytes += f.FileSizeBytes
-				found = true
-				break
+		for i := range bucketEntry.Files {
+			if bucketEntry.Files[i].FileKey == f.RemotePath {
+				// S3 overwrites on key collision: bytes reflect latest size; PUT and attempt counts accumulate per event.
+				bucketEntry.Files[i].Bytes = f.FileSizeBytes
+				bucketEntry.Files[i].PutRequests += f.PutRequests
+				bucketEntry.Files[i].UploadAttempts += f.UploadAttempts
+				continue fileLoop
 			}
 		}
-		if !found {
-			bucketEntry.Files = append(bucketEntry.Files, FileBytes{FileKey: f.RemotePath, Bytes: f.FileSizeBytes})
-		}
+		bucketEntry.Files = append(bucketEntry.Files, FileBytes{
+			FileKey:        f.RemotePath,
+			Bytes:          f.FileSizeBytes,
+			PutRequests:    f.PutRequests,
+			UploadAttempts: f.UploadAttempts,
+		})
 	}
 }
 
-// IncrementLogs increments log upload metrics and accumulates per-type bytes for storage cost tracking.
-// Callers that invoke IncrementLogs concurrently on the same instance must serialize the calls
-// externally (e.g., by holding a shared sync.Mutex before calling).
-// For test logs, LogKey stores the most recently written key; all test logs for a task share the
-// same bucket/prefix so any key yields the same lifecycle rule for cost calculation.
+// IncrementLogs increments aggregate and per-type log upload metrics for cost tracking.
+// Callers invoking this concurrently on a shared instance must serialize externally.
+// Test logs share a bucket/prefix, so LogKey stores only the most recently written key.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
 	switch logType {
 	case LogTypeTask:
 		s.Logs.Task.Bytes += uploadBytes
+		s.Logs.Task.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.Task.LogKey = logKey
 		}
 	case LogTypeAgent:
 		s.Logs.Agent.Bytes += uploadBytes
+		s.Logs.Agent.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.Agent.LogKey = logKey
 		}
 	case LogTypeSystem:
 		s.Logs.System.Bytes += uploadBytes
+		s.Logs.System.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.System.LogKey = logKey
 		}
 	case LogTypeTest:
 		s.Logs.Test.Bytes += uploadBytes
+		s.Logs.Test.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.Test.LogKey = logKey
 		}
 	default:
-		// Unrecognized log type: global totals are still incremented above but
-		// per-type byte tracking is skipped.
+		// Global counters above still capture aggregate bytes/PUTs; only per-type attribution is skipped.
+		grip.Debug(context.Background(), message.Fields{
+			"message":  "S3 usage tracking received unrecognized log type; per-type bytes not recorded",
+			"log_type": logType,
+		})
 	}
 }
 

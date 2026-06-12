@@ -76,19 +76,21 @@ func (s *logServiceV0) Append(ctx context.Context, logName string, sequence int,
 	}
 
 	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(sequence, lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
-	// pail.StreamPutCounter is implemented by *s3Bucket types; the fallback handles non-S3 buckets that don't track PUT counts.
+	// S3 buckets report the bytes that actually landed (post-compression when compressed); non-S3 buckets fall through to plain Put and don't generate S3 costs.
 	var puts int
+	var uploadedBytes int64
 	var err error
-	if pc, ok := s.bucket.(pail.StreamPutCounter); ok {
-		puts, err = pc.PutWithCount(ctx, key, bytes.NewReader(rawLines))
+	if pc, ok := s.bucket.(pail.StreamPutCounterWithBytes); ok {
+		puts, uploadedBytes, err = pc.PutWithCountAndBytes(ctx, key, bytes.NewReader(rawLines))
 	} else {
 		err = s.bucket.Put(ctx, key, bytes.NewReader(rawLines))
 	}
 	if err != nil {
-		return 0, puts, errors.Wrap(err, "writing log chunk to bucket")
+		// Bytes that hit the wire are billed even when the upload errors; preserve the count from pail.
+		return uploadedBytes, puts, errors.Wrap(err, "writing log chunk to bucket")
 	}
 
-	return int64(len(rawLines)), puts, nil
+	return uploadedBytes, puts, nil
 }
 
 // getLogChunks maps each logical log to its chunk files stored in pail-backed
