@@ -772,11 +772,25 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 			"task_id": t.Id,
 		}))
 	} else {
+		// Log buckets are admin-managed: lifecycle days live on evergreen.BucketConfig, not in s3_lifecycle_rules.
+		// Load the admin Buckets section once so the lookup can fall back to it when the rules collection has no entry.
+		bucketsConfig := &evergreen.BucketsConfig{}
+		if bucketsErr := bucketsConfig.Get(ctx); bucketsErr != nil {
+			// Graceful fallback to project-rule-only lookup. Use Debug — repeated config-load failures
+			// from the same DB outage are already screaming elsewhere; flooding here adds no signal.
+			grip.Debug(ctx, message.WrapError(bucketsErr, message.Fields{
+				"message": "loading admin BucketsConfig for log lifecycle lookup",
+				"task_id": t.Id,
+			}))
+		}
 		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
 		for _, rule := range allRules {
 			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
 		}
 		lookup = func(ctx context.Context, bucket, fileKey string) (int, bool) {
+			if days, ok := findExpirationDaysForAdminLogBucket(bucket, bucketsConfig); ok {
+				return days, true
+			}
 			return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
 		}
 	}
@@ -791,6 +805,30 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// findExpirationDaysForAdminLogBucket looks up an admin-owned log bucket's lifecycle days from
+// BucketsConfig. Log buckets store lifecycle on the admin config rather than the project-scoped
+// s3_lifecycle_rules collection.
+func findExpirationDaysForAdminLogBucket(bucketName string, bucketsConfig *evergreen.BucketsConfig) (days int, found bool) {
+	if bucketName == "" || bucketsConfig == nil {
+		return 0, false
+	}
+	switch bucketName {
+	case bucketsConfig.LogBucket.Name:
+		if bucketsConfig.LogBucket.ExpirationDays != nil {
+			return *bucketsConfig.LogBucket.ExpirationDays, true
+		}
+	case bucketsConfig.LogBucketLongRetention.Name:
+		if bucketsConfig.LogBucketLongRetention.ExpirationDays != nil {
+			return *bucketsConfig.LogBucketLongRetention.ExpirationDays, true
+		}
+	case bucketsConfig.LogBucketFailedTasks.Name:
+		if bucketsConfig.LogBucketFailedTasks.ExpirationDays != nil {
+			return *bucketsConfig.LogBucketFailedTasks.ExpirationDays, true
+		}
+	}
+	return 0, false
 }
 
 // findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
