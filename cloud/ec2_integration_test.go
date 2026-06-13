@@ -6,6 +6,7 @@ package cloud
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -22,7 +23,7 @@ func fetchTestDistro() distro.Distro {
 		Id:       "test_distro",
 		Arch:     "linux_amd64",
 		WorkDir:  "/data/mci",
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("ami", "ami-97785bed"),
 			birch.EC.String("instance_type", "t2.micro"),
@@ -45,11 +46,11 @@ func fetchTestDistro() distro.Distro {
 	}
 }
 
-// This spawns (and terminates) an actual on-demand instance in AWS. Since AWS
-// bills for a minimum of 1 minute, this will cost approximately $.0002 each
-// time it is run (t1.micro $0.0116 per hour / 60 minutes). Since the price is
-// low, we run this each time the integration cloud tests are run.
-func TestSpawnEC2InstanceOnDemand(t *testing.T) {
+// This spawns (and terminates) an actual EC2 instance in AWS via CreateFleet.
+// Since AWS bills for a minimum of 1 minute, this will cost approximately
+// $.0002 each time it is run (t1.micro $0.0116 per hour / 60 minutes). Since
+// the price is low, we run this each time the integration cloud tests are run.
+func TestSpawnEC2InstanceFleet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -60,15 +61,21 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	testConfig.SSH.TaskHostKey.Name = "evergreen-task-hosts"
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
+	// ec2FleetManager.makeOverrides requires at least one subnet in the global
+	// AWS settings. Populate it with the distro's subnet so the fleet manager
+	// can resolve overrides without error.
+	testConfig.Providers.AWS.Subnets = []evergreen.Subnet{
+		{AZ: "us-east-1a", SubnetID: "subnet-517c941a"},
+	}
 	require.NoError(db.Clear(host.Collection))
 
-	opts := &EC2ManagerOptions{
-		client: &awsClientImpl{},
+	m := &ec2FleetManager{
+		env: env,
+		EC2FleetManagerOptions: &EC2FleetManagerOptions{
+			client: &awsClientImpl{},
+		},
 	}
-
-	m := &ec2Manager{env: env, EC2ManagerOptions: opts}
 	require.NoError(m.Configure(ctx, testConfig))
-	require.NoError(m.setupClient(ctx))
 
 	d := fetchTestDistro()
 	h := host.NewIntent(host.CreateOptions{
@@ -88,7 +95,8 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		},
 	})
 	h, err := m.SpawnHost(ctx, h)
-	assert.NoError(err)
+	require.NoError(err)
+	require.NotNil(h)
 	assert.NoError(h.Insert(ctx))
 	foundHosts, err := host.Find(ctx, host.IsUninitialized)
 	assert.NoError(err)
@@ -99,7 +107,13 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NoError(err)
 	require.Len(foundHosts, 1)
 
-	info, err := m.GetInstanceState(ctx, h)
-	assert.NoError(err)
-	assert.NotContains([]CloudStatus{StatusRunning, StatusStopping, StatusStopped}, info.Status)
+	// AWS state propagation for fleet-launched instances can lag after TerminateInstance,
+	// so poll until DescribeInstances reflects the terminated state.
+	require.Eventually(func() bool {
+		info, err := m.GetInstanceState(ctx, h)
+		if err != nil {
+			return false
+		}
+		return info.Status != StatusRunning && info.Status != StatusStopping && info.Status != StatusStopped
+	}, 60*time.Second, 2*time.Second, "AWS should reflect terminated state after TerminateInstance")
 }

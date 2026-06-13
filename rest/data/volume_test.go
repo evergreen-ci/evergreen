@@ -51,7 +51,7 @@ func TestMigrateVolume(t *testing.T) {
 			d := &distro.Distro{
 				Id:                   "d",
 				SpawnAllowed:         true,
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", evergreen.DefaultEC2Region))},
 			}
 			require.NoError(t, d.Insert(ctx))
