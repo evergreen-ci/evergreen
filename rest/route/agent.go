@@ -764,38 +764,33 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	t.S3Usage = h.s3Usage
 
-	allRules, err := s3lifecycle.FindAllRules(ctx)
-	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "getting S3 lifecycle rules for storage cost calculation, skipping storage cost calculation",
+	bucketsConfig := &evergreen.BucketsConfig{}
+	if err := bucketsConfig.Get(ctx); err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message": "loading admin BucketsConfig for log storage cost calculation",
 			"task_id": t.Id,
 		}))
-	} else {
-		// Log buckets are admin-managed: lifecycle days live on evergreen.BucketConfig, not in s3_lifecycle_rules.
-		// Load the admin Buckets section once so the lookup can fall back to it when the rules collection has no entry.
-		bucketsConfig := &evergreen.BucketsConfig{}
-		if bucketsErr := bucketsConfig.Get(ctx); bucketsErr != nil {
-			// Graceful fallback to project-rule-only lookup. Use Debug — repeated config-load failures
-			// from the same DB outage are already screaming elsewhere; flooding here adds no signal.
-			grip.Debug(ctx, message.WrapError(bucketsErr, message.Fields{
-				"message": "loading admin BucketsConfig for log lifecycle lookup",
-				"task_id": t.Id,
-			}))
-		}
-		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
-		for _, rule := range allRules {
-			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
-		}
-		lookup = func(ctx context.Context, bucket, fileKey string) (int, bool) {
-			if days, ok := findExpirationDaysForAdminLogBucket(bucket, bucketsConfig); ok {
-				return days, true
-			}
-			return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
-		}
+	}
+	logLookup := func(ctx context.Context, bucket, _ string) (int, bool) {
+		return findExpirationDaysForAdminLogBucket(bucket, bucketsConfig)
 	}
 
-	if err := t.SaveS3Usage(ctx, lookup, t.LogBucketName()); err != nil {
+	artifactRules, err := s3lifecycle.FindAllRules(ctx)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "loading S3 lifecycle rules for artifact storage cost calculation",
+			"task_id": t.Id,
+		}))
+	}
+	artifactRulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+	for _, rule := range artifactRules {
+		artifactRulesByBucket[rule.BucketName] = append(artifactRulesByBucket[rule.BucketName], rule)
+	}
+	artifactLookup := func(ctx context.Context, bucket, fileKey string) (int, bool) {
+		return findExpirationDaysForFileKey(artifactRulesByBucket[bucket], fileKey)
+	}
+
+	if err := t.SaveS3Usage(ctx, logLookup, artifactLookup, t.LogBucketName()); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
