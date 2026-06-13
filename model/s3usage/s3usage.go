@@ -55,10 +55,8 @@ type BucketFileMetrics struct {
 
 // FileBytes tracks bytes uploaded for a single S3 file key.
 type FileBytes struct {
-	FileKey        string `bson:"file_key" json:"file_key"`
-	Bytes          int64  `bson:"bytes" json:"bytes"`
-	PutRequests    int    `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
-	UploadAttempts int    `bson:"upload_attempts,omitempty" json:"upload_attempts,omitempty"`
+	FileKey string `bson:"file_key" json:"file_key"`
+	Bytes   int64  `bson:"bytes" json:"bytes"`
 }
 
 // ArtifactMetrics tracks artifact upload metrics with an additional file count.
@@ -76,11 +74,10 @@ type ArtifactMetrics struct {
 
 // FileMetrics contains metrics for a single uploaded file.
 type FileMetrics struct {
-	LocalPath      string
-	RemotePath     string
-	FileSizeBytes  int64
-	PutRequests    int
-	UploadAttempts int
+	LocalPath     string
+	RemotePath    string
+	FileSizeBytes int64
+	PutRequests   int
 }
 
 type (
@@ -113,7 +110,7 @@ const (
 
 // BuildFileMetrics constructs a FileMetrics entry for a successfully uploaded file,
 // statting the file for size. If the stat fails, logs a warning and uses zero size.
-func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, putRequests, uploadAttempts int) (FileMetrics, int64) {
+func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, puts int) (FileMetrics, int64) {
 	fileInfo, err := os.Stat(localPath)
 	var fileSize int64
 	if err != nil {
@@ -122,11 +119,10 @@ func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, putRe
 		fileSize = fileInfo.Size()
 	}
 	return FileMetrics{
-		LocalPath:      localPath,
-		RemotePath:     remotePath,
-		FileSizeBytes:  fileSize,
-		PutRequests:    putRequests,
-		UploadAttempts: uploadAttempts,
+		LocalPath:     localPath,
+		RemotePath:    remotePath,
+		FileSizeBytes: fileSize,
+		PutRequests:   puts,
 	}, fileSize
 }
 
@@ -271,23 +267,18 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 		})
 		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}
-fileLoop:
 	for _, f := range opts.Files {
-		for i := range bucketEntry.Files {
-			if bucketEntry.Files[i].FileKey == f.RemotePath {
-				// S3 overwrites on key collision: bytes reflect latest size; PUT and attempt counts accumulate per event.
-				bucketEntry.Files[i].Bytes = f.FileSizeBytes
-				bucketEntry.Files[i].PutRequests += f.PutRequests
-				bucketEntry.Files[i].UploadAttempts += f.UploadAttempts
-				continue fileLoop
+		found := false
+		for j := range bucketEntry.Files {
+			if bucketEntry.Files[j].FileKey == f.RemotePath {
+				bucketEntry.Files[j].Bytes += f.FileSizeBytes
+				found = true
+				break
 			}
 		}
-		bucketEntry.Files = append(bucketEntry.Files, FileBytes{
-			FileKey:        f.RemotePath,
-			Bytes:          f.FileSizeBytes,
-			PutRequests:    f.PutRequests,
-			UploadAttempts: f.UploadAttempts,
-		})
+		if !found {
+			bucketEntry.Files = append(bucketEntry.Files, FileBytes{FileKey: f.RemotePath, Bytes: f.FileSizeBytes})
+		}
 	}
 }
 

@@ -535,9 +535,6 @@ const (
 	TaskS3ArtifactAvgFilePutCostOtelAttribute         = "evergreen.task.s3_cost.artifact_avg_file_put_cost"
 	TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_max_put_requests_cost"
 	TaskS3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
-	TaskS3ArtifactMaxPutRequestsPerFileOtelAttribute  = "evergreen.task.s3_cost.artifact_max_put_requests_per_file"
-	TaskS3ArtifactMinPutRequestsPerFileOtelAttribute  = "evergreen.task.s3_cost.artifact_min_put_requests_per_file"
-	TaskS3ArtifactTotalUploadAttemptsOtelAttribute    = "evergreen.task.s3_cost.artifact_total_upload_attempts"
 
 	// S3 cost tracking otel attributes — task-level log aggregates
 	TaskS3LogPutRequestsOtelAttribute         = "evergreen.task.s3_cost.log_put_requests"
