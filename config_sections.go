@@ -44,6 +44,7 @@ func NewConfigSections() ConfigSections {
 		&OverridesConfig{},
 		&ParameterStoreConfig{},
 		&ProjectCreationConfig{},
+		&RateLimitConfig{},
 		&RepoTrackerConfig{},
 		&ReleaseModeConfig{},
 		&RuntimeEnvironmentsConfig{},
