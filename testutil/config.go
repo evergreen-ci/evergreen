@@ -152,6 +152,18 @@ func MockConfig() *evergreen.Settings {
 			URL:            "api",
 			CorpURL:        "corp",
 		},
+		RateLimit: evergreen.RateLimitConfig{
+			RESTUserPerHour:        100,
+			RESTUserBurst:          10,
+			RESTServicePerHour:     200,
+			RESTServiceBurst:       20,
+			GraphQLUserPerHour:     300,
+			GraphQLUserBurst:       30,
+			GraphQLServicePerHour:  400,
+			GraphQLServiceBurst:    40,
+			GraphQLComplexityLimit: 1000,
+			ElevatedUserIDs:        []string{"user1", "user2"},
+		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
 				ClientID:           "id",

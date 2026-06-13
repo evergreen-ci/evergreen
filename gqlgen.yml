@@ -694,6 +694,10 @@ models:
         value: github.com/evergreen-ci/evergreen.ProviderNameStatic
   PublicKey:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPubKey
+  RateLimitConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRateLimitConfig
+  RateLimitConfigInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIRateLimitConfig
   ReleaseModeConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIReleaseModeConfig
   ReleaseModeConfigInput:

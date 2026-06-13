@@ -198,6 +198,7 @@ type ComplexityRoot struct {
 		PprofPort               func(childComplexity int) int
 		ProjectCreation         func(childComplexity int) int
 		Providers               func(childComplexity int) int
+		RateLimit               func(childComplexity int) int
 		ReleaseMode             func(childComplexity int) int
 		RepoTracker             func(childComplexity int) int
 		RuntimeEnvironments     func(childComplexity int) int
@@ -1540,6 +1541,19 @@ type ComplexityRoot struct {
 		Version                  func(childComplexity int, versionID string) int
 		ViewableProjectRefs      func(childComplexity int) int
 		Waterfall                func(childComplexity int, options WaterfallOptions) int
+	}
+
+	RateLimitConfig struct {
+		ElevatedUserIDs        func(childComplexity int) int
+		GraphQLComplexityLimit func(childComplexity int) int
+		GraphQLServiceBurst    func(childComplexity int) int
+		GraphQLServicePerHour  func(childComplexity int) int
+		GraphQLUserBurst       func(childComplexity int) int
+		GraphQLUserPerHour     func(childComplexity int) int
+		RESTServiceBurst       func(childComplexity int) int
+		RESTServicePerHour     func(childComplexity int) int
+		RESTUserBurst          func(childComplexity int) int
+		RESTUserPerHour        func(childComplexity int) int
 	}
 
 	RefreshGitHubStatusesPayload struct {
@@ -3322,6 +3336,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.Providers(childComplexity), true
+	case "AdminSettings.rateLimit":
+		if e.complexity.AdminSettings.RateLimit == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.RateLimit(childComplexity), true
 	case "AdminSettings.releaseMode":
 		if e.complexity.AdminSettings.ReleaseMode == nil {
 			break
@@ -9346,6 +9366,67 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Waterfall(childComplexity, args["options"].(WaterfallOptions)), true
 
+	case "RateLimitConfig.elevatedUserIds":
+		if e.complexity.RateLimitConfig.ElevatedUserIDs == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.ElevatedUserIDs(childComplexity), true
+	case "RateLimitConfig.graphqlComplexityLimit":
+		if e.complexity.RateLimitConfig.GraphQLComplexityLimit == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.GraphQLComplexityLimit(childComplexity), true
+	case "RateLimitConfig.graphqlServiceBurst":
+		if e.complexity.RateLimitConfig.GraphQLServiceBurst == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.GraphQLServiceBurst(childComplexity), true
+	case "RateLimitConfig.graphqlServicePerHour":
+		if e.complexity.RateLimitConfig.GraphQLServicePerHour == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.GraphQLServicePerHour(childComplexity), true
+	case "RateLimitConfig.graphqlUserBurst":
+		if e.complexity.RateLimitConfig.GraphQLUserBurst == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.GraphQLUserBurst(childComplexity), true
+	case "RateLimitConfig.graphqlUserPerHour":
+		if e.complexity.RateLimitConfig.GraphQLUserPerHour == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.GraphQLUserPerHour(childComplexity), true
+	case "RateLimitConfig.restServiceBurst":
+		if e.complexity.RateLimitConfig.RESTServiceBurst == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.RESTServiceBurst(childComplexity), true
+	case "RateLimitConfig.restServicePerHour":
+		if e.complexity.RateLimitConfig.RESTServicePerHour == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.RESTServicePerHour(childComplexity), true
+	case "RateLimitConfig.restUserBurst":
+		if e.complexity.RateLimitConfig.RESTUserBurst == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.RESTUserBurst(childComplexity), true
+	case "RateLimitConfig.restUserPerHour":
+		if e.complexity.RateLimitConfig.RESTUserPerHour == nil {
+			break
+		}
+
+		return e.complexity.RateLimitConfig.RESTUserPerHour(childComplexity), true
+
 	case "RefreshGitHubStatusesPayload.success":
 		if e.complexity.RefreshGitHubStatusesPayload.Success == nil {
 			break
@@ -13273,6 +13354,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputQuarantineTaskInput,
 		ec.unmarshalInputQuarantineTestInput,
 		ec.unmarshalInputQuarantineVariantInput,
+		ec.unmarshalInputRateLimitConfigInput,
 		ec.unmarshalInputRefreshGitHubStatusesInput,
 		ec.unmarshalInputReleaseModeConfigInput,
 		ec.unmarshalInputRemoveFavoriteProjectInput,
@@ -19709,6 +19791,57 @@ func (ec *executionContext) fieldContext_AdminSettings_providers(_ context.Conte
 				return ec.fieldContext_CloudProviderConfig_docker(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CloudProviderConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_rateLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminSettings_rateLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.RateLimit, nil
+		},
+		nil,
+		ec.marshalORateLimitConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_rateLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "elevatedUserIds":
+				return ec.fieldContext_RateLimitConfig_elevatedUserIds(ctx, field)
+			case "graphqlComplexityLimit":
+				return ec.fieldContext_RateLimitConfig_graphqlComplexityLimit(ctx, field)
+			case "graphqlServiceBurst":
+				return ec.fieldContext_RateLimitConfig_graphqlServiceBurst(ctx, field)
+			case "graphqlServicePerHour":
+				return ec.fieldContext_RateLimitConfig_graphqlServicePerHour(ctx, field)
+			case "graphqlUserBurst":
+				return ec.fieldContext_RateLimitConfig_graphqlUserBurst(ctx, field)
+			case "graphqlUserPerHour":
+				return ec.fieldContext_RateLimitConfig_graphqlUserPerHour(ctx, field)
+			case "restServiceBurst":
+				return ec.fieldContext_RateLimitConfig_restServiceBurst(ctx, field)
+			case "restServicePerHour":
+				return ec.fieldContext_RateLimitConfig_restServicePerHour(ctx, field)
+			case "restUserBurst":
+				return ec.fieldContext_RateLimitConfig_restUserBurst(ctx, field)
+			case "restUserPerHour":
+				return ec.fieldContext_RateLimitConfig_restUserPerHour(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RateLimitConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -36992,6 +37125,8 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_projectCreation(ctx, field)
 			case "providers":
 				return ec.fieldContext_AdminSettings_providers(ctx, field)
+			case "rateLimit":
+				return ec.fieldContext_AdminSettings_rateLimit(ctx, field)
 			case "releaseMode":
 				return ec.fieldContext_AdminSettings_releaseMode(ctx, field)
 			case "repotracker":
@@ -52424,6 +52559,8 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_projectCreation(ctx, field)
 			case "providers":
 				return ec.fieldContext_AdminSettings_providers(ctx, field)
+			case "rateLimit":
+				return ec.fieldContext_AdminSettings_rateLimit(ctx, field)
 			case "releaseMode":
 				return ec.fieldContext_AdminSettings_releaseMode(ctx, field)
 			case "repotracker":
@@ -55410,6 +55547,296 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 				return ec.fieldContext___Schema_directives(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Schema", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_elevatedUserIds(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_elevatedUserIds,
+		func(ctx context.Context) (any, error) {
+			return obj.ElevatedUserIDs, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_elevatedUserIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_graphqlComplexityLimit(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlComplexityLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLComplexityLimit, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlComplexityLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_graphqlServiceBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlServiceBurst,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLServiceBurst, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlServiceBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_graphqlServicePerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlServicePerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLServicePerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlServicePerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_graphqlUserBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlUserBurst,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLUserBurst, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlUserBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_graphqlUserPerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_graphqlUserPerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.GraphQLUserPerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_graphqlUserPerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restServiceBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restServiceBurst,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTServiceBurst, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restServiceBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restServicePerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restServicePerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTServicePerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restServicePerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restUserBurst(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restUserBurst,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTUserBurst, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restUserBurst(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RateLimitConfig_restUserPerHour(ctx context.Context, field graphql.CollectedField, obj *model.APIRateLimitConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RateLimitConfig_restUserPerHour,
+		func(ctx context.Context) (any, error) {
+			return obj.RESTUserPerHour, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RateLimitConfig_restUserPerHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RateLimitConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -80589,7 +81016,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80893,6 +81320,13 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.Providers = data
+		case "rateLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rateLimit"))
+			data, err := ec.unmarshalORateLimitConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RateLimit = data
 		case "releaseMode":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("releaseMode"))
 			data, err := ec.unmarshalOReleaseModeConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIReleaseModeConfig(ctx, v)
@@ -87224,6 +87658,96 @@ func (ec *executionContext) unmarshalInputQuarantineVariantInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRateLimitConfigInput(ctx context.Context, obj any) (model.APIRateLimitConfig, error) {
+	var it model.APIRateLimitConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"elevatedUserIds", "graphqlComplexityLimit", "graphqlServiceBurst", "graphqlServicePerHour", "graphqlUserBurst", "graphqlUserPerHour", "restServiceBurst", "restServicePerHour", "restUserBurst", "restUserPerHour"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "elevatedUserIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("elevatedUserIds"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ElevatedUserIDs = data
+		case "graphqlComplexityLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlComplexityLimit"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLComplexityLimit = data
+		case "graphqlServiceBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlServiceBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLServiceBurst = data
+		case "graphqlServicePerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlServicePerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLServicePerHour = data
+		case "graphqlUserBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlUserBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLUserBurst = data
+		case "graphqlUserPerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("graphqlUserPerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GraphQLUserPerHour = data
+		case "restServiceBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restServiceBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTServiceBurst = data
+		case "restServicePerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restServicePerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTServicePerHour = data
+		case "restUserBurst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restUserBurst"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTUserBurst = data
+		case "restUserPerHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("restUserPerHour"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RESTUserPerHour = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRefreshGitHubStatusesInput(ctx context.Context, obj any) (RefreshGitHubStatusesInput, error) {
 	var it RefreshGitHubStatusesInput
 	asMap := map[string]any{}
@@ -92046,6 +92570,8 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_projectCreation(ctx, field, obj)
 		case "providers":
 			out.Values[i] = ec._AdminSettings_providers(ctx, field, obj)
+		case "rateLimit":
+			out.Values[i] = ec._AdminSettings_rateLimit(ctx, field, obj)
 		case "releaseMode":
 			out.Values[i] = ec._AdminSettings_releaseMode(ctx, field, obj)
 		case "repotracker":
@@ -103416,6 +103942,60 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___schema(ctx, field)
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var rateLimitConfigImplementors = []string{"RateLimitConfig"}
+
+func (ec *executionContext) _RateLimitConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIRateLimitConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, rateLimitConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RateLimitConfig")
+		case "elevatedUserIds":
+			out.Values[i] = ec._RateLimitConfig_elevatedUserIds(ctx, field, obj)
+		case "graphqlComplexityLimit":
+			out.Values[i] = ec._RateLimitConfig_graphqlComplexityLimit(ctx, field, obj)
+		case "graphqlServiceBurst":
+			out.Values[i] = ec._RateLimitConfig_graphqlServiceBurst(ctx, field, obj)
+		case "graphqlServicePerHour":
+			out.Values[i] = ec._RateLimitConfig_graphqlServicePerHour(ctx, field, obj)
+		case "graphqlUserBurst":
+			out.Values[i] = ec._RateLimitConfig_graphqlUserBurst(ctx, field, obj)
+		case "graphqlUserPerHour":
+			out.Values[i] = ec._RateLimitConfig_graphqlUserPerHour(ctx, field, obj)
+		case "restServiceBurst":
+			out.Values[i] = ec._RateLimitConfig_restServiceBurst(ctx, field, obj)
+		case "restServicePerHour":
+			out.Values[i] = ec._RateLimitConfig_restServicePerHour(ctx, field, obj)
+		case "restUserBurst":
+			out.Values[i] = ec._RateLimitConfig_restUserBurst(ctx, field, obj)
+		case "restUserPerHour":
+			out.Values[i] = ec._RateLimitConfig_restUserPerHour(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -121406,6 +121986,21 @@ func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreen
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputPublicKeyInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORateLimitConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIRateLimitConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RateLimitConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalORateLimitConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIRateLimitConfig(ctx context.Context, v any) (*model.APIRateLimitConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputRateLimitConfigInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
