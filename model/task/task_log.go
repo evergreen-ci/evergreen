@@ -213,7 +213,8 @@ func getBucketConfigForProject(project string, originalBucketConfig evergreen.Bu
 }
 
 // GetS3LogUsageFromS3 reconstructs log S3 usage for the crash path, when the agent never
-// reached teardown. Chunk count approximates PUT count (exact under 10MB, lower bound otherwise).
+// reached teardown. PutRequests are approximated as 1 PUT per stored chunk; multipart
+// uploads that issued multiple PUTs against a single object are not counted. Best-effort.
 func (t *Task) GetS3LogUsageFromS3(ctx context.Context) (s3usage.LogMetrics, error) {
 	output, ok := t.GetTaskOutputSafe()
 	if !ok {

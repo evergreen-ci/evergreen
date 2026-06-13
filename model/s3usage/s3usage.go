@@ -315,10 +315,6 @@ func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, log
 		}
 	default:
 		// Global counters above still capture aggregate bytes/PUTs; only per-type attribution is skipped.
-		grip.Debug(context.Background(), message.Fields{
-			"message":  "S3 usage tracking received unrecognized log type; per-type bytes not recorded",
-			"log_type": logType,
-		})
 	}
 }
 

@@ -76,7 +76,7 @@ func (s *logServiceV0) Append(ctx context.Context, logName string, sequence int,
 	}
 
 	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(sequence, lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
-	// S3 buckets report the bytes that actually landed (post-compression when compressed); non-S3 buckets fall through to plain Put and don't generate S3 costs.
+	// S3 buckets report post-compression bytes; non-S3 fall through to plain Put and incur no S3 cost.
 	var puts int
 	var uploadedBytes int64
 	var err error
