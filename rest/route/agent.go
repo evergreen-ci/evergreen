@@ -782,12 +782,24 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 			"task_id": t.Id,
 		}))
 	}
-	artifactRulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+	artifactPailRulesByBucket := map[string][]pail.LifecycleRule{}
 	for _, rule := range artifactRules {
-		artifactRulesByBucket[rule.BucketName] = append(artifactRulesByBucket[rule.BucketName], rule)
+		var expDays *int32
+		if rule.ExpirationDays != nil {
+			expDays = utility.ToInt32Ptr(int32(*rule.ExpirationDays))
+		}
+		artifactPailRulesByBucket[rule.BucketName] = append(artifactPailRulesByBucket[rule.BucketName], pail.LifecycleRule{
+			Prefix:         rule.FilterPrefix,
+			Status:         rule.RuleStatus,
+			ExpirationDays: expDays,
+		})
 	}
-	artifactLookup := func(ctx context.Context, bucket, fileKey string) (int, bool) {
-		return findExpirationDaysForFileKey(artifactRulesByBucket[bucket], fileKey)
+	artifactLookup := func(_ context.Context, bucket, fileKey string) (int, bool) {
+		rule := pail.FindMatchingRule(artifactPailRulesByBucket[bucket], fileKey)
+		if rule == nil || rule.ExpirationDays == nil {
+			return 0, false
+		}
+		return int(*rule.ExpirationDays), true
 	}
 
 	if err := t.SaveS3Usage(ctx, logLookup, artifactLookup, t.LogBucketName()); err != nil {
@@ -824,28 +836,6 @@ func findExpirationDaysForAdminLogBucket(bucketName string, bucketsConfig *everg
 		}
 	}
 	return 0, false
-}
-
-// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
-// for the given file key.
-func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
-	pailRules := make([]pail.LifecycleRule, 0, len(rules))
-	for _, ruleDoc := range rules {
-		var expDays *int32
-		if ruleDoc.ExpirationDays != nil {
-			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
-		}
-		pailRules = append(pailRules, pail.LifecycleRule{
-			Prefix:         ruleDoc.FilterPrefix,
-			Status:         ruleDoc.RuleStatus,
-			ExpirationDays: expDays,
-		})
-	}
-	rule := pail.FindMatchingRule(pailRules, fileKey)
-	if rule == nil || rule.ExpirationDays == nil {
-		return 0, false
-	}
-	return int(*rule.ExpirationDays), true
 }
 
 // POST /rest/v2/task/{task_id}/high_exec_timeout

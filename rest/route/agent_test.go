@@ -1459,61 +1459,6 @@ func TestReportS3Usage(t *testing.T) {
 	}
 }
 
-func TestFindExpirationDaysForFileKey(t *testing.T) {
-	enabled := "Enabled"
-	disabled := "Disabled"
-	days90 := 90
-	days30 := 30
-
-	t.Run("NoRulesShouldReturnNotFound", func(t *testing.T) {
-		_, ok := findExpirationDaysForFileKey(nil, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("NoMatchingPrefixShouldReturnNotFound", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "sandbox/", RuleStatus: enabled, ExpirationDays: &days90},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("MatchingPrefixShouldReturnDays", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
-		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.True(t, ok)
-		assert.Equal(t, 90, days)
-	})
-
-	t.Run("MostSpecificPrefixShouldWin", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
-			{FilterPrefix: "logs/build/", RuleStatus: enabled, ExpirationDays: &days30},
-		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.True(t, ok)
-		assert.Equal(t, 30, days)
-	})
-
-	t.Run("DisabledRuleShouldBeIgnored", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: disabled, ExpirationDays: &days90},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("NilExpirationDaysShouldReturnNotFound", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: nil},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-}
-
 func TestFindExpirationDaysForAdminLogBucket(t *testing.T) {
 	days90 := 90
 	days365 := 365

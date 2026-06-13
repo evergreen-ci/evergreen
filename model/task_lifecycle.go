@@ -2455,25 +2455,20 @@ func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 			"task_id": t.Id,
 		}))
 	}
-	artifactRulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
+	artifactPailRulesByBucket := map[string][]pail.LifecycleRule{}
 	for _, rule := range artifactRules {
-		artifactRulesByBucket[rule.BucketName] = append(artifactRulesByBucket[rule.BucketName], rule)
+		var expDays *int32
+		if rule.ExpirationDays != nil {
+			expDays = utility.ToInt32Ptr(int32(*rule.ExpirationDays))
+		}
+		artifactPailRulesByBucket[rule.BucketName] = append(artifactPailRulesByBucket[rule.BucketName], pail.LifecycleRule{
+			Prefix:         rule.FilterPrefix,
+			Status:         rule.RuleStatus,
+			ExpirationDays: expDays,
+		})
 	}
 	artifactLookup := func(_ context.Context, bucket, fileKey string) (int, bool) {
-		rules := artifactRulesByBucket[bucket]
-		pailRules := make([]pail.LifecycleRule, 0, len(rules))
-		for _, ruleDoc := range rules {
-			var expDays *int32
-			if ruleDoc.ExpirationDays != nil {
-				expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
-			}
-			pailRules = append(pailRules, pail.LifecycleRule{
-				Prefix:         ruleDoc.FilterPrefix,
-				Status:         ruleDoc.RuleStatus,
-				ExpirationDays: expDays,
-			})
-		}
-		rule := pail.FindMatchingRule(pailRules, fileKey)
+		rule := pail.FindMatchingRule(artifactPailRulesByBucket[bucket], fileKey)
 		if rule == nil || rule.ExpirationDays == nil {
 			return 0, false
 		}
