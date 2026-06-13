@@ -4369,6 +4369,7 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 		days, found := lookup(ctx, logBucketName, lm.LogKey)
 		//TODO: We are using the DefaultMaxArtifactExpirationDays for logs.
 		// Need to create a DefaultMaxLogsExpirationDays field in Admin Page UI
+		// DEVPROD-35027
 		if !found {
 			days = costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays
 		}
