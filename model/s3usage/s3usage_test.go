@@ -3,6 +3,7 @@ package s3usage
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -231,6 +232,70 @@ func TestS3Usage(t *testing.T) {
 	t.Run("NilReceiverIsZero", func(t *testing.T) {
 		var s3Usage *S3Usage
 		assert.True(t, s3Usage.IsZero())
+	})
+
+	t.Run("ConcurrentIncrementLogsAfterInitIsRaceFree", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		s3Usage.Init()
+
+		const goroutines = 8
+		const callsPerGoroutine = 100
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			go func() {
+				for j := 0; j < callsPerGoroutine; j++ {
+					s3Usage.IncrementLogs(1, 10, LogTypeTask, "proj/task/0/task_logs/task")
+				}
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+
+		expectedPuts := goroutines * callsPerGoroutine
+		expectedBytes := int64(expectedPuts * 10)
+		assert.Equal(t, expectedPuts, s3Usage.Logs.PutRequests)
+		assert.Equal(t, expectedBytes, s3Usage.Logs.UploadBytes)
+		assert.Equal(t, expectedBytes, s3Usage.Logs.Task.Bytes)
+	})
+
+	t.Run("ConcurrentIncrementArtifactsAfterInitIsRaceFree", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		s3Usage.Init()
+		owned := []string{"123456789012"}
+
+		const goroutines = 8
+		const callsPerGoroutine = 50
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			go func(id int) {
+				for j := 0; j < callsPerGoroutine; j++ {
+					remotePath := "shared/key.bin"
+					if id%2 == 1 {
+						remotePath = "unique/" + string(rune('A'+id)) + ".bin"
+					}
+					s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+						DevprodOwnedAWSAccountIDs: owned,
+						AWSAccountID:              "123456789012",
+						PutRequests:               1,
+						UploadBytes:               100,
+						FileCount:                 1,
+						MaxPuts:                   1,
+						MinPuts:                   1,
+						Bucket:                    "bucket-a",
+						Files:                     []FileMetrics{{RemotePath: remotePath, FileSizeBytes: 100}},
+					})
+				}
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+
+		expectedCalls := goroutines * callsPerGoroutine
+		assert.Equal(t, expectedCalls, s3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(expectedCalls*100), s3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, expectedCalls, s3Usage.Artifacts.Count)
 	})
 }
 
