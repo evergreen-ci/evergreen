@@ -149,6 +149,7 @@ func ftDetectors() []ftDetector {
 		ftCommandDetector("manifest_load", "manifest.load", "manifest.load"),
 		ftCommandDetector("attach_results", "attach.results", "attach.results"),
 		ftCommandDetector("attach_xunit_results", "attach.xunit_results", "attach.xunit_results"),
+		ftCommandDetector("gotest_parse_files", "gotest.parse_files", "gotest.parse_files"),
 		ftCommandDetector("perf_send", "perf.send", "perf.send"),
 		ftCommandDetector("ec2_assume_role", "ec2.assume_role", "ec2.assume_role"),
 	}

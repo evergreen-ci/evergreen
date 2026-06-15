@@ -30,6 +30,10 @@ tasks:
     commands:
       - command: subprocess.exec
         params: {binary: "echo"}
+      - command: gotest.parse_files
+        params:
+          files:
+            - "*.suite"
 task_groups:
   - name: my_tg
     max_hosts: 2
@@ -61,15 +65,16 @@ func TestDetectorsAgainstSampleConfig(t *testing.T) {
 	}
 
 	for name, expected := range map[string]int{
-		"display_tasks":   1,
-		"task_groups":     1,
-		"generate_tasks":  1,
-		"subprocess_exec": 1,
-		"shell_exec":      1,
-		"modules":         0,
-		"matrices":        0,
-		"cache_save":      0,
-		"host_create":     0,
+		"display_tasks":      1,
+		"task_groups":        1,
+		"generate_tasks":     1,
+		"subprocess_exec":    1,
+		"shell_exec":         1,
+		"gotest_parse_files": 1,
+		"modules":            0,
+		"matrices":           0,
+		"cache_save":         0,
+		"host_create":        0,
 	} {
 		assert.Equal(t, expected, counts[name], "detector %q", name)
 	}
