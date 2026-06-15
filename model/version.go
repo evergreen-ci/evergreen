@@ -570,6 +570,14 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 			attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
 			attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
 			attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
+			attribute.Int64(evergreen.TaskS3LogTaskBytesOtelAttribute, s3Usage.Logs.Task.Bytes),
+			attribute.Int(evergreen.TaskS3LogTaskPutRequestsOtelAttribute, s3Usage.Logs.Task.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogAgentBytesOtelAttribute, s3Usage.Logs.Agent.Bytes),
+			attribute.Int(evergreen.TaskS3LogAgentPutRequestsOtelAttribute, s3Usage.Logs.Agent.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogSystemBytesOtelAttribute, s3Usage.Logs.System.Bytes),
+			attribute.Int(evergreen.TaskS3LogSystemPutRequestsOtelAttribute, s3Usage.Logs.System.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogTestBytesOtelAttribute, s3Usage.Logs.Test.Bytes),
+			attribute.Int(evergreen.TaskS3LogTestPutRequestsOtelAttribute, s3Usage.Logs.Test.PutRequests),
 		))
 	span.End()
 

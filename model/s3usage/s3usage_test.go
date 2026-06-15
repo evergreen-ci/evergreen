@@ -214,17 +214,22 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, int64(1000), s3Usage.Logs.UploadBytes)
 
 		assert.Equal(t, int64(100), s3Usage.Logs.Task.Bytes)
+		assert.Equal(t, 1, s3Usage.Logs.Task.PutRequests)
 		assert.Equal(t, "proj/task/0/task_logs/task", s3Usage.Logs.Task.LogKey)
 		assert.Equal(t, int64(200), s3Usage.Logs.Agent.Bytes)
+		assert.Equal(t, 2, s3Usage.Logs.Agent.PutRequests)
 		assert.Equal(t, "proj/task/0/task_logs/agent", s3Usage.Logs.Agent.LogKey)
 		assert.Equal(t, int64(300), s3Usage.Logs.System.Bytes)
+		assert.Equal(t, 3, s3Usage.Logs.System.PutRequests)
 		assert.Equal(t, "proj/task/0/task_logs/system", s3Usage.Logs.System.LogKey)
 		assert.Equal(t, int64(400), s3Usage.Logs.Test.Bytes)
+		assert.Equal(t, 4, s3Usage.Logs.Test.PutRequests)
 		assert.Equal(t, "proj/task/0/test_logs/mytest", s3Usage.Logs.Test.LogKey)
 
-		// Bytes accumulate across multiple calls; key is overwritten only when non-empty.
+		// Bytes and PUT counts accumulate across multiple calls; key is overwritten only when non-empty.
 		s3Usage.IncrementLogs(1, 50, LogTypeTest, "")
 		assert.Equal(t, int64(450), s3Usage.Logs.Test.Bytes)
+		assert.Equal(t, 5, s3Usage.Logs.Test.PutRequests)
 		assert.Equal(t, "proj/task/0/test_logs/mytest", s3Usage.Logs.Test.LogKey, "key should not be overwritten by empty string")
 	})
 
