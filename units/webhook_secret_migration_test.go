@@ -18,8 +18,12 @@ func setupWebhookMigrationTest(t *testing.T) *mock.Environment {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
 	env.EvergreenSettings.ServiceFlags.WebhookSecretMigrationEnabled = true
+	env.EvergreenSettings.ServiceFlags.WebhookSecretCleanupEnabled = true
 	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, fakeparameter.Collection))
-	require.NoError(t, evergreen.SetServiceFlags(t.Context(), evergreen.ServiceFlags{WebhookSecretMigrationEnabled: true}))
+	require.NoError(t, evergreen.SetServiceFlags(t.Context(), evergreen.ServiceFlags{
+		WebhookSecretMigrationEnabled: true,
+		WebhookSecretCleanupEnabled:   true,
+	}))
 	t.Cleanup(func() {
 		require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, fakeparameter.Collection))
 	})

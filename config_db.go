@@ -96,7 +96,7 @@ var (
 	psLoggingDisabledKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "PSLoggingDisabled")
 	podDiagnosticsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "PodDiagnosticsDisabled")
 	webhookSecretMigrationEnabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretMigrationEnabled")
-	webhookSecretCleanupEnabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretCleanupEnabled")
+	webhookSecretCleanupEnabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookSecretCleanupEnabled")
 	secondaryReadsDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "SecondaryReadsDisabled")
 	backgroundCommandFailureEnabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCommandFailureEnabled")
 	apiRateLimiterDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "APIRateLimiterDisabled")
