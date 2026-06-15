@@ -156,9 +156,11 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 	// mongodb-sage-bot sets the PR assignee as the intended human author, so
 	// use the assignee's identity for attribution instead.
 	ownerUID := int(pr.User.GetID())
-	if patchOwner == evergreen.GitHubSageBotLogin && pr.GetAssignee().GetLogin() != "" {
-		patchOwner = pr.GetAssignee().GetLogin()
-		ownerUID = int(pr.GetAssignee().GetID())
+	assigneeLogin := pr.GetAssignee().GetLogin()
+	assigneeUID := int(pr.GetAssignee().GetID())
+	if patchOwner == evergreen.GitHubSageBotLogin && assigneeLogin != "" && assigneeUID != 0 {
+		patchOwner = assigneeLogin
+		ownerUID = assigneeUID
 	}
 	if alias == "" {
 		alias = evergreen.GithubPRAlias
