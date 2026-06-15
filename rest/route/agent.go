@@ -771,8 +771,8 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 			"task_id": t.Id,
 		}))
 	}
-	logLookup := func(ctx context.Context, bucket, _ string) (int, bool) {
-		return findExpirationDaysForAdminLogBucket(bucket, bucketsConfig)
+	logLookup := func(_ context.Context, bucket, _ string) (int, bool) {
+		return bucketsConfig.LogBucketExpirationDays(bucket)
 	}
 
 	artifactRules, err := s3lifecycle.FindAllRules(ctx)
@@ -782,18 +782,7 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 			"task_id": t.Id,
 		}))
 	}
-	artifactPailRulesByBucket := map[string][]pail.LifecycleRule{}
-	for _, rule := range artifactRules {
-		var expDays *int32
-		if rule.ExpirationDays != nil {
-			expDays = utility.ToInt32Ptr(int32(*rule.ExpirationDays))
-		}
-		artifactPailRulesByBucket[rule.BucketName] = append(artifactPailRulesByBucket[rule.BucketName], pail.LifecycleRule{
-			Prefix:         rule.FilterPrefix,
-			Status:         rule.RuleStatus,
-			ExpirationDays: expDays,
-		})
-	}
+	artifactPailRulesByBucket := s3lifecycle.BuildPailRulesByBucket(artifactRules)
 	artifactLookup := func(_ context.Context, bucket, fileKey string) (int, bool) {
 		rule := pail.FindMatchingRule(artifactPailRulesByBucket[bucket], fileKey)
 		if rule == nil || rule.ExpirationDays == nil {
@@ -814,29 +803,6 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-// findExpirationDaysForAdminLogBucket looks up an admin-owned log bucket's lifecycle days from
-// BucketsConfig. Log buckets store lifecycle on the admin config rather than the project-scoped
-// s3_lifecycle_rules collection.
-func findExpirationDaysForAdminLogBucket(bucketName string, bucketsConfig *evergreen.BucketsConfig) (days int, found bool) {
-	if bucketName == "" || bucketsConfig == nil {
-		return 0, false
-	}
-	switch bucketName {
-	case bucketsConfig.LogBucket.Name:
-		if bucketsConfig.LogBucket.ExpirationDays != nil {
-			return *bucketsConfig.LogBucket.ExpirationDays, true
-		}
-	case bucketsConfig.LogBucketLongRetention.Name:
-		if bucketsConfig.LogBucketLongRetention.ExpirationDays != nil {
-			return *bucketsConfig.LogBucketLongRetention.ExpirationDays, true
-		}
-	case bucketsConfig.LogBucketFailedTasks.Name:
-		if bucketsConfig.LogBucketFailedTasks.ExpirationDays != nil {
-			return *bucketsConfig.LogBucketFailedTasks.ExpirationDays, true
-		}
-	}
-	return 0, false
-}
 
 // POST /rest/v2/task/{task_id}/high_exec_timeout
 type reportHighExecTimeoutHandler struct {

@@ -4324,11 +4324,10 @@ func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData
 }
 
 // bucketExpirationLookup resolves the S3 lifecycle expiration days for a given bucket and file key.
+// Log buckets read from admin BucketsConfig; artifact buckets read from s3_lifecycle_rules.
 type bucketExpirationLookup func(ctx context.Context, bucket, fileKey string) (days int, found bool)
 
 // SaveS3Usage persists the task's S3 usage metrics and calculates S3 costs.
-// logLookup resolves expiration days for log buckets (admin BucketsConfig).
-// artifactLookup resolves expiration days for artifact buckets (s3_lifecycle_rules).
 func (t *Task) SaveS3Usage(ctx context.Context, logLookup, artifactLookup bucketExpirationLookup, logBucketName string) error {
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
@@ -4367,9 +4366,6 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 			continue
 		}
 		days, found := lookup(ctx, logBucketName, lm.LogKey)
-		//TODO: We are using the DefaultMaxArtifactExpirationDays for logs.
-		// Need to create a DefaultMaxLogsExpirationDays field in Admin Page UI
-		// DEVPROD-35027
 		if !found {
 			days = costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays
 		}

@@ -1459,55 +1459,23 @@ func TestReportS3Usage(t *testing.T) {
 	}
 }
 
-func TestFindExpirationDaysForAdminLogBucket(t *testing.T) {
+func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
 	days90 := 90
-	days365 := 365
-	days180 := 180
-
 	cfg := &evergreen.BucketsConfig{
-		LogBucket:              evergreen.BucketConfig{Name: "log-bucket", ExpirationDays: &days90},
-		LogBucketLongRetention: evergreen.BucketConfig{Name: "log-bucket-long", ExpirationDays: &days365},
-		LogBucketFailedTasks:   evergreen.BucketConfig{Name: "log-bucket-failed", ExpirationDays: &days180},
+		LogBucket: evergreen.BucketConfig{Name: "log-bucket", ExpirationDays: &days90},
+	}
+	logLookup := func(_ context.Context, bucket, _ string) (int, bool) {
+		return cfg.LogBucketExpirationDays(bucket)
 	}
 
-	t.Run("EmptyBucketNameShouldReturnNotFound", func(t *testing.T) {
-		_, ok := findExpirationDaysForAdminLogBucket("", cfg)
-		assert.False(t, ok)
-	})
-
-	t.Run("NilConfigShouldReturnNotFound", func(t *testing.T) {
-		_, ok := findExpirationDaysForAdminLogBucket("log-bucket", nil)
-		assert.False(t, ok)
-	})
-
-	t.Run("LogBucketShouldReturnDays", func(t *testing.T) {
-		days, ok := findExpirationDaysForAdminLogBucket("log-bucket", cfg)
+	t.Run("KnownLogBucketReturnsDays", func(t *testing.T) {
+		days, ok := logLookup(t.Context(), "log-bucket", "")
 		assert.True(t, ok)
 		assert.Equal(t, 90, days)
 	})
 
-	t.Run("LogBucketLongRetentionShouldReturnDays", func(t *testing.T) {
-		days, ok := findExpirationDaysForAdminLogBucket("log-bucket-long", cfg)
-		assert.True(t, ok)
-		assert.Equal(t, 365, days)
-	})
-
-	t.Run("LogBucketFailedTasksShouldReturnDays", func(t *testing.T) {
-		days, ok := findExpirationDaysForAdminLogBucket("log-bucket-failed", cfg)
-		assert.True(t, ok)
-		assert.Equal(t, 180, days)
-	})
-
-	t.Run("UnknownBucketShouldReturnNotFound", func(t *testing.T) {
-		_, ok := findExpirationDaysForAdminLogBucket("artifact-bucket", cfg)
-		assert.False(t, ok)
-	})
-
-	t.Run("MatchingBucketWithNilExpirationShouldReturnNotFound", func(t *testing.T) {
-		cfgNoDays := &evergreen.BucketsConfig{
-			LogBucket: evergreen.BucketConfig{Name: "log-bucket"},
-		}
-		_, ok := findExpirationDaysForAdminLogBucket("log-bucket", cfgNoDays)
+	t.Run("UnknownBucketReturnsFalse", func(t *testing.T) {
+		_, ok := logLookup(t.Context(), "artifact-bucket", "")
 		assert.False(t, ok)
 	})
 }

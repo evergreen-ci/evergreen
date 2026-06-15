@@ -2430,22 +2430,8 @@ func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 			"task_id": t.Id,
 		}))
 	}
-	logLookup := func(_ context.Context, bucket string, _ string) (int, bool) {
-		switch bucket {
-		case bucketsConfig.LogBucket.Name:
-			if bucketsConfig.LogBucket.ExpirationDays != nil {
-				return *bucketsConfig.LogBucket.ExpirationDays, true
-			}
-		case bucketsConfig.LogBucketLongRetention.Name:
-			if bucketsConfig.LogBucketLongRetention.ExpirationDays != nil {
-				return *bucketsConfig.LogBucketLongRetention.ExpirationDays, true
-			}
-		case bucketsConfig.LogBucketFailedTasks.Name:
-			if bucketsConfig.LogBucketFailedTasks.ExpirationDays != nil {
-				return *bucketsConfig.LogBucketFailedTasks.ExpirationDays, true
-			}
-		}
-		return 0, false
+	logLookup := func(_ context.Context, bucket, _ string) (int, bool) {
+		return bucketsConfig.LogBucketExpirationDays(bucket)
 	}
 
 	artifactRules, err := s3lifecycle.FindAllRules(ctx)
@@ -2455,18 +2441,7 @@ func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 			"task_id": t.Id,
 		}))
 	}
-	artifactPailRulesByBucket := map[string][]pail.LifecycleRule{}
-	for _, rule := range artifactRules {
-		var expDays *int32
-		if rule.ExpirationDays != nil {
-			expDays = utility.ToInt32Ptr(int32(*rule.ExpirationDays))
-		}
-		artifactPailRulesByBucket[rule.BucketName] = append(artifactPailRulesByBucket[rule.BucketName], pail.LifecycleRule{
-			Prefix:         rule.FilterPrefix,
-			Status:         rule.RuleStatus,
-			ExpirationDays: expDays,
-		})
-	}
+	artifactPailRulesByBucket := s3lifecycle.BuildPailRulesByBucket(artifactRules)
 	artifactLookup := func(_ context.Context, bucket, fileKey string) (int, bool) {
 		rule := pail.FindMatchingRule(artifactPailRulesByBucket[bucket], fileKey)
 		if rule == nil || rule.ExpirationDays == nil {

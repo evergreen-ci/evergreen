@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -470,21 +469,25 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 		}
 
 		// selectively apply the patch to the config file
-		patchCommandStrings := []string{
-			"set -o errexit",
-			fmt.Sprintf("git apply --whitespace=fix --include=%v < '%v'",
-				remoteConfigPath, patchFilePath),
+		patchBytes, err := os.ReadFile(patchFilePath)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading patch file")
 		}
 
+		patchCmd := []string{"git", "apply", "--whitespace=fix", "--include=" + remoteConfigPath}
 		output := util.NewMBCappedWriter()
-		err = opts.PatchOpts.env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
-			Directory(workingDirectory).SetCombinedWriter(output).Run(ctx)
+		err = opts.PatchOpts.env.JasperManager().CreateCommand(ctx).
+			Add(patchCmd).
+			SetInputBytes(patchBytes).
+			Directory(workingDirectory).
+			SetCombinedWriter(output).
+			Run(ctx)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":       "error running patch command",
 				"patch_id":      p.Id.Hex(),
 				"output":        output.String(),
-				"patch_command": patchCommandStrings,
+				"patch_command": patchCmd,
 			}))
 			return nil, errors.Wrap(err, "running patch command (possibly due to merge conflict on evergreen configuration file)")
 		}
@@ -813,6 +816,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	if err != nil {
 		return nil, errors.Wrap(err, "finalizing patch")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":   "successfully created version",
+		"version":   patchVersion.Id,
+		"project":   patchVersion.Identifier,
+		"requester": requester,
+	})
 
 	// Update aggregate costs after transaction commits. We use a goroutine with
 	// retry logic to handle MongoDB transaction propagation delays.
