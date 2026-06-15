@@ -803,7 +803,6 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-
 // POST /rest/v2/task/{task_id}/high_exec_timeout
 type reportHighExecTimeoutHandler struct {
 	taskID string
