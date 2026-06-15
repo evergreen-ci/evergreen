@@ -173,7 +173,7 @@ func TestGetBatchedGenerateTasksEstimationsEmpty(t *testing.T) {
 }
 
 func TestSetGenerateTasksEstimationsFromMap(t *testing.T) {
-	estimations := map[string]generateTasksEstimation{
+	estimations := map[string]GenerateTasksEstimation{
 		"gen_a": {
 			EstimatedNumGeneratedTasks:          15,
 			EstimatedNumActivatedGeneratedTasks: 12,
