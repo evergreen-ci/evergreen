@@ -23,6 +23,8 @@ const (
 	ServiceUnavailable   GqlError = "SERVICE_UNAVAILABLE"
 	// PartialError conveys that the request succeeded, but there were nonfatal errors that may be communicated to users
 	PartialError GqlError = "PARTIAL_ERROR"
+	// ComplexityLimitExceeded conveys that the query was rejected because its complexity exceeded the configured limit
+	ComplexityLimitExceeded GqlError = "COMPLEXITY_LIMIT_EXCEEDED"
 )
 
 // Send sends a gql error to the client. If one or more causes are provided
@@ -46,6 +48,8 @@ func (err GqlError) Send(ctx context.Context, message string, causes ...error) *
 		gqlErr = formError(ctx, message, InputValidationError)
 	case ServiceUnavailable:
 		gqlErr = formError(ctx, message, ServiceUnavailable)
+	case ComplexityLimitExceeded:
+		gqlErr = formError(ctx, message, ComplexityLimitExceeded)
 	case PartialError:
 		gqlErr = formError(ctx, message, PartialError)
 	default:
