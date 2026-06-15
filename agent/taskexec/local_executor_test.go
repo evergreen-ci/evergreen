@@ -455,6 +455,65 @@ buildvariants:
 		assert.Equal(t, command.TeardownTaskBlock, executor.commandBlocks[2].blockType)
 	})
 
+	t.Run("TaskGroupResolvedFromFetchedTaskWhenNoVariantProvided", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: generated-task
+    commands:
+      - command: subprocess.exec
+        params:
+          command: make test
+pre:
+  - command: shell.exec
+    params:
+      script: echo "pre"
+post:
+  - command: shell.exec
+    params:
+      script: echo "post"
+task_groups:
+  - name: generated-group
+    setup_group:
+      - command: git.get_project
+    setup_task:
+      - command: shell.exec
+        params:
+          script: echo "setup task"
+    teardown_task:
+      - command: attach.xunit_results
+    tasks:
+      - generated-task
+buildvariants:
+  - name: enterprise-rhel-80-64-bit
+    tasks:
+      - name: generated-group
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		executor.taskConfig.Task.BuildVariant = "enterprise-rhel-80-64-bit"
+		executor.taskConfig.Task.TaskGroup = "generated-group"
+
+		err = executor.PrepareTask(t.Context(), "generated-task", "")
+		require.NoError(t, err)
+		assert.Equal(t, "generated-task", executor.debugState.SelectedTask)
+		assert.Equal(t, "enterprise-rhel-80-64-bit", executor.debugState.SelectedVariant)
+
+		require.Len(t, executor.commandBlocks, 4)
+		assert.Equal(t, command.SetupGroupBlock, executor.commandBlocks[0].blockType)
+		assert.Equal(t, command.SetupTaskBlock, executor.commandBlocks[1].blockType)
+		assert.Equal(t, command.MainTaskBlock, executor.commandBlocks[2].blockType)
+		assert.Equal(t, command.TeardownTaskBlock, executor.commandBlocks[3].blockType)
+	})
+
 	t.Run("TaskGroupValidatesOnVariant", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		yamlFile := filepath.Join(tmpDir, "test.yml")

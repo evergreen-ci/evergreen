@@ -366,7 +366,7 @@ fi
 echo "Debug daemon started successfully."
 
 evergreen debug load "%s"
-evergreen debug select "%s"
+evergreen debug select "%s" --variant "%s"
 evergreen debug run-until %s
 
 if [ $? -eq 0 ]; then
@@ -374,7 +374,7 @@ if [ $? -eq 0 ]; then
 else
   echo "ERROR: Debug setup script failed during execution."
 fi
-`, configPath, t.DisplayName, stepNum, stepNum), nil
+`, configPath, t.DisplayName, t.BuildVariant, stepNum, stepNum), nil
 }
 
 func CheckInstanceTypeValid(ctx context.Context, d distro.Distro, requestedType string, allowedTypes []string) error {
