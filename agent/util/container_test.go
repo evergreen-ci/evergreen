@@ -104,6 +104,27 @@ func TestWrapWithContainer(t *testing.T) {
 		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
 	})
 
+	t.Run("SudoPrefixStrippedAndUserFlagAdded", func(t *testing.T) {
+		// Jasper's SudoAs prepends ["sudo", "-u", user] to opts.Args before
+		// WrapWithContainer is called. Verify the prefix is stripped and
+		// --user=<user> is added to the docker exec flags instead.
+		opts := &options.Create{Args: append([]string{"sudo", "-u", "ubuntu"}, baseArgs...)}
+		require.NoError(t, WrapWithContainer(opts, "cid", "", ""))
+
+		assert.Equal(t, "docker", opts.Args[0])
+		assert.Equal(t, "exec", opts.Args[1])
+
+		hasUser := false
+		for _, arg := range opts.Args {
+			assert.NotEqual(t, "sudo", arg, "sudo should not appear in final args")
+			if arg == "--user=ubuntu" {
+				hasUser = true
+			}
+		}
+		assert.True(t, hasUser, "expected --user=ubuntu in docker exec args")
+		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
+	})
+
 	t.Run("PreservesOriginalArgs", func(t *testing.T) {
 		opts := makeOpts()
 		original := append([]string{}, opts.Args...)
