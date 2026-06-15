@@ -110,7 +110,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			psLoggingDisabledKey:                  c.PSLoggingDisabled,
 			podDiagnosticsDisabledKey:             c.PodDiagnosticsDisabled,
 			webhookSecretMigrationEnabledKey:      c.WebhookSecretMigrationEnabled,
-			webhookSecretCleanupDisabledKey:       c.WebhookSecretCleanupEnabled,
+			webhookSecretCleanupEnabledKey:       c.WebhookSecretCleanupEnabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,
