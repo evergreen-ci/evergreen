@@ -2990,15 +2990,21 @@ func FindGeneratedTasksFromID(ctx context.Context, generatorID string) ([]Genera
 }
 
 type generateTasksEstimationsResults struct {
+	DisplayName        string  `bson:"_id"`
 	EstimatedCreated   float64 `bson:"est_created"`
 	EstimatedActivated float64 `bson:"est_activated"`
 }
 
-func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, displayName string, lookBackTime time.Duration) ([]generateTasksEstimationsResults, error) {
+func getBatchedGenerateTasksEstimations(ctx context.Context, project, buildVariant string, displayNames []string, lookBackTime time.Duration) ([]generateTasksEstimationsResults, error) {
+	if len(displayNames) == 0 {
+		return nil, nil
+	}
 	match := bson.M{
-		ProjectKey:        project,
-		BuildVariantKey:   buildVariant,
-		DisplayNameKey:    displayName,
+		ProjectKey:      project,
+		BuildVariantKey: buildVariant,
+		DisplayNameKey: bson.M{
+			"$in": displayNames,
+		},
 		GeneratedTasksKey: true,
 		StatusKey:         evergreen.TaskSucceeded,
 		StartTimeKey: bson.M{

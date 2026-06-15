@@ -20,6 +20,9 @@ const (
 	GithubMergeUser   = "github_merge_queue"
 	PeriodicBuildUser = "periodic_build_user"
 	ParentPatchUser   = "parent_patch"
+	// GitHubSageBotLogin is the GitHub login for mongodb-sage-bot, which sets
+	// the PR assignee as the intended human author of the PR.
+	GitHubSageBotLogin = "mongodb-sage-bot[bot]"
 
 	HostRunning       = "running"
 	HostTerminated    = "terminated"
@@ -537,7 +540,6 @@ const (
 	TaskS3ArtifactWithMinPutRequestsCostOtelAttribute = "evergreen.task.s3_cost.artifact_with_min_put_requests_cost"
 	TaskS3ArtifactMaxPutRequestsPerFileOtelAttribute  = "evergreen.task.s3_cost.artifact_max_put_requests_per_file"
 	TaskS3ArtifactMinPutRequestsPerFileOtelAttribute  = "evergreen.task.s3_cost.artifact_min_put_requests_per_file"
-	TaskS3ArtifactTotalUploadAttemptsOtelAttribute    = "evergreen.task.s3_cost.artifact_total_upload_attempts"
 
 	// S3 cost tracking otel attributes — task-level log aggregates
 	TaskS3LogPutRequestsOtelAttribute         = "evergreen.task.s3_cost.log_put_requests"
@@ -546,6 +548,16 @@ const (
 	TaskAdjustedS3LogPutCostOtelAttribute     = "evergreen.task.s3_cost.adjusted_log_put_cost"
 	TaskOnDemandS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.on_demand_log_storage_cost"
 	TaskAdjustedS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.adjusted_log_storage_cost"
+
+	// S3 cost tracking otel attributes — task-level per-log-type breakdowns
+	TaskS3LogTaskBytesOtelAttribute         = "evergreen.task.s3_cost.log_task_bytes"
+	TaskS3LogTaskPutRequestsOtelAttribute   = "evergreen.task.s3_cost.log_task_put_requests"
+	TaskS3LogAgentBytesOtelAttribute        = "evergreen.task.s3_cost.log_agent_bytes"
+	TaskS3LogAgentPutRequestsOtelAttribute  = "evergreen.task.s3_cost.log_agent_put_requests"
+	TaskS3LogSystemBytesOtelAttribute       = "evergreen.task.s3_cost.log_system_bytes"
+	TaskS3LogSystemPutRequestsOtelAttribute = "evergreen.task.s3_cost.log_system_put_requests"
+	TaskS3LogTestBytesOtelAttribute         = "evergreen.task.s3_cost.log_test_bytes"
+	TaskS3LogTestPutRequestsOtelAttribute   = "evergreen.task.s3_cost.log_test_put_requests"
 
 	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"

@@ -13,30 +13,47 @@ const (
 	lookBackTime = 7 * 24 * time.Hour // one week
 )
 
-// SetGenerateTasksEstimations calculates and caches the estimated number of tasks that this task will generate.
-// To be called only in task creation.
-func (t *Task) SetGenerateTasksEstimations(ctx context.Context) error {
-	// Do not run if the task is not a generator.
-	if !t.GenerateTask {
-		return nil
+// GenerateTasksEstimation holds estimation results for a single generator task.
+type GenerateTasksEstimation struct {
+	EstimatedNumGeneratedTasks          int
+	EstimatedNumActivatedGeneratedTasks int
+}
+
+// GetBatchedGenerateTasksEstimations returns a map of estimations for multiple generator tasks, where keys
+// are each task's display name.
+func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVariant string, displayNames []string) (map[string]GenerateTasksEstimation, error) {
+	result := make(map[string]GenerateTasksEstimation, len(displayNames))
+	if len(displayNames) == 0 {
+		return result, nil
 	}
 
-	results, err := getGenerateTasksEstimation(ctx, t.Project, t.BuildVariant, t.DisplayName, lookBackTime)
+	results, err := getBatchedGenerateTasksEstimations(ctx, project, buildVariant, displayNames, lookBackTime)
 	if err != nil {
-		return errors.Wrap(err, "getting generate tasks estimation")
+		return nil, errors.Wrap(err, "getting generate tasks estimations")
 	}
 
-	if len(results) == 0 {
+	for _, r := range results {
+		result[r.DisplayName] = GenerateTasksEstimation{
+			EstimatedNumGeneratedTasks:          int(math.Round(r.EstimatedCreated)),
+			EstimatedNumActivatedGeneratedTasks: int(math.Round(r.EstimatedActivated)),
+		}
+	}
+
+	return result, nil
+}
+
+// SetGenerateTasksEstimationsFromMap applies generate.tasks estimation results to a task.
+func (t *Task) SetGenerateTasksEstimationsFromMap(estimations map[string]GenerateTasksEstimation) {
+	if !t.GenerateTask {
+		return
+	}
+	est, ok := estimations[t.DisplayName]
+	if !ok {
 		t.EstimatedNumGeneratedTasks = utility.ToIntPtr(0)
 		t.EstimatedNumActivatedGeneratedTasks = utility.ToIntPtr(0)
-
-		return nil
-	} else if len(results) > 1 {
-		return errors.Errorf("expected 1 result from generate tasks estimations aggregation but got %d", len(results))
+		return
 	}
 
-	t.EstimatedNumGeneratedTasks = utility.ToIntPtr(int(math.Round(results[0].EstimatedCreated)))
-	t.EstimatedNumActivatedGeneratedTasks = utility.ToIntPtr(int(math.Round(results[0].EstimatedActivated)))
-
-	return nil
+	t.EstimatedNumGeneratedTasks = utility.ToIntPtr(est.EstimatedNumGeneratedTasks)
+	t.EstimatedNumActivatedGeneratedTasks = utility.ToIntPtr(est.EstimatedNumActivatedGeneratedTasks)
 }
