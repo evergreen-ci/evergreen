@@ -195,7 +195,8 @@ func TestAggregateSpawnhostCountByProject(t *testing.T) {
 			{Id: "h1", UserHost: false, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "task1"}},
 			{Id: "h2", UserHost: true, Status: evergreen.HostTerminated, ProvisionOptions: &ProvisionOptions{TaskId: "task2"}},
 			{Id: "h3", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: ""}},
-			{Id: "h4", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "task3"}},
+			{Id: "h4", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "nonexistent_task"}},
+			{Id: "h5", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "task3"}},
 		} {
 			require.NoError(t, h.Insert(t.Context()))
 		}
