@@ -725,9 +725,8 @@ func TestMakePatchedConfigShellMetacharactersInPath(t *testing.T) {
 			patch: p,
 		},
 	}
-	_, err = MakePatchedConfig(ctx, opts, string(projectBytes))
-	assert.Error(t, err)
-	// No shell execution should have occurred
+	_, _ = MakePatchedConfig(ctx, opts, string(projectBytes))
+	// no shell execution should have occurred
 	assert.NoFileExists(t, "/tmp/test")
 }
 

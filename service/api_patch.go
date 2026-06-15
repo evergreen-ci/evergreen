@@ -537,15 +537,10 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 // validatePatchConfigPath rejects config paths that contain shell
 // metacharacters, directory traversal, or are absolute.
 func validatePatchConfigPath(path string) error {
-	if filepath.IsAbs(path) {
-		return errors.New("patch config path must be relative")
-	}
-	if strings.Contains(path, "..") {
-		return errors.New("patch config path must not contain directory traversal")
-	}
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(filepath.IsAbs(path), "patch config path must be relative")
+	catcher.NewWhen(strings.Contains(path, ".."), "patch config path must not contain directory traversal")
 	const shellMetachars = "`$();&|!{}<>\\\n\r"
-	if strings.ContainsAny(path, shellMetachars) {
-		return errors.New("patch config path contains invalid characters")
-	}
-	return nil
+	catcher.NewWhen(strings.ContainsAny(path, shellMetachars), "patch config path contains invalid characters")
+	return catcher.Resolve()
 }
