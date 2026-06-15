@@ -5690,9 +5690,9 @@ func TestHasValidDistro(t *testing.T) {
 
 func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 	ctx := t.Context()
-	require.NoError(t, db.ClearCollections(artifact.Collection))
+	require.NoError(t, db.ClearCollections(artifact.Collection, evergreen.ConfigCollection))
 	t.Cleanup(func() {
-		assert.NoError(t, db.ClearCollections(artifact.Collection))
+		assert.NoError(t, db.ClearCollections(artifact.Collection, evergreen.ConfigCollection))
 	})
 
 	t.Run("NoArtifactsReturnsZeroMetrics", func(t *testing.T) {
@@ -5767,5 +5767,54 @@ func TestGetS3ArtifactUsageFromDB(t *testing.T) {
 		assert.Equal(t, 7, metrics.PutRequests)
 		assert.Equal(t, int64(400), metrics.UploadBytes)
 		assert.Equal(t, 1, metrics.Count)
+	})
+
+	t.Run("KeySecretUploadCountedViaAccountID", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(artifact.Collection, evergreen.ConfigCollection))
+		costConfig := &evergreen.CostConfig{
+			S3Cost: evergreen.S3CostConfig{
+				Storage: evergreen.S3StorageCostConfig{
+					DevprodOwnedAWSAccountIDs: []string{"123456789012"},
+				},
+			},
+		}
+		require.NoError(t, costConfig.Set(ctx))
+
+		entry := artifact.Entry{
+			TaskId:    mgobson.NewObjectId().Hex(),
+			Execution: 0,
+			Files: []artifact.File{
+				{Name: "a", Bucket: "b", FileKey: "path/a", PutRequests: 4, FileSize: 300, AWSAccountID: "123456789012"},
+				{Name: "b", Bucket: "b", FileKey: "path/b", PutRequests: 9, FileSize: 999, AWSAccountID: "999999999999"},
+			},
+		}
+		require.NoError(t, entry.Upsert(ctx))
+
+		tsk := &Task{Id: entry.TaskId, Execution: 0}
+		metrics, err := tsk.GetS3ArtifactUsageFromDB(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 4, metrics.PutRequests)
+		assert.Equal(t, int64(300), metrics.UploadBytes)
+		assert.Equal(t, 1, metrics.Count)
+	})
+
+	t.Run("ReuploadedKeyDedupedAcrossArtifactRows", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(artifact.Collection, evergreen.ConfigCollection))
+		entry := artifact.Entry{
+			TaskId:    mgobson.NewObjectId().Hex(),
+			Execution: 0,
+			Files: []artifact.File{
+				{Name: "a", Bucket: "b", FileKey: "path/a", PutRequests: 2, FileSize: 100},
+				{Name: "a", Bucket: "b", FileKey: "path/a", PutRequests: 3, FileSize: 150},
+			},
+		}
+		require.NoError(t, entry.Upsert(ctx))
+
+		tsk := &Task{Id: entry.TaskId, Execution: 0}
+		metrics, err := tsk.GetS3ArtifactUsageFromDB(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 5, metrics.PutRequests, "PUT counts should sum across re-upload rows")
+		assert.Equal(t, int64(150), metrics.UploadBytes, "bytes should reflect S3 overwrite semantics, not the sum")
+		assert.Equal(t, 1, metrics.Count, "deduped FileKey produces one logical artifact")
 	})
 }

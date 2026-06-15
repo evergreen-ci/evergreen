@@ -549,6 +549,13 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 		minFilePutCost = costPerPut * float64(s3Usage.Artifacts.ArtifactWithMinPutRequests)
 	}
 
+	var totalUploadAttempts int
+	for _, bucketEntry := range s3Usage.Artifacts.BytesByBucketAndKey {
+		for _, fileEntry := range bucketEntry.Files {
+			totalUploadAttempts += fileEntry.UploadAttempts
+		}
+	}
+
 	_, span := tracer.Start(ctx, evergreen.S3CostTrackingOtelSpanName,
 		trace.WithNewRoot(),
 		trace.WithAttributes(
@@ -570,6 +577,9 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 			attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
 			attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
 			attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
+			attribute.Int(evergreen.TaskS3ArtifactMaxPutRequestsPerFileOtelAttribute, s3Usage.Artifacts.ArtifactWithMaxPutRequests),
+			attribute.Int(evergreen.TaskS3ArtifactMinPutRequestsPerFileOtelAttribute, s3Usage.Artifacts.ArtifactWithMinPutRequests),
+			attribute.Int(evergreen.TaskS3ArtifactTotalUploadAttemptsOtelAttribute, totalUploadAttempts),
 		))
 	span.End()
 
