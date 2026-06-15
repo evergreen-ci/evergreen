@@ -124,7 +124,8 @@ type ProjectChangeEvent struct {
 
 // RedactSecrets redacts project secrets from a project change event. Project
 // variables that are not changed are cleared and project variables that are
-// changed are replaced with redacted placeholders.
+// changed are replaced with redacted placeholders. Webhook secrets and
+// Authorization headers are always replaced with a redacted placeholder.
 func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
@@ -132,6 +133,9 @@ func (e *ProjectChangeEvent) RedactSecrets() {
 	isGHAppKeyModified := !bytes.Equal(e.Before.GitHubAppAuth.PrivateKey, e.After.GitHubAppAuth.PrivateKey)
 	e.Before.GitHubAppAuth = getRedactedGitHubAppCopy(e.Before.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedBeforeValue)
 	e.After.GitHubAppAuth = getRedactedGitHubAppCopy(e.After.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedAfterValue)
+	modifiedWebhooks := getModifiedWebhookSubscriberIDs(e.Before.Subscriptions, e.After.Subscriptions)
+	e.Before.Subscriptions = getRedactedSubscriptionsCopy(e.Before.Subscriptions, modifiedWebhooks, evergreen.RedactedBeforeValue)
+	e.After.Subscriptions = getRedactedSubscriptionsCopy(e.After.Subscriptions, modifiedWebhooks, evergreen.RedactedAfterValue)
 }
 
 // getModifiedProjectVars returns the set of project variables in the change
@@ -204,6 +208,76 @@ func getRedactedGitHubAppCopy(auth ProjectEventGitHubAppAuth, isGHAppKeyModified
 		redactedAuth.PrivateKey = []byte{}
 	}
 	return redactedAuth
+}
+
+// getModifiedWebhookSubscriberIDs returns the set of subscription IDs whose webhook secrets or Authorization headers changed.
+func getModifiedWebhookSubscriberIDs(before, after []event.Subscription) map[string]struct{} {
+	beforeByID := buildWebhookSubscribers(before)
+	afterByID := buildWebhookSubscribers(after)
+
+	modified := make(map[string]struct{})
+	allIDs := make(map[string]struct{}, len(beforeByID)+len(afterByID))
+	for id := range beforeByID {
+		allIDs[id] = struct{}{}
+	}
+	for id := range afterByID {
+		allIDs[id] = struct{}{}
+	}
+
+	for id := range allIDs {
+		bws, aws := beforeByID[id], afterByID[id]
+		if bws == nil || aws == nil || !bytes.Equal(bws.Secret, aws.Secret) || bws.GetHeader("Authorization") != aws.GetHeader("Authorization") {
+			modified[id] = struct{}{}
+		}
+	}
+	return modified
+}
+
+// getRedactedSubscriptionsCopy returns a copy of the subscriptions with webhook secrets redacted.
+func getRedactedSubscriptionsCopy(subscriptions []event.Subscription, modifiedIDs map[string]struct{}, placeholder string) []event.Subscription {
+	result := make([]event.Subscription, len(subscriptions))
+	copy(result, subscriptions)
+	for i := range result {
+		if result[i].Subscriber.Type != event.EvergreenWebhookSubscriberType {
+			continue
+		}
+		ws, ok := result[i].Subscriber.Target.(*event.WebhookSubscriber)
+		if !ok || ws == nil {
+			continue
+		}
+		redacted := *ws
+		redacted.Headers = make([]event.WebhookHeader, len(ws.Headers))
+		copy(redacted.Headers, ws.Headers)
+		redactWebhook(&redacted, placeholder)
+		result[i].Subscriber.Target = &redacted
+	}
+	return result
+}
+
+// buildWebhookSubscribers returns a map of subscription ID to WebhookSubscriber for all webhook subscriptions.
+func buildWebhookSubscribers(subscriptions []event.Subscription) map[string]*event.WebhookSubscriber {
+	result := make(map[string]*event.WebhookSubscriber)
+	for i := range subscriptions {
+		if subscriptions[i].Subscriber.Type != event.EvergreenWebhookSubscriberType {
+			continue
+		}
+		if ws, ok := subscriptions[i].Subscriber.Target.(*event.WebhookSubscriber); ok {
+			result[subscriptions[i].ID] = ws
+		}
+	}
+	return result
+}
+
+// redactWebhook replaces the webhook secret and Authorization header with the given placeholder.
+func redactWebhook(ws *event.WebhookSubscriber, placeholder string) {
+	if len(ws.Secret) > 0 {
+		ws.Secret = []byte(placeholder)
+	}
+	for i := range ws.Headers {
+		if ws.Headers[i].Key == "Authorization" {
+			ws.Headers[i].Value = placeholder
+		}
+	}
 }
 
 type ProjectChangeEvents []ProjectChangeEventEntry

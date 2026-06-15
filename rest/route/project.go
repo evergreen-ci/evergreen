@@ -113,11 +113,12 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	projects = projects[:lastIndex]
-	for _, proj := range projects {
+	for i := range projects {
+		projects[i].RedactSecrets()
 		projectModel := &model.APIProjectRef{}
 		// Because this is route to accessible to non-admins, only return basic fields.
-		if err = projectModel.BuildPublicFields(ctx, proj); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", proj.Id))
+		if err = projectModel.BuildPublicFields(ctx, projects[i]); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", projects[i].Id))
 		}
 		if err = resp.AddData(projectModel); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding response data for project '%s'", utility.FromStringPtr(projectModel.Id)))

@@ -1217,7 +1217,8 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 
 func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude, dirs *gitIncludeDirs, workerIdx int) ([]byte, error) {
 	// Check if the module has a local change passed in through the CLI or previous patch.
-	if opts.ReferencePatchID != "" {
+	// Mainline version IDs are not valid patch IDs and have no LocalModuleIncludes.
+	if opts.ReferencePatchID != "" && patch.IsValidId(opts.ReferencePatchID) {
 		p, err := patch.FindOneId(ctx, opts.ReferencePatchID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding patch to repeat '%s'", opts.ReferencePatchID)

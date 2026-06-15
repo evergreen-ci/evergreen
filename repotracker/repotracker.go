@@ -1144,11 +1144,12 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			return errors.Wrapf(err, "committing transaction for version '%s'", v.Id)
 		}
 		grip.Info(ctx, message.Fields{
-			"message": "successfully created version",
-			"version": v.Id,
-			"hash":    v.Revision,
-			"project": v.Identifier,
-			"runner":  RunnerName,
+			"message":   "successfully created version",
+			"version":   v.Id,
+			"hash":      v.Revision,
+			"project":   v.Identifier,
+			"requester": v.Requester,
+			"runner":    RunnerName,
 		})
 		return nil
 	}
