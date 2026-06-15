@@ -22,6 +22,9 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	otelattribute "go.opentelemetry.io/otel/attribute"
+	otelcodes "go.opentelemetry.io/otel/codes"
 )
 
 const (
@@ -273,6 +276,10 @@ func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.J
 		return nil // Already present.
 	}
 
+	ctx, pullSpan := otel.GetTracerProvider().Tracer("evergreen.agent.container").Start(ctx, "container.image_pull")
+	defer pullSpan.End()
+	pullSpan.SetAttributes(otelattribute.String("container.image", img))
+
 	pullCtx, cancel := context.WithTimeout(ctx, imagePullTimeout)
 	defer cancel()
 
@@ -291,6 +298,7 @@ func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.J
 
 	reader, err := cli.ImagePull(pullCtx, img, image.PullOptions{RegistryAuth: registryAuth})
 	if err != nil {
+		pullSpan.SetStatus(otelcodes.Error, err.Error())
 		return errors.Wrapf(err, "pulling image '%s'", img)
 	}
 	defer reader.Close()

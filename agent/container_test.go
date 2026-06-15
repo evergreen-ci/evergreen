@@ -5,7 +5,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +61,7 @@ func TestKillProcsContainerRouting(t *testing.T) {
 			task: client.TaskData{ID: "test-task-1"},
 			taskConfig: &internal.TaskConfig{
 				WorkDir: t.TempDir(),
-				Distro: &apimodels.DistroView{
+				Distro:  &apimodels.DistroView{
 					// Empty ExecUser: takes the ps-based host path, which is
 					// safe without real sudo in a test environment.
 				},
@@ -89,5 +91,63 @@ func TestKillProcsContainerRouting(t *testing.T) {
 		// ContainerID != "" but ExecUser == "" → warning logged, nil returned.
 		err := a.killProcs(ctx, tc, true, "test")
 		require.NoError(t, err)
+	})
+}
+
+func makeSnapshotTC(expansions map[string]string, redacted []string, secrets map[string]string) *taskContext {
+	exp := util.Expansions{}
+	for k, v := range expansions {
+		exp[k] = v
+	}
+	dynExp := agentutil.NewDynamicExpansions(exp)
+	internalExp := agentutil.NewDynamicExpansions(util.Expansions{})
+	for k, v := range secrets {
+		internalExp.Put(k, v)
+	}
+	return &taskContext{
+		taskConfig: &internal.TaskConfig{
+			NewExpansions:      dynExp,
+			Redacted:           redacted,
+			InternalRedactions: internalExp,
+		},
+	}
+}
+
+func TestRedactForSnapshot(t *testing.T) {
+	t.Run("NilTCReturnsUnchanged", func(t *testing.T) {
+		assert.Equal(t, "hello world", redactForSnapshot("hello world", nil))
+	})
+
+	t.Run("NilTaskConfigReturnsUnchanged", func(t *testing.T) {
+		assert.Equal(t, "secret", redactForSnapshot("secret", &taskContext{}))
+	})
+
+	t.Run("RedactsNamedExpansion", func(t *testing.T) {
+		tc := makeSnapshotTC(map[string]string{"my_key": "supersecret"}, []string{"my_key"}, nil)
+		result := redactForSnapshot("data contains supersecret value", tc)
+		assert.NotContains(t, result, "supersecret")
+		assert.Contains(t, result, "<REDACTED:my_key>")
+	})
+
+	t.Run("LongestFirstPreventsPartialLeak", func(t *testing.T) {
+		// "foo" is a prefix of "foobar". Without longest-first sort, replacing
+		// "foo" first would yield "<REDACTED:short>bar", leaking "bar".
+		tc := makeSnapshotTC(map[string]string{"short": "foo", "long": "foobar"}, []string{"short", "long"}, nil)
+		result := redactForSnapshot("the secret is foobar end", tc)
+		assert.NotContains(t, result, "foobar", "longer secret must be fully redacted")
+		assert.NotContains(t, result, "foo", "shorter secret must not appear even as a suffix")
+	})
+
+	t.Run("RedactsInternalSecrets", func(t *testing.T) {
+		tc := makeSnapshotTC(nil, nil, map[string]string{"host_secret": "abc123"})
+		result := redactForSnapshot("auth=abc123", tc)
+		assert.NotContains(t, result, "abc123")
+		assert.Contains(t, result, "<REDACTED:host_secret>")
+	})
+
+	t.Run("EmptyValueSkipped", func(t *testing.T) {
+		tc := makeSnapshotTC(map[string]string{"empty_key": ""}, []string{"empty_key"}, nil)
+		result := redactForSnapshot("nothing to redact", tc)
+		assert.Equal(t, "nothing to redact", result)
 	})
 }
