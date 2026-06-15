@@ -56,7 +56,11 @@ func WrapWithContainer(opts *options.Create, containerID, workdir, envFileHostDi
 	// If the command was wrapped with `sudo -u <user>` to run as exec_user,
 	// strip that prefix and use `docker exec --user` instead. Docker handles
 	// the user switch natively, removing the need for sudo to be installed
-	// inside the container image.
+	// inside the container image. This matches the format emitted by Jasper's
+	// SudoAs: ["sudo", "-u", user, ...rest]. Plain Sudo(true) without a user
+	// (which emits ["sudo", ...rest]) is not handled here and would be forwarded
+	// into the container as-is; in practice Evergreen only uses SudoAs for
+	// container-eligible commands.
 	if len(opts.Args) >= 3 && opts.Args[0] == "sudo" && opts.Args[1] == "-u" {
 		args = append(args, "--user="+opts.Args[2])
 		opts.Args = opts.Args[3:]
