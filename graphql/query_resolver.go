@@ -268,7 +268,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 		apiTaskQueueItem := restModel.APITaskQueueItem{}
 
 		if _, ok := idToIdentifierMap[taskQueueItem.Project]; !ok {
-			identifier, err := model.GetIdentifierForProject(ctx, taskQueueItem.Project)
+			identifier, err := model.GetIdentifierForProjectSecondary(ctx, taskQueueItem.Project)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting identifier for project '%s': %s", taskQueueItem.Project, err.Error()))
 			}

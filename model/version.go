@@ -680,7 +680,7 @@ func GetMostRecentWaterfallVersion(ctx context.Context, projectId string) (*Vers
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	cursor, err := env.SecondaryReadClient().Database(env.DB().Name()).Collection(VersionCollection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
 	}
@@ -726,7 +726,7 @@ func GetPreviousPageCommitOrderNumber(ctx context.Context, projectId string, ord
 	res := []Version{}
 
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	cursor, err := env.SecondaryReadClient().Database(env.DB().Name()).Collection(VersionCollection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
 	}
@@ -780,7 +780,7 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	cursor, err := env.SecondaryReadClient().Database(env.DB().Name()).Collection(VersionCollection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
 	}
@@ -933,7 +933,7 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 
 	res := []Version{}
 
-	if err := db.Aggregate(ctx, VersionCollection, pipeline, &res); err != nil {
+	if err := db.AggregateSecondary(ctx, VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil

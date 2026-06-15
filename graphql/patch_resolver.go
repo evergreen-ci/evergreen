@@ -215,7 +215,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 			})
 		}
 
-		identifier, err := model.GetIdentifierForProject(ctx, alias.ChildProject)
+		identifier, err := model.GetIdentifierForProjectSecondary(ctx, alias.ChildProject)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project identifier for child project '%s' in alias '%s': %s", alias.ChildProject, alias.Alias, err.Error()))
 		}

@@ -111,6 +111,15 @@ func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	return entries, err
 }
 
+// FindAllSecondary gets every Entry for the given query, reading from a secondary
+// node. Results may be replication-lagged, so use it only for display reads of
+// already-persisted artifacts, never in a read-after-write path.
+func FindAllSecondary(ctx context.Context, query db.Q) ([]Entry, error) {
+	entries := []Entry{}
+	err := db.FindAllQSecondary(ctx, Collection, query, &entries)
+	return entries, err
+}
+
 // UpdateFileLink updates the link for a single artifact file matching task ID, execution,
 // file name, and current link. Returns db.ErrNotFound if no file matched.
 func UpdateFileLink(ctx context.Context, taskID string, execution int, fileName, currentLink, newLink string) error {

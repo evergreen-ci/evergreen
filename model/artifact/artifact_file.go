@@ -148,7 +148,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 }
 
 func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, error) {
-	artifacts, err := FindAll(ctx, ByTaskIdsAndExecutions(tasks))
+	artifacts, err := FindAllSecondary(ctx, ByTaskIdsAndExecutions(tasks))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding artifact files for task")
 	}
@@ -157,7 +157,7 @@ func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, e
 		for _, t := range tasks {
 			taskIds = append(taskIds, t.TaskID)
 		}
-		artifacts, err = FindAll(ctx, ByTaskIds(taskIds))
+		artifacts, err = FindAllSecondary(ctx, ByTaskIds(taskIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "finding artifact files for task without execution number")
 		}
