@@ -167,6 +167,8 @@ github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810 h1:Q+MNMS3rHQw6bG
 github.com/evergreen-ci/lru v0.0.0-20260326190734-0d627bf39810/go.mod h1:A+sGkHeCogvvRBXUrF/Ghu5Gec6lyLtb1MKZN/xfWmI=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035 h1:oVU/ni/sRq+GAogUMLa7LBGtvVHMVLbisuytxBC5KaY=
 github.com/evergreen-ci/negroni v1.0.1-0.20211028183800-67b6d7c2c035/go.mod h1:pvK7NM0ZC+sfTLuIiJN4BgM1S9S5Oo79PJReAFFph18=
+github.com/evergreen-ci/pail v0.0.0-20260615174927-8f539a6748c6 h1:djp6Z5JRaX2+yJV7adxlMYxoLa/CMrr0LByHp3Cw1zs=
+github.com/evergreen-ci/pail v0.0.0-20260615174927-8f539a6748c6/go.mod h1:lj8oxBSqzEoapX1apBDy88B7wRjj27QQu9EXk2i3AOM=
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581 h1:JOYnqPypLzZdjlFxS2ynWGKFPTrx0HAJwe6mi9P/lhk=
 github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581/go.mod h1:visOo9VGGrTN+jNPSg56zhbCH81sSlMRnXpJCYb+kt4=
 github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6 h1:leuRlgINHoR0/takPgoHYrfHt5mAtXcLdKdfQ0KVnyQ=
@@ -295,8 +297,6 @@ github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNB
 github.com/lestrrat-go/option v1.0.1/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
 github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 h1:PwQumkgq4/acIiZhtifTV5OUqqiP82UAl0h87xj/l9k=
 github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3/go.mod h1:autxFIvghDt3jPTLoqZ9OZ7s9qTGNAWmYCjVFWPX/zg=
-github.com/maddaak/pail v0.0.0-20260615014845-de1e92b5a6a3 h1:gyR2iaG9PzG/twQ/aFXxCrq7naehb25MNRXD1kD7Y2c=
-github.com/maddaak/pail v0.0.0-20260615014845-de1e92b5a6a3/go.mod h1:lj8oxBSqzEoapX1apBDy88B7wRjj27QQu9EXk2i3AOM=
 github.com/mattn/go-xmpp v0.0.1 h1:njHom/3EP3ynacLHX9lBpKMMknYL76ic/19fPsR6MB8=
 github.com/mattn/go-xmpp v0.0.1/go.mod h1:Cs5mF0OsrRRmhkyOod//ldNPOwJsrBvJ+1WRspv0xoc=
 github.com/mholt/archiver/v3 v3.5.1 h1:rDjOBX9JSF5BvoJGvjqK479aL70qh9DIpZCl+k7Clwo=
