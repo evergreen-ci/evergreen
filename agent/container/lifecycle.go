@@ -127,6 +127,12 @@ func envHostDir(taskID string) string {
 // on the host and bind-mounted read-only into the container at EnvFileMountTarget
 // for env-file forwarding.
 // The caller must call Destroy when the task is complete.
+//
+// Image requirements: the container image must include the exec_user account
+// (e.g. uid=1000 ubuntu) in its /etc/passwd. Task commands are run via
+// `docker exec --user=<exec_user>`, which requires the user to exist inside
+// the container. Minimal base images (e.g. ubuntu:22.04) only contain root
+// and will produce "unable to find user" errors at exec time.
 func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
