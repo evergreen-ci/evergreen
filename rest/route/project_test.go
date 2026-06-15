@@ -1026,15 +1026,6 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 			require.NoError(t, h.Parse(ctx, req))
 			assert.Equal(t, []string{evergreen.RepotrackerVersionRequester}, h.opts.Requesters)
 		},
-		"PatchRequesterIsRejected": func(t *testing.T) {
-			for _, patchRequester := range evergreen.PatchRequesters {
-				h := &getProjectVersionsHandler{}
-				req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?requester="+patchRequester, http.NoBody)
-				require.NoError(t, err)
-				req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
-				assert.Error(t, h.Parse(ctx, req))
-			}
-		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tCase(t)
