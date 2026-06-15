@@ -220,9 +220,6 @@ func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
 	comm := client.NewMock("url")
 
 	t.Run("SymlinkedFileIngestedInFull", func(t *testing.T) {
-		// Small sequence size surfaces the bug: without the symlink fix,
-		// fileSize is the symlink path length, the chunking loop emits a
-		// single chunk, and ingest truncates the target file at sequenceSize.
 		tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{}, 32)
 
 		targetDir := t.TempDir()
