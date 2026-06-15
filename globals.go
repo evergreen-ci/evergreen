@@ -547,6 +547,16 @@ const (
 	TaskOnDemandS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.on_demand_log_storage_cost"
 	TaskAdjustedS3LogStorageCostOtelAttribute = "evergreen.task.s3_cost.adjusted_log_storage_cost"
 
+	// S3 cost tracking otel attributes — task-level per-log-type breakdowns
+	TaskS3LogTaskBytesOtelAttribute         = "evergreen.task.s3_cost.log_task_bytes"
+	TaskS3LogTaskPutRequestsOtelAttribute   = "evergreen.task.s3_cost.log_task_put_requests"
+	TaskS3LogAgentBytesOtelAttribute        = "evergreen.task.s3_cost.log_agent_bytes"
+	TaskS3LogAgentPutRequestsOtelAttribute  = "evergreen.task.s3_cost.log_agent_put_requests"
+	TaskS3LogSystemBytesOtelAttribute       = "evergreen.task.s3_cost.log_system_bytes"
+	TaskS3LogSystemPutRequestsOtelAttribute = "evergreen.task.s3_cost.log_system_put_requests"
+	TaskS3LogTestBytesOtelAttribute         = "evergreen.task.s3_cost.log_test_bytes"
+	TaskS3LogTestPutRequestsOtelAttribute   = "evergreen.task.s3_cost.log_test_put_requests"
+
 	// display task otel attributes
 	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
 	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"

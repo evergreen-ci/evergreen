@@ -17,10 +17,11 @@ const (
 	LogTypeTest   = "test_log"
 )
 
-// LogTypeMetrics holds the S3 key and byte count for a single log type.
+// LogTypeMetrics holds the S3 key, byte count, and PUT count for a single log type.
 type LogTypeMetrics struct {
-	LogKey string `bson:"log_key,omitempty" json:"log_key,omitempty"`
-	Bytes  int64  `bson:"bytes,omitempty" json:"bytes,omitempty"`
+	LogKey      string `bson:"log_key,omitempty" json:"log_key,omitempty"`
+	Bytes       int64  `bson:"bytes,omitempty" json:"bytes,omitempty"`
+	PutRequests int    `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
 }
 
 // LogMetrics tracks log upload metrics broken down by log type.
@@ -281,38 +282,39 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 	}
 }
 
-// IncrementLogs increments log upload metrics and accumulates per-type bytes for storage cost tracking.
-// Callers that invoke IncrementLogs concurrently on the same instance must serialize the calls
-// externally (e.g., by holding a shared sync.Mutex before calling).
-// For test logs, LogKey stores the most recently written key; all test logs for a task share the
-// same bucket/prefix so any key yields the same lifecycle rule for cost calculation.
+// IncrementLogs increments aggregate and per-type log upload metrics for cost tracking.
+// Callers invoking this concurrently on a shared instance must serialize externally.
+// Test logs share a bucket/prefix, so LogKey stores only the most recently written key.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
 	switch logType {
 	case LogTypeTask:
 		s.Logs.Task.Bytes += uploadBytes
+		s.Logs.Task.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.Task.LogKey = logKey
 		}
 	case LogTypeAgent:
 		s.Logs.Agent.Bytes += uploadBytes
+		s.Logs.Agent.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.Agent.LogKey = logKey
 		}
 	case LogTypeSystem:
 		s.Logs.System.Bytes += uploadBytes
+		s.Logs.System.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.System.LogKey = logKey
 		}
 	case LogTypeTest:
 		s.Logs.Test.Bytes += uploadBytes
+		s.Logs.Test.PutRequests += putRequests
 		if logKey != "" {
 			s.Logs.Test.LogKey = logKey
 		}
 	default:
-		// Unrecognized log type: global totals are still incremented above but
-		// per-type byte tracking is skipped.
+		// Global counters above still capture aggregate bytes/PUTs; only per-type attribution is skipped.
 	}
 }
 
