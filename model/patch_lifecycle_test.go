@@ -689,6 +689,47 @@ func TestMakePatchedConfigRenamed(t *testing.T) {
 	assert.Equal(t, "Included variant!!!", intermediateProject.BuildVariants[0].DisplayName)
 }
 
+func TestMakePatchedConfigShellMetacharactersInPath(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := evergreen.GetEnvironment()
+	cwd := testutil.GetDirectoryOfFile()
+
+	maliciousPath := "$(touch /tmp/test)"
+	fileBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
+	require.NoError(t, err)
+	diffString := fmt.Sprintf(string(fileBytes),
+		maliciousPath, maliciousPath, maliciousPath, maliciousPath)
+
+	p := &patch.Patch{
+		Patches: []patch.ModulePatch{{
+			Githash: "revision",
+			PatchSet: patch.PatchSet{
+				Patch: diffString,
+				Summary: []thirdparty.Summary{{
+					Name:      maliciousPath,
+					Additions: 3,
+					Deletions: 3,
+				}},
+			},
+		}},
+	}
+	projectBytes, err := os.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
+	require.NoError(t, err)
+
+	opts := GetProjectOpts{
+		RemotePath: maliciousPath,
+		PatchOpts: &PatchOpts{
+			env:   env,
+			patch: p,
+		},
+	}
+	_, _ = MakePatchedConfig(ctx, opts, string(projectBytes))
+	// no shell execution should have occurred
+	assert.NoFileExists(t, "/tmp/test")
+}
+
 func TestParseRenamedOrCopiedFile(t *testing.T) {
 	patchContents := `
 diff --git a/include2.yml b/copiedInclude.yml

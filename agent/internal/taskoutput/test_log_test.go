@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -211,6 +212,73 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
+	ctx := t.Context()
+
+	comm := client.NewMock("url")
+
+	t.Run("SymlinkedFileIngestedInFull", func(t *testing.T) {
+		tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{}, 32)
+
+		targetDir := t.TempDir()
+		targetPath := filepath.Join(targetDir, "real.log")
+		inputLines := []string{
+			"Line 1 of the symlinked log file content.",
+			"Line 2 with more bytes to cross sequence size.",
+			"Line 3 keeps going past the seqSize threshold.",
+			"Line 4 is the last line of the target file.",
+		}
+		require.NoError(t, os.WriteFile(targetPath, []byte(strings.Join(inputLines, "\n")+"\n"), 0777))
+		require.NoError(t, os.Symlink(targetPath, filepath.Join(h.dir, "symlink.log")))
+
+		require.NoError(t, h.run(ctx))
+
+		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"symlink.log"}})
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
+		var persistedLines []string
+		for it.Next() {
+			persistedLines = append(persistedLines, it.Item().Data)
+		}
+		require.NoError(t, it.Err())
+		assert.Equal(t, inputLines, persistedLines)
+	})
+
+	t.Run("BrokenSymlinkSkipped", func(t *testing.T) {
+		tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{}, 32)
+
+		require.NoError(t, os.Symlink(filepath.Join(t.TempDir(), "does_not_exist"), filepath.Join(h.dir, "broken.log")))
+
+		require.NoError(t, h.run(ctx))
+
+		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"broken.log"}})
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
+		assert.False(t, it.Next(), "broken symlink should produce no ingested lines")
+		require.NoError(t, it.Err())
+	})
+
+	t.Run("DirectorySymlinkSkippedWithWarning", func(t *testing.T) {
+		tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{}, 32)
+
+		targetDir := t.TempDir()
+		require.NoError(t, os.Symlink(targetDir, filepath.Join(h.dir, "dir_link")))
+
+		require.NoError(t, h.run(ctx))
+
+		it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{"dir_link"}})
+		require.NoError(t, err)
+		t.Cleanup(func() { assert.NoError(t, it.Close()) })
+		assert.False(t, it.Next(), "directory symlink should not produce any ingested log content")
+		require.NoError(t, it.Err())
+
+		sawWarning := slices.ContainsFunc(comm.GetTaskLogs(tsk.Id), func(line log.LogLine) bool {
+			return line.Priority == level.Warning && strings.Contains(line.Data, "targets a directory")
+		})
+		assert.True(t, sawWarning, "expected a warning explaining the directory symlink was skipped")
+	})
 }
 
 func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {

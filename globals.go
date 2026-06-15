@@ -20,6 +20,9 @@ const (
 	GithubMergeUser   = "github_merge_queue"
 	PeriodicBuildUser = "periodic_build_user"
 	ParentPatchUser   = "parent_patch"
+	// GitHubSageBotLogin is the GitHub login for mongodb-sage-bot, which sets
+	// the PR assignee as the intended human author of the PR.
+	GitHubSageBotLogin = "mongodb-sage-bot[bot]"
 
 	HostRunning       = "running"
 	HostTerminated    = "terminated"
