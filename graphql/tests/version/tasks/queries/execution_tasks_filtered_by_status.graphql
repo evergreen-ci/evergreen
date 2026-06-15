@@ -1,0 +1,15 @@
+{
+  version(versionId: "5e4ff3abe3c3317e352062e4") {
+    tasks(options: { statuses: ["failed", "system-failed"] }) {
+      data {
+        id
+        displayStatus
+        executionTasksFull {
+          id
+          displayStatus
+        }
+      }
+      count
+    }
+  }
+}

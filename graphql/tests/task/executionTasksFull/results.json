@@ -15,38 +15,6 @@
           }
         }
       }
-    },
-    {
-      "query_file": "filter_by_status.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "id": "burn_in_display_task",
-            "executionTasksFull": [
-              {
-                "id": "burn_in_failed_subtask",
-                "displayStatus": "failed"
-              }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "query_file": "filter_by_status_succeeded.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "id": "burn_in_display_task",
-            "executionTasksFull": [
-              {
-                "id": "burn_in_succeeded_subtask",
-                "displayStatus": "success"
-              }
-            ]
-          }
-        }
-      }
     }
   ]
 }

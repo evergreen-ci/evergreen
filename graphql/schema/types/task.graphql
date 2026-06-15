@@ -92,11 +92,12 @@ type Task {
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
   """
-  executionTasksFull returns a display task's execution tasks. When statuses is
-  provided, only execution tasks whose display status matches one of the given
-  statuses are returned, mirroring the filters applied to the tasks table.
+  executionTasksFull returns a display task's execution tasks. When this task is
+  resolved as part of a version's tasks() query, the status filter applied to
+  that query is also applied here, so only execution tasks whose display status
+  matches the filtered statuses are returned.
   """
-  executionTasksFull(statuses: [String!]): [Task!]
+  executionTasksFull: [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
   files: TaskFiles!

@@ -796,6 +796,19 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	return filteredStatuses
 }
 
+// getStatusesFromVersionTasksArgs walks up the resolver's field context to find
+// an enclosing version tasks() query and returns its validated status filter. It
+// returns nil when the field is not resolved within a version tasks() query, such
+// as when a task is fetched directly via the task() query.
+func getStatusesFromVersionTasksArgs(ctx context.Context) []string {
+	for fc := graphql.GetFieldContext(ctx); fc != nil; fc = fc.Parent {
+		if options, ok := fc.Args["options"].(TaskFilterOptions); ok {
+			return getValidTaskStatusesFilter(options.Statuses)
+		}
+	}
+	return nil
+}
+
 func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdparty.JiraTicket, error) {
 	events, err := event.Find(ctx, event.TaskEventsForId(taskId))
 	if err != nil {

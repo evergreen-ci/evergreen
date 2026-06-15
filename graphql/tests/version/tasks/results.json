@@ -1,6 +1,40 @@
 {
   "tests": [
     {
+      "query_file": "execution_tasks_filtered_by_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "2",
+                  "displayStatus": "system-failed",
+                  "executionTasksFull": [
+                    {
+                      "id": "execution_task",
+                      "displayStatus": "failed"
+                    }
+                  ]
+                },
+                {
+                  "id": "3",
+                  "displayStatus": "failed",
+                  "executionTasksFull": null
+                },
+                {
+                  "id": "6",
+                  "displayStatus": "system-failed",
+                  "executionTasksFull": null
+                }
+              ],
+              "count": 3
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "all_params.graphql",
       "result": {
         "data": {
@@ -51,6 +85,10 @@
                     {
                       "id": "execution_task",
                       "displayStatus": "failed"
+                    },
+                    {
+                      "id": "execution_task_success",
+                      "displayStatus": "success"
                     }
                   ]
                 },
