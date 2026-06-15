@@ -816,6 +816,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	if err != nil {
 		return nil, errors.Wrap(err, "finalizing patch")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":   "successfully created version",
+		"version":   patchVersion.Id,
+		"project":   patchVersion.Identifier,
+		"requester": requester,
+	})
 
 	// Update aggregate costs after transaction commits. We use a goroutine with
 	// retry logic to handle MongoDB transaction propagation delays.
