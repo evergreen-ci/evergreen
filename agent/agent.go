@@ -70,7 +70,7 @@ type Agent struct {
 	addMetadataTagMutex sync.RWMutex
 	tracer              trace.Tracer
 	otelGrpcConn        *grpc.ClientConn
-	closers []closerOp
+	closers             []closerOp
 	// currentContainer holds the active task-group isolation container, if any.
 	// Created at task-group setup, reused across tasks in the group, and
 	// destroyed in runTeardownGroupCommands. Set/cleared by
@@ -1220,9 +1220,11 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 			tc.logger.Execution().Debugf(ctx, "Found no OOM kill (in %.3f seconds).", time.Since(startTime).Seconds())
 		}
 	}
-	// Supplement the dmesg-based OOM report with the container-native signal.
+	// Supplement the dmesg-based OOM report with the container-native signal,
+	// emit the failure snapshot, and schedule retention on task failure.
 	if detail.Status == evergreen.TaskFailed || detail.TimedOut {
 		a.augmentOOMTrackerWithContainerSignal(ctx, tc, detail)
+		a.emitContainerFailureSnapshot(ctx, tc, detail)
 		if a.currentContainer != nil {
 			a.scheduleContainerRetention(ctx, a.currentContainer.Name)
 		}

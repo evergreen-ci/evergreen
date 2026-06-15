@@ -2,20 +2,29 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/evergreen-ci/evergreen"
 	agentcontainer "github.com/evergreen-ci/evergreen/agent/container"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // tryReapOrphanContainers removes any evergreen-task-* containers left behind
@@ -117,6 +126,14 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 	}
 
 	ci := conf.Distro.ContainerIsolation
+	ctx, span := a.tracer.Start(ctx, "container.create_and_start")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("container.image", ci.Image),
+		attribute.String("container.task_id", conf.Task.Id),
+		attribute.String("container.distro_id", conf.Task.DistroId),
+	)
+
 	tc, err := agentcontainer.CreateAndStart(ctx, agentcontainer.Config{
 		Image:    ci.Image,
 		WorkDir:  conf.WorkDir,
@@ -126,13 +143,10 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		Logger:   log,
 	})
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		if ci.RequireIsolation {
-			// Fail-closed: the distro requires isolation; propagate the error
-			// so the task fails rather than running without container protection.
 			return errors.Wrap(err, "starting isolation container (fail-closed: require_isolation is set)")
 		}
-		// Fail-open default: log the degraded event and continue on the host.
-		// Route through the task logger so the warning appears in the Evergreen UI.
 		log.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "container_isolation_degraded",
 			"task_id": conf.Task.Id,
@@ -141,6 +155,10 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		}))
 		return nil
 	}
+	span.SetAttributes(
+		attribute.String("container.id", tc.ID),
+		attribute.String("container.name", tc.Name),
+	)
 	conf.ContainerID = tc.ID
 	conf.EnvFileHostDir = tc.EnvFileHostDir
 	a.currentContainer = tc
@@ -161,14 +179,17 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 // the reaper removes the container at next startup.
 func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig) {
 	if a.currentContainer == nil {
-		// Clear any stale retention window even if there is no container to
-		// destroy. Without this, a window set for a prior container could
-		// survive into a future task group and incorrectly retain a container
-		// that did NOT fail.
 		a.retainContainerUntil = time.Time{}
 		return
 	}
 	containerName := a.currentContainer.Name
+
+	ctx, span := a.tracer.Start(ctx, "container.destroy")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("container.id", a.currentContainer.ID),
+		attribute.String("container.name", containerName),
+	)
 
 	if !a.retainContainerUntil.IsZero() && time.Now().Before(a.retainContainerUntil) {
 		grip.Infof(ctx, "Retaining isolation container '%s' until %s for on-call inspection (retain_on_failure_secs). The orphan reaper will remove it at next agent startup.",
@@ -254,6 +275,131 @@ func (a *Agent) scheduleContainerRetention(ctx context.Context, containerName st
 // processes). The container OOMKilled signal is a container-specific fact from
 // docker inspect, always worth surfacing when a container is active regardless
 // of project OOM-tracker preferences.
+// emitContainerFailureSnapshot collects post-mortem forensics from the active
+// isolation container and emits them as a container.failure_snapshot OTel span.
+// It is called on non-zero task exit while the container is still running (before
+// destroyContainer fires at group teardown). All string fields are run through
+// the task config's redactor so secrets never appear in Honeycomb.
+func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if a.currentContainer == nil || tc == nil {
+		return
+	}
+	containerID := a.currentContainer.ID
+	image := ""
+	if tc.taskConfig != nil && tc.taskConfig.Distro != nil && tc.taskConfig.Distro.ContainerIsolation != nil {
+		image = tc.taskConfig.Distro.ContainerIsolation.Image
+	}
+
+	ctx, span := a.tracer.Start(ctx, "container.failure_snapshot")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("container.id", containerID),
+		attribute.String("container.image", image),
+		attribute.String("container.task_status", detail.Status),
+		attribute.Bool("container.oom_killed", detail.OOMTracker != nil && detail.OOMTracker.Detected),
+	)
+	if detail.Status == evergreen.TaskFailed || detail.TimedOut {
+		span.SetStatus(codes.Error, detail.Status)
+	}
+
+	// docker inspect JSON.
+	if inspectJSON, err := containerInspectJSON(ctx, containerID); err == nil {
+		span.SetAttributes(attribute.String("container.inspect_json", redactForSnapshot(inspectJSON, tc)))
+	}
+
+	// ps -ef inside the container. Capture output even on non-zero exit — a
+	// container whose processes have all died is exactly the case where we
+	// want "no processes found" in Honeycomb rather than a missing attribute.
+	if psOut, _ := containerExec(ctx, containerID, "ps", "-ef"); psOut != "" {
+		span.SetAttributes(attribute.String("container.ps_output", redactForSnapshot(psOut, tc)))
+	}
+
+	// Env-file contents (the per-task tmpfs written by WrapWithContainer).
+	if tc.taskConfig != nil && tc.taskConfig.EnvFileHostDir != "" {
+		envFile := filepath.Join(tc.taskConfig.EnvFileHostDir, ".evg-env")
+		if data, err := os.ReadFile(envFile); err == nil {
+			span.SetAttributes(attribute.String("container.env_file", redactForSnapshot(string(data), tc)))
+		}
+	}
+
+	// Task log tail is intentionally omitted: task output goes to the remote
+	// Evergreen log service (not a local file) and is not accessible here.
+}
+
+// containerInspectJSON returns the full JSON from docker inspect for a container.
+func containerInspectJSON(ctx context.Context, containerID string) (string, error) {
+	inspectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", errors.Wrap(err, "creating Docker client for inspect")
+	}
+	defer cli.Close()
+
+	info, err := cli.ContainerInspect(inspectCtx, containerID)
+	if err != nil {
+		return "", errors.Wrapf(err, "inspecting container '%s'", containerID)
+	}
+	data, err := json.Marshal(info)
+	if err != nil {
+		return "", errors.Wrap(err, "marshalling inspect result")
+	}
+	return string(data), nil
+}
+
+// containerExec runs a command inside a container and returns its combined output.
+func containerExec(ctx context.Context, containerID string, args ...string) (string, error) {
+	execCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	cmdArgs := append([]string{"exec", containerID}, args...)
+	out, err := exec.CommandContext(execCtx, "docker", cmdArgs...).CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+// redactForSnapshot applies the task's expansion redactions to s so that
+// secrets never appear in Honeycomb attributes. Values are applied
+// longest-first (matching the canonical redacting_sender order) to prevent a
+// shorter secret that is a prefix of a longer one from producing a partial
+// substitution that leaks the suffix.
+func redactForSnapshot(s string, tc *taskContext) string {
+	if tc == nil || tc.taskConfig == nil {
+		return s
+	}
+	conf := tc.taskConfig
+
+	type kv struct{ key, val string }
+	var all []kv
+
+	for _, info := range conf.NewExpansions.GetRedacted() {
+		if info.Value != "" {
+			all = append(all, kv{info.Key, info.Value})
+		}
+	}
+	// Use a fresh slice to avoid aliasing conf.Redacted's backing array.
+	allToRedact := append([]string(nil), conf.Redacted...)
+	allToRedact = append(allToRedact, globals.ExpansionsToRedact...)
+	for _, name := range allToRedact {
+		if val := conf.NewExpansions.Get(name); val != "" {
+			all = append(all, kv{name, val})
+		}
+	}
+	conf.InternalRedactions.Range(func(k, v string) bool {
+		if v != "" {
+			all = append(all, kv{k, v})
+		}
+		return true
+	})
+
+	// Sort longest value first to prevent prefix-substitution leaks.
+	sort.Slice(all, func(i, j int) bool { return len(all[i].val) > len(all[j].val) })
+
+	for _, entry := range all {
+		s = strings.ReplaceAll(s, entry.val, fmt.Sprintf("<REDACTED:%s>", entry.key))
+	}
+	return s
+}
+
 func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if a.currentContainer == nil {
 		return
