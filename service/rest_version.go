@@ -386,6 +386,21 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if projCtx.ProjectRef == nil {
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusNotFound, responseError{Message: "project not found for version"})
+		return
+	}
+	opts := gimlet.PermissionOpts{
+		Resource:      projCtx.ProjectRef.Id,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionTasks,
+		RequiredLevel: evergreen.TasksBasic.Value,
+	}
+	if !user.HasPermission(r.Context(), opts) {
+		gimlet.WriteJSONResponse(r.Context(), w, http.StatusUnauthorized, responseError{Message: "not authorized to modify this version"})
+		return
+	}
+
 	input := struct {
 		Activated *bool `json:"activated"`
 	}{}
