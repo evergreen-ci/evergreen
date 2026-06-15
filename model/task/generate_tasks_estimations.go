@@ -13,15 +13,16 @@ const (
 	lookBackTime = 7 * 24 * time.Hour // one week
 )
 
-type generateTasksEstimation struct {
+// GenerateTasksEstimation holds estimation results for a single generator task.
+type GenerateTasksEstimation struct {
 	EstimatedNumGeneratedTasks          int
 	EstimatedNumActivatedGeneratedTasks int
 }
 
 // GetBatchedGenerateTasksEstimations returns a map of estimations for multiple generator tasks, where keys
 // are each task's display name.
-func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVariant string, displayNames []string) (map[string]generateTasksEstimation, error) {
-	result := make(map[string]generateTasksEstimation, len(displayNames))
+func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVariant string, displayNames []string) (map[string]GenerateTasksEstimation, error) {
+	result := make(map[string]GenerateTasksEstimation, len(displayNames))
 	if len(displayNames) == 0 {
 		return result, nil
 	}
@@ -32,7 +33,7 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 	}
 
 	for _, r := range results {
-		result[r.DisplayName] = generateTasksEstimation{
+		result[r.DisplayName] = GenerateTasksEstimation{
 			EstimatedNumGeneratedTasks:          int(math.Round(r.EstimatedCreated)),
 			EstimatedNumActivatedGeneratedTasks: int(math.Round(r.EstimatedActivated)),
 		}
@@ -42,7 +43,7 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 }
 
 // SetGenerateTasksEstimationsFromMap applies generate.tasks estimation results to a task.
-func (t *Task) SetGenerateTasksEstimationsFromMap(estimations map[string]generateTasksEstimation) {
+func (t *Task) SetGenerateTasksEstimationsFromMap(estimations map[string]GenerateTasksEstimation) {
 	if !t.GenerateTask {
 		return
 	}
