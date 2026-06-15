@@ -414,6 +414,7 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 	}
 
 	apiPatches := []*restModel.APIPatch{}
+	projectIDs := make([]string, 0, len(patches))
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		if err := apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
@@ -422,7 +423,11 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)
+		if projectID := utility.FromStringPtr(apiPatch.ProjectId); projectID != "" {
+			projectIDs = append(projectIDs, projectID)
+		}
 	}
+	loaders.PreloadProjects(ctx, projectIDs)
 
 	return apiPatches, nil
 }
