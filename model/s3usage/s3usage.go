@@ -296,11 +296,9 @@ func findFileEntry(files []FileBytes, key string) *FileBytes {
 	return nil
 }
 
-// IncrementLogs increments log upload metrics and accumulates per-type bytes for storage cost tracking.
-// Callers that invoke IncrementLogs concurrently on the same instance must serialize the calls
-// externally (e.g., by holding a shared sync.Mutex before calling).
-// For test logs, LogKey stores the most recently written key; all test logs for a task share the
-// same bucket/prefix so any key yields the same lifecycle rule for cost calculation.
+// IncrementLogs increments aggregate and per-type log upload metrics for cost tracking.
+// Concurrent callers on a shared instance must serialize externally.
+// Test logs share a bucket/prefix, so LogKey stores only the most recently written key.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
