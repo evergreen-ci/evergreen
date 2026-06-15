@@ -10,6 +10,8 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2"
@@ -36,7 +38,7 @@ func TestComplexityLimitMutateOperationContext(t *testing.T) {
 	// so the response headers it sets can be asserted.
 	run := func(t *testing.T) (*gqlerror.Error, *httptest.ResponseRecorder) {
 		rec := httptest.NewRecorder()
-		ctx := context.WithValue(t.Context(), responseWriterContextKey{}, rec)
+		ctx := context.WithValue(t.Context(), responseWriterContextKey, rec)
 		rc := &graphql.OperationContext{Operation: op}
 		gqlErr := MakeComplexityLimit(schema).MutateOperationContext(ctx, rc)
 		return gqlErr, rec
@@ -74,10 +76,18 @@ func TestComplexityLimitMutateOperationContext(t *testing.T) {
 			settings.ServiceFlags.GraphQLComplexityLimiterDisabled = true
 			require.NoError(t, settings.ServiceFlags.Set(t.Context()))
 
-			gqlErr, rec := run(t)
+			// Swap the grip sender to capture the warn-only log line.
+			defer func(s send.Sender) {
+				assert.NoError(t, grip.SetSender(s))
+			}(grip.GetSender())
+			sender := send.MakeInternalLogger()
+			require.NoError(t, grip.SetSender(sender))
+
+			gqlErr, _ := run(t)
 			assert.Nil(t, gqlErr)
-			// The exceeded header is still set in warn-only mode.
-			assert.Equal(t, "true", rec.Header().Get(evergreen.GraphQLComplexityExceededHeader))
+			// Warn mode must emit a log line: it's the only signal that an
+			// over-limit query was allowed through.
+			assert.True(t, sender.HasMessage())
 		},
 		"ZeroLimitDisablesEnforcement": func(t *testing.T) {
 			settings, err := evergreen.GetConfig(t.Context())
