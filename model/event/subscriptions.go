@@ -1197,6 +1197,12 @@ func getWebhookAuthParameterPath(subscriptionID string) string {
 	return fmt.Sprintf("webhooks/%s/authorization", subscriptionID)
 }
 
+// GetWebhookAuthParameterPath returns the Parameter Store path for a webhook subscription's Authorization header.
+// This exported form is used by the migration job in units/.
+func GetWebhookAuthParameterPath(subscriptionID string) string {
+	return getWebhookAuthParameterPath(subscriptionID)
+}
+
 // verifyWebhookSecretInParameterStore confirms the stored secret matches the expected value.
 func verifyWebhookSecretInParameterStore(ctx context.Context, paramName string, expected []byte) error {
 	storedSecret, err := getWebhookSecretFromParameterStore(ctx, paramName)
