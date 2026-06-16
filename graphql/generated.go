@@ -2372,6 +2372,7 @@ type ComplexityRoot struct {
 		Id                  func(childComplexity int) int
 		Ignored             func(childComplexity int) int
 		IngestTime          func(childComplexity int) int
+		IsPatch             func(childComplexity int) int
 		Message             func(childComplexity int) int
 		Project             func(childComplexity int) int
 		Repo                func(childComplexity int) int
@@ -2854,6 +2855,8 @@ type VersionResolver interface {
 }
 type VersionLiteResolver interface {
 	ChildVersions(ctx context.Context, obj *model1.Version) ([]*model1.Version, error)
+
+	IsPatch(ctx context.Context, obj *model1.Version) (bool, error)
 
 	Project(ctx context.Context, obj *model1.Version) (*model1.ProjectRef, error)
 
@@ -12856,6 +12859,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.IngestTime(childComplexity), true
+	case "VersionLite.isPatch":
+		if e.complexity.VersionLite.IsPatch == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.IsPatch(childComplexity), true
 	case "VersionLite.message":
 		if e.complexity.VersionLite.Message == nil {
 			break
@@ -45941,6 +45950,8 @@ func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field 
 				return ec.fieldContext_VersionLite_finishTime(ctx, field)
 			case "ignored":
 				return ec.fieldContext_VersionLite_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_VersionLite_isPatch(ctx, field)
 			case "message":
 				return ec.fieldContext_VersionLite_message(ctx, field)
 			case "order":
@@ -67123,6 +67134,8 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_finishTime(ctx, field)
 			case "ignored":
 				return ec.fieldContext_VersionLite_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_VersionLite_isPatch(ctx, field)
 			case "message":
 				return ec.fieldContext_VersionLite_message(ctx, field)
 			case "order":
@@ -76710,6 +76723,8 @@ func (ec *executionContext) fieldContext_VersionLite_childVersions(_ context.Con
 				return ec.fieldContext_VersionLite_finishTime(ctx, field)
 			case "ignored":
 				return ec.fieldContext_VersionLite_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_VersionLite_isPatch(ctx, field)
 			case "message":
 				return ec.fieldContext_VersionLite_message(ctx, field)
 			case "order":
@@ -76926,6 +76941,35 @@ func (ec *executionContext) fieldContext_VersionLite_ignored(_ context.Context, 
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _VersionLite_isPatch(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_isPatch,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().IsPatch(ctx, obj)
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_isPatch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
@@ -111773,6 +111817,42 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "isPatch":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_isPatch(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "message":
 			out.Values[i] = ec._VersionLite_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
