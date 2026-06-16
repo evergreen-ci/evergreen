@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -33,9 +34,10 @@ type Mock struct {
 	MockServiceFlagErr   error
 	MockGetProjectResult *model.APIProjectRef
 
-	GetRecentVersionsResult   []restmodel.APIVersion
-	GetBuildsForVersionResult []restmodel.APIBuild
-	GetTasksForBuildResult    []restmodel.APITask
+	GetRecentVersionsResult             []restmodel.APIVersion
+	GetRecentVersionsResultsByRequester map[string][]restmodel.APIVersion
+	GetBuildsForVersionResult           []restmodel.APIBuild
+	GetTasksForBuildResult              []restmodel.APITask
 
 	SendSlackNotificationData *model.APISlack
 	SendEmailNotificationData *model.APIEmail
@@ -288,7 +290,17 @@ func (c *Mock) GetMatchingHosts(context.Context, time.Time, time.Time, string, b
 	return nil, nil
 }
 
-func (c *Mock) GetRecentVersionsForProject(ctx context.Context, project, branch string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
+func (c *Mock) GetRecentVersionsForProject(ctx context.Context, projectID string, requesters []string, startAtOrderNum, limit int) ([]restmodel.APIVersion, error) {
+	if c.GetRecentVersionsResultsByRequester != nil {
+		var merged []restmodel.APIVersion
+		for _, req := range requesters {
+			merged = append(merged, c.GetRecentVersionsResultsByRequester[req]...)
+		}
+		sort.Slice(merged, func(i, j int) bool {
+			return merged[i].Order > merged[j].Order
+		})
+		return merged, nil
+	}
 	if c.GetRecentVersionsResult != nil {
 		return c.GetRecentVersionsResult, nil
 	}

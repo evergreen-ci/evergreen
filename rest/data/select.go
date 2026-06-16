@@ -27,14 +27,21 @@ const (
 )
 
 func logTSSError(ctx context.Context, err error, resp *http.Response, info message.Fields) {
+	// A 404 means the requested resource isn't tracked in the test selection
+	// service yet, which is expected and too noisy for Splunk. The error is
+	// still returned to the caller.
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		return
+	}
 	if resp != nil {
 		info["status"] = resp.StatusCode
 	}
+	info["error"] = err.Error()
 	var openAPIErr *testselection.GenericOpenAPIError
 	if errors.As(err, &openAPIErr) {
 		info["response_body"] = string(openAPIErr.Body())
 	}
-	grip.Error(ctx, message.WrapError(err, info))
+	grip.Error(ctx, info)
 }
 
 // wrapTSSError wraps test selection service errors with the response body in the message. Callers handle logging and adding context.

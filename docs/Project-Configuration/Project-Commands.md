@@ -426,6 +426,12 @@ Parameters:
 - `aws_key`, `aws_secret`, `aws_session_token`, `role_arn`, `region`:
   S3 credentials and region, with the same semantics as [`s3.put`](#s3put).
   Use either `role_arn` (recommended) or `aws_key` + `aws_secret`.
+- `preserve_symlinks`: optional boolean (default `false`). When `true`, symlinks
+  are restored as symlinks (preserving their targets) instead of being
+  dereferenced into regular files, which is required for tools like NPM that
+  expect `node_modules` symlinks. This value is folded into the cache key, so it
+  must match the `cache.save` that produced the cache, and symlink-aware caches
+  never reuse older dereferenced ones.
 
 The cache key is order-sensitive and contains nothing implicit: the OS,
 architecture, and distro are folded in only if you add them to `key_expansions`.
@@ -476,6 +482,11 @@ Parameters:
   must match so the key resolves to the same object.
 - `paths`: required list (at least one entry) of file or directory paths,
   relative to the working directory, to bundle into the tarball.
+- `preserve_symlinks`: optional boolean (default `false`). When `true`, symlinks
+  are archived as symlinks (preserving their targets) instead of being
+  dereferenced into regular files, which is required for tools like NPM that
+  expect `node_modules` symlinks. This value is folded into the cache key, so it
+  must match the `cache.restore` that reads the cache.
 
 A realistic restore-then-save flow wraps both commands in a function so they
 share parameters, using the cache-hit expansion to skip the expensive install

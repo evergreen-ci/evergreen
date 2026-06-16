@@ -732,7 +732,10 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		defer shutdown(ctx)
 	}
 
-	go tc.resourceMonitor.start(tskCtx)
+	go func() {
+		defer recovery.LogStackTraceAndContinue("resource monitor")
+		tc.resourceMonitor.start(tskCtx)
+	}()
 
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)

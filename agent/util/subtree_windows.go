@@ -378,3 +378,8 @@ func GetNice(int) (int, error) {
 func SetNice(int, int) error {
 	return nil
 }
+
+// SetOOMScoreAdj is a no-op on Windows (Linux-only).
+func SetOOMScoreAdj(int) error {
+	return nil
+}
