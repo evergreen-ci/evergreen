@@ -39,6 +39,7 @@ func NewConfigModel() *APIAdminSettings {
 		Plugins:             map[string]map[string]any{},
 		ProjectCreation:     &APIProjectCreationConfig{},
 		Providers:           &APICloudProviders{},
+		RateLimit:           &APIRateLimitConfig{},
 		RepoTracker:         &APIRepoTrackerConfig{},
 		ReleaseMode:         &APIReleaseModeConfig{},
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
@@ -101,6 +102,7 @@ type APIAdminSettings struct {
 	PprofPort               *string                       `json:"pprof_port,omitempty"`
 	ProjectCreation         *APIProjectCreationConfig     `json:"project_creation,omitempty"`
 	Providers               *APICloudProviders            `json:"providers,omitempty"`
+	RateLimit               *APIRateLimitConfig           `json:"rate_limit,omitempty"`
 	RepoTracker             *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
 	ReleaseMode             *APIReleaseModeConfig         `json:"release_mode,omitempty"`
 	RuntimeEnvironments     *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
@@ -544,6 +546,53 @@ func (a *APIapiConfig) ToService() (any, error) {
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		URL:            utility.FromStringPtr(a.URL),
 		CorpURL:        utility.FromStringPtr(a.CorpURL),
+	}, nil
+}
+
+type APIRateLimitConfig struct {
+	RESTUserPerHour        int      `json:"rest_user_per_hour"`
+	RESTUserBurst          int      `json:"rest_user_burst"`
+	RESTServicePerHour     int      `json:"rest_service_per_hour"`
+	RESTServiceBurst       int      `json:"rest_service_burst"`
+	GraphQLUserPerHour     int      `json:"graphql_user_per_hour"`
+	GraphQLUserBurst       int      `json:"graphql_user_burst"`
+	GraphQLServicePerHour  int      `json:"graphql_service_per_hour"`
+	GraphQLServiceBurst    int      `json:"graphql_service_burst"`
+	GraphQLComplexityLimit int      `json:"graphql_complexity_limit"`
+	ElevatedUserIDs        []string `json:"elevated_user_ids"`
+}
+
+func (a *APIRateLimitConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.RateLimitConfig:
+		a.RESTUserPerHour = v.RESTUserPerHour
+		a.RESTUserBurst = v.RESTUserBurst
+		a.RESTServicePerHour = v.RESTServicePerHour
+		a.RESTServiceBurst = v.RESTServiceBurst
+		a.GraphQLUserPerHour = v.GraphQLUserPerHour
+		a.GraphQLUserBurst = v.GraphQLUserBurst
+		a.GraphQLServicePerHour = v.GraphQLServicePerHour
+		a.GraphQLServiceBurst = v.GraphQLServiceBurst
+		a.GraphQLComplexityLimit = v.GraphQLComplexityLimit
+		a.ElevatedUserIDs = v.ElevatedUserIDs
+	default:
+		return errors.Errorf("programmatic error: expected rate limit config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIRateLimitConfig) ToService() (any, error) {
+	return evergreen.RateLimitConfig{
+		RESTUserPerHour:        a.RESTUserPerHour,
+		RESTUserBurst:          a.RESTUserBurst,
+		RESTServicePerHour:     a.RESTServicePerHour,
+		RESTServiceBurst:       a.RESTServiceBurst,
+		GraphQLUserPerHour:     a.GraphQLUserPerHour,
+		GraphQLUserBurst:       a.GraphQLUserBurst,
+		GraphQLServicePerHour:  a.GraphQLServicePerHour,
+		GraphQLServiceBurst:    a.GraphQLServiceBurst,
+		GraphQLComplexityLimit: a.GraphQLComplexityLimit,
+		ElevatedUserIDs:        a.ElevatedUserIDs,
 	}, nil
 }
 
@@ -2068,6 +2117,8 @@ type APIServiceFlags struct {
 	UseMergeQueuePathFilteringDisabled bool `json:"use_merge_queue_path_filtering_disabled"`
 	PSLoggingDisabled                  bool `json:"ps_logging_disabled"`
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
+	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
+	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2529,6 +2580,8 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PSLoggingDisabled = v.PSLoggingDisabled
 		as.UseMergeQueuePathFilteringDisabled = v.UseMergeQueuePathFilteringDisabled
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
+		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
+		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2580,6 +2633,8 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		UseMergeQueuePathFilteringDisabled: as.UseMergeQueuePathFilteringDisabled,
 		PSLoggingDisabled:                  as.PSLoggingDisabled,
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
+		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
+		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,

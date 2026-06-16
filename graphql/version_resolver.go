@@ -665,6 +665,11 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 	return nil, nil
 }
 
+// IsPatch is the resolver for the isPatch field.
+func (r *versionLiteResolver) IsPatch(ctx context.Context, obj *model.Version) (bool, error) {
+	return evergreen.IsPatchRequester(obj.Requester), nil
+}
+
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
 	projectRef, err := loaders.GetProject(ctx, obj.Identifier)

@@ -35,6 +35,7 @@ func LastRevision() cli.Command {
 		saveFlagName                      = "save"
 		reuseFlagName                     = "reuse"
 		listFlagName                      = "list"
+		includePeriodicFlagName           = "include-periodic"
 	)
 	return cli.Command{
 		Name:  "last-revision",
@@ -90,6 +91,10 @@ func LastRevision() cli.Command {
 				Name:  listFlagName,
 				Usage: "instead of searching for a revision, list all saved last revision criteria groups",
 			},
+			cli.BoolFlag{
+				Name:  includePeriodicFlagName,
+				Usage: "include periodic builds when searching for a matching revision",
+			},
 		),
 		Before: mergeBeforeFuncs(setPlainLogger,
 			func(c *cli.Context) error {
@@ -138,7 +143,7 @@ func LastRevision() cli.Command {
 				if reuseCriteria && searchCriteriaSpecified {
 					return errors.New("cannot both reuse criteria and also specify other search criteria")
 				}
-				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName) || c.IsSet(projectFlagName)) {
+				if listCriteria && (searchCriteriaSpecified || c.IsSet(lookbackLimitFlagName) || c.IsSet(timeoutFlagName) || c.IsSet(knownIssuesAreSuccessFlagName) || c.IsSet(projectFlagName) || c.IsSet(includePeriodicFlagName)) {
 					// List criteria doesn't accept any other flags.
 					return errors.New("cannot both list criteria and also specify search criteria")
 				}
@@ -159,6 +164,7 @@ func LastRevision() cli.Command {
 			saveCriteriaName := c.String(saveFlagName)
 			reuseCriteriaName := c.String(reuseFlagName)
 			listCriteria := c.Bool(listFlagName)
+			includePeriodicBuilds := c.Bool(includePeriodicFlagName)
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
@@ -225,7 +231,7 @@ func LastRevision() cli.Command {
 			var matchingVersion *model.APIVersion
 			for numRevisionsSearched := 0; numRevisionsSearched < versionLookbackLimit; numRevisionsSearched += maxVersionBatchSize {
 				numRevisionsToSearch := min(maxVersionBatchSize, versionLookbackLimit-numRevisionsSearched)
-				latestVersions, err := client.GetRecentVersionsForProject(ctx, c.String(projectFlagName), evergreen.RepotrackerVersionRequester, orderNum, numRevisionsToSearch)
+				latestVersions, err := fetchVersionBatch(ctx, client, c.String(projectFlagName), includePeriodicBuilds, orderNum, numRevisionsToSearch)
 				if err != nil {
 					return errors.Wrap(err, "getting latest versions for project")
 				}
@@ -265,6 +271,14 @@ func LastRevision() cli.Command {
 			return nil
 		},
 	}
+}
+
+func fetchVersionBatch(ctx context.Context, c client.Communicator, projectID string, includePeriodicBuilds bool, orderNum, limit int) ([]model.APIVersion, error) {
+	requesters := []string{evergreen.RepotrackerVersionRequester}
+	if includePeriodicBuilds {
+		requesters = append(requesters, evergreen.AdHocRequester)
+	}
+	return c.GetRecentVersionsForProject(ctx, projectID, requesters, orderNum, limit)
 }
 
 func printLastRevision(v *model.APIVersion, modules []model.APIManifestModule, jsonOutput bool) error {
