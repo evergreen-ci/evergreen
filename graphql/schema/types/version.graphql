@@ -173,6 +173,7 @@ type VersionLite {
   errors: [String!]!
   finishTime: Time
   ignored: Boolean!
+  isPatch: Boolean!
   message: String!
   order: Int!
   project: ProjectLite
