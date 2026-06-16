@@ -121,6 +121,74 @@ func TestMatrixDetectorReadsParserProject(t *testing.T) {
 	assert.Equal(t, 0, matrixDet.Detect(&project, nil))
 }
 
+// nonTaskBlockConfig invokes commands from every block that is not a task's
+// own command list: the pre/post/timeout blocks and a task group's
+// setup_group/setup_task/teardown_task. gotest.parse_files is reached
+// indirectly through a function from both the post block and the task group
+// teardown, mirroring the real evergreen.yml layout. Counting only task
+// commands (the old behavior) misses all of these.
+const nonTaskBlockConfig = `
+functions:
+  attach:
+    - command: gotest.parse_files
+      params:
+        files:
+          - "*.suite"
+pre:
+  - command: s3.put
+post:
+  - func: attach
+timeout:
+  - command: shell.exec
+    params: {script: "echo timeout"}
+tasks:
+  - name: unit
+    commands:
+      - command: subprocess.exec
+        params: {binary: "echo"}
+task_groups:
+  - name: tg
+    max_hosts: 2
+    setup_group:
+      - command: manifest.load
+    setup_task:
+      - command: ec2.assume_role
+    teardown_task:
+      - func: attach
+    tasks:
+      - unit
+buildvariants:
+  - name: ubuntu
+    display_name: Ubuntu
+    run_on: [ubuntu2004]
+    tasks:
+      - name: unit
+`
+
+func TestCommandDetectorCountsNonTaskBlocks(t *testing.T) {
+	var project model.Project
+	pp, err := model.LoadProjectInto(context.Background(), []byte(nonTaskBlockConfig), nil, "sample", &project)
+	require.NoError(t, err)
+
+	counts := map[string]int{}
+	for _, d := range ftDetectors() {
+		counts[d.Name] = d.Detect(&project, pp)
+	}
+
+	for name, expected := range map[string]int{
+		// Reached through the attach function from both the post block and the
+		// task group teardown_task.
+		"gotest_parse_files": 2,
+		"s3_put":             1, // pre block.
+		"shell_exec":         1, // timeout block.
+		"subprocess_exec":    1, // task command.
+		"manifest_load":      1, // task group setup_group.
+		"ec2_assume_role":    1, // task group setup_task.
+	} {
+		assert.Equal(t, expected, counts[name], "detector %q", name)
+	}
+}
+
 func TestComputeAdoptionCountsProjectsNotInvocations(t *testing.T) {
 	dets := []ftDetector{{Name: "feat", Detect: func(*model.Project, *model.ParserProject) int { return 0 }}}
 	results := []ftResult{

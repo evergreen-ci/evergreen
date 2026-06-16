@@ -156,20 +156,75 @@ func ftDetectors() []ftDetector {
 }
 
 // ftCommandDetector builds an ftDetector that counts total invocations of a
-// command across all of a project's tasks. TasksThatCallCommand resolves
-// commands called directly and those reached through functions.
+// command across a project, including commands reached indirectly through
+// functions.
 func ftCommandDetector(name, description, command string) ftDetector {
 	return ftDetector{
 		Name:        name,
 		Description: description,
 		Detect: func(p *model.Project, _ *model.ParserProject) int {
-			total := 0
-			for _, n := range p.TasksThatCallCommand(command) {
-				total += n
-			}
-			return total
+			return ftCountCommand(p, command)
 		},
 	}
+}
+
+// ftCountCommand counts every invocation of a command anywhere it can appear in
+// a project: the pre/post/timeout blocks, individual task commands, and task
+// group setup/teardown/timeout blocks. Commands reached indirectly through a
+// function are resolved by tallying how many times the command appears in each
+// function and adding that whenever the function is invoked. Functions cannot
+// reference other functions, so a single level of resolution is sufficient.
+//
+// The shared model.Project.TasksThatCallCommand only scans task commands, so it
+// misses commands used solely in pre/post/timeout or task group blocks (e.g. a
+// gotest.parse_files call in an attach-test-results function invoked from post).
+func ftCountCommand(p *model.Project, command string) int {
+	perFunction := map[string]int{}
+	for name, cmds := range p.Functions {
+		if cmds == nil {
+			continue
+		}
+		for _, c := range cmds.List() {
+			if c.Command == command {
+				perFunction[name]++
+			}
+		}
+	}
+
+	total := 0
+	countCmd := func(c model.PluginCommandConf) {
+		if c.Command == command {
+			total++
+		}
+		if c.Function != "" {
+			total += perFunction[c.Function]
+		}
+	}
+	countSet := func(cmds *model.YAMLCommandSet) {
+		if cmds == nil {
+			return
+		}
+		for _, c := range cmds.List() {
+			countCmd(c)
+		}
+	}
+
+	countSet(p.Pre)
+	countSet(p.Post)
+	countSet(p.Timeout)
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			countCmd(c)
+		}
+	}
+	for _, tg := range p.TaskGroups {
+		countSet(tg.SetupGroup)
+		countSet(tg.TeardownGroup)
+		countSet(tg.SetupTask)
+		countSet(tg.TeardownTask)
+		countSet(tg.Timeout)
+	}
+	return total
 }
 
 // ftResult holds the per-project detector counts and any parse error.
