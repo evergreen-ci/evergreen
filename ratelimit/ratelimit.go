@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/go-redis/redis_rate/v10"
@@ -21,24 +22,23 @@ func NewRateLimiter(rdb *redis.Client) (*Limiter, error) {
 	return &Limiter{limiter: redis_rate.NewLimiter(rdb)}, nil
 }
 
-// Allow is used for REST and GraphQL rate limits, which have a cost of 1.
+// Allow reports whether a request with the given userID and surface is allowed under the specified rate and burst limits.
+// It is used for REST and GraphQL rate limits, which have a cost of 1.
 func (l *Limiter) Allow(ctx context.Context, userID string, surface evergreen.RateLimitSurface, reqPerHour int, burst int) (*redis_rate.Result, error) {
 	return l.AllowN(ctx, userID, surface, reqPerHour, burst, 1)
 }
 
-// AllowN is used for GraphQL queries, which have a cost equal to their complexity score.
+// AllowN reports whether a request with the given userID, surface, and cost is allowed under the specified rate and burst limits.
 func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.RateLimitSurface, reqPerHour int, burst int, n int) (*redis_rate.Result, error) {
-	switch surface {
-	case evergreen.RateLimitSurfaceREST, evergreen.RateLimitSurfaceGraphQL, evergreen.RateLimitSurfaceComplexity:
-	default:
+	if !slices.Contains(evergreen.ValidRateLimitSurfaces, surface) {
 		return nil, errors.Errorf("invalid rate limit surface '%s'", surface)
 	}
-	// Callers should not pass in reqPerHour/burst = 0, the middleware should treat 0 as unlimited and skip calling the limiter entirely.
+	// Skip limiting if limits are not set by returning a nil result.
 	if reqPerHour < 1 {
-		return nil, errors.Errorf("per hour limit %d must be at least 1", reqPerHour)
+		return nil, nil
 	}
 	if burst < 1 {
-		return nil, errors.Errorf("burst limit %d must be at least 1", burst)
+		return nil, nil
 	}
 	if burst > reqPerHour {
 		return nil, errors.Errorf("burst limit %d cannot be greater than the per hour limit %d", burst, reqPerHour)
