@@ -14,8 +14,11 @@ type Limiter struct {
 	limiter *redis_rate.Limiter
 }
 
-func NewRateLimiter(rdb *redis.Client) *Limiter {
-	return &Limiter{limiter: redis_rate.NewLimiter(rdb)}
+func NewRateLimiter(rdb *redis.Client) (*Limiter, error) {
+	if rdb == nil {
+		return nil, errors.New("redis client must not be nil")
+	}
+	return &Limiter{limiter: redis_rate.NewLimiter(rdb)}, nil
 }
 
 // Allow is used for REST and GraphQL rate limits, which have a cost of 1.
@@ -32,18 +35,19 @@ func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.R
 	}
 	// Callers should not pass in reqPerHour/burst = 0, the middleware should treat 0 as unlimited and skip calling the limiter entirely.
 	if reqPerHour < 1 {
-		return nil, errors.Errorf("per hour limit '%d' must be at least 1", reqPerHour)
+		return nil, errors.Errorf("per hour limit %d must be at least 1", reqPerHour)
 	}
 	if burst < 1 {
-		return nil, errors.Errorf("burst limit '%d' must be at least 1", burst)
+		return nil, errors.Errorf("burst limit %d must be at least 1", burst)
 	}
 	if burst > reqPerHour {
-		return nil, errors.Errorf("burst limit '%d' cannot be greater than the per hour limit '%d'", burst, reqPerHour)
+		return nil, errors.Errorf("burst limit %d cannot be greater than the per hour limit %d", burst, reqPerHour)
 	}
 	if n < 1 {
-		return nil, errors.Errorf("cost '%d' must be at least 1", n)
+		return nil, errors.Errorf("cost %d must be at least 1", n)
 	}
-	key := fmt.Sprintf("evergreen:ratelimit:%s:%s", userID, surface)
+	const format = "evergreen:ratelimit:%s:%s"
+	key := fmt.Sprintf(format, userID, surface)
 	limit := redis_rate.PerHour(reqPerHour)
 	limit.Burst = burst // Override default burst, which is equal to hourly limit
 	return l.limiter.AllowN(ctx, key, limit, n)
