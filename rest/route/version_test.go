@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -16,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -438,4 +441,209 @@ func (s *VersionSuite) TestGetManifestForVersionErrorsForNonexistentVersion() {
 	res := handler.Run(ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusNotFound, res.Status())
+}
+
+func TestGetVersionManifestProof(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"WithAdjacentVersions": func(t *testing.T) {
+			projectID := "proof-adjacent-project"
+			previousPrevious := insertProofVersion(t, projectID, "proof-adjacent-previous-previous", "project-revision-1", 1)
+			previous := insertProofVersion(t, projectID, "proof-adjacent-previous", "project-revision-2", 2)
+			current := insertProofVersion(t, projectID, "proof-adjacent-current", "project-revision-2", 3)
+			next := insertProofVersion(t, projectID, "proof-adjacent-next", "project-revision-2", 4)
+			insertProofManifest(t, previousPrevious, "module-revision-1")
+			insertProofManifest(t, previous, "module-revision-1")
+			insertProofManifest(t, current, "module-revision-2")
+			insertProofManifest(t, next, "module-revision-3")
+
+			handler := &versionManifestProofGetHandler{versionId: current.Id}
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			require.Equal(t, http.StatusOK, res.Status(), res.Data())
+
+			proof, ok := res.Data().(*versionManifestProofResponse)
+			require.True(t, ok)
+			require.NotNil(t, proof.Previous)
+			require.NotNil(t, proof.Current)
+			require.NotNil(t, proof.Next)
+
+			assert.Equal(t, previous.Id, proof.Previous.VersionID)
+			assert.True(t, proof.Previous.HasComparison)
+			assert.True(t, proof.Previous.ManifestFound)
+			assert.True(t, proof.Previous.ProjectRevisionChanged)
+			require.Len(t, proof.Previous.Modules, 1)
+			assert.False(t, proof.Previous.Modules[0].Changed)
+
+			assert.Equal(t, current.Id, proof.Current.VersionID)
+			assert.True(t, proof.Current.HasComparison)
+			assert.True(t, proof.Current.ManifestFound)
+			assert.False(t, proof.Current.ProjectRevisionChanged)
+			currentModule := proofModuleByName(proof.Current.Modules, "module1")
+			require.NotNil(t, currentModule)
+			assert.True(t, currentModule.Changed)
+			assert.Equal(t, "module-revision-2", utility.FromStringPtr(currentModule.Revision))
+
+			assert.Equal(t, next.Id, proof.Next.VersionID)
+			assert.True(t, proof.Next.HasComparison)
+			assert.True(t, proof.Next.ManifestFound)
+			assert.False(t, proof.Next.ProjectRevisionChanged)
+			nextModule := proofModuleByName(proof.Next.Modules, "module1")
+			require.NotNil(t, nextModule)
+			assert.True(t, nextModule.Changed)
+			assert.Equal(t, "module-revision-3", utility.FromStringPtr(nextModule.Revision))
+		},
+		"WithOnlyCurrentVersion": func(t *testing.T) {
+			projectID := "proof-current-only-project"
+			current := insertProofVersion(t, projectID, "proof-current-only-current", "project-revision-1", 1)
+			insertProofManifest(t, current, "module-revision-1")
+
+			handler := &versionManifestProofGetHandler{versionId: current.Id}
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			require.Equal(t, http.StatusOK, res.Status(), res.Data())
+
+			proof, ok := res.Data().(*versionManifestProofResponse)
+			require.True(t, ok)
+			assert.Nil(t, proof.Previous)
+			assert.Nil(t, proof.Next)
+			require.NotNil(t, proof.Current)
+			assert.False(t, proof.Current.HasComparison)
+			assert.True(t, proof.Current.ManifestFound)
+			assert.False(t, proof.Current.ProjectRevisionChanged)
+			require.Len(t, proof.Current.Modules, 1)
+			assert.False(t, proof.Current.Modules[0].Changed)
+		},
+		"WithMissingPreviousPreviousAndNext": func(t *testing.T) {
+			projectID := "proof-missing-previous-previous-project"
+			previous := insertProofVersion(t, projectID, "proof-missing-previous-previous-previous", "project-revision-1", 1)
+			current := insertProofVersion(t, projectID, "proof-missing-previous-previous-current", "project-revision-2", 2)
+			insertProofManifest(t, previous, "module-revision-1")
+			insertProofManifest(t, current, "module-revision-2")
+
+			handler := &versionManifestProofGetHandler{versionId: current.Id}
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			require.Equal(t, http.StatusOK, res.Status(), res.Data())
+
+			proof, ok := res.Data().(*versionManifestProofResponse)
+			require.True(t, ok)
+			require.NotNil(t, proof.Previous)
+			require.NotNil(t, proof.Current)
+			assert.Nil(t, proof.Next)
+
+			assert.False(t, proof.Previous.HasComparison)
+			assert.False(t, proof.Previous.ProjectRevisionChanged)
+			require.Len(t, proof.Previous.Modules, 1)
+			assert.False(t, proof.Previous.Modules[0].Changed)
+
+			assert.True(t, proof.Current.HasComparison)
+			assert.True(t, proof.Current.ProjectRevisionChanged)
+			currentModule := proofModuleByName(proof.Current.Modules, "module1")
+			require.NotNil(t, currentModule)
+			assert.True(t, currentModule.Changed)
+		},
+		"ReturnsProjectDataWithoutCurrentManifest": func(t *testing.T) {
+			projectID := "proof-missing-current-manifest-project"
+			current := insertProofVersion(t, projectID, "proof-missing-current-manifest-current", "project-revision-1", 1)
+
+			handler := &versionManifestProofGetHandler{versionId: current.Id}
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			require.Equal(t, http.StatusOK, res.Status(), res.Data())
+
+			proof, ok := res.Data().(*versionManifestProofResponse)
+			require.True(t, ok)
+			assert.Nil(t, proof.Previous)
+			assert.Nil(t, proof.Next)
+			require.NotNil(t, proof.Current)
+			assert.Equal(t, current.Id, proof.Current.VersionID)
+			assert.Equal(t, current.Revision, proof.Current.ProjectRevision)
+			assert.False(t, proof.Current.ManifestFound)
+			assert.Empty(t, proof.Current.Modules)
+		},
+		"HandlesMissingNeighborManifest": func(t *testing.T) {
+			projectID := "proof-missing-neighbor-manifest-project"
+			previous := insertProofVersion(t, projectID, "proof-missing-neighbor-manifest-previous", "project-revision-1", 1)
+			current := insertProofVersion(t, projectID, "proof-missing-neighbor-manifest-current", "project-revision-2", 2)
+			insertProofManifest(t, current, "module-revision-1")
+
+			handler := &versionManifestProofGetHandler{versionId: current.Id}
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			require.Equal(t, http.StatusOK, res.Status(), res.Data())
+
+			proof, ok := res.Data().(*versionManifestProofResponse)
+			require.True(t, ok)
+			require.NotNil(t, proof.Previous)
+			require.NotNil(t, proof.Current)
+			assert.Equal(t, previous.Id, proof.Previous.VersionID)
+			assert.False(t, proof.Previous.ManifestFound)
+			assert.Empty(t, proof.Previous.Modules)
+			assert.True(t, proof.Current.HasComparison)
+			assert.True(t, proof.Current.ProjectRevisionChanged)
+			assert.True(t, proof.Current.ManifestFound)
+			require.Len(t, proof.Current.Modules, 1)
+			assert.False(t, proof.Current.Modules[0].Changed)
+		},
+		"ErrorsForNonexistentVersion": func(t *testing.T) {
+			handler := &versionManifestProofGetHandler{versionId: "proof-nonexistent-version"}
+
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			assert.Equal(t, http.StatusNotFound, res.Status())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(serviceModel.VersionCollection, manifest.Collection))
+			tCase(t)
+		})
+	}
+}
+
+func insertProofVersion(t *testing.T, projectID, versionID, revision string, order int) serviceModel.Version {
+	t.Helper()
+	ts := time.Date(2026, time.June, 16, 12, order, 0, 0, time.UTC)
+	v := serviceModel.Version{
+		Id:                  versionID,
+		Identifier:          projectID,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            revision,
+		RevisionOrderNumber: order,
+		CreateTime:          ts,
+		IngestTime:          ts.Add(time.Second),
+	}
+	require.NoError(t, v.Insert(t.Context()))
+	return v
+}
+
+func insertProofManifest(t *testing.T, v serviceModel.Version, moduleRevision string) {
+	t.Helper()
+	mfst := manifest.Manifest{
+		Id:          v.Id,
+		Revision:    v.Revision,
+		ProjectName: v.Identifier,
+		Branch:      "main",
+		IsBase:      true,
+		Modules: map[string]*manifest.Module{
+			"module1": {
+				Branch:   "main",
+				Repo:     "module-repo",
+				Revision: moduleRevision,
+				Owner:    "module-owner",
+				URL:      "module-url",
+			},
+		},
+	}
+	exists, err := mfst.TryInsert(t.Context())
+	require.NoError(t, err)
+	assert.False(t, exists)
+}
+
+func proofModuleByName(modules []versionManifestProofModule, name string) *versionManifestProofModule {
+	for i := range modules {
+		if utility.FromStringPtr(modules[i].Name) == name {
+			return &modules[i]
+		}
+	}
+	return nil
 }
