@@ -107,26 +107,6 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 		return graphql.DefaultErrorPresenter(ctx, err)
 	})
 
-	// Wrap handler with function to add response writer to context
-	return withResponseWriter(loaders.Middleware(srv))
-}
-
-// Stash the HTTP response writer in the request context, which the extension can't access.
-type responseWriterKey int
-
-const responseWriterContextKey responseWriterKey = 0
-
-// Middleware function to store the HTTP response writer in the request context.
-func withResponseWriter(next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), responseWriterContextKey, w)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	}
-}
-
-// Helper function to return the HTTP response writer stashed by withResponseWriter,
-// or false if it's not present.
-func responseWriterFromContext(ctx context.Context) (http.ResponseWriter, bool) {
-	w, ok := ctx.Value(responseWriterContextKey).(http.ResponseWriter)
-	return w, ok
+	// Wrap with dataloader middleware to batch database queries
+	return loaders.Middleware(srv).ServeHTTP
 }

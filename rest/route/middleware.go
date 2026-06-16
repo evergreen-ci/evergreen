@@ -911,7 +911,18 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	}
 
 	// Run request through limiter.
-	limiter := ratelimit.NewRateLimiter(m.env.RedisClient())
+	limiter, err := ratelimit.NewRateLimiter(m.env.RedisClient())
+
+	// If the limiter fails to initialize, log the error and allow the request to proceed.
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "error initializing rate limiter",
+			"user":    u.Username(),
+			"surface": m.surface,
+		}))
+		next(rw, r)
+		return
+	}
 	res, err := limiter.Allow(ctx, u.Username(), m.surface, perHour, burst)
 	if err != nil {
 		gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking rate limit")))
@@ -941,7 +952,7 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	}
 
 	// Rate limit enforced
-	rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", res.ResetAfter)) // TODO dealing with unix conversion
+	rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", res.ResetAfter))
 	http.Error(rw, "rate limit exceeded", http.StatusTooManyRequests)
 }
 
