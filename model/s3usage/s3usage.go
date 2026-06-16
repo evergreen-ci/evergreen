@@ -34,19 +34,30 @@ type LogMetrics struct {
 	Test            LogTypeMetrics `bson:"test_log,omitempty" json:"test_log,omitempty"`
 }
 
-// S3Usage tracks S3 API usage for cost calculation. Safe for concurrent use.
+// S3Usage tracks S3 API usage for cost calculation. Call Init before sharing across goroutines.
 type S3Usage struct {
 	Artifacts ArtifactMetrics `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
 	Logs      LogMetrics      `bson:"logs,omitempty" json:"logs,omitempty"`
 
-	mu sync.Mutex `bson:"-" json:"-"`
+	// mu is a pointer to avoid go vet copylocks on Task/Version value copies; nil until Init is called.
+	mu *sync.Mutex `bson:"-" json:"-"`
 }
 
-// Snapshot returns a copy of S3Usage taken under lock. Avoids copying senders still in flight.
+// Init enables concurrent-access protection. Call once at agent setup before sharing.
+func (s *S3Usage) Init() {
+	if s.mu == nil {
+		s.mu = &sync.Mutex{}
+	}
+}
+
+// Snapshot returns a copy of S3Usage taken under lock. Avoids racing with senders still in flight.
 func (s *S3Usage) Snapshot() S3Usage {
+	if s.mu == nil {
+		return *s
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return S3Usage{Artifacts: s.Artifacts, Logs: s.Logs}
+	return *s
 }
 
 // S3UploadMetrics tracks common S3 upload metrics shared across upload types.
@@ -252,6 +263,12 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 	if !evergreen.IsDevprodOwnedUpload(opts.AWSRoleARN, opts.AWSAccountID, opts.DevprodOwnedAWSAccountIDs) {
 		return
 	}
+	if s.mu == nil {
+		grip.Critical(context.Background(), message.Fields{
+			"message": "S3Usage.IncrementArtifacts called without Init",
+		})
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -311,6 +328,12 @@ func findFileEntry(files []FileBytes, key string) *FileBytes {
 // IncrementLogs increments aggregate and per-type log upload metrics for cost tracking.
 // Test logs share a bucket/prefix, so LogKey stores only the most recently written key.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
+	if s.mu == nil {
+		grip.Critical(context.Background(), message.Fields{
+			"message": "S3Usage.IncrementLogs called without Init",
+		})
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Logs.PutRequests += putRequests

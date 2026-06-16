@@ -255,6 +255,7 @@ func TestS3Usage(t *testing.T) {
 
 	t.Run("ConcurrentIncrementLogsIsRaceFree", func(t *testing.T) {
 		s3Usage := S3Usage{}
+		s3Usage.Init()
 
 		const goroutines = 8
 		const callsPerGoroutine = 100
@@ -279,6 +280,7 @@ func TestS3Usage(t *testing.T) {
 
 	t.Run("ConcurrentIncrementArtifactsIsRaceFree", func(t *testing.T) {
 		s3Usage := S3Usage{}
+		s3Usage.Init()
 		owned := []string{"123456789012"}
 
 		const goroutines = 8
