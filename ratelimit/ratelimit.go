@@ -33,18 +33,12 @@ func (l *Limiter) AllowN(ctx context.Context, userID string, surface evergreen.R
 	if !slices.Contains(evergreen.ValidRateLimitSurfaces, surface) {
 		return nil, errors.Errorf("invalid rate limit surface '%s'", surface)
 	}
-	// Skip limiting if limits are not set by returning a nil result.
-	if reqPerHour < 1 {
-		return nil, nil
-	}
-	if burst < 1 {
-		return nil, nil
-	}
-	if burst > reqPerHour {
-		return nil, errors.Errorf("burst limit %d cannot be greater than the per hour limit %d", burst, reqPerHour)
-	}
 	if n < 1 {
 		return nil, errors.Errorf("cost %d must be at least 1", n)
+	}
+	// Skip limiting if limits are not set by returning a nil Result.
+	if reqPerHour == 0 { // Burst is guaranteed to also be 0 by validation in config.
+		return nil, nil
 	}
 	const format = "evergreen:ratelimit:%s:%s"
 	key := fmt.Sprintf(format, userID, surface)
