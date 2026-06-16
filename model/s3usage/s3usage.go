@@ -50,9 +50,13 @@ func (s *S3Usage) Init() {
 	}
 }
 
-// Snapshot returns a copy of S3Usage taken under lock. Avoids racing with senders still in flight.
+// Snapshot returns a locked copy for reporting. Logs a critical alert if Init was never called,
+// since concurrent senders may have written without protection throughout the task.
 func (s *S3Usage) Snapshot() S3Usage {
 	if s.mu == nil {
+		grip.Critical(context.Background(), message.Fields{
+			"message": "S3Usage.Snapshot called without Init — concurrent log senders may have caused a data race",
+		})
 		return *s
 	}
 	s.mu.Lock()
@@ -263,14 +267,10 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 	if !evergreen.IsDevprodOwnedUpload(opts.AWSRoleARN, opts.AWSAccountID, opts.DevprodOwnedAWSAccountIDs) {
 		return
 	}
-	if s.mu == nil {
-		grip.Critical(context.Background(), message.Fields{
-			"message": "S3Usage.IncrementArtifacts called without Init",
-		})
-		return
+	if s.mu != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	s.Artifacts.PutRequests += opts.PutRequests
 	s.Artifacts.UploadBytes += opts.UploadBytes
@@ -328,14 +328,10 @@ func findFileEntry(files []FileBytes, key string) *FileBytes {
 // IncrementLogs increments aggregate and per-type log upload metrics for cost tracking.
 // Test logs share a bucket/prefix, so LogKey stores only the most recently written key.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
-	if s.mu == nil {
-		grip.Critical(context.Background(), message.Fields{
-			"message": "S3Usage.IncrementLogs called without Init",
-		})
-		return
+	if s.mu != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
 	switch logType {

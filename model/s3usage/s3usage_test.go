@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -315,6 +316,22 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, expectedCalls, s3Usage.Artifacts.PutRequests)
 		assert.Equal(t, int64(expectedCalls*100), s3Usage.Artifacts.UploadBytes)
 		assert.Equal(t, expectedCalls, s3Usage.Artifacts.Count)
+	})
+
+	t.Run("SnapshotWithoutInitLogsCritical", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		s3Usage.IncrementLogs(5, 1024, LogTypeTask, "key")
+
+		sender := grip.GetSender()
+		mock := send.MakeInternalLogger()
+		grip.SetSender(mock)
+		t.Cleanup(func() {
+			grip.SetSender(sender)
+		})
+
+		snap := s3Usage.Snapshot()
+		assert.Equal(t, 5, snap.Logs.PutRequests)
+		assert.True(t, mock.HasMessage(), "expected critical message when Snapshot called without Init")
 	})
 }
 
