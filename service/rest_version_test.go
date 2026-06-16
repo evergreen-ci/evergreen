@@ -20,6 +20,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
@@ -409,6 +410,9 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 }
 
 func TestActivateVersion(t *testing.T) {
+	testutil.DisablePermissionsForTests()
+	defer testutil.EnablePermissionsForTests()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := &mock.Environment{}
@@ -418,11 +422,18 @@ func TestActivateVersion(t *testing.T) {
 	require.NoError(t, err, "error setting up router")
 
 	Convey("When marking a particular version as active", t, func() {
-		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection),
+		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, model.ProjectRefCollection),
 			"Error clearing collections")
 
 		versionId := "my-version"
 		projectName := "project_test"
+
+		pRef := &model.ProjectRef{
+			Id:         projectName,
+			Identifier: projectName,
+			Enabled:    true,
+		}
+		So(pRef.Insert(t.Context()), ShouldBeNil)
 
 		build := &build.Build{
 			Id:           "some-build-id",
@@ -536,6 +547,52 @@ func TestActivateVersion(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusUnauthorized)
 		})
 	})
+}
+
+func TestActivateVersionUnauthorized(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	env.SetUserManager(serviceutil.MockUserManager{})
+	router, err := newAuthTestUIRouter(t.Context(), env)
+	require.NoError(t, err)
+
+	require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, model.ProjectRefCollection))
+
+	projectName := "project_test"
+	versionId := "my-version"
+
+	pRef := &model.ProjectRef{
+		Id:         projectName,
+		Identifier: projectName,
+		Enabled:    true,
+	}
+	require.NoError(t, pRef.Insert(t.Context()))
+
+	b := &build.Build{
+		Id:           "some-build-id",
+		BuildVariant: "some-build-variant",
+	}
+	require.NoError(t, b.Insert(t.Context()))
+
+	v := &model.Version{
+		Id:         versionId,
+		Identifier: projectName,
+		BuildIds:   []string{b.Id},
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	require.NoError(t, v.Insert(t.Context()))
+
+	body, err := json.Marshal(map[string]any{"activated": true})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest("PATCH", "/rest/v1/versions/"+versionId, bytes.NewReader(body))
+	require.NoError(t, err)
+	request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	require.Equal(t, http.StatusUnauthorized, response.Code)
 }
 
 func TestGetVersionStatus(t *testing.T) {

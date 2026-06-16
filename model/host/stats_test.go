@@ -8,7 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func insertTestDocuments(ctx context.Context) error {
@@ -146,4 +148,63 @@ func TestHostStatsByDistro(t *testing.T) {
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Distro < alt[j].Distro })
 	sort.Slice(result, func(i, j int) bool { return result[i].Distro < result[j].Distro })
 	assert.Equal(alt, result)
+}
+
+func TestAggregateSpawnhostCountByProject(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(Collection, task.Collection))
+	})
+
+	t.Run("MultipleProjectsReturnsSortedByCountDescending", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, task.Collection))
+
+		for _, tk := range []task.Task{
+			{Id: "task1", Project: "projectA"},
+			{Id: "task2", Project: "projectA"},
+			{Id: "task3", Project: "projectB"},
+		} {
+			require.NoError(t, tk.Insert(t.Context()))
+		}
+
+		for _, h := range []Host{
+			{Id: "h1", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "task1"}},
+			{Id: "h2", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "task2"}},
+			{Id: "h3", UserHost: true, Status: evergreen.HostStarting, ProvisionOptions: &ProvisionOptions{TaskId: "task3"}},
+		} {
+			require.NoError(t, h.Insert(t.Context()))
+		}
+
+		results, err := AggregateSpawnhostCountByProject(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+		assert.Equal(t, "projectA", results[0].Project)
+		assert.Equal(t, 2, results[0].Count)
+		assert.Equal(t, "projectB", results[1].Project)
+		assert.Equal(t, 1, results[1].Count)
+	})
+
+	t.Run("ExcludesNonSpawnHostsAndTerminatedHosts", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection, task.Collection))
+
+		require.NoError(t, (&task.Task{Id: "task1", Project: "projectA"}).Insert(t.Context()))
+		require.NoError(t, (&task.Task{Id: "task2", Project: "projectB"}).Insert(t.Context()))
+		require.NoError(t, (&task.Task{Id: "task3", Project: "projectC"}).Insert(t.Context()))
+
+		for _, h := range []Host{
+			{Id: "h1", UserHost: false, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "task1"}},
+			{Id: "h2", UserHost: true, Status: evergreen.HostTerminated, ProvisionOptions: &ProvisionOptions{TaskId: "task2"}},
+			{Id: "h3", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: ""}},
+			{Id: "h4", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "nonexistent_task"}},
+			{Id: "h5", UserHost: true, Status: evergreen.HostRunning, ProvisionOptions: &ProvisionOptions{TaskId: "task3"}},
+		} {
+			require.NoError(t, h.Insert(t.Context()))
+		}
+
+		results, err := AggregateSpawnhostCountByProject(t.Context())
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.Equal(t, "projectC", results[0].Project)
+		assert.Equal(t, 1, results[0].Count)
+	})
 }
