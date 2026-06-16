@@ -533,13 +533,13 @@ func TestFlattenOtelVariables(t *testing.T) {
 	assert.Equal(t, "v7", val)
 }
 
-func TestGetProjectMetadata(t *testing.T) {
+func TestGetProject(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 
 	t.Run("ReturnsNilForDeletedProject", func(t *testing.T) {
 		ctx := loaders.Inject(t.Context())
 		projectId := "deleted_project"
-		result, err := getProjectMetadata(ctx, &projectId)
+		result, err := getProject(ctx, &projectId)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -555,7 +555,7 @@ func TestGetProjectMetadata(t *testing.T) {
 		}
 		assert.NoError(t, projectRef.Insert(ctx))
 		projectId := "existing_project"
-		result, err := getProjectMetadata(ctx, &projectId)
+		result, err := getProject(ctx, &projectId)
 		assert.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Equal(t, "my_owner", utility.FromStringPtr(result.Owner))
