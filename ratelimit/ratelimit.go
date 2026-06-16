@@ -14,8 +14,11 @@ type Limiter struct {
 	limiter *redis_rate.Limiter
 }
 
-func NewRateLimiter(rdb *redis.Client) *Limiter {
-	return &Limiter{limiter: redis_rate.NewLimiter(rdb)}
+func NewRateLimiter(rdb *redis.Client) (*Limiter, error) {
+	if rdb == nil {
+		return nil, errors.New("redis client must not be nil")
+	}
+	return &Limiter{limiter: redis_rate.NewLimiter(rdb)}, nil
 }
 
 // Allow is used for REST and GraphQL rate limits, which have a cost of 1.
