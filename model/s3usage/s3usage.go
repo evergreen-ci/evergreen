@@ -55,8 +55,9 @@ type BucketFileMetrics struct {
 
 // FileBytes tracks bytes uploaded for a single S3 file key.
 type FileBytes struct {
-	FileKey string `bson:"file_key" json:"file_key"`
-	Bytes   int64  `bson:"bytes" json:"bytes"`
+	FileKey     string `bson:"file_key" json:"file_key"`
+	Bytes       int64  `bson:"bytes" json:"bytes"`
+	PutRequests int    `bson:"put_requests,omitempty" json:"put_requests,omitempty"`
 }
 
 // ArtifactMetrics tracks artifact upload metrics with an additional file count.
@@ -110,7 +111,7 @@ const (
 
 // BuildFileMetrics constructs a FileMetrics entry for a successfully uploaded file,
 // statting the file for size. If the stat fails, logs a warning and uses zero size.
-func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, puts int) (FileMetrics, int64) {
+func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, putRequests int) (FileMetrics, int64) {
 	fileInfo, err := os.Stat(localPath)
 	var fileSize int64
 	if err != nil {
@@ -122,7 +123,7 @@ func BuildFileMetrics(logger grip.Journaler, localPath, remotePath string, puts 
 		LocalPath:     localPath,
 		RemotePath:    remotePath,
 		FileSizeBytes: fileSize,
-		PutRequests:   puts,
+		PutRequests:   putRequests,
 	}, fileSize
 }
 
@@ -268,22 +269,35 @@ func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 		bucketEntry = &s.Artifacts.BytesByBucketAndKey[len(s.Artifacts.BytesByBucketAndKey)-1]
 	}
 	for _, f := range opts.Files {
-		found := false
-		for j := range bucketEntry.Files {
-			if bucketEntry.Files[j].FileKey == f.RemotePath {
-				bucketEntry.Files[j].Bytes += f.FileSizeBytes
-				found = true
-				break
+		existing := findFileEntry(bucketEntry.Files, f.RemotePath)
+		if existing != nil {
+			// A zero FileSizeBytes indicates os.Stat failed; skip the overwrite to preserve the last valid size for cost tracking.
+			if f.FileSizeBytes > 0 {
+				existing.Bytes = f.FileSizeBytes
 			}
+			existing.PutRequests += f.PutRequests
+			continue
 		}
-		if !found {
-			bucketEntry.Files = append(bucketEntry.Files, FileBytes{FileKey: f.RemotePath, Bytes: f.FileSizeBytes})
-		}
+		bucketEntry.Files = append(bucketEntry.Files, FileBytes{
+			FileKey:     f.RemotePath,
+			Bytes:       f.FileSizeBytes,
+			PutRequests: f.PutRequests,
+		})
 	}
 }
 
+// findFileEntry returns a pointer to the FileBytes entry with the given key, or nil if not found.
+func findFileEntry(files []FileBytes, key string) *FileBytes {
+	for i := range files {
+		if files[i].FileKey == key {
+			return &files[i]
+		}
+	}
+	return nil
+}
+
 // IncrementLogs increments aggregate and per-type log upload metrics for cost tracking.
-// Callers invoking this concurrently on a shared instance must serialize externally.
+// Concurrent callers on a shared instance must serialize externally.
 // Test logs share a bucket/prefix, so LogKey stores only the most recently written key.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
 	s.Logs.PutRequests += putRequests

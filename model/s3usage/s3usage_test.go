@@ -25,6 +25,19 @@ func bytesForFile(metrics []BucketFileMetrics, bucket, fileKey string) int64 {
 	return 0
 }
 
+func putRequestsForFile(metrics []BucketFileMetrics, bucket, fileKey string) int {
+	for _, b := range metrics {
+		if b.Bucket == bucket {
+			for _, f := range b.Files {
+				if f.FileKey == fileKey {
+					return f.PutRequests
+				}
+			}
+		}
+	}
+	return 0
+}
+
 // hasBucket returns true if the given bucket exists in the metrics slice.
 func hasBucket(metrics []BucketFileMetrics, bucket string) bool {
 	for _, b := range metrics {
@@ -69,7 +82,7 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 
 		filesA := []FileMetrics{
-			{RemotePath: "path/file1.txt", FileSizeBytes: 600},
+			{RemotePath: "path/file1.txt", FileSizeBytes: 600, PutRequests: 2},
 			{RemotePath: "path/file2.txt", FileSizeBytes: 424},
 		}
 		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 5, UploadBytes: 1024, FileCount: 2, MaxPuts: 3, MinPuts: 2, Bucket: "bucket-a", Files: filesA})
@@ -97,10 +110,11 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, int64(2048), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-b", "other/file3.txt"))
 
 		filesA2 := []FileMetrics{
-			{RemotePath: "path/file1.txt", FileSizeBytes: 512},
+			{RemotePath: "path/file1.txt", FileSizeBytes: 512, PutRequests: 3},
 		}
 		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 3, UploadBytes: 512, FileCount: 1, MaxPuts: 3, MinPuts: 3, Bucket: "bucket-a", Files: filesA2})
-		assert.Equal(t, int64(1112), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should accumulate across invocations")
+		assert.Equal(t, int64(512), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should be replaced by the latest upload's size (S3 overwrite semantics)")
+		assert.Equal(t, 5, putRequestsForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"))
 	})
 
 	t.Run("IncrementArtifactsSkipsWhenDevprodAllowlistSetAndAccountNotOwned", func(t *testing.T) {
