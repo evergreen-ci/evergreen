@@ -324,9 +324,9 @@ func TestS3Usage(t *testing.T) {
 
 		sender := grip.GetSender()
 		mock := send.MakeInternalLogger()
-		grip.SetSender(mock)
+		require.NoError(t, grip.SetSender(mock))
 		t.Cleanup(func() {
-			grip.SetSender(sender)
+			assert.NoError(t, grip.SetSender(sender))
 		})
 
 		snap := s3Usage.Snapshot()
