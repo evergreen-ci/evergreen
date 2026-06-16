@@ -555,8 +555,13 @@ type versionManifestProofVersion struct {
 }
 
 type versionManifestProofModule struct {
-	restModel.APIManifestModule
-	Changed bool `json:"changed"`
+	Name     *string `json:"name"`
+	Owner    *string `json:"owner"`
+	Repo     *string `json:"repo"`
+	Branch   *string `json:"branch"`
+	Revision *string `json:"revision"`
+	URL      *string `json:"url"`
+	Changed  bool    `json:"changed"`
 }
 
 func makeGetVersionManifestProof() gimlet.RouteHandler {
@@ -725,10 +730,13 @@ func buildManifestProofSnapshot(v *dbModel.Version, mfst *manifest.Manifest, com
 		if mfstModule == nil {
 			continue
 		}
-		apiModule := restModel.APIManifestModule{}
-		apiModule.BuildFromService(moduleName, mfstModule)
 		proofModule := versionManifestProofModule{
-			APIManifestModule: apiModule,
+			Name:     utility.ToStringPtr(moduleName),
+			Branch:   utility.ToStringPtr(mfstModule.Branch),
+			Repo:     utility.ToStringPtr(mfstModule.Repo),
+			Revision: utility.ToStringPtr(mfstModule.Revision),
+			Owner:    utility.ToStringPtr(mfstModule.Owner),
+			URL:      utility.ToStringPtr(mfstModule.URL),
 		}
 		if comparisonManifest != nil {
 			comparisonModule, ok := comparisonManifest.Modules[moduleName]
