@@ -106,6 +106,12 @@ func FindOneId(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, ById(id))
 }
 
+// FindOneIdOrAlias finds a distro whose ID equals id or whose aliases contain
+// id, returning nil if no such distro exists.
+func FindOneIdOrAlias(ctx context.Context, id string) (*Distro, error) {
+	return FindOne(ctx, ByIdOrAlias(id), options.FindOne().SetProjection(bson.M{IdKey: 1}))
+}
+
 func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
 	res := distroDB().Collection(Collection).FindOne(ctx, query, options...)
 	if err := res.Err(); err != nil {
@@ -167,6 +173,17 @@ func Remove(ctx context.Context, ID string) error {
 // ById returns a query that contains an Id selector on the string, id.
 func ById(id string) bson.M {
 	return bson.M{IdKey: id}
+}
+
+// ByIdOrAlias returns a query that matches a distro whose ID equals id or whose
+// aliases contain id.
+func ByIdOrAlias(id string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			{IdKey: id},
+			{AliasesKey: id},
+		},
+	}
 }
 
 // BySpawnAllowed returns a query that contains the SpawnAllowed selector.

@@ -4748,13 +4748,11 @@ func (t *Task) HasValidDistro(ctx context.Context) bool {
 	if t.DisplayOnly {
 		return true
 	}
-	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
-	if err == nil {
-		return true
-	}
-	for _, secondaryDistro := range t.SecondaryDistros {
-		_, err = distro.FindApplicableDistroIDs(ctx, secondaryDistro)
-		if err == nil {
+	// A task's distro may be referenced either by a distro's ID or by one of
+	// its aliases, so both must be considered valid.
+	for _, distroID := range append([]string{t.DistroId}, t.SecondaryDistros...) {
+		d, err := distro.FindOneIdOrAlias(ctx, distroID)
+		if err == nil && d != nil {
 			return true
 		}
 	}

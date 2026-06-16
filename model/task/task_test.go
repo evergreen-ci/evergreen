@@ -5648,7 +5648,8 @@ func TestHasValidDistro(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 	validDistro := distro.Distro{
-		Id: "valid-distro",
+		Id:      "valid-distro",
+		Aliases: []string{"valid-distro-alias"},
 	}
 	require.NoError(t, validDistro.Insert(ctx))
 
@@ -5656,6 +5657,23 @@ func TestHasValidDistro(t *testing.T) {
 		task := &Task{
 			Id:       "task-with-valid-distro",
 			DistroId: validDistro.Id,
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithPrimaryDistroReferencedByAlias", func(t *testing.T) {
+		task := &Task{
+			Id:       "task-with-distro-alias",
+			DistroId: "valid-distro-alias",
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithSecondaryDistroReferencedByAlias", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-secondary-distro-alias",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{"valid-distro-alias"},
 		}
 		assert.Equal(t, true, task.HasValidDistro(ctx))
 	})
