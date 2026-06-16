@@ -171,15 +171,14 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
 	github.com/evergreen-ci/test-selection-client v0.0.0-20260409173604-004964bcf728
-	github.com/go-redis/redis/v8 v8.11.4
-	github.com/go-redis/redis_rate/v9 v9.1.2
+	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
 	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
 	github.com/parquet-go/parquet-go v0.29.0
-	github.com/redis/go-redis/v9 v9.19.0
+	github.com/redis/go-redis/v9 v9.20.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
 	github.com/vikstrous/dataloadgen v0.0.10
@@ -197,7 +196,6 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.16.0 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
