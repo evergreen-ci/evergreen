@@ -175,8 +175,6 @@ func ById(id string) bson.M {
 	return bson.M{IdKey: id}
 }
 
-// ByIdOrAlias returns a query that matches a distro whose ID equals id or whose
-// aliases contain id.
 func ByIdOrAlias(id string) bson.M {
 	return bson.M{
 		"$or": []bson.M{

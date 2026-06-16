@@ -68,3 +68,7 @@ CLAUDE.local.md
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 .claude/worktrees/
+
+# Local TSS test stub
+/tss-stub
+/scripts/tss-stub/
