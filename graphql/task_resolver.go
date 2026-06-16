@@ -406,16 +406,17 @@ func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITas
 }
 
 // ExecutionTasksFull is the resolver for the executionTasksFull field.
-func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask) ([]*restModel.APITask, error) {
+func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.APITask, options *ExecutionTasksFilterOptions) ([]*restModel.APITask, error) {
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
 	}
 	var filters []bson.E
-	// When this task is resolved within a version's tasks() query, apply that
-	// query's status filter to the execution tasks so expanding a display task
-	// only surfaces the subtasks matching the filtered statuses.
-	if statuses := getStatusesFromVersionTasksArgs(ctx); len(statuses) > 0 {
-		filters = append(filters, bson.E{Key: task.DisplayStatusCacheKey, Value: bson.M{"$in": statuses}})
+	// Apply the same status filter used by the tasks table so expanding a display
+	// task only surfaces the subtasks matching the requested statuses.
+	if options != nil {
+		if validStatuses := getValidTaskStatusesFilter(options.Statuses); len(validStatuses) > 0 {
+			filters = append(filters, bson.E{Key: task.DisplayStatusCacheKey, Value: bson.M{"$in": validStatuses}})
+		}
 	}
 	tasks, err := task.FindByExecutionTasksAndMaxExecution(ctx, utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution, filters...)
 	if err != nil {

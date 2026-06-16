@@ -4,7 +4,7 @@
       data {
         id
         displayStatus
-        executionTasksFull {
+        executionTasksFull(options: { statuses: ["failed", "system-failed"] }) {
           id
           displayStatus
         }
