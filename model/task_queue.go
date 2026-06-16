@@ -476,7 +476,7 @@ outer:
 	// only no longer be present after the TTL has passed, and each app server
 	// has re-created its in-memory queue.
 
-	err := dequeue(ctx, taskId, tq.Distro)
+	err := dequeue(ctx, taskId, tq.Distro, tq.DistroQueueInfo.GetQueueCollection())
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
@@ -484,12 +484,12 @@ outer:
 	return errors.WithStack(err)
 }
 
-func dequeue(ctx context.Context, taskId, distroId string) error {
+func dequeue(ctx context.Context, taskId, distroId, collection string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
 	return errors.WithStack(db.Update(
 		ctx,
-		TaskQueuesCollection,
+		collection,
 		bson.M{
 			taskQueueDistroKey: distroId,
 			itemKey:            taskId,

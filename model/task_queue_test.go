@@ -96,6 +96,56 @@ func TestDequeueTask(t *testing.T) {
 	})
 }
 
+func TestDequeueTaskUpdatesSecondaryQueueCollection(t *testing.T) {
+	require.NoError(t, db.ClearCollections(TaskQueuesCollection, TaskSecondaryQueuesCollection))
+	distroID := "d1"
+
+	tq := &TaskQueue{
+		Distro:          distroID,
+		Queue:           []TaskQueueItem{{Id: "t1"}, {Id: "t2"}},
+		DistroQueueInfo: DistroQueueInfo{SecondaryQueue: true},
+	}
+	require.NoError(t, tq.Save(t.Context()))
+
+	require.NoError(t, tq.DequeueTask(t.Context(), "t1"))
+
+	secondary, err := FindDistroSecondaryTaskQueue(t.Context(), distroID)
+	require.NoError(t, err)
+	require.Len(t, secondary.Queue, 2)
+	dispatched := map[string]bool{}
+	for _, item := range secondary.Queue {
+		dispatched[item.Id] = item.IsDispatched
+	}
+	assert.True(t, dispatched["t1"], "dequeued task should be marked dispatched in the secondary collection")
+	assert.False(t, dispatched["t2"])
+}
+
+func TestDAGDispatcherRefreshUsesSecondaryQueue(t *testing.T) {
+	require.NoError(t, db.ClearCollections(TaskQueuesCollection, TaskSecondaryQueuesCollection))
+	distroID := "d-alias-refresh"
+
+	// Seed different tasks into the primary and secondary queues for the same distro.
+	primary := &TaskQueue{Distro: distroID, Queue: []TaskQueueItem{{Id: "primary-task"}}}
+	require.NoError(t, primary.Save(t.Context()))
+	secondary := &TaskQueue{
+		Distro:          distroID,
+		Queue:           []TaskQueueItem{{Id: "secondary-task"}},
+		DistroQueueInfo: DistroQueueInfo{SecondaryQueue: true},
+	}
+	require.NoError(t, secondary.Save(t.Context()))
+
+	d, err := newDistroTaskDAGDispatchService(*secondary, time.Minute)
+	require.NoError(t, err)
+	d.lastUpdated = time.Now().Add(-time.Hour) // force a refresh past the TTL
+
+	require.NoError(t, d.Refresh(t.Context()))
+
+	_, hasSecondary := d.itemNodeMap["secondary-task"]
+	_, hasPrimary := d.itemNodeMap["primary-task"]
+	assert.True(t, hasSecondary, "alias dispatcher should reload from the secondary queue")
+	assert.False(t, hasPrimary, "alias dispatcher must not reload from the primary queue")
+}
+
 func TestClearTaskQueue(t *testing.T) {
 	assert := assert.New(t)
 	distro := "distro"
