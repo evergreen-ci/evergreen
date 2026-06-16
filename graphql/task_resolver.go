@@ -709,12 +709,6 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 	return &apiProjectRef, nil
 }
 
-// ProjectIdentifier is the resolver for the projectIdentifier field.
-func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	obj.GetProjectIdentifier(ctx)
-	return obj.ProjectIdentifier, nil
-}
-
 // SpawnHostLink is the resolver for the spawnHostLink field.
 func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	hostID := utility.FromStringPtr(obj.HostId)

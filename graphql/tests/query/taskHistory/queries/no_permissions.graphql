@@ -15,7 +15,9 @@ query {
       id
       activated
       buildVariant
-      projectId
+      project {
+        id
+      }
       requester
     }
   }

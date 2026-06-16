@@ -1221,8 +1221,6 @@ type ComplexityRoot struct {
 		PatchTriggerAliases   func(childComplexity int) int
 		PredictedCost         func(childComplexity int) int
 		Project               func(childComplexity int) int
-		ProjectId             func(childComplexity int) int
-		ProjectIdentifier     func(childComplexity int) int
 		ProjectMetadata       func(childComplexity int) int
 		Status                func(childComplexity int) int
 		TaskCount             func(childComplexity int) int
@@ -1939,8 +1937,6 @@ type ComplexityRoot struct {
 		PrevTaskPassing         func(childComplexity int) int
 		Priority                func(childComplexity int) int
 		Project                 func(childComplexity int) int
-		ProjectId               func(childComplexity int) int
-		ProjectIdentifier       func(childComplexity int) int
 		Requester               func(childComplexity int) int
 		ResetWhenFinished       func(childComplexity int) int
 		Revision                func(childComplexity int) int
@@ -2342,8 +2338,6 @@ type ComplexityRoot struct {
 		Patch                    func(childComplexity int) int
 		PredictedCost            func(childComplexity int) int
 		PreviousVersion          func(childComplexity int) int
-		Project                  func(childComplexity int) int
-		ProjectIdentifier        func(childComplexity int) int
 		ProjectMetadata          func(childComplexity int) int
 		Repo                     func(childComplexity int) int
 		Requester                func(childComplexity int) int
@@ -2612,8 +2606,6 @@ type PatchResolver interface {
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
-
-	ProjectIdentifier(ctx context.Context, obj *model.APIPatch) (string, error)
 	ProjectMetadata(ctx context.Context, obj *model.APIPatch) (*model.APIProjectRef, error)
 
 	TaskCount(ctx context.Context, obj *model.APIPatch) (*int, error)
@@ -2786,8 +2778,6 @@ type TaskResolver interface {
 
 	Project(ctx context.Context, obj *model.APITask) (*model.APIProjectRef, error)
 
-	ProjectIdentifier(ctx context.Context, obj *model.APITask) (*string, error)
-
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
@@ -2839,7 +2829,6 @@ type VersionResolver interface {
 	Patch(ctx context.Context, obj *model.APIVersion) (*model.APIPatch, error)
 
 	PreviousVersion(ctx context.Context, obj *model.APIVersion) (*model.APIVersion, error)
-
 	ProjectMetadata(ctx context.Context, obj *model.APIVersion) (*model.APIProjectRef, error)
 
 	Status(ctx context.Context, obj *model.APIVersion) (string, error)
@@ -7688,18 +7677,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Project(childComplexity), true
-	case "Patch.projectID":
-		if e.complexity.Patch.ProjectId == nil {
-			break
-		}
-
-		return e.complexity.Patch.ProjectId(childComplexity), true
-	case "Patch.projectIdentifier":
-		if e.complexity.Patch.ProjectIdentifier == nil {
-			break
-		}
-
-		return e.complexity.Patch.ProjectIdentifier(childComplexity), true
 	case "Patch.projectMetadata":
 		if e.complexity.Patch.ProjectMetadata == nil {
 			break
@@ -11008,18 +10985,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Task.Project(childComplexity), true
-	case "Task.projectId":
-		if e.complexity.Task.ProjectId == nil {
-			break
-		}
-
-		return e.complexity.Task.ProjectId(childComplexity), true
-	case "Task.projectIdentifier":
-		if e.complexity.Task.ProjectIdentifier == nil {
-			break
-		}
-
-		return e.complexity.Task.ProjectIdentifier(childComplexity), true
 	case "Task.requester":
 		if e.complexity.Task.Requester == nil {
 			break
@@ -12681,18 +12646,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Version.PreviousVersion(childComplexity), true
-	case "Version.project":
-		if e.complexity.Version.Project == nil {
-			break
-		}
-
-		return e.complexity.Version.Project(childComplexity), true
-	case "Version.projectIdentifier":
-		if e.complexity.Version.ProjectIdentifier == nil {
-			break
-		}
-
-		return e.complexity.Version.ProjectIdentifier(childComplexity), true
 	case "Version.projectMetadata":
 		if e.complexity.Version.ProjectMetadata == nil {
 			break
@@ -20720,10 +20673,6 @@ func (ec *executionContext) fieldContext_AdminTasksToRestartPayload_tasksToResta
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -29470,10 +29419,6 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -32973,10 +32918,6 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -35709,10 +35650,6 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -36041,10 +35978,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -36158,10 +36091,6 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -37682,10 +37611,6 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
-			case "projectID":
-				return ec.fieldContext_Patch_projectID(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
@@ -37801,10 +37726,6 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
-			case "projectID":
-				return ec.fieldContext_Patch_projectID(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
@@ -39705,10 +39626,6 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -39930,10 +39847,6 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -40155,10 +40068,6 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -40380,10 +40289,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -40605,10 +40510,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -40830,10 +40731,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriorities(ctx context.
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -41055,10 +40952,6 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -41418,10 +41311,6 @@ func (ec *executionContext) fieldContext_Mutation_quarantineTask(ctx context.Con
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -41643,10 +41532,6 @@ func (ec *executionContext) fieldContext_Mutation_unquarantineTask(ctx context.C
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -42608,10 +42493,6 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -42821,10 +42702,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -44916,10 +44793,6 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
-			case "projectID":
-				return ec.fieldContext_Patch_projectID(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
@@ -45436,64 +45309,6 @@ func (ec *executionContext) fieldContext_Patch_project(_ context.Context, field 
 				return ec.fieldContext_PatchProject_variants(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PatchProject", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_projectID(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_projectID,
-		func(ctx context.Context) (any, error) {
-			return obj.ProjectId, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_projectID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Patch_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Patch_projectIdentifier,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Patch().ProjectIdentifier(ctx, obj)
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Patch_projectIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Patch",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -46057,10 +45872,6 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -46787,10 +46598,6 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
-			case "projectID":
-				return ec.fieldContext_Patch_projectID(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
@@ -53450,10 +53257,6 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
-			case "projectID":
-				return ec.fieldContext_Patch_projectID(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
@@ -54381,10 +54184,6 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -54606,10 +54405,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -55311,10 +55106,6 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -62374,10 +62165,6 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -63174,10 +62961,6 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -63575,10 +63358,6 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -63997,10 +63776,6 @@ func (ec *executionContext) fieldContext_Task_generator(_ context.Context, field
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -64481,10 +64256,6 @@ func (ec *executionContext) fieldContext_Task_nextTask(_ context.Context, field 
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -64694,10 +64465,6 @@ func (ec *executionContext) fieldContext_Task_nextTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -64907,10 +64674,6 @@ func (ec *executionContext) fieldContext_Task_nextTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -65120,10 +64883,6 @@ func (ec *executionContext) fieldContext_Task_nextTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -65299,10 +65058,6 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
-			case "projectID":
-				return ec.fieldContext_Patch_projectID(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
@@ -65527,10 +65282,6 @@ func (ec *executionContext) fieldContext_Task_prevTask(_ context.Context, field 
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -65740,10 +65491,6 @@ func (ec *executionContext) fieldContext_Task_prevTaskCompleted(_ context.Contex
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -65953,10 +65700,6 @@ func (ec *executionContext) fieldContext_Task_prevTaskFailing(_ context.Context,
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -66166,10 +65909,6 @@ func (ec *executionContext) fieldContext_Task_prevTaskPassing(_ context.Context,
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -66380,64 +66119,6 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_workstationConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Task_projectId(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Task_projectId,
-		func(ctx context.Context) (any, error) {
-			return obj.ProjectId, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Task_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Task_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Task_projectIdentifier,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Task().ProjectIdentifier(ctx, obj)
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Task_projectIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -67241,10 +66922,6 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -68503,10 +68180,6 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -68751,10 +68424,6 @@ func (ec *executionContext) fieldContext_TaskHistoryByCreateTime_tasks(_ context
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -73176,10 +72845,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -73363,10 +73028,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -74851,10 +74512,6 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -75095,10 +74752,6 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -75674,10 +75327,6 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_patchTriggerAliases(ctx, field)
 			case "project":
 				return ec.fieldContext_Patch_project(ctx, field)
-			case "projectID":
-				return ec.fieldContext_Patch_projectID(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Patch_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Patch_projectMetadata(ctx, field)
 			case "status":
@@ -75838,10 +75487,6 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -75874,64 +75519,6 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Version_project(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Version_project,
-		func(ctx context.Context) (any, error) {
-			return obj.Project, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Version_project(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Version",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Version_projectIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Version_projectIdentifier,
-		func(ctx context.Context) (any, error) {
-			return obj.ProjectIdentifier, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Version_projectIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Version",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -77577,10 +77164,6 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_priority(ctx, field)
 			case "project":
 				return ec.fieldContext_Task_project(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Task_projectId(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Task_projectIdentifier(ctx, field)
 			case "requester":
 				return ec.fieldContext_Task_requester(ctx, field)
 			case "resetWhenFinished":
@@ -78228,10 +77811,6 @@ func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.C
 				return ec.fieldContext_Version_predictedCost(ctx, field)
 			case "previousVersion":
 				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
 			case "projectMetadata":
 				return ec.fieldContext_Version_projectMetadata(ctx, field)
 			case "repo":
@@ -100503,47 +100082,6 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "projectID":
-			out.Values[i] = ec._Patch_projectID(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "projectIdentifier":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Patch_projectIdentifier(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "projectMetadata":
 			field := field
 
@@ -107860,44 +107398,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "projectId":
-			out.Values[i] = ec._Task_projectId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "projectIdentifier":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_projectIdentifier(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "requester":
 			out.Values[i] = ec._Task_requester(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -111312,16 +110812,6 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "project":
-			out.Values[i] = ec._Version_project(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "projectIdentifier":
-			out.Values[i] = ec._Version_projectIdentifier(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "projectMetadata":
 			field := field
 

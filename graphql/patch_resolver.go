@@ -240,12 +240,6 @@ func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*
 	return patchProject, nil
 }
 
-// ProjectIdentifier is the resolver for the projectIdentifier field.
-func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
-	obj.GetIdentifier(ctx)
-	return utility.FromStringPtr(obj.ProjectIdentifier), nil
-}
-
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIProjectRef, error) {
 	apiProjectRef, err := getProjectMetadata(ctx, obj.ProjectId)
