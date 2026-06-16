@@ -34,30 +34,19 @@ type LogMetrics struct {
 	Test            LogTypeMetrics `bson:"test_log,omitempty" json:"test_log,omitempty"`
 }
 
-// S3Usage tracks S3 API usage for cost calculation. Call Init before sharing across goroutines.
+// S3Usage tracks S3 API usage for cost calculation. Safe for concurrent use.
 type S3Usage struct {
 	Artifacts ArtifactMetrics `bson:"artifacts,omitempty" json:"artifacts,omitempty"`
 	Logs      LogMetrics      `bson:"logs,omitempty" json:"logs,omitempty"`
 
-	// mu is a pointer to avoid go vet copylocks on BSON-copied instances; nil on copies (not mutated).
-	mu *sync.Mutex `bson:"-" json:"-"`
+	mu sync.Mutex `bson:"-" json:"-"`
 }
 
-// Init enables concurrent-access protection. Call once at agent setup before sharing.
-func (s *S3Usage) Init() {
-	if s.mu == nil {
-		s.mu = &sync.Mutex{}
-	}
-}
-
-// Snapshot returns a value-copy of S3Usage taken under the embedded lock.
+// Snapshot returns a copy of S3Usage taken under lock. Avoids copying senders still in flight.
 func (s *S3Usage) Snapshot() S3Usage {
-	if s.mu == nil {
-		return *s
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return *s
+	return S3Usage{Artifacts: s.Artifacts, Logs: s.Logs}
 }
 
 // S3UploadMetrics tracks common S3 upload metrics shared across upload types.
@@ -259,15 +248,12 @@ type ArtifactIncrementOptions struct {
 }
 
 // IncrementArtifacts updates aggregate artifact upload metrics after an s3.put command.
-// Safe for concurrent use once Init has been called on the receiver.
 func (s *S3Usage) IncrementArtifacts(opts ArtifactIncrementOptions) {
 	if !evergreen.IsDevprodOwnedUpload(opts.AWSRoleARN, opts.AWSAccountID, opts.DevprodOwnedAWSAccountIDs) {
 		return
 	}
-	if s.mu != nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.Artifacts.PutRequests += opts.PutRequests
 	s.Artifacts.UploadBytes += opts.UploadBytes
@@ -325,10 +311,8 @@ func findFileEntry(files []FileBytes, key string) *FileBytes {
 // IncrementLogs increments aggregate and per-type log upload metrics for cost tracking.
 // Test logs share a bucket/prefix, so LogKey stores only the most recently written key.
 func (s *S3Usage) IncrementLogs(putRequests int, uploadBytes int64, logType, logKey string) {
-	if s.mu != nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.Logs.PutRequests += putRequests
 	s.Logs.UploadBytes += uploadBytes
 	switch logType {

@@ -486,8 +486,6 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 	tc.taskConfig = taskConfig
-	// Init the embedded mutex before exposing S3Usage to concurrent log senders and commands.
-	tc.s3Usage.Init()
 	tc.taskConfig.S3Usage = &tc.s3Usage
 	if tc.taskConfig.BackgroundCommandFailureEnabled {
 		// Buffered to bound accumulation between drain cycles after each foreground command.
@@ -1109,7 +1107,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			cancel()
 			grip.Error(ctx, tc.logger.Close())
 		}
-		// Snapshot under the embedded lock — timedFlush goroutines may still be racing through ctx-cancel after logger.Close().
+		// Snapshot avoids racing with senders still shutting down.
 		grip.Error(ctx, errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage.Snapshot(), true), "reporting S3 usage"))
 	}()
 	defer a.clearGlobalFiles(ctx, tc)

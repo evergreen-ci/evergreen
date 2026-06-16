@@ -51,7 +51,6 @@ func TestAppendTestLog(t *testing.T) {
 	}
 
 	initedS3Usage := &s3usage.S3Usage{}
-	initedS3Usage.Init()
 
 	for _, testCase := range []struct {
 		name           string
