@@ -1437,15 +1437,12 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	return result, nil
 }
 
-func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
+func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID string, requesters []string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("projects/%s/versions", projectID),
 	}
 	queryParams := []string{}
-	if requester != "" {
-		queryParams = append(queryParams, fmt.Sprintf("requester=%s", requester))
-	}
 	if startAtOrderNum > 0 {
 		queryParams = append(queryParams, fmt.Sprintf("start=%d", startAtOrderNum))
 	}
@@ -1456,7 +1453,10 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 		info.path = info.path + "?" + strings.Join(queryParams, "&")
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	body := struct {
+		Requesters []string `json:"requesters"`
+	}{Requesters: requesters}
+	resp, err := c.request(ctx, info, body)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get versions for project '%s'", projectID)
 	}
