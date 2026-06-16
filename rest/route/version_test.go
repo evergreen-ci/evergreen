@@ -463,9 +463,15 @@ func TestGetVersionManifestProof(t *testing.T) {
 
 			proof, ok := res.Data().(*versionManifestProofResponse)
 			require.True(t, ok)
+			require.NotNil(t, proof.BeforePrevious)
 			require.NotNil(t, proof.Previous)
 			require.NotNil(t, proof.Current)
 			require.NotNil(t, proof.Next)
+
+			assert.Equal(t, previousPrevious.Id, proof.BeforePrevious.VersionID)
+			assert.Equal(t, previousPrevious.Requester, proof.BeforePrevious.Requester)
+			assert.Equal(t, previousPrevious.Revision, proof.BeforePrevious.ProjectRevision)
+			assert.Equal(t, previousPrevious.RevisionOrderNumber, proof.BeforePrevious.Order)
 
 			assert.Equal(t, previous.Id, proof.Previous.VersionID)
 			assert.True(t, proof.Previous.HasComparison)
@@ -504,6 +510,7 @@ func TestGetVersionManifestProof(t *testing.T) {
 
 			proof, ok := res.Data().(*versionManifestProofResponse)
 			require.True(t, ok)
+			assert.Nil(t, proof.BeforePrevious)
 			assert.Nil(t, proof.Previous)
 			assert.Nil(t, proof.Next)
 			require.NotNil(t, proof.Current)
@@ -527,6 +534,7 @@ func TestGetVersionManifestProof(t *testing.T) {
 
 			proof, ok := res.Data().(*versionManifestProofResponse)
 			require.True(t, ok)
+			assert.Nil(t, proof.BeforePrevious)
 			require.NotNil(t, proof.Previous)
 			require.NotNil(t, proof.Current)
 			assert.Nil(t, proof.Next)
@@ -553,6 +561,7 @@ func TestGetVersionManifestProof(t *testing.T) {
 
 			proof, ok := res.Data().(*versionManifestProofResponse)
 			require.True(t, ok)
+			assert.Nil(t, proof.BeforePrevious)
 			assert.Nil(t, proof.Previous)
 			assert.Nil(t, proof.Next)
 			require.NotNil(t, proof.Current)

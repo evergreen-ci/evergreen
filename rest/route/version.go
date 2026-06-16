@@ -524,9 +524,10 @@ type versionManifestProofGetHandler struct {
 }
 
 type versionManifestProofResponse struct {
-	Previous *versionManifestProofSnapshot `json:"previous"`
-	Current  *versionManifestProofSnapshot `json:"current"`
-	Next     *versionManifestProofSnapshot `json:"next"`
+	BeforePrevious *versionManifestProofVersion  `json:"before_previous"`
+	Previous       *versionManifestProofSnapshot `json:"previous"`
+	Current        *versionManifestProofSnapshot `json:"current"`
+	Next           *versionManifestProofSnapshot `json:"next"`
 }
 
 type versionManifestProofSnapshot struct {
@@ -541,6 +542,16 @@ type versionManifestProofSnapshot struct {
 	HasComparison          bool                         `json:"has_comparison"`
 	ManifestFound          bool                         `json:"manifest_found"`
 	Modules                []versionManifestProofModule `json:"modules"`
+}
+
+type versionManifestProofVersion struct {
+	VersionID       string    `json:"version_id"`
+	Project         string    `json:"project"`
+	Requester       string    `json:"requester"`
+	Order           int       `json:"order"`
+	CreateTime      time.Time `json:"create_time"`
+	IngestTime      time.Time `json:"ingest_time"`
+	ProjectRevision string    `json:"project_revision"`
 }
 
 type versionManifestProofModule struct {
@@ -628,7 +639,8 @@ func (h *versionManifestProofGetHandler) Run(ctx context.Context) gimlet.Respond
 	}
 
 	response := &versionManifestProofResponse{
-		Current: buildManifestProofSnapshot(current, currentManifest, previous, previousManifest),
+		BeforePrevious: buildManifestProofVersion(previousPrevious),
+		Current:        buildManifestProofSnapshot(current, currentManifest, previous, previousManifest),
 	}
 	if previous != nil {
 		response.Previous = buildManifestProofSnapshot(previous, previousManifest, previousPrevious, previousPreviousManifest)
@@ -665,6 +677,21 @@ func findManifestForProof(ctx context.Context, v *dbModel.Version) (*manifest.Ma
 		return nil, nil
 	}
 	return manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
+}
+
+func buildManifestProofVersion(v *dbModel.Version) *versionManifestProofVersion {
+	if v == nil {
+		return nil
+	}
+	return &versionManifestProofVersion{
+		VersionID:       v.Id,
+		Project:         v.Identifier,
+		Requester:       v.Requester,
+		Order:           v.RevisionOrderNumber,
+		CreateTime:      v.CreateTime,
+		IngestTime:      v.IngestTime,
+		ProjectRevision: v.Revision,
+	}
 }
 
 func buildManifestProofSnapshot(v *dbModel.Version, mfst *manifest.Manifest, comparisonVersion *dbModel.Version, comparisonManifest *manifest.Manifest) *versionManifestProofSnapshot {
