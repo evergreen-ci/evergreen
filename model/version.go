@@ -570,6 +570,16 @@ func TrackVersionS3CostForTask(ctx context.Context, taskID, versionID, source st
 			attribute.Float64(evergreen.TaskS3ArtifactAvgFilePutCostOtelAttribute, avgFilePutCost),
 			attribute.Float64(evergreen.TaskS3ArtifactWithMaxPutRequestsCostOtelAttribute, maxFilePutCost),
 			attribute.Float64(evergreen.TaskS3ArtifactWithMinPutRequestsCostOtelAttribute, minFilePutCost),
+			attribute.Int(evergreen.TaskS3ArtifactMaxPutRequestsPerFileOtelAttribute, s3Usage.Artifacts.ArtifactWithMaxPutRequests),
+			attribute.Int(evergreen.TaskS3ArtifactMinPutRequestsPerFileOtelAttribute, s3Usage.Artifacts.ArtifactWithMinPutRequests),
+			attribute.Int64(evergreen.TaskS3LogTaskBytesOtelAttribute, s3Usage.Logs.Task.Bytes),
+			attribute.Int(evergreen.TaskS3LogTaskPutRequestsOtelAttribute, s3Usage.Logs.Task.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogAgentBytesOtelAttribute, s3Usage.Logs.Agent.Bytes),
+			attribute.Int(evergreen.TaskS3LogAgentPutRequestsOtelAttribute, s3Usage.Logs.Agent.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogSystemBytesOtelAttribute, s3Usage.Logs.System.Bytes),
+			attribute.Int(evergreen.TaskS3LogSystemPutRequestsOtelAttribute, s3Usage.Logs.System.PutRequests),
+			attribute.Int64(evergreen.TaskS3LogTestBytesOtelAttribute, s3Usage.Logs.Test.Bytes),
+			attribute.Int(evergreen.TaskS3LogTestPutRequestsOtelAttribute, s3Usage.Logs.Test.PutRequests),
 		))
 	span.End()
 
@@ -788,7 +798,7 @@ func GetMainlineCommitVersionsWithOptions(ctx context.Context, projectId string,
 type GetVersionsOptions struct {
 	Start          int       `json:"start"`
 	RevisionEnd    int       `json:"revision_end"`
-	Requester      string    `json:"requester"`
+	Requesters     []string  `json:"requesters"`
 	Limit          int       `json:"limit"`
 	Skip           int       `json:"skip"`
 	IncludeBuilds  bool      `json:"include_builds"`
@@ -812,7 +822,9 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 
 	match := bson.M{
 		VersionIdentifierKey: projectId,
-		VersionRequesterKey:  opts.Requester,
+	}
+	if len(opts.Requesters) > 0 {
+		match[VersionRequesterKey] = bson.M{"$in": opts.Requesters}
 	}
 	if opts.ByBuildVariant != "" {
 		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = opts.ByBuildVariant

@@ -10,8 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newRedisTestLimiter returns a Limiter backed by a mock Redis (miniredis)
-// for tests that exercise the Redis-backed code path.
+// newRedisTestLimiter returns a Limiter backed by a mock Redis (miniredis).
 func newRedisTestLimiter(t *testing.T) *Limiter {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
@@ -31,13 +30,6 @@ func TestAllowSurfaceOutsideTypeShouldError(t *testing.T) {
 	l := newRedisTestLimiter(t)
 	res, err := l.Allow(t.Context(), "user", evergreen.RateLimitSurface("bogus"), 100, 10)
 	assert.ErrorContains(t, err, "surface")
-	assert.Nil(t, res)
-}
-
-func TestAllowBurstGreaterThanPerHourShouldError(t *testing.T) {
-	l := newRedisTestLimiter(t)
-	res, err := l.Allow(t.Context(), "user", evergreen.RateLimitSurfaceREST, 100, 200)
-	assert.ErrorContains(t, err, "burst")
 	assert.Nil(t, res)
 }
 
@@ -82,17 +74,21 @@ func TestAllowNCostLessThanOneShouldError(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func TestAllowNReqPerHourLessThanOneShouldError(t *testing.T) {
+func TestAllowNZeroReqPerHourSkipsLimiting(t *testing.T) {
 	l := newRedisTestLimiter(t)
+	// A zero per-hour rate means the limit is unset (config validation guarantees burst is also
+	// zero), so the request passes through with a nil Result rather than being rejected.
 	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceREST, 0, 0, 1)
-	assert.ErrorContains(t, err, "per hour")
+	assert.NoError(t, err)
 	assert.Nil(t, res)
 }
 
-func TestAllowNBurstLessThanOneShouldError(t *testing.T) {
+func TestAllowNInvalidCostErrorsWhenLimitingDisabled(t *testing.T) {
 	l := newRedisTestLimiter(t)
-	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceREST, 100, 0, 1)
-	assert.ErrorContains(t, err, "burst")
+	// Cost is validated before the unset-limit short-circuit, so an invalid cost is reported even
+	// when limiting is disabled.
+	res, err := l.AllowN(t.Context(), "user", evergreen.RateLimitSurfaceREST, 0, 0, 0)
+	assert.ErrorContains(t, err, "cost")
 	assert.Nil(t, res)
 }
 
