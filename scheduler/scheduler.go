@@ -16,10 +16,11 @@ import (
 )
 
 type TaskPlannerOptions struct {
-	ID                   string
-	IsSecondaryQueue     bool
-	IncludesDependencies bool
-	StartedAt            time.Time
+	ID                         string
+	IsSecondaryQueue           bool
+	IncludesDependencies       bool
+	StartedAt                  time.Time
+	MaxScheduledTasksPerDistro int // from the TaskLimits admin setting; 0 means no cap
 }
 
 type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
@@ -43,7 +44,7 @@ func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task,
 	info := GetDistroQueueInfo(ctx, d.Id, plan, d.GetTargetTime(), opts)
 	info.SecondaryQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
-	if err = PersistTaskQueue(ctx, d.Id, plan, info); err != nil {
+	if err = PersistTaskQueue(ctx, d.Id, plan, info, opts.MaxScheduledTasksPerDistro); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
