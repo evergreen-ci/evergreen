@@ -12,6 +12,83 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFetchVersionBatch(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, c *client.Mock){
+		"DefaultReturnsOnlyCommitVersions": func(t *testing.T, c *client.Mock) {
+			c.GetRecentVersionsResultsByRequester = map[string][]model.APIVersion{
+				evergreen.RepotrackerVersionRequester: {
+					{Id: utility.ToStringPtr("commit1"), Order: 100},
+					{Id: utility.ToStringPtr("commit2"), Order: 90},
+				},
+				evergreen.AdHocRequester: {
+					{Id: utility.ToStringPtr("periodic1"), Order: 95},
+				},
+			}
+
+			versions, err := fetchVersionBatch(t.Context(), c, "proj", false, 0, 20)
+			require.NoError(t, err)
+			require.Len(t, versions, 2)
+			assert.Equal(t, "commit1", utility.FromStringPtr(versions[0].Id))
+			assert.Equal(t, "commit2", utility.FromStringPtr(versions[1].Id))
+		},
+		"IncludePeriodicMergesAndSortsByOrderDescending": func(t *testing.T, c *client.Mock) {
+			c.GetRecentVersionsResultsByRequester = map[string][]model.APIVersion{
+				evergreen.RepotrackerVersionRequester: {
+					{Id: utility.ToStringPtr("commit1"), Order: 100},
+					{Id: utility.ToStringPtr("commit2"), Order: 80},
+				},
+				evergreen.AdHocRequester: {
+					{Id: utility.ToStringPtr("periodic1"), Order: 95},
+					{Id: utility.ToStringPtr("periodic2"), Order: 70},
+				},
+			}
+
+			versions, err := fetchVersionBatch(t.Context(), c, "proj", true, 0, 20)
+			require.NoError(t, err)
+			require.Len(t, versions, 4)
+			assert.Equal(t, 100, versions[0].Order)
+			assert.Equal(t, 95, versions[1].Order)
+			assert.Equal(t, 80, versions[2].Order)
+			assert.Equal(t, 70, versions[3].Order)
+		},
+		"IncludePeriodicWithNoPeriodicVersions": func(t *testing.T, c *client.Mock) {
+			c.GetRecentVersionsResultsByRequester = map[string][]model.APIVersion{
+				evergreen.RepotrackerVersionRequester: {
+					{Id: utility.ToStringPtr("commit1"), Order: 100},
+				},
+			}
+
+			versions, err := fetchVersionBatch(t.Context(), c, "proj", true, 0, 20)
+			require.NoError(t, err)
+			require.Len(t, versions, 1)
+			assert.Equal(t, "commit1", utility.FromStringPtr(versions[0].Id))
+		},
+		"IncludePeriodicWithNoCommitVersions": func(t *testing.T, c *client.Mock) {
+			c.GetRecentVersionsResultsByRequester = map[string][]model.APIVersion{
+				evergreen.AdHocRequester: {
+					{Id: utility.ToStringPtr("periodic1"), Order: 95},
+				},
+			}
+
+			versions, err := fetchVersionBatch(t.Context(), c, "proj", true, 0, 20)
+			require.NoError(t, err)
+			require.Len(t, versions, 1)
+			assert.Equal(t, "periodic1", utility.FromStringPtr(versions[0].Id))
+		},
+		"IncludePeriodicWithBothStreamsEmpty": func(t *testing.T, c *client.Mock) {
+			c.GetRecentVersionsResultsByRequester = map[string][]model.APIVersion{}
+
+			versions, err := fetchVersionBatch(t.Context(), c, "proj", true, 0, 20)
+			require.NoError(t, err)
+			assert.Empty(t, versions)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tCase(t, &client.Mock{})
+		})
+	}
+}
+
 func TestLastRevisionCheckBuilds(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, c *client.Mock){
 		"PassesCriteriaWithBuildSuccessRateAboveThreshold": func(t *testing.T, c *client.Mock) {

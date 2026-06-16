@@ -26,6 +26,19 @@ func bytesForFile(metrics []BucketFileMetrics, bucket, fileKey string) int64 {
 	return 0
 }
 
+func putRequestsForFile(metrics []BucketFileMetrics, bucket, fileKey string) int {
+	for _, b := range metrics {
+		if b.Bucket == bucket {
+			for _, f := range b.Files {
+				if f.FileKey == fileKey {
+					return f.PutRequests
+				}
+			}
+		}
+	}
+	return 0
+}
+
 // hasBucket returns true if the given bucket exists in the metrics slice.
 func hasBucket(metrics []BucketFileMetrics, bucket string) bool {
 	for _, b := range metrics {
@@ -70,7 +83,7 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, 0, s3Usage.Artifacts.ArtifactWithMinPutRequests)
 
 		filesA := []FileMetrics{
-			{RemotePath: "path/file1.txt", FileSizeBytes: 600},
+			{RemotePath: "path/file1.txt", FileSizeBytes: 600, PutRequests: 2},
 			{RemotePath: "path/file2.txt", FileSizeBytes: 424},
 		}
 		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 5, UploadBytes: 1024, FileCount: 2, MaxPuts: 3, MinPuts: 2, Bucket: "bucket-a", Files: filesA})
@@ -98,10 +111,11 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, int64(2048), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-b", "other/file3.txt"))
 
 		filesA2 := []FileMetrics{
-			{RemotePath: "path/file1.txt", FileSizeBytes: 512},
+			{RemotePath: "path/file1.txt", FileSizeBytes: 512, PutRequests: 3},
 		}
 		s3Usage.IncrementArtifacts(ArtifactIncrementOptions{PutRequests: 3, UploadBytes: 512, FileCount: 1, MaxPuts: 3, MinPuts: 3, Bucket: "bucket-a", Files: filesA2})
-		assert.Equal(t, int64(1112), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should accumulate across invocations")
+		assert.Equal(t, int64(512), bytesForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"), "bucket-a file bytes should be replaced by the latest upload's size (S3 overwrite semantics)")
+		assert.Equal(t, 5, putRequestsForFile(s3Usage.Artifacts.BytesByBucketAndKey, "bucket-a", "path/file1.txt"))
 	})
 
 	t.Run("IncrementArtifactsSkipsWhenDevprodAllowlistSetAndAccountNotOwned", func(t *testing.T) {
@@ -215,17 +229,22 @@ func TestS3Usage(t *testing.T) {
 		assert.Equal(t, int64(1000), s3Usage.Logs.UploadBytes)
 
 		assert.Equal(t, int64(100), s3Usage.Logs.Task.Bytes)
+		assert.Equal(t, 1, s3Usage.Logs.Task.PutRequests)
 		assert.Equal(t, "proj/task/0/task_logs/task", s3Usage.Logs.Task.LogKey)
 		assert.Equal(t, int64(200), s3Usage.Logs.Agent.Bytes)
+		assert.Equal(t, 2, s3Usage.Logs.Agent.PutRequests)
 		assert.Equal(t, "proj/task/0/task_logs/agent", s3Usage.Logs.Agent.LogKey)
 		assert.Equal(t, int64(300), s3Usage.Logs.System.Bytes)
+		assert.Equal(t, 3, s3Usage.Logs.System.PutRequests)
 		assert.Equal(t, "proj/task/0/task_logs/system", s3Usage.Logs.System.LogKey)
 		assert.Equal(t, int64(400), s3Usage.Logs.Test.Bytes)
+		assert.Equal(t, 4, s3Usage.Logs.Test.PutRequests)
 		assert.Equal(t, "proj/task/0/test_logs/mytest", s3Usage.Logs.Test.LogKey)
 
-		// Bytes accumulate across multiple calls; key is overwritten only when non-empty.
+		// Bytes and PUT counts accumulate across multiple calls; key is overwritten only when non-empty.
 		s3Usage.IncrementLogs(1, 50, LogTypeTest, "")
 		assert.Equal(t, int64(450), s3Usage.Logs.Test.Bytes)
+		assert.Equal(t, 5, s3Usage.Logs.Test.PutRequests)
 		assert.Equal(t, "proj/task/0/test_logs/mytest", s3Usage.Logs.Test.LogKey, "key should not be overwritten by empty string")
 	})
 

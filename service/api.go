@@ -162,6 +162,9 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	for i := range allProjs {
+		allProjs[i].RedactSecrets()
+	}
 	gimlet.WriteJSON(r.Context(), w, allProjs)
 }
 

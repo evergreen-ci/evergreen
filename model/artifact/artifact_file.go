@@ -67,6 +67,8 @@ type File struct {
 	AWSSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
 	// AWSRoleARN is the role ARN with which the file was uploaded to S3.
 	AWSRoleARN string `json:"aws_role_arn,omitempty" bson:"aws_role_arn,omitempty"`
+	// AWSAccountID is the resolved account ID for key+secret uploads (empty when AWSRoleARN is set).
+	AWSAccountID string `json:"aws_account_id,omitempty" bson:"aws_account_id,omitempty"`
 	// ExternalID is the external ID with which the file was uploaded to S3.
 	ExternalID string `json:"external_id,omitempty" bson:"external_id,omitempty"`
 	// Bucket is the aws bucket in which the file is stored.

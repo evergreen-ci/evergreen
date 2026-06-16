@@ -302,6 +302,12 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 				return nil
 			}
 
+			if pail.IsKeyNotFoundError(err) {
+				logger.Task().Infof(ctx, "Remote file '%s' does not exist in S3 bucket '%s', not retrying.",
+					c.RemoteFile, c.Bucket)
+				return err
+			}
+
 			logger.Task().Errorf(ctx, "Problem getting remote file '%s' from S3 bucket, retrying: %s",
 				c.RemoteFile, err)
 			timer.Reset(backoffCounter.Duration())
