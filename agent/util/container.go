@@ -39,7 +39,11 @@ func WrapWithContainer(opts *options.Create, containerID, workdir, envFileHostDi
 		return nil
 	}
 
-	args := []string{"docker", "exec"}
+	// -i keeps stdin open so the container process receives it. Without this,
+	// docker exec closes the container process's stdin immediately, causing
+	// shell.exec commands that pass the script via stdin (the default mode) to
+	// get no input and exit 0 silently rather than running the script.
+	args := []string{"docker", "exec", "-i"}
 
 	if workdir != "" {
 		args = append(args, "--workdir="+workdir)
