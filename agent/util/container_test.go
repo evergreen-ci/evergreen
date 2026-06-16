@@ -27,10 +27,11 @@ func TestWrapWithContainer(t *testing.T) {
 	t.Run("ContainerIDOnly", func(t *testing.T) {
 		opts := makeOpts()
 		require.NoError(t, WrapWithContainer(opts, "abc123def", "", ""))
-		require.GreaterOrEqual(t, len(opts.Args), len(baseArgs)+3)
+		require.GreaterOrEqual(t, len(opts.Args), len(baseArgs)+4)
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
-		assert.Equal(t, "abc123def", opts.Args[2])
+		assert.Equal(t, "-i", opts.Args[2])
+		assert.Equal(t, "abc123def", opts.Args[3])
 		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
 	})
 
@@ -39,8 +40,9 @@ func TestWrapWithContainer(t *testing.T) {
 		require.NoError(t, WrapWithContainer(opts, "abc123", "/data/mci/task1", ""))
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
-		assert.Equal(t, "--workdir=/data/mci/task1", opts.Args[2])
-		assert.Equal(t, "abc123", opts.Args[3])
+		assert.Equal(t, "-i", opts.Args[2])
+		assert.Equal(t, "--workdir=/data/mci/task1", opts.Args[3])
+		assert.Equal(t, "abc123", opts.Args[4])
 		assert.Equal(t, baseArgs, opts.Args[len(opts.Args)-len(baseArgs):])
 	})
 
@@ -75,7 +77,8 @@ func TestWrapWithContainer(t *testing.T) {
 
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
-		assert.Equal(t, "--workdir=/work", opts.Args[2])
+		assert.Equal(t, "-i", opts.Args[2])
+		assert.Equal(t, "--workdir=/work", opts.Args[3])
 		hasEnvFile := false
 		for _, arg := range opts.Args {
 			if len(arg) > 11 && arg[:11] == "--env-file=" {
