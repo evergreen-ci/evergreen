@@ -910,11 +910,13 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 
 func getProject(ctx context.Context, projectId *string) (*restModel.APIProjectRef, error) {
 	// If project ID is the only field requested we can return it without a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	if len(requestedFields) == 1 && requestedFields[0] == "id" {
-		return &restModel.APIProjectRef{
-			Id: projectId,
-		}, nil
+	if graphql.HasOperationContext(ctx) {
+		requestedFields := graphql.CollectAllFields(ctx)
+		if len(requestedFields) == 1 && requestedFields[0] == "id" {
+			return &restModel.APIProjectRef{
+				Id: projectId,
+			}, nil
+		}
 	}
 
 	projectRef, err := loaders.GetProject(ctx, utility.FromStringPtr(projectId))
