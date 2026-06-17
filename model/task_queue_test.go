@@ -107,7 +107,13 @@ func TestDequeueTaskUpdatesSecondaryQueueCollection(t *testing.T) {
 	}
 	require.NoError(t, tq.Save(t.Context()))
 
-	require.NoError(t, tq.DequeueTask(t.Context(), "t1"))
+	// Dequeue via the loader the dispatcher actually uses (an aggregation that doesn't
+	// populate DistroQueueInfo) rather than the hand-built struct, so collection routing
+	// is exercised for real.
+	loaded, err := LoadDistroSecondaryTaskQueue(t.Context(), distroID)
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	require.NoError(t, loaded.DequeueTask(t.Context(), "t1"))
 
 	secondary, err := FindDistroSecondaryTaskQueue(t.Context(), distroID)
 	require.NoError(t, err)

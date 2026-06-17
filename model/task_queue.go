@@ -400,6 +400,8 @@ func findTaskQueueForDistro(ctx context.Context, q taskQueueQuery) (*TaskQueue, 
 		val.Queue = nil
 	}
 	val.Distro = q.DistroID
+	// The aggregation above doesn't project DistroQueueInfo, so set the collection-routing flag from the queried collection.
+	val.DistroQueueInfo.SecondaryQueue = q.Collection == TaskSecondaryQueuesCollection
 
 	return val, nil
 }
