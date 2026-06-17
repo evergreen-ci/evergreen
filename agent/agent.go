@@ -271,8 +271,14 @@ func (a *Agent) loop(ctx context.Context) error {
 	// cancellation, agent shutdown, or unrecoverable error), so we don't
 	// leak containers that would otherwise only be cleaned up by teardown
 	// group commands which may never run on an abnormal exit path.
+	// Use a detached background context with a bounded timeout: the loop
+	// ctx is already cancelled on the shutdown path, which would cause
+	// ContainerRemove to fail immediately and leave the container running
+	// until the next --cleanup reaper.
 	defer func() {
-		a.destroyContainer(ctx, tc.taskConfig)
+		destroyCtx, destroyCancel := context.WithTimeout(context.Background(), reaperTimeout)
+		defer destroyCancel()
+		a.destroyContainer(destroyCtx, tc.taskConfig)
 	}()
 
 	for {
