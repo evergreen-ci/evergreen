@@ -20,13 +20,13 @@ func TestWrapWithContainer(t *testing.T) {
 
 	t.Run("EmptyContainerID", func(t *testing.T) {
 		opts := makeOpts()
-		require.NoError(t, WrapWithContainer(opts, "", "", ""))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "", "", ""))
 		assert.Equal(t, baseArgs, opts.Args)
 	})
 
 	t.Run("ContainerIDOnly", func(t *testing.T) {
 		opts := makeOpts()
-		require.NoError(t, WrapWithContainer(opts, "abc123def", "", ""))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "abc123def", "", ""))
 		require.GreaterOrEqual(t, len(opts.Args), len(baseArgs)+4)
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
@@ -37,7 +37,7 @@ func TestWrapWithContainer(t *testing.T) {
 
 	t.Run("WithWorkdir", func(t *testing.T) {
 		opts := makeOpts()
-		require.NoError(t, WrapWithContainer(opts, "abc123", "/data/mci/task1", ""))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "abc123", "/data/mci/task1", ""))
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
 		assert.Equal(t, "-i", opts.Args[2])
@@ -50,7 +50,7 @@ func TestWrapWithContainer(t *testing.T) {
 		dir := t.TempDir()
 		opts := makeOpts()
 		opts.Environment = map[string]string{"FOO": "bar", "SECRET": "s3cr3t"}
-		require.NoError(t, WrapWithContainer(opts, "abc123", "", dir))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "abc123", "", dir))
 
 		// docker exec args include --env-file flag
 		var envFileArg string
@@ -73,7 +73,7 @@ func TestWrapWithContainer(t *testing.T) {
 		dir := t.TempDir()
 		opts := makeOpts()
 		opts.Environment = map[string]string{"K": "v"}
-		require.NoError(t, WrapWithContainer(opts, "cid", "/work", dir))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "/work", dir))
 
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
@@ -91,7 +91,7 @@ func TestWrapWithContainer(t *testing.T) {
 
 	t.Run("NicePrefixInContainerArgv", func(t *testing.T) {
 		opts := makeOpts()
-		require.NoError(t, WrapWithContainer(opts, "cid", "", ""))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", ""))
 		// nice -n 0 must appear between the containerID and the original command.
 		niceIdx := -1
 		for i, arg := range opts.Args {
@@ -112,7 +112,7 @@ func TestWrapWithContainer(t *testing.T) {
 		// WrapWithContainer is called. Verify the prefix is stripped and
 		// --user=<user> is added to the docker exec flags instead.
 		opts := &options.Create{Args: append([]string{"sudo", "-u", "ubuntu"}, baseArgs...)}
-		require.NoError(t, WrapWithContainer(opts, "cid", "", ""))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", ""))
 
 		assert.Equal(t, "docker", opts.Args[0])
 		assert.Equal(t, "exec", opts.Args[1])
@@ -131,7 +131,7 @@ func TestWrapWithContainer(t *testing.T) {
 	t.Run("PreservesOriginalArgs", func(t *testing.T) {
 		opts := makeOpts()
 		original := append([]string{}, opts.Args...)
-		require.NoError(t, WrapWithContainer(opts, "xyz789", "", ""))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "xyz789", "", ""))
 		assert.Equal(t, original, opts.Args[len(opts.Args)-len(original):])
 	})
 
@@ -139,7 +139,7 @@ func TestWrapWithContainer(t *testing.T) {
 		dir := t.TempDir()
 		opts := makeOpts()
 		opts.Environment = map[string]string{"KEY": "value"}
-		require.NoError(t, WrapWithContainer(opts, "cid", "", dir))
+		require.NoError(t, WrapWithContainer(t.Context(), opts, "cid", "", dir))
 
 		envFilePath := filepath.Join(dir, containerEnvFileName)
 		fi, err := os.Stat(envFilePath)
@@ -153,7 +153,7 @@ func TestWriteEnvFile(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, ".evg-env")
 		env := map[string]string{"A": "1", "B": "hello world"}
-		require.NoError(t, writeEnvFile(path, env))
+		require.NoError(t, writeEnvFile(t.Context(), path, env))
 
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
@@ -166,7 +166,7 @@ func TestWriteEnvFile(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, ".evg-env")
 		env := map[string]string{"GOOD": "ok", "BAD": "line1\nline2"}
-		require.NoError(t, writeEnvFile(path, env))
+		require.NoError(t, writeEnvFile(t.Context(), path, env))
 
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestWriteEnvFile(t *testing.T) {
 	t.Run("EmptyEnv", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, ".evg-env")
-		require.NoError(t, writeEnvFile(path, nil))
+		require.NoError(t, writeEnvFile(t.Context(), path, nil))
 
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)

@@ -1,10 +1,13 @@
+//go:build ignore
+
 // containerprobe exercises agent/container.CreateAndStart end-to-end against
 // a local Docker daemon, then runs the GOAL-279 v2 PoC success criteria
 // against the resulting container so reviewers can see real evidence
 // that the per-task isolation mechanism works on a real distro image
 // produced by the imagebuild filesystem-snapshot flow.
 //
-// Not part of any production build.
+// Not part of any production build; excluded from the regular build by the
+// //go:build ignore tag above.
 package main
 
 import (
@@ -202,7 +205,7 @@ func runChecks(ctx context.Context, containerID, workDir, optPath string) []chec
 	// wrapper integrates with downstream callers.
 	execViaWrapper := func(argv ...string) (string, error) {
 		opts := &options.Create{Args: argv}
-		if err := agentutil.WrapWithContainer(opts, containerID, workDir, ""); err != nil {
+		if err := agentutil.WrapWithContainer(ctx, opts, containerID, workDir, ""); err != nil {
 			return "", err
 		}
 		out, err := exec.CommandContext(ctx, opts.Args[0], opts.Args[1:]...).CombinedOutput()

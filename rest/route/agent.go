@@ -633,12 +633,20 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 	// the current distro config. ExecUser is also refreshed because the distro
 	// validator couples it to ContainerIsolation.Enabled — they must be
 	// consistent or between-task process cleanup will be skipped.
+	//
+	// The live lookup is skipped when: (a) the host has no distro ID, or
+	// (b) the service-level kill switch is on (no isolation is active anywhere).
+	// This avoids an unconditional per-task-start DB round-trip on fleets where
+	// container isolation has not been enabled.
 	ci := foundHost.Distro.BootstrapSettings.ContainerIsolation
+	killSwitchOn := h.env != nil && h.env.Settings().ServiceFlags.ContainerIsolationDisabled
 	if foundHost.Distro.Id == "" {
 		grip.Warning(ctx, message.Fields{
 			"message": "host has no distro ID; skipping live distro lookup for container isolation",
 			"host_id": h.hostID,
 		})
+	} else if killSwitchOn {
+		// Kill switch is active — no live lookup needed; ci stays as embedded snapshot.
 	} else if liveDistro, err := distro.FindOneForDistroView(ctx, foundHost.Distro.Id); err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
 			"message": "falling back to embedded distro snapshot for container isolation settings",
