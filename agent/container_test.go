@@ -357,3 +357,30 @@ func TestDestroyContainerRetentionCallsCloseNotDestroy(t *testing.T) {
 	assert.Nil(t, a.currentContainer, "currentContainer must be cleared even in retention path")
 	assert.Empty(t, conf.ContainerID, "conf.ContainerID must be cleared in retention path")
 }
+
+// TestMaybeStartContainerFailClosedErrorPropagatesFromRunTask verifies that
+// a non-nil error from maybeStartContainer causes runTask (via the caller) to
+// fail rather than silently continuing in host mode. The fail-closed contract
+// (require_isolation=true) must not be violated at the runTask call site.
+func TestMaybeStartContainerFailClosedPropagatesFromRunTask(t *testing.T) {
+	ctx := t.Context()
+	a := agentForContainerTest()
+	a.containerFactory = func(_ context.Context, _ agentcontainer.Config) (ContainerHandle, error) {
+		return nil, errors.New("container daemon unreachable")
+	}
+
+	conf := &internal.TaskConfig{
+		Distro: &apimodels.DistroView{
+			ContainerIsolation: &apimodels.ContainerIsolationSettings{
+				Image:            "ubuntu:22.04",
+				RequireIsolation: true,
+			},
+		},
+		Task: task.Task{Id: "task-1"},
+	}
+
+	err := a.maybeStartContainer(ctx, conf, nil)
+	require.Error(t, err, "fail-closed path must propagate error to runTask caller")
+	assert.Empty(t, conf.ContainerID, "ContainerID must not be set when container fails to start")
+	assert.Nil(t, a.currentContainer)
+}
