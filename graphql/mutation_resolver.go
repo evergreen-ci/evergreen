@@ -1415,8 +1415,7 @@ func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBe
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating beta features for user '%s': %s", usr.Id, err.Error()))
 	}
 
-	betaFeatures := restModel.APIBetaFeatures{}
-	betaFeatures.BuildFromService(usr.BetaFeatures)
+	betaFeatures := usr.BetaFeatures
 	return &UpdateBetaFeaturesPayload{
 		BetaFeatures: &betaFeatures,
 	}, nil

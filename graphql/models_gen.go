@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -708,7 +709,7 @@ type UpdateBetaFeaturesInput struct {
 }
 
 type UpdateBetaFeaturesPayload struct {
-	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures,omitempty"`
+	BetaFeatures *evergreen.BetaFeatures `json:"betaFeatures,omitempty"`
 }
 
 type UpdateSpawnHostStatusInput struct {

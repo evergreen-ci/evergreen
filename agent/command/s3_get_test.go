@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -436,4 +438,42 @@ func TestS3GetFetchesFiles(t *testing.T) {
 
 		assert.Equal(t, tarb, payload)
 	})
+}
+
+// mockGetToWriterBucket is a minimal mock that implements pail.FastGetS3Bucket
+// so tests can control what GetToWriter returns without hitting real S3.
+type mockGetToWriterBucket struct {
+	pail.FastGetS3Bucket
+	fn    func() error
+	calls int
+}
+
+func (m *mockGetToWriterBucket) GetToWriter(_ context.Context, _ string, _ io.WriterAt) error {
+	m.calls++
+	return m.fn()
+}
+
+func TestGetWithRetryDoesNotRetryOnKeyNotFound(t *testing.T) {
+	ctx := t.Context()
+
+	mock := &mockGetToWriterBucket{
+		fn: func() error { return pail.NewKeyNotFoundError("key does not exist") },
+	}
+
+	comm := client.NewMock("http://localhost.com")
+	tsk := task.Task{Id: "mock_id", Secret: "mock_secret"}
+	logger, err := comm.GetLoggerProducer(ctx, &tsk, nil)
+	require.NoError(t, err)
+
+	cmd := &s3get{
+		RemoteFile: "nonexistent-key",
+		Bucket:     "test-bucket",
+		LocalFile:  filepath.Join(t.TempDir(), "download.txt"),
+		bucket:     mock,
+	}
+
+	err = cmd.getWithRetry(ctx, logger)
+	require.Error(t, err)
+	assert.True(t, pail.IsKeyNotFoundError(err))
+	assert.Equal(t, 1, mock.calls, "should not retry when key does not exist")
 }
