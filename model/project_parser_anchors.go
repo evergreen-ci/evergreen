@@ -19,6 +19,14 @@ type anchorEntry struct {
 // anchorEntries accumulates YAML anchor definitions across include files for cross-file alias resolution.
 type anchorEntries []anchorEntry
 
+// len returns the number of entries, or 0 if the receiver is nil.
+func (a *anchorEntries) len() int {
+	if a == nil {
+		return 0
+	}
+	return len(*a)
+}
+
 // collectAnchors walks node in pre-order and returns all anchored nodes in
 // encounter order. AliasNodes are not followed, so only anchor definitions
 // (&name) are collected, never alias uses (*name).

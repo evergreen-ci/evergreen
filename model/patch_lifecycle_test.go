@@ -682,7 +682,7 @@ func TestMakePatchedConfigRenamed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, projectData)
 
-	intermediateProject, err := createIntermediateProject(projectData, false, &anchorEntries{})
+	intermediateProject, err := createIntermediateProject(projectData, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, intermediateProject)
 	require.Len(t, intermediateProject.BuildVariants, 1)
