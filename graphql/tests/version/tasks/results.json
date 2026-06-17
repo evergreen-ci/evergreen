@@ -1,6 +1,40 @@
 {
   "tests": [
     {
+      "query_file": "surfaced_by_subtask_status.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "tasks": {
+              "data": [
+                {
+                  "id": "1",
+                  "displayStatus": "success",
+                  "executionTasksFull": null
+                },
+                {
+                  "id": "2",
+                  "displayStatus": "system-failed",
+                  "executionTasksFull": [
+                    {
+                      "id": "execution_task_success",
+                      "displayStatus": "success"
+                    }
+                  ]
+                },
+                {
+                  "id": "4",
+                  "displayStatus": "success",
+                  "executionTasksFull": null
+                }
+              ],
+              "count": 3
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "execution_tasks_filtered_by_status.graphql",
       "result": {
         "data": {
@@ -216,6 +250,10 @@
                   "displayStatus": "success"
                 },
                 {
+                  "id": "2",
+                  "displayStatus": "system-failed"
+                },
+                {
                   "id": "3",
                   "displayStatus": "failed"
                 },
@@ -224,7 +262,7 @@
                   "displayStatus": "success"
                 }
               ],
-              "count": 3
+              "count": 4
             }
           }
         }
@@ -238,12 +276,17 @@
             "tasks": {
               "data": [
                 {
+                  "id": "2",
+                  "displayName": "compile",
+                  "displayStatus": "system-failed"
+                },
+                {
                   "id": "3",
                   "displayName": "test-cloud",
                   "displayStatus": "failed"
                 }
               ],
-              "count": 1
+              "count": 2
             }
           }
         }
