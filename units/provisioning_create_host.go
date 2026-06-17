@@ -381,6 +381,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"single_task_distro": j.host.Distro.SingleTaskDistro,
 		"provider":           j.host.Provider,
 		"subnet":             j.host.GetSubnetID(),
+		"started_by":         j.host.StartedBy,
 		"job":                j.ID(),
 		"runtime_secs":       time.Since(j.start).Seconds(),
 		"num_attempts":       j.RetryInfo().CurrentAttempt,
