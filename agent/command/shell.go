@@ -175,7 +175,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 			}
 
 			if conf.Distro != nil {
-				if err := agentutil.WrapWithContainer(opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
+				if err := agentutil.WrapWithContainer(lctx, opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
 					return nil, errors.Wrap(err, "wrapping command for container execution")
 				}
 			}

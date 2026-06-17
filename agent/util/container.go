@@ -34,7 +34,7 @@ const (
 // Expansion values with literal surrounding quotes should be set without them.
 //
 // It is a no-op if containerID is empty.
-func WrapWithContainer(opts *options.Create, containerID, workdir, envFileHostDir string) error {
+func WrapWithContainer(ctx context.Context, opts *options.Create, containerID, workdir, envFileHostDir string) error {
 	if containerID == "" {
 		return nil
 	}
@@ -51,7 +51,7 @@ func WrapWithContainer(opts *options.Create, containerID, workdir, envFileHostDi
 
 	if envFileHostDir != "" {
 		envFilePath := filepath.Join(envFileHostDir, containerEnvFileName)
-		if err := writeEnvFile(envFilePath, opts.Environment); err != nil {
+		if err := writeEnvFile(ctx, envFilePath, opts.Environment); err != nil {
 			return errors.Wrap(err, "writing container env file")
 		}
 		args = append(args, "--env-file="+envFilePath)
@@ -91,11 +91,11 @@ func WrapWithContainer(opts *options.Create, containerID, workdir, envFileHostDi
 // invocations from observing a partially-written file.
 // Values that contain newlines are skipped because the Docker env-file format
 // does not support multi-line values; a warning is logged for each dropped var.
-func writeEnvFile(path string, env map[string]string) error {
+func writeEnvFile(ctx context.Context, path string, env map[string]string) error {
 	var sb strings.Builder
 	for k, v := range env {
 		if strings.ContainsAny(v, "\n\r") {
-			grip.Warningf(context.Background(), "skipping expansion '%s' in container env file: value contains a newline and cannot be forwarded via docker exec --env-file", k)
+			grip.Warningf(ctx, "skipping expansion '%s' in container env file: value contains a newline and cannot be forwarded via docker exec --env-file", k)
 			continue
 		}
 		fmt.Fprintf(&sb, "%s=%s\n", k, v)

@@ -233,7 +233,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *int
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			if conf.Distro != nil {
-				if err := agentutil.WrapWithContainer(opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
+				if err := agentutil.WrapWithContainer(lctx, opts, conf.ContainerID, c.WorkingDir, conf.EnvFileHostDir); err != nil {
 					return nil, errors.Wrap(err, "wrapping command for container execution")
 				}
 			}

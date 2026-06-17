@@ -203,6 +203,14 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 // left running for on-call post-mortem inspection (retain_on_failure_secs).
 // The agent reference is cleared so subsequent task dispatch is unaffected;
 // the reaper removes the container at next startup.
+//
+// Static-host note: the retention window is checked only when destroyContainer
+// fires (at group teardown). If teardown fires within the window the container
+// is left running until the orphan reaper at next agent restart — there is no
+// background timer that removes it after the window elapses. On dynamic EC2
+// hosts (the Phase 0 target) the host recycles before accumulation becomes a
+// concern. Static hosts running many task groups should set
+// container_retain_on_failure_secs=0 until a deadline-based sweep is added.
 func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig) {
 	if a.currentContainer == nil {
 		a.retainContainerUntil = time.Time{}
@@ -375,6 +383,12 @@ func containerInspectJSON(ctx context.Context, containerID string) (string, erro
 }
 
 // containerExec runs a command inside a container and returns its combined output.
+// This failure-snapshot path uses the docker CLI (not the SDK) because it is
+// called only on task failure and the credential-helper flow for ECR is handled
+// by host_provision.go (which also uses the CLI for the same reason). The SDK
+// path for the main lifecycle (CreateAndStart, Destroy) is intentional and
+// unrelated; the CLI is used here for the forensic path to keep its footprint
+// simple and aligned with other CLI callers.
 func containerExec(ctx context.Context, containerID string, args ...string) (string, error) {
 	execCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

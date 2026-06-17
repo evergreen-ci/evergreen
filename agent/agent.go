@@ -422,10 +422,14 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
 		span.SetStatus(codes.Error, "error running task")
-		span.RecordError(err, trace.WithAttributes(attribute.String("task.id", tc.task.ID)), trace.WithStackTrace(true))
+		taskID := ""
+		if tc != nil {
+			taskID = tc.task.ID
+		}
+		span.RecordError(err, trace.WithAttributes(attribute.String("task.id", taskID)), trace.WithStackTrace(true))
 		grip.Critical(ctx, message.WrapError(err, message.Fields{
 			"message": "error running task",
-			"task":    tc.task.ID,
+			"task":    taskID,
 		}))
 		return processNextResponse{
 			tc: tc,
