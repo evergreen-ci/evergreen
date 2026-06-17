@@ -329,6 +329,31 @@ func (r *patchResolver) User(ctx context.Context, obj *restModel.APIPatch) (*res
 	return apiUser, nil
 }
 
+// UserLite is the resolver for the userLite field.
+func (r *patchResolver) UserLite(ctx context.Context, obj *restModel.APIPatch) (*user.DBUser, error) {
+	// If only id is requested, we can return it without a database call.
+	requestedFields := graphql.CollectAllFields(ctx)
+	if len(requestedFields) == 1 && requestedFields[0] == "id" {
+		return &user.DBUser{Id: utility.FromStringPtr(obj.Author)}, nil
+	}
+
+	authorId := utility.FromStringPtr(obj.Author)
+	currentUser := mustHaveUser(ctx)
+	if currentUser.Id == authorId {
+		return currentUser, nil
+	}
+
+	dbUser, err := loaders.GetUser(ctx, authorId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", authorId, err.Error()), err)
+	}
+	// This is most likely a service user, so just return their ID.
+	if dbUser == nil {
+		return &user.DBUser{Id: authorId}, nil
+	}
+	return dbUser, nil
+}
+
 // Version is the resolver for the version field.
 func (r *patchResolver) Version(ctx context.Context, obj *restModel.APIPatch) (*model.Version, error) {
 	versionID := utility.FromStringPtr(obj.Version)
