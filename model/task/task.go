@@ -4323,19 +4323,20 @@ func (t *Task) calculateRuntimeCost(financeConfig evergreen.CostConfig, costData
 	t.TaskCost = CalculateTaskCost(t.TimeTaken.Seconds(), costData, financeConfig)
 }
 
-// bucketExpirationLookup resolves the S3 lifecycle expiration days for a given artifact file.
+// bucketExpirationLookup resolves the S3 lifecycle expiration days for a given bucket and file key.
+// Log buckets read from admin BucketsConfig; artifact buckets read from s3_lifecycle_rules.
 type bucketExpirationLookup func(ctx context.Context, bucket, fileKey string) (days int, found bool)
 
 // SaveS3Usage persists the task's S3 usage metrics and calculates S3 costs.
-func (t *Task) SaveS3Usage(ctx context.Context, lookup bucketExpirationLookup, logBucketName string) error {
+func (t *Task) SaveS3Usage(ctx context.Context, logLookup, artifactLookup bucketExpirationLookup, logBucketName string) error {
 	costConfig := &evergreen.CostConfig{}
 	if err := costConfig.Get(ctx); err != nil {
 		return errors.Wrap(err, "getting cost config")
 	}
 
 	t.calculateS3PutCosts(costConfig)
-	t.setS3ArtifactStorageCosts(ctx, lookup, costConfig)
-	t.setS3LogStorageCosts(ctx, logBucketName, lookup, costConfig)
+	t.setS3ArtifactStorageCosts(ctx, artifactLookup, costConfig)
+	t.setS3LogStorageCosts(ctx, logBucketName, logLookup, costConfig)
 
 	setFields := bson.M{
 		S3UsageKey: t.S3Usage,
@@ -4374,22 +4375,15 @@ func (t *Task) setS3LogStorageCosts(ctx context.Context, logBucketName string, l
 	}
 }
 
-// resolveArtifactExpirationDays looks up the expiration days for an artifact. Non-Devprod-owned IAM roles are
-// skipped here as well as in s3usage.IncrementArtifacts so persisted usage and pricing stay aligned even for
-// older rows or config drift. When no lifecycle rule matches, DefaultMaxArtifactExpirationDays is used.
-func resolveArtifactExpirationDays(ctx context.Context, bucket, fileKey, awsRoleARN string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (days int, skipCost bool, usedLookup bool) {
-	storage := costConfig.S3Cost.Storage
-	if !evergreen.IsDevprodOwnedArtifactIAMRole(awsRoleARN, storage.DevprodOwnedAWSAccountIDs) {
-		return 0, true, false
-	}
-
+// lookupExpirationDays returns the lifecycle expiration days for an artifact.
+// Devprod-ownership filtering happens at write time, so persisted entries are in scope here.
+func lookupExpirationDays(ctx context.Context, bucket, fileKey string, lookup bucketExpirationLookup, costConfig *evergreen.CostConfig) (days int, usedLookup bool) {
 	if lookup != nil {
 		if days, ok := lookup(ctx, bucket, fileKey); ok {
-			return days, false, true
+			return days, true
 		}
 	}
-
-	return storage.DefaultMaxArtifactExpirationDays, false, false
+	return costConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, false
 }
 
 // calculateS3PutCosts calculates S3 PUT costs for both artifact uploads and log uploads.
@@ -4414,10 +4408,7 @@ func (t *Task) setS3ArtifactStorageCosts(ctx context.Context, lookup bucketExpir
 	t.TaskCost.AdjustedS3ArtifactStorageCost = 0
 	for _, bucketEntry := range t.S3Usage.Artifacts.BytesByBucketAndKey {
 		for _, fileEntry := range bucketEntry.Files {
-			days, skipCost, usedLookup := resolveArtifactExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, bucketEntry.AWSRoleARN, lookup, costConfig)
-			if skipCost {
-				continue
-			}
+			days, usedLookup := lookupExpirationDays(ctx, bucketEntry.Bucket, fileEntry.FileKey, lookup, costConfig)
 			if !usedLookup {
 				grip.Info(ctx, message.Fields{
 					"message": "no S3 lifecycle rule found for artifact bucket, using default expiration days",
@@ -4674,10 +4665,9 @@ func (t *Task) UsesLongRetentionBucket(settings *evergreen.Settings) bool {
 	return false
 }
 
-// GetS3ArtifactUsageFromDB reconstructs artifact S3 usage from stored artifact entries.
-// Used on the crash path when the agent never sends a final S3 usage report.
-// Only devprod-owned uploads (determined by IAM role ARN) are counted, consistent with
-// how IncrementArtifacts filters during normal task execution.
+// GetS3ArtifactUsageFromDB reconstructs artifact S3 usage on the crash path when the agent
+// never sent a final report. Counts only devprod-owned uploads (ARN or account ID). Re-uploads
+// to the same (bucket, key, role ARN) are deduped: PUTs accumulate, bytes take the last non-zero size.
 func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMetrics, error) {
 	entries, err := artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(t.Id, t.Execution))
 	if err != nil {
@@ -4689,35 +4679,50 @@ func (t *Task) GetS3ArtifactUsageFromDB(ctx context.Context) (s3usage.ArtifactMe
 		return s3usage.ArtifactMetrics{}, errors.Wrap(err, "getting cost config")
 	}
 
-	type bucketKey struct{ bucket, roleARN string }
-	byBucket := map[bucketKey]*s3usage.BucketFileMetrics{}
-	var files []s3usage.FileMetrics
-	var totalPuts int
-	var totalBytes int64
+	type fileKey struct{ bucket, key, roleARN string }
+	byFile := map[fileKey]*s3usage.FileBytes{}
 	for _, entry := range entries {
 		for _, f := range entry.Files {
 			if f.PutRequests == 0 {
 				continue
 			}
-			if !evergreen.IsDevprodOwnedArtifactIAMRole(f.AWSRoleARN, costConfig.S3Cost.Storage.DevprodOwnedAWSAccountIDs) {
+			if !evergreen.IsDevprodOwnedUpload(f.AWSRoleARN, f.AWSAccountID, costConfig.S3Cost.Storage.DevprodOwnedAWSAccountIDs) {
 				continue
 			}
-			totalPuts += f.PutRequests
-			totalBytes += f.FileSize
-			files = append(files, s3usage.FileMetrics{
-				FileSizeBytes: f.FileSize,
-				PutRequests:   f.PutRequests,
-			})
-			bk := bucketKey{f.Bucket, f.AWSRoleARN}
-			if _, ok := byBucket[bk]; !ok {
-				byBucket[bk] = &s3usage.BucketFileMetrics{Bucket: f.Bucket, AWSRoleARN: f.AWSRoleARN}
+			fk := fileKey{f.Bucket, f.FileKey, f.AWSRoleARN}
+			if existing, ok := byFile[fk]; ok {
+				existing.PutRequests += f.PutRequests
+				if f.FileSize > 0 {
+					existing.Bytes = f.FileSize
+				}
+				continue
 			}
-			byBucket[bk].Files = append(byBucket[bk].Files, s3usage.FileBytes{FileKey: f.FileKey, Bytes: f.FileSize})
+			byFile[fk] = &s3usage.FileBytes{
+				FileKey:     f.FileKey,
+				Bytes:       f.FileSize,
+				PutRequests: f.PutRequests,
+			}
 		}
 	}
 
-	if len(files) == 0 {
+	if len(byFile) == 0 {
 		return s3usage.ArtifactMetrics{}, nil
+	}
+
+	type bucketKey struct{ bucket, roleARN string }
+	byBucket := map[bucketKey]*s3usage.BucketFileMetrics{}
+	var files []s3usage.FileMetrics
+	var totalPuts int
+	var totalBytes int64
+	for fk, fb := range byFile {
+		bk := bucketKey{fk.bucket, fk.roleARN}
+		if _, ok := byBucket[bk]; !ok {
+			byBucket[bk] = &s3usage.BucketFileMetrics{Bucket: fk.bucket, AWSRoleARN: fk.roleARN}
+		}
+		byBucket[bk].Files = append(byBucket[bk].Files, *fb)
+		files = append(files, s3usage.FileMetrics{FileSizeBytes: fb.Bytes, PutRequests: fb.PutRequests})
+		totalPuts += fb.PutRequests
+		totalBytes += fb.Bytes
 	}
 
 	bucketMetrics := make([]s3usage.BucketFileMetrics, 0, len(byBucket))

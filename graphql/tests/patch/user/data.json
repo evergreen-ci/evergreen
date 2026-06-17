@@ -1,0 +1,37 @@
+{
+  "versions": [
+    {
+      "_id": "5dd2e89cd1fe07048e43bb9c",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "requester": "gitter_request",
+      "status": "failed"
+    }
+  ],
+  "patches": [
+    {
+      "_id": {
+        "$oid": "9e4ff3abe3c3317e352062e4"
+      },
+      "branch": "spruce",
+      "githash": "3b53f9b61226491cd31113c773d66e351957ed29",
+      "patch_number": 20,
+      "author": "trey.granderson",
+      "version": "5dd2e89cd1fe07048e43bb9c",
+      "status": "started"
+    }
+  ],
+  "users": [
+    {
+      "_id": "trey.granderson",
+      "display_name": "Trey Granderson",
+      "email": "trey.granderson@mongodb.com"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

@@ -763,18 +763,19 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Tags			versions
 //	@Router			/projects/{project_id}/versions [get]
 //	@Security		Api-User || Api-Key
-//	@Param			project_id			path	string	true	"the project ID"
-//	@Param			skip				query	int		false	"Number of versions to skip."
-//	@Param			limit				query	int		false	"The number of versions to be returned per page of pagination. Defaults to 20."
-//	@Param			start				query	int		false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
-//	@Param			revision_end		query	int		false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
-//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue),, and ad_hoc (periodic builds)."
-//	@Param			include_builds		query	bool	false	"If set, will return some information for each build in the version."
-//	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
-//	@Param			include_tasks		query	bool	false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
-//	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
-//	@Param			created_after		query	string	false	"Timestamp to look for applicable versions after or equal to create_time."
-//	@Param			created_before		query	string	false	"Timestamp to look for applicable versions before or equal to create_time."
+//	@Param			project_id			path	string		true	"the project ID"
+//	@Param			skip				query	int			false	"Number of versions to skip."
+//	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 20."
+//	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
+//	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
+//	@Param			requester			query	string		false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds). Can be specified multiple times to include multiple requesters."
+//	@Param			requesters			body	[]string	false	"Returns versions for all specified requesters. Overridden by the requester query parameter if both are set."
+//	@Param			include_builds		query	bool		false	"If set, will return some information for each build in the version."
+//	@Param			by_build_variant	query	string		false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
+//	@Param			include_tasks		query	bool		false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
+//	@Param			by_task				query	string		false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
+//	@Param			created_after		query	string		false	"Timestamp to look for applicable versions after or equal to create_time."
+//	@Param			created_before		query	string		false	"Timestamp to look for applicable versions before or equal to create_time."
 //	@Success		200					{array}	model.APIVersion
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectVersionsHandler{}
@@ -790,6 +791,15 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &h.opts); err != nil {
 			return errors.Wrap(err, "unmarshalling JSON request body into version options")
+		}
+		if len(h.opts.Requesters) == 0 {
+			// Consider the legacy single-value "requester" body field.
+			var legacyBody struct {
+				Requester string `json:"requester"`
+			}
+			if err := json.Unmarshal(b, &legacyBody); err == nil && legacyBody.Requester != "" {
+				h.opts.Requesters = []string{legacyBody.Requester}
+			}
 		}
 	}
 
@@ -846,13 +856,13 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 		h.opts.CreatedBefore = createdBefore
 	}
 
-	requester := params.Get("requester")
-	if requester != "" {
-		h.opts.Requester = requester
+	if requesters := params["requester"]; len(requesters) > 0 {
+		h.opts.Requesters = requesters
 	}
-	if h.opts.Requester == "" {
-		h.opts.Requester = evergreen.RepotrackerVersionRequester
+	if len(h.opts.Requesters) == 0 {
+		h.opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
 	}
+
 	return nil
 }
 

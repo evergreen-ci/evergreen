@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "userLite": {
+              "id": "trey.granderson",
+              "displayName": "Trey Granderson",
+              "emailAddress": "trey.granderson@mongodb.com"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

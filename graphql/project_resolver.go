@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 )
@@ -15,6 +16,11 @@ func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProj
 		return true, nil
 	}
 	return false, nil
+}
+
+// ParsleyFilters is the resolver for the parsleyFilters field.
+func (r *projectResolver) ParsleyFilters(ctx context.Context, obj *restModel.APIProjectRef) ([]*parsley.Filter, error) {
+	return apiParsleyFiltersToService(obj.ParsleyFilters), nil
 }
 
 // Patches is the resolver for the patches field.
