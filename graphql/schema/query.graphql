@@ -80,6 +80,7 @@ type Query {
   # user
   myPublicKeys: [PublicKey!]!
   user(userId: String): User!
+  userLite(userId: String): UserLite!
   userConfig: UserConfig
 
   # mainline commits

@@ -1,0 +1,23 @@
+{
+  userLite(userId: "bob.smith") {
+    id
+    displayName
+    emailAddress
+    hasTokenExchangePending
+    betaFeatures {
+      spruceWaterfallEnabled
+    }
+    parsleyFilters {
+      expression
+      exactMatch
+      caseSensitive
+    }
+    settings {
+      timezone
+      region
+      githubUser {
+        lastKnownAs
+      }
+    }
+  }
+}
