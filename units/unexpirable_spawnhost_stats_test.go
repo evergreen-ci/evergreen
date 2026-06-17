@@ -43,7 +43,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 					Id: "h0",
 					Distro: distro.Distro{
 						Id:       "distro0",
-						Provider: evergreen.ProviderNameEc2OnDemand,
+						Provider: evergreen.ProviderNameEc2Fleet,
 						ProviderSettingsList: []*birch.Document{
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
@@ -54,7 +54,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 					Id: "h1",
 					Distro: distro.Distro{
 						Id:       "distro0",
-						Provider: evergreen.ProviderNameEc2OnDemand,
+						Provider: evergreen.ProviderNameEc2Fleet,
 						ProviderSettingsList: []*birch.Document{
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
@@ -65,7 +65,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 					Id: "h2",
 					Distro: distro.Distro{
 						Id:       "distro1",
-						Provider: evergreen.ProviderNameEc2OnDemand,
+						Provider: evergreen.ProviderNameEc2Fleet,
 						ProviderSettingsList: []*birch.Document{
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
@@ -76,7 +76,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 					Id: "h3",
 					Distro: distro.Distro{
 						Id:       "distro2",
-						Provider: evergreen.ProviderNameEc2OnDemand,
+						Provider: evergreen.ProviderNameEc2Fleet,
 						ProviderSettingsList: []*birch.Document{
 							birch.NewDocument(birch.EC.String("instance_type", "c5.xlarge")),
 						},
@@ -87,7 +87,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 					Id: "h4",
 					Distro: distro.Distro{
 						Id:       "distro0",
-						Provider: evergreen.ProviderNameEc2OnDemand,
+						Provider: evergreen.ProviderNameEc2Fleet,
 						ProviderSettingsList: []*birch.Document{
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},
@@ -98,7 +98,7 @@ func TestUnexpirableSpawnHostStatsJob(t *testing.T) {
 					Id: "h5",
 					Distro: distro.Distro{
 						Id:       "distro0",
-						Provider: evergreen.ProviderNameEc2OnDemand,
+						Provider: evergreen.ProviderNameEc2Fleet,
 						ProviderSettingsList: []*birch.Document{
 							birch.NewDocument(birch.EC.String("instance_type", "m5.xlarge")),
 						},

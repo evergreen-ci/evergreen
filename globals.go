@@ -714,8 +714,7 @@ const (
 
 // IsEc2Provider returns true if the provider is ec2.
 func IsEc2Provider(provider string) bool {
-	return provider == ProviderNameEc2OnDemand ||
-		provider == ProviderNameEc2Fleet
+	return provider == ProviderNameEc2Fleet
 }
 
 // IsDockerProvider returns true if the provider is docker.
@@ -745,7 +744,6 @@ var (
 	// dynamically created and terminated according to need. This has no
 	// relation to spawn hosts.
 	ProviderSpawnable = []string{
-		ProviderNameEc2OnDemand,
 		ProviderNameEc2Fleet,
 		ProviderNameMock,
 		ProviderNameDocker,
@@ -755,7 +753,6 @@ var (
 	// request a dynamically created host for purposes such as host.create and
 	// spawn hosts.
 	ProviderUserSpawnable = []string{
-		ProviderNameEc2OnDemand,
 		ProviderNameEc2Fleet,
 	}
 
