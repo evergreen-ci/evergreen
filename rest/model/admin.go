@@ -2636,9 +2636,9 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
 		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
-		ContainerIsolationDisabled:         as.ContainerIsolationDisabled,		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
-		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
-		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,
+		ContainerIsolationDisabled:         as.ContainerIsolationDisabled, BackgroundCommandFailureEnabled: as.BackgroundCommandFailureEnabled,
+		APIRateLimiterDisabled:           as.APIRateLimiterDisabled,
+		GraphQLComplexityLimiterDisabled: as.GraphQLComplexityLimiterDisabled,
 	}, nil
 }
 
