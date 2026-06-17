@@ -29,6 +29,10 @@ import (
 
 const (
 	// EnvFileMountTarget is the in-container path where the env tmpfs is bind-mounted (read-only).
+	// Phase 0 consumers read the env-file host-side (docker exec --env-file reads the host path
+	// directly). The in-container mount is reserved for Phase 1, where in-process consumers
+	// inside the container will read expansions from this path directly. Keeping the mount now
+	// avoids a container-spec change at Phase 1 boundary.
 	EnvFileMountTarget = "/var/run/evergreen-env"
 
 	// envFileBaseDir is the host-side root for per-task env tmpfs directories.
