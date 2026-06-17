@@ -64,7 +64,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -81,7 +81,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -93,7 +93,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, err := createIntermediateProject([]byte(nameless), false, &anchorEntries{})
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -105,7 +105,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, err := createIntermediateProject([]byte(nameless), false, &anchorEntries{})
 				So(p, ShouldBeNil)
 				So(err, ShouldNotBeNil)
 			})
@@ -114,7 +114,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, err := createIntermediateProject([]byte(nameless), false, nil)
+				p, err := createIntermediateProject([]byte(nameless), false, &anchorEntries{})
 				So(p, ShouldNotBeNil)
 				So(err, ShouldBeNil)
 			})
@@ -143,7 +143,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -167,7 +167,7 @@ buildvariants:
   - name: "t2"
     depends_on: "t3"
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -185,7 +185,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, err := createIntermediateProject([]byte(simple), false, nil)
+			p, err := createIntermediateProject([]byte(simple), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -209,7 +209,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -230,7 +230,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(p.BuildVariants[0].Tasks[0].RunOn[0], ShouldEqual, "test")
@@ -245,7 +245,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, &anchorEntries{})
 			So(p, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -257,7 +257,7 @@ buildvariants:
   - name: "t1"
     commit_queue_merge: true
 `
-			p, err := createIntermediateProject([]byte(single), false, nil)
+			p, err := createIntermediateProject([]byte(single), false, &anchorEntries{})
 			So(p, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			bv := p.BuildVariants[0]
@@ -280,7 +280,7 @@ buildvariants:
   - name: "t1"
     activate: true
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, &anchorEntries{})
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	bv := p.BuildVariants[0]
@@ -1027,7 +1027,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, &anchorEntries{})
 
 	// check that display tasks in bv1 parsed correctly
 	assert.NoError(err)
@@ -1056,7 +1056,7 @@ parameters:
 - key: buggy
   value: driver
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, &anchorEntries{})
 	assert.NoError(t, err)
 	require.Len(t, p.Parameters, 2)
 	assert.Equal(t, "iter_count", p.Parameters[0].Key)
@@ -1365,7 +1365,7 @@ tasks:
 - name: execTask4
   tags: [ "even" ]
 `
-	pp, err := createIntermediateProject([]byte(tagYml), false, nil)
+	pp, err := createIntermediateProject([]byte(tagYml), false, &anchorEntries{})
 	assert.NotNil(pp)
 	assert.NoError(err)
 	require.Len(pp.BuildVariants[0].DisplayTasks, 2)
@@ -2153,7 +2153,7 @@ buildvariants:
 }
 
 func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Environment, yml []byte, ppStorageMethod evergreen.ParserProjectStorageMethod) {
-	pp, err := createIntermediateProject(yml, false, nil)
+	pp, err := createIntermediateProject(yml, false, &anchorEntries{})
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("old-project-identifier")
@@ -2176,7 +2176,7 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 	assert.True(t, bytes.Equal(newYaml, yamlToCompare))
 
 	// ensure that updating with the re-parsed project doesn't error
-	pp, err = createIntermediateProject(newYaml, false, nil)
+	pp, err = createIntermediateProject(newYaml, false, &anchorEntries{})
 	assert.NoError(t, err)
 	pp.Id = "my-project"
 	pp.Identifier = utility.ToStringPtr("new-project-identifier")
@@ -2203,7 +2203,7 @@ func TestParserProjectRoundtrip(t *testing.T) {
 	yml, err := os.ReadFile(filepath)
 	assert.NoError(t, err)
 
-	original, err := createIntermediateProject(yml, false, nil)
+	original, err := createIntermediateProject(yml, false, &anchorEntries{})
 	assert.NoError(t, err)
 
 	// to and from yaml
@@ -2827,10 +2827,10 @@ ignore:
   - ".github/*"
 `
 
-	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+	p1, err := createIntermediateProject([]byte(mainYaml), false, &anchorEntries{})
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject([]byte(smallYaml), false, nil)
+	p2, err := createIntermediateProject([]byte(smallYaml), false, &anchorEntries{})
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -2876,13 +2876,13 @@ buildvariants:
       - name: task3
 `
 
-	p1, err := createIntermediateProject([]byte(mainYaml), false, nil)
+	p1, err := createIntermediateProject([]byte(mainYaml), false, &anchorEntries{})
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	p2, err := createIntermediateProject([]byte(succeed), false, nil)
+	p2, err := createIntermediateProject([]byte(succeed), false, &anchorEntries{})
 	assert.NoError(t, err)
 	assert.NotNil(t, p2)
-	p3, err := createIntermediateProject([]byte(fail), false, nil)
+	p3, err := createIntermediateProject([]byte(fail), false, &anchorEntries{})
 	assert.NoError(t, err)
 	assert.NotNil(t, p3)
 	err = p1.mergeMultipleParserProjects(p2)
@@ -3391,7 +3391,7 @@ tasks:
 - name: task2
   commands: *common-commands
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, &anchorEntries{})
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 2)
@@ -3419,7 +3419,7 @@ tasks:
       os: linux
       arch: amd64
 `
-	p, err := createIntermediateProject([]byte(yml), false, nil)
+	p, err := createIntermediateProject([]byte(yml), false, &anchorEntries{})
 	require.NoError(t, err)
 	require.NotNil(t, p)
 	require.Len(t, p.Tasks, 1)
@@ -3440,12 +3440,10 @@ func moduleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
 	return &GetProjectOpts{LocalModuleIncludes: includes}
 }
 
-// anchorModuleIncludeOpts is like moduleIncludeOpts but also enables cross-file
-// YAML anchor support, which is required for cross-file alias tests.
+// anchorModuleIncludeOpts returns opts for cross-file anchor tests. Cross-file
+// anchor support is always-on, so this is equivalent to moduleIncludeOpts.
 func anchorModuleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
-	opts := moduleIncludeOpts(includes...)
-	opts.EnableYAMLAnchors = true
-	return opts
+	return moduleIncludeOpts(includes...)
 }
 
 // mainYAMLWithModuleIncludes builds a minimal main YAML that declares one
@@ -3911,4 +3909,119 @@ tasks:
 	assert.Equal(t, "shell.exec", cmd.Command)
 	assert.Equal(t, "./run.sh", cmd.Params["script"])
 	assert.Equal(t, "src", cmd.Params["working_dir"])
+}
+
+// TestAnchorInFunctionsDefinition verifies that anchors defined inside a
+// functions block in the main file can be aliased in an include file.
+func TestAnchorInFunctionsDefinition(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+functions:
+  setup: &setup-cmds
+    command: shell.exec
+    params:
+      script: ./setup.sh
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: use-setup
+  commands:
+  - *setup-cmds
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.Tasks, 1)
+	assert.Equal(t, "use-setup", proj.Tasks[0].Name)
+	require.Len(t, proj.Tasks[0].Commands, 1)
+	assert.Equal(t, "shell.exec", proj.Tasks[0].Commands[0].Command)
+}
+
+// TestAliasInMainReferencingIncludeAnchorShouldError documents that anchors
+// defined in an include file cannot be aliased in the main file, because the
+// main file is parsed before any includes are processed.
+func TestAliasInMainReferencingIncludeAnchorShouldError(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - *from-include
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - &from-include
+    command: shell.exec
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.Error(t, err)
+}
+
+// TestWithinSingleFileNoIncludes confirms that single-file projects with
+// anchors continue to work exactly as before (no regressions from always-on).
+func TestWithinSingleFileNoIncludes(t *testing.T) {
+	yml := `
+tasks:
+- name: base
+  commands:
+  - &cmd
+    command: shell.exec
+    params:
+      script: ./run.sh
+- name: derived
+  commands:
+  - *cmd
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(yml), nil, "proj", proj)
+	require.NoError(t, err)
+
+	byName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		byName[task.Name] = task
+	}
+	require.Contains(t, byName, "derived")
+	require.Len(t, byName["derived"].Commands, 1)
+	assert.Equal(t, "shell.exec", byName["derived"].Commands[0].Command)
+}
+
+// BenchmarkLoadProjectWithCrossFileAnchors measures end-to-end project loading
+// with cross-file anchors across several include files.
+func BenchmarkLoadProjectWithCrossFileAnchors(b *testing.B) {
+	const numIncludes = 10
+	includes := make([]patch.LocalModuleInclude, 0, numIncludes)
+	filenames := make([]string, 0, numIncludes)
+	for i := 0; i < numIncludes; i++ {
+		fn := fmt.Sprintf("inc%d.yml", i)
+		filenames = append(filenames, fn)
+		content := fmt.Sprintf(`
+tasks:
+- name: task-%d
+  commands:
+  - *common-setup
+`, i)
+		includes = append(includes, moduleInclude(fn, content))
+	}
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: setup
+  commands:
+  - &common-setup
+    command: shell.exec
+    params:
+      script: ./setup.sh
+`, filenames...)
+	opts := moduleIncludeOpts(includes...)
+
+	b.ResetTimer()
+	for range b.N {
+		proj := &Project{}
+		_, err := LoadProjectInto(b.Context(), []byte(mainYAML), opts, "proj", proj)
+		require.NoError(b, err)
+	}
 }

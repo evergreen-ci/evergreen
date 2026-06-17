@@ -737,12 +737,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	var anchorRegistry *anchorEntries
+	anchorRegistry := &anchorEntries{}
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
-		if opts.EnableYAMLAnchors {
-			anchorRegistry = &anchorEntries{}
-		}
 	}
 	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, anchorRegistry)
 	if err != nil {
@@ -1147,8 +1144,6 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
-	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
-	EnableYAMLAnchors bool
 }
 
 type PatchOpts struct {
@@ -1387,35 +1382,9 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-// When anchorRegistry is non-nil, cross-file anchor support is enabled: existing anchors are prepended so the
-// parser can resolve cross-file aliases, and any new anchor definitions are appended to the registry for future files.
+// Existing anchors in anchorRegistry are prepended so the parser can resolve cross-file aliases,
+// and any new anchor definitions are appended to the registry for future files.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
-	p := ParserProject{}
-
-	if anchorRegistry == nil {
-		if unmarshalStrict {
-			strictProjectWithVariables := struct {
-				ParserProject       `yaml:"pp,inline"`
-				ProjectConfigFields `yaml:"pc,inline"`
-				// Variables is only used to suppress yaml unmarshalling errors related
-				// to a non-existent variables field.
-				Variables any `yaml:"variables,omitempty" bson:"-"`
-			}{}
-			if err := util.UnmarshalYAMLStrictWithFallback(parseBytes, &strictProjectWithVariables); err != nil {
-				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
-			}
-			p = strictProjectWithVariables.ParserProject
-		} else {
-			if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
-				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
-			}
-		}
-		if p.Functions == nil {
-			p.Functions = map[string]*YAMLCommandSet{}
-		}
-		return &p, nil
-	}
-
 	// Prepend accumulated anchors as a preamble so the parser can resolve cross-file aliases.
 	if len(*anchorRegistry) > 0 {
 		preamble, err := buildAnchorPreamble(anchorRegistry)
