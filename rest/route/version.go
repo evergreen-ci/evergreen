@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -513,4 +515,235 @@ func (h *versionManifestGetHandler) Run(ctx context.Context) gimlet.Responder {
 	apiMfst := &restModel.APIManifest{}
 	apiMfst.BuildFromService(mfst)
 	return gimlet.NewJSONResponse(apiMfst)
+}
+
+// GET /rest/v2/versions/{version_id}/manifest/proof
+
+type versionManifestProofGetHandler struct {
+	versionId string
+}
+
+type versionManifestProofResponse struct {
+	BeforePrevious *versionManifestProofVersion  `json:"before_previous"`
+	Previous       *versionManifestProofSnapshot `json:"previous"`
+	Current        *versionManifestProofSnapshot `json:"current"`
+	Next           *versionManifestProofSnapshot `json:"next"`
+}
+
+type versionManifestProofSnapshot struct {
+	VersionID              string                       `json:"version_id"`
+	Project                string                       `json:"project"`
+	Requester              string                       `json:"requester"`
+	Order                  int                          `json:"order"`
+	CreateTime             time.Time                    `json:"create_time"`
+	IngestTime             time.Time                    `json:"ingest_time"`
+	ProjectRevision        string                       `json:"project_revision"`
+	ProjectRevisionChanged bool                         `json:"project_revision_changed"`
+	HasComparison          bool                         `json:"has_comparison"`
+	ManifestFound          bool                         `json:"manifest_found"`
+	Modules                []versionManifestProofModule `json:"modules"`
+}
+
+type versionManifestProofVersion struct {
+	VersionID       string    `json:"version_id"`
+	Project         string    `json:"project"`
+	Requester       string    `json:"requester"`
+	Order           int       `json:"order"`
+	CreateTime      time.Time `json:"create_time"`
+	IngestTime      time.Time `json:"ingest_time"`
+	ProjectRevision string    `json:"project_revision"`
+}
+
+type versionManifestProofModule struct {
+	Name     *string `json:"name"`
+	Owner    *string `json:"owner"`
+	Repo     *string `json:"repo"`
+	Branch   *string `json:"branch"`
+	Revision *string `json:"revision"`
+	URL      *string `json:"url"`
+	Changed  bool    `json:"changed"`
+}
+
+func makeGetVersionManifestProof() gimlet.RouteHandler {
+	return &versionManifestProofGetHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Fetch version manifest proof by version ID
+//	@Description	Fetches previous/current/next version revisions and module pins for comparing manifest movement.
+//	@Tags			manifests
+//	@Router			/versions/{version_id}/manifest/proof [get]
+//	@Security		Api-User || Api-Key
+//	@Param			version_id	path		string	true	"version ID"
+//	@Success		200			{object}	versionManifestProofResponse
+func (h *versionManifestProofGetHandler) Factory() gimlet.RouteHandler {
+	return &versionManifestProofGetHandler{}
+}
+
+func (h *versionManifestProofGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.versionId = gimlet.GetVars(r)["version_id"]
+	if h.versionId == "" {
+		return errors.New("missing version ID")
+	}
+	return nil
+}
+
+func (h *versionManifestProofGetHandler) Run(ctx context.Context) gimlet.Responder {
+	current, err := dbModel.VersionFindOneId(ctx, h.versionId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
+	}
+	if current == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
+		})
+	}
+
+	previous, err := findPreviousSystemVersion(ctx, current.Identifier, current.RevisionOrderNumber)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding previous version for version '%s'", h.versionId))
+	}
+	var previousPrevious *dbModel.Version
+	if previous != nil {
+		previousPrevious, err = findPreviousSystemVersion(ctx, previous.Identifier, previous.RevisionOrderNumber)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version before previous version '%s'", previous.Id))
+		}
+	}
+	next, err := findNextSystemVersion(ctx, current.Identifier, current.RevisionOrderNumber)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding next version for version '%s'", h.versionId))
+	}
+
+	currentManifest, err := findManifestForProof(ctx, current)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for version '%s'", current.Id))
+	}
+	var previousManifest *manifest.Manifest
+	if previous != nil {
+		previousManifest, err = findManifestForProof(ctx, previous)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for previous version '%s'", previous.Id))
+		}
+	}
+	var previousPreviousManifest *manifest.Manifest
+	if previousPrevious != nil {
+		previousPreviousManifest, err = findManifestForProof(ctx, previousPrevious)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for version before previous version '%s'", previousPrevious.Id))
+		}
+	}
+	var nextManifest *manifest.Manifest
+	if next != nil {
+		nextManifest, err = findManifestForProof(ctx, next)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for next version '%s'", next.Id))
+		}
+	}
+
+	response := &versionManifestProofResponse{
+		BeforePrevious: buildManifestProofVersion(previousPrevious),
+		Current:        buildManifestProofSnapshot(current, currentManifest, previous, previousManifest),
+	}
+	if previous != nil {
+		response.Previous = buildManifestProofSnapshot(previous, previousManifest, previousPrevious, previousPreviousManifest)
+	}
+	if next != nil {
+		response.Next = buildManifestProofSnapshot(next, nextManifest, current, currentManifest)
+	}
+
+	return gimlet.NewJSONResponse(response)
+}
+
+func findPreviousSystemVersion(ctx context.Context, project string, order int) (*dbModel.Version, error) {
+	return findAdjacentSystemVersion(ctx, project, order, "$lt", "-"+dbModel.VersionRevisionOrderNumberKey)
+}
+
+func findNextSystemVersion(ctx context.Context, project string, order int) (*dbModel.Version, error) {
+	return findAdjacentSystemVersion(ctx, project, order, "$gt", dbModel.VersionRevisionOrderNumberKey)
+}
+
+func findAdjacentSystemVersion(ctx context.Context, project string, order int, comparisonOperator, sortKey string) (*dbModel.Version, error) {
+	return dbModel.VersionFindOne(ctx, db.Query(bson.M{
+		dbModel.VersionIdentifierKey: project,
+		dbModel.VersionRevisionOrderNumberKey: bson.M{
+			comparisonOperator: order,
+		},
+		dbModel.VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+	}).Sort([]string{sortKey}).WithoutFields(dbModel.VersionBuildVariantsKey))
+}
+
+func findManifestForProof(ctx context.Context, v *dbModel.Version) (*manifest.Manifest, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
+}
+
+func buildManifestProofVersion(v *dbModel.Version) *versionManifestProofVersion {
+	if v == nil {
+		return nil
+	}
+	return &versionManifestProofVersion{
+		VersionID:       v.Id,
+		Project:         v.Identifier,
+		Requester:       v.Requester,
+		Order:           v.RevisionOrderNumber,
+		CreateTime:      v.CreateTime,
+		IngestTime:      v.IngestTime,
+		ProjectRevision: v.Revision,
+	}
+}
+
+func buildManifestProofSnapshot(v *dbModel.Version, mfst *manifest.Manifest, comparisonVersion *dbModel.Version, comparisonManifest *manifest.Manifest) *versionManifestProofSnapshot {
+	snapshot := &versionManifestProofSnapshot{
+		VersionID:       v.Id,
+		Project:         v.Identifier,
+		Requester:       v.Requester,
+		Order:           v.RevisionOrderNumber,
+		CreateTime:      v.CreateTime,
+		IngestTime:      v.IngestTime,
+		ProjectRevision: v.Revision,
+		HasComparison:   comparisonVersion != nil,
+		ManifestFound:   mfst != nil,
+		Modules:         []versionManifestProofModule{},
+	}
+	if comparisonVersion != nil {
+		snapshot.ProjectRevisionChanged = v.Revision != comparisonVersion.Revision
+	}
+	if mfst == nil {
+		return snapshot
+	}
+
+	moduleNames := make([]string, 0, len(mfst.Modules))
+	for moduleName := range mfst.Modules {
+		moduleNames = append(moduleNames, moduleName)
+	}
+	sort.Strings(moduleNames)
+
+	for _, moduleName := range moduleNames {
+		mfstModule := mfst.Modules[moduleName]
+		if mfstModule == nil {
+			continue
+		}
+		proofModule := versionManifestProofModule{
+			Name:     utility.ToStringPtr(moduleName),
+			Branch:   utility.ToStringPtr(mfstModule.Branch),
+			Repo:     utility.ToStringPtr(mfstModule.Repo),
+			Revision: utility.ToStringPtr(mfstModule.Revision),
+			Owner:    utility.ToStringPtr(mfstModule.Owner),
+			URL:      utility.ToStringPtr(mfstModule.URL),
+		}
+		if comparisonManifest != nil {
+			comparisonModule, ok := comparisonManifest.Modules[moduleName]
+			proofModule.Changed = !ok || comparisonModule == nil || comparisonModule.Revision != mfstModule.Revision
+		}
+		snapshot.Modules = append(snapshot.Modules, proofModule)
+	}
+
+	return snapshot
 }
