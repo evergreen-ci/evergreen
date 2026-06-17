@@ -895,14 +895,16 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	if dbUser.OnlyAPI {
 		isService = true
 	}
-	cfg := evergreen.GetEnvironment().Settings().RateLimit
+	cfg := evergreen.GetEnvironment().Settings().RateLimit // TODO this is apparently bad way to pass down env
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
-	// Skip limiter if rate limits are 0.
+	"""
+	// Skip limiter if rate limits are 0. 
 	if perHour == 0 || burst == 0 {
 		next(rw, r)
 		return
 	}
+	"""
 
 	// Handle elevated users - 2x normal limits (this may change, see DEVPROD-34486)
 	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
@@ -929,10 +931,14 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Interpret response to set headersrs
+	// Interpret Result
+	if !res { // Limiter was intentionally skipped, no headers needed. 
+		next(rw, r)
+		return
+	}
 
 	// Informational headers about the current state of the rate limit
-	rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
+	rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour)) // TODO should there also be a burst header?
 	rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
 	rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", res.ResetAfter))
 

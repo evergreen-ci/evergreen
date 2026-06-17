@@ -14,10 +14,11 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// ComplexityLimit computes the "complexity" of the query given the
-// schema. Based on configured settings, it will either block or warn on
-// queries that exceed the complexity limit, setting approriate response headers
-// via the HTTP response writer stashed in the request context.
+// ComplexityLimit computes the "complexity" of the query given the schema.
+// Based on configured settings, it either rejects an over-limit query by
+// returning a COMPLEXITY_LIMIT_EXCEEDED error on the response (the same way
+// DisableQuery surfaces SERVICE_UNAVAILABLE), or, in warn-only mode, logs the
+// over-limit query and allows it to proceed.
 type ComplexityLimit struct {
 	schema graphql.ExecutableSchema
 }
