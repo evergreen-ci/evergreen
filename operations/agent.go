@@ -147,16 +147,16 @@ func Agent() cli.Command {
 			}
 
 			opts := agent.Options{
-				HostID:                     c.String(agentHostIDFlagName),
-				HostSecret:                 c.String(agentHostSecretFlagName),
-				Mode:                       globals.Mode(c.String(modeFlagName)),
-				StatusPort:                 c.Int(statusPortFlagName),
-				LogPrefix:                  c.String(logPrefixFlagName),
-				LogOutput:                  globals.LogOutputType(c.String(logOutputFlagName)),
-				WorkingDirectory:           c.String(workingDirectoryFlagName),
-				Cleanup:                    c.Bool(cleanupFlagName),
-				CloudProvider:              c.String(agentCloudProviderFlagName),
-				SendTaskLogsToGlobalSender: c.Bool(sendTaskLogsToGlobalSenderFlagName),
+				HostID:                       c.String(agentHostIDFlagName),
+				HostSecret:                   c.String(agentHostSecretFlagName),
+				Mode:                         globals.Mode(c.String(modeFlagName)),
+				StatusPort:                   c.Int(statusPortFlagName),
+				LogPrefix:                    c.String(logPrefixFlagName),
+				LogOutput:                    globals.LogOutputType(c.String(logOutputFlagName)),
+				WorkingDirectory:             c.String(workingDirectoryFlagName),
+				Cleanup:                      c.Bool(cleanupFlagName),
+				CloudProvider:                c.String(agentCloudProviderFlagName),
+				SendTaskLogsToGlobalSender:   c.Bool(sendTaskLogsToGlobalSenderFlagName),
 				SingleTaskDistro:             c.Bool(singleTaskDistroFlagName),
 				ContainerRetainOnFailureSecs: c.Int(containerRetainOnFailureSecsFlagName),
 			}
