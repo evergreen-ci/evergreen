@@ -1460,6 +1460,25 @@ func TestReportS3Usage(t *testing.T) {
 }
 
 func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
+	days90 := 90
+	cfg := &evergreen.BucketsConfig{
+		LogBucket: evergreen.BucketConfig{Name: "log-bucket", ExpirationDays: &days90},
+	}
+	logLookup := func(_ context.Context, bucket, _ string) (int, bool) {
+		return cfg.LogBucketExpirationDays(bucket)
+	}
+
+	t.Run("KnownLogBucketReturnsDays", func(t *testing.T) {
+		days, ok := logLookup(t.Context(), "log-bucket", "")
+		assert.True(t, ok)
+		assert.Equal(t, 90, days)
+	})
+
+	t.Run("UnknownBucketReturnsFalse", func(t *testing.T) {
+		_, ok := logLookup(t.Context(), "artifact-bucket", "")
+		assert.False(t, ok)
+	})
+}
 
 func TestGetDistroView(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *getDistroViewHandler){
@@ -1599,7 +1618,8 @@ func TestGetDistroView(t *testing.T) {
 
 func TestFindExpirationDaysForFileKey(t *testing.T) {
 	enabled := "Enabled"
-	disabled := "Disabled"	days90 := 90
+	disabled := "Disabled"
+	days90 := 90
 	cfg := &evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{Name: "log-bucket", ExpirationDays: &days90},
 	}
