@@ -106,10 +106,14 @@ func FindOneId(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, ById(id))
 }
 
-// FindOneIdOrAlias finds a distro whose ID equals id or whose aliases contain
-// id, returning nil if no such distro exists.
-func FindOneIdOrAlias(ctx context.Context, id string) (*Distro, error) {
-	return FindOne(ctx, ByIdOrAlias(id), options.FindOne().SetProjection(bson.M{IdKey: 1}))
+// HasAnyByIdOrAlias returns whether at least one distro exists whose ID is in
+// ids or whose aliases contain any of ids.
+func HasAnyByIdOrAlias(ctx context.Context, ids []string) (bool, error) {
+	d, err := FindOne(ctx, ByIdsOrAliases(ids), options.FindOne().SetProjection(bson.M{IdKey: 1}))
+	if err != nil {
+		return false, errors.Wrap(err, "finding distro by ID or alias")
+	}
+	return d != nil, nil
 }
 
 func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
@@ -175,11 +179,13 @@ func ById(id string) bson.M {
 	return bson.M{IdKey: id}
 }
 
-func ByIdOrAlias(id string) bson.M {
+// ByIdsOrAliases returns a query that matches any distro whose ID is in ids or
+// whose aliases contain any of ids.
+func ByIdsOrAliases(ids []string) bson.M {
 	return bson.M{
 		"$or": []bson.M{
-			{IdKey: id},
-			{AliasesKey: id},
+			{IdKey: bson.M{"$in": ids}},
+			{AliasesKey: bson.M{"$in": ids}},
 		},
 	}
 }

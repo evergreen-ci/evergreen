@@ -4750,11 +4750,9 @@ func (t *Task) HasValidDistro(ctx context.Context) bool {
 	}
 	// A task's distro may be referenced either by a distro's ID or by one of
 	// its aliases, so both must be considered valid.
-	for _, distroID := range append([]string{t.DistroId}, t.SecondaryDistros...) {
-		d, err := distro.FindOneIdOrAlias(ctx, distroID)
-		if err == nil && d != nil {
-			return true
-		}
+	hasValid, err := distro.HasAnyByIdOrAlias(ctx, append([]string{t.DistroId}, t.SecondaryDistros...))
+	if err != nil {
+		return false
 	}
-	return false
+	return hasValid
 }
