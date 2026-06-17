@@ -514,6 +514,54 @@ buildvariants:
 		assert.Equal(t, command.TeardownTaskBlock, executor.commandBlocks[3].blockType)
 	})
 
+	t.Run("TaskGroupResolvedFromTaskWhenVariantLookupFails", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		yamlFile := filepath.Join(tmpDir, "test.yml")
+		yamlContent := `
+tasks:
+  - name: generated-task
+    commands:
+      - command: subprocess.exec
+        params:
+          command: make test
+pre:
+  - command: shell.exec
+    params:
+      script: echo "pre"
+task_groups:
+  - name: generated-group
+    setup_group:
+      - command: git.get_project
+    teardown_task:
+      - command: attach.xunit_results
+    tasks:
+      - generated-task
+buildvariants:
+  - name: some-variant
+    tasks:
+      - name: generated-task
+`
+		err := os.WriteFile(yamlFile, []byte(yamlContent), 0644)
+		require.NoError(t, err)
+
+		executor, err := NewLocalExecutor(t.Context(), LocalExecutorOptions{})
+		require.NoError(t, err)
+
+		_, err = executor.LoadProject(yamlFile)
+		require.NoError(t, err)
+
+		executor.taskConfig.Task.BuildVariant = "some-variant"
+		executor.taskConfig.Task.TaskGroup = "generated-group"
+
+		err = executor.PrepareTask(t.Context(), "generated-task", "")
+		require.NoError(t, err)
+
+		require.Len(t, executor.commandBlocks, 3)
+		assert.Equal(t, command.SetupGroupBlock, executor.commandBlocks[0].blockType)
+		assert.Equal(t, command.MainTaskBlock, executor.commandBlocks[1].blockType)
+		assert.Equal(t, command.TeardownTaskBlock, executor.commandBlocks[2].blockType)
+	})
+
 	t.Run("TaskGroupValidatesOnVariant", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		yamlFile := filepath.Join(tmpDir, "test.yml")
