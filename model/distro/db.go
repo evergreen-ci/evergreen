@@ -115,6 +115,7 @@ func HasAnyByIdOrAlias(ctx context.Context, ids []string) (bool, error) {
 		return false, errors.Wrap(err, "finding distro by ID or alias")
 	}
 	return d != nil, nil
+}
 // FindOneForDistroView returns a Distro containing only the fields needed by
 // the distro_view agent endpoint (bootstrap settings and exec user). Using a
 // projection avoids deserializing the full document — which can be large for
