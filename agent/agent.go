@@ -758,8 +758,13 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}()
 
 	if err := a.maybeStartContainer(tskCtx, tc.taskConfig, tc.logger.Execution()); err != nil {
-		tc.logger.Execution().Errorf(ctx, "Failed to start isolation container, task will run without isolation: %s", err)
-		// Do not fail the task — degrade gracefully.
+		// maybeStartContainer returns a non-nil error only on the fail-closed path
+		// (require_isolation=true). The fail-open path handles its own degradation
+		// internally and returns nil. Failing the task here enforces the isolation
+		// contract: a distro configured with require_isolation must not silently
+		// run in host mode when the container cannot start.
+		tc.logger.Execution().Errorf(ctx, "Container isolation required but container failed to start; failing task: %s", err)
+		return tc, false, errors.Wrap(err, "starting required isolation container")
 	}
 
 	grip.Info(ctx, message.Fields{
