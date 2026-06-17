@@ -554,6 +554,9 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-cloud-userdata
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-ratelimit
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-scheduler

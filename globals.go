@@ -1567,3 +1567,9 @@ const (
 	RateLimitSurfaceGraphQL    RateLimitSurface = "graphql"
 	RateLimitSurfaceComplexity RateLimitSurface = "complexity"
 )
+
+var ValidRateLimitSurfaces = []RateLimitSurface{
+	RateLimitSurfaceREST,
+	RateLimitSurfaceGraphQL,
+	RateLimitSurfaceComplexity,
+}
