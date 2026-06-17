@@ -1,0 +1,21 @@
+{
+  "versions": [
+    {
+      "_id": "5e4ff3abe3c3317e352062e4",
+      "identifier": "spruce",
+      "author": "Brian Samek",
+      "author_id": "brian.samek",
+      "author_email": "brian.samek@mongodb.com",
+      "status": "failed",
+      "order": 2567,
+      "r": "gitter_request",
+      "requester": "gitter_request"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ]
+}

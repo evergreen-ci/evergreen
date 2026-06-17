@@ -233,6 +233,18 @@
               "url": "http://localhost:9090",
               "corpUrl": ""
             },
+            "rateLimit": {
+              "elevatedUserIds": ["user1", "user2"],
+              "graphqlComplexityLimit": 1000,
+              "graphqlServiceBurst": 40,
+              "graphqlServicePerHour": 400,
+              "graphqlUserBurst": 30,
+              "graphqlUserPerHour": 300,
+              "restServiceBurst": 20,
+              "restServicePerHour": 200,
+              "restUserBurst": 10,
+              "restUserPerHour": 100
+            },
             "ui": {
               "url": "http://localhost:9090",
               "uiv2Url": "http://localhost:3000",
@@ -607,6 +619,8 @@
               },
               { "name": "ps_logging_disabled", "enabled": false },
               { "name": "pod_diagnostics_disabled", "enabled": false },
+              { "name": "webhook_secret_migration_enabled", "enabled": false },
+              { "name": "webhook_secret_cleanup_enabled", "enabled": false },
               { "name": "event_processing_disabled", "enabled": false },
               { "name": "jira_notifications_disabled", "enabled": false },
               { "name": "slack_notifications_disabled", "enabled": false },

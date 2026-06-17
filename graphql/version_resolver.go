@@ -551,6 +551,11 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 	return apiUser, nil
 }
 
+// UserLite is the resolver for the userLite field.
+func (r *versionResolver) UserLite(ctx context.Context, obj *restModel.APIVersion) (*user.DBUser, error) {
+	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
+}
+
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	versionID := utility.FromStringPtr(obj.Id)
@@ -665,6 +670,11 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 	return nil, nil
 }
 
+// IsPatch is the resolver for the isPatch field.
+func (r *versionLiteResolver) IsPatch(ctx context.Context, obj *model.Version) (bool, error) {
+	return evergreen.IsPatchRequester(obj.Requester), nil
+}
+
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
 	projectRef, err := model.FindMergedProjectRefSecondary(ctx, obj.Identifier, obj.Id, false)
@@ -690,44 +700,7 @@ func (r *versionLiteResolver) TaskStatusStats(ctx context.Context, obj *model.Ve
 
 // User is the resolver for the user field.
 func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
-	// id, displayName, and emailAddress are always returned from the version document.
-	// Other fields require a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	needsDBFetch := false
-	for _, field := range requestedFields {
-		if field != "id" && field != "displayName" && field != "emailAddress" {
-			needsDBFetch = true
-			break
-		}
-	}
-
-	if !needsDBFetch {
-		return &user.DBUser{
-			Id:           obj.AuthorID,
-			DispName:     obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	currentUser := mustHaveUser(ctx)
-	if currentUser.Id == obj.AuthorID {
-		return currentUser, nil
-	}
-
-	dbUser, err := loaders.GetUser(ctx, obj.AuthorID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", obj.AuthorID, err.Error()), err)
-	}
-	// This is most likely a service user, so just return their info from version
-	if dbUser == nil {
-		return &user.DBUser{
-			Id:           obj.AuthorID,
-			DispName:     obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	return dbUser, nil
+	return getVersionAuthorDBUser(ctx, obj.AuthorID, obj.Author, obj.AuthorEmail)
 }
 
 // Version returns VersionResolver implementation.

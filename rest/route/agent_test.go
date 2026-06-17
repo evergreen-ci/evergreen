@@ -1459,57 +1459,23 @@ func TestReportS3Usage(t *testing.T) {
 	}
 }
 
-func TestFindExpirationDaysForFileKey(t *testing.T) {
-	enabled := "Enabled"
-	disabled := "Disabled"
+func TestLogLookupClosureUsesAdminBucketsConfig(t *testing.T) {
 	days90 := 90
-	days30 := 30
+	cfg := &evergreen.BucketsConfig{
+		LogBucket: evergreen.BucketConfig{Name: "log-bucket", ExpirationDays: &days90},
+	}
+	logLookup := func(_ context.Context, bucket, _ string) (int, bool) {
+		return cfg.LogBucketExpirationDays(bucket)
+	}
 
-	t.Run("NoRulesShouldReturnNotFound", func(t *testing.T) {
-		_, ok := findExpirationDaysForFileKey(nil, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("NoMatchingPrefixShouldReturnNotFound", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "sandbox/", RuleStatus: enabled, ExpirationDays: &days90},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("MatchingPrefixShouldReturnDays", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
-		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+	t.Run("KnownLogBucketReturnsDays", func(t *testing.T) {
+		days, ok := logLookup(t.Context(), "log-bucket", "")
 		assert.True(t, ok)
 		assert.Equal(t, 90, days)
 	})
 
-	t.Run("MostSpecificPrefixShouldWin", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: &days90},
-			{FilterPrefix: "logs/build/", RuleStatus: enabled, ExpirationDays: &days30},
-		}
-		days, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.True(t, ok)
-		assert.Equal(t, 30, days)
-	})
-
-	t.Run("DisabledRuleShouldBeIgnored", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: disabled, ExpirationDays: &days90},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
-		assert.False(t, ok)
-	})
-
-	t.Run("NilExpirationDaysShouldReturnNotFound", func(t *testing.T) {
-		rules := []s3lifecycle.S3LifecycleRuleDoc{
-			{FilterPrefix: "logs/", RuleStatus: enabled, ExpirationDays: nil},
-		}
-		_, ok := findExpirationDaysForFileKey(rules, "logs/build/output.txt")
+	t.Run("UnknownBucketReturnsFalse", func(t *testing.T) {
+		_, ok := logLookup(t.Context(), "artifact-bucket", "")
 		assert.False(t, ok)
 	})
 }

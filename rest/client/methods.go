@@ -1437,15 +1437,12 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 	return result, nil
 }
 
-func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID, requester string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
+func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, projectID string, requesters []string, startAtOrderNum, limit int) ([]model.APIVersion, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("projects/%s/versions", projectID),
 	}
 	queryParams := []string{}
-	if requester != "" {
-		queryParams = append(queryParams, fmt.Sprintf("requester=%s", requester))
-	}
 	if startAtOrderNum > 0 {
 		queryParams = append(queryParams, fmt.Sprintf("start=%d", startAtOrderNum))
 	}
@@ -1456,7 +1453,10 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 		info.path = info.path + "?" + strings.Join(queryParams, "&")
 	}
 
-	resp, err := c.request(ctx, info, nil)
+	body := struct {
+		Requesters []string `json:"requesters"`
+	}{Requesters: requesters}
+	resp, err := c.request(ctx, info, body)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get versions for project '%s'", projectID)
 	}
@@ -1729,22 +1729,25 @@ func (c *communicatorImpl) GetManifestForVersion(ctx context.Context, versionID 
 		path:   fmt.Sprintf("versions/%s/manifest", versionID),
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	// Manifests are optional for versions that don't use modules, so the route
+	// returns 404 when the version has no manifest (or doesn't exist). retryRequest
+	// surfaces non-2xx responses as an error, so the 404 must be checked before err
+	// to avoid treating a missing manifest as a failure.
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get version manifest")
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode == http.StatusForbidden {
 		return nil, util.RespError(resp, VPNError)
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		// Manifests are optional for versions that don't use modules, so the
-		// route can return 404 if the version does not exist or if the version
-		// has no manifest.
-		return nil, nil
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "getting version manifest")

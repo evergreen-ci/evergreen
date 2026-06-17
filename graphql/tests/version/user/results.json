@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "query_file": "user.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "userLite": {
+              "id": "brian.samek",
+              "displayName": "Brian Samek",
+              "emailAddress": "brian.samek@mongodb.com"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

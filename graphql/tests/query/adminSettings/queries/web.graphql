@@ -6,6 +6,19 @@ query Web {
       corpUrl
     }
 
+    rateLimit {
+      elevatedUserIds
+      graphqlComplexityLimit
+      graphqlServiceBurst
+      graphqlServicePerHour
+      graphqlUserBurst
+      graphqlUserPerHour
+      restServiceBurst
+      restServicePerHour
+      restUserBurst
+      restUserPerHour
+    }
+
     ui {
       url
       uiv2Url

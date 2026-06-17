@@ -1719,6 +1719,12 @@ func PostCommentToPullRequest(ctx context.Context, owner, repo string, prNum int
 	if resp != nil && resp.StatusCode != http.StatusCreated || respComment == nil || respComment.ID == nil {
 		return errors.New("unexpected data from GitHub")
 	}
+	grip.Info(ctx, message.Fields{
+		"message": "posted PR comment",
+		"owner":   owner,
+		"repo":    repo,
+		"pr_num":  prNum,
+	})
 	return nil
 }
 

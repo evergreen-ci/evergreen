@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,5 +104,24 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			So(len(data.Modules), ShouldEqual, 2)
 			So(data.Project, ShouldEqual, testData.Build.Id)
 		})
+	})
+}
+
+func TestValidatePatchConfigPath(t *testing.T) {
+	t.Run("ValidPathsSucceed", func(t *testing.T) {
+		assert.NoError(t, validatePatchConfigPath("config/evergreen.yml"))
+	})
+	t.Run("AbsolutePathRejected", func(t *testing.T) {
+		assert.Error(t, validatePatchConfigPath("/etc/passwd"))
+	})
+	t.Run("DirectoryTraversalRejected", func(t *testing.T) {
+		assert.Error(t, validatePatchConfigPath("../etc/passwd"))
+	})
+	t.Run("ShellMetacharactersRejected", func(t *testing.T) {
+		assert.Error(t, validatePatchConfigPath("$(touch /tmp/pwned)"))
+		assert.Error(t, validatePatchConfigPath("config;rm -rf /"))
+		assert.Error(t, validatePatchConfigPath("path`whoami`"))
+		assert.Error(t, validatePatchConfigPath("a&b"))
+		assert.Error(t, validatePatchConfigPath("file\nmalicious"))
 	})
 }

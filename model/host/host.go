@@ -2789,7 +2789,7 @@ func (hosts HostGroup) ProvisioningHosts() HostGroup {
 	out := HostGroup{}
 
 	for _, h := range hosts {
-		if utility.StringSliceContains(evergreen.ProvisioningHostStatus, h.Status) {
+		if utility.StringSliceContains(evergreen.ProvisioningHostStatus, h.Status) && h.RunningTask == "" {
 			out = append(out, h)
 		}
 	}
@@ -3182,6 +3182,56 @@ func CountDebugSpawnhosts(ctx context.Context) (int, error) {
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		IsDebugKey:  true,
 	})
+}
+
+type spawnHostProjectCount struct {
+	Project string `bson:"project" json:"project"`
+	Count   int    `bson:"count" json:"count"`
+}
+
+// AggregateSpawnhostCountByProject returns the count of active spawn hosts
+// grouped by the project of the task they were created from.
+func AggregateSpawnhostCountByProject(ctx context.Context) ([]spawnHostProjectCount, error) {
+	const taskResult = "task_result"
+	taskIdKey := bsonutil.GetDottedKeyName(ProvisionOptionsKey, ProvisionOptionsTaskIdKey)
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			UserHostKey: true,
+			StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+			taskIdKey:   bson.M{"$exists": true, "$ne": ""},
+		}},
+		{"$lookup": bson.M{
+			"from":         task.Collection,
+			"localField":   taskIdKey,
+			"foreignField": task.IdKey,
+			"as":           taskResult,
+		}},
+		{"$unwind": bson.M{
+			"path":                       "$" + taskResult,
+			"preserveNullAndEmptyArrays": false,
+		}},
+		{"$group": bson.M{
+			"_id":   "$" + bsonutil.GetDottedKeyName(taskResult, task.ProjectKey),
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$project": bson.M{
+			"_id":     0,
+			"project": "$_id",
+			"count":   "$count",
+		}},
+		{"$sort": bson.M{"count": -1}},
+	}
+
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating spawn host counts by project")
+	}
+	var results []spawnHostProjectCount
+	if err = cur.All(ctx, &results); err != nil {
+		return nil, errors.Wrap(err, "decoding spawn host counts by project")
+	}
+
+	return results, nil
 }
 
 // CountSpawnhostsWithNoExpirationByUser returns a count of all hosts associated

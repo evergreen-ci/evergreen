@@ -383,3 +383,21 @@ func UpdateSyncError(ctx context.Context, bucketName, filterPrefix, syncError st
 		bucketName, filterPrefix,
 	)
 }
+
+// BuildPailRulesByBucket converts a slice of S3LifecycleRuleDocs into a map of bucket name
+// to pail.LifecycleRule, converting the type once at setup rather than on every per-file lookup.
+func BuildPailRulesByBucket(rules []S3LifecycleRuleDoc) map[string][]pail.LifecycleRule {
+	byBucket := map[string][]pail.LifecycleRule{}
+	for _, rule := range rules {
+		var expDays *int32
+		if rule.ExpirationDays != nil {
+			expDays = utility.ToInt32Ptr(int32(*rule.ExpirationDays))
+		}
+		byBucket[rule.BucketName] = append(byBucket[rule.BucketName], pail.LifecycleRule{
+			Prefix:         rule.FilterPrefix,
+			Status:         rule.RuleStatus,
+			ExpirationDays: expDays,
+		})
+	}
+	return byBucket
+}

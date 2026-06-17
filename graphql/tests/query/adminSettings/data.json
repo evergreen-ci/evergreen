@@ -251,6 +251,19 @@
       "http_listen_addr": ""
     },
     {
+      "_id": "rate_limit",
+      "rest_user_per_hour": 100,
+      "rest_user_burst": 10,
+      "rest_service_per_hour": 200,
+      "rest_service_burst": 20,
+      "graphql_user_per_hour": 300,
+      "graphql_user_burst": 30,
+      "graphql_service_per_hour": 400,
+      "graphql_service_burst": 40,
+      "graphql_complexity_limit": 1000,
+      "elevated_user_ids": ["user1", "user2"]
+    },
+    {
       "_id": "ui",
       "default_project": "evergreen",
       "url": "http://localhost:9090",
