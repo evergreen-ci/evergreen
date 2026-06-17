@@ -27,6 +27,26 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
+// ContainerHandle is the interface through which the agent manages an active
+// task isolation container. Using an interface lets unit tests inject a fake
+// without requiring a live Docker daemon.
+type ContainerHandle interface {
+	GetID() string
+	GetName() string
+	GetEnvFileHostDir() string
+	Close()
+	Destroy(ctx context.Context) error
+}
+
+// containerFactory creates and starts a new isolation container. The default
+// implementation calls agentcontainer.CreateAndStart; tests replace it with a
+// stub that returns a fake ContainerHandle without Docker.
+type containerFactoryFunc func(ctx context.Context, cfg agentcontainer.Config) (ContainerHandle, error)
+
+func defaultContainerFactory(ctx context.Context, cfg agentcontainer.Config) (ContainerHandle, error) {
+	return agentcontainer.CreateAndStart(ctx, cfg)
+}
+
 // tryReapOrphanContainers removes any evergreen-task-* containers left behind
 // by a prior agent crash or host reboot. Called once at agent startup when
 // the --cleanup flag is set, before any tasks are dispatched. Best-effort:
@@ -120,8 +140,8 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 
 	if a.currentContainer != nil {
 		// Reuse the container that was started for the first task in this group.
-		conf.ContainerID = a.currentContainer.ID
-		conf.EnvFileHostDir = a.currentContainer.EnvFileHostDir
+		conf.ContainerID = a.currentContainer.GetID()
+		conf.EnvFileHostDir = a.currentContainer.GetEnvFileHostDir()
 		return nil
 	}
 
@@ -134,7 +154,11 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		attribute.String("container.distro_id", conf.Task.DistroId),
 	)
 
-	tc, err := agentcontainer.CreateAndStart(ctx, agentcontainer.Config{
+	factory := a.containerFactory
+	if factory == nil {
+		factory = defaultContainerFactory
+	}
+	tc, err := factory(ctx, agentcontainer.Config{
 		Image:    ci.Image,
 		WorkDir:  conf.WorkDir,
 		TaskID:   conf.Task.Id,
@@ -147,22 +171,24 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		if ci.RequireIsolation {
 			return errors.Wrap(err, "starting isolation container (fail-closed: require_isolation is set)")
 		}
-		log.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "container_isolation_degraded",
-			"task_id": conf.Task.Id,
-			"image":   ci.Image,
-			"note":    "task will run without container isolation",
-		}))
+		if log != nil {
+			log.Warning(ctx, message.WrapError(err, message.Fields{
+				"message": "container_isolation_degraded",
+				"task_id": conf.Task.Id,
+				"image":   ci.Image,
+				"note":    "task will run without container isolation",
+			}))
+		}
 		return nil
 	}
 	span.SetAttributes(
-		attribute.String("container.id", tc.ID),
-		attribute.String("container.name", tc.Name),
+		attribute.String("container.id", tc.GetID()),
+		attribute.String("container.name", tc.GetName()),
 	)
-	conf.ContainerID = tc.ID
-	conf.EnvFileHostDir = tc.EnvFileHostDir
+	conf.ContainerID = tc.GetID()
+	conf.EnvFileHostDir = tc.GetEnvFileHostDir()
 	a.currentContainer = tc
-	grip.Infof(ctx, "Started isolation container '%s' (image=%s) for task group starting with task '%s'.", tc.Name, ci.Image, conf.Task.Id)
+	grip.Infof(ctx, "Started isolation container '%s' (image=%s) for task group starting with task '%s'.", tc.GetName(), ci.Image, conf.Task.Id)
 	return nil
 }
 
@@ -182,12 +208,12 @@ func (a *Agent) destroyContainer(ctx context.Context, conf *internal.TaskConfig)
 		a.retainContainerUntil = time.Time{}
 		return
 	}
-	containerName := a.currentContainer.Name
+	containerName := a.currentContainer.GetName()
 
 	ctx, span := a.tracer.Start(ctx, "container.destroy")
 	defer span.End()
 	span.SetAttributes(
-		attribute.String("container.id", a.currentContainer.ID),
+		attribute.String("container.id", a.currentContainer.GetID()),
 		attribute.String("container.name", containerName),
 	)
 
@@ -284,7 +310,7 @@ func (a *Agent) emitContainerFailureSnapshot(ctx context.Context, tc *taskContex
 	if a.currentContainer == nil || tc == nil {
 		return
 	}
-	containerID := a.currentContainer.ID
+	containerID := a.currentContainer.GetID()
 	image := ""
 	if tc.taskConfig != nil && tc.taskConfig.Distro != nil && tc.taskConfig.Distro.ContainerIsolation != nil {
 		image = tc.taskConfig.Distro.ContainerIsolation.Image
@@ -404,16 +430,16 @@ func (a *Agent) augmentOOMTrackerWithContainerSignal(ctx context.Context, tc *ta
 	if a.currentContainer == nil {
 		return
 	}
-	oomKilled, err := checkContainerOOM(ctx, a.currentContainer.ID)
+	oomKilled, err := checkContainerOOM(ctx, a.currentContainer.GetID())
 	if err != nil {
 		tc.logger.Execution().Warningf(ctx, "Could not check container OOM status via docker inspect: %s", err)
 		return
 	}
 	if !oomKilled {
-		tc.logger.Execution().Debugf(ctx, "docker inspect: container '%s' OOMKilled=false.", a.currentContainer.Name)
+		tc.logger.Execution().Debugf(ctx, "docker inspect: container '%s' OOMKilled=false.", a.currentContainer.GetName())
 		return
 	}
-	tc.logger.Execution().Infof(ctx, "docker inspect: container '%s' OOMKilled=true; task was OOM-killed.", a.currentContainer.Name)
+	tc.logger.Execution().Infof(ctx, "docker inspect: container '%s' OOMKilled=true; task was OOM-killed.", a.currentContainer.GetName())
 	if detail.OOMTracker == nil {
 		detail.OOMTracker = &apimodels.OOMTrackerInfo{}
 	}

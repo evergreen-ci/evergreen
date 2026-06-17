@@ -118,6 +118,15 @@ type TaskContainer struct {
 	cli            *client.Client
 }
 
+// GetID returns the Docker container ID.
+func (tc *TaskContainer) GetID() string { return tc.ID }
+
+// GetName returns the human-readable container name.
+func (tc *TaskContainer) GetName() string { return tc.Name }
+
+// GetEnvFileHostDir returns the host-side tmpfs directory path.
+func (tc *TaskContainer) GetEnvFileHostDir() string { return tc.EnvFileHostDir }
+
 // envHostDir returns the host-side tmpfs directory path for the given task ID.
 func envHostDir(taskID string) string {
 	return filepath.Join(activeEnvFileBaseDir, taskID)
