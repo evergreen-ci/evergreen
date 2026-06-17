@@ -52,7 +52,7 @@ type TaskLimitsConfig struct {
 	// MaxDailyAutomaticRestarts is the maximum number of times a project can automatically restart a task within a 24-hour period.
 	MaxDailyAutomaticRestarts int `bson:"max_daily_automatic_restarts" json:"max_daily_automatic_restarts" yaml:"max_daily_automatic_restarts"`
 
-	// MaxScheduledTasksPerDistro caps tasks materialized into a distro's queue doc per pass. 0 = no limit.
+	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
 	MaxScheduledTasksPerDistro int `bson:"max_scheduled_tasks_per_distro" json:"max_scheduled_tasks_per_distro" yaml:"max_scheduled_tasks_per_distro"`
 }
 

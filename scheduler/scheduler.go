@@ -20,7 +20,7 @@ type TaskPlannerOptions struct {
 	IsSecondaryQueue           bool
 	IncludesDependencies       bool
 	StartedAt                  time.Time
-	MaxScheduledTasksPerDistro int // from the TaskLimits admin setting; 0 means no cap
+	MaxScheduledTasksPerDistro int
 }
 
 type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
