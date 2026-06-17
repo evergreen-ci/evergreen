@@ -767,6 +767,22 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 	return &apiUser, nil
 }
 
+// UserLite is the resolver for the userLite field.
+func (r *queryResolver) UserLite(ctx context.Context, userID *string) (*user.DBUser, error) {
+	usr := mustHaveUser(ctx)
+	if userID != nil {
+		dbUser, err := user.FindOneById(ctx, utility.FromStringPtr(userID))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
+		}
+		if dbUser == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", utility.FromStringPtr(userID)))
+		}
+		return dbUser, nil
+	}
+	return usr, nil
+}
+
 // UserConfig is the resolver for the userConfig field.
 func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	usr := mustHaveUser(ctx)

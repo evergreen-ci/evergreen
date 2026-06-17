@@ -24,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -1464,18 +1465,31 @@ func buildOptionsFromParentArgs(ctx context.Context, fc *graphql.FieldContext) (
 		opts.Requesters = []string{evergreen.GithubMergeRequester}
 	}
 
-	// Get the parent object to determine if this is a project or user query
-	// The parent.Parent should be either Project or User resolver
+	// Get the parent object to determine if this is a project or user query.
+	// The parent.Parent should be a Project, User, or UserLite resolver.
 	if fc.Parent.Parent != nil {
 		switch grandparent := fc.Parent.Parent.Result.(type) {
 		case *restModel.APIProjectRef:
 			opts.Project = grandparent.Id
 		case *restModel.APIDBUser:
 			opts.Author = grandparent.UserID
+		case *user.DBUser:
+			opts.Author = utility.ToStringPtr(grandparent.Id)
 		}
 	}
 
 	return opts, nil
+}
+
+// apiParsleyFiltersToService converts a list of APIParsleyFilters into the
+// service-layer parsley.Filter type used by the GraphQL ParsleyFilter type.
+func apiParsleyFiltersToService(filters []restModel.APIParsleyFilter) []*parsley.Filter {
+	res := make([]*parsley.Filter, 0, len(filters))
+	for _, f := range filters {
+		serviceFilter := f.ToService()
+		res = append(res, &serviceFilter)
+	}
+	return res
 }
 
 // getPrevTask finds a mainline task's previous run that matches the given statuses.
