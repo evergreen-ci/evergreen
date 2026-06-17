@@ -1785,8 +1785,6 @@ func TestGetDistroView(t *testing.T) {
 }
 
 func TestFindExpirationDaysForFileKey(t *testing.T) {
-	enabled := "Enabled"
-	disabled := "Disabled"
 	days90 := 90
 	cfg := &evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{Name: "log-bucket", ExpirationDays: &days90},
