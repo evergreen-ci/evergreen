@@ -15,7 +15,7 @@ func MountPointsForDistro(d *distro.Distro, region string) ([]ec2mount.MountPoin
 	if d == nil {
 		return nil, nil
 	}
-	if d.Provider != evergreen.ProviderNameEc2OnDemand && d.Provider != evergreen.ProviderNameEc2Fleet {
+	if !evergreen.IsEc2Provider(d.Provider) {
 		return nil, nil
 	}
 	if len(d.ProviderSettingsList) == 0 {
