@@ -2490,12 +2490,7 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 
 	if len(opts.Statuses) > 0 {
 		// A display task should be included when its own display status matches the
-		// filter or when any of its execution tasks matches, so that filtering by a
-		// subtask status (e.g. a single aborted execution task under an otherwise
-		// successful display task) still surfaces the display task. The matching
-		// subtasks are trimmed by the executionTasksFull resolver when the display
-		// task is expanded. The join is on the execution task IDs so it uses the _id
-		// index and only the display status is pulled back.
+		// filter or when any of its execution tasks matches.
 		const executionTaskStatusesKey = "execution_task_statuses"
 		pipeline = append(pipeline, bson.M{
 			"$lookup": bson.M{
