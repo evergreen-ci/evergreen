@@ -44,6 +44,14 @@ input TaskPriority {
   priority: Int!
 }
 
+"""
+ExecutionTasksFilterOptions is an input for the task.executionTasksFull field.
+It's used to filter a display task's execution tasks.
+"""
+input ExecutionTasksFilterOptions {
+  statuses: [String!] = []
+}
+
 ###### TYPES ######
 """
 Task models a task, the simplest unit of execution for Evergreen.
@@ -91,7 +99,7 @@ type Task {
   execution: Int!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
-  executionTasksFull: [Task!]
+  executionTasksFull(options: ExecutionTasksFilterOptions): [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
   files: TaskFiles!
