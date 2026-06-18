@@ -22,7 +22,6 @@ type CreateOptions struct {
 
 	HasContainers         bool
 	ParentID              string
-	ContainerPoolSettings *evergreen.ContainerPool
 	SpawnOptions          SpawnOptions
 	DockerOptions         DockerOptions
 	InstanceTags          []Tag
@@ -62,7 +61,6 @@ func NewIntent(options CreateOptions) *Host {
 		UserHost:              options.UserHost,
 		HasContainers:         options.HasContainers,
 		ParentID:              options.ParentID,
-		ContainerPoolSettings: options.ContainerPoolSettings,
 		SpawnOptions:          options.SpawnOptions,
 		DockerOptions:         options.DockerOptions,
 		InstanceTags:          options.InstanceTags,
@@ -87,7 +85,6 @@ func (h *Host) GetCreateOptions() CreateOptions {
 		UserHost:              h.UserHost,
 		HasContainers:         h.HasContainers,
 		ParentID:              h.ParentID,
-		ContainerPoolSettings: h.ContainerPoolSettings,
 		SpawnOptions:          h.SpawnOptions,
 		DockerOptions:         h.DockerOptions,
 		InstanceTags:          h.InstanceTags,
@@ -101,26 +98,3 @@ func (h *Host) GetCreateOptions() CreateOptions {
 	}
 }
 
-// partitionParents will split parent hosts based on those that already have/will have the image for this distro
-// it does not handle scenarios where the image for a distro has changed recently or multiple app servers calling this
-// and racing each other, on the assumption that having to download a small number of extra images is not a big deal
-func partitionParents(parents []ContainersOnParents, distro string, maxImages int) ([]ContainersOnParents, []ContainersOnParents) {
-	matched := []ContainersOnParents{}
-	notMatched := []ContainersOnParents{}
-parentLoop:
-	for _, parent := range parents {
-		currentImages := map[string]bool{}
-		for _, c := range parent.Containers {
-			currentImages[c.Distro.Id] = true
-			if c.Distro.Id == distro {
-				matched = append(matched, parent)
-				continue parentLoop
-			}
-		}
-		// only return parent hosts that would be below the max if they downloaded another image
-		if len(currentImages) < maxImages {
-			notMatched = append(notMatched, parent)
-		}
-	}
-	return matched, notMatched
-}

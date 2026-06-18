@@ -54,7 +54,6 @@ type Config struct {
 type ResolverRoot interface {
 	AdminSettings() AdminSettingsResolver
 	Annotation() AnnotationResolver
-	ContainerPool() ContainerPoolResolver
 	Cost() CostResolver
 	Distro() DistroResolver
 	Host() HostResolver
@@ -87,7 +86,6 @@ type ResolverRoot interface {
 	VersionLite() VersionLiteResolver
 	Volume() VolumeResolver
 	AdminSettingsInput() AdminSettingsInputResolver
-	ContainerPoolInput() ContainerPoolInputResolver
 	DistroInput() DistroInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	JiraNotificationsConfigInput() JiraNotificationsConfigInputResolver
@@ -174,7 +172,6 @@ type ComplexityRoot struct {
 		Buckets                 func(childComplexity int) int
 		Cedar                   func(childComplexity int) int
 		ConfigDir               func(childComplexity int) int
-		ContainerPools          func(childComplexity int) int
 		Cost                    func(childComplexity int) int
 		DebugSpawnHosts         func(childComplexity int) int
 		Diagnostics             func(childComplexity int) int
@@ -401,17 +398,6 @@ type ComplexityRoot struct {
 		Message     func(childComplexity int) int
 	}
 
-	ContainerPool struct {
-		Distro        func(childComplexity int) int
-		Id            func(childComplexity int) int
-		MaxContainers func(childComplexity int) int
-		Port          func(childComplexity int) int
-	}
-
-	ContainerPoolsConfig struct {
-		Pools func(childComplexity int) int
-	}
-
 	Cost struct {
 		AdjustedEBSStorageCost        func(childComplexity int) int
 		AdjustedEBSThroughputCost     func(childComplexity int) int
@@ -473,7 +459,6 @@ type ComplexityRoot struct {
 		AuthorizedKeysFile    func(childComplexity int) int
 		AvailableRegions      func(childComplexity int) int
 		BootstrapSettings     func(childComplexity int) int
-		ContainerPool         func(childComplexity int) int
 		CostData              func(childComplexity int) int
 		DisableShallowClone   func(childComplexity int) int
 		Disabled              func(childComplexity int) int
@@ -1831,7 +1816,6 @@ type ComplexityRoot struct {
 	SpruceConfig struct {
 		Banner           func(childComplexity int) int
 		BannerTheme      func(childComplexity int) int
-		ContainerPools   func(childComplexity int) int
 		GithubOrgs       func(childComplexity int) int
 		Jira             func(childComplexity int) int
 		Providers        func(childComplexity int) int
@@ -2496,9 +2480,6 @@ type AdminSettingsResolver interface {
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
-type ContainerPoolResolver interface {
-	Port(ctx context.Context, obj *model.APIContainerPool) (int, error)
-}
 type CostResolver interface {
 	Total(ctx context.Context, obj *cost.Cost) (*float64, error)
 }
@@ -2908,9 +2889,6 @@ type VolumeResolver interface {
 type AdminSettingsInputResolver interface {
 	BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error
 }
-type ContainerPoolInputResolver interface {
-	Port(ctx context.Context, obj *model.APIContainerPool, data int) error
-}
 type DistroInputResolver interface {
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]any) error
 }
@@ -3208,12 +3186,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminSettings.ConfigDir(childComplexity), true
-	case "AdminSettings.containerPools":
-		if e.complexity.AdminSettings.ContainerPools == nil {
-			break
-		}
-
-		return e.complexity.AdminSettings.ContainerPools(childComplexity), true
 	case "AdminSettings.cost":
 		if e.complexity.AdminSettings.Cost == nil {
 			break
@@ -4168,38 +4140,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CommitQueueParams.Message(childComplexity), true
 
-	case "ContainerPool.distro":
-		if e.complexity.ContainerPool.Distro == nil {
-			break
-		}
-
-		return e.complexity.ContainerPool.Distro(childComplexity), true
-	case "ContainerPool.id":
-		if e.complexity.ContainerPool.Id == nil {
-			break
-		}
-
-		return e.complexity.ContainerPool.Id(childComplexity), true
-	case "ContainerPool.maxContainers":
-		if e.complexity.ContainerPool.MaxContainers == nil {
-			break
-		}
-
-		return e.complexity.ContainerPool.MaxContainers(childComplexity), true
-	case "ContainerPool.port":
-		if e.complexity.ContainerPool.Port == nil {
-			break
-		}
-
-		return e.complexity.ContainerPool.Port(childComplexity), true
-
-	case "ContainerPoolsConfig.pools":
-		if e.complexity.ContainerPoolsConfig.Pools == nil {
-			break
-		}
-
-		return e.complexity.ContainerPoolsConfig.Pools(childComplexity), true
-
 	case "Cost.adjustedEBSStorageCost":
 		if e.complexity.Cost.AdjustedEBSStorageCost == nil {
 			break
@@ -4407,12 +4347,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Distro.BootstrapSettings(childComplexity), true
-	case "Distro.containerPool":
-		if e.complexity.Distro.ContainerPool == nil {
-			break
-		}
-
-		return e.complexity.Distro.ContainerPool(childComplexity), true
 	case "Distro.costData":
 		if e.complexity.Distro.CostData == nil {
 			break
@@ -10480,12 +10414,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SpruceConfig.BannerTheme(childComplexity), true
-	case "SpruceConfig.containerPools":
-		if e.complexity.SpruceConfig.ContainerPools == nil {
-			break
-		}
-
-		return e.complexity.SpruceConfig.ContainerPools(childComplexity), true
 	case "SpruceConfig.githubOrgs":
 		if e.complexity.SpruceConfig.GithubOrgs == nil {
 			break
@@ -13387,8 +13315,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCedarConfigInput,
 		ec.unmarshalInputCloudProviderConfigInput,
 		ec.unmarshalInputCommitQueueParamsInput,
-		ec.unmarshalInputContainerPoolInput,
-		ec.unmarshalInputContainerPoolsConfigInput,
 		ec.unmarshalInputCopyDistroInput,
 		ec.unmarshalInputCopyProjectInput,
 		ec.unmarshalInputCostConfigInput,
@@ -19032,39 +18958,6 @@ func (ec *executionContext) fieldContext_AdminSettings_configDir(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _AdminSettings_containerPools(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AdminSettings_containerPools,
-		func(ctx context.Context) (any, error) {
-			return obj.ContainerPools, nil
-		},
-		nil,
-		ec.marshalOContainerPoolsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AdminSettings_containerPools(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AdminSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "pools":
-				return ec.fieldContext_ContainerPoolsConfig_pools(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ContainerPoolsConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _AdminSettings_cost(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24450,161 +24343,6 @@ func (ec *executionContext) fieldContext_CommitQueueParams_message(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _ContainerPool_id(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ContainerPool_id,
-		func(ctx context.Context) (any, error) {
-			return obj.Id, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ContainerPool_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ContainerPool",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ContainerPool_distro(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ContainerPool_distro,
-		func(ctx context.Context) (any, error) {
-			return obj.Distro, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ContainerPool_distro(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ContainerPool",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ContainerPool_maxContainers(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ContainerPool_maxContainers,
-		func(ctx context.Context) (any, error) {
-			return obj.MaxContainers, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ContainerPool_maxContainers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ContainerPool",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ContainerPool_port(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPool) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ContainerPool_port,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.ContainerPool().Port(ctx, obj)
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ContainerPool_port(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ContainerPool",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ContainerPoolsConfig_pools(ctx context.Context, field graphql.CollectedField, obj *model.APIContainerPoolsConfig) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ContainerPoolsConfig_pools,
-		func(ctx context.Context) (any, error) {
-			return obj.Pools, nil
-		},
-		nil,
-		ec.marshalNContainerPool2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_ContainerPoolsConfig_pools(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ContainerPoolsConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_ContainerPool_id(ctx, field)
-			case "distro":
-				return ec.fieldContext_ContainerPool_distro(ctx, field)
-			case "maxContainers":
-				return ec.fieldContext_ContainerPool_maxContainers(ctx, field)
-			case "port":
-				return ec.fieldContext_ContainerPool_port(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ContainerPool", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Cost_total(ctx context.Context, field graphql.CollectedField, obj *cost.Cost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25591,35 +25329,6 @@ func (ec *executionContext) fieldContext_Distro_bootstrapSettings(_ context.Cont
 				return ec.fieldContext_BootstrapSettings_shellPath(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BootstrapSettings", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Distro_containerPool(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Distro_containerPool,
-		func(ctx context.Context) (any, error) {
-			return obj.ContainerPool, nil
-		},
-		nil,
-		ec.marshalNString2ᚖstring,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Distro_containerPool(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Distro",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -32754,8 +32463,6 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "containerPool":
-				return ec.fieldContext_Distro_containerPool(ctx, field)
 			case "disabled":
 				return ec.fieldContext_Distro_disabled(ctx, field)
 			case "disableShallowClone":
@@ -37219,8 +36926,6 @@ func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.
 				return ec.fieldContext_AdminSettings_cedar(ctx, field)
 			case "configDir":
 				return ec.fieldContext_AdminSettings_configDir(ctx, field)
-			case "containerPools":
-				return ec.fieldContext_AdminSettings_containerPools(ctx, field)
 			case "cost":
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
 			case "debugSpawnHosts":
@@ -52720,8 +52425,6 @@ func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, 
 				return ec.fieldContext_AdminSettings_cedar(ctx, field)
 			case "configDir":
 				return ec.fieldContext_AdminSettings_configDir(ctx, field)
-			case "containerPools":
-				return ec.fieldContext_AdminSettings_containerPools(ctx, field)
 			case "cost":
 				return ec.fieldContext_AdminSettings_cost(ctx, field)
 			case "debugSpawnHosts":
@@ -52998,8 +52701,6 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_banner(ctx, field)
 			case "bannerTheme":
 				return ec.fieldContext_SpruceConfig_bannerTheme(ctx, field)
-			case "containerPools":
-				return ec.fieldContext_SpruceConfig_containerPools(ctx, field)
 			case "githubOrgs":
 				return ec.fieldContext_SpruceConfig_githubOrgs(ctx, field)
 			case "jira":
@@ -53091,8 +52792,6 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "containerPool":
-				return ec.fieldContext_Distro_containerPool(ctx, field)
 			case "disabled":
 				return ec.fieldContext_Distro_disabled(ctx, field)
 			case "disableShallowClone":
@@ -53255,8 +52954,6 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "containerPool":
-				return ec.fieldContext_Distro_containerPool(ctx, field)
 			case "disabled":
 				return ec.fieldContext_Distro_disabled(ctx, field)
 			case "disableShallowClone":
@@ -59313,8 +59010,6 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_availableRegions(ctx, field)
 			case "bootstrapSettings":
 				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "containerPool":
-				return ec.fieldContext_Distro_containerPool(ctx, field)
 			case "disabled":
 				return ec.fieldContext_Distro_disabled(ctx, field)
 			case "disableShallowClone":
@@ -61272,39 +60967,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_bannerTheme(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SpruceConfig_containerPools(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SpruceConfig_containerPools,
-		func(ctx context.Context) (any, error) {
-			return obj.ContainerPools, nil
-		},
-		nil,
-		ec.marshalOContainerPoolsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_SpruceConfig_containerPools(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SpruceConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "pools":
-				return ec.fieldContext_ContainerPoolsConfig_pools(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ContainerPoolsConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -81736,7 +81398,7 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "containerPools", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
+	fieldsInOrder := [...]string{"amboy", "amboyDB", "api", "authConfig", "oktaServiceConfig", "banner", "bannerTheme", "buckets", "cedar", "configDir", "cost", "debugSpawnHosts", "diagnostics", "disabledGQLQueries", "domainName", "expansions", "fws", "graphite", "githubCheckRun", "githubOrgs", "githubPRCreatorOrg", "githubWebhookSecret", "hostInit", "hostJasper", "jira", "jiraNotifications", "logPath", "loggerConfig", "notify", "oldestAllowedCLIVersion", "parameterStore", "perfMonitoringKanopyURL", "perfMonitoringURL", "pprofPort", "projectCreation", "providers", "rateLimit", "releaseMode", "repotracker", "runtimeEnvironments", "scheduler", "shutdownWaitSeconds", "singleTaskDistro", "slack", "sleepSchedule", "spawnhost", "splunk", "ssh", "taskLimits", "testSelection", "tracer", "triggers", "ui", "sage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81834,13 +81496,6 @@ func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.ConfigDir = data
-		case "containerPools":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerPools"))
-			data, err := ec.unmarshalOContainerPoolsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ContainerPools = data
 		case "cost":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cost"))
 			data, err := ec.unmarshalOCostConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICostConfig(ctx, v)
@@ -83242,83 +82897,6 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputContainerPoolInput(ctx context.Context, obj any) (model.APIContainerPool, error) {
-	var it model.APIContainerPool
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"id", "distro", "maxContainers", "port"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "id":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Id = data
-		case "distro":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("distro"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Distro = data
-		case "maxContainers":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxContainers"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MaxContainers = data
-		case "port":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("port"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			if err = ec.resolvers.ContainerPoolInput().Port(ctx, &it, data); err != nil {
-				return it, err
-			}
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputContainerPoolsConfigInput(ctx context.Context, obj any) (model.APIContainerPoolsConfig, error) {
-	var it model.APIContainerPoolsConfig
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"pools"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "pools":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pools"))
-			data, err := ec.unmarshalNContainerPoolInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Pools = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputCopyDistroInput(ctx context.Context, obj any) (model.CopyDistroOpts, error) {
 	var it model.CopyDistroOpts
 	asMap := map[string]any{}
@@ -84027,7 +83605,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "taskHostOverrides", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "costData", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "taskHostOverrides", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84069,13 +83647,6 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 				return it, err
 			}
 			it.BootstrapSettings = data
-		case "containerPool":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("containerPool"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ContainerPool = data
 		case "disabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disabled"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -93233,8 +92804,6 @@ func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._AdminSettings_cedar(ctx, field, obj)
 		case "configDir":
 			out.Values[i] = ec._AdminSettings_configDir(ctx, field, obj)
-		case "containerPools":
-			out.Values[i] = ec._AdminSettings_containerPools(ctx, field, obj)
 		case "cost":
 			out.Values[i] = ec._AdminSettings_cost(ctx, field, obj)
 		case "debugSpawnHosts":
@@ -94521,130 +94090,6 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var containerPoolImplementors = []string{"ContainerPool"}
-
-func (ec *executionContext) _ContainerPool(ctx context.Context, sel ast.SelectionSet, obj *model.APIContainerPool) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, containerPoolImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ContainerPool")
-		case "id":
-			out.Values[i] = ec._ContainerPool_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "distro":
-			out.Values[i] = ec._ContainerPool_distro(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "maxContainers":
-			out.Values[i] = ec._ContainerPool_maxContainers(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "port":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._ContainerPool_port(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var containerPoolsConfigImplementors = []string{"ContainerPoolsConfig"}
-
-func (ec *executionContext) _ContainerPoolsConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APIContainerPoolsConfig) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, containerPoolsConfigImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ContainerPoolsConfig")
-		case "pools":
-			out.Values[i] = ec._ContainerPoolsConfig_pools(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var costImplementors = []string{"Cost"}
 
 func (ec *executionContext) _Cost(ctx context.Context, sel ast.SelectionSet, obj *cost.Cost) graphql.Marshaler {
@@ -95129,11 +94574,6 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "bootstrapSettings":
 			out.Values[i] = ec._Distro_bootstrapSettings(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "containerPool":
-			out.Values[i] = ec._Distro_containerPool(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -106843,8 +106283,6 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_banner(ctx, field, obj)
 		case "bannerTheme":
 			out.Values[i] = ec._SpruceConfig_bannerTheme(ctx, field, obj)
-		case "containerPools":
-			out.Values[i] = ec._SpruceConfig_containerPools(ctx, field, obj)
 		case "githubOrgs":
 			out.Values[i] = ec._SpruceConfig_githubOrgs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -114847,74 +114285,6 @@ var (
 	}
 )
 
-func (ec *executionContext) marshalNContainerPool2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx context.Context, sel ast.SelectionSet, v model.APIContainerPool) graphql.Marshaler {
-	return ec._ContainerPool(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNContainerPool2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIContainerPool) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNContainerPool2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalNContainerPoolInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx context.Context, v any) (model.APIContainerPool, error) {
-	res, err := ec.unmarshalInputContainerPoolInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNContainerPoolInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolᚄ(ctx context.Context, v any) ([]model.APIContainerPool, error) {
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]model.APIContainerPool, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNContainerPoolInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPool(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
 func (ec *executionContext) unmarshalNCopyDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐCopyDistroOpts(ctx context.Context, v any) (model.CopyDistroOpts, error) {
 	res, err := ec.unmarshalInputCopyDistroInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -121067,21 +120437,6 @@ func (ec *executionContext) unmarshalOCloudProviderConfigInput2ᚖgithubᚗcom�
 func (ec *executionContext) unmarshalOCommitQueueParamsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, v any) (model.APICommitQueueParams, error) {
 	res, err := ec.unmarshalInputCommitQueueParamsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOContainerPoolsConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIContainerPoolsConfig) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ContainerPoolsConfig(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOContainerPoolsConfigInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIContainerPoolsConfig(ctx context.Context, v any) (*model.APIContainerPoolsConfig, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputContainerPoolsConfigInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOCost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋcostᚐCost(ctx context.Context, sel ast.SelectionSet, v cost.Cost) graphql.Marshaler {

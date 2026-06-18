@@ -223,54 +223,6 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 	return jobs, catcher.Resolve()
 }
 
-func lastContainerFinishTimeJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	return []amboy.Job{NewLastContainerFinishTimeJob(ts.Format(TSFormat))}, nil
-}
-
-func parentDecommissionJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting admin settings")
-	}
-	containerPools := settings.ContainerPools.Pools
-
-	// Create a ParentDecommissionJob for each distro.
-	var jobs []amboy.Job
-	for _, c := range containerPools {
-		jobs = append(jobs, NewParentDecommissionJob(ts.Format(TSFormat), c.Distro, c.MaxContainers))
-	}
-
-	return jobs, nil
-}
-
-func containerStateJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	parents, err := host.FindAllRunningParents(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding parent hosts")
-	}
-
-	var jobs []amboy.Job
-	// Create a job to check container state consistency for each parent.
-	for _, p := range parents {
-		jobs = append(jobs, NewHostMonitorContainerStateJob(&p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
-	}
-	return jobs, nil
-}
-
-func oldestImageRemovalJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	parents, err := host.FindAllRunningParents(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding all parent hosts")
-	}
-
-	var jobs []amboy.Job
-	// Create an oldestImageJob when images take up too much disk space.
-	for _, p := range parents {
-		jobs = append(jobs, NewOldestImageRemovalJob(&p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
-	}
-	return jobs, nil
-}
-
 func hostAllocatorJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
@@ -287,7 +239,7 @@ func hostAllocatorJobs(ctx context.Context, env evergreen.Environment, ts time.T
 	}
 
 	// find all active distros
-	distros, err := distro.Find(ctx, distro.ByNeedsHostsPlanning(config.ContainerPools.Pools))
+	distros, err := distro.Find(ctx, distro.ByNeedsHostsPlanning())
 	if err != nil {
 		return nil, errors.Wrap(err, "finding distros that need planning")
 	}
@@ -316,16 +268,13 @@ func schedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) (
 	}
 
 	// find all active distros
-	distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
+	distros, err := distro.Find(ctx, distro.ByNeedsPlanning())
 	if err != nil {
 		return nil, errors.Wrap(err, "finding distros that need planning")
 	}
 
 	jobs := make([]amboy.Job, 0, len(distros))
 	for _, d := range distros {
-		if d.IsParent(config) {
-			continue
-		}
 		jobs = append(jobs, NewDistroSchedulerJob(d.Id, ts.Format(TSFormat)))
 	}
 	return jobs, nil
@@ -347,16 +296,13 @@ func aliasSchedulerJobs(ctx context.Context, _ evergreen.Environment, ts time.Ti
 	}
 
 	// find all active distros
-	distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
+	distros, err := distro.Find(ctx, distro.ByNeedsPlanning())
 	if err != nil {
 		return nil, errors.Wrap(err, "finding distros that need planning")
 	}
 
 	jobs := make([]amboy.Job, 0, len(distros))
 	for _, d := range distros {
-		if d.IsParent(config) {
-			continue
-		}
 		jobs = append(jobs, NewDistroAliasSchedulerJob(d.Id, ts.Format(TSFormat)))
 	}
 
@@ -396,22 +342,17 @@ func PopulateCheckUnmarkedBlockedTasks() amboy.QueueOperation {
 			return nil
 		}
 
-		config, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "getting admin settings")
-		}
-
 		catcher := grip.NewBasicCatcher()
 		// find all active distros
-		distros, err := distro.Find(ctx, distro.ByNeedsPlanning(config.ContainerPools.Pools))
+		distros, err := distro.Find(ctx, distro.ByNeedsPlanning())
 		catcher.Wrap(err, "getting distros that need planning")
 
 		ts := utility.RoundPartOfMinute(0)
 		for _, d := range distros {
 			catcher.Wrapf(queue.Put(ctx, NewCheckBlockedTasksJob(d.Id, ts)), "enqueueing check blocked tasks job for distro '%s'", d.Id)
 		}
-		// Passing an empty string as the distro id will enqueue a job for all container tasks
-		catcher.Wrap(queue.Put(ctx, NewCheckBlockedTasksJob("", ts)), "enqueueing check blocked tasks job for container tasks")
+		// Passing an empty string as the distro id will enqueue a job for all tasks not belonging to a specific distro.
+		catcher.Wrap(queue.Put(ctx, NewCheckBlockedTasksJob("", ts)), "enqueueing check blocked tasks job for tasks without a distro")
 		return catcher.Resolve()
 	}
 }
@@ -576,7 +517,7 @@ func hostCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Ti
 
 	var jobs []amboy.Job
 	for _, h := range hosts {
-		jobs = append(jobs, NewHostCreateJob(env, h, ts.Format(TSFormat), false))
+		jobs = append(jobs, NewHostCreateJob(env, h, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }

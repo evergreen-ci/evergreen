@@ -30,7 +30,6 @@ func NewConfigSections() ConfigSections {
 		&BucketsConfig{},
 		&CedarConfig{},
 		&CloudProviders{},
-		&ContainerPoolsConfig{},
 		&CostConfig{},
 		&DebugSpawnHostsConfig{},
 		&DiagnosticsConfig{},

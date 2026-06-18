@@ -106,12 +106,6 @@ var (
 	diagnosticsS3BucketNameKey = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3BucketName")
 	diagnosticsS3PrefixKey     = bsonutil.MustHaveTag(DiagnosticsConfig{}, "S3Prefix")
 
-	// ContainerPoolsConfig keys
-	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
-
-	// ContainerPool keys
-	ContainerPoolIdKey = bsonutil.MustHaveTag(ContainerPool{}, "Id")
-
 	hostInitHostThrottleKey         = bsonutil.MustHaveTag(HostInitConfig{}, "HostThrottle")
 	hostInitProvisioningThrottleKey = bsonutil.MustHaveTag(HostInitConfig{}, "ProvisioningThrottle")
 	hostInitCloudStatusBatchSizeKey = bsonutil.MustHaveTag(HostInitConfig{}, "CloudStatusBatchSize")

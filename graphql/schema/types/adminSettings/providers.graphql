@@ -58,28 +58,6 @@ type CloudProviderConfig {
   docker: DockerConfig
 }
 
-input ContainerPoolInput {
-  id: String!
-  distro: String!
-  maxContainers: Int!
-  port: Int!
-}
-
-type ContainerPool {
-  id: String!
-  distro: String!
-  maxContainers: Int!
-  port: Int!
-}
-
-input ContainerPoolsConfigInput {
-  pools: [ContainerPoolInput!]!
-}
-
-type ContainerPoolsConfig {
-  pools: [ContainerPool!]!
-}
-
 input DockerConfigInput {
   apiVersion: String
 }

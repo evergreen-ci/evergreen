@@ -104,17 +104,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
-	s.NoError(db.Clear(distro.Collection))
-	d1 := &distro.Distro{
-		Id: "valid-distro",
-	}
-	d2 := &distro.Distro{
-		Id:            "invalid-distro",
-		ContainerPool: "test-pool-1",
-	}
-	s.NoError(d1.Insert(ctx))
-	s.NoError(d2.Insert(ctx))
-
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
 	s.NoError(err)
@@ -181,9 +170,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Buckets.Credentials.Key, settings.Buckets.Credentials.Key)
 	s.EqualValues(testSettings.Buckets.Credentials.Secret, settings.Buckets.Credentials.Secret)
 	s.EqualValues(testSettings.Buckets.Credentials.Bucket, settings.Buckets.Credentials.Bucket)
-	s.EqualValues(testSettings.ContainerPools.Pools[0].Distro, settings.ContainerPools.Pools[0].Distro)
-	s.EqualValues(testSettings.ContainerPools.Pools[0].Id, settings.ContainerPools.Pools[0].Id)
-	s.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, settings.ContainerPools.Pools[0].MaxContainers)
 	s.EqualValues(testSettings.FWS.URL, settings.FWS.URL)
 	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
@@ -246,35 +232,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "config directory must not be empty")
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "CSRF key must be 32 characters long")
 
-	// test that invalid container pools errors
-	badSettingsTwo := testutil.MockConfig()
-	badSettingsTwo.ContainerPools.Pools = []evergreen.ContainerPool{
-		{
-			Distro:        "valid-distro",
-			Id:            "test-pool-1",
-			MaxContainers: 100,
-		},
-		{
-			Distro:        "invalid-distro",
-			Id:            "test-pool-2",
-			MaxContainers: 100,
-		},
-		{
-			Distro:        "missing-distro",
-			Id:            "test-pool-3",
-			MaxContainers: 100,
-		},
-	}
-	jsonBody, err = json.Marshal(badSettingsTwo)
-	s.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest(http.MethodPost, "/admin", buffer)
-	s.NoError(err)
-	s.NoError(s.postHandler.Parse(ctx, request))
-	resp = s.postHandler.Run(ctx)
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "distro not found for container pool 'test-pool-3'")
-	s.NotNil(resp)
 }
 
 func (s *AdminRouteSuite) TestRevertRoute() {

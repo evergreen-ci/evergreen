@@ -22,7 +22,6 @@ func NewConfigModel() *APIAdminSettings {
 		OktaServiceConfig:   &APIOktaServiceConfig{},
 		Buckets:             &APIBucketsConfig{},
 		Cedar:               &APICedarConfig{},
-		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
 		Cost:                &APICostConfig{},
 		Diagnostics:         &APIDiagnosticsConfig{},
@@ -74,7 +73,6 @@ type APIAdminSettings struct {
 	Buckets                 *APIBucketsConfig             `json:"buckets,omitempty"`
 	Cedar                   *APICedarConfig               `json:"cedar,omitempty"`
 	ConfigDir               *string                       `json:"configdir,omitempty"`
-	ContainerPools          *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
 	DebugSpawnHosts         *APIDebugSpawnHostsConfig     `json:"debug_spawn_hosts,omitempty"`
 	Diagnostics             *APIDiagnosticsConfig         `json:"diagnostics,omitempty"`
 	DomainName              *string                       `json:"domain_name,omitempty"`
@@ -224,11 +222,6 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting splunk config to API model")
 		}
 		as.Splunk = &splunkConfig
-		containerPoolsConfig := APIContainerPoolsConfig{}
-		if err = containerPoolsConfig.BuildFromService(v.ContainerPools); err != nil {
-			return errors.Wrap(err, "converting container pools config to API model")
-		}
-		as.ContainerPools = &containerPoolsConfig
 		singleTaskDistroConfig := APISingleTaskDistroConfig{}
 		if err = singleTaskDistroConfig.BuildFromService(v.SingleTaskDistro); err != nil {
 			return errors.Wrap(err, "converting single task distro config to API model")
@@ -1553,71 +1546,6 @@ func (a *APICloudProviders) ToService() (any, error) {
 	}
 
 	return config, nil
-}
-
-type APIContainerPoolsConfig struct {
-	Pools []APIContainerPool `json:"pools"`
-}
-
-func (a *APIContainerPoolsConfig) BuildFromService(h any) error {
-	switch v := h.(type) {
-	case evergreen.ContainerPoolsConfig:
-		for _, pool := range v.Pools {
-			apiPool := APIContainerPool{}
-			if err := apiPool.BuildFromService(pool); err != nil {
-				return err
-			}
-			a.Pools = append(a.Pools, apiPool)
-		}
-	default:
-		return errors.Errorf("programmatic error: expected container pools config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIContainerPoolsConfig) ToService() (any, error) {
-	if a == nil {
-		return nil, nil
-	}
-	config := evergreen.ContainerPoolsConfig{}
-	for _, p := range a.Pools {
-		i, err := p.ToService()
-		if err != nil {
-			return nil, err
-		}
-		pool := i.(evergreen.ContainerPool)
-		config.Pools = append(config.Pools, pool)
-	}
-	return config, nil
-}
-
-type APIContainerPool struct {
-	Distro        *string `json:"distro"`
-	Id            *string `json:"id"`
-	MaxContainers int     `json:"max_containers"`
-	Port          uint16  `json:"port"`
-}
-
-func (a *APIContainerPool) BuildFromService(h any) error {
-	switch v := h.(type) {
-	case evergreen.ContainerPool:
-		a.Distro = utility.ToStringPtr(v.Distro)
-		a.Id = utility.ToStringPtr(v.Id)
-		a.MaxContainers = v.MaxContainers
-		a.Port = v.Port
-	default:
-		return errors.Errorf("programmatic error: expected container pool config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APIContainerPool) ToService() (any, error) {
-	return evergreen.ContainerPool{
-		Distro:        utility.FromStringPtr(a.Distro),
-		Id:            utility.FromStringPtr(a.Id),
-		MaxContainers: a.MaxContainers,
-		Port:          a.Port,
-	}, nil
 }
 
 type APIEC2Key struct {

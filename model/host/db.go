@@ -94,7 +94,6 @@ var (
 	ContainerBuildAttemptKey               = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
 	LastContainerFinishTimeKey             = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey                        = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
-	ContainerPoolSettingsKey               = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
 	InstanceTagsKey                        = bsonutil.MustHaveTag(Host{}, "InstanceTags")
 	SSHKeyNamesKey                         = bsonutil.MustHaveTag(Host{}, "SSHKeyNames")
 	SSHPortKey                             = bsonutil.MustHaveTag(Host{}, "SSHPort")

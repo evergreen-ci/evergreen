@@ -75,7 +75,6 @@ type Settings struct {
 	Buckets             BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
 	ConfigDir           string                  `yaml:"configdir" bson:"configdir" json:"configdir"`
-	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
 	DebugSpawnHosts     DebugSpawnHostsConfig   `yaml:"debug_spawn_hosts" bson:"debug_spawn_hosts" json:"debug_spawn_hosts" id:"debug_spawn_hosts"`
 	Diagnostics         DiagnosticsConfig       `yaml:"diagnostics" bson:"diagnostics" json:"diagnostics" id:"diagnostics"`

@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -107,11 +106,6 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if err = newSettings.Validate(); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "new settings are invalid"))
-	}
-
-	err = distro.ValidateContainerPoolDistros(ctx, newSettings)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "container pool distros are invalid"))
 	}
 
 	_, err = data.SetEvergreenSettings(ctx, h.model, oldSettings, u, true)

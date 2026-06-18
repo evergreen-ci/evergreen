@@ -447,61 +447,6 @@ func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
 	assert.Nil(ensureHasNonZeroID(ctx, &distro.Distro{Id: "distro"}, conf))
 }
 
-func TestEnsureValidContainerPool(t *testing.T) {
-	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert.NoError(db.Clear(distro.Collection))
-
-	conf := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				{
-					Distro: "d4",
-					Id:     "test-pool-valid",
-				},
-				{
-					Distro: "d1",
-					Id:     "test-pool-invalid",
-				},
-			},
-		},
-	}
-
-	d1 := &distro.Distro{
-		Id:            "d1",
-		ContainerPool: "test-pool-valid",
-	}
-	d2 := &distro.Distro{
-		Id:            "d2",
-		ContainerPool: "test-pool-invalid",
-	}
-	d3 := &distro.Distro{
-		Id:            "d3",
-		ContainerPool: "test-pool-missing",
-	}
-	d4 := &distro.Distro{
-		Id: "d4",
-	}
-	assert.NoError(d1.Insert(ctx))
-	assert.NoError(d2.Insert(ctx))
-	assert.NoError(d3.Insert(ctx))
-	assert.NoError(d4.Insert(ctx))
-
-	err := ensureValidContainerPool(ctx, d1, conf)
-	assert.Equal(ValidationErrors{{Error,
-		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}}, err)
-	err = ensureValidContainerPool(ctx, d2, conf)
-	assert.Equal(ValidationErrors{{Error,
-		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}}, err)
-	err = ensureValidContainerPool(ctx, d3, conf)
-	assert.Equal(ValidationErrors{{Error,
-		"distro container pool does not exist"}}, err)
-	err = ensureValidContainerPool(ctx, d4, conf)
-	assert.Nil(err)
-}
-
 func nonLegacyBootstrapSettings() distro.BootstrapSettings {
 	return distro.BootstrapSettings{
 		ClientDir:             "/client_dir",
@@ -700,45 +645,39 @@ func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
 
 func TestValidateAliases(t *testing.T) {
 	assert.NotNil(t, validateAliases(&distro.Distro{
-		Id:            "distro",
-		Provider:      evergreen.ProviderNameDocker,
-		ContainerPool: "",
-		Aliases:       []string{"alias_1", "alias_2"},
+		Id:       "distro",
+		Provider: evergreen.ProviderNameDocker,
+		Aliases:  []string{"alias_1", "alias_2"},
 	}, []string{}, []string{}))
 
 	assert.NotNil(t, validateAliases(&distro.Distro{
-		Id:            "distro",
-		Provider:      evergreen.ProviderNameStatic,
-		ContainerPool: "container_pool",
-		Aliases:       []string{"alias_1", "alias_2"},
+		Id:       "distro",
+		Provider: evergreen.ProviderNameStatic,
+		Aliases:  []string{"alias_1", "alias_2"},
 	}, []string{}, []string{}))
 
 	assert.NotNil(t, validateAliases(&distro.Distro{
-		Id:            "distro",
-		Provider:      evergreen.ProviderNameStatic,
-		ContainerPool: "container_pool",
-		Aliases:       []string{},
+		Id:       "distro",
+		Provider: evergreen.ProviderNameStatic,
+		Aliases:  []string{},
 	}, []string{"distro"}, []string{}))
 
 	assert.NotNil(t, validateAliases(&distro.Distro{
-		Id:            "distro",
-		Provider:      evergreen.ProviderNameStatic,
-		ContainerPool: "",
-		Aliases:       []string{"distro"},
+		Id:       "distro",
+		Provider: evergreen.ProviderNameStatic,
+		Aliases:  []string{"distro"},
 	}, []string{}, []string{}))
 
 	assert.Nil(t, validateAliases(&distro.Distro{
-		Id:            "distro",
-		Provider:      evergreen.ProviderNameDocker,
-		ContainerPool: "container_pool",
-		Aliases:       []string{},
+		Id:       "distro",
+		Provider: evergreen.ProviderNameDocker,
+		Aliases:  []string{},
 	}, []string{"something_else"}, []string{}))
 
 	assert.Nil(t, validateAliases(&distro.Distro{
-		Id:            "distro",
-		Provider:      evergreen.ProviderNameStatic,
-		ContainerPool: "",
-		Aliases:       []string{"alias_1", "alias_2"},
+		Id:       "distro",
+		Provider: evergreen.ProviderNameStatic,
+		Aliases:  []string{"alias_1", "alias_2"},
 	}, []string{}, []string{}))
 }
 

@@ -45,7 +45,6 @@ type Distro struct {
 	SpawnAllowed          bool                  `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
 	Expansions            []Expansion           `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled              bool                  `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
-	ContainerPool         string                `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 	FinderSettings        FinderSettings        `bson:"finder_settings" json:"finder_settings" mapstructure:"finder_settings"`
 	PlannerSettings       PlannerSettings       `bson:"planner_settings" json:"planner_settings" mapstructure:"planner_settings"`
 	DispatcherSettings    DispatcherSettings    `bson:"dispatcher_settings" json:"dispatcher_settings" mapstructure:"dispatcher_settings"`
@@ -511,16 +510,6 @@ func (d *Distro) GetAuthorizedKeysFile() string {
 	return d.AuthorizedKeysFile
 }
 
-// IsParent returns whether the distro is the parent distro for any container pool
-func (d *Distro) IsParent(s *evergreen.Settings) bool {
-	for _, p := range s.ContainerPools.Pools {
-		if d.Id == p.Distro {
-			return true
-		}
-	}
-	return false
-}
-
 // GetImageID returns the distro provider's image.
 func (d *Distro) GetImageID() (string, error) {
 	key := ""
@@ -528,8 +517,6 @@ func (d *Distro) GetImageID() (string, error) {
 	switch d.Provider {
 	case evergreen.ProviderNameEc2Fleet:
 		key = "ami"
-	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
-		key = "image_url"
 	case evergreen.ProviderNameMock, evergreen.ProviderNameStatic:
 		return "", nil
 	default:
@@ -560,25 +547,6 @@ func (d *Distro) GetPoolSize() int {
 	default:
 		return d.HostAllocatorSettings.MaximumHosts
 	}
-}
-
-// ValidateContainerPoolDistros ensures that container pools have valid distros
-func ValidateContainerPoolDistros(ctx context.Context, s *evergreen.Settings) error {
-	catcher := grip.NewSimpleCatcher()
-
-	for _, pool := range s.ContainerPools.Pools {
-		d, err := FindOneId(ctx, pool.Distro)
-		if err != nil {
-			catcher.Add(fmt.Errorf("error finding distro for container pool '%s'", pool.Id))
-		}
-		if d == nil {
-			catcher.Errorf("distro not found for container pool '%s'", pool.Id)
-		}
-		if d != nil && d.ContainerPool != "" {
-			catcher.Add(fmt.Errorf("container pool '%s' has invalid distro '%s'", pool.Id, d.Id))
-		}
-	}
-	return errors.WithStack(catcher.Resolve())
 }
 
 // ValidateArch checks that the architecture is one of the supported

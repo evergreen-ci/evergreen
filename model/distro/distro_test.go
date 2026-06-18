@@ -85,47 +85,6 @@ func TestGenerateName(t *testing.T) {
 	assert.True(match)
 }
 
-func TestIsParent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	assert.NoError(db.Clear(Collection))
-	assert.NoError(db.Clear(evergreen.ConfigCollection))
-
-	conf := evergreen.ContainerPoolsConfig{
-		Pools: []evergreen.ContainerPool{
-			{
-				Distro:        "distro-1",
-				Id:            "test-pool",
-				MaxContainers: 100,
-			},
-		},
-	}
-	assert.NoError(conf.Set(ctx))
-
-	settings, err := evergreen.GetConfig(ctx)
-	assert.NoError(err)
-
-	d1 := &Distro{
-		Id: "distro-1",
-	}
-	d2 := &Distro{
-		Id: "distro-2",
-	}
-	d3 := &Distro{
-		Id:            "distro-3",
-		ContainerPool: "test-pool",
-	}
-	assert.NoError(d1.Insert(ctx))
-	assert.NoError(d2.Insert(ctx))
-	assert.NoError(d3.Insert(ctx))
-
-	assert.True(d1.IsParent(settings))
-	assert.False(d2.IsParent(settings))
-	assert.False(d3.IsParent(settings))
-}
-
 func TestGetDefaultAMI(t *testing.T) {
 	d := Distro{
 		Id: "d1",
@@ -143,51 +102,6 @@ func TestGetDefaultAMI(t *testing.T) {
 		birch.EC.String("region", evergreen.DefaultEC2Region),
 	))
 	assert.Equal(t, "ami-5678", d.GetDefaultAMI())
-}
-
-func TestValidateContainerPoolDistros(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	assert.NoError(db.Clear(Collection))
-
-	d1 := &Distro{
-		Id: "valid-distro",
-	}
-	d2 := &Distro{
-		Id:            "invalid-distro",
-		ContainerPool: "test-pool-1",
-	}
-	assert.NoError(d1.Insert(ctx))
-	assert.NoError(d2.Insert(ctx))
-
-	testSettings := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				{
-					Distro:        "valid-distro",
-					Id:            "test-pool-1",
-					MaxContainers: 100,
-				},
-				{
-					Distro:        "invalid-distro",
-					Id:            "test-pool-2",
-					MaxContainers: 100,
-				},
-				{
-					Distro:        "missing-distro",
-					Id:            "test-pool-3",
-					MaxContainers: 100,
-				},
-			},
-		},
-	}
-
-	err := ValidateContainerPoolDistros(ctx, testSettings)
-	require.NotNil(t, err)
-	assert.Contains(err.Error(), "container pool 'test-pool-2' has invalid distro 'invalid-distro'")
-	assert.Contains(err.Error(), "distro not found for container pool 'test-pool-3'")
 }
 
 func TestGetImageID(t *testing.T) {

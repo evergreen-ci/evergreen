@@ -373,7 +373,6 @@ type APIDistro struct {
 	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
 	Expansions            []APIExpansion           `json:"expansions"`
 	Disabled              bool                     `json:"disabled"`
-	ContainerPool         *string                  `json:"container_pool"`
 	FinderSettings        APIFinderSettings        `json:"finder_settings"`
 	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
 	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
@@ -411,7 +410,6 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.SSHOptions = d.SSHOptions
 	apiDistro.AuthorizedKeysFile = utility.ToStringPtr(d.AuthorizedKeysFile)
 	apiDistro.Disabled = d.Disabled
-	apiDistro.ContainerPool = utility.ToStringPtr(d.ContainerPool)
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.Note = utility.ToStringPtr(d.Note)
 	apiDistro.WarningNote = utility.ToStringPtr(d.WarningNote)
@@ -495,7 +493,6 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 		d.Expansions = append(d.Expansions, e.ToService())
 	}
 	d.Disabled = apiDistro.Disabled
-	d.ContainerPool = utility.FromStringPtr(apiDistro.ContainerPool)
 	d.ImageID = utility.FromStringPtr(apiDistro.ImageID)
 	d.ExecUser = utility.FromStringPtr(apiDistro.ExecUser)
 

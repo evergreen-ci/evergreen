@@ -48,12 +48,8 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	ops := map[string]cronJobFactory{
 		"host ready":                 hostReadyJob,
 		"background stats":           backgroundStatsJobs,
-		"container state":            containerStateJobs,
-		"event send":                 sendNotificationJobs,
-		"host monitoring":            hostMonitoringJobs,
-		"last container finish time": lastContainerFinishTimeJobs,
-		"oldest image removal":       oldestImageRemovalJobs,
-		"parent decommission":        parentDecommissionJobs,
+		"event send":    sendNotificationJobs,
+		"host monitoring": hostMonitoringJobs,
 		"periodic notification":      periodicNotificationJobs,
 		"user data done":             userDataDoneJobs,
 	}

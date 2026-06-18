@@ -65,7 +65,6 @@ input AdminSettingsInput {
   buckets: BucketsConfigInput
   cedar: CedarConfigInput
   configDir: String
-  containerPools: ContainerPoolsConfigInput
   cost: CostConfigInput
   debugSpawnHosts: DebugSpawnHostsConfigInput
   diagnostics: DiagnosticsConfigInput
@@ -123,7 +122,6 @@ type AdminSettings {
   buckets: BucketsConfig
   cedar: CedarConfig
   configDir: String
-  containerPools: ContainerPoolsConfig
   cost: CostConfig
   debugSpawnHosts: DebugSpawnHostsConfig
   diagnostics: DiagnosticsConfig
@@ -178,7 +176,6 @@ For example, if the banner field is populated, then a sitewide banner will be sh
 type SpruceConfig {
   banner: String
   bannerTheme: String
-  containerPools: ContainerPoolsConfig
   githubOrgs: [String!]!
   jira: JiraConfig
   providers: CloudProviderConfig

@@ -649,8 +649,7 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 					Key:   "scons_prune_ratio",
 					Value: "0.8"},
 			},
-			Disabled:      false,
-			ContainerPool: "",
+			Disabled: false,
 		},
 	}
 	for _, d := range distros {
@@ -913,7 +912,6 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.ContainerPool, utility.ToStringPtr(""))
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), apiDistro.PlannerSettings.Version)
 }
 
@@ -1393,8 +1391,7 @@ func getMockDistrosdata() error {
 					Key:   "scons_prune_ratio",
 					Value: "0.8"},
 			},
-			Disabled:      false,
-			ContainerPool: "",
+			Disabled: false,
 			BootstrapSettings: distro.BootstrapSettings{
 				Method:        distro.BootstrapMethodNone,
 				Communication: distro.CommunicationMethodLegacySSH,

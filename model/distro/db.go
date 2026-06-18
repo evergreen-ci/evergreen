@@ -33,7 +33,6 @@ var (
 	SpawnAllowedKey          = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey            = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey              = bsonutil.MustHaveTag(Distro{}, "Disabled")
-	ContainerPoolKey         = bsonutil.MustHaveTag(Distro{}, "ContainerPool")
 	PlannerSettingsKey       = bsonutil.MustHaveTag(Distro{}, "PlannerSettings")
 	FinderSettingsKey        = bsonutil.MustHaveTag(Distro{}, "FinderSettings")
 	HomeVolumeSettingsKey    = bsonutil.MustHaveTag(Distro{}, "HomeVolumeSettings")
@@ -174,32 +173,19 @@ func BySpawnAllowed() bson.M {
 	return bson.M{SpawnAllowedKey: true}
 }
 
-// ByNeedsPlanning returns a query that selects only active or static distros that don't run containers
-func ByNeedsPlanning(containerPools []evergreen.ContainerPool) bson.M {
-	poolDistros := []string{}
-	for _, pool := range containerPools {
-		poolDistros = append(poolDistros, pool.Distro)
-	}
+// ByNeedsPlanning returns a query that selects only active or static distros.
+func ByNeedsPlanning() bson.M {
 	return bson.M{
-		"_id": bson.M{
-			"$nin": poolDistros,
-		},
 		"$or": []bson.M{
 			{DisabledKey: bson.M{"$exists": false}},
 			{ProviderKey: evergreen.HostTypeStatic},
-		}}
+		},
+	}
 }
 
-// ByNeedsHostsPlanning returns a query that selects distros that don't run containers
-func ByNeedsHostsPlanning(containerPools []evergreen.ContainerPool) bson.M {
-	poolDistros := []string{}
-	for _, pool := range containerPools {
-		poolDistros = append(poolDistros, pool.Distro)
-	}
-	return bson.M{
-		"_id": bson.M{
-			"$nin": poolDistros,
-		}}
+// ByNeedsHostsPlanning returns a query that selects all distros for host planning.
+func ByNeedsHostsPlanning() bson.M {
+	return bson.M{}
 }
 
 // ByIds creates a query that finds all distros for the given ids and implicitly

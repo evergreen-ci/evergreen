@@ -38,7 +38,6 @@ func init() {
 
 type createHostJob struct {
 	HostID            string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	BuildImageStarted bool   `bson:"build_image_started" json:"build_image_started" yaml:"build_image_started"`
 	job.Base          `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	start time.Time
@@ -58,7 +57,7 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, buildImageStarted bool) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
@@ -66,7 +65,6 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, buildIm
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, h.Id, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", createHostJobName, h.Id)})
 	j.SetEnqueueAllScopes(true)
-	j.BuildImageStarted = buildImageStarted
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		DispatchBy: j.host.SpawnOptions.TimeoutSetup,
 		MaxTime:    maxHostCreateJobTime,
@@ -338,23 +336,6 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return nil
 	}
 
-	// Containers should wait on image builds, checking to see if the parent
-	// already has the image. If it does not, it should download it and wait
-	// on the job until it is finished downloading.
-	if j.host.ParentID != "" {
-		var ready bool
-		ready, err = j.isImageBuilt(ctx)
-		if err != nil {
-			return errors.Wrap(err, "checking if container image is built")
-		}
-		if !ready {
-			j.UpdateRetryInfo(amboy.JobRetryOptions{
-				NeedsRetry: utility.TruePtr(),
-			})
-			return nil
-		}
-	}
-
 	hostReplaced, err := j.spawnAndReplaceHost(ctx, cloudManager)
 	if err != nil {
 		if j.host.UserHost {
@@ -389,53 +370,6 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
 
 	return nil
-}
-
-func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
-	parent, err := j.host.GetParent(ctx)
-	if err != nil {
-		return false, errors.Wrapf(err, "getting parent host for container '%s'", j.host.Id)
-	}
-	if parent == nil {
-		return false, errors.Wrapf(err, "parent for container '%s' not found", j.host.Id)
-	}
-
-	if parent.Status != evergreen.HostRunning {
-		grip.Warning(ctx, message.Fields{
-			"message":       "parent for host not running",
-			"host_id":       j.host.Id,
-			"parent_status": parent.Status,
-		})
-		return false, nil
-	}
-	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
-		grip.Info(ctx, message.Fields{
-			"message":  "image already exists, will start container",
-			"host_id":  j.host.Id,
-			"image":    j.host.DockerOptions.Image,
-			"attempts": j.RetryInfo().CurrentAttempt,
-			"job":      j.ID(),
-		})
-		return true, nil
-	}
-
-	//  If the image is not already present on the parent, run job to build the new image
-	if !j.BuildImageStarted {
-		grip.Info(ctx, message.Fields{
-			"message":  "image not on host, will import image",
-			"host_id":  j.host.Id,
-			"image":    j.host.DockerOptions.Image,
-			"attempts": j.RetryInfo().CurrentAttempt,
-			"job":      j.ID(),
-		})
-		j.BuildImageStarted = true
-		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
-		err = j.env.RemoteQueue().Put(ctx, buildingContainerJob)
-		grip.Debug(ctx, message.WrapError(err, message.Fields{
-			"message": "Duplicate key being added to job to block building containers",
-		}))
-	}
-	return false, nil
 }
 
 // spawnAndUpdateHost attempts to spawn the host and update the host document.
@@ -552,7 +486,7 @@ func EnqueueHostCreateJobs(ctx context.Context, env evergreen.Environment, hostI
 	catcher := grip.NewBasicCatcher()
 	ts := utility.RoundPartOfHour(0).Format(TSFormat)
 	for _, intent := range hostIntents {
-		catcher.Add(errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostCreateJob(env, intent, ts, false)), "enqueueing host create job for '%s'", intent.Id))
+		catcher.Add(errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostCreateJob(env, intent, ts)), "enqueueing host create job for '%s'", intent.Id))
 	}
 
 	return catcher.Resolve()

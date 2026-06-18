@@ -28,7 +28,6 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidSSHOptions,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
-	ensureValidContainerPool,
 	ensureValidArch,
 	ensureValidBootstrapSettings,
 	ensureValidStaticBootstrapSettings,
@@ -315,24 +314,6 @@ func ensureHasNoUnauthorizedCharacters(ctx context.Context, d *distro.Distro, s 
 	return nil
 }
 
-// ensureValidContainerPool checks that a distro's container pool exists and
-// has a valid distro capable of hosting containers
-func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if d.ContainerPool != "" {
-		// check if container pool exists
-		pool := s.ContainerPools.GetContainerPool(d.ContainerPool)
-		if pool == nil {
-			return ValidationErrors{{Error, "distro container pool does not exist"}}
-		}
-		// warn if container pool exists without valid distro
-		err := distro.ValidateContainerPoolDistros(ctx, s)
-		if err != nil {
-			return ValidationErrors{{Error, "error in container pool settings: " + err.Error()}}
-		}
-	}
-	return nil
-}
-
 // ensureHasValidHostAllocatorSettings checks that the distro's HostAllocatorSettings are valid
 func ensureHasValidHostAllocatorSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	errs := ValidationErrors{}
@@ -537,7 +518,7 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 func validateAliases(d *distro.Distro, allDistroAliases, allDistroIDs []string) ValidationErrors {
 	var validationErrs ValidationErrors
 	// Parent and container distros do not support aliases.
-	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
+	if d.Provider == evergreen.ProviderNameDocker {
 		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
 	}
 	if len(d.Aliases) > 0 {

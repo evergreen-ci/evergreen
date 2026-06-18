@@ -234,16 +234,6 @@ func MockConfig() *evergreen.Settings {
 			SavingsPlanDiscount: 0.3,
 			OnDemandDiscount:    0.1,
 		},
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				{
-					Distro:        "valid-distro",
-					Id:            "test-pool-1",
-					MaxContainers: 100,
-					Port:          9999,
-				},
-			},
-		},
 		DebugSpawnHosts: evergreen.DebugSpawnHostsConfig{
 			SetupScript: "echo 'test setup script'",
 		},
