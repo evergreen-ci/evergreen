@@ -579,10 +579,20 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	return FindAndTranslateProjectForVersion(ctx, settings, v, false)
 }
 
+// parserProjectPreGenerationOtelAttribute records whether a translation used the
+// pre-generation parser project copy.
+const parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
 // fetch and translate the parser project from before it was modified by generate.tasks
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
+	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
+		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
+		attribute.Bool(parserProjectPreGenerationOtelAttribute, preGeneration),
+	))
+	defer span.End()
+
 	var pp *ParserProject
 	var err error
 	if preGeneration {
