@@ -284,7 +284,7 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	assert.Equal(t, "ident_enabled", mergedProjects[0].Id)
 }
 
-func TestFindMergedProjectRefsByIdsOrIdentifiers(t *testing.T) {
+func TestFindMergedProjectRefsByIdsOrIdentifiersSecondary(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
 	repoRef := &RepoRef{ProjectRef{
@@ -309,13 +309,13 @@ func TestFindMergedProjectRefsByIdsOrIdentifiers(t *testing.T) {
 	}
 
 	t.Run("EmptyInputReturnsNil", func(t *testing.T) {
-		merged, err := FindMergedProjectRefsByIdsOrIdentifiers(t.Context())
+		merged, err := FindMergedProjectRefsByIdsOrIdentifiersSecondary(t.Context())
 		assert.NoError(t, err)
 		assert.Nil(t, merged)
 	})
 
 	t.Run("MatchesByIDAndIdentifier", func(t *testing.T) {
-		merged, err := FindMergedProjectRefsByIdsOrIdentifiers(t.Context(), "ident", "second-project")
+		merged, err := FindMergedProjectRefsByIdsOrIdentifiersSecondary(t.Context(), "ident", "second-project")
 		assert.NoError(t, err)
 		require.Len(t, merged, 2)
 
@@ -330,7 +330,7 @@ func TestFindMergedProjectRefsByIdsOrIdentifiers(t *testing.T) {
 	})
 
 	t.Run("NonexistentValueIsOmitted", func(t *testing.T) {
-		merged, err := FindMergedProjectRefsByIdsOrIdentifiers(t.Context(), "ident", "nonexistent")
+		merged, err := FindMergedProjectRefsByIdsOrIdentifiersSecondary(t.Context(), "ident", "nonexistent")
 		assert.NoError(t, err)
 		require.Len(t, merged, 1)
 		assert.Equal(t, "ident", merged[0].Id)

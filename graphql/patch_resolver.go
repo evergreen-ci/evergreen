@@ -446,7 +446,10 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 			projectIDs = append(projectIDs, projectID)
 		}
 	}
-	loaders.PreloadProjects(ctx, projectIDs)
+
+	if len(projectIDs) > 0 {
+		loaders.PreloadProjects(ctx, projectIDs)
+	}
 
 	return apiPatches, nil
 }

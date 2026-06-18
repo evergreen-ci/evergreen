@@ -1729,14 +1729,14 @@ func FindProjectRefsByIdsSecondary(ctx context.Context, ids ...string) ([]Projec
 	return findProjectRefsQSecondary(ctx, byIds(ids...), false)
 }
 
-// FindMergedProjectRefsByIdsOrIdentifiers returns merged project refs matching any of the
-// provided values against either the project ref's id or its identifier. It is the batched
-// equivalent of FindMergedProjectRef and is intended to back the GraphQL project dataloader.
-func FindMergedProjectRefsByIdsOrIdentifiers(ctx context.Context, idsOrIdentifiers ...string) ([]ProjectRef, error) {
+// FindMergedProjectRefsByIdsOrIdentifiersSecondary returns merged project refs matching any of
+// the provided values against either the project ref's id or its identifier. It is the batched
+// equivalent of FindMergedProjectRefSecondary.
+func FindMergedProjectRefsByIdsOrIdentifiersSecondary(ctx context.Context, idsOrIdentifiers ...string) ([]ProjectRef, error) {
 	if len(idsOrIdentifiers) == 0 {
 		return nil, nil
 	}
-	return findProjectRefsQ(ctx, byIdsOrIdentifiers(idsOrIdentifiers...), true)
+	return findProjectRefsQSecondary(ctx, byIdsOrIdentifiers(idsOrIdentifiers...), true)
 }
 
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {

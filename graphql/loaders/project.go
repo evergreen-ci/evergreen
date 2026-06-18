@@ -13,7 +13,7 @@ import (
 type projectReader struct{}
 
 func (p *projectReader) getProjects(ctx context.Context, idsOrIdentifiers []string) (map[string]*model.ProjectRef, error) {
-	projects, err := model.FindMergedProjectRefsByIdsOrIdentifiers(ctx, idsOrIdentifiers...)
+	projects, err := model.FindMergedProjectRefsByIdsOrIdentifiersSecondary(ctx, idsOrIdentifiers...)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "error fetching projects in dataloader",
