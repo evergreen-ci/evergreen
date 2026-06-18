@@ -12,6 +12,7 @@ import (
 )
 
 // PersistTaskQueue saves the task queue to the database.
+// The number of tasks that it saves will not exceed the provided maxScheduledTasks.
 // Returns an error if the db call returns an error.
 func PersistTaskQueue(ctx context.Context, distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo, maxScheduledTasks int) error {
 	startAt := time.Now()
