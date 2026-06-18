@@ -359,6 +359,7 @@ func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, eve
 		grip.Info(ctx, message.Fields{
 			"source":                           "GitHub hook",
 			"message":                          "triggered downstream versions for project push event",
+			"sender":                           event.GetSender().GetLogin(),
 			"upstream_commits":                 commits,
 			"upstream_project_id":              projectId,
 			"downstream_version_ids":           versionIds,

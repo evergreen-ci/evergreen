@@ -45,14 +45,10 @@ type EvergreenSenderOptions struct {
 	// line parser that adds the raw string as the log line data field.
 	Parse log.LineParser
 
-	// S3Usage tracks S3 API usage for log uploads. If set, flush() will
-	// increment log file metrics after each successful write.
+	// S3Usage tracks S3 API usage for log uploads. If set, flush() will increment log file
+	// metrics after each successful write. Concurrent flushes on a shared instance are
+	// serialized inside IncrementLogs via S3Usage.Init.
 	S3Usage *s3usage.S3Usage
-	// S3UsageMu, when non-nil, is acquired before each IncrementLogs call.
-	// Callers that share a single S3Usage instance across concurrent senders
-	// must supply a shared mutex here; callers with a single serial sender
-	// may leave this nil.
-	S3UsageMu *sync.Mutex
 	// LogType is the type of log being written (e.g., s3usage.LogTypeTask).
 	LogType string
 	// LogKey is the S3 key for the log being written, used for storage cost tracking.
@@ -251,13 +247,7 @@ func (s *evergreenSender) flush(ctx context.Context) error {
 	uploadBytes, puts, err := s.opts.appendLines(ctx, s.buffer)
 
 	if s.opts.S3Usage != nil && puts > 0 {
-		if s.opts.S3UsageMu != nil {
-			s.opts.S3UsageMu.Lock()
-		}
 		s.opts.S3Usage.IncrementLogs(puts, uploadBytes, s.opts.LogType, s.opts.LogKey)
-		if s.opts.S3UsageMu != nil {
-			s.opts.S3UsageMu.Unlock()
-		}
 	}
 
 	if err != nil {

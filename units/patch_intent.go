@@ -903,6 +903,7 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		"source":            "patch-trigger",
 		"parent_patch_id":   p.Id.Hex(),
 		"parent_project_id": p.Project,
+		"author":            p.Author,
 		"child_patch_ids":   p.Triggers.ChildPatches,
 		"num_children":      len(p.Triggers.ChildPatches),
 	})

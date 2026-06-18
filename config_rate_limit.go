@@ -81,7 +81,10 @@ func validateRateLimitPair(perHour, burst int, label string, catcher grip.Catche
 	if burst < 0 {
 		catcher.Errorf("%s burst must be non-negative", label)
 	}
-	if perHour > 0 && burst > perHour {
-		catcher.Errorf("%s burst (%d) must not exceed requests per hour (%d)", label, burst, perHour)
+	if burst > perHour {
+		catcher.Errorf("%s burst (%d) must not exceed requests per hour (%d)", label, burst, perHour) // This also covers the case where perHour is 0 (unlimited) but burst is not.
+	}
+	if perHour != 0 && burst == 0 {
+		catcher.Errorf("%s requests per hour must be zero if burst is zero", label)
 	}
 }

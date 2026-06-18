@@ -7,7 +7,7 @@ packages += db util units graphql graphql-loaders thirdparty thirdparty-docker a
 packages += model-annotations model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
 packages += model-commitqueue model-cache model-githubapp model-hoststat model-cost model-s3lifecycle model-s3usage model-ec2mount model-ec2settings model-ec2instancereferenceprice
 packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
-packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter
+packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter ratelimit
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil model-testresult-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
 lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-agentmonitor smoke-internal-endpoint thirdparty-clients-fws
 testOnlyPackages := service-graphql smoke-internal-host smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
@@ -338,7 +338,7 @@ gqlgen:
 	$(gobin) run cmd/gqlgen/generate_secret_fields.go
 
 govul-install:
-	$(gobin) install golang.org/x/vuln/cmd/govulncheck@latest
+	$(gobin) install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
 swaggo:
 	$(MAKE) swaggo-format swaggo-build swaggo-render

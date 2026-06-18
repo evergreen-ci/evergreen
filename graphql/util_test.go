@@ -573,7 +573,7 @@ func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
 
 	d := &distro.Distro{
 		Id:       "test-distro",
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 	}
 	assert.NoError(t, d.Insert(t.Context()))
 	t.Run("IsDebugTrueWithoutSpawnHostsStartedByTaskFails", func(t *testing.T) {
