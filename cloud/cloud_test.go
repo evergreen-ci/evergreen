@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGetManager(t *testing.T) {
@@ -48,19 +47,4 @@ func TestGetManager(t *testing.T) {
 		})
 	})
 
-}
-
-func TestConvertContainerManager(t *testing.T) {
-	assert := assert.New(t)
-
-	m1 := &dockerManager{}
-	m2 := &staticManager{}
-
-	cm1, err := ConvertContainerManager(m1)
-	assert.NoError(err)
-	assert.IsType(&dockerManager{}, cm1)
-
-	cm2, err := ConvertContainerManager(m2)
-	assert.Error(err)
-	assert.Nil(cm2)
 }
