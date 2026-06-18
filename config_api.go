@@ -34,6 +34,10 @@ type ClientConfig struct {
 	OAuthIssuer      string
 	OAuthClientID    string
 	OAuthConnectorID string
+
+	// These settings are to transition our URLs to be owned in the client config.
+	CorpAPIServerHost string
+	NewUIServerHost   string
 }
 
 func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix string) {
