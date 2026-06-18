@@ -60,10 +60,9 @@ func setupRateLimitEnv(t *testing.T, cfg evergreen.RateLimitConfig) *mock.Enviro
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
 	env.SetRedisClient(rdb)
-	env.EvergreenSettings.RateLimit = cfg
 
-	// Service flags are still read from DB; start with a clean slate.
 	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
+	require.NoError(t, cfg.Set(t.Context()))
 	return env
 }
 
@@ -241,8 +240,9 @@ func TestRateLimitMiddlewareRedisDropPassesThrough(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
 	env.SetRedisClient(rdb)
-	env.EvergreenSettings.RateLimit = evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1}
 	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
+	cfg := evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1}
+	require.NoError(t, cfg.Set(t.Context()))
 
 	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 

@@ -895,10 +895,19 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	if dbUser.OnlyAPI {
 		isService = true
 	}
-	cfg := m.env.Settings().RateLimit
+	settings, err := evergreen.GetConfigWithoutSecrets(ctx)
+	if err != nil {
+		grip.Error(ctx, message.WrapError(err, message.Fields{
+			"message": "getting settings for rate limit check",
+			"user":    u.Username(),
+		}))
+		next(rw, r)
+		return
+	}
+	cfg := settings.RateLimit
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
-	// Handle elevated users - 2x normal limits (this may change, see DEVPROD-34486)
+	// Handle elevated users - 2x normal limits.
 	if slices.Contains(cfg.ElevatedUserIDs, u.Username()) {
 		perHour *= 2
 		burst *= 2
