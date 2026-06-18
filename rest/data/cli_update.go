@@ -35,7 +35,7 @@ func GetCLIUpdate(ctx context.Context, env evergreen.Environment) (*model.APICLI
 	settings := env.Settings()
 
 	if settings != nil {
-		if settings.Api.CorpURL != "" {
+		if settings.AuthConfig.OAuth != nil {
 			update.ClientConfig.OAuthIssuer = utility.ToStringPtr(settings.AuthConfig.OAuth.Issuer)
 			update.ClientConfig.OAuthClientID = utility.ToStringPtr(settings.AuthConfig.OAuth.ClientID)
 			update.ClientConfig.OAuthConnectorID = utility.ToStringPtr(settings.AuthConfig.OAuth.ConnectorID)
