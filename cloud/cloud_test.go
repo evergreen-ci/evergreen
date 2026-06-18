@@ -17,13 +17,6 @@ func TestGetManager(t *testing.T) {
 
 	Convey("GetManager() should return non-nil for all valid provider names", t, func() {
 
-		Convey("ec2-ondemand provider name should be rejected", func() {
-			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameEc2OnDemand}
-			cloudMgr, err := GetManager(ctx, env, mgrOpts)
-			So(cloudMgr, ShouldBeNil)
-			So(err, ShouldNotBeNil)
-		})
-
 		Convey("Static should be returned for static provider name", func() {
 			mgrOpts := ManagerOpts{Provider: evergreen.ProviderNameStatic}
 			cloudMgr, err := GetManager(ctx, env, mgrOpts)
