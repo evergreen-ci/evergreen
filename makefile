@@ -338,7 +338,7 @@ gqlgen:
 	$(gobin) run cmd/gqlgen/generate_secret_fields.go
 
 govul-install:
-	$(gobin) install golang.org/x/vuln/cmd/govulncheck@latest
+	$(gobin) install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
 swaggo:
 	$(MAKE) swaggo-format swaggo-build swaggo-render
