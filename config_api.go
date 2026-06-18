@@ -35,7 +35,7 @@ type ClientConfig struct {
 	OAuthClientID    string
 	OAuthConnectorID string
 
-	// These settings are to transition our URLs to be owned in the client config.
+	// These settings are to transition our URLs inside the client config.
 	CorpAPIServerHost string
 	NewUIServerHost   string
 }
