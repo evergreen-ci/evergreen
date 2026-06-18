@@ -51,7 +51,7 @@ func TestLimitsFor(t *testing.T) {
 
 // setupRateLimitEnv builds a mock environment backed by an in-memory Redis
 // (miniredis) with the given rate-limit config. It returns the env so tests
-// can pass it directly to NewRateLimitMiddleware and adjust it further.
+// can pass it to NewRateLimitMiddleware.
 func setupRateLimitEnv(t *testing.T, cfg evergreen.RateLimitConfig) *mock.Environment {
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
@@ -215,6 +215,8 @@ func TestRateLimitMiddlewareNilRedisClientPassesThrough(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rw.Code)
 }
 
+// Verifies that disabling the limiter via service flag or zeroing limits (from a separate admin account)
+// unblocks requests when the user's bucket is currently exhausted.
 func TestRateLimitMiddlewareServiceFlagUnblocksAfterExhaustion(t *testing.T) {
 	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
 	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
