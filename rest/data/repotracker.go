@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -102,11 +103,14 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	unactionable := []string{}
 	failed := []string{}
 	catcher := grip.NewSimpleCatcher()
+	ingestTime := time.Now()
 	for i := range refs {
 		if !refs[i].Enabled || refs[i].IsRepotrackerDisabled() {
 			unactionable = append(unactionable, refs[i].Id)
 			continue
 		}
+
+		catcher.Wrapf(upsertRepositoryRevisionsFromPushEvent(ctx, refs[i].Id, event, ingestTime), "upserting repository revisions for project '%s'", refs[i].Id)
 
 		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
 		catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
@@ -160,6 +164,20 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 	}
 
 	return nil
+}
+
+// upsertRepositoryRevisionsFromPushEvent allows Evergreen to track when commits
+// are pushed to a repository. The pushed time (aka ingest time) is the source of truth
+// for the commit on the Evergreen side for decisions like which module commit to use.
+func upsertRepositoryRevisionsFromPushEvent(ctx context.Context, projectID string, event *github.PushEvent, ingestTime time.Time) error {
+	catcher := grip.NewBasicCatcher()
+	for i, commit := range event.Commits {
+		if commit.GetID() == "" {
+			continue
+		}
+		catcher.Wrapf(model.UpsertRepositoryRevision(ctx, projectID, commit.GetID(), ingestTime, i), "upserting revision '%s'", commit.GetID())
+	}
+	return catcher.Resolve()
 }
 
 func validatePushEvent(event *github.PushEvent) (string, error) {

@@ -6,16 +6,26 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// Repository contains fields used to track projects.
+// Repository has 1 document per project and it tracks the last revision
+// that Evergreen ingested for the project.
 type Repository struct {
 	Project             string `bson:"_id"`
 	LastRevision        string `bson:"last_revision"`
 	RevisionOrderNumber int    `bson:"last_commit_number"`
+}
+
+// RepositoryRevision records when Evergreen ingested a project revision.
+type RepositoryRevision struct {
+	Project    string    `bson:"project"`
+	Revision   string    `bson:"revision"`
+	IngestTime time.Time `bson:"ingest_time"`
+	Order      int       `bson:"order"`
 }
 
 var (
@@ -23,10 +33,16 @@ var (
 	RepoProjectKey           = bsonutil.MustHaveTag(Repository{}, "Project")
 	RepoLastRevisionKey      = bsonutil.MustHaveTag(Repository{}, "LastRevision")
 	RepositoryOrderNumberKey = bsonutil.MustHaveTag(Repository{}, "RevisionOrderNumber")
+
+	RepositoryRevisionProjectKey    = bsonutil.MustHaveTag(RepositoryRevision{}, "Project")
+	RepositoryRevisionRevisionKey   = bsonutil.MustHaveTag(RepositoryRevision{}, "Revision")
+	RepositoryRevisionIngestTimeKey = bsonutil.MustHaveTag(RepositoryRevision{}, "IngestTime")
+	RepositoryRevisionOrderKey      = bsonutil.MustHaveTag(RepositoryRevision{}, "Order")
 )
 
 const (
-	RepositoriesCollection = "repo_revisions"
+	RepositoriesCollection               = "repo_revisions"
+	RepositoryRevisionsHistoryCollection = "repo_revision_history"
 )
 
 type Revision struct {
@@ -79,6 +95,46 @@ func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
 			},
 		},
 	)
+}
+
+// UpsertRepositoryRevision records that Evergreen ingested a project revision.
+func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, ingestTime time.Time, order int) error {
+	if utility.IsZeroTime(ingestTime) {
+		ingestTime = time.Now()
+	}
+	_, err := db.Upsert(
+		ctx,
+		RepositoryRevisionsHistoryCollection,
+		bson.M{
+			RepositoryRevisionProjectKey:  projectID,
+			RepositoryRevisionRevisionKey: revision,
+		},
+		bson.M{
+			"$set": bson.M{
+				RepositoryRevisionProjectKey:    projectID,
+				RepositoryRevisionRevisionKey:   revision,
+				RepositoryRevisionIngestTimeKey: ingestTime,
+				RepositoryRevisionOrderKey:      order,
+			},
+		},
+	)
+	return err
+}
+
+// FindLatestRepositoryRevisionByIngestTime finds the latest project revision Evergreen ingested at or before ingestTime.
+func FindLatestRepositoryRevisionByIngestTime(ctx context.Context, projectID string, ingestTime time.Time) (*RepositoryRevision, error) {
+	revision := &RepositoryRevision{}
+	q := db.Query(bson.M{
+		RepositoryRevisionProjectKey: projectID,
+		RepositoryRevisionIngestTimeKey: bson.M{
+			"$lte": ingestTime,
+		},
+	}).Sort([]string{"-" + RepositoryRevisionIngestTimeKey, "-" + RepositoryRevisionOrderKey})
+	err := db.FindOneQ(ctx, RepositoryRevisionsHistoryCollection, q, revision)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return revision, err
 }
 
 // GetNewRevisionOrderNumber gets a new revision order number for a project.
