@@ -19,6 +19,7 @@ mutation Runners {
         maxIncludesPerVersion: 1
         maxParserProjectSize: 1
         maxPendingGeneratedTasks: 1
+        maxScheduledTasksPerDistro: 1
         maxTaskExecution: 1
         maxTasksPerVersion: 1
       }
@@ -71,6 +72,7 @@ mutation Runners {
       maxIncludesPerVersion
       maxParserProjectSize
       maxPendingGeneratedTasks
+      maxScheduledTasksPerDistro
       maxTaskExecution
       maxTasksPerVersion
     }
