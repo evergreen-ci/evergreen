@@ -2274,13 +2274,14 @@ type ComplexityRoot struct {
 	}
 
 	UserConfig struct {
-		APIKey           func(childComplexity int) int
-		APIServerHost    func(childComplexity int) int
-		OauthClientID    func(childComplexity int) int
-		OauthConnectorID func(childComplexity int) int
-		OauthIssuer      func(childComplexity int) int
-		UIServerHost     func(childComplexity int) int
-		User             func(childComplexity int) int
+		APIKey            func(childComplexity int) int
+		APIServerHost     func(childComplexity int) int
+		CorpAPIServerHost func(childComplexity int) int
+		OauthClientID     func(childComplexity int) int
+		OauthConnectorID  func(childComplexity int) int
+		OauthIssuer       func(childComplexity int) int
+		UIServerHost      func(childComplexity int) int
+		User              func(childComplexity int) int
 	}
 
 	UserLite struct {
@@ -12385,6 +12386,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserConfig.APIServerHost(childComplexity), true
+	case "UserConfig.corp_api_server_host":
+		if e.complexity.UserConfig.CorpAPIServerHost == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.CorpAPIServerHost(childComplexity), true
 	case "UserConfig.oauth_client_id":
 		if e.complexity.UserConfig.OauthClientID == nil {
 			break
@@ -42332,6 +42339,8 @@ func (ec *executionContext) fieldContext_Mutation_resetAPIKey(_ context.Context,
 				return ec.fieldContext_UserConfig_api_key(ctx, field)
 			case "api_server_host":
 				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
+			case "corp_api_server_host":
+				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
 			case "ui_server_host":
 				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
 			case "user":
@@ -54973,6 +54982,8 @@ func (ec *executionContext) fieldContext_Query_userConfig(_ context.Context, fie
 				return ec.fieldContext_UserConfig_api_key(ctx, field)
 			case "api_server_host":
 				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
+			case "corp_api_server_host":
+				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
 			case "ui_server_host":
 				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
 			case "user":
@@ -73862,6 +73873,35 @@ func (ec *executionContext) _UserConfig_api_server_host(ctx context.Context, fie
 }
 
 func (ec *executionContext) fieldContext_UserConfig_api_server_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserConfig_corp_api_server_host(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserConfig_corp_api_server_host,
+		func(ctx context.Context) (any, error) {
+			return obj.CorpAPIServerHost, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserConfig_corp_api_server_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UserConfig",
 		Field:      field,
@@ -111026,6 +111066,11 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 			}
 		case "api_server_host":
 			out.Values[i] = ec._UserConfig_api_server_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "corp_api_server_host":
+			out.Values[i] = ec._UserConfig_corp_api_server_host(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

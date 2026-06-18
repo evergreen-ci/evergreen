@@ -7,7 +7,8 @@
     },
     {
       "_id": "ui",
-      "url": "http://localhost"
+      "url": "http://localhost",
+      "uiv2_url": "http://spruce.localhost"
     },
     {
       "_id": "auth",
