@@ -144,7 +144,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	viewTasks := route.RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	viewLogs := route.RequiresProjectPermission(evergreen.PermissionLogs, evergreen.LogsView)
 	requireSage := route.NewSageMiddleware()
-	rateLimit := route.NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceGraphQL)
+	rateLimit := route.NewRateLimitMiddleware(uis.env, evergreen.RateLimitSurfaceGraphQL)
 
 	app := gimlet.NewApp()
 	app.NoVersions = true

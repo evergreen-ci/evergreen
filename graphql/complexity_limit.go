@@ -14,11 +14,6 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// ComplexityLimit computes the "complexity" of the query given the schema.
-// Based on configured settings, it either rejects an over-limit query by
-// returning a COMPLEXITY_LIMIT_EXCEEDED error on the response (the same way
-// DisableQuery surfaces SERVICE_UNAVAILABLE), or, in warn-only mode, logs the
-// over-limit query and allows it to proceed.
 type ComplexityLimit struct {
 	schema graphql.ExecutableSchema
 }
@@ -36,6 +31,7 @@ func (ComplexityLimit) Validate(graphql.ExecutableSchema) error {
 }
 
 func (c ComplexityLimit) MutateOperationContext(ctx context.Context, rc *graphql.OperationContext) *gqlerror.Error {
+	// Calculate the complexity score of the query using gqlgen's built-in complexity package.
 	score := complexity.Calculate(ctx, c.schema, rc.Operation, rc.Variables)
 
 	// Look up the admin config to decide whether to reject the query or warn only.
@@ -48,16 +44,15 @@ func (c ComplexityLimit) MutateOperationContext(ctx context.Context, rc *graphql
 
 	limit := settings.RateLimit.GraphQLComplexityLimit
 
-	// A non-positive limit means complexity limiting is not configured.
+	// Check whether the query exceeds the complexity limit, if a non-zero limit is configured.
 	exceeded := limit > 0 && score > limit
 	if !exceeded {
 		return nil
 	}
 
 	// If limiter is disabled, warn with details, but allow the query to proceed.
-
 	disabled := settings.ServiceFlags.GraphQLComplexityLimiterDisabled
-	if disabled {
+	if score > limit && disabled {
 		grip.Warning(ctx, message.Fields{
 			"message":          "graphql query exceeds complexity limit, but limiter is disabled",
 			"operation":        rc.Operation.Name,
