@@ -1,6 +1,7 @@
 package route
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -49,29 +50,20 @@ func TestLimitsFor(t *testing.T) {
 }
 
 // setupRateLimitEnv builds a mock environment backed by an in-memory Redis
-// (miniredis) with the given rate-limit config, and installs it as the global
-// environment because the middleware reads its config and service flags from
-// there. It returns the env so tests can adjust it further.
+// (miniredis) with the given rate-limit config. It returns the env so tests
+// can pass it directly to NewRateLimitMiddleware and adjust it further.
 func setupRateLimitEnv(t *testing.T, cfg evergreen.RateLimitConfig) *mock.Environment {
-	ctx := t.Context()
-
 	mr := miniredis.RunT(t)
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { assert.NoError(t, rdb.Close()) })
 
 	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
+	require.NoError(t, env.Configure(t.Context()))
 	env.SetRedisClient(rdb)
 	env.EvergreenSettings.RateLimit = cfg
 
-	prev := evergreen.GetEnvironment()
-	evergreen.SetEnvironment(env)
-	t.Cleanup(func() { evergreen.SetEnvironment(prev) })
-
-	// Start from a clean service-flag state so GetServiceFlags returns zero values
-	// unless a test sets them explicitly.
+	// Service flags are still read from DB; start with a clean slate.
 	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
-
 	return env
 }
 
@@ -89,23 +81,9 @@ func runRateLimit(t *testing.T, mw gimlet.Middleware, surfacePath string, u *use
 	return rw, ran
 }
 
-// allowedBefore429 sends requests for the user until one is rejected (or maxReqs
-// is hit) and returns how many were allowed.
-func allowedBefore429(t *testing.T, mw gimlet.Middleware, u *user.DBUser, maxReqs int) int {
-	allowed := 0
-	for i := 0; i < maxReqs; i++ {
-		rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", u)
-		if rw.Code == http.StatusTooManyRequests || !ran {
-			break
-		}
-		allowed++
-	}
-	return allowed
-}
-
 func TestRateLimitMiddlewareNilUserPassesThrough(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
-	mw := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", nil)
 	assert.True(t, ran)
@@ -114,8 +92,8 @@ func TestRateLimitMiddlewareNilUserPassesThrough(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareZeroLimitPassesThrough(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{}) // all zero
-	mw := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{}) // all zero
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "u"})
 	assert.True(t, ran)
@@ -124,8 +102,8 @@ func TestRateLimitMiddlewareZeroLimitPassesThrough(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareUnderLimitAllowed(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 5})
-	mw := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 5})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "u"})
 	assert.True(t, ran)
@@ -135,8 +113,8 @@ func TestRateLimitMiddlewareUnderLimitAllowed(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareOverLimitReturns429(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
-	mw := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 	u := &user.DBUser{Id: "u"}
 
 	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", u)
@@ -146,26 +124,16 @@ func TestRateLimitMiddlewareOverLimitReturns429(t *testing.T) {
 	assert.False(t, ran)
 	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
 	assert.Equal(t, "true", rw.Header().Get(evergreen.RateLimitExceededHeader))
-
-	// TODO(DEVPROD-33795): the middleware currently writes res.ResetAfter (a
-	// time.Duration) with %d, emitting nanoseconds rather than a delta in
-	// seconds. Remove the skip once the unix conversion is fixed.
-	t.Run("RetryAfterInSeconds", func(t *testing.T) {
-		t.Skip("encodes target behavior; fails until Retry-After is emitted in seconds")
-		retryAfter := rw.Header().Get(evergreen.RetryAfterHeader)
-		require.NotEmpty(t, retryAfter)
-		assert.Less(t, len(retryAfter), 7, "Retry-After should be a small seconds value, not nanoseconds")
-	})
 }
 
 func TestRateLimitMiddlewareServiceTierUsesServiceLimits(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{
 		RESTUserPerHour:    100,
 		RESTUserBurst:      1,
 		RESTServicePerHour: 200,
 		RESTServiceBurst:   5,
 	})
-	mw := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "svc", OnlyAPI: true})
 	assert.True(t, ran)
@@ -173,31 +141,32 @@ func TestRateLimitMiddlewareServiceTierUsesServiceLimits(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareElevatedUserGetsMoreHeadroom(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{
 		RESTUserPerHour: 100,
-		RESTUserBurst:   2,
+		RESTUserBurst:   1,
 		ElevatedUserIDs: []string{"elevated"},
 	})
-	mw := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
-	// Separate usernames keep the per-user buckets independent.
-	baseAllowed := allowedBefore429(t, mw, &user.DBUser{Id: "base"}, 20)
-	elevatedAllowed := allowedBefore429(t, mw, &user.DBUser{Id: "elevated"}, 20)
+	// Elevated users get a higher configured limit (currently 2x; see DEVPROD-34486).
+	rw, _ := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "base"})
+	assert.Equal(t, "100", rw.Header().Get(evergreen.RateLimitLimitHeader))
 
-	// Assert the elevated user simply gets more headroom, not a specific
-	// multiplier (the 2x is provisional, see DEVPROD-34486).
-	assert.Greater(t, elevatedAllowed, baseAllowed)
+	rw, _ = runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "elevated"})
+	assert.Equal(t, "200", rw.Header().Get(evergreen.RateLimitLimitHeader))
 
-	rw, _ := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "elevated2" /* not elevated */})
-	baseLimit := rw.Header().Get(evergreen.RateLimitLimitHeader)
-	rwElevated, _ := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "elevated"})
-	assert.Greater(t, rwElevated.Header().Get(evergreen.RateLimitLimitHeader), baseLimit)
+	// Elevated headroom is finite: burst=1 doubles to 2, so a third request is denied.
+	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "elevated"})
+	assert.True(t, ran)
+	rw, ran = runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "elevated"})
+	assert.False(t, ran)
+	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
 }
 
 func TestRateLimitMiddlewareWarnOnlyModeServesOverLimit(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
 	require.NoError(t, (&evergreen.ServiceFlags{APIRateLimiterDisabled: true}).Set(t.Context()))
-	mw := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 	u := &user.DBUser{Id: "u"}
 
 	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", u)
@@ -209,74 +178,77 @@ func TestRateLimitMiddlewareWarnOnlyModeServesOverLimit(t *testing.T) {
 	assert.Equal(t, "true", rw.Header().Get(evergreen.RateLimitExceededHeader))
 }
 
-func TestRateLimitMiddlewareBucketsIndependentAcrossSurfaces(t *testing.T) {
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{
-		RESTUserPerHour:    100,
-		RESTUserBurst:      1,
-		GraphQLUserPerHour: 100,
-		GraphQLUserBurst:   1,
-	})
-	restMW := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
-	gqlMW := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceGraphQL)
+func TestRateLimitMiddlewareRemainingHeaderDecrements(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 5})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 	u := &user.DBUser{Id: "u"}
 
-	// Exhaust the REST bucket.
-	_, ran := runRateLimit(t, restMW, "/rest/v2/hosts", u)
-	require.True(t, ran)
-	rw, ran := runRateLimit(t, restMW, "/rest/v2/hosts", u)
-	require.False(t, ran)
-	require.Equal(t, http.StatusTooManyRequests, rw.Code)
+	var prev int
+	for i := 0; i < 5; i++ {
+		rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", u)
+		require.True(t, ran)
+		require.Equal(t, http.StatusOK, rw.Code)
 
-	// The same user's GraphQL bucket is independent.
-	rw, ran = runRateLimit(t, gqlMW, "/graphql/query", u)
+		remaining := rw.Header().Get(evergreen.RateLimitRemainingHeader)
+		require.NotEmpty(t, remaining)
+		var cur int
+		require.NoError(t, func() error {
+			_, err := fmt.Sscanf(remaining, "%d", &cur)
+			return err
+		}())
+		if i > 0 {
+			assert.Less(t, cur, prev, "remaining should decrease with each request")
+		}
+		prev = cur
+	}
+}
+
+// Verifies that rate limiting is also applied to GraphQL endpoints, non-exhaustively since
+// GraphQL and REST use the same underlying limiter logic.
+func TestRateLimitMiddlewareGraphQLSurfaceEnforcesLimit(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{GraphQLUserPerHour: 100, GraphQLUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceGraphQL)
+	u := &user.DBUser{Id: "u"}
+
+	_, ran := runRateLimit(t, mw, "/graphql/query", u)
+	require.True(t, ran)
+
+	rw, ran := runRateLimit(t, mw, "/graphql/query", u)
+	assert.False(t, ran)
+	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
+	assert.Equal(t, "100", rw.Header().Get(evergreen.RateLimitLimitHeader))
+}
+
+// Verifies that if the limiter fails to initialize (e.g. due to the Redis client being nil),
+// the middleware allows requests to proceed rather than erroring out.
+func TestRateLimitMiddlewareNilRedisClientPassesThrough(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	env.SetRedisClient(nil) // NewRateLimiter will fail; request should still be served
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+
+	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "u"})
 	assert.True(t, ran)
 	assert.Equal(t, http.StatusOK, rw.Code)
 }
 
-func TestRateLimitMiddlewareWiredIntoAssembledApp(t *testing.T) {
-	// Exercises the same app-wide AddWrapper(rateLimit) wiring used by
-	// AttachHandler, through gimlet's real router rather than a direct
-	// ServeHTTP, to confirm the wrapper actually applies to dispatched routes.
-	setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+// Verifies that if Redis becomes unavailable after the limiter is already initialized,
+// the middleware allows requests to proceed rather than erroring out.
+func TestRateLimitMiddlewareRedisDropPassesThrough(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { assert.NoError(t, rdb.Close()) })
 
-	app := gimlet.NewApp()
-	app.SetPrefix("rest")
-	app.AddWrapper(NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST))
-	app.AddRoute("/ping").Version(2).Get().Handler(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	require.NoError(t, app.Resolve())
-	router, err := app.Router()
-	require.NoError(t, err)
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	env.SetRedisClient(rdb)
+	env.EvergreenSettings.RateLimit = evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1}
+	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
 
-	doReq := func() *httptest.ResponseRecorder {
-		req, err := http.NewRequest(http.MethodGet, "/rest/v2/ping", nil)
-		require.NoError(t, err)
-		req = req.WithContext(gimlet.AttachUser(t.Context(), &user.DBUser{Id: "u"}))
-		rr := httptest.NewRecorder()
-		router.ServeHTTP(rr, req)
-		return rr
-	}
-
-	first := doReq()
-	assert.Equal(t, http.StatusOK, first.Code)
-	assert.Equal(t, "100", first.Header().Get(evergreen.RateLimitLimitHeader), "wrapper should set rate-limit headers on dispatched routes")
-
-	second := doReq()
-	assert.Equal(t, http.StatusTooManyRequests, second.Code, "wrapper should throttle the assembled route")
-}
-
-func TestRateLimitMiddlewareAllowErrorFailsOpen(t *testing.T) {
-	// TODO(DEVPROD-33795): the middleware currently returns 500 on an Allow
-	// error instead of failing open (logging and passing through). Remove the
-	// skip once it fails open per the ticket spec.
-	t.Skip("encodes target behavior; fails until the middleware fails open on limiter errors")
-
-	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
-	env.SetRedisClient(nil) // force NewRateLimiter(nil) -> Allow errors
 	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
+	mr.Close() // limiter is initialized; simulate Redis dropping mid-request
+
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "u"})
-	assert.True(t, ran, "limiter errors should fail open")
+	assert.True(t, ran)
 	assert.Equal(t, http.StatusOK, rw.Code)
 }

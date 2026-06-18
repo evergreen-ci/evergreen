@@ -895,7 +895,7 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	if dbUser.OnlyAPI {
 		isService = true
 	}
-	cfg := evergreen.GetEnvironment().Settings().RateLimit // TODO this is apparently bad way to pass down env
+	cfg := m.env.Settings().RateLimit
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
 	// Handle elevated users - 2x normal limits (this may change, see DEVPROD-34486)
@@ -940,7 +940,7 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 			rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
 			flags, _ := evergreen.GetServiceFlags(ctx)
 			if !flags.APIRateLimiterDisabled {
-				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", res.RetryAfter))
+				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
 				http.Error(rw, "rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}

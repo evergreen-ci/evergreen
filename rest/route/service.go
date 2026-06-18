@@ -44,7 +44,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requireAlertmanager := NewAlertmanagerMiddleware()
 	requireBackstage := newBackstageMiddleware()
 	createProject := NewCanCreateMiddleware()
-	rateLimit := NewRateLimitMiddleware(evergreen.GetEnvironment(), evergreen.RateLimitSurfaceREST)
+	rateLimit := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 	adminSettings := RequiresSuperUserPermission(evergreen.PermissionAdminSettings, evergreen.AdminSettingsEdit)
 	sendNotifications := NewSendNotificationMiddleware()
 	createDistro := RequiresSuperUserPermission(evergreen.PermissionDistroCreate, evergreen.DistroCreate)

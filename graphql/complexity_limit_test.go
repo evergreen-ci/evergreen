@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"testing"
 
 	"github.com/99designs/gqlgen/complexity"
@@ -82,6 +83,14 @@ func TestComplexityLimitMutateOperationContext(t *testing.T) {
 			require.NoError(t, settings.RateLimit.Set(t.Context()))
 
 			assert.Nil(t, run(t))
+		},
+		"ConfigReadErrorAllowsThrough": func(t *testing.T) {
+			// Simulate a settings read failure by cancelling the context before
+			// the DB call. The extension must not block the query in this case.
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			rc := &graphql.OperationContext{Operation: op}
+			assert.Nil(t, MakeComplexityLimit(schema).MutateOperationContext(ctx, rc))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
