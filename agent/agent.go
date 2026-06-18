@@ -1292,21 +1292,44 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, detail *apimode
 	}
 
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
+	var taskData *task.Task
+	if tc.taskConfig != nil {
+		taskData = &tc.taskConfig.Task
+	}
+	span.SetAttributes(buildTaskEndSpanAttributes(taskData, detail)...)
 	if detail.Status != evergreen.TaskSucceeded {
 		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
 	}
-	if detail.Type != "" {
-		span.SetAttributes(attribute.String(evergreen.TaskFailureTypeOtelAttribute, detail.Type))
-	}
-	if detail.FailingCommand != "" {
-		span.SetAttributes(attribute.String(evergreen.TaskFailingCommandOtelAttribute, detail.FailingCommand))
-	}
-	if detail.Description != "" {
-		span.SetAttributes(attribute.String(evergreen.TaskDescriptionOtelAttribute, detail.Description))
-	}
 
 	return resp, nil
+}
+
+func buildTaskEndSpanAttributes(t *task.Task, detail *apimodels.TaskEndDetail) []attribute.KeyValue {
+	if detail == nil {
+		return nil
+	}
+
+	attrs := []attribute.KeyValue{
+		attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status),
+	}
+
+	if t != nil {
+		taskCopy := *t
+		taskCopy.Status = detail.Status
+		taskCopy.Details = *detail
+		attrs = append(attrs, attribute.String(evergreen.TaskDisplayStatusOtelAttribute, taskCopy.DetermineDisplayStatus()))
+	}
+	if detail.Type != "" {
+		attrs = append(attrs, attribute.String(evergreen.TaskFailureTypeOtelAttribute, detail.Type))
+	}
+	if detail.FailingCommand != "" {
+		attrs = append(attrs, attribute.String(evergreen.TaskFailingCommandOtelAttribute, detail.FailingCommand))
+	}
+	if detail.Description != "" {
+		attrs = append(attrs, attribute.String(evergreen.TaskDescriptionOtelAttribute, detail.Description))
+	}
+
+	return attrs
 }
 
 // bucketConfigsChanged returns true if either the task or test bucket config
