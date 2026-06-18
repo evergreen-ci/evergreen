@@ -62,9 +62,16 @@ type localDiff struct {
 type patchParams struct {
 	Project string
 	Path    string
-	Alias   string
-	// isUsingLocalAlias indicates that the user-specified alias matches a local
-	// alias.
+	// Aliases holds the raw aliases passed on the command line. Local aliases
+	// are expanded out of it client-side during resolution; the single
+	// remaining server-side alias (if any) is folded into Alias for submission.
+	Aliases []string
+	// Alias is the single server-side alias submitted with the patch. It is
+	// derived from Aliases during resolution and is empty when only local
+	// aliases were specified.
+	Alias string
+	// isUsingLocalAlias indicates that at least one specified alias matches a
+	// local alias.
 	isUsingLocalAlias                  bool
 	Variants                           []string
 	Tasks                              []string
@@ -253,6 +260,13 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		p.setNonRepeatedDefaults(ctx, conf)
 	}
 
+	// Specifying multiple aliases is only supported for local aliases, which are
+	// expanded client-side in setLocalAliases. Any remaining aliases are
+	// server-side, and the patch submission can only carry a single one.
+	if len(p.Aliases) > 1 {
+		return nil, errors.Errorf("specifying multiple aliases is only supported for local aliases defined in your config file; cannot combine server-side aliases [%s]", strings.Join(p.Aliases, ", "))
+	}
+
 	if err := p.loadParameters(conf); err != nil {
 		grip.Warningf(ctx, "warning - failed to set default parameters: %s\n", err)
 	}
@@ -300,6 +314,13 @@ func (p *patchParams) setNonRepeatedDefaults(ctx context.Context, conf *ClientSe
 		grip.Warningf(ctx, "warning - setting local aliases: %s\n", err)
 	}
 
+	// After local aliases are expanded, fold the single remaining server-side
+	// alias into Alias for downstream resolution and submission. Specifying more
+	// than one server-side alias is rejected in validatePatchCommand.
+	if len(p.Aliases) == 1 {
+		p.Alias = p.Aliases[0]
+	}
+
 	if err := p.loadAlias(ctx, conf); err != nil {
 		grip.Warningf(ctx, "warning - failed to set default alias: %s\n", err)
 	}
@@ -342,21 +363,40 @@ func (p *patchParams) loadProject(ctx context.Context, conf *ClientSettings) err
 	return nil
 }
 
+// setLocalAliases expands any specified aliases that match a local alias
+// defined in the user's config into the corresponding variants and tasks. Local
+// aliases are resolved entirely client-side, so they're removed from Aliases,
+// leaving only server-side aliases behind.
 func (p *patchParams) setLocalAliases(conf *ClientSettings) error {
-	if p.Alias != "" {
-		for i := range conf.Projects {
-			if conf.Projects[i].Name == p.Project {
-				if errStrs := model.ValidateProjectAliases(conf.Projects[i].LocalAliases, "Local Aliases"); len(errStrs) != 0 {
-					return errors.Errorf("validating local aliases: '%s'", errStrs)
-				}
-				for _, alias := range conf.Projects[i].LocalAliases {
-					if alias.Alias == p.Alias {
-						p.addAliasToPatchParams(alias)
-					}
-				}
+	if len(p.Aliases) == 0 {
+		return nil
+	}
+
+	var localAliases []model.ProjectAlias
+	for i := range conf.Projects {
+		if conf.Projects[i].Name == p.Project {
+			if errStrs := model.ValidateProjectAliases(conf.Projects[i].LocalAliases, "Local Aliases"); len(errStrs) != 0 {
+				return errors.Errorf("validating local aliases: '%s'", errStrs)
 			}
+			localAliases = append(localAliases, conf.Projects[i].LocalAliases...)
 		}
 	}
+
+	var serverAliases []string
+	for _, specified := range p.Aliases {
+		isLocal := false
+		for _, localAlias := range localAliases {
+			if localAlias.Alias == specified {
+				p.addAliasToPatchParams(localAlias)
+				isLocal = true
+			}
+		}
+		if !isLocal {
+			serverAliases = append(serverAliases, specified)
+		}
+	}
+	p.Aliases = serverAliases
+
 	return nil
 }
 
@@ -382,7 +422,6 @@ func (p *patchParams) addAliasToPatchParams(alias model.ProjectAlias) {
 		}
 		p.Tasks = append(p.Tasks, formattedTags...)
 	}
-	p.Alias = ""
 	p.isUsingLocalAlias = true
 }
 
