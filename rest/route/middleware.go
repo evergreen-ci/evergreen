@@ -950,7 +950,10 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 			flags, _ := evergreen.GetServiceFlags(ctx)
 			if !flags.APIRateLimiterDisabled {
 				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
-				http.Error(rw, "rate limit exceeded", http.StatusTooManyRequests)
+				gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusTooManyRequests,
+					Message:    "rate limit exceeded",
+				}))
 				return
 			}
 		}

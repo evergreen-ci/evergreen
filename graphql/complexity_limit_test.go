@@ -52,9 +52,18 @@ func TestComplexityLimitMutateOperationContext(t *testing.T) {
 			settings.RateLimit.GraphQLComplexityLimit = baseline - 1
 			require.NoError(t, settings.RateLimit.Set(t.Context()))
 
+			defer func(s send.Sender) {
+				assert.NoError(t, grip.SetSender(s))
+			}(grip.GetSender())
+			sender := send.MakeInternalLogger()
+			require.NoError(t, grip.SetSender(sender))
+
 			gqlErr := run(t)
 			require.NotNil(t, gqlErr)
 			assert.Equal(t, ComplexityLimitExceeded, gqlErr.Extensions["code"])
+			assert.Equal(t, baseline, gqlErr.Extensions["complexity"])
+			assert.Equal(t, baseline-1, gqlErr.Extensions["limit"])
+			assert.True(t, sender.HasMessage(), "rejection should be logged")
 		},
 		"WarnsButServesWhenLimiterDisabled": func(t *testing.T) {
 			settings, err := evergreen.GetConfig(t.Context())
@@ -91,6 +100,31 @@ func TestComplexityLimitMutateOperationContext(t *testing.T) {
 			cancel()
 			rc := &graphql.OperationContext{Operation: op}
 			assert.Nil(t, MakeComplexityLimit(schema).MutateOperationContext(ctx, rc))
+		},
+		// The extension reads config fresh on every operation, so flipping the
+		// limit or the disable flag changes the outcome for an identical query
+		// with no process restart.
+		"ZeroLimitUnblocksAfterRejection": func(t *testing.T) {
+			settings, err := evergreen.GetConfig(t.Context())
+			require.NoError(t, err)
+			settings.RateLimit.GraphQLComplexityLimit = baseline - 1
+			require.NoError(t, settings.RateLimit.Set(t.Context()))
+			require.NotNil(t, run(t))
+
+			settings.RateLimit.GraphQLComplexityLimit = 0
+			require.NoError(t, settings.RateLimit.Set(t.Context()))
+			assert.Nil(t, run(t), "zeroing the limit should let the same query through")
+		},
+		"DisableFlagUnblocksAfterRejection": func(t *testing.T) {
+			settings, err := evergreen.GetConfig(t.Context())
+			require.NoError(t, err)
+			settings.RateLimit.GraphQLComplexityLimit = baseline - 1
+			require.NoError(t, settings.RateLimit.Set(t.Context()))
+			require.NotNil(t, run(t))
+
+			settings.ServiceFlags.GraphQLComplexityLimiterDisabled = true
+			require.NoError(t, settings.ServiceFlags.Set(t.Context()))
+			assert.Nil(t, run(t), "disabling the limiter should let the same query through")
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

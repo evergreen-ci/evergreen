@@ -123,6 +123,7 @@ func TestRateLimitMiddlewareOverLimitReturns429(t *testing.T) {
 	assert.False(t, ran)
 	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
 	assert.Equal(t, "true", rw.Header().Get(evergreen.RateLimitExceededHeader))
+	assert.Contains(t, rw.Header().Get("Content-Type"), "application/json")
 }
 
 func TestRateLimitMiddlewareServiceTierUsesServiceLimits(t *testing.T) {
@@ -228,6 +229,54 @@ func TestRateLimitMiddlewareNilRedisClientPassesThrough(t *testing.T) {
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "u"})
 	assert.True(t, ran)
 	assert.Equal(t, http.StatusOK, rw.Code)
+}
+
+func TestRateLimitMiddlewareServiceFlagUnblocksAfterExhaustion(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+	demoUser := &user.DBUser{Id: "demo"}
+	adminUser := &user.DBUser{Id: "admin"}
+
+	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", demoUser)
+	require.True(t, ran)
+	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", demoUser)
+	require.False(t, ran)
+	require.Equal(t, http.StatusTooManyRequests, rw.Code)
+
+	// The admin acts from a separate account, so its independent bucket lets the
+	// config change through even while the demo user is rate-limited.
+	_, ran = runRateLimit(t, mw, "/rest/v2/hosts", adminUser)
+	require.True(t, ran, "admin user has an independent bucket and should not be blocked")
+	require.NoError(t, (&evergreen.ServiceFlags{APIRateLimiterDisabled: true}).Set(t.Context()))
+
+	rw, ran = runRateLimit(t, mw, "/rest/v2/hosts", demoUser)
+	assert.True(t, ran, "disabling the limiter flag should unblock requests even with an exhausted bucket")
+	assert.Equal(t, http.StatusOK, rw.Code)
+}
+
+func TestRateLimitMiddlewareZeroLimitUnblocksAfterExhaustion(t *testing.T) {
+	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1})
+	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
+	demoUser := &user.DBUser{Id: "demo"}
+	adminUser := &user.DBUser{Id: "admin"}
+
+	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", demoUser)
+	require.True(t, ran)
+	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", demoUser)
+	require.False(t, ran)
+	require.Equal(t, http.StatusTooManyRequests, rw.Code)
+
+	// The admin acts from a separate account, so its independent bucket lets the
+	// config change through even while the demo user is rate-limited.
+	_, ran = runRateLimit(t, mw, "/rest/v2/hosts", adminUser)
+	require.True(t, ran, "admin user has an independent bucket and should not be blocked")
+	zeroCfg := evergreen.RateLimitConfig{}
+	require.NoError(t, zeroCfg.Set(t.Context()))
+
+	rw, ran = runRateLimit(t, mw, "/rest/v2/hosts", demoUser)
+	assert.True(t, ran, "setting limits to zero should unblock requests even with an exhausted bucket")
+	assert.Equal(t, http.StatusOK, rw.Code)
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
 }
 
 // Verifies that if Redis becomes unavailable after the limiter is already initialized,

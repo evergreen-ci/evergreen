@@ -63,5 +63,19 @@ func (c ComplexityLimit) MutateOperationContext(ctx context.Context, rc *graphql
 		return nil
 	}
 
-	return ComplexityLimitExceeded.Send(ctx, fmt.Sprintf("operation complexity %d exceeds the limit of %d", score, limit))
+	grip.Warning(ctx, message.Fields{
+		"message":          "graphql query rejected: complexity limit exceeded",
+		"operation":        rc.Operation.Name,
+		"complexity_score": score,
+		"complexity_limit": limit,
+		"request":          gimlet.GetRequestID(ctx),
+	})
+	return &gqlerror.Error{
+		Message: fmt.Sprintf("operation complexity %d exceeds the limit of %d", score, limit),
+		Extensions: map[string]any{
+			"code":       ComplexityLimitExceeded,
+			"complexity": score,
+			"limit":      limit,
+		},
+	}
 }
