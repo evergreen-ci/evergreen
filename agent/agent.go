@@ -486,7 +486,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "making task config"))
 	}
 	tc.taskConfig = taskConfig
-	// Wire up S3Usage pointer so commands can increment runtime S3 usage
+	tc.s3Usage.Init()
 	tc.taskConfig.S3Usage = &tc.s3Usage
 	if tc.taskConfig.BackgroundCommandFailureEnabled {
 		// Buffered to bound accumulation between drain cycles after each foreground command.
@@ -1108,7 +1108,8 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			cancel()
 			grip.Error(ctx, tc.logger.Close())
 		}
-		grip.Error(ctx, errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage, true), "reporting S3 usage"))
+		// Snapshot avoids racing with senders still shutting down.
+		grip.Error(ctx, errors.Wrap(a.comm.ReportS3Usage(ctx, tc.task, tc.s3Usage.Snapshot(), true), "reporting S3 usage"))
 	}()
 	defer a.clearGlobalFiles(ctx, tc)
 

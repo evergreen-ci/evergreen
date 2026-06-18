@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"strings"
 	"testing"
@@ -27,15 +26,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var (
-	someUserData         = "#!/bin/bash\necho foo"
-	base64OfSomeUserData = base64.StdEncoding.EncodeToString([]byte(someUserData))
-)
-
 type EC2Suite struct {
 	suite.Suite
 	onDemandOpts    *EC2ManagerOptions
-	onDemandManager Manager
+	onDemandManager *ec2Manager
 	impl            *ec2Manager
 	mock            *awsClientMock
 	h               *host.Host
@@ -93,11 +87,10 @@ func (s *EC2Suite) SetupTest() {
 			},
 		},
 	})
-	var ok bool
-	s.impl, ok = s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	s.impl = s.onDemandManager
 
 	// Clear mock
+	var ok bool
 	s.mock, ok = s.impl.client.(*awsClientMock)
 	s.Require().True(ok)
 	s.mock.Instance = nil
@@ -110,7 +103,7 @@ func (s *EC2Suite) SetupTest() {
 			birch.EC.Double("bid_price", 0.001),
 			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
 		)},
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 	}
 
 	s.h = &host.Host{
@@ -135,7 +128,6 @@ func (s *EC2Suite) SetupTest() {
 }
 
 func (s *EC2Suite) TestConstructor() {
-	s.Implements((*Manager)(nil), &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts})
 	s.Implements((*BatchManager)(nil), &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts})
 }
 
@@ -283,8 +275,7 @@ func (s *EC2Suite) TestConfigure() {
 	// No region or account specified.
 	// No region specified.
 	s.Require().NoError(s.onDemandManager.Configure(s.ctx, settings))
-	ec2m, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	ec2m := s.onDemandManager
 	s.Zero(ec2m.account)
 	s.Zero(ec2m.role)
 	s.Equal(evergreen.DefaultEC2Region, ec2m.region)
@@ -311,203 +302,6 @@ func (s *EC2Suite) TestConfigure() {
 	s.Equal(account, onDemandWithRegionManager.account)
 	s.Equal(role, onDemandWithRegionManager.role)
 	s.Equal(onDemandWithRegionOpts.region, onDemandWithRegionManager.region)
-}
-
-func (s *EC2Suite) TestSpawnHostInvalidInput() {
-	h := &host.Host{
-		Distro: distro.Distro{
-			Provider: "foo",
-			Id:       "id",
-		},
-	}
-
-	spawned, err := s.onDemandManager.SpawnHost(s.ctx, h)
-	s.Nil(spawned)
-	s.Error(err)
-	s.EqualError(err, "can't spawn EC2 instance for distro 'id': distro provider is 'foo'")
-}
-
-func validEC2ProviderSettings() *birch.Document {
-	return birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-	)
-}
-
-func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
-	s.h.Distro.Id = "distro_id"
-	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	s.h.Distro.ProviderSettingsList = []*birch.Document{validEC2ProviderSettings()}
-	s.Require().NoError(s.h.Insert(s.ctx))
-
-	_, err := s.onDemandManager.SpawnHost(s.ctx, s.h)
-	s.NoError(err)
-
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.Require().True(ok)
-
-	s.Require().NotNil(mock.RunInstancesInput)
-	runInput := *mock.RunInstancesInput
-	s.Equal("ami", *runInput.ImageId)
-	s.EqualValues("instanceType", runInput.InstanceType)
-	s.Equal("task-host-key", *runInput.KeyName)
-	s.Require().Len(runInput.BlockDeviceMappings, 1)
-	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", runInput.SecurityGroups[0])
-	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
-	s.Nil(runInput.SecurityGroupIds)
-	s.Nil(runInput.SubnetId)
-	s.Equal(base64OfSomeUserData, *runInput.UserData)
-}
-
-func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
-	h := &host.Host{}
-	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	providerSettings := validEC2ProviderSettings()
-	providerSettings.Append(birch.EC.Boolean("is_vpc", true))
-	h.Distro.ProviderSettingsList = []*birch.Document{providerSettings}
-	s.Require().NoError(h.Insert(s.ctx))
-
-	_, err := s.onDemandManager.SpawnHost(s.ctx, h)
-	s.NoError(err)
-
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.Require().True(ok)
-
-	s.Require().NotNil(mock.RunInstancesInput)
-	runInput := *mock.RunInstancesInput
-	s.Equal("ami", *runInput.ImageId)
-	s.EqualValues("instanceType", runInput.InstanceType)
-	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
-	s.Equal("task-host-key", *runInput.KeyName)
-	s.Require().Len(runInput.NetworkInterfaces, 1)
-	s.True(aws.ToBool(runInput.NetworkInterfaces[0].AssociatePublicIpAddress))
-	s.Require().Len(runInput.NetworkInterfaces[0].Groups, 1)
-	s.Equal("sg-123456", runInput.NetworkInterfaces[0].Groups[0])
-	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Nil(runInput.SecurityGroupIds)
-	s.Nil(runInput.SecurityGroups)
-	s.Nil(runInput.SubnetId)
-	s.Equal(base64OfSomeUserData, *runInput.UserData)
-}
-
-func (s *EC2Suite) TestSpawnHostForTask() {
-	h := &host.Host{}
-	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	providerSettings := validEC2ProviderSettings()
-	providerSettings.Append(birch.EC.Boolean("is_vpc", true))
-	h.Distro.ProviderSettingsList = []*birch.Document{providerSettings}
-
-	project := "example_project"
-	t := &task.Task{
-		Id:      "task_1",
-		Project: project,
-	}
-	h.SpawnOptions.TaskID = "task_1"
-	h.StartedBy = "task_1"
-	h.SpawnOptions.SpawnedByTask = true
-	s.Require().NoError(h.Insert(s.ctx))
-	s.Require().NoError(t.Insert(s.ctx))
-
-	s.Require().NoError(db.Clear(model.ProjectRefCollection))
-	defer func() {
-		s.NoError(db.Clear(model.ProjectRefCollection))
-	}()
-	pRef := &model.ProjectRef{
-		Id: project,
-	}
-	s.Require().NoError(pRef.Insert(s.ctx))
-
-	newVars := &model.ProjectVars{
-		Id: pRef.Id,
-		Vars: map[string]string{
-			model.ProjectAWSSSHKeyName:  "evg_auto_example_project",
-			model.ProjectAWSSSHKeyValue: "key_material",
-		},
-	}
-	s.Require().NoError(newVars.Insert(s.ctx))
-
-	_, err := s.onDemandManager.SpawnHost(s.ctx, h)
-	s.NoError(err)
-
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.Require().True(ok)
-
-	s.Require().NotNil(mock.RunInstancesInput)
-	runInput := *mock.RunInstancesInput
-	s.Equal("ami", *runInput.ImageId)
-	s.EqualValues("instanceType", runInput.InstanceType)
-	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
-	s.Equal("evg_auto_evergreen", *runInput.KeyName)
-	s.Require().Len(runInput.NetworkInterfaces, 1)
-	s.True(aws.ToBool(runInput.NetworkInterfaces[0].AssociatePublicIpAddress))
-	s.Require().Len(runInput.NetworkInterfaces[0].Groups, 1)
-	s.Equal("sg-123456", runInput.NetworkInterfaces[0].Groups[0])
-	s.Equal("subnet-123456", aws.ToString(runInput.NetworkInterfaces[0].SubnetId))
-	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Nil(runInput.SecurityGroupIds)
-	s.Nil(runInput.SecurityGroups)
-	s.Nil(runInput.SubnetId)
-	s.Equal(base64OfSomeUserData, *runInput.UserData)
-}
-
-func (s *EC2Suite) TestSpawnHostForTaskWithoutPublicIPv4Address() {
-	s.h.Distro.Id = "distro_id"
-	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	providerSettings := validEC2ProviderSettings()
-	providerSettings.Append(birch.EC.Boolean("is_vpc", true))
-	providerSettings.Append(birch.EC.Boolean("do_not_assign_public_ipv4_address", true))
-	s.h.Distro.ProviderSettingsList = []*birch.Document{providerSettings}
-	s.Require().NoError(s.h.Insert(s.ctx))
-
-	_, err := s.onDemandManager.SpawnHost(s.ctx, s.h)
-	s.NoError(err)
-
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-	s.Require().True(ok)
-
-	s.Require().NotNil(mock.RunInstancesInput)
-	runInput := *mock.RunInstancesInput
-	s.Equal("ami", *runInput.ImageId)
-	s.EqualValues("instanceType", runInput.InstanceType)
-	s.Zero(runInput.KeyName)
-	s.Require().Len(runInput.NetworkInterfaces, 1)
-	s.False(aws.ToBool(runInput.NetworkInterfaces[0].AssociatePublicIpAddress))
-	s.Require().Len(runInput.NetworkInterfaces[0].Groups, 1)
-	s.Equal("sg-123456", runInput.NetworkInterfaces[0].Groups[0])
-	s.Equal("subnet-123456", aws.ToString(runInput.NetworkInterfaces[0].SubnetId))
-	s.Require().Len(runInput.BlockDeviceMappings, 1)
-	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
-	s.Nil(runInput.SecurityGroupIds)
-	s.Nil(runInput.SecurityGroups)
-	s.Nil(runInput.SubnetId)
-	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
 
 func (s *EC2Suite) TestModifyHost() {
@@ -752,7 +546,7 @@ func (s *EC2Suite) TestGetInstanceInfoNoReservationForIntentStyleHostID() {
 func (s *EC2Suite) TestGetInstanceInformation() {
 	s.Require().NoError(s.h.Insert(s.ctx))
 
-	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	s.h.Distro.Provider = evergreen.ProviderNameEc2Fleet
 	info, err := s.onDemandManager.GetInstanceState(s.ctx, s.h)
 	s.NoError(err)
 	s.Equal(StatusRunning, info.Status)
@@ -896,8 +690,7 @@ func (s *EC2Suite) TestStopInstanceAndShouldKeepOff() {
 }
 
 func (s *EC2Suite) TestStartInstance() {
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{}
@@ -946,8 +739,7 @@ func (s *EC2Suite) TestStartInstance() {
 }
 
 func (s *EC2Suite) TestRebootInstance() {
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{}
@@ -1002,8 +794,7 @@ func (s *EC2Suite) TestGetDNSName() {
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 	s.Nil(mock.DescribeInstancesInput)
@@ -1043,34 +834,33 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		{
 			Id: "i-1",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-3",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 		{
 			Id: "i-4",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 		},
 	}
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 
@@ -1123,9 +913,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		},
 	}
 	s.True(ok)
-	batchManager, ok := s.onDemandManager.(BatchManager)
-	s.True(ok)
-	s.NotNil(batchManager)
+	var batchManager BatchManager = s.onDemandManager
 	statuses, err := batchManager.GetInstanceStatuses(s.ctx, hosts)
 	s.NoError(err, "does not error if some of the instances do not exist")
 	s.Equal(map[string]CloudStatus{
@@ -1281,7 +1069,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		{
 			Id: "i-1",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 			Status: evergreen.HostStarting,
@@ -1289,7 +1077,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		{
 			Id: "i-2",
 			Distro: distro.Distro{
-				Provider:             evergreen.ProviderNameEc2OnDemand,
+				Provider:             evergreen.ProviderNameEc2Fleet,
 				ProviderSettingsList: s.distro.ProviderSettingsList,
 			},
 			Status: evergreen.HostStarting,
@@ -1299,7 +1087,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		s.NoError(h.Insert(s.ctx))
 	}
 
-	manager := s.onDemandManager.(*ec2Manager)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
@@ -1330,8 +1118,7 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 		},
 	}
 
-	batchManager := s.onDemandManager.(BatchManager)
-	s.NotNil(batchManager)
+	var batchManager BatchManager = s.onDemandManager
 	statuses, err := batchManager.GetInstanceStatuses(context.Background(), hosts)
 	s.NoError(err)
 	s.Len(statuses, len(hosts), "should have one status for the existing host and one for the nonexistent host")
@@ -1351,13 +1138,13 @@ func (s *EC2Suite) TestGetRegion() {
 }
 
 func (s *EC2Suite) TestUserDataExpand() {
-	expanded, err := expandUserData("${test} a thing", s.onDemandManager.(*ec2Manager).settings.Expansions)
+	expanded, err := expandUserData("${test} a thing", s.onDemandManager.settings.Expansions)
 	s.NoError(err)
 	s.Equal("expand a thing", expanded)
 }
 
 func (s *EC2Suite) TestCacheHostData() {
-	ec2m := s.onDemandManager.(*ec2Manager)
+	ec2m := s.onDemandManager
 
 	s.Require().NoError(s.h.Insert(s.ctx))
 
@@ -1467,7 +1254,7 @@ func (s *EC2Suite) TestFromDistroSettings() {
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	d1 := distro.Distro{
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("region", evergreen.DefaultEC2Region),
 			birch.EC.String("aws_access_key_id", "key"),
@@ -1482,55 +1269,11 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
 }
 
-func (s *EC2Suite) TestSetNextSubnet() {
-	s.Require().NoError(db.Clear(host.Collection))
-	typeCache = map[instanceRegionPair][]evergreen.Subnet{
-		{instanceType: "instance-type0", region: evergreen.DefaultEC2Region}: {
-			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
-			{SubnetID: "sn1", AZ: evergreen.DefaultEC2Region + "b"},
-		},
-		{instanceType: "instance-type1", region: evergreen.DefaultEC2Region}: {
-			{SubnetID: "sn0", AZ: evergreen.DefaultEC2Region + "a"},
-		},
-	}
-
-	h := &host.Host{
-		Id:           "h0",
-		InstanceType: "instance-type0",
-		Distro: distro.Distro{
-			ProviderSettingsList: []*birch.Document{
-				birch.NewDocument(
-					birch.EC.String("subnet_id", "not-supporting"),
-					birch.EC.String("region", evergreen.DefaultEC2Region),
-				),
-			},
-		},
-	}
-	s.Require().NoError(h.Insert(s.ctx))
-	s.impl.region = evergreen.DefaultEC2Region
-
-	// set to the first supporting subnet
-	s.NoError(s.impl.setNextSubnet(context.Background(), h))
-	s.Equal("sn0", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
-
-	s.NoError(s.impl.setNextSubnet(context.Background(), h))
-	s.Equal("sn1", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
-
-	// wrap around
-	s.NoError(s.impl.setNextSubnet(context.Background(), h))
-	s.Equal("sn0", h.Distro.ProviderSettingsList[0].Lookup("subnet_id").StringValue())
-
-	// only supported by one subnet
-	h.InstanceType = "instance-type1"
-	s.Error(s.impl.setNextSubnet(context.Background(), h))
-}
-
 func (s *EC2Suite) TestCreateVolume() {
 	volume, err := s.onDemandManager.CreateVolume(s.ctx, s.volume)
 	s.NoError(err)
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 
@@ -1582,8 +1325,7 @@ func (s *EC2Suite) TestDeleteVolume() {
 	s.NoError(s.volume.Insert(s.ctx))
 	s.NoError(s.onDemandManager.DeleteVolume(s.ctx, s.volume))
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 
@@ -1603,8 +1345,7 @@ func (s *EC2Suite) TestAttachVolume() {
 	}
 	s.NoError(s.onDemandManager.AttachVolume(s.ctx, s.h, &newAttachment))
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 
@@ -1643,8 +1384,7 @@ func (s *EC2Suite) TestDetachVolume() {
 
 	s.NoError(s.onDemandManager.DetachVolume(s.ctx, s.h, "test-volume"))
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 
@@ -1667,8 +1407,7 @@ func (s *EC2Suite) TestModifyVolumeExpiration() {
 	s.NoError(err)
 	s.True(newExpiration.Equal(vol.Expiration))
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 
@@ -1685,8 +1424,7 @@ func (s *EC2Suite) TestModifyVolumeNoExpiration() {
 	s.NoError(err)
 	s.Less(time.Now().Add(evergreen.SpawnHostNoExpirationDuration).Sub(vol.Expiration), time.Minute)
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 
@@ -1703,8 +1441,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 	s.NoError(err)
 	s.EqualValues(100, vol.Size)
 
-	manager, ok := s.onDemandManager.(*ec2Manager)
-	s.Require().True(ok)
+	manager := s.onDemandManager
 	mock, ok := manager.client.(*awsClientMock)
 	s.Require().True(ok)
 

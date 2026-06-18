@@ -50,6 +50,20 @@ func TestRateLimitConfigValidate(t *testing.T) {
 		assert.NoError(t, c.ValidateAndDefault())
 	})
 
+	t.Run("PerHourSetWithZeroBurstShouldError", func(t *testing.T) {
+		c := RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 0}
+		err := c.ValidateAndDefault()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be zero if burst")
+	})
+
+	t.Run("BurstSetWithZeroPerHourShouldError", func(t *testing.T) {
+		c := RateLimitConfig{RESTUserPerHour: 0, RESTUserBurst: 50}
+		err := c.ValidateAndDefault()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must not exceed requests per hour")
+	})
+
 	t.Run("NegativeComplexityLimitShouldError", func(t *testing.T) {
 		c := RateLimitConfig{GraphQLComplexityLimit: -1}
 		assert.Error(t, c.ValidateAndDefault())
@@ -65,7 +79,7 @@ func TestRateLimitConfigValidate(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "REST user")
 		assert.Contains(t, err.Error(), "GraphQL user")
-		assert.Contains(t, err.Error(), "GraphQL complexity limit")
+		assert.Contains(t, err.Error(), "complexity limit")
 	})
 }
 

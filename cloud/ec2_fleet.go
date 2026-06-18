@@ -88,6 +88,8 @@ type ec2FleetManager struct {
 	*EC2FleetManagerOptions
 	settings *evergreen.Settings
 	env      evergreen.Environment
+	// ec2Mgr handles host management operations (ModifyHost, Stop/Start/Reboot, volumes).
+	ec2Mgr *ec2Manager
 }
 
 func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
@@ -103,6 +105,17 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 	}
 	m.role = role
 
+	m.ec2Mgr = &ec2Manager{
+		EC2ManagerOptions: &EC2ManagerOptions{
+			client:  m.client,
+			region:  m.region,
+			account: m.account,
+			role:    m.role,
+		},
+		settings: settings,
+		env:      m.env,
+	}
+
 	return nil
 }
 
@@ -111,7 +124,7 @@ func (m *ec2FleetManager) setupClient(ctx context.Context) error {
 }
 
 func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != evergreen.ProviderNameEc2Fleet {
+	if !evergreen.IsEc2Provider(h.Distro.Provider) {
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
@@ -153,6 +166,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	return h, nil
 }
 
+// ModifyHost modifies an existing host's properties (tags, instance type, sleep schedule, expiration).
 func (m *ec2FleetManager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
 	if opts.ExtendExpireOnByDay {
 		if err := m.setupClient(ctx); err != nil {
@@ -160,7 +174,7 @@ func (m *ec2FleetManager) ModifyHost(ctx context.Context, h *host.Host, opts hos
 		}
 		return errors.Wrap(extendExpireOnByDay(ctx, m.client, h), "extending expire-on tag by one day")
 	}
-	return errors.New("can't modify instances for EC2 fleet provider")
+	return m.ec2Mgr.ModifyHost(ctx, h, opts)
 }
 
 func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
@@ -326,19 +340,19 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating instance in DB")
 }
 
-// StopInstance should do nothing for EC2 Fleet.
-func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, bool, string) error {
-	return errors.New("can't stop instances for EC2 fleet provider")
+// StopInstance stops a running host instance.
+func (m *ec2FleetManager) StopInstance(ctx context.Context, h *host.Host, shouldKeepOff bool, user string) error {
+	return m.ec2Mgr.StopInstance(ctx, h, shouldKeepOff, user)
 }
 
-// StartInstance should do nothing for EC2 Fleet.
-func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) error {
-	return errors.New("can't start instances for EC2 fleet provider")
+// StartInstance starts a stopped host instance.
+func (m *ec2FleetManager) StartInstance(ctx context.Context, h *host.Host, user string) error {
+	return m.ec2Mgr.StartInstance(ctx, h, user)
 }
 
-// RebootInstance should do nothing for EC2 Fleet.
+// RebootInstance reboots a running host instance.
 func (m *ec2FleetManager) RebootInstance(ctx context.Context, h *host.Host, user string) error {
-	return errors.New("can't reboot instances for EC2 fleet provider")
+	return m.ec2Mgr.RebootInstance(ctx, h, user)
 }
 
 // AssociateIP associates the host with its allocated IP address.
@@ -428,28 +442,34 @@ func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
 	return nil
 }
 
-func (m *ec2FleetManager) AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error {
-	return errors.New("can't attach volume with EC2 fleet provider")
+// AttachVolume attaches an EBS volume to a host.
+func (m *ec2FleetManager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
+	return m.ec2Mgr.AttachVolume(ctx, h, attachment)
 }
 
-func (m *ec2FleetManager) DetachVolume(context.Context, *host.Host, string) error {
-	return errors.New("can't detach volume with EC2 fleet provider")
+// DetachVolume detaches an EBS volume from a host.
+func (m *ec2FleetManager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
+	return m.ec2Mgr.DetachVolume(ctx, h, volumeID)
 }
 
-func (m *ec2FleetManager) CreateVolume(context.Context, *host.Volume) (*host.Volume, error) {
-	return nil, errors.New("can't create volume with EC2 fleet provider")
+// CreateVolume creates a new EBS volume for attaching to a host.
+func (m *ec2FleetManager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
+	return m.ec2Mgr.CreateVolume(ctx, volume)
 }
 
-func (m *ec2FleetManager) DeleteVolume(context.Context, *host.Volume) error {
-	return errors.New("can't delete volume with EC2 fleet provider")
+// DeleteVolume deletes an EBS volume.
+func (m *ec2FleetManager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
+	return m.ec2Mgr.DeleteVolume(ctx, volume)
 }
 
-func (m *ec2FleetManager) ModifyVolume(context.Context, *host.Volume, *model.VolumeModifyOptions) error {
-	return errors.New("can't modify volume with EC2 fleet provider")
+// ModifyVolume modifies an existing EBS volume's properties.
+func (m *ec2FleetManager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
+	return m.ec2Mgr.ModifyVolume(ctx, volume, opts)
 }
 
-func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*VolumeAttachment, error) {
-	return nil, errors.New("can't get volume attachment with EC2 fleet provider")
+// GetVolumeAttachment returns the attachment information for a volume.
+func (m *ec2FleetManager) GetVolumeAttachment(ctx context.Context, volumeID string) (*VolumeAttachment, error) {
+	return m.ec2Mgr.GetVolumeAttachment(ctx, volumeID)
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {

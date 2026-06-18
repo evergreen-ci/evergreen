@@ -173,10 +173,19 @@ type UseSpruceOptions {
 }
 
 """
-UserLite replaces User by sidestepping the APIUser field. It does not contain all fields at this time.
+UserLite replaces User by sidestepping the APIDBUser API model and binding directly to the
+service-layer user model. New clients should query UserLite instead of User.
 """
 type UserLite {
+  betaFeatures: BetaFeatures
   displayName: String
   emailAddress: String
+  hasTokenExchangePending: Boolean!
   id: String!
+  parsleyFilters: [ParsleyFilter!]
+  patches(patchesInput: PatchesInput!): Patches # user patches
+  permissions: Permissions
+  settings: UserSettings
+  subscriptions: [GeneralSubscription!]
+  tokenAccessTokenExpiresAt: Time
 }

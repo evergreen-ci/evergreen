@@ -1,13 +1,11 @@
 package taskoutput
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -27,8 +25,7 @@ import (
 )
 
 func TestAppendTestLog(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tsk := &task.Task{
 		Id:           "id",
@@ -53,13 +50,15 @@ func TestAppendTestLog(t *testing.T) {
 		TaskExecution: 5,
 	}
 
+	initedS3Usage := &s3usage.S3Usage{}
+	initedS3Usage.Init()
+
 	for _, testCase := range []struct {
 		name           string
 		input          []string
 		expectedOutput []string
 		redactOpts     redactor.RedactionOptions
 		s3Usage        *s3usage.S3Usage
-		s3UsageMu      *sync.Mutex
 	}{
 		{
 			name:           "Newlines",
@@ -77,18 +76,17 @@ func TestAppendTestLog(t *testing.T) {
 			},
 		},
 		{
-			name:           "NonNilS3UsageAndMutex",
+			name:           "NonNilS3Usage",
 			input:          []string{"log line 1"},
 			expectedOutput: []string{"log line 1"},
-			s3Usage:        &s3usage.S3Usage{},
-			s3UsageMu:      &sync.Mutex{},
+			s3Usage:        initedS3Usage,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			tsk.TaskOutputInfo.TestLogs.BucketConfig.Name = t.TempDir()
 			testLog.Lines = testCase.input
 
-			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog, testCase.s3Usage, testCase.s3UsageMu))
+			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog, testCase.s3Usage))
 			it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{testLog.Name}})
 			require.NoError(t, err)
 
@@ -105,8 +103,7 @@ func TestAppendTestLog(t *testing.T) {
 }
 
 func TestTestLogDirectoryHandlerRun(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	comm := client.NewMock("url")
 
@@ -282,8 +279,7 @@ func TestTestLogDirectoryHandlerSymlink(t *testing.T) {
 }
 
 func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	comm := client.NewMock("url")
 	getRawLinesAndFormatter := func(format testLogFormat) ([]string, func(log.LogLine) string) {
@@ -365,9 +361,9 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 			// accordance with their format.
 			it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{logPath}})
 			require.NoError(t, err)
-			defer func() {
+			t.Cleanup(func() {
 				assert.NoError(t, it.Close())
-			}()
+			})
 			var persistedRawLines []string
 			for it.Next() {
 				persistedRawLines = append(persistedRawLines, formatLine(it.Item()))
@@ -488,7 +484,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 			},
 		},
 	}
-	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
+	logger, err := comm.GetLoggerProducer(t.Context(), tsk, nil)
 	require.NoError(t, err)
 	handlerOpts := directoryHandlerOpts{
 		redactorOpts: redactOpts,

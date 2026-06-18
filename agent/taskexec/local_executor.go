@@ -687,6 +687,10 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 	e.debugState.SelectedTask = taskName
 	e.logger.Infof(ctx, "Preparing task: %s", taskName)
 
+	if variantName == "" && e.taskConfig.Task.BuildVariant != "" {
+		variantName = e.taskConfig.Task.BuildVariant
+	}
+
 	var tg *model.TaskGroup
 	if variantName != "" {
 		bv := e.project.FindBuildVariant(variantName)
@@ -703,6 +707,10 @@ func (e *LocalExecutor) PrepareTask(ctx context.Context, taskName, variantName s
 		e.taskConfig.Expansions.Put("build_variant", variantName)
 		e.taskConfig.Expansions.Update(bv.Expansions)
 		e.logger.Infof(ctx, "Applied expansions from build variant: %s", variantName)
+	}
+
+	if tg == nil && e.taskConfig.Task.TaskGroup != "" {
+		tg = e.project.FindTaskGroup(e.taskConfig.Task.TaskGroup)
 	}
 
 	// Build command blocks array. If the task belongs to a task group, use
