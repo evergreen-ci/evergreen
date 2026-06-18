@@ -118398,16 +118398,14 @@ func (ec *executionContext) marshalNProvider2ᚖstring(ctx context.Context, sel 
 
 var (
 	unmarshalNProvider2ᚖstring = map[string]string{
-		"DOCKER":        evergreen.ProviderNameDocker,
-		"EC2_FLEET":     evergreen.ProviderNameEc2Fleet,
-		"EC2_ON_DEMAND": evergreen.ProviderNameEc2OnDemand,
-		"STATIC":        evergreen.ProviderNameStatic,
+		"DOCKER":    evergreen.ProviderNameDocker,
+		"EC2_FLEET": evergreen.ProviderNameEc2Fleet,
+		"STATIC":    evergreen.ProviderNameStatic,
 	}
 	marshalNProvider2ᚖstring = map[string]string{
-		evergreen.ProviderNameDocker:      "DOCKER",
-		evergreen.ProviderNameEc2Fleet:    "EC2_FLEET",
-		evergreen.ProviderNameEc2OnDemand: "EC2_ON_DEMAND",
-		evergreen.ProviderNameStatic:      "STATIC",
+		evergreen.ProviderNameDocker:   "DOCKER",
+		evergreen.ProviderNameEc2Fleet: "EC2_FLEET",
+		evergreen.ProviderNameStatic:   "STATIC",
 	}
 )
 
