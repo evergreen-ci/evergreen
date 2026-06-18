@@ -59,9 +59,6 @@ func Handler(apiURL string, allowMutations bool) func(w http.ResponseWriter, r *
 		),
 	))
 
-	// Reject queries whose complexity exceeds the configured limit.
-	srv.Use(MakeComplexityLimit(schema))
-
 	// Log graphql requests to splunk
 	srv.Use(MakeSplunkTracing(schema))
 

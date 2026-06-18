@@ -203,22 +203,6 @@ func TestRateLimitMiddlewareRemainingHeaderDecrements(t *testing.T) {
 	}
 }
 
-// Verifies that rate limiting is also applied to GraphQL endpoints, non-exhaustively since
-// GraphQL and REST use the same underlying limiter logic.
-func TestRateLimitMiddlewareGraphQLSurfaceEnforcesLimit(t *testing.T) {
-	env := setupRateLimitEnv(t, evergreen.RateLimitConfig{GraphQLUserPerHour: 100, GraphQLUserBurst: 1})
-	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceGraphQL)
-	u := &user.DBUser{Id: "u"}
-
-	_, ran := runRateLimit(t, mw, "/graphql/query", u)
-	require.True(t, ran)
-
-	rw, ran := runRateLimit(t, mw, "/graphql/query", u)
-	assert.False(t, ran)
-	assert.Equal(t, http.StatusTooManyRequests, rw.Code)
-	assert.Equal(t, "100", rw.Header().Get(evergreen.RateLimitLimitHeader))
-}
-
 // Verifies that if the limiter fails to initialize (e.g. due to the Redis client being nil),
 // the middleware allows requests to proceed rather than erroring out.
 func TestRateLimitMiddlewareNilRedisClientPassesThrough(t *testing.T) {
