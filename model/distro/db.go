@@ -26,6 +26,7 @@ var (
 	SetupKey                 = bsonutil.MustHaveTag(Distro{}, "Setup")
 	AuthorizedKeysFileKey    = bsonutil.MustHaveTag(Distro{}, "AuthorizedKeysFile")
 	UserKey                  = bsonutil.MustHaveTag(Distro{}, "User")
+	ExecUserKey              = bsonutil.MustHaveTag(Distro{}, "ExecUser")
 	SSHOptionsKey            = bsonutil.MustHaveTag(Distro{}, "SSHOptions")
 	BootstrapSettingsKey     = bsonutil.MustHaveTag(Distro{}, "BootstrapSettings")
 	DispatcherSettingsKey    = bsonutil.MustHaveTag(Distro{}, "DispatcherSettings")
@@ -104,6 +105,17 @@ func distroDB() *mongo.Database {
 // FindOneId returns one Distro by Id.
 func FindOneId(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, ById(id))
+}
+
+// FindOneForDistroView returns a Distro containing only the fields needed by
+// the distro_view agent endpoint (bootstrap settings and exec user). Using a
+// projection avoids deserializing the full document — which can be large for
+// EC2 distros — on every agent task start.
+func FindOneForDistroView(ctx context.Context, id string) (*Distro, error) {
+	return FindOne(ctx, ById(id), options.FindOne().SetProjection(bson.M{
+		BootstrapSettingsKey: 1,
+		ExecUserKey:          1,
+	}))
 }
 
 func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {

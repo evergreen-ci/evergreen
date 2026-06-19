@@ -45,6 +45,10 @@ type ServiceFlags struct {
 	PodDiagnosticsDisabled             bool `bson:"pod_diagnostics_disabled" json:"pod_diagnostics_disabled"`
 	WebhookSecretMigrationEnabled      bool `bson:"webhook_secret_migration_enabled" json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupEnabled        bool `bson:"webhook_secret_cleanup_enabled" json:"webhook_secret_cleanup_enabled"`
+	// ContainerIsolationDisabled is a fleet-wide kill switch that converts
+	// every distro to host-mode immediately, regardless of per-distro
+	// container isolation settings.
+	ContainerIsolationDisabled bool `bson:"container_isolation_disabled" json:"container_isolation_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`

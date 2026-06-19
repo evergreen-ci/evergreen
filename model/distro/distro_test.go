@@ -733,3 +733,109 @@ func TestCostData(t *testing.T) {
 	assert.Equal(t, 0.0, found2.CostData.OnDemandRate)
 	assert.Equal(t, 0.0, found2.CostData.SavingsPlanRate)
 }
+
+func TestContainerIsolationSettingsValidation(t *testing.T) {
+	t.Run("ValidLinuxConfig", func(t *testing.T) {
+		d := Distro{
+			Id:       "test-distro",
+			Arch:     "linux_amd64",
+			ExecUser: "mci-exec",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled: true,
+					Image:   "ubuntu:22.04",
+				},
+			},
+		}
+		assert.NoError(t, d.ValidateBootstrapSettings())
+	})
+
+	t.Run("EnabledWithRequireIsolationAndMissingExecUserRejected", func(t *testing.T) {
+		// Ensures both ExecUser and RequireIsolation validations fire together
+		// on the most security-sensitive configuration (fail-closed isolation).
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled:          true,
+					Image:            "ubuntu:22.04",
+					RequireIsolation: true,
+					// ExecUser deliberately absent
+				},
+			},
+		}
+		assert.ErrorContains(t, d.ValidateBootstrapSettings(), "ExecUser")
+	})
+
+	t.Run("RequireIsolationWithoutEnabledRejected", func(t *testing.T) {
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled:          false,
+					RequireIsolation: true,
+				},
+			},
+		}
+		assert.ErrorContains(t, d.ValidateBootstrapSettings(), "require_isolation has no effect")
+	})
+
+	t.Run("ContainerIsolationWithoutExecUserRejected", func(t *testing.T) {
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled: true,
+					Image:   "ubuntu:22.04",
+				},
+			},
+		}
+		assert.ErrorContains(t, d.ValidateBootstrapSettings(), "ExecUser")
+	})
+
+	t.Run("EnabledWithoutImage", func(t *testing.T) {
+		d := Distro{
+			Id:   "test-distro",
+			Arch: "linux_amd64",
+			BootstrapSettings: BootstrapSettings{
+				Method:                BootstrapMethodSSH,
+				Communication:         CommunicationMethodSSH,
+				ClientDir:             "/home/agent",
+				JasperBinaryDir:       "/home/agent",
+				JasperCredentialsPath: "/home/agent/creds",
+				ShellPath:             "/bin/bash",
+				ContainerIsolation: ContainerIsolationSettings{
+					Enabled: true,
+				},
+			},
+		}
+		assert.Error(t, d.ValidateBootstrapSettings())
+	})
+}
