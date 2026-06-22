@@ -281,21 +281,14 @@ func (s *PatchUtilTestSuite) TestMultipleLocalAliasesExpandIntoTasksAndVariants(
 	s.ElementsMatch([]string{"task0", "task1"}, pp.RegexTasks)
 }
 
-func (s *PatchUtilTestSuite) TestMultipleServerAliasesError() {
-	pp := patchParams{
-		Project:     "project",
-		Aliases:     []string{"server-alias-1", "server-alias-2"},
-		SkipConfirm: true,
-	}
-	conf := &ClientSettings{
-		Projects: []ClientProjectConf{
-			{Name: "project"},
-		},
-	}
+func (s *PatchUtilTestSuite) TestMultipleServerAliasesSubmitted() {
+	// Multiple server-side aliases are submitted as-is (no longer rejected).
+	pp := patchParams{Aliases: []string{"server-alias-1", "server-alias-2"}}
+	s.Equal([]string{"server-alias-1", "server-alias-2"}, pp.submissionAliases())
 
-	_, err := pp.validatePatchCommand(s.T().Context(), conf, nil, nil)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "multiple aliases")
+	// A single resolved alias still submits as a one-element list.
+	pp = patchParams{Alias: "solo"}
+	s.Equal([]string{"solo"}, pp.submissionAliases())
 }
 
 func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {

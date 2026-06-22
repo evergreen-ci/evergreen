@@ -109,6 +109,7 @@ type patchSubmission struct {
 	description                        string
 	base                               string
 	alias                              string
+	aliases                            []string
 	path                               string
 	variants                           []string
 	tasks                              []string
@@ -145,6 +146,7 @@ func (p *patchParams) createPatch(ctx context.Context, ac *legacyClient, diffDat
 		regexTestSelectionTasks:            p.RegexTestSelectionTasks,
 		regexTestSelectionExcludedTasks:    p.RegexTestSelectionExcludedTasks,
 		alias:                              p.Alias,
+		aliases:                            p.submissionAliases(),
 		finalize:                           p.Finalize,
 		parameters:                         p.Parameters,
 		triggerAliases:                     p.TriggerAliases,
@@ -260,13 +262,6 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		p.setNonRepeatedDefaults(ctx, conf)
 	}
 
-	// Specifying multiple aliases is only supported for local aliases, which are
-	// expanded client-side in setLocalAliases. Any remaining aliases are
-	// server-side, and the patch submission can only carry a single one.
-	if len(p.Aliases) > 1 {
-		return nil, errors.Errorf("specifying multiple aliases is only supported for local aliases defined in your config file; cannot combine server-side aliases [%s]", strings.Join(p.Aliases, ", "))
-	}
-
 	if err := p.loadParameters(conf); err != nil {
 		grip.Warningf(ctx, "warning - failed to set default parameters: %s\n", err)
 	}
@@ -309,14 +304,25 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	return ref, nil
 }
 
+// submissionAliases returns the server-side aliases to submit, preferring the
+// multi-alias list and falling back to the single resolved Alias.
+func (p *patchParams) submissionAliases() []string {
+	if len(p.Aliases) > 0 {
+		return p.Aliases
+	}
+	if p.Alias != "" {
+		return []string{p.Alias}
+	}
+	return nil
+}
+
 func (p *patchParams) setNonRepeatedDefaults(ctx context.Context, conf *ClientSettings) {
 	if err := p.setLocalAliases(conf); err != nil {
 		grip.Warningf(ctx, "warning - setting local aliases: %s\n", err)
 	}
 
-	// After local aliases are expanded, fold the single remaining server-side
-	// alias into Alias for downstream resolution and submission. Specifying more
-	// than one server-side alias is rejected in validatePatchCommand.
+	// When a single server-side alias remains, mirror it into Alias for
+	// downstream resolution and backwards compatibility.
 	if len(p.Aliases) == 1 {
 		p.Alias = p.Aliases[0]
 	}
