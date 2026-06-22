@@ -647,7 +647,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
+		project.BuildProjectTVPairs(ctx, patchDoc, patchDoc.AliasesToResolve())
 	}
 	return nil
 }
