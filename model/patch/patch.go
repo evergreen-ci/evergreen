@@ -101,8 +101,7 @@ type Patch struct {
 	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"project_storage_method,omitempty"`
 	PatchedProjectConfig string                               `bson:"patched_project_config"`
 	// Alias is the primary selection alias applied to the patch. It is retained
-	// for backwards compatibility; Aliases holds the full set of selection
-	// aliases.
+	// for backwards compatibility; Aliases holds the full set of selection aliases.
 	Alias      string      `bson:"alias"`
 	Aliases    []string    `bson:"aliases,omitempty"`
 	Triggers   TriggerInfo `bson:"triggers"`
@@ -668,6 +667,19 @@ func (p *Patch) IsMergeQueuePatch() bool {
 
 func (p *Patch) IsChild() bool {
 	return p.Triggers.ParentPatch != ""
+}
+
+// AliasesToResolve returns the aliases used to resolve the patch's tasks and
+// parameters, preferring the multi-alias list and falling back to the single
+// Alias (which holds internal aliases and single-alias patches).
+func (p *Patch) AliasesToResolve() []string {
+	if len(p.Aliases) > 0 {
+		return p.Aliases
+	}
+	if p.Alias != "" {
+		return []string{p.Alias}
+	}
+	return nil
 }
 
 // CollectiveStatus returns the aggregate display status of all tasks and child patches.
