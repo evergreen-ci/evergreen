@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDBTaskQueuePersister(t *testing.T) {
@@ -126,8 +129,8 @@ func TestDBTaskQueuePersister(t *testing.T) {
 		Convey("saving task queues should place them in the database with the "+
 			"correct ordering of tasks along with the relevant average task "+
 			"completion times", func() {
-			So(PersistTaskQueue(ctx, distroIds[0], []task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1), ShouldBeNil)
-			So(PersistTaskQueue(ctx, distroIds[1], []task.Task{tasks[3], tasks[4]}, distroQueueInfo2), ShouldBeNil)
+			So(PersistTaskQueue(ctx, distroIds[0], []task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1, 0), ShouldBeNil)
+			So(PersistTaskQueue(ctx, distroIds[1], []task.Task{tasks[3], tasks[4]}, distroQueueInfo2, 0), ShouldBeNil)
 
 			taskQueue, err := model.LoadTaskQueue(t.Context(), distroIds[0])
 			So(err, ShouldBeNil)
@@ -206,4 +209,48 @@ func TestDBTaskQueuePersister(t *testing.T) {
 
 	})
 
+}
+
+// TestPersistTaskQueueCappedLength drives the cap through the prod path (PersistTaskQueue -> Save ->
+// LoadTaskQueue) with a small limit, building task queues by hand to cover the cap scenarios.
+func TestPersistTaskQueueCappedLength(t *testing.T) {
+	ctx := t.Context()
+	const limit = 5
+
+	// build makes n ranked tasks t0..t{n-1}; each groups entry tags tasks [start,end) as one task group.
+	build := func(n int, groups map[string][2]int) []task.Task {
+		ts := make([]task.Task, n)
+		for i := range ts {
+			ts[i] = task.Task{Id: fmt.Sprintf("t%d", i), DisplayTaskId: utility.ToStringPtr("")}
+		}
+		for name, span := range groups {
+			for i := span[0]; i < span[1]; i++ {
+				ts[i].TaskGroup = name
+			}
+		}
+		return ts
+	}
+
+	for name, tc := range map[string]struct {
+		tasks   []task.Task
+		limit   int
+		wantLen int
+	}{
+		"UnderLimitKeepsAll":          {build(3, nil), limit, 3},
+		"OverLimitKeepsTopN":          {build(10, nil), limit, limit},
+		"ZeroLimitDisablesCap":        {build(10, nil), 0, 10},
+		"GroupStraddlingCapKeptWhole": {build(8, map[string][2]int{"g": {4, 7}}), limit, 7},
+		"HugeGroupPastCapKeptWhole":   {build(13, map[string][2]int{"g": {4, 13}}), limit, 13},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(model.TaskQueuesCollection))
+			require.NoError(t, PersistTaskQueue(ctx, "d1", tc.tasks, model.DistroQueueInfo{}, tc.limit))
+
+			tq, err := model.LoadTaskQueue(ctx, "d1")
+			require.NoError(t, err)
+			assert.Len(t, tq.Queue, tc.wantLen)
+			require.NotEmpty(t, tq.Queue)
+			assert.Equal(t, "t0", tq.Queue[0].Id) // the cap keeps the highest-ranked (front) tasks
+		})
+	}
 }

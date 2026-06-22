@@ -31,6 +31,7 @@ input TaskLimitsConfigInput {
   maxExecTimeoutSecs: Int!
   maxTaskExecution: Int!
   maxDailyAutomaticRestarts: Int!
+  maxScheduledTasksPerDistro: Int!
 }
 
 type TaskLimitsConfig {
@@ -46,6 +47,7 @@ type TaskLimitsConfig {
   maxExecTimeoutSecs: Int
   maxTaskExecution: Int
   maxDailyAutomaticRestarts: Int
+  maxScheduledTasksPerDistro: Int
 }
 
 input HostInitConfigInput {
