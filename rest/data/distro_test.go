@@ -262,7 +262,7 @@ func TestUpdateDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
-				Provider: evergreen.ProviderNameEc2OnDemand,
+				Provider: evergreen.ProviderNameEc2Fleet,
 				WorkDir:  "/tmp2",
 				User:     "admin2",
 			}

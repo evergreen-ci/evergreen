@@ -266,6 +266,10 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByVersion())
 	app.AddRoute("/versions/{version_id}/manifest").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionManifest())
 
+	// This diagnostic route compares a version's manifest with its adjacent versions
+	// to show which project and module revisions changed.
+	app.AddRoute("/versions/{version_id}/manifest/proof").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionManifestProof())
+
 	// Add an options method to every GET, POST request to handle pre-flight Options requests.
 	// These requests must not check for credentials and just validate whether a route exists
 	// And allows requests from a origin.

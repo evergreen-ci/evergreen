@@ -526,7 +526,7 @@ func (d *Distro) GetImageID() (string, error) {
 	key := ""
 
 	switch d.Provider {
-	case evergreen.ProviderNameEc2OnDemand, evergreen.ProviderNameEc2Fleet:
+	case evergreen.ProviderNameEc2Fleet:
 		key = "ami"
 	case evergreen.ProviderNameDocker, evergreen.ProviderNameDockerMock:
 		key = "image_url"
@@ -917,7 +917,7 @@ func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (
 			return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 		}
 	}
-	d.Provider = evergreen.ProviderNameEc2OnDemand
+	d.Provider = evergreen.ProviderNameEc2Fleet
 
 	// Do not provision task-spawned hosts.
 	d.BootstrapSettings.Method = BootstrapMethodNone

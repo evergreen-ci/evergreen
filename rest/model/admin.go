@@ -3016,6 +3016,8 @@ type APITaskLimitsConfig struct {
 	MaxTaskExecution *int `json:"max_task_execution"`
 	// MaxDailyAutomaticRestarts is the maximum number of times a project can automatically restart a task within a 24-hour period.
 	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
+	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
+	MaxScheduledTasksPerDistro *int `json:"max_scheduled_tasks_per_distro"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h any) error {
@@ -3033,6 +3035,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 		c.MaxExecTimeoutSecs = utility.ToIntPtr(v.MaxExecTimeoutSecs)
 		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		c.MaxDailyAutomaticRestarts = utility.ToIntPtr(v.MaxDailyAutomaticRestarts)
+		c.MaxScheduledTasksPerDistro = utility.ToIntPtr(v.MaxScheduledTasksPerDistro)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -3053,6 +3056,7 @@ func (c *APITaskLimitsConfig) ToService() (any, error) {
 		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
+		MaxScheduledTasksPerDistro:                       utility.FromIntPtr(c.MaxScheduledTasksPerDistro),
 	}, nil
 }
 

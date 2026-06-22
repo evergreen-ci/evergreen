@@ -18,7 +18,7 @@ require (
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
 	github.com/evergreen-ci/gimlet v0.0.0-20260520162532-2cfc3356800c
-	github.com/evergreen-ci/pail v0.0.0-20260615180627-332e25d14040
+	github.com/evergreen-ci/pail v0.0.0-20260618132147-c9bcc0488a7f
 	github.com/evergreen-ci/poplar v0.0.0-20260330180450-c8cf511d1bd6
 	github.com/evergreen-ci/shrub v0.0.0-20251017154811-4d3ed1599154
 	github.com/evergreen-ci/utility v0.0.0-20260116164328-250718d590d2
@@ -163,6 +163,7 @@ require (
 )
 
 require (
+	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.101.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.68.6
@@ -170,13 +171,14 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20251215145242-23eaa365e48f
 	github.com/evergreen-ci/plank v0.0.0-20251203163536-53406252f581
 	github.com/evergreen-ci/test-selection-client v0.0.0-20260409173604-004964bcf728
+	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
 	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
 	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
 	github.com/parquet-go/parquet-go v0.29.0
-	github.com/redis/go-redis/v9 v9.19.0
+	github.com/redis/go-redis/v9 v9.20.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4
 	github.com/vikstrous/dataloadgen v0.0.10
@@ -212,6 +214,7 @@ require (
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/twpayne/go-geom v1.6.1 // indirect
 	github.com/urfave/cli/v3 v3.6.1 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.39.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
