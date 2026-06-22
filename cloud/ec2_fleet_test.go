@@ -517,7 +517,7 @@ func TestCleanup(t *testing.T) {
 	})
 }
 
-func TestGetManagerForEc2OnDemandUsesFleet(t *testing.T) {
+func TestGetManagerForEc2Fleet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -528,7 +528,7 @@ func TestGetManagerForEc2OnDemandUsesFleet(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, mgr)
 	_, ok := mgr.(*ec2FleetManager)
-	assert.True(t, ok, "ec2-ondemand provider should return an ec2FleetManager")
+	assert.True(t, ok, "ec2-fleet provider should return an ec2FleetManager")
 }
 
 func TestInstanceTypeAZCache(t *testing.T) {

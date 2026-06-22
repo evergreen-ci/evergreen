@@ -692,12 +692,11 @@ const (
 
 // Constants related to cloud providers and provider-specific settings.
 const (
-	ProviderNameEc2OnDemand = "ec2-ondemand"
-	ProviderNameEc2Fleet    = "ec2-fleet"
-	ProviderNameDocker      = "docker"
-	ProviderNameDockerMock  = "docker-mock"
-	ProviderNameStatic      = "static"
-	ProviderNameMock        = "mock"
+	ProviderNameEc2Fleet   = "ec2-fleet"
+	ProviderNameDocker     = "docker"
+	ProviderNameDockerMock = "docker-mock"
+	ProviderNameStatic     = "static"
+	ProviderNameMock       = "mock"
 
 	// DefaultEC2Region is the default region where hosts should be spawned and
 	// general Evergreen operations occur in AWS if no particular region is

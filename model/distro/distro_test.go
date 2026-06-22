@@ -202,7 +202,7 @@ func TestGetImageID(t *testing.T) {
 		legacyOnly     bool
 	}{
 		{
-			name:           "Ec2OnDemand",
+			name:           "Ec2Fleet",
 			provider:       evergreen.ProviderNameEc2Fleet,
 			key:            "ami",
 			value:          "imageID",

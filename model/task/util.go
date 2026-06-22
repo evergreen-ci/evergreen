@@ -16,13 +16,14 @@ func newBucket(ctx context.Context, config evergreen.BucketConfig, creds aws.Cre
 	switch config.Type {
 	case evergreen.BucketTypeS3:
 		return pail.NewS3Bucket(ctx, pail.S3Options{
-			Name:         config.Name,
-			Credentials:  creds,
-			Region:       evergreen.DefaultEC2Region,
-			Permissions:  pail.S3PermissionsPrivate,
-			MaxRetries:   utility.ToIntPtr(10),
-			Compress:     true,
-			StorageClass: s3Types.StorageClassIntelligentTiering,
+			Name:                config.Name,
+			Credentials:         creds,
+			Region:              evergreen.DefaultEC2Region,
+			Permissions:         pail.S3PermissionsPrivate,
+			MaxRetries:          utility.ToIntPtr(10),
+			MaxConcurrentCopies: utility.ToIntPtr(5),
+			Compress:            true,
+			StorageClass:        s3Types.StorageClassIntelligentTiering,
 		})
 	case evergreen.BucketTypeGridFS:
 		client, err := mongo.Connect(ctx)
