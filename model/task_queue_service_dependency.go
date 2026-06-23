@@ -282,6 +282,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 	}
 
 	settings := evergreen.GetEnvironment().Settings()
+	// Continue even if we can't count large parser projects; this may just mean we schedule a slightly higher number of expensive tasks.
 	numLargeParserProjectTasks, err := task.CountLargeParserProjectTasks(ctx)
 	if err != nil {
 		grip.Warning(ctx, message.WrapError(err, message.Fields{
