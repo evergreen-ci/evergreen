@@ -552,8 +552,6 @@ models:
         resolver: true
       predictedCost:
         resolver: true
-      projectIdentifier:
-        resolver: true
       includedLocalModules:
         resolver: true
       parameters:
@@ -882,8 +880,6 @@ models:
       executionTasksFull:
         resolver: true
       patchMetadata:
-        resolver: true
-      projectIdentifier:
         resolver: true
       reliesOn:
         resolver: true
