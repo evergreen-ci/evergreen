@@ -127,9 +127,10 @@ type tagged interface {
 
 // tagSelectorEvaluator evaluates selectors for arbitrary tagged items
 type tagSelectorEvaluator struct {
-	items  []tagged
-	byName map[string]tagged
-	byTag  map[string][]tagged
+	items          []tagged
+	byName         map[string]tagged
+	byTag          map[string][]tagged
+	criterionCache map[selectCriterion][]string
 }
 
 // newTagSelectorEvaluator returns a new taskSelectorEvaluator.
@@ -146,9 +147,10 @@ func newTagSelectorEvaluator(selectees []tagged) *tagSelectorEvaluator {
 		}
 	}
 	return &tagSelectorEvaluator{
-		items:  items,
-		byName: byName,
-		byTag:  byTag,
+		items:          items,
+		byName:         byName,
+		byTag:          byTag,
+		criterionCache: map[selectCriterion][]string{},
 	}
 }
 
@@ -184,39 +186,50 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, []string, e
 }
 
 // evalCriterion returns all names that fulfill a single selection criterion.
+// Results are memoized per evaluator instance; errors are never cached.
 func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, error) {
-	switch {
-	case sc.Validate() != nil:
-		return nil, errors.Errorf("criterion '%v' is invalid: %v", sc, sc.Validate())
+	if err := sc.Validate(); err != nil {
+		return nil, errors.Errorf("criterion '%v' is invalid: %v", sc, err)
+	}
+	if names, ok := tse.criterionCache[sc]; ok {
+		return names, nil
+	}
+	names := tse.computeCriterion(sc)
+	tse.criterionCache[sc] = names
+	return names, nil
+}
 
+// computeCriterion performs the actual set computation for a validated criterion.
+func (tse *tagSelectorEvaluator) computeCriterion(sc selectCriterion) []string {
+	switch {
 	case sc.name == SelectAll: // special * case
 		names := make([]string, len(tse.items))
 		for i, item := range tse.items {
 			names[i] = item.name()
 		}
-		return names, nil
+		return names
 
 	case !sc.tagged && !sc.negated: // just a regular name
 		item := tse.byName[sc.name]
 		if item == nil {
-			return nil, nil
+			return nil
 		}
-		return []string{item.name()}, nil
+		return []string{item.name()}
 
 	case sc.tagged && !sc.negated: // expand a tag
 		taggedItems := tse.byTag[sc.name]
 		if len(taggedItems) == 0 {
-			return nil, nil
+			return nil
 		}
 		names := make([]string, len(taggedItems))
 		for i, item := range taggedItems {
 			names[i] = item.name()
 		}
-		return names, nil
+		return names
 
 	case !sc.tagged && sc.negated: // everything *but* a specific item
 		if tse.byName[sc.name] == nil {
-			return nil, nil
+			return nil
 		}
 		names := make([]string, 0, len(tse.items)-1)
 		for _, item := range tse.items {
@@ -224,12 +237,12 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 				names = append(names, item.name())
 			}
 		}
-		return names, nil
+		return names
 
 	case sc.tagged && sc.negated: // everything *but* a tag
 		items := tse.byTag[sc.name]
 		if len(items) == 0 {
-			return nil, nil
+			return nil
 		}
 		illegalItems := make(map[string]bool, len(items))
 		for _, item := range items {
@@ -243,7 +256,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 				names = append(names, item.name())
 			}
 		}
-		return names, nil
+		return names
 
 	default:
 		// protection for if we edit this switch block later
