@@ -749,7 +749,11 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
 		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
-		taskUnit, unmatchedSelectors, unmatchedCriteria, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
+		tasksByName := map[string]parserTask{}
+		for _, t := range taskDefs {
+			tasksByName[t.Name] = t
+		}
+		taskUnit, unmatchedSelectors, unmatchedCriteria, errs := evaluateBVTasks(tse, tsge, vse, pbv, tasksByName)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
