@@ -282,6 +282,16 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 	}
 
 	settings := evergreen.GetEnvironment().Settings()
+	// Continue even if we can't count large parser projects; this may just mean we schedule a slightly higher number of expensive tasks.
+	numLargeParserProjectTasks, err := task.CountLargeParserProjectTasks(ctx)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"dispatcher": DAGDispatcher,
+			"function":   "FindNextTask",
+			"message":    "problem getting num large parser project tasks",
+		}))
+	}
+
 	dependencyCaches := make(map[string]task.Task)
 	sorted := d.getSortedCopy()
 	for i := range sorted {
@@ -362,7 +372,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}
 			}
 
-			shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, d.distroID)
+			shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, numLargeParserProjectTasks)
 			if shouldReturn {
 				return nil
 			}
@@ -453,7 +463,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 						})
 						return nil
 					}
-					shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, d.distroID)
+					shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, numLargeParserProjectTasks)
 					if shouldReturn {
 						return nil
 					}
@@ -544,49 +554,15 @@ func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUni
 }
 
 // checkMaxConcurrentLargeParserProjectTasks checks whether the task is allowed to be dispatched according to the current limitations
-// on how many concurrent large parser project tasks can be running. The first returned parameter indicates whether FindNextTask should
-// return on an error, and the second indicates whether FindNextTask should skip this task and continue its loop.
-func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *evergreen.Settings, nextTaskFromDB *task.Task, distroId string) (bool, bool) {
+// on how many concurrent large parser project tasks can be running. The first returned parameter indicates whether FindNextTask should skip
+// this task and continue its loop, and the second indicates whether FindNextTask should return on an error.
+func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *evergreen.Settings, nextTaskFromDB *task.Task, numLargeParserProjectTasks int) (shouldContinue bool, shouldReturn bool) {
 	maxConcurrentLargeParserProjTasks := getMaxConcurrentLargeParserProjTasks(settings)
 	if maxConcurrentLargeParserProjTasks <= 0 {
 		return false, false
 	}
-	taskVersion, err := VersionFindOne(ctx, VersionById(nextTaskFromDB.Version).WithFields(VersionProjectStorageMethodKey))
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"dispatcher": DAGDispatcher,
-			"function":   "FindNextTask",
-			"message":    "problem finding version for task in db",
-			"version_id": nextTaskFromDB.Version,
-			"task_id":    nextTaskFromDB.Id,
-			"distro_id":  distroId,
-		}))
-		return false, true
-	}
-	if taskVersion == nil {
-		grip.Warning(ctx, message.Fields{
-			"dispatcher": DAGDispatcher,
-			"function":   "FindNextTask",
-			"message":    "version for task from db not found",
-			"task_id":    nextTaskFromDB.Id,
-			"version_id": nextTaskFromDB.Version,
-			"distro_id":  distroId,
-		})
-		return false, true
-	}
 
-	if taskVersion.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
-		numLargeParserProjectTasks, err := task.CountLargeParserProjectTasks(ctx)
-		if err != nil {
-			grip.Warning(ctx, message.WrapError(err, message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "FindNextTask",
-				"message":    "problem getting num large parser project tasks",
-				"task_id":    nextTaskFromDB.Id,
-				"distro_id":  distroId,
-			}))
-			return true, false
-		}
+	if nextTaskFromDB.CachedProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
 		if numLargeParserProjectTasks >= maxConcurrentLargeParserProjTasks {
 			span := trace.SpanFromContext(ctx)
 			span.SetAttributes(
