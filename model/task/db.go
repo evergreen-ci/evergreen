@@ -2674,6 +2674,9 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 		return map[string]cost.Cost{}, nil
 	}
 
+	_, span := tracer.Start(ctx, "compute-predicted-costs")
+	defer span.End()
+
 	activatedTasks := make([]Task, 0, len(tasks))
 	for _, t := range tasks {
 		if t.Activated && !t.DisplayOnly {
@@ -2684,6 +2687,7 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 	if len(activatedTasks) == 0 {
 		return map[string]cost.Cost{}, nil
 	}
+	span.SetAttributes(attribute.Int("evergreen.task.num_activated_tasks", len(activatedTasks)))
 
 	// Use background context to avoid MongoDB session races in parallel queries.
 	// The input ctx may have a transaction session which is not thread-safe.

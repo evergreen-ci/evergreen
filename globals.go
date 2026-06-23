@@ -611,6 +611,11 @@ const (
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
+	PatchIDOtelAttribute             = "evergreen.patch.id"
+	PatchIsFinalizeOtelAttribute     = "evergreen.patch.is_finalize"
+	PatchIsGithubPROtelAttribute     = "evergreen.patch.is_github_pr"
+	PatchNumBuildsOtelAttribute      = "evergreen.patch.num_builds"
+	PatchNumTasksOtelAttribute       = "evergreen.patch.num_tasks"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"
