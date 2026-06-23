@@ -2062,6 +2062,7 @@ type ComplexityRoot struct {
 		MaxIncludesPerVersion                            func(childComplexity int) int
 		MaxParserProjectSize                             func(childComplexity int) int
 		MaxPendingGeneratedTasks                         func(childComplexity int) int
+		MaxScheduledTasksPerDistro                       func(childComplexity int) int
 		MaxTaskExecution                                 func(childComplexity int) int
 		MaxTasksPerVersion                               func(childComplexity int) int
 	}
@@ -11537,6 +11538,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TaskLimitsConfig.MaxPendingGeneratedTasks(childComplexity), true
+	case "TaskLimitsConfig.maxScheduledTasksPerDistro":
+		if e.complexity.TaskLimitsConfig.MaxScheduledTasksPerDistro == nil {
+			break
+		}
+
+		return e.complexity.TaskLimitsConfig.MaxScheduledTasksPerDistro(childComplexity), true
 	case "TaskLimitsConfig.maxTaskExecution":
 		if e.complexity.TaskLimitsConfig.MaxTaskExecution == nil {
 			break
@@ -20442,6 +20449,8 @@ func (ec *executionContext) fieldContext_AdminSettings_taskLimits(_ context.Cont
 				return ec.fieldContext_TaskLimitsConfig_maxTaskExecution(ctx, field)
 			case "maxDailyAutomaticRestarts":
 				return ec.fieldContext_TaskLimitsConfig_maxDailyAutomaticRestarts(ctx, field)
+			case "maxScheduledTasksPerDistro":
+				return ec.fieldContext_TaskLimitsConfig_maxScheduledTasksPerDistro(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskLimitsConfig", field.Name)
 		},
@@ -69452,6 +69461,35 @@ func (ec *executionContext) fieldContext_TaskLimitsConfig_maxDailyAutomaticResta
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskLimitsConfig_maxScheduledTasksPerDistro(ctx context.Context, field graphql.CollectedField, obj *model.APITaskLimitsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TaskLimitsConfig_maxScheduledTasksPerDistro,
+		func(ctx context.Context) (any, error) {
+			return obj.MaxScheduledTasksPerDistro, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TaskLimitsConfig_maxScheduledTasksPerDistro(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskLimitsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskLogLinks_agentLogLink(ctx context.Context, field graphql.CollectedField, obj *model.LogLinks) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -90646,7 +90684,7 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"maxTasksPerVersion", "maxIncludesPerVersion", "maxHourlyPatchTasks", "maxPendingGeneratedTasks", "maxGenerateTaskJSONSize", "maxConcurrentLargeParserProjectTasks", "maxDegradedModeConcurrentLargeParserProjectTasks", "maxDegradedModeParserProjectSize", "maxParserProjectSize", "maxExecTimeoutSecs", "maxTaskExecution", "maxDailyAutomaticRestarts"}
+	fieldsInOrder := [...]string{"maxTasksPerVersion", "maxIncludesPerVersion", "maxHourlyPatchTasks", "maxPendingGeneratedTasks", "maxGenerateTaskJSONSize", "maxConcurrentLargeParserProjectTasks", "maxDegradedModeConcurrentLargeParserProjectTasks", "maxDegradedModeParserProjectSize", "maxParserProjectSize", "maxExecTimeoutSecs", "maxTaskExecution", "maxDailyAutomaticRestarts", "maxScheduledTasksPerDistro"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -90737,6 +90775,13 @@ func (ec *executionContext) unmarshalInputTaskLimitsConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.MaxDailyAutomaticRestarts = data
+		case "maxScheduledTasksPerDistro":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxScheduledTasksPerDistro"))
+			data, err := ec.unmarshalNInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxScheduledTasksPerDistro = data
 		}
 	}
 
@@ -109176,6 +109221,8 @@ func (ec *executionContext) _TaskLimitsConfig(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._TaskLimitsConfig_maxTaskExecution(ctx, field, obj)
 		case "maxDailyAutomaticRestarts":
 			out.Values[i] = ec._TaskLimitsConfig_maxDailyAutomaticRestarts(ctx, field, obj)
+		case "maxScheduledTasksPerDistro":
+			out.Values[i] = ec._TaskLimitsConfig_maxScheduledTasksPerDistro(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
