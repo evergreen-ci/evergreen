@@ -362,7 +362,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}
 			}
 
-			shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, d.distroID)
+			shouldReturn, shouldContinue := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, d.distroID)
 			if shouldReturn {
 				return nil
 			}
@@ -453,7 +453,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 						})
 						return nil
 					}
-					shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, d.distroID)
+					shouldReturn, shouldContinue := checkMaxConcurrentLargeParserProjectTasks(ctx, settings, nextTaskFromDB, d.distroID)
 					if shouldReturn {
 						return nil
 					}
@@ -546,7 +546,7 @@ func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUni
 // checkMaxConcurrentLargeParserProjectTasks checks whether the task is allowed to be dispatched according to the current limitations
 // on how many concurrent large parser project tasks can be running. The first returned parameter indicates whether FindNextTask should
 // return on an error, and the second indicates whether FindNextTask should skip this task and continue its loop.
-func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *evergreen.Settings, nextTaskFromDB *task.Task, distroId string) (bool, bool) {
+func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *evergreen.Settings, nextTaskFromDB *task.Task, distroId string) (shouldReturn bool, shouldContinue bool) {
 	maxConcurrentLargeParserProjTasks := getMaxConcurrentLargeParserProjTasks(settings)
 	if maxConcurrentLargeParserProjTasks <= 0 {
 		return false, false
