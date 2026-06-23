@@ -688,8 +688,6 @@ models:
         value: github.com/evergreen-ci/evergreen.ProviderNameDocker
       EC2_FLEET:
         value: github.com/evergreen-ci/evergreen.ProviderNameEc2Fleet
-      EC2_ON_DEMAND:
-        value: github.com/evergreen-ci/evergreen.ProviderNameEc2OnDemand
       STATIC:
         value: github.com/evergreen-ci/evergreen.ProviderNameStatic
   PublicKey:
