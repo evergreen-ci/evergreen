@@ -1883,7 +1883,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 
-	// Multiple aliases (and explicit selectors) can select overlapping pairs.
+	// Aliases (and explicit selectors) can select overlapping task/variant pairs, so deduplicate them.
 	pairs.ExecTasks = dedupeTVPairs(pairs.ExecTasks)
 	pairs.DisplayTasks = dedupeTVPairs(pairs.DisplayTasks)
 	pairs = p.extractDisplayTasks(pairs)

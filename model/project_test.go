@@ -3188,3 +3188,25 @@ func TestVerifyCheckRunLimit(t *testing.T) {
 		assert.NoError(t, VerifyCheckRunLimit(CheckRunGitHubAppAuthThreshold+1, CheckRunGitHubAppAuthThreshold+2, true))
 	})
 }
+
+func TestDedupeTVPairs(t *testing.T) {
+	t.Run("PreservesTaskAcrossDifferentVariants", func(t *testing.T) {
+		pairs := TVPairSet{
+			{Variant: "ubuntu2004", TaskName: "taskA"},
+			{Variant: "ubuntu2204", TaskName: "taskA"},
+		}
+		result := dedupeTVPairs(pairs)
+		require.Len(t, result, 2)
+		assert.Contains(t, result, TVPair{Variant: "ubuntu2004", TaskName: "taskA"})
+		assert.Contains(t, result, TVPair{Variant: "ubuntu2204", TaskName: "taskA"})
+	})
+	t.Run("RemovesDuplicatePairOnSameVariant", func(t *testing.T) {
+		pairs := TVPairSet{
+			{Variant: "ubuntu2004", TaskName: "taskA"},
+			{Variant: "ubuntu2004", TaskName: "taskA"},
+		}
+		result := dedupeTVPairs(pairs)
+		require.Len(t, result, 1)
+		assert.Equal(t, TVPair{Variant: "ubuntu2004", TaskName: "taskA"}, result[0])
+	})
+}
