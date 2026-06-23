@@ -62,14 +62,11 @@ type localDiff struct {
 type patchParams struct {
 	Project string
 	Path    string
+	Alias   string
 	// Aliases holds the raw aliases passed on the command line. Local aliases
 	// are expanded out of it client-side during resolution; the single
 	// remaining server-side alias (if any) is folded into Alias for submission.
 	Aliases []string
-	// Alias is the single server-side alias submitted with the patch. It is
-	// derived from Aliases during resolution and is empty when only local
-	// aliases were specified.
-	Alias string
 	// isUsingLocalAlias indicates that at least one specified alias matches a
 	// local alias.
 	isUsingLocalAlias                  bool
@@ -297,7 +294,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	if p.Finalize && p.Alias == "" && !p.RepeatFailed && !p.RepeatDefinition && !p.hasTasksAndVariants() {
+	if p.Finalize && p.Alias == "" && len(p.Aliases) == 0 && !p.RepeatFailed && !p.RepeatDefinition && !p.hasTasksAndVariants() {
 		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing")
 	}
 
@@ -321,7 +318,7 @@ func (p *patchParams) setNonRepeatedDefaults(ctx context.Context, conf *ClientSe
 		grip.Warningf(ctx, "warning - setting local aliases: %s\n", err)
 	}
 
-	// When a single server-side alias remains, mirror it into Alias for
+	// When a single alias remains, mirror it into Alias for
 	// downstream resolution and backwards compatibility.
 	if len(p.Aliases) == 1 {
 		p.Alias = p.Aliases[0]
@@ -369,10 +366,6 @@ func (p *patchParams) loadProject(ctx context.Context, conf *ClientSettings) err
 	return nil
 }
 
-// setLocalAliases expands any specified aliases that match a local alias
-// defined in the user's config into the corresponding variants and tasks. Local
-// aliases are resolved entirely client-side, so they're removed from Aliases,
-// leaving only server-side aliases behind.
 func (p *patchParams) setLocalAliases(conf *ClientSettings) error {
 	if len(p.Aliases) == 0 {
 		return nil
@@ -462,7 +455,7 @@ func (p *patchParams) loadAlias(ctx context.Context, conf *ClientSettings) error
 				return errors.Wrap(err, "setting default alias")
 			}
 		}
-	} else if !p.hasTasksAndVariants() {
+	} else if len(p.Aliases) == 0 && !p.hasTasksAndVariants() {
 		// No --alias or variant/task pair was passed, use the default
 		p.Alias = conf.FindDefaultAlias(p.Project)
 		grip.InfoWhen(ctx, p.Alias != "", "Using default alias set in local config")
@@ -482,7 +475,7 @@ func (p *patchParams) loadVariants(ctx context.Context, conf *ClientSettings) er
 				return errors.Wrap(err, "setting default variants")
 			}
 		}
-	} else if p.Alias == "" && len(p.RegexVariants) == 0 && !p.isUsingLocalAlias {
+	} else if p.Alias == "" && len(p.Aliases) == 0 && len(p.RegexVariants) == 0 && !p.isUsingLocalAlias {
 		p.Variants = conf.FindDefaultVariants(p.Project)
 		grip.InfoWhen(ctx, len(p.Variants) > 0, "Using default variants set in local config")
 	}
@@ -526,7 +519,7 @@ func (p *patchParams) loadTasks(ctx context.Context, conf *ClientSettings) error
 				return errors.Wrap(err, "setting default tasks")
 			}
 		}
-	} else if p.Alias == "" && len(p.RegexTasks) == 0 && !p.isUsingLocalAlias {
+	} else if p.Alias == "" && len(p.Aliases) == 0 && len(p.RegexTasks) == 0 && !p.isUsingLocalAlias {
 		// Only use default tasks if no alias or regex tasks were specified.
 		p.Tasks = conf.FindDefaultTasks(p.Project)
 		grip.InfoWhen(ctx, len(p.Tasks) > 0, "Using default tasks set in local config")

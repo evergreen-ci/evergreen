@@ -1883,7 +1883,7 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 
-	// Aliases (and explicit selectors) can select overlapping task/variant pairs, so deduplicate them.
+	// Aliases can select overlapping task/variant pairs, so deduplicate them.
 	pairs.ExecTasks = dedupeTVPairs(pairs.ExecTasks)
 	pairs.DisplayTasks = dedupeTVPairs(pairs.DisplayTasks)
 	pairs = p.extractDisplayTasks(pairs)
@@ -1961,6 +1961,7 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
+// findAliasesForPatch finds all DB entries matching the given alias on the project.
 func findAliasesForPatch(ctx context.Context, projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
 	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectId, alias)
 	if err != nil {

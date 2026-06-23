@@ -100,8 +100,8 @@ type Patch struct {
 	// unfinalized and is cleared once the patch has been finalized.
 	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"project_storage_method,omitempty"`
 	PatchedProjectConfig string                               `bson:"patched_project_config"`
-	// Alias is the primary selection alias applied to the patch. It is retained
-	// for backwards compatibility; Aliases holds the full set of selection aliases.
+	// Alias is a single selection alias applied to the patch, for single-alias patches or internal
+	// aliases (e.g. __github), while Aliases holds multiple aliases for multi-alias patches.
 	Alias      string      `bson:"alias"`
 	Aliases    []string    `bson:"aliases,omitempty"`
 	Triggers   TriggerInfo `bson:"triggers"`
@@ -670,7 +670,7 @@ func (p *Patch) IsChild() bool {
 }
 
 // AliasesToResolve returns the aliases used to resolve the patch's tasks and
-// parameters, preferring the multi-alias list and falling back to the single
+// parameters, using the multi-alias list when available and falling back to the single
 // Alias (which holds internal aliases and single-alias patches).
 func (p *Patch) AliasesToResolve() []string {
 	if len(p.Aliases) > 0 {

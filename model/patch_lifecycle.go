@@ -885,7 +885,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 // getFullPatchParams retrieves the parameters defined on the patch's alias(es)
 // merged with the user-specified parameters, with the latter taking precedence.
 // A version has a single global set of parameters, so when multiple aliases are
-// specified their fully-resolved parameter sets must be identical; otherwise the
+// specified their fully-resolved parameter sets must be identical, otherwise the
 // patch cannot be finalized.
 func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter, error) {
 	aliasNames := p.AliasesToResolve()
@@ -896,10 +896,12 @@ func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter,
 
 	var commonParams map[string]string
 	for i, aliasName := range aliasNames {
-		aliases, err := findAliasesForPatch(ctx, p.Project, aliasName, p)
+		aliases, err := findAliasesForPatch(ctx, p.Project, aliasName, p) // Get all records for the alias.
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", aliasName, p.Id.Hex())
 		}
+
+		// Overwrite configured parameters with user-specified ones, which take precedence.
 		paramsMap := map[string]string{}
 		for _, alias := range aliases {
 			for _, aliasParam := range alias.Parameters {
@@ -909,6 +911,7 @@ func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter,
 		for _, param := range p.Parameters {
 			paramsMap[param.Key] = param.Value
 		}
+		// Set the parameters from the first alias as the common set to compare against.
 		if i == 0 {
 			commonParams = paramsMap
 			continue
@@ -920,7 +923,10 @@ func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter,
 
 	var fullParams []patch.Parameter
 	for k, v := range commonParams {
-		fullParams = append(fullParams, patch.Parameter{Key: k, Value: v})
+		fullParams = append(fullParams, patch.Parameter{
+			Key:   k,
+			Value: v,
+		})
 	}
 	return fullParams, nil
 }

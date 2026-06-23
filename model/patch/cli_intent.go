@@ -90,7 +90,7 @@ type cliIntent struct {
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
 
-	// aliases defines additional aliases when more than one is specified.
+	// aliases defines a list of aliases when one or more patch aliases are specified.
 	Aliases []string `bson:"aliases,omitempty"`
 
 	// path defines the path to an evergreen project configuration file.

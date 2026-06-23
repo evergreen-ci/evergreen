@@ -60,7 +60,6 @@ func TestAPIPatch(t *testing.T) {
 		},
 		Activated: true,
 		Alias:     evergreen.CommitQueueAlias,
-		Aliases:   []string{"alias1", "alias2"},
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  123,
 			BaseOwner: "evergreen-ci",
@@ -101,8 +100,7 @@ func TestAPIPatch(t *testing.T) {
 	for i, vt := range a.VariantsTasks {
 		assert.Equal(p.VariantsTasks[i].Variant, utility.FromStringPtr(vt.Name))
 	}
-	assert.Equal(evergreen.CommitQueueAlias, utility.FromStringPtr(a.Alias))
-	assert.Equal([]string{"alias1", "alias2"}, a.Aliases)
+	assert.Empty(utility.FromStringPtr(a.Alias))
 	assert.NotZero(a.GithubPatchData)
 	assert.NotEqual(a.VariantsTasks[0].Tasks, a.VariantsTasks[1].Tasks)
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
