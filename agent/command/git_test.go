@@ -284,6 +284,58 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 	s.Contains(combined, "git log HEAD..")
 }
 
+func (s *GitGetProjectSuite) TestBuildSourceCommandSparseCheckout() {
+	c := &gitFetchProject{
+		Directory: "dir",
+	}
+	conf := s.taskConfig2
+
+	opts := cloneOpts{
+		token:               projectGitHubToken,
+		owner:               conf.ProjectRef.Owner,
+		repo:                conf.ProjectRef.Repo,
+		branch:              conf.ProjectRef.Branch,
+		dir:                 c.Directory,
+		filter:              "blob:none",
+		sparseCheckoutPaths: []string{"scripts/a.sh", "scripts/b.sh"},
+	}
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	s.Require().NoError(err)
+	combined := strings.Join(cmds, " ")
+	// The clone is partial (blob-filtered) and does not check out the working
+	// tree until the sparse set is applied.
+	s.Contains(combined, "--filter='blob:none'")
+	s.Contains(combined, "--sparse --no-checkout")
+	// The sparse set is narrowed before the revision is materialized, so only the
+	// listed paths land on disk.
+	s.Contains(combined, "git sparse-checkout set --no-cone 'scripts/a.sh' 'scripts/b.sh'")
+	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
+		"git sparse-checkout set --no-cone 'scripts/a.sh' 'scripts/b.sh'",
+		"git reset --hard ",
+		"git log --oneline -n 10",
+	}), cmds)
+}
+
+func (s *GitGetProjectSuite) TestSparseCheckoutIgnoredWithoutFilter() {
+	// The filter is the master switch: sparse_checkout_paths set with no filter
+	// is a no-op (a sparse checkout without a partial-clone filter saves nothing),
+	// so the clone is a plain full clone.
+	opts := cloneOpts{
+		owner:               "evergreen-ci",
+		repo:                "sample",
+		dir:                 "dir",
+		token:               projectGitHubToken,
+		sparseCheckoutPaths: []string{"scripts/a.sh"},
+	}
+	cmds, err := opts.getCloneCommand()
+	s.Require().NoError(err)
+	s.Require().Len(cmds, 5)
+	combined := strings.Join(cmds, " ")
+	s.NotContains(combined, "--sparse")
+	s.NotContains(combined, "--no-checkout")
+	s.NotContains(combined, "sparse-checkout")
+}
+
 func (s *GitGetProjectSuite) TestGitPlugin() {
 	conf := s.taskConfig1
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
@@ -518,6 +570,20 @@ func (s *GitGetProjectSuite) TestGetCloneCommand() {
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		fmt.Sprintf("echo \"git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
 		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
+	}), cmds)
+
+	// a partial, sparse clone filters blobs, defers checkout, and appends a
+	// sparse-checkout step that narrows the working tree to the listed paths
+	opts.filter = "blob:none"
+	opts.sparseCheckoutPaths = []string{"scripts/a.sh", "scripts/b.sh"}
+	cmds, err = opts.getCloneCommand()
+	s.NoError(err)
+	s.Require().Len(cmds, 6)
+	s.True(utility.ContainsOrderedSubset(cmds, []string{
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'dir' --filter='blob:none' --sparse --no-checkout --branch 'main'", projectGitHubToken),
+		"set -o xtrace",
+		"cd dir",
+		"git sparse-checkout set --no-cone 'scripts/a.sh' 'scripts/b.sh'",
 	}), cmds)
 }
 
