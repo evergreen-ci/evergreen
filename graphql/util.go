@@ -909,7 +909,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	return options, nil
 }
 
-func getProject(ctx context.Context, projectId *string) (*restModel.APIProjectRef, error) {
+func getAPIProjectRef(ctx context.Context, projectId *string) (*restModel.APIProjectRef, error) {
 	// If project ID is the only field requested we can return it without a database call.
 	if graphql.HasOperationContext(ctx) {
 		requestedFields := graphql.CollectAllFields(ctx)

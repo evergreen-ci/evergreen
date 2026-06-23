@@ -262,7 +262,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getProject(ctx, obj.Project)
+	apiProjectRef, err := getAPIProjectRef(ctx, obj.Project)
 	return apiProjectRef, err
 }
 
@@ -659,7 +659,7 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 		for _, cp := range childPatchIds {
 			v, err := loaders.GetVersion(ctx, cp)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()), err)
 			}
 			if v != nil {
 				childVersions = append(childVersions, v)
