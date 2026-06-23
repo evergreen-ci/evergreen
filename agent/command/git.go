@@ -64,6 +64,28 @@ type gitFetchProject struct {
 	ShallowClone bool `mapstructure:"shallow_clone"`
 	CloneDepth   int  `mapstructure:"clone_depth"`
 
+	// Filter passes git clone's --filter (partial clone). The most common value is
+	// "blob:none", which omits all file content from the initial clone and lazily
+	// fetches blobs on demand. Combined with SparseCheckoutPaths it lets a task
+	// check out only the files it needs instead of the whole working tree.
+	Filter string `plugin:"expand" mapstructure:"filter"`
+
+	// SparseCheckoutPaths restricts the working tree to the listed paths via
+	// git sparse-checkout (no-cone mode). The clone is done with --no-checkout,
+	// the sparse set is applied, and only then is the revision checked out, so
+	// only the matching paths land on disk.
+	//
+	// Only takes effect when Filter is also set (a sparse checkout without a
+	// partial-clone filter still downloads every blob, so it would save nothing);
+	// with an empty Filter these paths are ignored and a normal full clone runs.
+	// This lets a shared command leave these set and toggle the behavior with the
+	// (expandable) Filter alone.
+	//
+	// Entries are gitignore-style patterns, NOT plain paths: an unanchored entry
+	// like "README.md" matches that name in every directory. To select one
+	// specific file, anchor it with a leading slash, e.g. "/scripts/foo.sh".
+	SparseCheckoutPaths []string `plugin:"expand" mapstructure:"sparse_checkout_paths"`
+
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
 	CommitterName string `mapstructure:"committer_name"`
@@ -76,14 +98,16 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	owner             string
-	repo              string
-	branch            string
-	dir               string
-	token             string
-	recurseSubmodules bool
-	useVerbose        bool
-	cloneDepth        int
+	owner               string
+	repo                string
+	branch              string
+	dir                 string
+	token               string
+	recurseSubmodules   bool
+	useVerbose          bool
+	cloneDepth          int
+	filter              string
+	sparseCheckoutPaths []string
 }
 
 func (opts cloneOpts) validate() error {
@@ -135,6 +159,15 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
 
+	// The filter is the master switch for the sparse partial clone. A sparse
+	// checkout without a partial-clone filter still downloads every blob, so it
+	// would save nothing; treat an empty filter as "feature off" and ignore the
+	// sparse paths. This lets callers leave sparse_checkout_paths set on a shared
+	// command and toggle the whole behavior with the (expandable) filter alone.
+	if opts.filter == "" {
+		opts.sparseCheckoutPaths = nil
+	}
+
 	gitURL := thirdparty.FormGitURLForApp(opts.owner, opts.repo, opts.token)
 
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
@@ -148,17 +181,47 @@ func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if opts.cloneDepth > 0 {
 		clone = fmt.Sprintf("%s --depth %d", clone, opts.cloneDepth)
 	}
+	if opts.filter != "" {
+		clone = fmt.Sprintf("%s --filter='%s'", clone, opts.filter)
+	}
+	if len(opts.sparseCheckoutPaths) > 0 {
+		// --sparse initializes a sparse-checkout (we widen it below) and
+		// --no-checkout defers populating the tree until after the sparse set is
+		// narrowed, so the default sparse contents are never materialized.
+		clone = fmt.Sprintf("%s --sparse --no-checkout", clone)
+	}
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
-	return []string{
+	cmds := []string{
 		"set +o xtrace",
 		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
 		clone,
 		"set -o xtrace",
 		fmt.Sprintf("cd %s", opts.dir),
-	}, nil
+	}
+
+	if len(opts.sparseCheckoutPaths) > 0 {
+		// no-cone mode treats the entries as gitignore-style patterns (see the
+		// SparseCheckoutPaths field doc on anchoring). The subsequent
+		// checkout/reset (added by the caller) populates only the matching paths.
+		sparse := fmt.Sprintf("git sparse-checkout set --no-cone %s",
+			strings.Join(quoteAll(opts.sparseCheckoutPaths), " "))
+		cmds = append(cmds, sparse)
+	}
+
+	return cmds, nil
+}
+
+// quoteAll single-quotes each path so paths containing shell metacharacters are
+// passed to git literally.
+func quoteAll(paths []string) []string {
+	quoted := make([]string, len(paths))
+	for i, p := range paths {
+		quoted[i] = fmt.Sprintf("'%s'", p)
+	}
+	return quoted
 }
 
 // getCloneCommandForWikiModule runs a plain git clone to opts.dir. GitHub
@@ -326,12 +389,14 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 func (c *gitFetchProject) opts(ctx context.Context, cloneToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		owner:             conf.ProjectRef.Owner,
-		repo:              conf.ProjectRef.Repo,
-		branch:            conf.ProjectRef.Branch,
-		dir:               c.Directory,
-		token:             cloneToken,
-		recurseSubmodules: c.RecurseSubmodules,
+		owner:               conf.ProjectRef.Owner,
+		repo:                conf.ProjectRef.Repo,
+		branch:              conf.ProjectRef.Branch,
+		dir:                 c.Directory,
+		token:               cloneToken,
+		recurseSubmodules:   c.RecurseSubmodules,
+		filter:              c.Filter,
+		sparseCheckoutPaths: c.SparseCheckoutPaths,
 	}
 
 	cloneDepth := c.CloneDepth
