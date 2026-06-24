@@ -147,3 +147,27 @@ func (c *BucketsConfig) GetLogBucket(projectID string) BucketConfig {
 	}
 	return c.LogBucket
 }
+
+// LogBucketExpirationDays returns the configured expiration days for the given
+// admin-managed log bucket name, and whether one was found. Log buckets store
+// lifecycle days on the admin config rather than s3_lifecycle_rules.
+func (c *BucketsConfig) LogBucketExpirationDays(bucketName string) (days int, found bool) {
+	if bucketName == "" {
+		return 0, false
+	}
+	switch bucketName {
+	case c.LogBucket.Name:
+		if c.LogBucket.ExpirationDays != nil {
+			return *c.LogBucket.ExpirationDays, true
+		}
+	case c.LogBucketLongRetention.Name:
+		if c.LogBucketLongRetention.ExpirationDays != nil {
+			return *c.LogBucketLongRetention.ExpirationDays, true
+		}
+	case c.LogBucketFailedTasks.Name:
+		if c.LogBucketFailedTasks.ExpirationDays != nil {
+			return *c.LogBucketFailedTasks.ExpirationDays, true
+		}
+	}
+	return 0, false
+}

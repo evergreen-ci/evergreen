@@ -2423,38 +2423,31 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 // saveAndTrackCrashPathS3Cost reconstructs log S3 usage and records costs for a task that died
 // without reaching teardown. Errors are logged but do not block task cleanup.
 func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
-	allRules, err := s3lifecycle.FindAllRules(ctx)
-	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "getting S3 lifecycle rules for crash-path storage cost calculation, skipping storage cost",
+	bucketsConfig := &evergreen.BucketsConfig{}
+	if err := bucketsConfig.Get(ctx); err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message": "loading admin BucketsConfig for log storage cost calculation",
 			"task_id": t.Id,
 		}))
-	} else {
-		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
-		for _, rule := range allRules {
-			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
+	}
+	logLookup := func(_ context.Context, bucket, _ string) (int, bool) {
+		return bucketsConfig.LogBucketExpirationDays(bucket)
+	}
+
+	artifactRules, err := s3lifecycle.FindAllRules(ctx)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "loading S3 lifecycle rules for artifact storage cost calculation",
+			"task_id": t.Id,
+		}))
+	}
+	artifactPailRulesByBucket := s3lifecycle.BuildPailRulesByBucket(artifactRules)
+	artifactLookup := func(_ context.Context, bucket, fileKey string) (int, bool) {
+		rule := pail.FindMatchingRule(artifactPailRulesByBucket[bucket], fileKey)
+		if rule == nil || rule.ExpirationDays == nil {
+			return 0, false
 		}
-		lookup = func(_ context.Context, bucket, fileKey string) (int, bool) {
-			rules := rulesByBucket[bucket]
-			pailRules := make([]pail.LifecycleRule, 0, len(rules))
-			for _, ruleDoc := range rules {
-				var expDays *int32
-				if ruleDoc.ExpirationDays != nil {
-					expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
-				}
-				pailRules = append(pailRules, pail.LifecycleRule{
-					Prefix:         ruleDoc.FilterPrefix,
-					Status:         ruleDoc.RuleStatus,
-					ExpirationDays: expDays,
-				})
-			}
-			rule := pail.FindMatchingRule(pailRules, fileKey)
-			if rule == nil || rule.ExpirationDays == nil {
-				return 0, false
-			}
-			return int(*rule.ExpirationDays), true
-		}
+		return int(*rule.ExpirationDays), true
 	}
 
 	if artifactUsage, err := t.GetS3ArtifactUsageFromDB(ctx); err != nil {
@@ -2473,7 +2466,7 @@ func saveAndTrackCrashPathS3Cost(ctx context.Context, t *task.Task) {
 		}))
 	} else {
 		t.S3Usage.Logs = logUsage
-		if err := t.SaveS3Usage(ctx, lookup, t.LogBucketName()); err != nil {
+		if err := t.SaveS3Usage(ctx, logLookup, artifactLookup, t.LogBucketName()); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "saving S3 usage for crash-path task",
 				"task_id": t.Id,

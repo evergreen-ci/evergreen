@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -532,18 +533,19 @@ func TestFlattenOtelVariables(t *testing.T) {
 	assert.Equal(t, "v7", val)
 }
 
-func TestGetProjectMetadata(t *testing.T) {
+func TestGetAPIProjectRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 
 	t.Run("ReturnsNilForDeletedProject", func(t *testing.T) {
+		ctx := loaders.Inject(t.Context())
 		projectId := "deleted_project"
-		patchId := "some_patch_id"
-		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		result, err := getAPIProjectRef(ctx, &projectId)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("ReturnsProjectMetadataForExistingProject", func(t *testing.T) {
+		ctx := loaders.Inject(t.Context())
 		projectRef := model.ProjectRef{
 			Id:         "existing_project",
 			Identifier: "existing_project",
@@ -551,10 +553,9 @@ func TestGetProjectMetadata(t *testing.T) {
 			Repo:       "my_repo",
 			Branch:     "main",
 		}
-		assert.NoError(t, projectRef.Insert(t.Context()))
+		assert.NoError(t, projectRef.Insert(ctx))
 		projectId := "existing_project"
-		patchId := "some_patch_id"
-		result, err := getProjectMetadata(t.Context(), &projectId, &patchId)
+		result, err := getAPIProjectRef(ctx, &projectId)
 		assert.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Equal(t, "my_owner", utility.FromStringPtr(result.Owner))
@@ -572,7 +573,7 @@ func TestGetHostRequestOptionsDebugValidation(t *testing.T) {
 
 	d := &distro.Distro{
 		Id:       "test-distro",
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 	}
 	assert.NoError(t, d.Insert(t.Context()))
 	t.Run("IsDebugTrueWithoutSpawnHostsStartedByTaskFails", func(t *testing.T) {

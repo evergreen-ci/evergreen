@@ -549,6 +549,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 		"org":      org,
 		"repo":     repo,
 		"branch":   branch,
+		"sender":   event.GetSender().GetLogin(),
 		"base_sha": event.GetMergeGroup().GetBaseSHA(),
 		"head_sha": event.GetMergeGroup().GetHeadSHA(),
 		"message":  "merge group received",

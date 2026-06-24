@@ -611,6 +611,11 @@ const (
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
+	PatchIDOtelAttribute             = "evergreen.patch.id"
+	PatchIsFinalizeOtelAttribute     = "evergreen.patch.is_finalize"
+	PatchIsGithubPROtelAttribute     = "evergreen.patch.is_github_pr"
+	PatchNumBuildsOtelAttribute      = "evergreen.patch.num_builds"
+	PatchNumTasksOtelAttribute       = "evergreen.patch.num_tasks"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"
@@ -692,12 +697,11 @@ const (
 
 // Constants related to cloud providers and provider-specific settings.
 const (
-	ProviderNameEc2OnDemand = "ec2-ondemand"
-	ProviderNameEc2Fleet    = "ec2-fleet"
-	ProviderNameDocker      = "docker"
-	ProviderNameDockerMock  = "docker-mock"
-	ProviderNameStatic      = "static"
-	ProviderNameMock        = "mock"
+	ProviderNameEc2Fleet   = "ec2-fleet"
+	ProviderNameDocker     = "docker"
+	ProviderNameDockerMock = "docker-mock"
+	ProviderNameStatic     = "static"
+	ProviderNameMock       = "mock"
 
 	// DefaultEC2Region is the default region where hosts should be spawned and
 	// general Evergreen operations occur in AWS if no particular region is
@@ -714,8 +718,7 @@ const (
 
 // IsEc2Provider returns true if the provider is ec2.
 func IsEc2Provider(provider string) bool {
-	return provider == ProviderNameEc2OnDemand ||
-		provider == ProviderNameEc2Fleet
+	return provider == ProviderNameEc2Fleet
 }
 
 // IsDockerProvider returns true if the provider is docker.
@@ -745,7 +748,6 @@ var (
 	// dynamically created and terminated according to need. This has no
 	// relation to spawn hosts.
 	ProviderSpawnable = []string{
-		ProviderNameEc2OnDemand,
 		ProviderNameEc2Fleet,
 		ProviderNameMock,
 		ProviderNameDocker,
@@ -755,7 +757,6 @@ var (
 	// request a dynamically created host for purposes such as host.create and
 	// spawn hosts.
 	ProviderUserSpawnable = []string{
-		ProviderNameEc2OnDemand,
 		ProviderNameEc2Fleet,
 	}
 
@@ -1570,3 +1571,9 @@ const (
 	RateLimitSurfaceGraphQL    RateLimitSurface = "graphql"
 	RateLimitSurfaceComplexity RateLimitSurface = "complexity"
 )
+
+var ValidRateLimitSurfaces = []RateLimitSurface{
+	RateLimitSurfaceREST,
+	RateLimitSurfaceGraphQL,
+	RateLimitSurfaceComplexity,
+}

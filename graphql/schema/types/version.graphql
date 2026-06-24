@@ -76,8 +76,6 @@ type Version {
   patch: Patch
   predictedCost: Cost
   previousVersion: Version
-  project: String!
-  projectIdentifier: String!
   projectMetadata: Project
   repo: String!
   requester: String!
@@ -89,7 +87,8 @@ type Version {
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
-  user: User!
+  user: User! @deprecated(reason: "Use userLite instead.")
+  userLite: UserLite!
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]

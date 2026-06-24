@@ -255,7 +255,7 @@ func FindByCanAutoTune(ctx context.Context) ([]Distro, error) {
 	autoTuneMaxHostsKey := bsonutil.GetDottedKeyName(HostAllocatorSettingsKey, hostAllocatorAutoTuneMaxHostsKey)
 	q := bson.M{
 		DisabledKey:         bson.M{"$ne": true},
-		ProviderKey:         bson.M{"$in": []string{evergreen.ProviderNameEc2Fleet, evergreen.ProviderNameEc2OnDemand}},
+		ProviderKey:         evergreen.ProviderNameEc2Fleet,
 		SingleTaskDistroKey: bson.M{"$ne": true},
 		autoTuneMaxHostsKey: true,
 	}

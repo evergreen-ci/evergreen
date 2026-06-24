@@ -5197,7 +5197,7 @@ func TestMarkEndPreservesS3StorageCost(t *testing.T) {
 
 	lookup := func(_ context.Context, _, _ string) (int, bool) { return 365, true }
 	// SaveS3Usage writes storage cost via dotted-path $set.
-	require.NoError(t, tsk.SaveS3Usage(ctx, lookup, ""))
+	require.NoError(t, tsk.SaveS3Usage(ctx, nil, lookup, ""))
 	require.True(t, tsk.TaskCost.OnDemandS3ArtifactStorageCost > 0, "SaveS3Usage must compute storage cost for test to be meaningful")
 
 	// MarkEnd must not overwrite the storage cost fields SaveS3Usage wrote.
@@ -5233,12 +5233,13 @@ func TestSaveS3Usage(t *testing.T) {
 	}
 
 	for name, tc := range map[string]struct {
-		task          Task
-		costConfig    *evergreen.CostConfig
-		setupUsage    func(*s3usage.S3Usage)
-		lookup        bucketExpirationLookup
-		logBucketName string
-		assertions    func(*testing.T, *Task, *evergreen.CostConfig)
+		task           Task
+		costConfig     *evergreen.CostConfig
+		setupUsage     func(*s3usage.S3Usage)
+		logLookup      bucketExpirationLookup
+		artifactLookup bucketExpirationLookup
+		logBucketName  string
+		assertions     func(*testing.T, *Task, *evergreen.CostConfig)
 	}{
 		"PersistsS3Usage": {
 			task: Task{Id: "t1"},
@@ -5295,7 +5296,7 @@ func TestSaveS3Usage(t *testing.T) {
 				})
 				u.IncrementLogs(50, 500000, "", "")
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
+			artifactLookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
 				assert.Equal(t, 1000, dbTask.S3Usage.Artifacts.PutRequests)
 				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactPutCost > 0)
@@ -5330,7 +5331,7 @@ func TestSaveS3Usage(t *testing.T) {
 					},
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
+			artifactLookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
 				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactStorageCost > 0)
 			},
@@ -5361,7 +5362,7 @@ func TestSaveS3Usage(t *testing.T) {
 					Files:       singleFileArtifact,
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) {
+			artifactLookup: func(_ context.Context, _, _ string) (int, bool) {
 				return 90, true
 			},
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
@@ -5382,7 +5383,7 @@ func TestSaveS3Usage(t *testing.T) {
 					Files:       singleFileArtifact,
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
+			artifactLookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
 				assert.True(t, dbTask.TaskCost.OnDemandS3ArtifactStorageCost > 0)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 5*1024*1024, 365, &defaultCostConfig)
@@ -5419,7 +5420,7 @@ func TestSaveS3Usage(t *testing.T) {
 					Files:                     singleFileArtifact,
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 30, true },
+			artifactLookup: func(_ context.Context, _, _ string) (int, bool) { return 30, true },
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
 				assert.Equal(t, float64(0), dbTask.TaskCost.OnDemandS3ArtifactStorageCost)
 				assert.Equal(t, float64(0), dbTask.TaskCost.OnDemandS3ArtifactPutCost)
@@ -5446,7 +5447,7 @@ func TestSaveS3Usage(t *testing.T) {
 					Files:                     singleFileArtifact,
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
+			artifactLookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
 			assertions: func(t *testing.T, dbTask *Task, costCfg *evergreen.CostConfig) {
 				require.NotNil(t, costCfg)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 5*1024*1024, 90, costCfg)
@@ -5475,7 +5476,7 @@ func TestSaveS3Usage(t *testing.T) {
 					Files:                     singleFileArtifact,
 				})
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
+			artifactLookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
 			assertions: func(t *testing.T, dbTask *Task, costCfg *evergreen.CostConfig) {
 				require.NotNil(t, costCfg)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 5*1024*1024, 90, costCfg)
@@ -5490,7 +5491,7 @@ func TestSaveS3Usage(t *testing.T) {
 			setupUsage: func(u *s3usage.S3Usage) {
 				u.IncrementLogs(10, 1024*1024, s3usage.LogTypeTask, "some-project/abc123/0/task_logs/task")
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
+			logLookup: func(_ context.Context, _, _ string) (int, bool) { return 0, false },
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
 				assert.True(t, dbTask.TaskCost.OnDemandS3LogStorageCost > 0)
 				expectedStd, expectedAdj := s3usage.CalculateS3StorageCostWithConfig(ctx, 1024*1024, defaultCostConfig.S3Cost.Storage.DefaultMaxArtifactExpirationDays, &defaultCostConfig)
@@ -5505,7 +5506,7 @@ func TestSaveS3Usage(t *testing.T) {
 			setupUsage: func(u *s3usage.S3Usage) {
 				u.IncrementLogs(10, 1024*1024, s3usage.LogTypeTask, "some-project/abc123/0/task_logs/task")
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) {
+			logLookup: func(_ context.Context, _, _ string) (int, bool) {
 				return 60, true
 			},
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
@@ -5521,7 +5522,7 @@ func TestSaveS3Usage(t *testing.T) {
 			setupUsage: func(u *s3usage.S3Usage) {
 				u.IncrementLogs(10, 1024*1024, s3usage.LogTypeTask, "some-project/abc123/0/task_logs/task")
 			},
-			lookup: func(_ context.Context, _, _ string) (int, bool) { return 60, true },
+			logLookup: func(_ context.Context, _, _ string) (int, bool) { return 60, true },
 			assertions: func(t *testing.T, dbTask *Task, _ *evergreen.CostConfig) {
 				assert.Equal(t, float64(0), dbTask.TaskCost.OnDemandS3LogStorageCost)
 			},
@@ -5539,7 +5540,7 @@ func TestSaveS3Usage(t *testing.T) {
 			if tc.setupUsage != nil {
 				tc.setupUsage(&tc.task.S3Usage)
 			}
-			require.NoError(t, tc.task.SaveS3Usage(ctx, tc.lookup, tc.logBucketName))
+			require.NoError(t, tc.task.SaveS3Usage(ctx, tc.logLookup, tc.artifactLookup, tc.logBucketName))
 
 			dbTask, err := FindOneId(ctx, tc.task.Id)
 			require.NoError(t, err)
@@ -5584,7 +5585,7 @@ func TestSaveS3UsageIsIdempotent(t *testing.T) {
 	})
 	lookup := func(_ context.Context, _, _ string) (int, bool) { return 30, true }
 	// First call: simulates a per-event report mid-task.
-	require.NoError(t, tk.SaveS3Usage(ctx, lookup, ""))
+	require.NoError(t, tk.SaveS3Usage(ctx, nil, lookup, ""))
 	afterFirstCall, err := FindOneId(ctx, tk.Id)
 	require.NoError(t, err)
 	require.NotNil(t, afterFirstCall)
@@ -5594,7 +5595,7 @@ func TestSaveS3UsageIsIdempotent(t *testing.T) {
 
 	// Second call: simulates teardown arriving as a new HTTP request where middleware reloads the task from DB.
 	afterFirstCall.S3Usage = tk.S3Usage
-	require.NoError(t, afterFirstCall.SaveS3Usage(ctx, lookup, ""))
+	require.NoError(t, afterFirstCall.SaveS3Usage(ctx, nil, lookup, ""))
 	afterSecondCall, err := FindOneId(ctx, tk.Id)
 	require.NoError(t, err)
 	require.NotNil(t, afterSecondCall)
@@ -5638,7 +5639,7 @@ func TestCalculateS3PutCostsUsesArtifactPutRequestsAfterIncrementFilter(t *testi
 	})
 
 	lookup := func(context.Context, string, string) (int, bool) { return 30, true }
-	require.NoError(t, tk.SaveS3Usage(ctx, lookup, ""))
+	require.NoError(t, tk.SaveS3Usage(ctx, nil, lookup, ""))
 	assert.Equal(t, 5, tk.S3Usage.Artifacts.PutRequests)
 	assert.InDelta(t, 5*s3usage.S3PutRequestCost, tk.TaskCost.OnDemandS3ArtifactPutCost, 1e-12)
 }

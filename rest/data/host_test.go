@@ -170,7 +170,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	d := &distro.Distro{
 		Id:                   testDistroID,
 		SpawnAllowed:         true,
-		Provider:             evergreen.ProviderNameEc2OnDemand,
+		Provider:             evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(birch.EC.String("region", evergreen.DefaultEC2Region))},
 	}
 	s.NoError(d.Insert(ctx))

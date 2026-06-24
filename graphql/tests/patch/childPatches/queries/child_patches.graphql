@@ -3,7 +3,9 @@
     id
     childPatches {
       id
-      projectID
+      projectMetadata {
+        id
+      }
     }
     version {
       id

@@ -764,24 +764,34 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 
 	t.S3Usage = h.s3Usage
 
-	allRules, err := s3lifecycle.FindAllRules(ctx)
-	var lookup func(ctx context.Context, bucket, fileKey string) (int, bool)
-	if err != nil {
-		grip.Warning(ctx, message.WrapError(err, message.Fields{
-			"message": "getting S3 lifecycle rules for storage cost calculation, skipping storage cost calculation",
+	bucketsConfig := &evergreen.BucketsConfig{}
+	if err := bucketsConfig.Get(ctx); err != nil {
+		grip.Debug(ctx, message.WrapError(err, message.Fields{
+			"message": "loading admin BucketsConfig for log storage cost calculation",
 			"task_id": t.Id,
 		}))
-	} else {
-		rulesByBucket := map[string][]s3lifecycle.S3LifecycleRuleDoc{}
-		for _, rule := range allRules {
-			rulesByBucket[rule.BucketName] = append(rulesByBucket[rule.BucketName], rule)
-		}
-		lookup = func(ctx context.Context, bucket, fileKey string) (int, bool) {
-			return findExpirationDaysForFileKey(rulesByBucket[bucket], fileKey)
-		}
+	}
+	logLookup := func(_ context.Context, bucket, _ string) (int, bool) {
+		return bucketsConfig.LogBucketExpirationDays(bucket)
 	}
 
-	if err := t.SaveS3Usage(ctx, lookup, t.LogBucketName()); err != nil {
+	artifactRules, err := s3lifecycle.FindAllRules(ctx)
+	if err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "loading S3 lifecycle rules for artifact storage cost calculation",
+			"task_id": t.Id,
+		}))
+	}
+	artifactPailRulesByBucket := s3lifecycle.BuildPailRulesByBucket(artifactRules)
+	artifactLookup := func(_ context.Context, bucket, fileKey string) (int, bool) {
+		rule := pail.FindMatchingRule(artifactPailRulesByBucket[bucket], fileKey)
+		if rule == nil || rule.ExpirationDays == nil {
+			return 0, false
+		}
+		return int(*rule.ExpirationDays), true
+	}
+
+	if err := t.SaveS3Usage(ctx, logLookup, artifactLookup, t.LogBucketName()); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving S3 usage for task '%s'", h.taskID))
 	}
 
@@ -791,28 +801,6 @@ func (h *reportS3UsageHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
-}
-
-// findExpirationDaysForFileKey returns the expiration days from the most specific lifecycle rule
-// for the given file key.
-func findExpirationDaysForFileKey(rules []s3lifecycle.S3LifecycleRuleDoc, fileKey string) (days int, found bool) {
-	pailRules := make([]pail.LifecycleRule, 0, len(rules))
-	for _, ruleDoc := range rules {
-		var expDays *int32
-		if ruleDoc.ExpirationDays != nil {
-			expDays = utility.ToInt32Ptr(int32(*ruleDoc.ExpirationDays))
-		}
-		pailRules = append(pailRules, pail.LifecycleRule{
-			Prefix:         ruleDoc.FilterPrefix,
-			Status:         ruleDoc.RuleStatus,
-			ExpirationDays: expDays,
-		})
-	}
-	rule := pail.FindMatchingRule(pailRules, fileKey)
-	if rule == nil || rule.ExpirationDays == nil {
-		return 0, false
-	}
-	return int(*rule.ExpirationDays), true
 }
 
 // POST /rest/v2/task/{task_id}/high_exec_timeout

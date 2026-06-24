@@ -87,15 +87,14 @@ type Patch {
   patchNumber: Int!
   patchTriggerAliases: [PatchTriggerAlias!]!
   project: PatchProject
-  projectID: String!
-  projectIdentifier: String!
   projectMetadata: Project
   status: String!
   taskCount: Int
   tasks: [String!]!
   taskStatuses: [String!]!
   time: PatchTime
-  user: User!
+  user: User! @deprecated(reason: "Use userLite instead.")
+  userLite: UserLite!
   variants: [String!]!
   variantsTasks: [VariantTask!]!
   version: VersionLite

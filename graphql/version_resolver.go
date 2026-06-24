@@ -262,7 +262,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getProjectMetadata(ctx, obj.Project, obj.Id)
+	apiProjectRef, err := getAPIProjectRef(ctx, obj.Project)
 	return apiProjectRef, err
 }
 
@@ -551,6 +551,11 @@ func (r *versionResolver) User(ctx context.Context, obj *restModel.APIVersion) (
 	return apiUser, nil
 }
 
+// UserLite is the resolver for the userLite field.
+func (r *versionResolver) UserLite(ctx context.Context, obj *restModel.APIVersion) (*user.DBUser, error) {
+	return getVersionAuthorDBUser(ctx, utility.FromStringPtr(obj.AuthorID), utility.FromStringPtr(obj.Author), utility.FromStringPtr(obj.AuthorEmail))
+}
+
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	versionID := utility.FromStringPtr(obj.Id)
@@ -654,7 +659,7 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 		for _, cp := range childPatchIds {
 			v, err := loaders.GetVersion(ctx, cp)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()), err)
 			}
 			if v != nil {
 				childVersions = append(childVersions, v)
@@ -672,9 +677,9 @@ func (r *versionLiteResolver) IsPatch(ctx context.Context, obj *model.Version) (
 
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRefSecondary(ctx, obj.Identifier, obj.Id, false)
+	projectRef, err := loaders.GetProject(ctx, obj.Identifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()), err)
 	}
 	if projectRef == nil {
 		return nil, nil
@@ -695,44 +700,7 @@ func (r *versionLiteResolver) TaskStatusStats(ctx context.Context, obj *model.Ve
 
 // User is the resolver for the user field.
 func (r *versionLiteResolver) User(ctx context.Context, obj *model.Version) (*user.DBUser, error) {
-	// id, displayName, and emailAddress are always returned from the version document.
-	// Other fields require a database call.
-	requestedFields := graphql.CollectAllFields(ctx)
-	needsDBFetch := false
-	for _, field := range requestedFields {
-		if field != "id" && field != "displayName" && field != "emailAddress" {
-			needsDBFetch = true
-			break
-		}
-	}
-
-	if !needsDBFetch {
-		return &user.DBUser{
-			Id:           obj.AuthorID,
-			DispName:     obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	currentUser := mustHaveUser(ctx)
-	if currentUser.Id == obj.AuthorID {
-		return currentUser, nil
-	}
-
-	dbUser, err := loaders.GetUser(ctx, obj.AuthorID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting user '%s': %s", obj.AuthorID, err.Error()), err)
-	}
-	// This is most likely a service user, so just return their info from version
-	if dbUser == nil {
-		return &user.DBUser{
-			Id:           obj.AuthorID,
-			DispName:     obj.Author,
-			EmailAddress: obj.AuthorEmail,
-		}, nil
-	}
-
-	return dbUser, nil
+	return getVersionAuthorDBUser(ctx, obj.AuthorID, obj.Author, obj.AuthorEmail)
 }
 
 // Version returns VersionResolver implementation.

@@ -105,9 +105,10 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	planningPhaseBegins := time.Now()
 	prioritizedTasks, err := PrioritizeTasks(ctx, distro, tasks, TaskPlannerOptions{
-		StartedAt:        taskFindingBegins,
-		ID:               schedulerInstanceID,
-		IsSecondaryQueue: false,
+		StartedAt:                  taskFindingBegins,
+		ID:                         schedulerInstanceID,
+		IsSecondaryQueue:           false,
+		MaxScheduledTasksPerDistro: s.TaskLimits.MaxScheduledTasksPerDistro,
 	})
 	if err != nil {
 		return errors.WithStack(err)

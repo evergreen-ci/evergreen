@@ -3,10 +3,12 @@ package s3usage
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -250,6 +252,86 @@ func TestS3Usage(t *testing.T) {
 	t.Run("NilReceiverIsZero", func(t *testing.T) {
 		var s3Usage *S3Usage
 		assert.True(t, s3Usage.IsZero())
+	})
+
+	t.Run("ConcurrentIncrementLogsIsRaceFree", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		s3Usage.Init()
+
+		const goroutines = 8
+		const callsPerGoroutine = 100
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			go func() {
+				for j := 0; j < callsPerGoroutine; j++ {
+					s3Usage.IncrementLogs(1, 10, LogTypeTask, "proj/task/0/task_logs/task")
+				}
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+
+		expectedPuts := goroutines * callsPerGoroutine
+		expectedBytes := int64(expectedPuts * 10)
+		assert.Equal(t, expectedPuts, s3Usage.Logs.PutRequests)
+		assert.Equal(t, expectedBytes, s3Usage.Logs.UploadBytes)
+		assert.Equal(t, expectedBytes, s3Usage.Logs.Task.Bytes)
+	})
+
+	t.Run("ConcurrentIncrementArtifactsIsRaceFree", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		s3Usage.Init()
+		owned := []string{"123456789012"}
+
+		const goroutines = 8
+		const callsPerGoroutine = 50
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		for i := 0; i < goroutines; i++ {
+			go func(id int) {
+				for j := 0; j < callsPerGoroutine; j++ {
+					remotePath := "shared/key.bin"
+					if id%2 == 1 {
+						remotePath = "unique/" + string(rune('A'+id)) + ".bin"
+					}
+					s3Usage.IncrementArtifacts(ArtifactIncrementOptions{
+						DevprodOwnedAWSAccountIDs: owned,
+						AWSAccountID:              "123456789012",
+						PutRequests:               1,
+						UploadBytes:               100,
+						FileCount:                 1,
+						MaxPuts:                   1,
+						MinPuts:                   1,
+						Bucket:                    "bucket-a",
+						Files:                     []FileMetrics{{RemotePath: remotePath, FileSizeBytes: 100}},
+					})
+				}
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+
+		expectedCalls := goroutines * callsPerGoroutine
+		assert.Equal(t, expectedCalls, s3Usage.Artifacts.PutRequests)
+		assert.Equal(t, int64(expectedCalls*100), s3Usage.Artifacts.UploadBytes)
+		assert.Equal(t, expectedCalls, s3Usage.Artifacts.Count)
+	})
+
+	t.Run("SnapshotWithoutInitLogsCritical", func(t *testing.T) {
+		s3Usage := S3Usage{}
+		s3Usage.IncrementLogs(5, 1024, LogTypeTask, "key")
+
+		sender := grip.GetSender()
+		mock := send.MakeInternalLogger()
+		require.NoError(t, grip.SetSender(mock))
+		t.Cleanup(func() {
+			assert.NoError(t, grip.SetSender(sender))
+		})
+
+		snap := s3Usage.Snapshot()
+		assert.Equal(t, 5, snap.Logs.PutRequests)
+		assert.True(t, mock.HasMessage(), "expected critical message when Snapshot called without Init")
 	})
 }
 

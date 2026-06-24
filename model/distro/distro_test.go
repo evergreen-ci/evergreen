@@ -226,8 +226,8 @@ func TestGetImageID(t *testing.T) {
 		legacyOnly     bool
 	}{
 		{
-			name:           "Ec2OnDemand",
-			provider:       evergreen.ProviderNameEc2OnDemand,
+			name:           "Ec2Fleet",
+			provider:       evergreen.ProviderNameEc2Fleet,
 			key:            "ami",
 			value:          "imageID",
 			expectedOutput: "imageID",
@@ -598,7 +598,7 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 
 	oldDistro := Distro{
 		Id:       "rainbow-lollipop",
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{
 			birch.NewDocument().Set(birch.EC.String("ami", "ami-0")),
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
@@ -607,7 +607,7 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 
 	d := Distro{
 		Id:       "rainbow-lollipop",
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Provider: evergreen.ProviderNameEc2Fleet,
 		ProviderSettingsList: []*birch.Document{
 			birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")),
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
