@@ -881,20 +881,14 @@ type rateLimitMiddleware struct {
 }
 
 func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	// Resolve user
 	ctx := r.Context()
 	u := gimlet.GetUser(ctx)
-	if u == nil { // nil user, allow request to pass through.
+	if u == nil {
 		next(rw, r)
 		return
 	}
-	// Pick tier
 	dbUser := MustHaveUser(ctx)
-	isService := false
-
-	if dbUser.OnlyAPI {
-		isService = true
-	}
+	isService := dbUser.OnlyAPI
 	settings, err := evergreen.GetConfigWithoutSecrets(ctx)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -913,7 +907,6 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		burst *= 2
 	}
 
-	// Construct limiter
 	limiter, err := ratelimit.NewRateLimiter(m.env.RedisClient())
 
 	// If the limiter fails to initialize, log the error and allow the request to proceed.
@@ -938,17 +931,17 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Interpret Result
 	if res != nil {
-		// Informational headers about the current state of the rate limit
 		rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour)) // TODO should there also be a burst header?
 		rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
-		rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", res.ResetAfter))
+		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
+		rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))
 
 		if res.Allowed == 0 {
 			rw.Header().Set(evergreen.RateLimitExceededHeader, "true")
 			flags, _ := evergreen.GetServiceFlags(ctx)
-			if !flags.APIRateLimiterDisabled {
+			if flags != nil && !flags.APIRateLimiterDisabled {
+				// Retry-After is a standard HTTP header that indicates how long the user should wait before making another request.
 				rw.Header().Set(evergreen.RetryAfterHeader, fmt.Sprintf("%d", int(res.RetryAfter.Seconds())))
 				gimlet.WriteResponse(ctx, rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusTooManyRequests,
