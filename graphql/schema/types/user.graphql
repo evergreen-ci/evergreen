@@ -86,21 +86,21 @@ input RemoveFavoriteProjectInput {
 
 ###### TYPES ######
 """
-User is returned by the user query.
-It contains information about a user's id, name, email, and permissions.
+UserLite replaces User by sidestepping the APIDBUser API model and binding directly to the
+service-layer user model. New clients should query UserLite instead of User.
 """
-type User {
+type UserLite {
   betaFeatures: BetaFeatures
   displayName: String
   emailAddress: String
   hasTokenExchangePending: Boolean!
+  id: String!
   parsleyFilters: [ParsleyFilter!]
   patches(patchesInput: PatchesInput!): Patches # user patches
   permissions: Permissions
   settings: UserSettings
-  tokenAccessTokenExpiresAt: Time
   subscriptions: [GeneralSubscription!]
-  userId: String!
+  tokenAccessTokenExpiresAt: Time
 }
 
 """
@@ -170,22 +170,4 @@ type Notifications {
 
 type UseSpruceOptions {
   spruceV1: Boolean
-}
-
-"""
-UserLite replaces User by sidestepping the APIDBUser API model and binding directly to the
-service-layer user model. New clients should query UserLite instead of User.
-"""
-type UserLite {
-  betaFeatures: BetaFeatures
-  displayName: String
-  emailAddress: String
-  hasTokenExchangePending: Boolean!
-  id: String!
-  parsleyFilters: [ParsleyFilter!]
-  patches(patchesInput: PatchesInput!): Patches # user patches
-  permissions: Permissions
-  settings: UserSettings
-  subscriptions: [GeneralSubscription!]
-  tokenAccessTokenExpiresAt: Time
 }

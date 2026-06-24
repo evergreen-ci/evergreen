@@ -79,7 +79,7 @@ type Query {
 
   # user
   myPublicKeys: [PublicKey!]!
-  user(userId: String): User!
+  user(userId: String): UserLite!
   userLite(userId: String): UserLite!
   userConfig: UserConfig
 

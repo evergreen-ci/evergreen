@@ -87,7 +87,7 @@ type Version {
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
-  user: User! @deprecated(reason: "Use userLite instead.")
+  user: UserLite!
   userLite: UserLite!
   versionTiming: VersionTiming
   warnings: [String!]!

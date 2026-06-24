@@ -93,7 +93,7 @@ type Patch {
   tasks: [String!]!
   taskStatuses: [String!]!
   time: PatchTime
-  user: User! @deprecated(reason: "Use userLite instead.")
+  user: UserLite!
   userLite: UserLite!
   variants: [String!]!
   variantsTasks: [VariantTask!]!

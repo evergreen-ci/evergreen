@@ -750,21 +750,19 @@ func (r *queryResolver) MyPublicKeys(ctx context.Context) ([]*restModel.APIPubKe
 }
 
 // User is the resolver for the user field.
-func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.APIDBUser, error) {
+func (r *queryResolver) User(ctx context.Context, userID *string) (*user.DBUser, error) {
 	usr := mustHaveUser(ctx)
-	var err error
 	if userID != nil {
-		usr, err = user.FindOneById(ctx, utility.FromStringPtr(userID))
+		dbUser, err := user.FindOneById(ctx, utility.FromStringPtr(userID))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
 		}
-		if usr == nil {
+		if dbUser == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", utility.FromStringPtr(userID)))
 		}
+		return dbUser, nil
 	}
-	apiUser := restModel.APIDBUser{}
-	apiUser.BuildFromService(*usr)
-	return &apiUser, nil
+	return usr, nil
 }
 
 // UserLite is the resolver for the userLite field.
