@@ -30,4 +30,3 @@ func getOrComputeTranslation(key string, compute func() (*Project, error)) (*Pro
 func versionTranslationKey(versionID string, preGeneration bool) string {
 	return fmt.Sprintf("v:%s:%v", versionID, preGeneration)
 }
-

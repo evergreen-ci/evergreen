@@ -122,4 +122,3 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		assert.Equal(t, "retry", p.Identifier)
 	})
 }
-
