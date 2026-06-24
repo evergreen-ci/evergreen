@@ -135,7 +135,12 @@ func (oa *OAuth) AccessTokenIfNotExpired() string {
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
-	APIServerHost              string                      `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	// APIServerHost is the legacy API server host. This should only be used by service
+	// users who need to use the legacy way of authenticating (static keys).
+	APIServerHost string `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	// CorpAPIServerHost is the modern API server host. This is used by human users
+	// authenticating with OAuth. We need the legacy and this url while we transition
+	// from static keys to OAuth for both human and service users.
 	CorpAPIServerHost          string                      `json:"corp_api_server_host" yaml:"corp_api_server_host,omitempty"`
 	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
