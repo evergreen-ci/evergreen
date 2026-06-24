@@ -54,14 +54,14 @@ type BucketsConfig struct {
 }
 
 var (
-	BucketsConfigLogBucketKey                        = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
-	BucketsConfigLogBucketLongRetentionKey           = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
-	BucketsConfigLogBucketFailedTasksKey             = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
-	BucketsConfigLongRetentionProjectsKey            = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
-	BucketsConfigRetryFailedLogMoveLookbackDaysKey = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveLookbackDays")
-	BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey  = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveMaxJobsPerRun")
-	BucketsConfigTestResultsBucketKey                = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
-	BucketsConfigCredentialsKey                      = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	BucketsConfigLogBucketKey                       = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	BucketsConfigLogBucketLongRetentionKey          = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
+	BucketsConfigLogBucketFailedTasksKey            = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
+	BucketsConfigLongRetentionProjectsKey           = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
+	BucketsConfigRetryFailedLogMoveLookbackDaysKey  = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveLookbackDays")
+	BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveMaxJobsPerRun")
+	BucketsConfigTestResultsBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
+	BucketsConfigCredentialsKey                     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -111,14 +111,14 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(
 		setConfigSection(ctx, c.SectionId(), bson.M{
 			"$set": bson.M{
-				BucketsConfigLogBucketKey:                        c.LogBucket,
-				BucketsConfigLogBucketLongRetentionKey:           c.LogBucketLongRetention,
-				BucketsConfigLogBucketFailedTasksKey:             c.LogBucketFailedTasks,
-				BucketsConfigLongRetentionProjectsKey:            c.LongRetentionProjects,
-				BucketsConfigRetryFailedLogMoveLookbackDaysKey: c.RetryFailedLogMoveLookbackDays,
-				BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey:  c.RetryFailedLogMoveMaxJobsPerRun,
-				BucketsConfigTestResultsBucketKey:                c.TestResultsBucket,
-				BucketsConfigCredentialsKey:                      c.Credentials,
+				BucketsConfigLogBucketKey:                       c.LogBucket,
+				BucketsConfigLogBucketLongRetentionKey:          c.LogBucketLongRetention,
+				BucketsConfigLogBucketFailedTasksKey:            c.LogBucketFailedTasks,
+				BucketsConfigLongRetentionProjectsKey:           c.LongRetentionProjects,
+				BucketsConfigRetryFailedLogMoveLookbackDaysKey:  c.RetryFailedLogMoveLookbackDays,
+				BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey: c.RetryFailedLogMoveMaxJobsPerRun,
+				BucketsConfigTestResultsBucketKey:               c.TestResultsBucket,
+				BucketsConfigCredentialsKey:                     c.Credentials,
 			},
 		}),
 		"updating config section '%s'", c.SectionId(),

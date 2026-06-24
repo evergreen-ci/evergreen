@@ -777,15 +777,15 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket                        APIBucketConfig  `json:"log_bucket"`
-	LogBucketLongRetention           APIBucketConfig  `json:"log_bucket_long_retention"`
-	LogBucketFailedTasks             APIBucketConfig  `json:"log_bucket_failed_tasks"`
-	LongRetentionProjects            []string         `json:"long_retention_projects"`
-	RetryFailedLogMoveLookbackDays *int `json:"retry_failed_log_move_lookback_days,omitempty"`
-	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
-	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
-	InternalBuckets                  []string         `json:"internal_buckets"`
-	Credentials                      APIS3Credentials `json:"credentials"`
+	LogBucket                       APIBucketConfig  `json:"log_bucket"`
+	LogBucketLongRetention          APIBucketConfig  `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks            APIBucketConfig  `json:"log_bucket_failed_tasks"`
+	LongRetentionProjects           []string         `json:"long_retention_projects"`
+	RetryFailedLogMoveLookbackDays  *int             `json:"retry_failed_log_move_lookback_days,omitempty"`
+	RetryFailedLogMoveMaxJobsPerRun *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
+	TestResultsBucket               APIBucketConfig  `json:"test_results_bucket"`
+	InternalBuckets                 []string         `json:"internal_buckets"`
+	Credentials                     APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -899,9 +899,9 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
 			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
-		LongRetentionProjects:          a.LongRetentionProjects,
-		RetryFailedLogMoveLookbackDays: utility.FromIntPtr(a.RetryFailedLogMoveLookbackDays),
-		RetryFailedLogMoveMaxJobsPerRun:  utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
+		LongRetentionProjects:           a.LongRetentionProjects,
+		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(a.RetryFailedLogMoveLookbackDays),
+		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket: evergreen.BucketConfig{
 			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
 			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
