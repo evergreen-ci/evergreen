@@ -140,9 +140,12 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
 	tasks := VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
+
+	// We want to instrument IncludeDependencies, but it lacks context. To get around this, manually start and end span.
 	_, includeDepsSpan := tracer.Start(ctx, "include-dependencies")
 	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil)
 	includeDepsSpan.End()
+
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for patch",
 		"patch":   p.Id.Hex(),
