@@ -579,9 +579,12 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	return FindAndTranslateProjectForVersion(ctx, settings, v, false)
 }
 
-// parserProjectPreGenerationOtelAttribute records whether a translation used the
-// pre-generation parser project copy.
-const parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+const (
+	// parserProjectPreGenerationOtelAttribute records whether a translation used the
+	// pre-generation parser project copy.
+	parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+	translationCacheHitOtelAttribute        = "evergreen.parser_project.translation_cache_hit"
+)
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
@@ -617,11 +620,14 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	// stored with the ID.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
 
-	// Coalesce concurrent translations for the same version into one compute.
+	// The cache is disabled, so this key is only used to coalesce concurrent translations of the same
+	// version. Before enabling the cache, switch to a content-derived key (contentTranslationKey),
+	// because a version ID would keep serving a stale config after generate.tasks rewrites the project.
 	key := versionTranslationKey(v.Id, preGeneration)
-	p, err := getOrComputeTranslation(key, func() (*Project, error) {
+	p, cacheHit, err := getOrComputeTranslation(key, translationCacheEnabled, func() (*Project, error) {
 		return TranslateProject(pp)
 	})
+	span.SetAttributes(attribute.Bool(translationCacheHitOtelAttribute, cacheHit))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
 	}
