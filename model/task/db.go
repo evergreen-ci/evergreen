@@ -2689,10 +2689,12 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 	}
 	span.SetAttributes(attribute.Int("evergreen.task.num_activated_tasks", len(activatedTasks)))
 
-	// Use background context to avoid MongoDB session races in parallel queries.
-	// The input ctx may have a transaction session which is not thread-safe.
-	bgCtx := context.Background()
-	predictions, err := computeCostPredictionsInParallel(bgCtx, activatedTasks)
+	// Detach from any DB transaction session to avoid races in the parallel
+	// queries (the input ctx may carry a session, which is not thread-safe),
+	// while still carrying the current span so the cost-prediction queries stay
+	// attached to this trace.
+	tracingCtx := trace.ContextWithSpan(context.Background(), span)
+	predictions, err := computeCostPredictionsInParallel(tracingCtx, activatedTasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "computing cost predictions")
 	}
@@ -2753,6 +2755,11 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	const maxWorkers = 20
 	numWorkers := util.Min(maxWorkers, len(tasksByVariant))
 	resultChan := make(chan predictionResult, len(tasks))
+
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Int("evergreen.task.num_cost_prediction_groups", len(tasksByVariant)),
+		attribute.Int("evergreen.task.num_cost_prediction_workers", numWorkers),
+	)
 
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)

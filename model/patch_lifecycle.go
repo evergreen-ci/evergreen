@@ -659,8 +659,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		AuthorEmail:          authorEmail,
 	}
 
-	ctx, manifestSpan := tracer.Start(ctx, "construct-manifest")
-	mfst, err := constructManifest(ctx, patchVersion, projectRef, project.Modules)
+	manifestCtx, manifestSpan := tracer.Start(ctx, "construct-manifest")
+	mfst, err := constructManifest(manifestCtx, patchVersion, projectRef, project.Modules)
 	manifestSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
