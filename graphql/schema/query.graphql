@@ -79,8 +79,8 @@ type Query {
 
   # user
   myPublicKeys: [PublicKey!]!
-  user(userId: String): UserLite!
-  userLite(userId: String): UserLite!
+  user(userId: String): User!
+  userLite(userId: String): User!
   userConfig: UserConfig
 
   # mainline commits

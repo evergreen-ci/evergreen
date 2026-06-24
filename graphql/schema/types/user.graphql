@@ -86,10 +86,9 @@ input RemoveFavoriteProjectInput {
 
 ###### TYPES ######
 """
-UserLite replaces User by sidestepping the APIDBUser API model and binding directly to the
-service-layer user model. New clients should query UserLite instead of User.
+User maps to the user.DBUser type.
 """
-type UserLite {
+type User {
   betaFeatures: BetaFeatures
   displayName: String
   emailAddress: String

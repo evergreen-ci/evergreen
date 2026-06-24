@@ -87,8 +87,8 @@ type Version {
   taskStatuses: [String!]!
   taskStatusStats(options: BuildVariantOptions!): TaskStats
   upstreamProject: UpstreamProject
-  user: UserLite!
-  userLite: UserLite!
+  user: User!
+  userLite: User!
   versionTiming: VersionTiming
   warnings: [String!]!
   waterfallBuilds: [WaterfallBuild!]
@@ -182,6 +182,6 @@ type VersionLite {
   startTime: Time
   status: String!
   taskStatusStats: TaskStats
-  user: UserLite!
+  user: User!
   warnings: [String!]!
 }
