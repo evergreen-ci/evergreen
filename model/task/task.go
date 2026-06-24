@@ -4428,6 +4428,14 @@ type CostPredictionResult struct {
 }
 
 func (t *Task) ComputePredictedCostForWeek(ctx context.Context) (CostPredictionResult, error) {
+	ctx, span := tracer.Start(ctx, "compute-predicted-cost-for-week")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
+		attribute.String(evergreen.BuildNameOtelAttribute, t.BuildVariant),
+		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
+	)
+
 	end := time.Now()
 	start := end.Add(-taskCompletionEstimateWindow)
 
