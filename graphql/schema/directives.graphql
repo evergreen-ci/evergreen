@@ -4,10 +4,7 @@ requireProjectAdmin is used to restrict certain actions to admins.
 directive @requireProjectAdmin on ARGUMENT_DEFINITION
 
 """
-requireRepoAccess restricts attaching a project to a repo based on the user's
-access to that repo. ADMIN requires repo admin (project settings edit on the
-repo) and VIEW requires repo view access. When no repo exists yet, a project
-admin may attach and becomes the new repo's admin.
+requireProjectAccess is used to restrict admin, view, and edit access for repos.
 """
 directive @requireRepoAccess(access: AccessLevel!) on ARGUMENT_DEFINITION
 
