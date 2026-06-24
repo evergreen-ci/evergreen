@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/cost"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Tasks []*Task
@@ -50,7 +51,12 @@ func (t Tasks) InsertUnorderedWithPredictions(ctx context.Context, predictions m
 		return nil
 	}
 
+	ctx, span := tracer.Start(ctx, "insert-tasks-with-predictions")
+	defer span.End()
+	span.SetAttributes(attribute.Int(evergreen.PatchNumTasksOtelAttribute, len(t)))
+
 	// Create payload with predictions applied to copies
+	_, payloadSpan := tracer.Start(ctx, "build-task-payload")
 	payload := make([]any, len(t))
 	for idx := range t {
 		taskCopy := *t[idx] // Make a copy to avoid modifying the original
@@ -59,6 +65,7 @@ func (t Tasks) InsertUnorderedWithPredictions(ctx context.Context, predictions m
 		}
 		payload[idx] = any(&taskCopy)
 	}
+	payloadSpan.End()
 
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, payload, options.InsertMany().SetOrdered(false))
 	return err
