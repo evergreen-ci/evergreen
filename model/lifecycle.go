@@ -1473,6 +1473,13 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting create time for tasks")
 	}
+	// The distro alias lookup table is needed so that tasks whose run_on
+	// references a distro alias store the resolved distro ID, consistent with
+	// tasks created in already-existing builds.
+	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting distro alias lookup table")
+	}
 	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, pair := range creationInfo.Pairs.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
@@ -1500,6 +1507,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
 			ExplicitlyGeneratedTasks:            creationInfo.ExplicitlyGeneratedTasks,
 			TestSelectionParams:                 tsParams,
+			DistroAliases:                       distroAliases,
 		}
 
 		grip.Info(ctx, message.Fields{
