@@ -457,9 +457,8 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	return cache
 }
 
-// RefreshTasksCache updates the given builds' documents so that their tasks
-// caches reflect the correct current state of the tasks they represent. The
-// task lookups are batched across all builds rather than queried per build.
+// RefreshTasksCache updates the given builds' documents so that their task
+// caches reflect the correct current state of the tasks they represent.
 func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 	if len(buildIDs) == 0 {
 		return nil
