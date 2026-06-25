@@ -165,6 +165,18 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 
 	switch cloudInfo.Status {
 	case cloud.StatusRunning:
+		if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
+			// The host is intentionally being taken down; the cloud instance
+			// being alive is transient and the termination job will clean it up.
+			grip.Info(ctx, message.Fields{
+				"op_id":   id,
+				"message": "not updating status of down host that is still running in the cloud",
+				"status":  h.Status,
+				"host_id": h.Id,
+				"distro":  h.Distro.Id,
+			})
+			return false, nil
+		}
 		userDataProvisioning := h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && h.Status == evergreen.HostStarting
 		if h.Status != evergreen.HostRunning && !userDataProvisioning {
 			grip.Info(ctx, message.Fields{
