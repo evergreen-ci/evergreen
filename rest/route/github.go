@@ -921,7 +921,7 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 			"ref":      ref,
 			"head_ref": headRef,
 		})
-		return false, errors.New("invalid authentication for Graphite CI optimizer")
+		return false, nil
 	}
 
 	if resp.StatusCode == http.StatusPaymentRequired {
