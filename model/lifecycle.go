@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -458,13 +457,16 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	return cache
 }
 
-const refreshTasksCacheConcurrency = 10
-
-// RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
-// state of the tasks it represents.
-func RefreshTasksCache(ctx context.Context, buildId string) error {
-	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(buildId)).WithFields(
+// RefreshTasksCache updates the given builds' documents so that their tasks
+// caches reflect the correct current state of the tasks they represent. The
+// task lookups are batched across all builds rather than queried per build.
+func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
+	if len(buildIDs) == 0 {
+		return nil
+	}
+	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildIds(buildIDs)).WithFields(
 		task.IdKey,
+		task.BuildIdKey,
 		task.DisplayNameKey,
 		task.DependsOnKey,
 		task.DisplayOnlyKey,
@@ -477,23 +479,34 @@ func RefreshTasksCache(ctx context.Context, buildId string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	// trim out tasks that are part of a display task
-	execTaskMap := map[string]bool{}
+
+	tasksByBuild := map[string][]task.Task{}
 	for _, t := range tasks {
-		if t.DisplayOnly {
-			for _, et := range t.ExecutionTasks {
-				execTaskMap[et] = true
-			}
-		}
-	}
-	for i := len(tasks) - 1; i >= 0; i-- {
-		if _, exists := execTaskMap[tasks[i].Id]; exists {
-			tasks = append(tasks[:i], tasks[i+1:]...)
-		}
+		tasksByBuild[t.BuildId] = append(tasksByBuild[t.BuildId], t)
 	}
 
-	cache := CreateTasksCache(tasks)
-	return errors.WithStack(build.SetTasksCache(ctx, buildId, cache))
+	catcher := grip.NewBasicCatcher()
+	for _, buildID := range buildIDs {
+		buildTasks := tasksByBuild[buildID]
+		// trim out tasks that are part of a display task
+		execTaskMap := map[string]bool{}
+		for _, t := range buildTasks {
+			if t.DisplayOnly {
+				for _, et := range t.ExecutionTasks {
+					execTaskMap[et] = true
+				}
+			}
+		}
+		for i := len(buildTasks) - 1; i >= 0; i-- {
+			if _, exists := execTaskMap[buildTasks[i].Id]; exists {
+				buildTasks = append(buildTasks[:i], buildTasks[i+1:]...)
+			}
+		}
+
+		cache := CreateTasksCache(buildTasks)
+		catcher.Wrapf(build.SetTasksCache(ctx, buildID, cache), "updating task cache for '%s'", buildID)
+	}
+	return catcher.Resolve()
 }
 
 // addTasksToBuild creates/activates the tasks for the given existing build.
@@ -1744,28 +1757,8 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
 
-	// Refresh build cache in parallel per-build
-	refreshChan := make(chan string, len(buildIdsToRefresh))
-	for _, buildID := range buildIdsToRefresh {
-		refreshChan <- buildID
-	}
-	close(refreshChan)
-
-	refreshCatcher := grip.NewBasicCatcher()
-	refreshWG := sync.WaitGroup{}
-	numRefreshWorkers := util.Min(refreshTasksCacheConcurrency, len(buildIdsToRefresh))
-	for range numRefreshWorkers {
-		refreshWG.Add(1)
-		go func() {
-			defer refreshWG.Done()
-			for buildID := range refreshChan {
-				refreshCatcher.Wrapf(RefreshTasksCache(ctx, buildID), "updating task cache for '%s'", buildID)
-			}
-		}()
-	}
-	refreshWG.Wait()
-	if refreshCatcher.HasErrors() {
-		return nil, nil, refreshCatcher.Resolve()
+	if err = RefreshTasksCache(ctx, buildIdsToRefresh); err != nil {
+		return nil, nil, errors.Wrap(err, "refreshing task caches for updated builds")
 	}
 	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.AuthorID, false, activatedTasks...); err != nil {
 		return nil, nil, errors.Wrap(err, "updating patch task limit for user")
