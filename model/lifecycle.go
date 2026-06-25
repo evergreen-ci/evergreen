@@ -505,12 +505,8 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 			creationInfo.Build.BuildVariant, creationInfo.Project.Identifier)
 	}
 
-	createTime, err := getTaskCreateTime(ctx, creationInfo)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", creationInfo.Version.Id)
-	}
-
 	var githubCheckAliases ProjectAliases
+	var err error
 	if creationInfo.Version.Requester == evergreen.RepotrackerVersionRequester && creationInfo.ProjectRef.IsGithubChecksEnabled() {
 		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(ctx, creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -521,7 +517,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		}))
 	}
 	creationInfo.GithubChecksAliases = githubCheckAliases
-	creationInfo.TaskCreateTime = createTime
 	// Create the new tasks for the build
 	tasks, err := createTasksForBuild(ctx, creationInfo)
 	if err != nil {
@@ -1656,6 +1651,12 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting table of task IDs")
 	}
+
+	createTime, err := getTaskCreateTime(ctx, creationInfo)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", creationInfo.Version.Id)
+	}
+	creationInfo.TaskCreateTime = createTime
 
 	activatedTaskIds := []string{}
 	activatedTasks := []task.Task{}
