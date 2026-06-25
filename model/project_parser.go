@@ -616,12 +616,16 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	// always has an identifier, but some old parser projects used to not be
 	// stored with the ID.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
-	var p *Project
-	p, err = TranslateProject(pp)
+
+	// Coalesce concurrent translations for the same version into one compute.
+	key := versionTranslationKey(v.Id, preGeneration)
+	p, err := getOrComputeTranslation(key, func() (*Project, error) {
+		return TranslateProject(pp)
+	})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
 	}
-	return p, pp, err
+	return p, pp, nil
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.

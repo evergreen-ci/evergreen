@@ -2273,13 +2273,14 @@ type ComplexityRoot struct {
 	}
 
 	UserConfig struct {
-		APIKey           func(childComplexity int) int
-		APIServerHost    func(childComplexity int) int
-		OauthClientID    func(childComplexity int) int
-		OauthConnectorID func(childComplexity int) int
-		OauthIssuer      func(childComplexity int) int
-		UIServerHost     func(childComplexity int) int
-		User             func(childComplexity int) int
+		APIKey            func(childComplexity int) int
+		APIServerHost     func(childComplexity int) int
+		CorpAPIServerHost func(childComplexity int) int
+		OauthClientID     func(childComplexity int) int
+		OauthConnectorID  func(childComplexity int) int
+		OauthIssuer       func(childComplexity int) int
+		UIServerHost      func(childComplexity int) int
+		User              func(childComplexity int) int
 	}
 
 	UserServiceFlags struct {
@@ -2358,6 +2359,7 @@ type ComplexityRoot struct {
 
 	VersionLite struct {
 		Activated           func(childComplexity int) int
+		BaseVersion         func(childComplexity int) int
 		Branch              func(childComplexity int) int
 		ChildVersions       func(childComplexity int) int
 		Cost                func(childComplexity int) int
@@ -2857,6 +2859,8 @@ type VersionResolver interface {
 	WaterfallBuilds(ctx context.Context, obj *model.APIVersion) ([]*model1.WaterfallBuild, error)
 }
 type VersionLiteResolver interface {
+	BaseVersion(ctx context.Context, obj *model1.Version) (*model1.Version, error)
+
 	ChildVersions(ctx context.Context, obj *model1.Version) ([]*model1.Version, error)
 
 	IsPatch(ctx context.Context, obj *model1.Version) (bool, error)
@@ -12361,6 +12365,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserConfig.APIServerHost(childComplexity), true
+	case "UserConfig.corp_api_server_host":
+		if e.complexity.UserConfig.CorpAPIServerHost == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.CorpAPIServerHost(childComplexity), true
 	case "UserConfig.oauth_client_id":
 		if e.complexity.UserConfig.OauthClientID == nil {
 			break
@@ -12782,6 +12792,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.Activated(childComplexity), true
+	case "VersionLite.baseVersion":
+		if e.complexity.VersionLite.BaseVersion == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.BaseVersion(childComplexity), true
 	case "VersionLite.branch":
 		if e.complexity.VersionLite.Branch == nil {
 			break
@@ -42225,6 +42241,8 @@ func (ec *executionContext) fieldContext_Mutation_resetAPIKey(_ context.Context,
 				return ec.fieldContext_UserConfig_api_key(ctx, field)
 			case "api_server_host":
 				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
+			case "corp_api_server_host":
+				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
 			case "ui_server_host":
 				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
 			case "user":
@@ -45851,6 +45869,8 @@ func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field 
 				return ec.fieldContext_VersionLite_id(ctx, field)
 			case "activated":
 				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_VersionLite_branch(ctx, field)
 			case "childVersions":
@@ -54866,6 +54886,8 @@ func (ec *executionContext) fieldContext_Query_userConfig(_ context.Context, fie
 				return ec.fieldContext_UserConfig_api_key(ctx, field)
 			case "api_server_host":
 				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
+			case "corp_api_server_host":
+				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
 			case "ui_server_host":
 				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
 			case "user":
@@ -66976,6 +66998,8 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_id(ctx, field)
 			case "activated":
 				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_VersionLite_branch(ctx, field)
 			case "childVersions":
@@ -73767,6 +73791,35 @@ func (ec *executionContext) fieldContext_UserConfig_api_server_host(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _UserConfig_corp_api_server_host(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserConfig_corp_api_server_host,
+		func(ctx context.Context) (any, error) {
+			return obj.CorpAPIServerHost, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserConfig_corp_api_server_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserConfig_ui_server_host(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -76421,6 +76474,83 @@ func (ec *executionContext) fieldContext_VersionLite_activated(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _VersionLite_baseVersion(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_baseVersion,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().BaseVersion(ctx, obj)
+		},
+		nil,
+		ec.marshalOVersionLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_baseVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_VersionLite_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_VersionLite_branch(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_VersionLite_childVersions(ctx, field)
+			case "cost":
+				return ec.fieldContext_VersionLite_cost(ctx, field)
+			case "createTime":
+				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_VersionLite_errors(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_VersionLite_finishTime(ctx, field)
+			case "ignored":
+				return ec.fieldContext_VersionLite_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_VersionLite_isPatch(ctx, field)
+			case "message":
+				return ec.fieldContext_VersionLite_message(ctx, field)
+			case "order":
+				return ec.fieldContext_VersionLite_order(ctx, field)
+			case "project":
+				return ec.fieldContext_VersionLite_project(ctx, field)
+			case "repo":
+				return ec.fieldContext_VersionLite_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_VersionLite_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_VersionLite_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_VersionLite_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_VersionLite_status(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_VersionLite_taskStatusStats(ctx, field)
+			case "user":
+				return ec.fieldContext_VersionLite_user(ctx, field)
+			case "warnings":
+				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VersionLite_branch(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -76478,6 +76608,8 @@ func (ec *executionContext) fieldContext_VersionLite_childVersions(_ context.Con
 				return ec.fieldContext_VersionLite_id(ctx, field)
 			case "activated":
 				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_VersionLite_branch(ctx, field)
 			case "childVersions":
@@ -110548,6 +110680,11 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "corp_api_server_host":
+			out.Values[i] = ec._UserConfig_corp_api_server_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "ui_server_host":
 			out.Values[i] = ec._UserConfig_ui_server_host(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -111696,6 +111833,39 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			}
 		case "activated":
 			out.Values[i] = ec._VersionLite_activated(ctx, field, obj)
+		case "baseVersion":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_baseVersion(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "branch":
 			out.Values[i] = ec._VersionLite_branch(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

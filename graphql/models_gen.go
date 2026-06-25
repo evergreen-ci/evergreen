@@ -735,16 +735,16 @@ type UpstreamProject struct {
 }
 
 // UserConfig is returned by the userConfig query.
-// It contains configuration information such as the user's api key for the Evergreen CLI and a user's
-// preferred UI (legacy vs Spruce).
+// It contains configuration information for the Evergreen CLI.
 type UserConfig struct {
-	APIKey           string `json:"api_key"`
-	APIServerHost    string `json:"api_server_host"`
-	UIServerHost     string `json:"ui_server_host"`
-	User             string `json:"user"`
-	OauthIssuer      string `json:"oauth_issuer"`
-	OauthClientID    string `json:"oauth_client_id"`
-	OauthConnectorID string `json:"oauth_connector_id"`
+	APIKey            string `json:"api_key"`
+	APIServerHost     string `json:"api_server_host"`
+	CorpAPIServerHost string `json:"corp_api_server_host"`
+	UIServerHost      string `json:"ui_server_host"`
+	User              string `json:"user"`
+	OauthIssuer       string `json:"oauth_issuer"`
+	OauthClientID     string `json:"oauth_client_id"`
+	OauthConnectorID  string `json:"oauth_connector_id"`
 }
 
 type VariantTasks struct {

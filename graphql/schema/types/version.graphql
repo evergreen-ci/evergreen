@@ -164,6 +164,7 @@ VersionLite replaces Version by sidestepping the APIVersion layer. It does not c
 type VersionLite {
   id: String!
   activated: Boolean
+  baseVersion: VersionLite
   branch: String!
   childVersions: [VersionLite!]
   cost: Cost

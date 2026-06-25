@@ -595,6 +595,15 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	return versionBuilds, nil
 }
 
+// BaseVersion is the resolver for the baseVersion field.
+func (r *versionLiteResolver) BaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", obj.Id, err.Error()))
+	}
+	return baseVersion, nil
+}
+
 // ChildVersions is the resolver for the childVersions field.
 func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Version) ([]*model.Version, error) {
 	if !evergreen.IsPatchRequester(obj.Requester) {

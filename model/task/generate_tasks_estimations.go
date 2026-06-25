@@ -5,8 +5,11 @@ import (
 	"math"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -26,6 +29,13 @@ func GetBatchedGenerateTasksEstimations(ctx context.Context, project, buildVaria
 	if len(displayNames) == 0 {
 		return result, nil
 	}
+
+	ctx, span := tracer.Start(ctx, "get-generate-tasks-estimations", trace.WithAttributes(
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, project),
+		attribute.String(evergreen.BuildNameOtelAttribute, buildVariant),
+		attribute.Int("evergreen.task.num_generators", len(displayNames)),
+	))
+	defer span.End()
 
 	results, err := getBatchedGenerateTasksEstimations(ctx, project, buildVariant, displayNames, lookBackTime)
 	if err != nil {
