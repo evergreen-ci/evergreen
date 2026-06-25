@@ -239,7 +239,7 @@ func getModifiedWebhookFields(before, after []event.Subscription) (modifiedSecre
 		if !bytes.Equal(bws.Secret, aws.Secret) {
 			modifiedSecrets[id] = struct{}{}
 		}
-		if bws.GetHeader("Authorization") != aws.GetHeader("Authorization") {
+		if bws.GetHeader(event.WebhookAuthorizationHeader) != aws.GetHeader(event.WebhookAuthorizationHeader) {
 			modifiedAuthHeaders[id] = struct{}{}
 		}
 	}
@@ -277,7 +277,7 @@ func getRedactedSubscriptionsCopy(subscriptions []event.Subscription, modifiedSe
 			redacted.Secret = nil
 		}
 		for j := range redacted.Headers {
-			if redacted.Headers[j].Key == "Authorization" {
+			if redacted.Headers[j].Key == event.WebhookAuthorizationHeader {
 				if _, authHeaderModified := modifiedAuthHeaderIDs[result[i].ID]; authHeaderModified {
 					redacted.Headers[j].Value = placeholder
 				} else {

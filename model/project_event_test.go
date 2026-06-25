@@ -184,7 +184,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecrets() {
 				URL:    "https://example.com/hook",
 				Secret: []byte("old-secret"),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: "Bearer old-token"},
+					{Key: event.WebhookAuthorizationHeader, Value: "Bearer old-token"},
 					{Key: "Content-Type", Value: "application/json"},
 				},
 			},
@@ -203,7 +203,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecrets() {
 				URL:    "https://example.com/hook",
 				Secret: []byte("new-secret"),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: "Bearer new-token"},
+					{Key: event.WebhookAuthorizationHeader, Value: "Bearer new-token"},
 					{Key: "Content-Type", Value: "application/json"},
 				},
 			},
@@ -232,7 +232,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecrets() {
 			s.Require().NotNil(webhookSub)
 			s.Equal(expectedRedactedValue, string(webhookSub.Secret), "webhook secret should be redacted with placeholder")
 			for _, header := range webhookSub.Headers {
-				if header.Key == "Authorization" {
+				if header.Key == event.WebhookAuthorizationHeader {
 					s.Equal(expectedRedactedValue, header.Value, "Authorization header should be redacted with placeholder")
 				}
 				if header.Key == "Content-Type" {
@@ -258,7 +258,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
 				URL:    "https://example.com/hook",
 				Secret: []byte("same-secret"),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: "Bearer same-token"},
+					{Key: event.WebhookAuthorizationHeader, Value: "Bearer same-token"},
 					{Key: "Content-Type", Value: "application/json"},
 				},
 			},
@@ -277,7 +277,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
 				URL:    "https://example.com/hook",
 				Secret: []byte("same-secret"),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: "Bearer same-token"},
+					{Key: event.WebhookAuthorizationHeader, Value: "Bearer same-token"},
 					{Key: "Content-Type", Value: "application/json"},
 				},
 			},
@@ -306,7 +306,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
 			s.Require().NotNil(webhookSub)
 			s.Empty(webhookSub.Secret, "unmodified webhook secret should be cleared")
 			for _, header := range webhookSub.Headers {
-				if header.Key == "Authorization" {
+				if header.Key == event.WebhookAuthorizationHeader {
 					s.Empty(header.Value, "unmodified Authorization header should be cleared")
 				}
 				if header.Key == "Content-Type" {
@@ -332,7 +332,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsPartiallyModified() {
 				URL:    "https://example.com/hook",
 				Secret: []byte("same-secret"),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: "Bearer old-token"},
+					{Key: event.WebhookAuthorizationHeader, Value: "Bearer old-token"},
 					{Key: "Content-Type", Value: "application/json"},
 				},
 			},
@@ -351,7 +351,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsPartiallyModified() {
 				URL:    "https://example.com/hook",
 				Secret: []byte("same-secret"),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: "Bearer new-token"},
+					{Key: event.WebhookAuthorizationHeader, Value: "Bearer new-token"},
 					{Key: "Content-Type", Value: "application/json"},
 				},
 			},
@@ -380,7 +380,7 @@ func (s *ProjectEventSuite) TestRedactSubscriptionSecretsPartiallyModified() {
 			s.Require().NotNil(webhookSub)
 			s.Empty(webhookSub.Secret, "unmodified secret should be cleared even when auth header changed")
 			for _, header := range webhookSub.Headers {
-				if header.Key == "Authorization" {
+				if header.Key == event.WebhookAuthorizationHeader {
 					s.Equal(expectedAuthValue, header.Value, "modified Authorization header should be redacted")
 				}
 				if header.Key == "Content-Type" {
