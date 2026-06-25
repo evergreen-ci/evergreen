@@ -215,7 +215,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 			})
 		}
 
-		identifier, err := model.GetIdentifierForProject(ctx, alias.ChildProject)
+		identifier, err := model.GetIdentifierForProjectSecondary(ctx, alias.ChildProject)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project identifier for child project '%s' in alias '%s': %s", alias.ChildProject, alias.Alias, err.Error()))
 		}
@@ -240,15 +240,9 @@ func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*
 	return patchProject, nil
 }
 
-// ProjectIdentifier is the resolver for the projectIdentifier field.
-func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
-	obj.GetIdentifier(ctx)
-	return utility.FromStringPtr(obj.ProjectIdentifier), nil
-}
-
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIPatch) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getProjectMetadata(ctx, obj.ProjectId, obj.Id)
+	apiProjectRef, err := getAPIProjectRef(ctx, obj.ProjectId)
 	return apiProjectRef, err
 }
 
@@ -439,6 +433,7 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 	}
 
 	apiPatches := []*restModel.APIPatch{}
+	projectIDs := make([]string, 0, len(patches))
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
 		if err := apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
@@ -447,6 +442,13 @@ func (r *patchesResolver) Patches(ctx context.Context, obj *Patches) ([]*restMod
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)
+		if projectID := utility.FromStringPtr(apiPatch.ProjectId); projectID != "" {
+			projectIDs = append(projectIDs, projectID)
+		}
+	}
+
+	if len(projectIDs) > 0 {
+		loaders.PreloadProjects(ctx, projectIDs)
 	}
 
 	return apiPatches, nil
