@@ -3128,47 +3128,6 @@ func CountLargeParserProjectTasks(ctx context.Context) (int, error) {
 	}))
 }
 
-// LargeParserProjectTaskStats contains the running task count for a single project
-// with parser projects stored in S3.
-type LargeParserProjectTaskStats struct {
-	Project      string `bson:"_id"`
-	RunningTasks int    `bson:"running_tasks"`
-}
-
-// GetLargeParserProjectTaskStats returns per-project counts of tasks currently
-// running with S3-stored parser projects.
-func GetLargeParserProjectTaskStats(ctx context.Context) ([]LargeParserProjectTaskStats, error) {
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				StatusKey: bson.M{
-					"$in": evergreen.TaskInProgressStatuses,
-				},
-				CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id":           fmt.Sprintf("$%s", ProjectKey),
-				"running_tasks": bson.M{"$sum": 1},
-			},
-		},
-	}
-
-	coll := evergreen.GetEnvironment().DB().Collection(Collection)
-	dbCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	cursor, err := coll.Aggregate(dbCtx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating large parser project task stats")
-	}
-	var results []LargeParserProjectTaskStats
-	if err = cursor.All(dbCtx, &results); err != nil {
-		return nil, errors.Wrap(err, "iterating large parser project task stats")
-	}
-	return results, nil
-}
-
 // GetLatestTaskFromImage retrieves the latest task from all the distros corresponding to the imageID.
 func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) {
 	distros, err := distro.GetDistrosForImage(ctx, imageID)
