@@ -777,11 +777,11 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket                        APIBucketConfig  `json:"log_bucket"`
-	LogBucketLongRetention           APIBucketConfig  `json:"log_bucket_long_retention"`
-	LogBucketFailedTasks             APIBucketConfig  `json:"log_bucket_failed_tasks"`
-	LongRetentionProjects            []string         `json:"long_retention_projects"`
-	RetryFailedLogMoveLookbackDays   *int             `json:"retry_failed_log_move_lookback_days,omitempty"`
+	LogBucket                      APIBucketConfig `json:"log_bucket"`
+	LogBucketLongRetention         APIBucketConfig `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks           APIBucketConfig `json:"log_bucket_failed_tasks"`
+	LongRetentionProjects          []string        `json:"long_retention_projects"`
+	RetryFailedLogMoveLookbackDays *int            `json:"retry_failed_log_move_lookback_days,omitempty"`
 	// Kept for Spruce backward compatibility.
 	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
