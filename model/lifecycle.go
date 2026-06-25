@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -1630,6 +1631,13 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	return newActivatedTaskIds, activatedDependencyIDs, nil
 }
 
+const (
+	numExistingBuildsAttribute     = "evergreen.add_new_tasks.num_existing_builds"
+	numBuildsWithNewTasksAttribute = "evergreen.add_new_tasks.num_builds_with_new_tasks"
+	numTasksAddedAttribute         = "evergreen.add_new_tasks.num_tasks_added"
+	numActivatedTasksAttribute     = "evergreen.add_new_tasks.num_activated_tasks"
+)
+
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns task IDs for activated
 // tasks and task IDs for activated dependencies.
@@ -1724,6 +1732,12 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
 		}
 	}
+	span.SetAttributes(
+		attribute.Int(numExistingBuildsAttribute, len(existingBuilds)),
+		attribute.Int(numBuildsWithNewTasksAttribute, len(buildIdsToRefresh)),
+		attribute.Int(numTasksAddedAttribute, len(allTasks)),
+		attribute.Int(numActivatedTasksAttribute, len(activatedTaskIds)),
+	)
 	SetNumDependents(allTasks)
 	if err = allTasks.InsertUnordered(ctx); err != nil {
 		return nil, nil, errors.Wrap(err, "inserting tasks")
