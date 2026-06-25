@@ -1255,6 +1255,14 @@ func PopulateUnexpirableSpawnHostStatsJob() amboy.QueueOperation {
 	}
 }
 
+// PopulateLargeParserProjectTaskStatsJob populates a job to log stats about
+// running tasks with S3-stored parser projects.
+func PopulateLargeParserProjectTaskStatsJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewLargeParserProjectTaskStatsJob(utility.RoundPartOfHour(5).Format(TSFormat)))
+	}
+}
+
 func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
 }
