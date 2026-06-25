@@ -1,7 +1,7 @@
 query {
   user {
     displayName
-    userId
+    id
     subscriptions {
       id
       resourceType
