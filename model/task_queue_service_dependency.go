@@ -29,6 +29,7 @@ const (
 type basicCachedDAGDispatcherImpl struct {
 	mu          sync.RWMutex
 	distroID    string
+	useAliases  bool // selects which task queue collection Refresh reloads from (secondary when true)
 	graph       *multi.DirectedGraph
 	sorted      []graph.Node
 	itemNodeMap map[string]graph.Node      // map[TaskQueueItem.Id]Node
@@ -55,8 +56,9 @@ type schedulableUnit struct {
 // newDistroTaskDAGDispatchService creates a basicCachedDAGDispatcherImpl from a slice of TaskQueueItems.
 func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*basicCachedDAGDispatcherImpl, error) {
 	d := &basicCachedDAGDispatcherImpl{
-		distroID: taskQueue.Distro,
-		ttl:      ttl,
+		distroID:   taskQueue.Distro,
+		useAliases: taskQueue.DistroQueueInfo.SecondaryQueue,
+		ttl:        ttl,
 	}
 
 	if taskQueue.Length() != 0 {
@@ -80,7 +82,13 @@ func (d *basicCachedDAGDispatcherImpl) Refresh(ctx context.Context) error {
 		return nil
 	}
 
-	taskQueue, err := FindDistroTaskQueue(ctx, d.distroID)
+	var taskQueue TaskQueue
+	var err error
+	if d.useAliases {
+		taskQueue, err = FindDistroSecondaryTaskQueue(ctx, d.distroID)
+	} else {
+		taskQueue, err = FindDistroTaskQueue(ctx, d.distroID)
+	}
 	if err != nil {
 		return errors.WithStack(err)
 	}
