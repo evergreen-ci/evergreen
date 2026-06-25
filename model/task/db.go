@@ -3143,7 +3143,7 @@ type LargeParserProjectTaskStats struct {
 
 // GetLargeParserProjectTaskStats returns per-project counts of tasks currently
 // running with S3-stored parser projects.
-func GetLargeParserProjectTaskStats(ctx context.Context) ([]LargeParserProjectTaskStats, error) {
+func GetLargeParserProjectTaskStats(ctx context.Context, env evergreen.Environment) ([]LargeParserProjectTaskStats, error) {
 	pipeline := []bson.M{
 		{
 			"$match": runningLargeParserProjectTasksQuery(),
@@ -3156,7 +3156,7 @@ func GetLargeParserProjectTaskStats(ctx context.Context) ([]LargeParserProjectTa
 		},
 	}
 
-	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	coll := env.DB().Collection(Collection)
 	dbCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	cursor, err := coll.Aggregate(dbCtx, pipeline)

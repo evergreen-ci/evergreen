@@ -65,7 +65,7 @@ func (j *largeParserProjectTaskStatsJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	statsByProject, err := task.GetLargeParserProjectTaskStats(ctx)
+	statsByProject, err := task.GetLargeParserProjectTaskStats(ctx, j.env)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "getting large parser project task stats"))
 		return

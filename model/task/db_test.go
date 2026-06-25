@@ -2329,7 +2329,7 @@ func TestGetLargeParserProjectTaskStats(t *testing.T) {
 	t.Run("NoRunningTasks", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection))
 
-		stats, err := GetLargeParserProjectTaskStats(t.Context())
+		stats, err := GetLargeParserProjectTaskStats(t.Context(), evergreen.GetEnvironment())
 		require.NoError(t, err)
 		assert.Empty(t, stats)
 	})
@@ -2346,7 +2346,7 @@ func TestGetLargeParserProjectTaskStats(t *testing.T) {
 		}
 		require.NoError(t, db.InsertMany(t.Context(), Collection, tasks[0], tasks[1], tasks[2], tasks[3]))
 
-		stats, err := GetLargeParserProjectTaskStats(t.Context())
+		stats, err := GetLargeParserProjectTaskStats(t.Context(), evergreen.GetEnvironment())
 		require.NoError(t, err)
 		require.Len(t, stats, 1)
 		assert.Equal(t, "proj-a", stats[0].Project)
@@ -2362,7 +2362,7 @@ func TestGetLargeParserProjectTaskStats(t *testing.T) {
 		}
 		require.NoError(t, db.InsertMany(t.Context(), Collection, tasks[0], tasks[1], tasks[2]))
 
-		stats, err := GetLargeParserProjectTaskStats(t.Context())
+		stats, err := GetLargeParserProjectTaskStats(t.Context(), evergreen.GetEnvironment())
 		require.NoError(t, err)
 		require.Len(t, stats, 2)
 		byProject := map[string]int{}
