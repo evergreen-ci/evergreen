@@ -7,6 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,6 +22,10 @@ func TestProjectEventSuite(t *testing.T) {
 }
 
 func (s *ProjectEventSuite) SetupTest() {
+	s.Require().NoError(db.ClearCollections(event.EventCollection))
+}
+
+func (s *ProjectEventSuite) TearDownTest() {
 	s.Require().NoError(db.ClearCollections(event.EventCollection))
 }
 
@@ -173,225 +179,126 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 }
 
 func (s *ProjectEventSuite) TestRedactSubscriptionSecrets() {
-	before := getMockProjectSettings()
-	before.Subscriptions = append(before.Subscriptions, event.Subscription{
-		ID:           "webhook-sub",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type: event.EvergreenWebhookSubscriberType,
-			Target: &event.WebhookSubscriber{
-				URL:    "https://example.com/hook",
-				Secret: []byte("old-secret"),
-				Headers: []event.WebhookHeader{
-					{Key: event.WebhookAuthorizationHeader, Value: "Bearer old-token"},
-					{Key: "Content-Type", Value: "application/json"},
-				},
-			},
+	tests := map[string]struct {
+		beforeSecret         []byte
+		afterSecret          []byte
+		beforeAuthValue      string
+		afterAuthValue       string
+		expectedBeforeSecret string
+		expectedAfterSecret  string
+		expectedBeforeAuth   string
+		expectedAfterAuth    string
+	}{
+		"SecretAndAuthHeaderModified": {
+			beforeSecret:         []byte("old-secret"),
+			afterSecret:          []byte("new-secret"),
+			beforeAuthValue:      "Bearer old-token",
+			afterAuthValue:       "Bearer new-token",
+			expectedBeforeSecret: evergreen.RedactedBeforeValue,
+			expectedAfterSecret:  evergreen.RedactedAfterValue,
+			expectedBeforeAuth:   evergreen.RedactedBeforeValue,
+			expectedAfterAuth:    evergreen.RedactedAfterValue,
 		},
-	})
-
-	after := getMockProjectSettings()
-	after.ProjectRef.Enabled = false
-	after.Subscriptions = append(after.Subscriptions, event.Subscription{
-		ID:           "webhook-sub",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type: event.EvergreenWebhookSubscriberType,
-			Target: &event.WebhookSubscriber{
-				URL:    "https://example.com/hook",
-				Secret: []byte("new-secret"),
-				Headers: []event.WebhookHeader{
-					{Key: event.WebhookAuthorizationHeader, Value: "Bearer new-token"},
-					{Key: "Content-Type", Value: "application/json"},
-				},
-			},
+		"NeitherSecretNorAuthHeaderModified": {
+			beforeSecret:    []byte("same-secret"),
+			afterSecret:     []byte("same-secret"),
+			beforeAuthValue: "Bearer same-token",
+			afterAuthValue:  "Bearer same-token",
 		},
-	})
-
-	s.Require().NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
-
-	projectEvents, err := MostRecentProjectEvents(s.T().Context(), projectId, 5)
-	s.Require().NoError(err)
-	s.Require().Len(projectEvents, 1)
-
-	eventData, ok := projectEvents[0].Data.(*ProjectChangeEvent)
-	s.Require().True(ok)
-	s.Require().NotNil(eventData)
-
-	checkRedacted := func(settingsEvent ProjectSettingsEvent, expectedRedactedValue string) {
-		var foundWebhook bool
-		for _, sub := range settingsEvent.Subscriptions {
-			if sub.Subscriber.Type != event.EvergreenWebhookSubscriberType {
-				continue
-			}
-			foundWebhook = true
-			webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber)
-			s.Require().True(ok)
-			s.Require().NotNil(webhookSub)
-			s.Equal(expectedRedactedValue, string(webhookSub.Secret), "webhook secret should be redacted with placeholder")
-			for _, header := range webhookSub.Headers {
-				if header.Key == event.WebhookAuthorizationHeader {
-					s.Equal(expectedRedactedValue, header.Value, "Authorization header should be redacted with placeholder")
-				}
-				if header.Key == "Content-Type" {
-					s.Equal("application/json", header.Value, "non-auth headers should not be redacted")
-				}
-			}
-		}
-		s.True(foundWebhook, "should have found webhook subscription")
+		"OnlyAuthHeaderModified": {
+			beforeSecret:       []byte("same-secret"),
+			afterSecret:        []byte("same-secret"),
+			beforeAuthValue:    "Bearer old-token",
+			afterAuthValue:     "Bearer new-token",
+			expectedBeforeAuth: evergreen.RedactedBeforeValue,
+			expectedAfterAuth:  evergreen.RedactedAfterValue,
+		},
+		"OnlySecretModified": {
+			beforeSecret:         []byte("old-secret"),
+			afterSecret:          []byte("new-secret"),
+			beforeAuthValue:      "Bearer same-token",
+			afterAuthValue:       "Bearer same-token",
+			expectedBeforeSecret: evergreen.RedactedBeforeValue,
+			expectedAfterSecret:  evergreen.RedactedAfterValue,
+		},
 	}
-	checkRedacted(eventData.Before, evergreen.RedactedBeforeValue)
-	checkRedacted(eventData.After, evergreen.RedactedAfterValue)
-}
+	for name, tc := range tests {
+		s.T().Run(name, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(event.EventCollection))
+			t.Cleanup(func() { require.NoError(t, db.ClearCollections(event.EventCollection)) })
 
-func (s *ProjectEventSuite) TestRedactSubscriptionSecretsUnmodified() {
-	before := getMockProjectSettings()
-	before.Subscriptions = append(before.Subscriptions, event.Subscription{
-		ID:           "webhook-sub",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type: event.EvergreenWebhookSubscriberType,
-			Target: &event.WebhookSubscriber{
-				URL:    "https://example.com/hook",
-				Secret: []byte("same-secret"),
-				Headers: []event.WebhookHeader{
-					{Key: event.WebhookAuthorizationHeader, Value: "Bearer same-token"},
-					{Key: "Content-Type", Value: "application/json"},
+			before := getMockProjectSettings()
+			before.Subscriptions = append(before.Subscriptions, event.Subscription{
+				ID:           "webhook-sub",
+				ResourceType: "project",
+				Owner:        "admin",
+				Subscriber: event.Subscriber{
+					Type: event.EvergreenWebhookSubscriberType,
+					Target: &event.WebhookSubscriber{
+						URL:    "https://example.com/hook",
+						Secret: tc.beforeSecret,
+						Headers: []event.WebhookHeader{
+							{Key: event.WebhookAuthorizationHeader, Value: tc.beforeAuthValue},
+							{Key: "Content-Type", Value: "application/json"},
+						},
+					},
 				},
-			},
-		},
-	})
-
-	after := getMockProjectSettings()
-	after.ProjectRef.Enabled = false
-	after.Subscriptions = append(after.Subscriptions, event.Subscription{
-		ID:           "webhook-sub",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type: event.EvergreenWebhookSubscriberType,
-			Target: &event.WebhookSubscriber{
-				URL:    "https://example.com/hook",
-				Secret: []byte("same-secret"),
-				Headers: []event.WebhookHeader{
-					{Key: event.WebhookAuthorizationHeader, Value: "Bearer same-token"},
-					{Key: "Content-Type", Value: "application/json"},
+			})
+			after := getMockProjectSettings()
+			after.ProjectRef.Enabled = false
+			after.Subscriptions = append(after.Subscriptions, event.Subscription{
+				ID:           "webhook-sub",
+				ResourceType: "project",
+				Owner:        "admin",
+				Subscriber: event.Subscriber{
+					Type: event.EvergreenWebhookSubscriberType,
+					Target: &event.WebhookSubscriber{
+						URL:    "https://example.com/hook",
+						Secret: tc.afterSecret,
+						Headers: []event.WebhookHeader{
+							{Key: event.WebhookAuthorizationHeader, Value: tc.afterAuthValue},
+							{Key: "Content-Type", Value: "application/json"},
+						},
+					},
 				},
-			},
-		},
-	})
+			})
 
-	s.Require().NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
+			require.NoError(t, LogProjectModified(t.Context(), projectId, username, &before, &after))
 
-	projectEvents, err := MostRecentProjectEvents(s.T().Context(), projectId, 5)
-	s.Require().NoError(err)
-	s.Require().Len(projectEvents, 1)
+			projectEvents, err := MostRecentProjectEvents(t.Context(), projectId, 5)
+			require.NoError(t, err)
+			require.Len(t, projectEvents, 1)
 
-	eventData, ok := projectEvents[0].Data.(*ProjectChangeEvent)
-	s.Require().True(ok)
-	s.Require().NotNil(eventData)
+			eventData, ok := projectEvents[0].Data.(*ProjectChangeEvent)
+			require.True(t, ok)
+			require.NotNil(t, eventData)
 
-	checkCleared := func(settingsEvent ProjectSettingsEvent) {
-		var foundWebhook bool
-		for _, sub := range settingsEvent.Subscriptions {
-			if sub.Subscriber.Type != event.EvergreenWebhookSubscriberType {
-				continue
-			}
-			foundWebhook = true
-			webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber)
-			s.Require().True(ok)
-			s.Require().NotNil(webhookSub)
-			s.Empty(webhookSub.Secret, "unmodified webhook secret should be cleared")
-			for _, header := range webhookSub.Headers {
-				if header.Key == event.WebhookAuthorizationHeader {
-					s.Empty(header.Value, "unmodified Authorization header should be cleared")
+			checkWebhook := func(settingsEvent ProjectSettingsEvent, expectedSecret, expectedAuth string) {
+				var foundWebhook bool
+				for _, sub := range settingsEvent.Subscriptions {
+					if sub.Subscriber.Type != event.EvergreenWebhookSubscriberType {
+						continue
+					}
+					foundWebhook = true
+					webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber)
+					require.True(t, ok)
+					require.NotNil(t, webhookSub)
+					assert.Equal(t, expectedSecret, string(webhookSub.Secret))
+					for _, header := range webhookSub.Headers {
+						if header.Key == event.WebhookAuthorizationHeader {
+							assert.Equal(t, expectedAuth, header.Value)
+						}
+						if header.Key == "Content-Type" {
+							assert.Equal(t, "application/json", header.Value)
+						}
+					}
 				}
-				if header.Key == "Content-Type" {
-					s.Equal("application/json", header.Value, "non-auth headers should not be affected")
-				}
+				assert.True(t, foundWebhook, "should have found webhook subscription")
 			}
-		}
-		s.True(foundWebhook, "should have found webhook subscription")
+			checkWebhook(eventData.Before, tc.expectedBeforeSecret, tc.expectedBeforeAuth)
+			checkWebhook(eventData.After, tc.expectedAfterSecret, tc.expectedAfterAuth)
+		})
 	}
-	checkCleared(eventData.Before)
-	checkCleared(eventData.After)
-}
-
-func (s *ProjectEventSuite) TestRedactSubscriptionSecretsPartiallyModified() {
-	before := getMockProjectSettings()
-	before.Subscriptions = append(before.Subscriptions, event.Subscription{
-		ID:           "webhook-sub",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type: event.EvergreenWebhookSubscriberType,
-			Target: &event.WebhookSubscriber{
-				URL:    "https://example.com/hook",
-				Secret: []byte("same-secret"),
-				Headers: []event.WebhookHeader{
-					{Key: event.WebhookAuthorizationHeader, Value: "Bearer old-token"},
-					{Key: "Content-Type", Value: "application/json"},
-				},
-			},
-		},
-	})
-
-	after := getMockProjectSettings()
-	after.ProjectRef.Enabled = false
-	after.Subscriptions = append(after.Subscriptions, event.Subscription{
-		ID:           "webhook-sub",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type: event.EvergreenWebhookSubscriberType,
-			Target: &event.WebhookSubscriber{
-				URL:    "https://example.com/hook",
-				Secret: []byte("same-secret"),
-				Headers: []event.WebhookHeader{
-					{Key: event.WebhookAuthorizationHeader, Value: "Bearer new-token"},
-					{Key: "Content-Type", Value: "application/json"},
-				},
-			},
-		},
-	})
-
-	s.Require().NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
-
-	projectEvents, err := MostRecentProjectEvents(s.T().Context(), projectId, 5)
-	s.Require().NoError(err)
-	s.Require().Len(projectEvents, 1)
-
-	eventData, ok := projectEvents[0].Data.(*ProjectChangeEvent)
-	s.Require().True(ok)
-	s.Require().NotNil(eventData)
-
-	checkWebhook := func(settingsEvent ProjectSettingsEvent, expectedAuthValue string) {
-		var foundWebhook bool
-		for _, sub := range settingsEvent.Subscriptions {
-			if sub.Subscriber.Type != event.EvergreenWebhookSubscriberType {
-				continue
-			}
-			foundWebhook = true
-			webhookSub, ok := sub.Subscriber.Target.(*event.WebhookSubscriber)
-			s.Require().True(ok)
-			s.Require().NotNil(webhookSub)
-			s.Empty(webhookSub.Secret, "unmodified secret should be cleared even when auth header changed")
-			for _, header := range webhookSub.Headers {
-				if header.Key == event.WebhookAuthorizationHeader {
-					s.Equal(expectedAuthValue, header.Value, "modified Authorization header should be redacted")
-				}
-				if header.Key == "Content-Type" {
-					s.Equal("application/json", header.Value, "non-auth headers should not be affected")
-				}
-			}
-		}
-		s.True(foundWebhook, "should have found webhook subscription")
-	}
-	checkWebhook(eventData.Before, evergreen.RedactedBeforeValue)
-	checkWebhook(eventData.After, evergreen.RedactedAfterValue)
 }
 
 func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
