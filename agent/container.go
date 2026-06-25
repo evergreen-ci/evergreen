@@ -145,6 +145,17 @@ func (a *Agent) maybeStartContainer(ctx context.Context, conf *internal.TaskConf
 		return nil
 	}
 
+	// The task workdir is created by the agent (root) with mode 0755 due to
+	// the process umask. The exec_user inside the container (typically uid=1000)
+	// cannot write to a root-owned 0755 directory. Explicitly chmod to 0777 so
+	// the container process can write task output to the workdir via the
+	// same-path bind mount. This is safe: the workdir is per-task and ephemeral.
+	if conf.WorkDir != "" {
+		if err := os.Chmod(conf.WorkDir, 0777); err != nil {
+			grip.Warningf(ctx, "Could not chmod task workdir '%s' for container isolation: %s", conf.WorkDir, err)
+		}
+	}
+
 	ci := conf.Distro.ContainerIsolation
 	ctx, span := a.tracer.Start(ctx, "container.create_and_start")
 	defer span.End()
