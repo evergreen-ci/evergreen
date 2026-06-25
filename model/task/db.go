@@ -3107,14 +3107,20 @@ func GetPendingGenerateTasks(ctx context.Context) (int, error) {
 	}
 }
 
-// CountLargeParserProjectTasks counts the number of tasks running with parser projects stored in s3.
-func CountLargeParserProjectTasks(ctx context.Context) (int, error) {
-	return Count(ctx, db.Query(bson.M{
+// runningLargeParserProjectTasksQuery returns a query matching tasks that are
+// currently running with parser projects stored in S3.
+func runningLargeParserProjectTasksQuery() bson.M {
+	return bson.M{
 		StatusKey: bson.M{
 			"$in": evergreen.TaskInProgressStatuses,
 		},
 		CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
-	}))
+	}
+}
+
+// CountLargeParserProjectTasks counts the number of tasks running with parser projects stored in s3.
+func CountLargeParserProjectTasks(ctx context.Context) (int, error) {
+	return Count(ctx, db.Query(runningLargeParserProjectTasksQuery()))
 }
 
 // LargeParserProjectTaskStats contains the running task count for a single project
@@ -3129,12 +3135,7 @@ type LargeParserProjectTaskStats struct {
 func GetLargeParserProjectTaskStats(ctx context.Context) ([]LargeParserProjectTaskStats, error) {
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{
-				StatusKey: bson.M{
-					"$in": evergreen.TaskInProgressStatuses,
-				},
-				CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
-			},
+			"$match": runningLargeParserProjectTasksQuery(),
 		},
 		{
 			"$group": bson.M{

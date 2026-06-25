@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -17,7 +18,7 @@ import (
 
 const (
 	largeParserProjectTaskStatsJobName        = "large-parser-project-task-stats"
-	largeParserProjectTaskStatsJobMaxAttempts = 10
+	largeParserProjectTaskStatsJobMaxAttempts = 1
 )
 
 func init() {
@@ -79,10 +80,10 @@ func (j *largeParserProjectTaskStatsJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 	grip.Info(ctx, message.Fields{
-		"job_id":                                 j.ID(),
-		"message":                                "large parser project task stats",
-		"num_running_large_parser_project_tasks": totalTasks,
-		"num_by_project":                         tasksByProject,
-		"max_concurrent_large_parser_project_tasks": settings.TaskLimits.MaxConcurrentLargeParserProjectTasks,
+		"message":                            "large parser project task stats",
+		"job_id":                             j.ID(),
+		"running_large_parser_project_tasks": totalTasks,
+		"tasks_by_project":                   tasksByProject,
+		"max_concurrent_large_parser_project_tasks": model.GetMaxConcurrentLargeParserProjTasks(settings),
 	})
 }

@@ -547,7 +547,7 @@ func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUni
 // on how many concurrent large parser project tasks can be running. The first returned parameter indicates whether FindNextTask should
 // return on an error, and the second indicates whether FindNextTask should skip this task and continue its loop.
 func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *evergreen.Settings, nextTaskFromDB *task.Task, distroId string) (bool, bool) {
-	maxConcurrentLargeParserProjTasks := getMaxConcurrentLargeParserProjTasks(settings)
+	maxConcurrentLargeParserProjTasks := GetMaxConcurrentLargeParserProjTasks(settings)
 	if maxConcurrentLargeParserProjTasks <= 0 {
 		return false, false
 	}
@@ -602,7 +602,9 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 	return false, false
 }
 
-func getMaxConcurrentLargeParserProjTasks(settings *evergreen.Settings) int {
+// GetMaxConcurrentLargeParserProjTasks returns the configured limit for
+// concurrent large parser project tasks, accounting for degraded mode.
+func GetMaxConcurrentLargeParserProjTasks(settings *evergreen.Settings) int {
 	isDegradedMode := !settings.ServiceFlags.CPUDegradedModeDisabled
 	maxConcurrentLargeParserProjTasks := settings.TaskLimits.MaxConcurrentLargeParserProjectTasks
 	if isDegradedMode {
