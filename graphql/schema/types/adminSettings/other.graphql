@@ -23,6 +23,8 @@ input BucketsConfigInput {
   logBucketFailedTasks: BucketConfigInput
   longRetentionProjects: [String!]
   retryFailedLogMoveLookbackDays: Int
+  # Kept for Spruce backward compatibility.
+  retryFailedLogMoveLookbackMonths: Int
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfigInput
   internalBuckets: [String!]
@@ -35,6 +37,8 @@ type BucketsConfig {
   logBucketFailedTasks: BucketConfig
   longRetentionProjects: [String!]
   retryFailedLogMoveLookbackDays: Int
+  # Kept for Spruce backward compatibility.
+  retryFailedLogMoveLookbackMonths: Int
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfig
   internalBuckets: [String!]

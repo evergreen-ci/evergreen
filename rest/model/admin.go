@@ -777,15 +777,17 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket                       APIBucketConfig  `json:"log_bucket"`
-	LogBucketLongRetention          APIBucketConfig  `json:"log_bucket_long_retention"`
-	LogBucketFailedTasks            APIBucketConfig  `json:"log_bucket_failed_tasks"`
-	LongRetentionProjects           []string         `json:"long_retention_projects"`
-	RetryFailedLogMoveLookbackDays  *int             `json:"retry_failed_log_move_lookback_days,omitempty"`
-	RetryFailedLogMoveMaxJobsPerRun *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
-	TestResultsBucket               APIBucketConfig  `json:"test_results_bucket"`
-	InternalBuckets                 []string         `json:"internal_buckets"`
-	Credentials                     APIS3Credentials `json:"credentials"`
+	LogBucket                        APIBucketConfig  `json:"log_bucket"`
+	LogBucketLongRetention           APIBucketConfig  `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks             APIBucketConfig  `json:"log_bucket_failed_tasks"`
+	LongRetentionProjects            []string         `json:"long_retention_projects"`
+	RetryFailedLogMoveLookbackDays   *int             `json:"retry_failed_log_move_lookback_days,omitempty"`
+	// Kept for Spruce backward compatibility.
+	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
+	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
+	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
+	InternalBuckets                  []string         `json:"internal_buckets"`
+	Credentials                      APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -852,6 +854,7 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 
 		a.LongRetentionProjects = v.LongRetentionProjects
 		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
+		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
 
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
@@ -881,6 +884,12 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 	}
 
+	// Prefer Days; fall back to Months for Spruce backward compatibility.
+	lookbackDays := a.RetryFailedLogMoveLookbackDays
+	if lookbackDays == nil {
+		lookbackDays = a.RetryFailedLogMoveLookbackMonths
+	}
+
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
 			Name:   utility.FromStringPtr(a.LogBucket.Name),
@@ -900,7 +909,7 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
 		LongRetentionProjects:           a.LongRetentionProjects,
-		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(a.RetryFailedLogMoveLookbackDays),
+		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
 		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket: evergreen.BucketConfig{
 			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
