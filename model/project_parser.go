@@ -617,6 +617,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	// stored with the ID.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
 
+	// Coalesce concurrent translations for the same version into one compute.
 	key := versionTranslationKey(v.Id, preGeneration)
 	p, err := getOrComputeTranslation(key, func() (*Project, error) {
 		return TranslateProject(pp)
