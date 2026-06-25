@@ -3117,6 +3117,64 @@ func CountLargeParserProjectTasks(ctx context.Context) (int, error) {
 	}))
 }
 
+// LargeParserProjectTaskStats contains stats about tasks running with parser projects stored in S3.
+type LargeParserProjectTaskStats struct {
+	RunningVersions int `bson:"running_large_parser_project_versions"`
+	RunningTasks    int `bson:"running_large_parser_project_tasks"`
+}
+
+// GetLargeParserProjectTaskStats returns a snapshot of how many tasks and
+// distinct versions with S3-stored parser projects are currently running.
+func GetLargeParserProjectTaskStats(ctx context.Context) (*LargeParserProjectTaskStats, error) {
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": evergreen.TaskInProgressStatuses,
+				},
+				CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":                       fmt.Sprintf("$%s", VersionKey),
+				"running_tasks_for_version": bson.M{"$sum": 1},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id":                                   nil,
+				"running_large_parser_project_versions": bson.M{"$sum": 1},
+				"running_large_parser_project_tasks":    bson.M{"$sum": "$running_tasks_for_version"},
+			},
+		},
+		{
+			"$project": bson.M{
+				"_id":                                   0,
+				"running_large_parser_project_versions": 1,
+				"running_large_parser_project_tasks":    1,
+			},
+		},
+	}
+
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	dbCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cursor, err := coll.Aggregate(dbCtx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating large parser project task stats")
+	}
+	var results []LargeParserProjectTaskStats
+	if err = cursor.All(dbCtx, &results); err != nil {
+		return nil, errors.Wrap(err, "iterating large parser project task stats")
+	}
+
+	if len(results) == 0 {
+		return &LargeParserProjectTaskStats{}, nil
+	}
+	return &results[0], nil
+}
+
 // GetLatestTaskFromImage retrieves the latest task from all the distros corresponding to the imageID.
 func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) {
 	distros, err := distro.GetDistrosForImage(ctx, imageID)

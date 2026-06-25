@@ -2320,3 +2320,51 @@ func TestGetLatestTaskFromImage(t *testing.T) {
 	require.NotNil(t, latestTask)
 	assert.Equal(t, "t2", latestTask.Id)
 }
+
+func TestGetLargeParserProjectTaskStats(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	t.Run("NoRunningTasks", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		stats, err := GetLargeParserProjectTaskStats(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, 0, stats.RunningTasks)
+		assert.Equal(t, 0, stats.RunningVersions)
+	})
+	t.Run("CountsStartedAndDispatchedS3Tasks", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		tasks := []Task{
+			{Id: "started-s3", Status: evergreen.TaskStarted, CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3, Version: "v1"},
+			{Id: "dispatched-s3", Status: evergreen.TaskDispatched, CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3, Version: "v1"},
+			// Should not count: wrong status.
+			{Id: "failed-s3", Status: evergreen.TaskFailed, CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3, Version: "v1"},
+			// Should not count: not S3.
+			{Id: "started-db", Status: evergreen.TaskStarted, CachedProjectStorageMethod: evergreen.ProjectStorageMethodDB, Version: "v1"},
+		}
+		require.NoError(t, db.InsertMany(t.Context(), Collection, tasks[0], tasks[1], tasks[2], tasks[3]))
+
+		stats, err := GetLargeParserProjectTaskStats(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, 2, stats.RunningTasks)
+		assert.Equal(t, 1, stats.RunningVersions)
+	})
+	t.Run("CountsDistinctVersionsSeparately", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(Collection))
+
+		tasks := []Task{
+			{Id: "t1", Status: evergreen.TaskStarted, CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3, Version: "v1"},
+			{Id: "t2", Status: evergreen.TaskStarted, CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3, Version: "v1"},
+			{Id: "t3", Status: evergreen.TaskStarted, CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3, Version: "v2"},
+		}
+		require.NoError(t, db.InsertMany(t.Context(), Collection, tasks[0], tasks[1], tasks[2]))
+
+		stats, err := GetLargeParserProjectTaskStats(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, 3, stats.RunningTasks)
+		assert.Equal(t, 2, stats.RunningVersions)
+	})
+}
