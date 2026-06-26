@@ -1,6 +1,6 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.25.0
+go 1.24.9
 
 require (
 	github.com/99designs/gqlgen v0.17.86
@@ -155,7 +155,7 @@ require (
 	go.opentelemetry.io/contrib v1.36.0 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sync v0.21.0
+	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
