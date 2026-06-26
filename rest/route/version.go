@@ -21,6 +21,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const versionManifestProofHistoryLimit = 20
+
 ////////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/versions/{version_id}
@@ -657,6 +659,104 @@ func (h *versionManifestProofGetHandler) Run(ctx context.Context) gimlet.Respond
 	return gimlet.NewJSONResponse(response)
 }
 
+// GET /rest/v2/versions/{version_id}/manifest/proof/history
+
+type versionManifestProofHistoryGetHandler struct {
+	versionId string
+}
+
+type versionManifestProofHistoryResponse struct {
+	Versions []versionManifestProofHistoryItem `json:"versions"`
+}
+
+type versionManifestProofHistoryItem struct {
+	Version                *versionManifestProofSnapshot `json:"version"`
+	OnlyOneRevisionChanged bool                          `json:"only_one_revision_changed"`
+	ChangedRevisionCount   int                           `json:"changed_revision_count"`
+}
+
+func makeGetVersionManifestProofHistory() gimlet.RouteHandler {
+	return &versionManifestProofHistoryGetHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Fetch version manifest proof history by version ID
+//	@Description	Checks whether each recent system version changed exactly one project or module revision. This is for projects that use modules with project triggers on all modules.
+//	@Tags			manifests
+//	@Router			/versions/{version_id}/manifest/proof/history [get]
+//	@Security		Api-User || Api-Key
+//	@Param			version_id	path		string	true	"version ID"
+//	@Success		200			{object}	versionManifestProofHistoryResponse
+func (h *versionManifestProofHistoryGetHandler) Factory() gimlet.RouteHandler {
+	return &versionManifestProofHistoryGetHandler{}
+}
+
+func (h *versionManifestProofHistoryGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.versionId = gimlet.GetVars(r)["version_id"]
+	if h.versionId == "" {
+		return errors.New("missing version ID")
+	}
+	return nil
+}
+
+func (h *versionManifestProofHistoryGetHandler) Run(ctx context.Context) gimlet.Responder {
+	current, err := dbModel.VersionFindOneId(ctx, h.versionId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
+	}
+	if current == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version '%s' not found", h.versionId),
+		})
+	}
+
+	previousVersions, err := findSystemVersionHistory(ctx, current.Identifier, current.RevisionOrderNumber, versionManifestProofHistoryLimit)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding proof history versions for version '%s'", h.versionId))
+	}
+
+	versions := make([]dbModel.Version, 0, len(previousVersions)+1)
+	versions = append(versions, *current)
+	versions = append(versions, previousVersions...)
+
+	manifests := map[string]*manifest.Manifest{}
+	for i := range versions {
+		mfst, err := findManifestForProof(ctx, &versions[i])
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for proof history version '%s'", versions[i].Id))
+		}
+		manifests[versions[i].Id] = mfst
+	}
+
+	numVersionsToReturn := len(versions)
+	if numVersionsToReturn > versionManifestProofHistoryLimit {
+		numVersionsToReturn = versionManifestProofHistoryLimit
+	}
+
+	response := &versionManifestProofHistoryResponse{
+		Versions: []versionManifestProofHistoryItem{},
+	}
+	for i := 0; i < numVersionsToReturn; i++ {
+		var comparisonVersion *dbModel.Version
+		var comparisonManifest *manifest.Manifest
+		if i+1 < len(versions) {
+			comparisonVersion = &versions[i+1]
+			comparisonManifest = manifests[comparisonVersion.Id]
+		}
+
+		changedRevisionCount := countChangedRevisionsForProof(&versions[i], manifests[versions[i].Id], comparisonVersion, comparisonManifest)
+		response.Versions = append(response.Versions, versionManifestProofHistoryItem{
+			Version:                buildManifestProofSnapshot(&versions[i], manifests[versions[i].Id], comparisonVersion, comparisonManifest),
+			OnlyOneRevisionChanged: changedRevisionCount == 1,
+			ChangedRevisionCount:   changedRevisionCount,
+		})
+	}
+
+	return gimlet.NewJSONResponse(response)
+}
+
 func findPreviousSystemVersion(ctx context.Context, project string, order int) (*dbModel.Version, error) {
 	return findAdjacentSystemVersion(ctx, project, order, "$lt", "-"+dbModel.VersionRevisionOrderNumberKey)
 }
@@ -675,6 +775,18 @@ func findAdjacentSystemVersion(ctx context.Context, project string, order int, c
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 	}).Sort([]string{sortKey}).WithoutFields(dbModel.VersionBuildVariantsKey))
+}
+
+func findSystemVersionHistory(ctx context.Context, project string, order, limit int) ([]dbModel.Version, error) {
+	return dbModel.VersionFind(ctx, db.Query(bson.M{
+		dbModel.VersionIdentifierKey: project,
+		dbModel.VersionRevisionOrderNumberKey: bson.M{
+			"$lt": order,
+		},
+		dbModel.VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+	}).Sort([]string{"-" + dbModel.VersionRevisionOrderNumberKey}).Limit(limit).WithoutFields(dbModel.VersionBuildVariantsKey))
 }
 
 func findManifestForProof(ctx context.Context, v *dbModel.Version) (*manifest.Manifest, error) {
@@ -746,4 +858,37 @@ func buildManifestProofSnapshot(v *dbModel.Version, mfst *manifest.Manifest, com
 	}
 
 	return snapshot
+}
+
+func countChangedRevisionsForProof(v *dbModel.Version, mfst *manifest.Manifest, comparisonVersion *dbModel.Version, comparisonManifest *manifest.Manifest) int {
+	if v == nil || comparisonVersion == nil || mfst == nil || comparisonManifest == nil {
+		return 0
+	}
+
+	count := 0
+	if v.Revision != comparisonVersion.Revision {
+		count++
+	}
+
+	moduleNames := map[string]struct{}{}
+	for moduleName, module := range mfst.Modules {
+		if module != nil {
+			moduleNames[moduleName] = struct{}{}
+		}
+	}
+	for moduleName, module := range comparisonManifest.Modules {
+		if module != nil {
+			moduleNames[moduleName] = struct{}{}
+		}
+	}
+
+	for moduleName := range moduleNames {
+		module := mfst.Modules[moduleName]
+		comparisonModule := comparisonManifest.Modules[moduleName]
+		if module == nil || comparisonModule == nil || module.Revision != comparisonModule.Revision {
+			count++
+		}
+	}
+
+	return count
 }
