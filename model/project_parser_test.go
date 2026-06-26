@@ -3499,7 +3499,8 @@ steps:
 	anchors := collectAnchors(&node)
 	require.Len(t, anchors, 2)
 
-	preamble, err := buildAnchorPreamble(&anchors)
+	registry := &anchorRegistry{entries: anchors}
+	preamble, err := buildAnchorPreamble(registry)
 	require.NoError(t, err)
 	require.NotEmpty(t, preamble)
 

@@ -16,35 +16,37 @@ type anchorEntry struct {
 	node *yaml.Node
 }
 
-// anchorEntries accumulates YAML anchor definitions across include files for cross-file alias resolution.
-type anchorEntries []anchorEntry
+// anchorRegistry accumulates YAML anchor definitions across include files for cross-file alias resolution.
+type anchorRegistry struct {
+	entries []anchorEntry
+}
 
 // Length returns the number of entries, or 0 if the receiver is nil.
-func (a *anchorEntries) Length() int {
+func (a *anchorRegistry) Length() int {
 	if a == nil {
 		return 0
 	}
-	return len(*a)
+	return len(a.entries)
 }
 
 // mergeAnchorsFrom collects all anchor definitions from node and upserts them
 // into the registry by name, so that later include files can resolve aliases
 // defined in earlier files. No-op if the receiver is nil.
-func (a *anchorEntries) mergeAnchorsFrom(node *yaml.Node) {
+func (a *anchorRegistry) mergeAnchorsFrom(node *yaml.Node) {
 	if a == nil {
 		return
 	}
 	for _, anchor := range collectAnchors(node) {
 		replaced := false
-		for i, existing := range *a {
+		for i, existing := range a.entries {
 			if existing.name == anchor.name {
-				(*a)[i] = anchor
+				a.entries[i] = anchor
 				replaced = true
 				break
 			}
 		}
 		if !replaced {
-			*a = append(*a, anchor)
+			a.entries = append(a.entries, anchor)
 		}
 	}
 }
@@ -52,11 +54,11 @@ func (a *anchorEntries) mergeAnchorsFrom(node *yaml.Node) {
 // collectAnchors walks node in pre-order and returns all anchored nodes in
 // encounter order. AliasNodes are not followed, so only anchor definitions
 // (&name) are collected, never alias uses (*name).
-func collectAnchors(node *yaml.Node) anchorEntries {
+func collectAnchors(node *yaml.Node) []anchorEntry {
 	if node == nil {
 		return nil
 	}
-	var entries anchorEntries
+	var entries []anchorEntry
 	var walk func(*yaml.Node)
 	walk = func(n *yaml.Node) {
 		if n == nil || n.Kind == yaml.AliasNode {
@@ -81,12 +83,12 @@ func collectAnchors(node *yaml.Node) anchorEntries {
 // Entries must be in encounter order so that any alias references within anchor
 // values (e.g. an anchor whose value itself uses an alias to an earlier anchor)
 // are valid when the preamble is parsed.
-func buildAnchorPreamble(entries *anchorEntries) ([]byte, error) {
-	if entries.Length() == 0 {
+func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
+	if registry.Length() == 0 {
 		return nil, nil
 	}
-	seqContent := make([]*yaml.Node, 0, len(*entries))
-	for _, e := range *entries {
+	seqContent := make([]*yaml.Node, 0, len(registry.entries))
+	for _, e := range registry.entries {
 		seqContent = append(seqContent, e.node)
 	}
 	preambleDoc := &yaml.Node{
