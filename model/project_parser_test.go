@@ -3440,12 +3440,6 @@ func moduleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
 	return &GetProjectOpts{LocalModuleIncludes: includes}
 }
 
-// anchorModuleIncludeOpts returns opts for cross-file anchor tests. Cross-file
-// anchor support is always-on, so this is equivalent to moduleIncludeOpts.
-func anchorModuleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
-	return moduleIncludeOpts(includes...)
-}
-
 // mainYAMLWithModuleIncludes builds a minimal main YAML that declares one
 // module (named "m") and includes each filename under that module.
 func mainYAMLWithModuleIncludes(mainBody string, filenames ...string) string {
@@ -3547,7 +3541,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3583,7 +3577,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3622,7 +3616,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3664,7 +3658,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3730,7 +3724,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3766,7 +3760,7 @@ tasks:
 `
 	proj := &Project{}
 	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	// Marshal the parser project back to YAML and confirm _evg_anchors is absent.
@@ -3796,7 +3790,7 @@ tasks:
   - *step
 `
 	proj := &Project{}
-	opts := anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML))
+	opts := moduleIncludeOpts(moduleInclude("include.yml", includeYAML))
 	opts.UnmarshalStrict = true
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
 	require.NoError(t, err)
@@ -3828,7 +3822,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3864,7 +3858,7 @@ buildvariants:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	require.Len(t, proj.BuildVariants, 1)
@@ -3896,7 +3890,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}

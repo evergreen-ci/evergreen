@@ -19,12 +19,34 @@ type anchorEntry struct {
 // anchorEntries accumulates YAML anchor definitions across include files for cross-file alias resolution.
 type anchorEntries []anchorEntry
 
-// len returns the number of entries, or 0 if the receiver is nil.
-func (a *anchorEntries) len() int {
+// Length returns the number of entries, or 0 if the receiver is nil.
+func (a *anchorEntries) Length() int {
 	if a == nil {
 		return 0
 	}
 	return len(*a)
+}
+
+// mergeAnchorsFrom collects all anchor definitions from node and upserts them
+// into the registry by name, so that later include files can resolve aliases
+// defined in earlier files. No-op if the receiver is nil.
+func (a *anchorEntries) mergeAnchorsFrom(node *yaml.Node) {
+	if a == nil {
+		return
+	}
+	for _, anchor := range collectAnchors(node) {
+		replaced := false
+		for i, existing := range *a {
+			if existing.name == anchor.name {
+				(*a)[i] = anchor
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			*a = append(*a, anchor)
+		}
+	}
 }
 
 // collectAnchors walks node in pre-order and returns all anchored nodes in
@@ -60,7 +82,7 @@ func collectAnchors(node *yaml.Node) anchorEntries {
 // values (e.g. an anchor whose value itself uses an alias to an earlier anchor)
 // are valid when the preamble is parsed.
 func buildAnchorPreamble(entries *anchorEntries) ([]byte, error) {
-	if entries == nil || len(*entries) == 0 {
+	if entries.Length() == 0 {
 		return nil, nil
 	}
 	seqContent := make([]*yaml.Node, 0, len(*entries))

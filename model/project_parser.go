@@ -1386,7 +1386,7 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // and any new anchor definitions are appended to the registry for future files.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
 	// Prepend accumulated anchors as a preamble so the parser can resolve cross-file aliases.
-	if anchorRegistry.len() > 0 {
+	if anchorRegistry.Length() > 0 {
 		preamble, err := buildAnchorPreamble(anchorRegistry)
 		if err != nil {
 			return nil, errors.Wrap(err, "building anchor preamble")
@@ -1448,21 +1448,7 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 		}
 	}
 
-	if anchorRegistry != nil {
-		for _, anchor := range collectAnchors(&node) {
-			replaced := false
-			for i, existing := range *anchorRegistry {
-				if existing.name == anchor.name {
-					(*anchorRegistry)[i] = anchor
-					replaced = true
-					break
-				}
-			}
-			if !replaced {
-				*anchorRegistry = append(*anchorRegistry, anchor)
-			}
-		}
-	}
+	anchorRegistry.mergeAnchorsFrom(&node)
 
 	return &p, nil
 }
