@@ -14,9 +14,16 @@ updates:
     commit-message:
       prefix: "CHORE: "
     ignore:
-      # TODO (DEVPROD-28491): Ignore upgrades for OTel dependencies for now. otel v1.40.0+ introduces a regression in
-      # otelhttp and the fix (v1.42.0+) requires Go 1.25.0, which Evergreen cannot use for now. See ticket for details.
+      # TODO (DEVPROD-35241): Ignore AWS SDK upgrades until the planned bump.
+      - dependency-name: "github.com/aws/aws-sdk-go-v2*"
+      # TODO (DEVPROD-28491): Ignore upgrades that require Go 1.25.0,
+      # which Evergreen cannot use for now (all packages below).
       - dependency-name: "go.opentelemetry.io/*"
+      - dependency-name: "github.com/parquet-go/parquet-go"
+      - dependency-name: "github.com/vektah/gqlparser/v2"
+      - dependency-name: "golang.org/x/sync"
+      - dependency-name: "golang.org/x/text"
+      - dependency-name: "golang.org/x/tools"
     groups:
       otel-dependencies:
         applies-to: version-updates
