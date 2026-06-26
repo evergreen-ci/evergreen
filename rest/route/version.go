@@ -861,13 +861,16 @@ func buildManifestProofSnapshot(v *dbModel.Version, mfst *manifest.Manifest, com
 }
 
 func countChangedRevisionsForProof(v *dbModel.Version, mfst *manifest.Manifest, comparisonVersion *dbModel.Version, comparisonManifest *manifest.Manifest) int {
-	if v == nil || comparisonVersion == nil || mfst == nil || comparisonManifest == nil {
+	if v == nil || comparisonVersion == nil {
 		return 0
 	}
 
 	count := 0
 	if v.Revision != comparisonVersion.Revision {
 		count++
+	}
+	if mfst == nil || comparisonManifest == nil {
+		return count
 	}
 
 	moduleNames := map[string]struct{}{}
