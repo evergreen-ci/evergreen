@@ -7,9 +7,7 @@
       "data": {
         "admin": [
           {
-            "_id": "service_flags",
-            "static_api_keys_disabled": true,
-            "jwt_token_for_cli_disabled": true
+            "_id": "service_flags"
           }
         ]
       },
@@ -35,7 +33,7 @@
       "result": {
         "data": {
           "userConfig": {
-            "api_key": "regular_api_key",
+            "api_key": "",
             "api_server_host": "https://localhost:8443/api",
             "corp_api_server_host": "https://localhost.corp:8443/api",
             "ui_server_host": "http://spruce.localhost",

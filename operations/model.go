@@ -278,18 +278,18 @@ func (s *ClientSettings) shouldUseOAuth(ctx context.Context, c client.Communicat
 		return true, "No API key found in local Evergreen YAML, defaulting to an OAuth token."
 	}
 
-	// always use the non-corp url for getting the service flags
-	// because the corp url needs an OAuth token which we haven't generated yet
+	// Always use the non-corp URL when checking if the user is a service user
+	// because the corp URL needs an OAuth token which we have not generated yet.
 	originalAPIServerHost := s.APIServerHost
 	c.SetAPIServerHost(s.getApiServerHost(false))
+	defer c.SetAPIServerHost(originalAPIServerHost)
 
 	isServiceUser, err := c.IsServiceUser(ctx, s.User)
-
 	if err != nil {
 		errorMsg := "Failed to check if user is a service user"
 		isUnauthorizedErr := strings.Contains(err.Error(), "401")
 		if isUnauthorizedErr {
-			// if we get a 401, the api key is likely invalid, so we should try to generate a token
+			// If we get a 401, the API key is likely invalid, so we should try to generate a token
 			// because otherwise subsequent api requests will likely fail too.
 			return true, fmt.Sprintf("%s, will try to generate a token: %s", errorMsg, err)
 		}
@@ -299,15 +299,7 @@ func (s *ClientSettings) shouldUseOAuth(ctx context.Context, c client.Communicat
 		return false, ""
 	}
 
-	flags, err := c.GetServiceFlags(ctx)
-	// reset the api server host to the original value once we have the flags
-	c.SetAPIServerHost(originalAPIServerHost)
-
-	if err == nil && !flags.JWTTokenForCLIDisabled {
-		return true, ""
-	}
-
-	return false, ""
+	return true, ""
 }
 
 // getApiServerHost returns the API server host based on the APIServerHost and the useCorp parameter.

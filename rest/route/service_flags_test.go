@@ -31,8 +31,6 @@ func (s *ServiceFlagsSuite) TestServiceFlagsGet() {
 
 	testSettings := &evergreen.Settings{
 		ServiceFlags: evergreen.ServiceFlags{
-			StaticAPIKeysDisabled:  true,
-			JWTTokenForCLIDisabled: true,
 			// this shouldn't be returned
 			HostInitDisabled: true,
 		},
@@ -46,8 +44,6 @@ func (s *ServiceFlagsSuite) TestServiceFlagsGet() {
 	flags, ok := resp.Data().(evergreen.ServiceFlags)
 	s.True(ok)
 	s.Require().NotNil(flags)
-	s.Equal(testSettings.ServiceFlags.StaticAPIKeysDisabled, flags.StaticAPIKeysDisabled)
-	s.Equal(testSettings.ServiceFlags.JWTTokenForCLIDisabled, flags.JWTTokenForCLIDisabled)
 	// ensure it only returns the necessary flags
 	s.NotEqual(testSettings.ServiceFlags.HostInitDisabled, flags.HostInitDisabled)
 }
