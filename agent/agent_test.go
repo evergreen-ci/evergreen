@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func init() {
@@ -71,6 +72,36 @@ type AgentSuite struct {
 
 func TestAgentSuite(t *testing.T) {
 	suite.Run(t, new(AgentSuite))
+}
+
+func TestBuildTaskEndSpanAttributes(t *testing.T) {
+	t.Run("SystemUnresponsiveIncludesDisplayStatusAndStatusDetails", func(t *testing.T) {
+		detail := &apimodels.TaskEndDetail{
+			Status:      evergreen.TaskFailed,
+			Type:        evergreen.CommandTypeSystem,
+			Description: evergreen.TaskDescriptionHeartbeat,
+			TimedOut:    true,
+		}
+
+		attrs := taskEndSpanAttrMap(buildTaskEndSpanAttributes(&task.Task{}, detail))
+
+		assert.Equal(t, evergreen.TaskFailed, attrs[evergreen.TaskStatusOtelAttribute].AsString())
+		assert.Equal(t, evergreen.TaskSystemUnresponse, attrs[evergreen.TaskDisplayStatusOtelAttribute].AsString())
+		assert.Equal(t, evergreen.CommandTypeSystem, attrs[evergreen.TaskFailureTypeOtelAttribute].AsString())
+		assert.Equal(t, evergreen.TaskDescriptionHeartbeat, attrs[evergreen.TaskDescriptionOtelAttribute].AsString())
+	})
+
+	t.Run("NilDetailHasNoAttributes", func(t *testing.T) {
+		assert.Empty(t, buildTaskEndSpanAttributes(&task.Task{}, nil))
+	})
+}
+
+func taskEndSpanAttrMap(attrs []attribute.KeyValue) map[string]attribute.Value {
+	attrMap := map[string]attribute.Value{}
+	for _, attr := range attrs {
+		attrMap[string(attr.Key)] = attr.Value
+	}
+	return attrMap
 }
 
 func (s *AgentSuite) SetupSuite() {

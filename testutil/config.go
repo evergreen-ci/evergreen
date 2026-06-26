@@ -213,8 +213,8 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
-			RetryFailedLogMoveLookbackMonths: 2,
-			RetryFailedLogMoveMaxJobsPerRun:  50,
+			RetryFailedLogMoveLookbackDays:  7,
+			RetryFailedLogMoveMaxJobsPerRun: 50,
 			TestResultsBucket: evergreen.BucketConfig{
 				Name:              "test_results",
 				Type:              evergreen.BucketTypeS3,

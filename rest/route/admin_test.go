@@ -175,7 +175,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.Equal(testSettings.OktaServiceConfig.Scopes, settings.OktaServiceConfig.Scopes)
 	s.Equal(testSettings.OktaServiceConfig.Audience, settings.OktaServiceConfig.Audience)
 	s.Equal(testSettings.OktaServiceConfig.Issuer, settings.OktaServiceConfig.Issuer)
-	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settings.Buckets.RetryFailedLogMoveLookbackMonths)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackDays, settings.Buckets.RetryFailedLogMoveLookbackDays)
 	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settings.Buckets.RetryFailedLogMoveMaxJobsPerRun)
 	s.EqualValues(testSettings.Buckets.TestResultsBucket, settings.Buckets.TestResultsBucket)
 	s.EqualValues(testSettings.Buckets.Credentials.Key, settings.Buckets.Credentials.Key)

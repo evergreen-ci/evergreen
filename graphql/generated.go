@@ -320,10 +320,15 @@ type ComplexityRoot struct {
 	}
 
 	BucketConfig struct {
-		Name              func(childComplexity int) int
-		RoleARN           func(childComplexity int) int
-		TestResultsPrefix func(childComplexity int) int
-		Type              func(childComplexity int) int
+		ExpirationDays          func(childComplexity int) int
+		LifecycleLastSyncedAt   func(childComplexity int) int
+		LifecycleSyncError      func(childComplexity int) int
+		Name                    func(childComplexity int) int
+		RoleARN                 func(childComplexity int) int
+		TestResultsPrefix       func(childComplexity int) int
+		TransitionToGlacierDays func(childComplexity int) int
+		TransitionToIADays      func(childComplexity int) int
+		Type                    func(childComplexity int) int
 	}
 
 	BucketsConfig struct {
@@ -333,6 +338,7 @@ type ComplexityRoot struct {
 		LogBucketFailedTasks             func(childComplexity int) int
 		LogBucketLongRetention           func(childComplexity int) int
 		LongRetentionProjects            func(childComplexity int) int
+		RetryFailedLogMoveLookbackDays   func(childComplexity int) int
 		RetryFailedLogMoveLookbackMonths func(childComplexity int) int
 		RetryFailedLogMoveMaxJobsPerRun  func(childComplexity int) int
 		TestResultsBucket                func(childComplexity int) int
@@ -2274,13 +2280,14 @@ type ComplexityRoot struct {
 	}
 
 	UserConfig struct {
-		APIKey           func(childComplexity int) int
-		APIServerHost    func(childComplexity int) int
-		OauthClientID    func(childComplexity int) int
-		OauthConnectorID func(childComplexity int) int
-		OauthIssuer      func(childComplexity int) int
-		UIServerHost     func(childComplexity int) int
-		User             func(childComplexity int) int
+		APIKey            func(childComplexity int) int
+		APIServerHost     func(childComplexity int) int
+		CorpAPIServerHost func(childComplexity int) int
+		OauthClientID     func(childComplexity int) int
+		OauthConnectorID  func(childComplexity int) int
+		OauthIssuer       func(childComplexity int) int
+		UIServerHost      func(childComplexity int) int
+		User              func(childComplexity int) int
 	}
 
 	UserLite struct {
@@ -2373,6 +2380,7 @@ type ComplexityRoot struct {
 
 	VersionLite struct {
 		Activated           func(childComplexity int) int
+		BaseVersion         func(childComplexity int) int
 		Branch              func(childComplexity int) int
 		ChildVersions       func(childComplexity int) int
 		Cost                func(childComplexity int) int
@@ -2881,6 +2889,8 @@ type VersionResolver interface {
 	WaterfallBuilds(ctx context.Context, obj *model.APIVersion) ([]*model1.WaterfallBuild, error)
 }
 type VersionLiteResolver interface {
+	BaseVersion(ctx context.Context, obj *model1.Version) (*model1.Version, error)
+
 	ChildVersions(ctx context.Context, obj *model1.Version) ([]*model1.Version, error)
 
 	IsPatch(ctx context.Context, obj *model1.Version) (bool, error)
@@ -3870,6 +3880,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BootstrapSettings.ShellPath(childComplexity), true
 
+	case "BucketConfig.expirationDays":
+		if e.complexity.BucketConfig.ExpirationDays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.ExpirationDays(childComplexity), true
+	case "BucketConfig.lifecycleLastSyncedAt":
+		if e.complexity.BucketConfig.LifecycleLastSyncedAt == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.LifecycleLastSyncedAt(childComplexity), true
+	case "BucketConfig.lifecycleSyncError":
+		if e.complexity.BucketConfig.LifecycleSyncError == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.LifecycleSyncError(childComplexity), true
 	case "BucketConfig.name":
 		if e.complexity.BucketConfig.Name == nil {
 			break
@@ -3888,6 +3916,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketConfig.TestResultsPrefix(childComplexity), true
+	case "BucketConfig.transitionToGlacierDays":
+		if e.complexity.BucketConfig.TransitionToGlacierDays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.TransitionToGlacierDays(childComplexity), true
+	case "BucketConfig.transitionToIADays":
+		if e.complexity.BucketConfig.TransitionToIADays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.TransitionToIADays(childComplexity), true
 	case "BucketConfig.type":
 		if e.complexity.BucketConfig.Type == nil {
 			break
@@ -3931,6 +3971,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.LongRetentionProjects(childComplexity), true
+	case "BucketsConfig.retryFailedLogMoveLookbackDays":
+		if e.complexity.BucketsConfig.RetryFailedLogMoveLookbackDays == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.RetryFailedLogMoveLookbackDays(childComplexity), true
 	case "BucketsConfig.retryFailedLogMoveLookbackMonths":
 		if e.complexity.BucketsConfig.RetryFailedLogMoveLookbackMonths == nil {
 			break
@@ -12385,6 +12431,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserConfig.APIServerHost(childComplexity), true
+	case "UserConfig.corp_api_server_host":
+		if e.complexity.UserConfig.CorpAPIServerHost == nil {
+			break
+		}
+
+		return e.complexity.UserConfig.CorpAPIServerHost(childComplexity), true
 	case "UserConfig.oauth_client_id":
 		if e.complexity.UserConfig.OauthClientID == nil {
 			break
@@ -12878,6 +12930,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.VersionLite.Activated(childComplexity), true
+	case "VersionLite.baseVersion":
+		if e.complexity.VersionLite.BaseVersion == nil {
+			break
+		}
+
+		return e.complexity.VersionLite.BaseVersion(childComplexity), true
 	case "VersionLite.branch":
 		if e.complexity.VersionLite.Branch == nil {
 			break
@@ -18911,6 +18969,8 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_logBucketFailedTasks(ctx, field)
 			case "longRetentionProjects":
 				return ec.fieldContext_BucketsConfig_longRetentionProjects(ctx, field)
+			case "retryFailedLogMoveLookbackDays":
+				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field)
 			case "retryFailedLogMoveLookbackMonths":
 				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackMonths(ctx, field)
 			case "retryFailedLogMoveMaxJobsPerRun":
@@ -23066,6 +23126,151 @@ func (ec *executionContext) fieldContext_BucketConfig_type(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _BucketConfig_expirationDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_expirationDays,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpirationDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_expirationDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_transitionToIADays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_transitionToIADays,
+		func(ctx context.Context) (any, error) {
+			return obj.TransitionToIADays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_transitionToIADays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_transitionToGlacierDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_transitionToGlacierDays,
+		func(ctx context.Context) (any, error) {
+			return obj.TransitionToGlacierDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_transitionToGlacierDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_lifecycleLastSyncedAt(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_lifecycleLastSyncedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LifecycleLastSyncedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_lifecycleLastSyncedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_lifecycleSyncError(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_lifecycleSyncError,
+		func(ctx context.Context) (any, error) {
+			return obj.LifecycleSyncError, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_lifecycleSyncError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BucketsConfig_logBucket(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23098,6 +23303,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucket(_ context.Conte
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23137,6 +23352,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucketLongRetention(_ 
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23176,6 +23401,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucketFailedTasks(_ co
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23207,6 +23442,35 @@ func (ec *executionContext) fieldContext_BucketsConfig_longRetentionProjects(_ c
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_retryFailedLogMoveLookbackDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryFailedLogMoveLookbackDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -23302,6 +23566,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_testResultsBucket(_ conte
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -42332,6 +42606,8 @@ func (ec *executionContext) fieldContext_Mutation_resetAPIKey(_ context.Context,
 				return ec.fieldContext_UserConfig_api_key(ctx, field)
 			case "api_server_host":
 				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
+			case "corp_api_server_host":
+				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
 			case "ui_server_host":
 				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
 			case "user":
@@ -45958,6 +46234,8 @@ func (ec *executionContext) fieldContext_Patch_version(_ context.Context, field 
 				return ec.fieldContext_VersionLite_id(ctx, field)
 			case "activated":
 				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_VersionLite_branch(ctx, field)
 			case "childVersions":
@@ -54973,6 +55251,8 @@ func (ec *executionContext) fieldContext_Query_userConfig(_ context.Context, fie
 				return ec.fieldContext_UserConfig_api_key(ctx, field)
 			case "api_server_host":
 				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
+			case "corp_api_server_host":
+				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
 			case "ui_server_host":
 				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
 			case "user":
@@ -67083,6 +67363,8 @@ func (ec *executionContext) fieldContext_Task_version(_ context.Context, field g
 				return ec.fieldContext_VersionLite_id(ctx, field)
 			case "activated":
 				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_VersionLite_branch(ctx, field)
 			case "childVersions":
@@ -73874,6 +74156,35 @@ func (ec *executionContext) fieldContext_UserConfig_api_server_host(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _UserConfig_corp_api_server_host(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserConfig_corp_api_server_host,
+		func(ctx context.Context) (any, error) {
+			return obj.CorpAPIServerHost, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserConfig_corp_api_server_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserConfig_ui_server_host(ctx context.Context, field graphql.CollectedField, obj *UserConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -76933,6 +77244,83 @@ func (ec *executionContext) fieldContext_VersionLite_activated(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _VersionLite_baseVersion(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_VersionLite_baseVersion,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.VersionLite().BaseVersion(ctx, obj)
+		},
+		nil,
+		ec.marshalOVersionLite2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersion,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_VersionLite_baseVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VersionLite",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_VersionLite_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_VersionLite_branch(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_VersionLite_childVersions(ctx, field)
+			case "cost":
+				return ec.fieldContext_VersionLite_cost(ctx, field)
+			case "createTime":
+				return ec.fieldContext_VersionLite_createTime(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_VersionLite_ingestTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_VersionLite_errors(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_VersionLite_finishTime(ctx, field)
+			case "ignored":
+				return ec.fieldContext_VersionLite_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_VersionLite_isPatch(ctx, field)
+			case "message":
+				return ec.fieldContext_VersionLite_message(ctx, field)
+			case "order":
+				return ec.fieldContext_VersionLite_order(ctx, field)
+			case "project":
+				return ec.fieldContext_VersionLite_project(ctx, field)
+			case "repo":
+				return ec.fieldContext_VersionLite_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_VersionLite_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_VersionLite_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_VersionLite_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_VersionLite_status(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_VersionLite_taskStatusStats(ctx, field)
+			case "user":
+				return ec.fieldContext_VersionLite_user(ctx, field)
+			case "warnings":
+				return ec.fieldContext_VersionLite_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type VersionLite", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _VersionLite_branch(ctx context.Context, field graphql.CollectedField, obj *model1.Version) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -76990,6 +77378,8 @@ func (ec *executionContext) fieldContext_VersionLite_childVersions(_ context.Con
 				return ec.fieldContext_VersionLite_id(ctx, field)
 			case "activated":
 				return ec.fieldContext_VersionLite_activated(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_VersionLite_baseVersion(ctx, field)
 			case "branch":
 				return ec.fieldContext_VersionLite_branch(ctx, field)
 			case "childVersions":
@@ -82509,7 +82899,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82544,6 +82934,13 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.LongRetentionProjects = data
+		case "retryFailedLogMoveLookbackDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookbackDays"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryFailedLogMoveLookbackDays = data
 		case "retryFailedLogMoveLookbackMonths":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookbackMonths"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -93613,6 +94010,16 @@ func (ec *executionContext) _BucketConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._BucketConfig_roleARN(ctx, field, obj)
 		case "type":
 			out.Values[i] = ec._BucketConfig_type(ctx, field, obj)
+		case "expirationDays":
+			out.Values[i] = ec._BucketConfig_expirationDays(ctx, field, obj)
+		case "transitionToIADays":
+			out.Values[i] = ec._BucketConfig_transitionToIADays(ctx, field, obj)
+		case "transitionToGlacierDays":
+			out.Values[i] = ec._BucketConfig_transitionToGlacierDays(ctx, field, obj)
+		case "lifecycleLastSyncedAt":
+			out.Values[i] = ec._BucketConfig_lifecycleLastSyncedAt(ctx, field, obj)
+		case "lifecycleSyncError":
+			out.Values[i] = ec._BucketConfig_lifecycleSyncError(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93655,6 +94062,8 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_logBucketFailedTasks(ctx, field, obj)
 		case "longRetentionProjects":
 			out.Values[i] = ec._BucketsConfig_longRetentionProjects(ctx, field, obj)
+		case "retryFailedLogMoveLookbackDays":
+			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field, obj)
 		case "retryFailedLogMoveLookbackMonths":
 			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookbackMonths(ctx, field, obj)
 		case "retryFailedLogMoveMaxJobsPerRun":
@@ -111029,6 +111438,11 @@ func (ec *executionContext) _UserConfig(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "corp_api_server_host":
+			out.Values[i] = ec._UserConfig_corp_api_server_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "ui_server_host":
 			out.Values[i] = ec._UserConfig_ui_server_host(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -112425,6 +112839,39 @@ func (ec *executionContext) _VersionLite(ctx context.Context, sel ast.SelectionS
 			}
 		case "activated":
 			out.Values[i] = ec._VersionLite_activated(ctx, field, obj)
+		case "baseVersion":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VersionLite_baseVersion(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "branch":
 			out.Values[i] = ec._VersionLite_branch(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
