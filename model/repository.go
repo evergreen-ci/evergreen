@@ -110,7 +110,7 @@ func UpsertRepositoryRevision(ctx context.Context, projectID, revision string, i
 			RepositoryRevisionRevisionKey: revision,
 		},
 		bson.M{
-			"$set": bson.M{
+			"$setOnInsert": bson.M{
 				RepositoryRevisionProjectKey:    projectID,
 				RepositoryRevisionRevisionKey:   revision,
 				RepositoryRevisionIngestTimeKey: ingestTime,

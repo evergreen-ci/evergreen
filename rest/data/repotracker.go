@@ -118,8 +118,6 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 			"ingest_time": ingestTime,
 			"refs":        refs[i],
 		}))
-		err = upsertRepositoryRevisionsFromPushEvent(ctx, refs[i].Id, event, ingestTime)
-		catcher.Wrapf(err, "upserting repository revisions for project '%s'", refs[i].Id)
 
 		err = trigger.TriggerDownstreamProjectsForPush(ctx, refs[i].Id, event, trigger.TriggerDownstreamVersion)
 		catcher.Wrapf(err, "triggering downstream projects for push event for project '%s'", refs[i].Id)
