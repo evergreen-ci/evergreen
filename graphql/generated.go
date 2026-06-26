@@ -107,6 +107,7 @@ type DirectiveRoot struct {
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireRepoAccess            func(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (res any, err error)
 	RequireVolumeAccess          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 }
 
@@ -13761,6 +13762,17 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) dir_requireRepoAccess_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "access", ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel)
+	if err != nil {
+		return nil, err
+	}
+	args["access"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Host_events_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13974,6 +13986,18 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_argsProjectID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "ADMIN")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireRepoAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireRepoAccess is not implemented")
+		}
+		return ec.directives.RequireRepoAccess(ctx, rawArgs, directive0, access)
+	}
+	directive2 := func(ctx context.Context) (any, error) {
 		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
 		if err != nil {
 			var zeroVal string
@@ -13988,10 +14012,10 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_argsProjectID(
 			var zeroVal string
 			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
 		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
 	}
 
-	tmp, err := directive1(ctx)
+	tmp, err := directive2(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)
