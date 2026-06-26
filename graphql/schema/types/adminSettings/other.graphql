@@ -10,6 +10,11 @@ type BucketConfig {
   testResultsPrefix: String
   roleARN: String @requireAdmin
   type: String
+  expirationDays: Int
+  transitionToIADays: Int
+  transitionToGlacierDays: Int
+  lifecycleLastSyncedAt: Time
+  lifecycleSyncError: String
 }
 
 input BucketsConfigInput {
@@ -17,6 +22,8 @@ input BucketsConfigInput {
   logBucketLongRetention: BucketConfigInput
   logBucketFailedTasks: BucketConfigInput
   longRetentionProjects: [String!]
+  retryFailedLogMoveLookbackDays: Int
+  # Kept for Spruce backward compatibility.
   retryFailedLogMoveLookbackMonths: Int
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfigInput
@@ -29,6 +36,8 @@ type BucketsConfig {
   logBucketLongRetention: BucketConfig
   logBucketFailedTasks: BucketConfig
   longRetentionProjects: [String!]
+  retryFailedLogMoveLookbackDays: Int
+  # Kept for Spruce backward compatibility.
   retryFailedLogMoveLookbackMonths: Int
   retryFailedLogMoveMaxJobsPerRun: Int
   testResultsBucket: BucketConfig

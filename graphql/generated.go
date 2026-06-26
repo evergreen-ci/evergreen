@@ -320,10 +320,15 @@ type ComplexityRoot struct {
 	}
 
 	BucketConfig struct {
-		Name              func(childComplexity int) int
-		RoleARN           func(childComplexity int) int
-		TestResultsPrefix func(childComplexity int) int
-		Type              func(childComplexity int) int
+		ExpirationDays          func(childComplexity int) int
+		LifecycleLastSyncedAt   func(childComplexity int) int
+		LifecycleSyncError      func(childComplexity int) int
+		Name                    func(childComplexity int) int
+		RoleARN                 func(childComplexity int) int
+		TestResultsPrefix       func(childComplexity int) int
+		TransitionToGlacierDays func(childComplexity int) int
+		TransitionToIADays      func(childComplexity int) int
+		Type                    func(childComplexity int) int
 	}
 
 	BucketsConfig struct {
@@ -333,6 +338,7 @@ type ComplexityRoot struct {
 		LogBucketFailedTasks             func(childComplexity int) int
 		LogBucketLongRetention           func(childComplexity int) int
 		LongRetentionProjects            func(childComplexity int) int
+		RetryFailedLogMoveLookbackDays   func(childComplexity int) int
 		RetryFailedLogMoveLookbackMonths func(childComplexity int) int
 		RetryFailedLogMoveMaxJobsPerRun  func(childComplexity int) int
 		TestResultsBucket                func(childComplexity int) int
@@ -3874,6 +3880,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BootstrapSettings.ShellPath(childComplexity), true
 
+	case "BucketConfig.expirationDays":
+		if e.complexity.BucketConfig.ExpirationDays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.ExpirationDays(childComplexity), true
+	case "BucketConfig.lifecycleLastSyncedAt":
+		if e.complexity.BucketConfig.LifecycleLastSyncedAt == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.LifecycleLastSyncedAt(childComplexity), true
+	case "BucketConfig.lifecycleSyncError":
+		if e.complexity.BucketConfig.LifecycleSyncError == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.LifecycleSyncError(childComplexity), true
 	case "BucketConfig.name":
 		if e.complexity.BucketConfig.Name == nil {
 			break
@@ -3892,6 +3916,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketConfig.TestResultsPrefix(childComplexity), true
+	case "BucketConfig.transitionToGlacierDays":
+		if e.complexity.BucketConfig.TransitionToGlacierDays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.TransitionToGlacierDays(childComplexity), true
+	case "BucketConfig.transitionToIADays":
+		if e.complexity.BucketConfig.TransitionToIADays == nil {
+			break
+		}
+
+		return e.complexity.BucketConfig.TransitionToIADays(childComplexity), true
 	case "BucketConfig.type":
 		if e.complexity.BucketConfig.Type == nil {
 			break
@@ -3935,6 +3971,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BucketsConfig.LongRetentionProjects(childComplexity), true
+	case "BucketsConfig.retryFailedLogMoveLookbackDays":
+		if e.complexity.BucketsConfig.RetryFailedLogMoveLookbackDays == nil {
+			break
+		}
+
+		return e.complexity.BucketsConfig.RetryFailedLogMoveLookbackDays(childComplexity), true
 	case "BucketsConfig.retryFailedLogMoveLookbackMonths":
 		if e.complexity.BucketsConfig.RetryFailedLogMoveLookbackMonths == nil {
 			break
@@ -18927,6 +18969,8 @@ func (ec *executionContext) fieldContext_AdminSettings_buckets(_ context.Context
 				return ec.fieldContext_BucketsConfig_logBucketFailedTasks(ctx, field)
 			case "longRetentionProjects":
 				return ec.fieldContext_BucketsConfig_longRetentionProjects(ctx, field)
+			case "retryFailedLogMoveLookbackDays":
+				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field)
 			case "retryFailedLogMoveLookbackMonths":
 				return ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackMonths(ctx, field)
 			case "retryFailedLogMoveMaxJobsPerRun":
@@ -23082,6 +23126,151 @@ func (ec *executionContext) fieldContext_BucketConfig_type(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _BucketConfig_expirationDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_expirationDays,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpirationDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_expirationDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_transitionToIADays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_transitionToIADays,
+		func(ctx context.Context) (any, error) {
+			return obj.TransitionToIADays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_transitionToIADays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_transitionToGlacierDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_transitionToGlacierDays,
+		func(ctx context.Context) (any, error) {
+			return obj.TransitionToGlacierDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_transitionToGlacierDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_lifecycleLastSyncedAt(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_lifecycleLastSyncedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LifecycleLastSyncedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_lifecycleLastSyncedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketConfig_lifecycleSyncError(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketConfig_lifecycleSyncError,
+		func(ctx context.Context) (any, error) {
+			return obj.LifecycleSyncError, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketConfig_lifecycleSyncError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BucketsConfig_logBucket(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23114,6 +23303,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucket(_ context.Conte
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23153,6 +23352,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucketLongRetention(_ 
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23192,6 +23401,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_logBucketFailedTasks(_ co
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -23223,6 +23442,35 @@ func (ec *executionContext) fieldContext_BucketsConfig_longRetentionProjects(_ c
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BucketsConfig_retryFailedLogMoveLookbackDays(ctx context.Context, field graphql.CollectedField, obj *model.APIBucketsConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryFailedLogMoveLookbackDays, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BucketsConfig_retryFailedLogMoveLookbackDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BucketsConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -23318,6 +23566,16 @@ func (ec *executionContext) fieldContext_BucketsConfig_testResultsBucket(_ conte
 				return ec.fieldContext_BucketConfig_roleARN(ctx, field)
 			case "type":
 				return ec.fieldContext_BucketConfig_type(ctx, field)
+			case "expirationDays":
+				return ec.fieldContext_BucketConfig_expirationDays(ctx, field)
+			case "transitionToIADays":
+				return ec.fieldContext_BucketConfig_transitionToIADays(ctx, field)
+			case "transitionToGlacierDays":
+				return ec.fieldContext_BucketConfig_transitionToGlacierDays(ctx, field)
+			case "lifecycleLastSyncedAt":
+				return ec.fieldContext_BucketConfig_lifecycleLastSyncedAt(ctx, field)
+			case "lifecycleSyncError":
+				return ec.fieldContext_BucketConfig_lifecycleSyncError(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BucketConfig", field.Name)
 		},
@@ -82641,7 +82899,7 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
+	fieldsInOrder := [...]string{"logBucket", "logBucketLongRetention", "logBucketFailedTasks", "longRetentionProjects", "retryFailedLogMoveLookbackDays", "retryFailedLogMoveLookbackMonths", "retryFailedLogMoveMaxJobsPerRun", "testResultsBucket", "internalBuckets", "credentials"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82676,6 +82934,13 @@ func (ec *executionContext) unmarshalInputBucketsConfigInput(ctx context.Context
 				return it, err
 			}
 			it.LongRetentionProjects = data
+		case "retryFailedLogMoveLookbackDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookbackDays"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryFailedLogMoveLookbackDays = data
 		case "retryFailedLogMoveLookbackMonths":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryFailedLogMoveLookbackMonths"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -93745,6 +94010,16 @@ func (ec *executionContext) _BucketConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._BucketConfig_roleARN(ctx, field, obj)
 		case "type":
 			out.Values[i] = ec._BucketConfig_type(ctx, field, obj)
+		case "expirationDays":
+			out.Values[i] = ec._BucketConfig_expirationDays(ctx, field, obj)
+		case "transitionToIADays":
+			out.Values[i] = ec._BucketConfig_transitionToIADays(ctx, field, obj)
+		case "transitionToGlacierDays":
+			out.Values[i] = ec._BucketConfig_transitionToGlacierDays(ctx, field, obj)
+		case "lifecycleLastSyncedAt":
+			out.Values[i] = ec._BucketConfig_lifecycleLastSyncedAt(ctx, field, obj)
+		case "lifecycleSyncError":
+			out.Values[i] = ec._BucketConfig_lifecycleSyncError(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93787,6 +94062,8 @@ func (ec *executionContext) _BucketsConfig(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BucketsConfig_logBucketFailedTasks(ctx, field, obj)
 		case "longRetentionProjects":
 			out.Values[i] = ec._BucketsConfig_longRetentionProjects(ctx, field, obj)
+		case "retryFailedLogMoveLookbackDays":
+			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookbackDays(ctx, field, obj)
 		case "retryFailedLogMoveLookbackMonths":
 			out.Values[i] = ec._BucketsConfig_retryFailedLogMoveLookbackMonths(ctx, field, obj)
 		case "retryFailedLogMoveMaxJobsPerRun":
