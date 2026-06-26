@@ -1068,6 +1068,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, knownHo
 	expansions.Put("task_name", t.DisplayName)
 	expansions.Put("build_id", t.BuildId)
 	expansions.Put("build_variant", t.BuildVariant)
+	expansions.Put("is_test_selection_enabled", strconv.FormatBool(t.TestSelectionEnabled))
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put("activated_by", t.ActivatedBy)

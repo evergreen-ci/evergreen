@@ -2119,6 +2119,7 @@ type APIServiceFlags struct {
 	PodDiagnosticsDisabled             bool `json:"pod_diagnostics_disabled"`
 	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
+	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2582,6 +2583,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.PodDiagnosticsDisabled = v.PodDiagnosticsDisabled
 		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
 		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
+		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2635,6 +2637,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		PodDiagnosticsDisabled:             as.PodDiagnosticsDisabled,
 		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
 		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
+		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,

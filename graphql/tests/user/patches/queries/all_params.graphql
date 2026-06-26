@@ -13,7 +13,9 @@
       patches {
         status
         id
-        projectIdentifier
+        projectMetadata {
+          identifier
+        }
         description
         alias
       }

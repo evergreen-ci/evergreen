@@ -616,12 +616,16 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	// always has an identifier, but some old parser projects used to not be
 	// stored with the ID.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
-	var p *Project
-	p, err = TranslateProject(pp)
+
+	// Coalesce concurrent translations for the same version into one compute.
+	key := versionTranslationKey(v.Id, preGeneration)
+	p, err := getOrComputeTranslation(key, func() (*Project, error) {
+		return TranslateProject(pp)
+	})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
 	}
-	return p, pp, err
+	return p, pp, nil
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
@@ -1692,6 +1696,14 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	var unmatchedSelectors []string
 	var unmatchedCriteria []string
 	var evalErrs, errs []error
+	tasksByName := map[string]parserTask{}
+	for _, t := range tasks {
+		tasksByName[t.Name] = t
+	}
+	tgMap := map[string]TaskGroup{}
+	for _, tg := range tgs {
+		tgMap[tg.Name] = tg
+	}
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
 			DisplayName:        pbv.DisplayName,
@@ -1714,7 +1726,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:               pbv.Tags,
 			Paths:              pbv.Paths,
 		}
-		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasksByName)
 		if len(unmatchedSelectors) > 0 {
 			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched selector: '%s'", pbv.Name, strings.Join(unmatchedSelectors, "', '")))
 		}
@@ -1754,7 +1766,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 				var added []BuildVariantTaskUnit
 				pbv.Tasks = r.AddTasks
-				added, _, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+				added, _, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasksByName)
 				evalErrs = append(evalErrs, errs...)
 				// check for conflicting duplicates
 				for _, t := range added {
@@ -1771,10 +1783,6 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			}
 		}
 
-		tgMap := map[string]TaskGroup{}
-		for _, tg := range tgs {
-			tgMap[tg.Name] = tg
-		}
 		dtse := newDisplayTaskSelectorEvaluator(bv, tasks, tgMap)
 
 		// check that display tasks contain real tasks that are not duplicated
@@ -1846,16 +1854,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 // match anything, the list of criteria that did not match any tasks, and
 // any errors encountered during evaluation.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
+	pbv parserBV, tasksByName map[string]parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTaskUnit{}
 	unmatchedSelectors := []string{}
 	unmatchedCriteria := []string{}
 	taskUnitsByName := map[string]BuildVariantTaskUnit{}
-	tasksByName := map[string]parserTask{}
-	for _, t := range tasks {
-		tasksByName[t.Name] = t
-	}
 	for _, pbvt := range pbv.Tasks {
 		// Evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found

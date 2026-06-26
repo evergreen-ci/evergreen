@@ -1028,6 +1028,60 @@ func TestAddNewPatch(t *testing.T) {
 	}
 }
 
+func TestAddNewBuildsResolvesDistroAlias(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, distro.Collection))
+
+	realDistro := distro.Distro{
+		Id:      "real-distro",
+		Aliases: []string{"distro-alias"},
+	}
+	require.NoError(t, realDistro.Insert(t.Context()))
+
+	v := &Version{
+		Id:         "version",
+		Revision:   "1234",
+		Requester:  evergreen.PatchVersionRequester,
+		CreateTime: time.Now(),
+	}
+	require.NoError(t, v.Insert(t.Context()))
+	ref := ProjectRef{
+		Id:         "project",
+		Identifier: "project_name",
+	}
+	require.NoError(t, ref.Insert(t.Context()))
+
+	// The variant references the distro by its alias; addNewBuilds must resolve
+	// it to the underlying distro ID when creating the task.
+	proj := &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			{
+				Name:  "variant",
+				Tasks: []BuildVariantTaskUnit{{Name: "task1", Variant: "variant"}},
+				RunOn: []string{"distro-alias"},
+			},
+		},
+		Tasks: []ProjectTask{{Name: "task1"}},
+	}
+	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
+		{Variant: "variant", Tasks: []string{"task1"}},
+	})
+	creationInfo := TaskCreationInfo{
+		Project:        proj,
+		ProjectRef:     &ref,
+		Version:        v,
+		Pairs:          tasks,
+		ActivationInfo: specificActivationInfo{},
+	}
+	_, _, err := addNewBuilds(t.Context(), creationInfo, nil)
+	require.NoError(t, err)
+
+	dbTasks, err := task.FindAll(t.Context(), db.Query(bson.M{}))
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 1)
+	assert.Equal(t, realDistro.Id, dbTasks[0].DistroId)
+}
+
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert := assert.New(t)
 

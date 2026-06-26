@@ -958,6 +958,19 @@ func PopulateRetryFailedLogMoveJobsForOldTasks(env evergreen.Environment) amboy.
 
 func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskCollection bool) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting service flags")
+		}
+		if !flags.RetryFailedLogMoveEnabled {
+			grip.InfoWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "retry failed log move is disabled",
+				"impact":  "skipping hourly retry of failed log moves to failed bucket",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
 		settings := env.Settings()
 		failedBucketCfg := settings.Buckets.LogBucketFailedTasks
 		if failedBucketCfg.Name == "" {
@@ -999,7 +1012,6 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 		findCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), retryFailedLogMoveFindTimeout)
 		defer cancel()
 		var tasks []task.Task
-		var err error
 		if runInOldTaskCollection {
 			tasks, err = task.FindAllOld(findCtx, query)
 		} else {
@@ -1240,6 +1252,14 @@ func hostIPAssociationJobs(ctx context.Context, env evergreen.Environment, ts ti
 func PopulateUnexpirableSpawnHostStatsJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		return amboy.EnqueueUniqueJob(ctx, queue, NewUnexpirableSpawnHostStatsJob(utility.RoundPartOfHour(0).Format(TSFormat)))
+	}
+}
+
+// PopulateLargeParserProjectTaskStatsJob populates a job to log stats about
+// running tasks with S3-stored parser projects.
+func PopulateLargeParserProjectTaskStatsJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewLargeParserProjectTaskStatsJob(utility.RoundPartOfHour(5).Format(TSFormat)))
 	}
 }
 

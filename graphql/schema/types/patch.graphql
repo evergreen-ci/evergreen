@@ -88,8 +88,6 @@ type Patch {
   patchNumber: Int!
   patchTriggerAliases: [PatchTriggerAlias!]!
   project: PatchProject
-  projectID: String!
-  projectIdentifier: String!
   projectMetadata: Project
   status: String!
   taskCount: Int

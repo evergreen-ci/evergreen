@@ -8,6 +8,9 @@ updates:
       time: "06:00"
       timezone: "America/New_York"
     open-pull-requests-limit: 5
+    # Ensure packages have been released for at least 3 days before opening an upgrade PR
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: "CHORE: "
     ignore:

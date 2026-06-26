@@ -826,6 +826,12 @@ func processTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		return nil
 	}
 
+	ctx, span := tracer.Start(ctx, "process-trigger-aliases", trace.WithAttributes(
+		attribute.String(evergreen.PatchIDOtelAttribute, p.Id.Hex()),
+		attribute.Int("evergreen.patch.num_trigger_aliases", len(aliasNames)),
+	))
+	defer span.End()
+
 	type aliasGroup struct {
 		project            string
 		status             string

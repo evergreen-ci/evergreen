@@ -18,7 +18,8 @@
           "userConfig": {
             "api_key": "",
             "api_server_host": "https://localhost:8443/api",
-            "ui_server_host": "http://localhost",
+            "corp_api_server_host": "https://localhost.corp:8443/api",
+            "ui_server_host": "http://spruce.localhost",
             "user": "regular_user",
             "oauth_issuer": "example_issuer",
             "oauth_client_id": "example_client_id",
@@ -35,8 +36,9 @@
         "data": {
           "userConfig": {
             "api_key": "regular_api_key",
-            "api_server_host": "https://localhost.corp:8443/api",
-            "ui_server_host": "http://localhost",
+            "api_server_host": "https://localhost:8443/api",
+            "corp_api_server_host": "https://localhost.corp:8443/api",
+            "ui_server_host": "http://spruce.localhost",
             "user": "regular_user",
             "oauth_issuer": "example_issuer",
             "oauth_client_id": "example_client_id",

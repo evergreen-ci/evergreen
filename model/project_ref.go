@@ -1548,6 +1548,21 @@ func GetIdentifierForProject(ctx context.Context, id string) (string, error) {
 	return pRef.Identifier, nil
 }
 
+// GetIdentifierForProjectSecondary is the SecondaryPreferred sibling of
+// GetIdentifierForProject. It reads from a secondary node, so results may be
+// replication-lagged; use it only for display or serialization where a momentarily
+// stale identifier is acceptable, never in a read-after-write or ID-generation path.
+func GetIdentifierForProjectSecondary(ctx context.Context, id string) (string, error) {
+	pRef, err := findOneProjectRefQSecondary(ctx, byId(id).WithFields(ProjectRefIdentifierKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project '%s' does not exist", id)
+	}
+	return pRef.Identifier, nil
+}
+
 func CountProjectRefsWithIdentifier(ctx context.Context, identifier string) (int, error) {
 	return db.CountQ(ctx, ProjectRefCollection, byId(identifier))
 }
@@ -1729,6 +1744,16 @@ func FindProjectRefsByIdsSecondary(ctx context.Context, ids ...string) ([]Projec
 	return findProjectRefsQSecondary(ctx, byIds(ids...), false)
 }
 
+// FindMergedProjectRefsByIdsOrIdentifiersSecondary returns merged project refs matching any of
+// the provided values against either the project ref's id or its identifier. It is the batched
+// equivalent of FindMergedProjectRefSecondary.
+func FindMergedProjectRefsByIdsOrIdentifiersSecondary(ctx context.Context, idsOrIdentifiers ...string) ([]ProjectRef, error) {
+	if len(idsOrIdentifiers) == 0 {
+		return nil, nil
+	}
+	return findProjectRefsQSecondary(ctx, byIdsOrIdentifiers(idsOrIdentifiers...), true)
+}
+
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
 	return findProjectRefsQWith(ctx, filter, merged, db.FindAllQ)
 }
@@ -1764,6 +1789,16 @@ func byOwnerAndRepo(owner, repoName string) bson.M {
 // byIds matches project refs with any of the given ids.
 func byIds(ids ...string) bson.M {
 	return bson.M{ProjectRefIdKey: bson.M{"$in": ids}}
+}
+
+// byIdsOrIdentifiers matches project refs whose id or identifier is any of the given values.
+func byIdsOrIdentifiers(idsOrIdentifiers ...string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			{ProjectRefIdKey: bson.M{"$in": idsOrIdentifiers}},
+			{ProjectRefIdentifierKey: bson.M{"$in": idsOrIdentifiers}},
+		},
+	}
 }
 
 // byTracked matches tracked (non-hidden) project refs.

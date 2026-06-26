@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestCurlCommand(t *testing.T) {
@@ -989,6 +990,52 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		assert.Contains(t, cmd, "test_access_token")
 		assert.NotContains(t, cmd, "api_key")
 	})
+}
+
+func TestSpawnHostConfig(t *testing.T) {
+	require.NoError(t, db.Clear(user.Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(user.Collection))
+	}()
+
+	dbUser := user.DBUser{Id: "user", APIKey: "key"}
+	require.NoError(t, dbUser.Insert(t.Context()))
+
+	h := &Host{
+		Id: "host_id",
+		ProvisionOptions: &ProvisionOptions{
+			OwnerId: dbUser.Id,
+		},
+		UserHost: true,
+	}
+	settings := &evergreen.Settings{
+		Api: evergreen.APIConfig{
+			URL:     "https://evergreen.example.com",
+			CorpURL: "https://evergreen.corp.example.com",
+		},
+		Ui: evergreen.UIConfig{
+			UIv2Url: "https://spruce.example.com",
+		},
+	}
+
+	configBytes, err := h.spawnHostConfig(t.Context(), settings)
+	require.NoError(t, err)
+
+	var config struct {
+		User              string `yaml:"user"`
+		APIKey            string `yaml:"api_key"`
+		APIServerHost     string `yaml:"api_server_host"`
+		CorpAPIServerHost string `yaml:"corp_api_server_host"`
+		UIServerHost      string `yaml:"ui_server_host"`
+		SpawnHostID       string `yaml:"spawn_host_id"`
+	}
+	require.NoError(t, yaml.Unmarshal(configBytes, &config))
+	assert.Equal(t, dbUser.Id, config.User)
+	assert.Equal(t, dbUser.APIKey, config.APIKey)
+	assert.Equal(t, "https://evergreen.example.com/api", config.APIServerHost)
+	assert.Equal(t, "https://evergreen.corp.example.com/api", config.CorpAPIServerHost)
+	assert.Equal(t, "https://spruce.example.com", config.UIServerHost)
+	assert.Equal(t, h.Id, config.SpawnHostID)
 }
 
 func TestAddPublicKeyScript(t *testing.T) {

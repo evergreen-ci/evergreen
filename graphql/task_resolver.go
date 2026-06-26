@@ -695,9 +695,9 @@ func (r *taskResolver) PrevTaskPassing(ctx context.Context, obj *restModel.APITa
 // Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	projectID := utility.FromStringPtr(obj.ProjectId)
-	pRef, err := data.FindProjectById(ctx, projectID, true, false)
+	pRef, err := loaders.GetProject(ctx, projectID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()), err)
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
@@ -707,12 +707,6 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectID, err.Error()))
 	}
 	return &apiProjectRef, nil
-}
-
-// ProjectIdentifier is the resolver for the projectIdentifier field.
-func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	obj.GetProjectIdentifier(ctx)
-	return obj.ProjectIdentifier, nil
 }
 
 // SpawnHostLink is the resolver for the spawnHostLink field.

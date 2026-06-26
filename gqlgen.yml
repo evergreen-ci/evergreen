@@ -552,8 +552,6 @@ models:
         resolver: true
       predictedCost:
         resolver: true
-      projectIdentifier:
-        resolver: true
       includedLocalModules:
         resolver: true
       parameters:
@@ -688,8 +686,6 @@ models:
         value: github.com/evergreen-ci/evergreen.ProviderNameDocker
       EC2_FLEET:
         value: github.com/evergreen-ci/evergreen.ProviderNameEc2Fleet
-      EC2_ON_DEMAND:
-        value: github.com/evergreen-ci/evergreen.ProviderNameEc2OnDemand
       STATIC:
         value: github.com/evergreen-ci/evergreen.ProviderNameStatic
   PublicKey:
@@ -884,8 +880,6 @@ models:
       executionTasksFull:
         resolver: true
       patchMetadata:
-        resolver: true
-      projectIdentifier:
         resolver: true
       reliesOn:
         resolver: true
