@@ -69,7 +69,7 @@ func insertWebhookSubscriptionWithAuthHeader(t *testing.T, id, authValue string)
 				URL:    "https://example.com/webhook",
 				Secret: []byte("the-secret"),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: authValue},
+					{Key: event.WebhookAuthorizationHeader, Value: authValue},
 				},
 			},
 		},
@@ -94,7 +94,7 @@ func insertWebhookSubscriptionWithBothUnmigrated(t *testing.T, id, secret, authV
 				URL:    "https://example.com/webhook",
 				Secret: []byte(secret),
 				Headers: []event.WebhookHeader{
-					{Key: "Authorization", Value: authValue},
+					{Key: event.WebhookAuthorizationHeader, Value: authValue},
 				},
 			},
 		},
@@ -310,7 +310,7 @@ func TestWebhookSecretMigrationJobRun(t *testing.T) {
 					"url":                            "https://example.com/webhook",
 					"secret":                         []byte("already-in-ps"),
 					"secret_parameter":               "/some/secret/param",
-					"headers":                        bson.A{bson.M{"key": "Authorization", "value": "Bearer token"}},
+					"headers":                        bson.A{bson.M{"key": event.WebhookAuthorizationHeader, "value": "Bearer token"}},
 					"authorization_header_parameter": "/some/auth/param",
 				},
 			},
@@ -489,7 +489,7 @@ func TestWebhookSecretCleanupJobRun(t *testing.T) {
 					"url":                            "https://example.com/webhook",
 					"secret":                         []byte("old-secret"),
 					"secret_parameter":               "/some/secret/param",
-					"headers":                        bson.A{bson.M{"key": "Authorization", "value": "Bearer old-token"}},
+					"headers":                        bson.A{bson.M{"key": event.WebhookAuthorizationHeader, "value": "Bearer old-token"}},
 					"authorization_header_parameter": "/some/auth/param",
 				},
 			},
@@ -523,7 +523,7 @@ func TestWebhookSecretCleanupJobRun(t *testing.T) {
 		for _, h := range headers {
 			headerMap, ok := h.(bson.M)
 			require.True(t, ok)
-			assert.NotEqual(t, "Authorization", headerMap["key"], "Authorization header should be removed")
+			assert.NotEqual(t, event.WebhookAuthorizationHeader, headerMap["key"], "Authorization header should be removed")
 		}
 	})
 
@@ -570,7 +570,7 @@ func TestFindMigratedWebhookSubscriptionIDs(t *testing.T) {
 			"type": event.EvergreenWebhookSubscriberType,
 			"target": bson.M{
 				"url":                            "https://example.com/webhook",
-				"headers":                        bson.A{bson.M{"key": "Authorization", "value": "Bearer old"}},
+				"headers":                        bson.A{bson.M{"key": event.WebhookAuthorizationHeader, "value": "Bearer old"}},
 				"authorization_header_parameter": "/auth/param",
 			},
 		},
