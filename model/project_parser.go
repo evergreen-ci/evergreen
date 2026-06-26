@@ -620,10 +620,21 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	// stored with the ID.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
 
-	// The cache is disabled, so this key is only used to coalesce concurrent translations of the same
-	// version. Before enabling the cache, switch to a content-derived key (contentTranslationKey),
-	// because a version ID would keep serving a stale config after generate.tasks rewrites the project.
-	key := versionTranslationKey(v.Id, preGeneration)
+	var key string
+	if translationCacheEnabled {
+		var sha string
+		sha, err = parserProjectContentSHA(pp)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "computing parser project content hash")
+		}
+		key = contentTranslationKey(sha, v.Identifier)
+	} else {
+		// When the cache is off, we don't need a key that changes whenever the parser project changes
+		// (which the LRU requires so it never serves a stale config after generate.tasks). We can instead
+		// use the version ID. It's cheaper and enough for singleflight, which only coalesces concurrent
+		// in-flight calls and retains nothing that could go stale.
+		key = versionTranslationKey(v.Id, preGeneration)
+	}
 	p, cacheHit, err := getOrComputeTranslation(key, translationCacheEnabled, func() (*Project, error) {
 		return TranslateProject(pp)
 	})

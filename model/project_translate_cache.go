@@ -1,12 +1,16 @@
 package model
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"github.com/pkg/errors"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -83,4 +87,15 @@ func contentTranslationKey(contentsSHA, identifier string) string {
 // fileTranslationKey is the self-invalidating LRU key for the LoadProjectInto / GetProjectFromFile path.
 func fileTranslationKey(projectID, revision, contentsSHA string) string {
 	return fmt.Sprintf("f:%s:%s:%s", projectID, revision, contentsSHA)
+}
+
+// parserProjectContentSHA returns the hex-encoded SHA-256 of pp marshaled as JSON.
+// Must be called after pp.Identifier is set so the identifier is included in the hash.
+func parserProjectContentSHA(pp *ParserProject) (string, error) {
+	data, err := json.Marshal(pp)
+	if err != nil {
+		return "", errors.Wrap(err, "marshaling parser project")
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
 }
