@@ -635,6 +635,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		// in-flight calls and retains nothing that could go stale.
 		key = versionTranslationKey(v.Id, preGeneration)
 	}
+
 	p, cacheHit, err := getOrComputeTranslation(key, translationCacheEnabled, func() (*Project, error) {
 		return TranslateProject(pp)
 	})
