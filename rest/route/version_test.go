@@ -719,6 +719,23 @@ func TestGetVersionManifestProofHistory(t *testing.T) {
 			require.True(t, ok)
 			require.Len(t, history.Versions, 2)
 			assert.False(t, history.Versions[0].Version.ManifestFound)
+			assert.True(t, history.Versions[0].OnlyOneRevisionChanged)
+			assert.Equal(t, 1, history.Versions[0].ChangedRevisionCount)
+		},
+		"HandlesMissingManifestsWithoutProjectRevisionChange": func(t *testing.T) {
+			projectID := "proof-history-missing-manifest-no-change-project"
+			insertProofVersion(t, projectID, "proof-history-missing-manifest-no-change-previous", "project-revision-1", 1)
+			current := insertProofVersion(t, projectID, "proof-history-missing-manifest-no-change-current", "project-revision-1", 2)
+
+			handler := &versionManifestProofHistoryGetHandler{versionId: current.Id}
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			require.Equal(t, http.StatusOK, res.Status(), res.Data())
+
+			history, ok := res.Data().(*versionManifestProofHistoryResponse)
+			require.True(t, ok)
+			require.Len(t, history.Versions, 2)
+			assert.False(t, history.Versions[0].Version.ManifestFound)
 			assert.False(t, history.Versions[0].OnlyOneRevisionChanged)
 			assert.Equal(t, 0, history.Versions[0].ChangedRevisionCount)
 		},
