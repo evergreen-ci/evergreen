@@ -96,8 +96,8 @@ github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLj
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/blang/semver v3.5.1+incompatible h1:cQNTCjp13qL8KC3Nbxr/y2Bqb63oX6wdnnjpJbkM4JQ=
 github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
-github.com/bradleyfalzon/ghinstallation/v2 v2.17.0 h1:SmbUK/GxpAspRjSQbB6ARvH+ArzlNzTtHydNyXUQ6zg=
-github.com/bradleyfalzon/ghinstallation/v2 v2.17.0/go.mod h1:vuD/xvJT9Y+ZVZRv4HQ42cMyPFIYqpc7AbB4Gvt/DlY=
+github.com/bradleyfalzon/ghinstallation/v2 v2.19.0 h1:KQfD+43pRw9NUJhGycGrFr9vF1MubZacksKol1gomFI=
+github.com/bradleyfalzon/ghinstallation/v2 v2.19.0/go.mod h1:fe5ECIhCdEnxwLiBlNTxx9CP455wt42BELnlDVMvaAA=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=
@@ -228,10 +228,10 @@ github.com/google/go-github/v70 v70.0.0 h1:/tqCp5KPrcvqCc7vIvYyFYTiCGrYvaWoYMGHS
 github.com/google/go-github/v70 v70.0.0/go.mod h1:xBUZgo8MI3lUL/hwxl3hlceJW1U8MVnXP3zUyI+rhQY=
 github.com/google/go-github/v73 v73.0.0 h1:aR+Utnh+Y4mMkS+2qLQwcQ/cF9mOTpdwnzlaw//rG24=
 github.com/google/go-github/v73 v73.0.0/go.mod h1:fa6w8+/V+edSU0muqdhCVY7Beh1M8F1IlQPZIANKIYw=
-github.com/google/go-github/v75 v75.0.0 h1:k7q8Bvg+W5KxRl9Tjq16a9XEgVY1pwuiG5sIL7435Ic=
-github.com/google/go-github/v75 v75.0.0/go.mod h1:H3LUJEA1TCrzuUqtdAQniBNwuKiQIqdGKgBo1/M/uqI=
 github.com/google/go-github/v79 v79.0.0 h1:MdodQojuFPBhmtwHiBcIGLw/e/wei2PvFX9ndxK0X4Y=
 github.com/google/go-github/v79 v79.0.0/go.mod h1:OAFbNhq7fQwohojb06iIIQAB9CBGYLq999myfUFnrS4=
+github.com/google/go-github/v88 v88.0.0 h1:dZA9IKkPK1eXZj4ypngnpRj5FwdpTv4whix2PrQMP7M=
+github.com/google/go-github/v88 v88.0.0/go.mod h1:rufTDgn2N45wjhukLTyxmvc9nilSp3mr3Rgtt6b1MPw=
 github.com/google/go-querystring v1.2.0 h1:yhqkPbu2/OH+V9BfpCVPZkNmUXhb2gBxJArfhIxNtP0=
 github.com/google/go-querystring v1.2.0/go.mod h1:8IFJqpSRITyJ8QhQ13bmbeMBDfmeEJZD5A0egEOmkqU=
 github.com/google/gofuzz v1.2.0 h1:xRy4A+RhZaiKjJ1bPfwQ8sedCA+YS2YcCHW6ec7JMi0=
