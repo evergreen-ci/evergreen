@@ -409,11 +409,11 @@
             "ssh": {
               "taskHostKey": {
                 "name": "task host key",
-                "secretARN": "\u003csecret_arn\u003e"
+                "secretARN": "<secret_arn>"
               },
               "spawnHostKey": {
                 "name": "spawn host key",
-                "secretARN": "\u003csecret_arn\u003e"
+                "secretARN": "<secret_arn>"
               }
             },
             "hostJasper": {
@@ -443,10 +443,10 @@
             },
             "tracer": {
               "enabled": false,
-              "collectorEndpoint": "\u003ccollector_endpoint\u003e",
-              "collectorInternalEndpoint": "\u003ccollector_internal_endpoint\u003e",
-              "collectorAPIKey": "\u003ccollector_api_key\u003e",
-              "traceUrlTemplate": "\u003ctrace_url_template\u003e"
+              "collectorEndpoint": "<collector_endpoint>",
+              "collectorInternalEndpoint": "<collector_internal_endpoint>",
+              "collectorAPIKey": "<collector_api_key>",
+              "traceUrlTemplate": "<trace_url_template>"
             },
             "projectCreation": {
               "totalProjectLimit": 10,
@@ -601,8 +601,6 @@
               { "name": "background_reauth_disabled", "enabled": false },
               { "name": "cloud_cleanup_disabled", "enabled": false },
               { "name": "sleep_schedule_disabled", "enabled": false },
-              { "name": "static_api_keys_disabled", "enabled": false },
-              { "name": "jwt_token_for_cli_disabled", "enabled": false },
               {
                 "name": "system_failed_task_restart_disabled",
                 "enabled": false

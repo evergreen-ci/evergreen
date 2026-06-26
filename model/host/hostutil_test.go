@@ -948,9 +948,6 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 				BinaryName: "jasper_cli",
 				Port:       12345,
 			},
-			ServiceFlags: evergreen.ServiceFlags{
-				JWTTokenForCLIDisabled: true,
-			},
 			OktaServiceConfig: evergreen.OktaServiceConfig{
 				ClientID:     "client_id",
 				ClientSecret: "client_secret",
@@ -963,11 +960,9 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 
 	t.Run("WithoutAccessToken", func(t *testing.T) {
 		settings := getSettings()
-		settings.ServiceFlags.JWTTokenForCLIDisabled = false
 		cmd, err := h.SpawnHostSetupCommands(t.Context(), settings)
 		require.NoError(t, err)
-		assert.Contains(t, cmd, "api_key")
-		assert.Contains(t, cmd, "key")
+		assert.NotContains(t, cmd, "api_key")
 	})
 
 	t.Run("WithAccessToken", func(t *testing.T) {
@@ -979,7 +974,6 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 				ConnectorID: "connector_id",
 			},
 		}
-		settings.ServiceFlags.JWTTokenForCLIDisabled = false
 
 		token := &oauth2.Token{AccessToken: "test_access_token", TokenType: "Bearer"}
 		require.NoError(t, dbUser.UpdateTokenExchangeToken(t.Context(), token))
@@ -1031,11 +1025,34 @@ func TestSpawnHostConfig(t *testing.T) {
 	}
 	require.NoError(t, yaml.Unmarshal(configBytes, &config))
 	assert.Equal(t, dbUser.Id, config.User)
-	assert.Equal(t, dbUser.APIKey, config.APIKey)
+	assert.Empty(t, config.APIKey)
 	assert.Equal(t, "https://evergreen.example.com/api", config.APIServerHost)
 	assert.Equal(t, "https://evergreen.corp.example.com/api", config.CorpAPIServerHost)
 	assert.Equal(t, "https://spruce.example.com", config.UIServerHost)
 	assert.Equal(t, h.Id, config.SpawnHostID)
+
+	serviceUser := user.DBUser{Id: "service_user", APIKey: "service_key", OnlyAPI: true}
+	require.NoError(t, serviceUser.Insert(t.Context()))
+	serviceHost := &Host{
+		Id: "service_host_id",
+		ProvisionOptions: &ProvisionOptions{
+			OwnerId: serviceUser.Id,
+		},
+		UserHost: true,
+	}
+	configBytes, err = serviceHost.spawnHostConfig(t.Context(), settings)
+	require.NoError(t, err)
+	config = struct {
+		User              string `yaml:"user"`
+		APIKey            string `yaml:"api_key"`
+		APIServerHost     string `yaml:"api_server_host"`
+		CorpAPIServerHost string `yaml:"corp_api_server_host"`
+		UIServerHost      string `yaml:"ui_server_host"`
+		SpawnHostID       string `yaml:"spawn_host_id"`
+	}{}
+	require.NoError(t, yaml.Unmarshal(configBytes, &config))
+	assert.Equal(t, serviceUser.Id, config.User)
+	assert.Equal(t, serviceUser.APIKey, config.APIKey)
 }
 
 func TestAddPublicKeyScript(t *testing.T) {

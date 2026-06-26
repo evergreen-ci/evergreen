@@ -42,8 +42,6 @@
             { "name": "background_reauth_disabled", "enabled": false },
             { "name": "cloud_cleanup_disabled", "enabled": false },
             { "name": "sleep_schedule_disabled", "enabled": false },
-            { "name": "static_api_keys_disabled", "enabled": false },
-            { "name": "jwt_token_for_cli_disabled", "enabled": false },
             { "name": "system_failed_task_restart_disabled", "enabled": false },
             { "name": "cpu_degraded_mode_disabled", "enabled": false },
             { "name": "elastic_ips_disabled", "enabled": false },

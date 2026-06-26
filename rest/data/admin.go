@@ -26,18 +26,14 @@ func GetBanner(ctx context.Context) (string, string, error) {
 
 // GetNecessaryServiceFlags returns a specific set of necessary service flags from admin settings
 func GetNecessaryServiceFlags(ctx context.Context) (evergreen.ServiceFlags, error) {
-	flags, err := evergreen.GetServiceFlags(ctx)
+	_, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return evergreen.ServiceFlags{}, errors.Wrap(err, "getting service flags")
 	}
 
 	// we should only return the service flags that are necessary at the moment
 	// instead of returning all the service flags
-	necessaryFlags := evergreen.ServiceFlags{
-		StaticAPIKeysDisabled:  flags.StaticAPIKeysDisabled,
-		JWTTokenForCLIDisabled: flags.JWTTokenForCLIDisabled,
-	}
-	return necessaryFlags, nil
+	return evergreen.ServiceFlags{}, nil
 }
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
