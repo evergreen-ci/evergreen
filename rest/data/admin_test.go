@@ -182,8 +182,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
-	s.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, settingsFromConnector.ServiceFlags.StaticAPIKeysDisabled)
-	s.EqualValues(testSettings.ServiceFlags.JWTTokenForCLIDisabled, settingsFromConnector.ServiceFlags.JWTTokenForCLIDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settingsFromConnector.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settingsFromConnector.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settingsFromConnector.ServiceFlags.ElasticIPsDisabled)
@@ -369,8 +367,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
-	s.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, settingsFromConnector.ServiceFlags.StaticAPIKeysDisabled)
-	s.EqualValues(testSettings.ServiceFlags.JWTTokenForCLIDisabled, settingsFromConnector.ServiceFlags.JWTTokenForCLIDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settingsFromConnector.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settingsFromConnector.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settingsFromConnector.ServiceFlags.ElasticIPsDisabled)
@@ -436,21 +432,16 @@ func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
 
 	settings := &evergreen.Settings{
 		ServiceFlags: evergreen.ServiceFlags{
-			HostInitDisabled:       true,
-			RepotrackerDisabled:    true,
-			TaskDispatchDisabled:   false,
-			CloudCleanupDisabled:   false,
-			StaticAPIKeysDisabled:  true,
-			JWTTokenForCLIDisabled: false,
+			HostInitDisabled:     true,
+			RepotrackerDisabled:  true,
+			TaskDispatchDisabled: false,
+			CloudCleanupDisabled: false,
 		},
 	}
 	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
 	flags, err := GetNecessaryServiceFlags(ctx)
 	s.NoError(err)
-	neccesaryFlags := evergreen.ServiceFlags{
-		StaticAPIKeysDisabled:  true,
-		JWTTokenForCLIDisabled: false,
-	}
+	neccesaryFlags := evergreen.ServiceFlags{}
 	s.Equal(neccesaryFlags, flags)
 }
