@@ -214,6 +214,17 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		hostCfg.Resources.NanoCPUs = cfg.CPUs * 1e9
 	}
 
+	// Wait for Docker to be ready. On some hosts the Docker daemon is restarted
+	// by the service manager shortly after provisioning (e.g. an ExecStartPre
+	// in the Jasper service file). If CreateAndStart is called while Docker is
+	// mid-restart the ContainerCreate request gets EOF. Waiting for a clean Ping
+	// before creating avoids that race without requiring changes to the host AMI.
+	if err := waitForDockerReady(ctx, cli); err != nil {
+		_ = removeEnvTmpfs(envDir)
+		cli.Close()
+		return nil, errors.Wrap(err, "waiting for Docker daemon")
+	}
+
 	name := cfg.containerName()
 	resp, err := cli.ContainerCreate(ctx, containerCfg, hostCfg, nil, nil, name)
 	if err != nil {
@@ -281,6 +292,32 @@ const imagePullTimeout = 5 * time.Minute
 
 // ensureImage pulls the image if it is not already present locally. For ECR
 // registries it fetches a short-lived auth token via the instance's IAM role
+// dockerReadyTimeout caps how long we wait for the Docker daemon to become
+// healthy before attempting ContainerCreate. 30 seconds is generous but
+// bounded; Docker typically restarts in under 5 seconds on AL2023.
+const dockerReadyTimeout = 30 * time.Second
+
+// waitForDockerReady polls cli.Ping until Docker responds successfully or the
+// timeout expires. Called immediately before ContainerCreate to avoid a race
+// condition on hosts where the service manager (e.g. a Jasper service
+// ExecStartPre) restarts Docker shortly after provisioning.
+func waitForDockerReady(ctx context.Context, cli *client.Client) error {
+	deadline := time.Now().Add(dockerReadyTimeout)
+	for {
+		if _, err := cli.Ping(ctx); err == nil {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return errors.New("Docker daemon not ready after 30s")
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
+	}
+}
+
 // and passes it directly to the Docker API, avoiding any dependency on
 // external credential helpers or CLI tooling.
 func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.Journaler) error {
