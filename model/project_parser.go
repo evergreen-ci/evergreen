@@ -612,10 +612,11 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 			return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
 		}
 	}
-	// Setting the translated project's ID is necessary here because the version
-	// always has an identifier, but some old parser projects used to not be
-	// stored with the ID.
-	pp.Identifier = utility.ToStringPtr(v.Identifier)
+	// Setting the translated project's ID is necessary here because some old
+	// parser projects used to not be stored with the ID.
+	if v.Identifier != "" {
+		pp.Identifier = utility.ToStringPtr(v.Identifier)
+	}
 
 	// Coalesce concurrent translations for the same version into one compute.
 	key := versionTranslationKey(v.Id, preGeneration)

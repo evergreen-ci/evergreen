@@ -1270,7 +1270,7 @@ func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
 }
 
 func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project, error) {
-	ver, err := VersionFindOne(ctx, VersionById(versionStr).WithFields(VersionIdKey))
+	ver, err := VersionFindOne(ctx, VersionById(versionStr).WithFields(VersionIdKey, VersionIdentifierKey, VersionProjectStorageMethodKey))
 	if err != nil {
 		return nil, err
 	}
