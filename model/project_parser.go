@@ -1445,9 +1445,10 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 				yamlErr := thirdparty.YAMLFormatError{Message: err2.Error()}
 				return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 			}
-			grip.Warning(context.Background(), message.Fields{
-				"message": "yaml v3 node decode failed, fell back to v2",
-				"error":   err.Error(),
+			grip.Debug(context.Background(), message.Fields{
+				"message":   "yaml v3 node decode failed, fell back to v2",
+				"operation": "yaml parsing",
+				"error":     err.Error(),
 			})
 		}
 	}
