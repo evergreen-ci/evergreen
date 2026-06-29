@@ -267,6 +267,9 @@ func TestAdjustForLargeParserProjectLimit(t *testing.T) {
 			TaskLimits: evergreen.TaskLimitsConfig{
 				MaxConcurrentLargeParserProjectTasks: 10,
 			},
+			ServiceFlags: evergreen.ServiceFlags{
+				CPUDegradedModeDisabled: true,
+			},
 		}
 		result := adjustForLargeParserProjectLimit(ctx, "distro-1", info, config)
 		assert.Equal(t, 10, result.LengthWithDependenciesMet)
@@ -288,6 +291,9 @@ func TestAdjustForLargeParserProjectLimit(t *testing.T) {
 		config := &evergreen.Settings{
 			TaskLimits: evergreen.TaskLimitsConfig{
 				MaxConcurrentLargeParserProjectTasks: 5,
+			},
+			ServiceFlags: evergreen.ServiceFlags{
+				CPUDegradedModeDisabled: true,
 			},
 		}
 		result := adjustForLargeParserProjectLimit(ctx, "distro-1", info, config)
