@@ -124,6 +124,23 @@ func TestEvergreenService(t *testing.T) {
 		require.Len(t, taskResults, 1)
 		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
 		assert.Equal(t, quarantinedTests, taskResults[0].QuarantinedTests)
+
+		taskResults, err = svc.GetTaskTestResults(ctx, []Task{task0}, GetTaskTestResultsOptions{})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Empty(t, taskResults[0].QuarantinedTests)
+
+		taskResults, err = svc.GetTaskTestResults(ctx, []Task{task0}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests, taskResults[0].QuarantinedTests)
+
+		mergedTaskResults, err := getMergedTaskTestResults(ctx, env, []Task{task0}, &FilterOptions{IncludeQuarantinedTests: true})
+		require.NoError(t, err)
+		assert.Equal(t, len(quarantinedTests), mergedTaskResults.QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests, mergedTaskResults.QuarantinedTests)
 	})
 	t.Run("GetFailedTestSamples", func(t *testing.T) {
 		t.Run("WithoutRegexFilters", func(t *testing.T) {

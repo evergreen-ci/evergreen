@@ -64,7 +64,11 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results service")
 	}
 
-	allTestResults, err := svc.GetTaskTestResults(ctx, tasks)
+	svcOpts := GetTaskTestResultsOptions{}
+	if getOpts != nil {
+		svcOpts.IncludeQuarantinedTests = getOpts.IncludeQuarantinedTests
+	}
+	allTestResults, err := svc.GetTaskTestResults(ctx, tasks, svcOpts)
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results")
 	}
@@ -119,7 +123,7 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, tasks 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results service")
 	}
-	allTaskResults, err := svc.GetTaskTestResults(ctx, tasks)
+	allTaskResults, err := svc.GetTaskTestResults(ctx, tasks, GetTaskTestResultsOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "getting test results")
 	}
