@@ -425,23 +425,3 @@ func (s *AdminDataSuite) TestGetBanner() {
 	s.Equal("banner text", text)
 	s.Equal(string(evergreen.Important), theme)
 }
-
-func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	settings := &evergreen.Settings{
-		ServiceFlags: evergreen.ServiceFlags{
-			HostInitDisabled:     true,
-			RepotrackerDisabled:  true,
-			TaskDispatchDisabled: false,
-			CloudCleanupDisabled: false,
-		},
-	}
-	s.NoError(evergreen.UpdateConfig(ctx, settings))
-
-	flags, err := GetNecessaryServiceFlags(ctx)
-	s.NoError(err)
-	neccesaryFlags := evergreen.ServiceFlags{}
-	s.Equal(neccesaryFlags, flags)
-}
