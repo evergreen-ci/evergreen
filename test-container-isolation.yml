@@ -1,0 +1,170 @@
+# Container isolation smoke test — do not commit.
+# Submit with:
+#   evergreen patch -p evergreen -y --finalize \
+#     --variants container-isolation-smoke \
+#     --tasks container-isolation-smoke \
+#     --project-file test-container-isolation.yml
+#
+# Before submitting: replace "STAGING_DISTRO_NAME" below with the actual
+# Evergreen staging distro that has container_isolation.enabled = true and
+# exec_user = ubuntu configured.
+
+tasks:
+  - name: container-isolation-smoke
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o errexit
+            echo "=== Container isolation smoke test ==="
+
+            echo "--- Hostname (should be container ID, not host hostname) ---"
+            hostname
+
+            echo "--- OS release (should be ubuntu 22.04 from container image) ---"
+            cat /etc/os-release | grep -E "PRETTY_NAME|ID|VERSION_ID"
+
+            echo "--- Current user ---"
+            id
+
+            echo "--- Working directory (should be task workdir, same path on host) ---"
+            pwd
+
+            echo "--- Process list (should be small — container PID namespace) ---"
+            ps -ef
+
+            echo "--- /opt visibility (should see toolchains if host /opt is bind-mounted) ---"
+            ls /opt 2>/dev/null && echo "/opt is visible" || echo "/opt not mounted"
+
+            echo "--- Write a file and verify it is accessible ---"
+            echo "written_inside_container" > "$WORKDIR/container-test.txt"
+            cat "$WORKDIR/container-test.txt"
+
+            echo "=== Smoke test complete ==="
+
+      - command: shell.exec
+        params:
+          script: |
+            echo "--- Verify file written in prior step is still present (same workdir) ---"
+            cat "$WORKDIR/container-test.txt"
+            echo "workdir persistence: OK"
+
+  # A11: host.create end-to-end validation from a containerized task.
+  # Validates that host.create API calls succeed and host info is accessible
+  # from inside the container via the bind-mounted workdir.
+  - name: container-isolation-host-create
+    commands:
+      - command: host.create
+        params:
+          distro: rhel80-small
+          scope: task
+          num_hosts: "1"
+          timeout_setup_secs: 300
+      - command: host.list
+        params:
+          num_hosts: "1"
+          path: "${workdir}/hosts.json"
+          timeout_secs: 300
+          wait: true
+      # The following shell.exec runs INSIDE the container.
+      # It verifies that host info written to the workdir is accessible
+      # from inside the container via the same-path bind mount.
+      - command: shell.exec
+        params:
+          script: |
+            set -o errexit
+            echo "=== A11: host.create validation from containerized task ==="
+
+            echo "--- Host data written by host.list (accessible from inside container via bind mount) ---"
+            cat "${workdir}/hosts.json"
+
+            echo "--- Extract host IP from JSON ---"
+            HOST_IP=$(python3 -c "import json,sys; h=json.load(open('${workdir}/hosts.json')); print(h[0].get('ip','unknown'))" 2>/dev/null || echo "parse-failed")
+            echo "Host IP: $HOST_IP"
+
+            echo "=== A11 validation complete: host.create API + workdir bind mount both work ==="
+
+  # Diagnostics task: narrow down why ContainerCreate fails with EOF on AL2023 arm64.
+  # Not a correctness test — just outputs enough info to identify the root cause.
+  - name: container-isolation-docker-diag
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o errexit
+            echo "=== Docker diagnostics for container isolation ==="
+
+            echo "--- Docker version ---"
+            docker version
+
+            echo "--- Docker info (storage driver, cgroup) ---"
+            docker info | grep -E "Cgroup|Storage|Runtime|Init|Logging|Security"
+
+            echo "--- SELinux status ---"
+            getenforce 2>/dev/null || echo "getenforce not found"
+            sestatus 2>/dev/null | head -5 || true
+
+            echo "--- docker-init binary location ---"
+            find /usr /opt -name docker-init 2>/dev/null || echo "docker-init not found"
+
+            echo "--- Test 1: simple container create (no extra mounts, no init) ---"
+            docker create --name diag-test-1 \
+              557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
+              sleep infinity && echo "CREATE OK" || echo "CREATE FAILED (exit $?)"
+            docker rm diag-test-1 2>/dev/null || true
+
+            echo "--- Test 2: container create WITH --init flag ---"
+            docker create --init --name diag-test-2 \
+              557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
+              sleep infinity && echo "CREATE WITH --init OK" || echo "CREATE WITH --init FAILED (exit $?)"
+            docker rm diag-test-2 2>/dev/null || true
+
+            echo "--- Provision test tmpfs ---"
+            sudo mkdir -p /var/run/evergreen-env/diag-test
+            sudo mount -t tmpfs -o uid=0,gid=0,mode=0700 tmpfs /var/run/evergreen-env/diag-test && echo "tmpfs mounted OK" || echo "tmpfs mount FAILED"
+
+            echo "--- SELinux context of test tmpfs dir ---"
+            ls -laZ /var/run/evergreen-env/diag-test 2>/dev/null || ls -la /var/run/evergreen-env/diag-test
+
+            echo "--- Test 3: container create WITH tmpfs bind mount (no init) ---"
+            docker create --name diag-test-3 \
+              -v /var/run/evergreen-env/diag-test:/var/run/evergreen-env:ro \
+              557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
+              sleep infinity && echo "CREATE WITH TMPFS MOUNT OK" || echo "CREATE WITH TMPFS MOUNT FAILED (exit $?)"
+            docker rm diag-test-3 2>/dev/null || true
+
+            echo "--- Test 4: container create WITH tmpfs bind mount AND --init ---"
+            docker create --init --name diag-test-4 \
+              -v /var/run/evergreen-env/diag-test:/var/run/evergreen-env:ro \
+              557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
+              sleep infinity && echo "CREATE WITH TMPFS + INIT OK" || echo "CREATE WITH TMPFS + INIT FAILED (exit $?)"
+            docker rm diag-test-4 2>/dev/null || true
+
+            echo "--- Docker daemon journal (last 50 lines) ---"
+            sudo journalctl -u docker --since '10 min ago' --no-pager | tail -50
+
+            echo "--- Cleanup test tmpfs ---"
+            sudo umount /var/run/evergreen-env/diag-test || true
+            sudo rmdir /var/run/evergreen-env/diag-test || true
+
+            echo "=== Diagnostics complete ==="
+
+buildvariants:
+  - name: container-isolation-smoke
+    display_name: Container Isolation Smoke Test
+    run_on:
+      - will-test-ubuntu2204-small
+    tasks:
+      - name: container-isolation-smoke
+  - name: container-isolation-a11
+    display_name: Container Isolation A11 host.create Validation
+    run_on:
+      - will-test-ubuntu2204-small
+    tasks:
+      - name: container-isolation-host-create
+  - name: container-isolation-arm64-diag
+    display_name: Container Isolation ARM64 Docker Diagnostics
+    run_on:
+      - will-test-amazon2023-arm64-large
+    tasks:
+      - name: container-isolation-docker-diag
