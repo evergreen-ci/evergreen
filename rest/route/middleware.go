@@ -890,14 +890,6 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	dbUser := MustHaveUser(ctx)
 	isService := dbUser.OnlyAPI
 	settings := m.env.Settings()
-	if err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message": "getting settings for rate limit check",
-			"user":    u.Username(),
-		}))
-		next(rw, r)
-		return
-	}
 	cfg := settings.RateLimit
 	perHour, burst := limitsFor(&cfg, m.surface, isService)
 
