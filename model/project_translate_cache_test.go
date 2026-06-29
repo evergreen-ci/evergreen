@@ -6,6 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -121,4 +125,60 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "retry", p.Identifier)
 	})
+}
+
+func TestFindAndTranslateProjectForVersion(t *testing.T) {
+	ctx := t.Context()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	t.Cleanup(resetTranslationCacheForTesting)
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+	})
+	require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+
+	versionID := "version_id"
+	projectID := "project_id"
+	pp := ParserProject{
+		Id:         versionID,
+		Identifier: utility.ToStringPtr(projectID),
+	}
+	require.NoError(t, pp.Insert(ctx))
+
+	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), &Version{
+		Id:                   versionID,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+	}, false)
+	require.NoError(t, err)
+	require.NotNil(t, project)
+
+	assert.Equal(t, projectID, project.Identifier)
+}
+
+func TestFindProjectFromVersionID(t *testing.T) {
+	ctx := t.Context()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	t.Cleanup(resetTranslationCacheForTesting)
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+	})
+	require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+
+	versionID := "version_id"
+	projectID := "project_id"
+	require.NoError(t, (&Version{
+		Id:                   versionID,
+		Identifier:           projectID,
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+	}).Insert(ctx))
+	require.NoError(t, (&ParserProject{
+		Id: versionID,
+	}).Insert(ctx))
+
+	project, err := FindProjectFromVersionID(ctx, versionID)
+	require.NoError(t, err)
+	require.NotNil(t, project)
+
+	assert.Equal(t, projectID, project.Identifier)
 }
