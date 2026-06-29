@@ -131,7 +131,7 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.NoError(err)
 }
 
-func (s *CliIntentSuite) TestNewCliInteSetsAliases() {
+func (s *CliIntentSuite) TestNewCliIntentSetsAliases() {
 	intent, err := NewCliIntent(CLIIntentParams{
 		User:        s.user,
 		Project:     s.projectID,

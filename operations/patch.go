@@ -58,7 +58,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(patchAliasFlagName, "a"),
-				Usage: "patch aliases (set by project admin) or local aliases (set individually in evergreen.yml)",
+				Usage: "patch alias (set by project admin) or local alias (set individually in evergreen.yml); repeat the flag to apply multiple aliases",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(patchDescriptionFlagName, "d"),

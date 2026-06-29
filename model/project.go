@@ -1885,8 +1885,10 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 	}
 
 	// Aliases can select overlapping task/variant pairs, so deduplicate them.
-	pairs.ExecTasks = dedupeTVPairs(pairs.ExecTasks)
-	pairs.DisplayTasks = dedupeTVPairs(pairs.DisplayTasks)
+	if len(aliases) > 1 {
+		pairs.ExecTasks = dedupeTVPairs(pairs.ExecTasks)
+		pairs.DisplayTasks = dedupeTVPairs(pairs.DisplayTasks)
+	}
 	pairs = p.extractDisplayTasks(pairs)
 	if includeDeps {
 		var err error

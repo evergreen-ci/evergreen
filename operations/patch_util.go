@@ -62,10 +62,9 @@ type localDiff struct {
 type patchParams struct {
 	Project string
 	Path    string
-	Alias   string
-	// Aliases holds the raw aliases passed on the command line. Local aliases
-	// are expanded out of it client-side during resolution; the single
-	// remaining server-side alias (if any) is folded into Alias for submission.
+	// Alias holds the single alias for the patch if only one was applied.
+	Alias string
+	// The Aliases field holds the raw aliases passed from the command line.
 	Aliases []string
 	// isUsingLocalAlias indicates that at least one specified alias matches a
 	// local alias.
