@@ -96,6 +96,8 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...
 			projection[field] = 1
 		}
 		opts.SetProjection(projection)
+	} else {
+		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
 	}
 
 	var allDBTaskResults []testresult.DbTaskTestResults
@@ -137,6 +139,8 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...
 	for i, dbTaskResults := range allDBTaskResults {
 		allTaskResults[i].Stats = dbTaskResults.Stats
 		allTaskResults[i].Results = dbTaskResults.Results
+		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
+		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
 	}
 
 	return allTaskResults, nil

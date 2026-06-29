@@ -115,8 +115,11 @@ var (
 	ResultsServiceKey           = bsonutil.MustHaveTag(Task{}, "ResultsService")
 	HasTestResultsKey           = bsonutil.MustHaveTag(Task{}, "HasTestResults")
 	ResultsFailedKey            = bsonutil.MustHaveTag(Task{}, "ResultsFailed")
-	IsGithubCheckKey            = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
-	HostCreateDetailsKey        = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
+
+	NumQuarantinedTestsSkippedKey = bsonutil.MustHaveTag(Task{}, "NumQuarantinedTestsSkipped")
+
+	IsGithubCheckKey     = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
+	HostCreateDetailsKey = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
 	GeneratedJSONAsStringKey      = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
 	GeneratedJSONStorageMethodKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONStorageMethod")

@@ -91,6 +91,8 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, fiel
 			projection[field] = 1
 		}
 		opts.SetProjection(projection)
+	} else {
+		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
 	}
 
 	var allDBTaskResults []localDbTaskTestResults
@@ -106,6 +108,8 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, fiel
 	for i, dbTaskResults := range allDBTaskResults {
 		allTaskResults[i].Stats = dbTaskResults.Stats
 		allTaskResults[i].Results = dbTaskResults.Results
+		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
+		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
 	}
 
 	return allTaskResults, nil
@@ -122,6 +126,9 @@ type localDbTaskTestResults struct {
 	// limited number of failing tests for a task.
 	FailedTestsSample []string                `bson:"failed_tests_sample"`
 	Results           []testresult.TestResult `bson:"results"`
+
+	QuarantinedTestsCount int                          `bson:"quarantined_tests_count,omitempty"`
+	QuarantinedTests      []testresult.QuarantinedTest `bson:"quarantined_tests,omitempty"`
 }
 
 type dbTaskTestResultsID struct {

@@ -74,6 +74,8 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 		mergedTaskResults.Stats.TotalCount += taskResults.Stats.TotalCount
 		mergedTaskResults.Stats.FailedCount += taskResults.Stats.FailedCount
 		mergedTaskResults.Results = append(mergedTaskResults.Results, taskResults.Results...)
+		mergedTaskResults.QuarantinedTestsCount += taskResults.QuarantinedTestsCount
+		mergedTaskResults.QuarantinedTests = append(mergedTaskResults.QuarantinedTests, taskResults.QuarantinedTests...)
 	}
 
 	filteredResults, filteredCount, err := filterAndSortTestResults(ctx, env, mergedTaskResults.Results, getOpts)
