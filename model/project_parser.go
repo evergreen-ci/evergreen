@@ -569,26 +569,46 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	}
 
 	// This fallback handles the case where the patch is already finalized.
-	v, err := VersionFindOneId(ctx, p.Version)
+	project, pp, err := FindAndTranslateProjectForVersionID(ctx, settings, p.Version, false)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		return nil, nil, errors.Wrapf(err, "finding project for patch '%s'", p.Id.Hex())
 	}
-	if v == nil {
-		return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
-	}
-	return FindAndTranslateProjectForVersion(ctx, settings, v, false)
+	return project, pp, nil
 }
 
 // parserProjectPreGenerationOtelAttribute records whether a translation used the
 // pre-generation parser project copy.
 const parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
 
+// FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
+func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergreen.Settings, versionID string, preGeneration bool) (*Project, *ParserProject, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID).WithFields(
+		VersionIdKey,
+		VersionIdentifierKey,
+		VersionProjectStorageMethodKey,
+		VersionPreGenerationProjectStorageMethodKey,
+	))
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "finding version '%s'", versionID)
+	}
+	if v == nil {
+		return nil, nil, errors.Errorf("version '%s' not found", versionID)
+	}
+
+	return FindAndTranslateProjectForVersion(ctx, settings, v, preGeneration)
+}
+
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
 // fetch and translate the parser project from before it was modified by generate.tasks
+// versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod are the fields from the version that are needed to translate the project.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
+}
+
+func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) (*Project, *ParserProject, error) {
 	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
-		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
+		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
 		attribute.Bool(parserProjectPreGenerationOtelAttribute, preGeneration),
 	))
 	defer span.End()
@@ -596,35 +616,35 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	var pp *ParserProject
 	var err error
 	if preGeneration {
-		preGeneratedId := preGeneratedParserProjectId(v.Id)
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.PreGenerationProjectStorageMethod, preGeneratedId)
+		preGeneratedId := preGeneratedParserProjectId(versionID)
+		pp, err = ParserProjectFindOneByID(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
 		}
 		// Fall back to the parser project post-generation if the pre-generation parser project was not found
 	}
 	if pp == nil {
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+		pp, err = ParserProjectFindOneByID(ctx, settings, projectStorageMethod, versionID)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", v.Id)
+			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", versionID)
 		}
 		if pp == nil {
-			return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
+			return nil, nil, errors.Errorf("parser project not found for version '%s'", versionID)
 		}
 	}
 	// Setting the translated project's ID is necessary here because some old
 	// parser projects used to not be stored with the ID.
-	if v.Identifier != "" {
-		pp.Identifier = utility.ToStringPtr(v.Identifier)
+	if versionIdentifier != "" {
+		pp.Identifier = utility.ToStringPtr(versionIdentifier)
 	}
 
 	// Coalesce concurrent translations for the same version into one compute.
-	key := versionTranslationKey(v.Id, preGeneration)
+	key := versionTranslationKey(versionID, preGeneration)
 	p, err := getOrComputeTranslation(key, func() (*Project, error) {
 		return TranslateProject(pp)
 	})
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
 	}
 	return p, pp, nil
 }
