@@ -18,27 +18,29 @@ tasks:
             set -o errexit
             echo "=== Container isolation smoke test ==="
 
-            echo "--- Hostname (should be container ID, not host hostname) ---"
-            hostname
+            echo "--- Hostname (must be container short ID, not EC2 hostname) ---"
+            # Use /etc/hostname — avoids dependency on the 'hostname' binary.
+            CONTAINER_HOSTNAME=$(cat /etc/hostname)
+            echo "$CONTAINER_HOSTNAME"
+            # Fail if hostname looks like an EC2 internal hostname.
+            if echo "$CONTAINER_HOSTNAME" | grep -q '\.internal$'; then
+              echo "FAIL: hostname looks like an EC2 host, not a container"
+              exit 1
+            fi
+            echo "PASS: hostname is not an EC2 host"
 
-            echo "--- OS release (should be ubuntu 22.04 from container image) ---"
-            cat /etc/os-release | grep -E "PRETTY_NAME|ID|VERSION_ID"
+            echo "--- OS release ---"
+            cat /etc/os-release | grep -E "PRETTY_NAME|VERSION_ID"
 
             echo "--- Current user ---"
             id
 
-            echo "--- Working directory (should be task workdir, same path on host) ---"
+            echo "--- Working directory ---"
             pwd
 
-            echo "--- Process list (should be small — container PID namespace) ---"
-            ps -ef
-
-            echo "--- /opt visibility (should see toolchains if host /opt is bind-mounted) ---"
-            ls /opt 2>/dev/null && echo "/opt is visible" || echo "/opt not mounted"
-
             echo "--- Write a file and verify it is accessible ---"
-            echo "written_inside_container" > "$WORKDIR/container-test.txt"
-            cat "$WORKDIR/container-test.txt"
+            echo "written_inside_container" > container-test.txt
+            cat container-test.txt
 
             echo "=== Smoke test complete ==="
 
@@ -46,7 +48,7 @@ tasks:
         params:
           script: |
             echo "--- Verify file written in prior step is still present (same workdir) ---"
-            cat "$WORKDIR/container-test.txt"
+            cat container-test.txt
             echo "workdir persistence: OK"
 
   # A11: host.create end-to-end validation from a containerized task.
@@ -91,61 +93,69 @@ tasks:
       - command: shell.exec
         params:
           script: |
-            set -o errexit
+            # No set -o errexit — diagnostic must continue past individual failures.
             echo "=== Docker diagnostics for container isolation ==="
 
             echo "--- Docker version ---"
             docker version
 
             echo "--- Docker info (storage driver, cgroup) ---"
-            docker info | grep -E "Cgroup|Storage|Runtime|Init|Logging|Security"
+            docker info 2>&1 | grep -E "Cgroup|Storage|Runtime|Init|Logging|Security"
 
             echo "--- SELinux status ---"
             getenforce 2>/dev/null || echo "getenforce not found"
-            sestatus 2>/dev/null | head -5 || true
 
             echo "--- docker-init binary location ---"
-            find /usr /opt -name docker-init 2>/dev/null || echo "docker-init not found"
+            find /usr /opt -name docker-init 2>/dev/null || echo "docker-init not found in /usr or /opt"
 
             echo "--- Test 1: simple container create (no extra mounts, no init) ---"
             docker create --name diag-test-1 \
               557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
-              sleep infinity && echo "CREATE OK" || echo "CREATE FAILED (exit $?)"
+              sleep infinity && echo "CREATE OK" || echo "CREATE FAILED exit=$?"
             docker rm diag-test-1 2>/dev/null || true
 
             echo "--- Test 2: container create WITH --init flag ---"
             docker create --init --name diag-test-2 \
               557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
-              sleep infinity && echo "CREATE WITH --init OK" || echo "CREATE WITH --init FAILED (exit $?)"
+              sleep infinity && echo "CREATE WITH --init OK" || echo "CREATE WITH --init FAILED exit=$?"
             docker rm diag-test-2 2>/dev/null || true
 
-            echo "--- Provision test tmpfs ---"
+            echo "--- Provision test tmpfs (uid=0 mode=0700, same as agent code) ---"
             sudo mkdir -p /var/run/evergreen-env/diag-test
-            sudo mount -t tmpfs -o uid=0,gid=0,mode=0700 tmpfs /var/run/evergreen-env/diag-test && echo "tmpfs mounted OK" || echo "tmpfs mount FAILED"
+            sudo mount -t tmpfs -o uid=0,gid=0,mode=0700 tmpfs /var/run/evergreen-env/diag-test \
+              && echo "tmpfs mounted OK" || echo "tmpfs mount FAILED exit=$?"
+            sudo ls -la /var/run/evergreen-env/diag-test && echo "ls OK" || echo "ls FAILED exit=$?"
 
-            echo "--- SELinux context of test tmpfs dir ---"
-            ls -laZ /var/run/evergreen-env/diag-test 2>/dev/null || ls -la /var/run/evergreen-env/diag-test
-
-            echo "--- Test 3: container create WITH tmpfs bind mount (no init) ---"
+            echo "--- Test 3: container create WITH tmpfs bind mount (no --init) ---"
             docker create --name diag-test-3 \
               -v /var/run/evergreen-env/diag-test:/var/run/evergreen-env:ro \
               557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
-              sleep infinity && echo "CREATE WITH TMPFS MOUNT OK" || echo "CREATE WITH TMPFS MOUNT FAILED (exit $?)"
+              sleep infinity && echo "CREATE WITH TMPFS MOUNT OK" || echo "CREATE WITH TMPFS MOUNT FAILED exit=$?"
             docker rm diag-test-3 2>/dev/null || true
 
             echo "--- Test 4: container create WITH tmpfs bind mount AND --init ---"
             docker create --init --name diag-test-4 \
               -v /var/run/evergreen-env/diag-test:/var/run/evergreen-env:ro \
               557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
-              sleep infinity && echo "CREATE WITH TMPFS + INIT OK" || echo "CREATE WITH TMPFS + INIT FAILED (exit $?)"
+              sleep infinity && echo "CREATE WITH TMPFS + INIT OK" || echo "CREATE WITH TMPFS + INIT FAILED exit=$?"
             docker rm diag-test-4 2>/dev/null || true
 
-            echo "--- Docker daemon journal (last 50 lines) ---"
-            sudo journalctl -u docker --since '10 min ago' --no-pager | tail -50
+            echo "--- Test 5: container create WITH workdir bind mount (same as our real call) ---"
+            mkdir -p /tmp/diag-workdir
+            docker create --name diag-test-5 \
+              --workdir /tmp/diag-workdir \
+              -v /tmp/diag-workdir:/tmp/diag-workdir \
+              -v /var/run/evergreen-env/diag-test:/var/run/evergreen-env:ro \
+              557821124784.dkr.ecr.us-east-1.amazonaws.com/evergreen-staging-task-image:amazon2023-arm64-container-ami-029ab261e9c15a75e \
+              sleep infinity && echo "CREATE WITH WORKDIR + TMPFS OK" || echo "CREATE WITH WORKDIR + TMPFS FAILED exit=$?"
+            docker rm diag-test-5 2>/dev/null || true
 
-            echo "--- Cleanup test tmpfs ---"
-            sudo umount /var/run/evergreen-env/diag-test || true
-            sudo rmdir /var/run/evergreen-env/diag-test || true
+            echo "--- Docker daemon journal (last 30 lines) ---"
+            sudo journalctl -u docker --since '5 min ago' --no-pager 2>/dev/null | tail -30 || true
+
+            echo "--- Cleanup ---"
+            sudo umount /var/run/evergreen-env/diag-test 2>/dev/null || true
+            sudo rmdir /var/run/evergreen-env/diag-test 2>/dev/null || true
 
             echo "=== Diagnostics complete ==="
 
@@ -168,3 +178,9 @@ buildvariants:
       - will-test-amazon2023-arm64-large
     tasks:
       - name: container-isolation-docker-diag
+  - name: container-isolation-arm64-smoke
+    display_name: Container Isolation ARM64 Smoke Test
+    run_on:
+      - will-test-amazon2023-arm64-large
+    tasks:
+      - name: container-isolation-smoke

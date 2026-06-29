@@ -39,6 +39,15 @@ const (
 	// Override with SetEnvFileBaseDir for local dev environments (e.g. macOS
 	// with colima where /var/run is not shared into the Docker VM).
 	envFileBaseDir = "/var/run/evergreen-env"
+
+	// containerCreateMaxAttempts is the number of times ContainerCreate is
+	// retried on EOF. Docker responds to Ping before it can fully service
+	// ContainerCreate, so on hosts where the service manager restarts Docker
+	// during provisioning we retry rather than failing open immediately.
+	containerCreateMaxAttempts = 6
+
+	// containerCreateRetryDelay is the pause between ContainerCreate retries.
+	containerCreateRetryDelay = 5 * time.Second
 )
 
 // activeEnvFileBaseDir is the runtime base dir, defaulting to envFileBaseDir.
@@ -214,23 +223,30 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 		hostCfg.Resources.NanoCPUs = cfg.CPUs * 1e9
 	}
 
-	// Wait for Docker to be ready. On some hosts the Docker daemon is restarted
-	// by the service manager shortly after provisioning (e.g. an ExecStartPre
-	// in the Jasper service file). If CreateAndStart is called while Docker is
-	// mid-restart the ContainerCreate request gets EOF. Waiting for a clean Ping
-	// before creating avoids that race without requiring changes to the host AMI.
-	if err := waitForDockerReady(ctx, cli); err != nil {
-		_ = removeEnvTmpfs(envDir)
-		cli.Close()
-		return nil, errors.Wrap(err, "waiting for Docker daemon")
-	}
-
+	// Create the container, retrying on EOF. On some hosts (e.g. AL2023 arm64)
+	// the service manager restarts Docker as part of provisioning. Docker may
+	// respond to Ping before it can fully service ContainerCreate, so Ping-gating
+	// alone isn't sufficient. On EOF we wait briefly and retry; the daemon is
+	// typically ready within a few seconds of starting.
 	name := cfg.containerName()
-	resp, err := cli.ContainerCreate(ctx, containerCfg, hostCfg, nil, nil, name)
-	if err != nil {
-		_ = removeEnvTmpfs(envDir)
-		cli.Close()
-		return nil, errors.Wrap(err, "creating container")
+	var resp container.CreateResponse
+	for attempt := 0; attempt < containerCreateMaxAttempts; attempt++ {
+		resp, err = cli.ContainerCreate(ctx, containerCfg, hostCfg, nil, nil, name)
+		if err == nil {
+			break
+		}
+		if !isDockerEOF(err) || attempt == containerCreateMaxAttempts-1 {
+			_ = removeEnvTmpfs(envDir)
+			cli.Close()
+			return nil, errors.Wrap(err, "creating container")
+		}
+		select {
+		case <-ctx.Done():
+			_ = removeEnvTmpfs(envDir)
+			cli.Close()
+			return nil, ctx.Err()
+		case <-time.After(containerCreateRetryDelay):
+		}
 	}
 
 	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
@@ -294,28 +310,13 @@ const imagePullTimeout = 5 * time.Minute
 // registries it fetches a short-lived auth token via the instance's IAM role
 // dockerReadyTimeout caps how long we wait for the Docker daemon to become
 // healthy before attempting ContainerCreate. 30 seconds is generous but
-// bounded; Docker typically restarts in under 5 seconds on AL2023.
-const dockerReadyTimeout = 30 * time.Second
-
-// waitForDockerReady polls cli.Ping until Docker responds successfully or the
-// timeout expires. Called immediately before ContainerCreate to avoid a race
-// condition on hosts where the service manager (e.g. a Jasper service
-// ExecStartPre) restarts Docker shortly after provisioning.
-func waitForDockerReady(ctx context.Context, cli *client.Client) error {
-	deadline := time.Now().Add(dockerReadyTimeout)
-	for {
-		if _, err := cli.Ping(ctx); err == nil {
-			return nil
-		}
-		if time.Now().After(deadline) {
-			return errors.New("Docker daemon not ready after 30s")
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(2 * time.Second):
-		}
-	}
+// isDockerEOF reports whether err is the specific "connection closed before
+// response" error returned by the Docker SDK when the daemon drops the socket
+// mid-request. This happens when Docker is restarting — the daemon accepts the
+// TCP connection but closes it before writing a response. Retrying after a
+// brief pause allows the new daemon instance to finish starting up.
+func isDockerEOF(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "EOF")
 }
 
 // and passes it directly to the Docker API, avoiding any dependency on
