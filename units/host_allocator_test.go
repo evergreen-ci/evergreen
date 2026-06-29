@@ -260,8 +260,8 @@ func TestAdjustForLargeParserProjectLimit(t *testing.T) {
 			}).Insert(ctx))
 		}
 		info := model.DistroQueueInfo{
-			LengthWithDependenciesMet:    10,
-			CountLargeParserProjectTasks: 5,
+			LengthWithDependenciesMet:        10,
+			NumQueuedLargeParserProjectTasks: 5,
 		}
 		config := &evergreen.Settings{
 			TaskLimits: evergreen.TaskLimitsConfig{
@@ -285,8 +285,8 @@ func TestAdjustForLargeParserProjectLimit(t *testing.T) {
 			}).Insert(ctx))
 		}
 		info := model.DistroQueueInfo{
-			LengthWithDependenciesMet:    10,
-			CountLargeParserProjectTasks: 5,
+			LengthWithDependenciesMet:        10,
+			NumQueuedLargeParserProjectTasks: 5,
 		}
 		config := &evergreen.Settings{
 			TaskLimits: evergreen.TaskLimitsConfig{

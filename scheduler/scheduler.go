@@ -147,17 +147,17 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:                        len(tasks),
-		LengthWithDependenciesMet:     numTasksDepsMet,
-		ExpectedDuration:              distroExpectedDuration,
-		MaxDurationThreshold:          maxDurationThreshold,
-		CountDepFilledMergeQueueTasks: numMergeQueueTasks,
-		CountDurationOverThreshold:    distroCountDurationOverThreshold,
-		DurationOverThreshold:         distroDurationOverThreshold,
-		CountWaitOverThreshold:        distroCountWaitOverThreshold,
-		CountLargeParserProjectTasks:  numLargeParserProjectTasks,
-		TaskGroupInfos:                taskGroupInfos,
-		SecondaryQueue:                isSecondaryQueue,
+		Length:                           len(tasks),
+		LengthWithDependenciesMet:        numTasksDepsMet,
+		ExpectedDuration:                 distroExpectedDuration,
+		MaxDurationThreshold:             maxDurationThreshold,
+		CountDepFilledMergeQueueTasks:    numMergeQueueTasks,
+		CountDurationOverThreshold:       distroCountDurationOverThreshold,
+		DurationOverThreshold:            distroDurationOverThreshold,
+		CountWaitOverThreshold:           distroCountWaitOverThreshold,
+		NumQueuedLargeParserProjectTasks: numLargeParserProjectTasks,
+		TaskGroupInfos:                   taskGroupInfos,
+		SecondaryQueue:                   isSecondaryQueue,
 	}
 
 	return distroQueueInfo

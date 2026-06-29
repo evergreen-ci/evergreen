@@ -475,7 +475,7 @@ func (j *hostAllocatorJob) saveHostStats(ctx context.Context, d *distro.Distro, 
 // adjustForLargeParserProjectLimit reduces the effective queue length when
 // the max concurrent large parser project task limit is hit.
 func adjustForLargeParserProjectLimit(ctx context.Context, distroID string, info model.DistroQueueInfo, config *evergreen.Settings) model.DistroQueueInfo {
-	if info.CountLargeParserProjectTasks == 0 {
+	if info.NumQueuedLargeParserProjectTasks == 0 {
 		return info
 	}
 
@@ -494,17 +494,11 @@ func adjustForLargeParserProjectLimit(ctx context.Context, distroID string, info
 		return info
 	}
 
-	remainingCapacity := limit - currentlyRunning
-	if remainingCapacity < 0 {
-		remainingCapacity = 0
-	}
+	remainingCapacity := max(0, limit-currentlyRunning)
 
-	blocked := info.CountLargeParserProjectTasks - remainingCapacity
+	blocked := info.NumQueuedLargeParserProjectTasks - remainingCapacity
 	if blocked <= 0 {
 		return info
-	}
-	if blocked > info.LengthWithDependenciesMet {
-		blocked = info.LengthWithDependenciesMet
 	}
 
 	info.LengthWithDependenciesMet -= blocked
@@ -516,7 +510,7 @@ func adjustForLargeParserProjectLimit(ctx context.Context, distroID string, info
 		"currently_running_large_parser_proj_tasks": currentlyRunning,
 		"max_large_parser_project_task_limit":       limit,
 		"remaining_capacity":                        remainingCapacity,
-		"distro_s3_tasks_in_queue":                  info.CountLargeParserProjectTasks,
+		"distro_s3_tasks_in_queue":                  info.NumQueuedLargeParserProjectTasks,
 		"adjusted_length_deps_met":                  info.LengthWithDependenciesMet,
 	})
 
