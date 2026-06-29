@@ -889,7 +889,7 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	}
 	dbUser := MustHaveUser(ctx)
 	isService := dbUser.OnlyAPI
-	settings, err := evergreen.GetConfigWithoutSecrets(ctx)
+	settings := m.env.Settings()
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"message": "getting settings for rate limit check",
@@ -932,7 +932,8 @@ func (m *rateLimitMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	}
 
 	if res != nil {
-		rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour)) // TODO should there also be a burst header?
+		rw.Header().Set(evergreen.RateLimitLimitHeader, fmt.Sprintf("%d", perHour))
+		rw.Header().Set(evergreen.RateLimitBurstHeader, fmt.Sprintf("%d", burst))
 		rw.Header().Set(evergreen.RateLimitRemainingHeader, fmt.Sprintf("%d", res.Remaining))
 		resetTimestamp := time.Now().Add(res.ResetAfter).Unix()
 		rw.Header().Set(evergreen.RateLimitResetHeader, fmt.Sprintf("%d", resetTimestamp))

@@ -88,6 +88,7 @@ func TestRateLimitMiddlewareNilUserPassesThrough(t *testing.T) {
 	assert.True(t, ran)
 	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
 }
 
 func TestRateLimitMiddlewareZeroLimitPassesThrough(t *testing.T) {
@@ -98,6 +99,7 @@ func TestRateLimitMiddlewareZeroLimitPassesThrough(t *testing.T) {
 	assert.True(t, ran)
 	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
 }
 
 func TestRateLimitMiddlewareUnderLimitAllowed(t *testing.T) {
@@ -108,6 +110,7 @@ func TestRateLimitMiddlewareUnderLimitAllowed(t *testing.T) {
 	assert.True(t, ran)
 	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Equal(t, "100", rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Equal(t, "5", rw.Header().Get(evergreen.RateLimitBurstHeader))
 	assert.NotEmpty(t, rw.Header().Get(evergreen.RateLimitRemainingHeader))
 }
 
@@ -138,6 +141,7 @@ func TestRateLimitMiddlewareServiceTierUsesServiceLimits(t *testing.T) {
 	rw, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "svc", OnlyAPI: true})
 	assert.True(t, ran)
 	assert.Equal(t, "200", rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Equal(t, "5", rw.Header().Get(evergreen.RateLimitBurstHeader))
 }
 
 func TestRateLimitMiddlewareElevatedUserGetsMoreHeadroom(t *testing.T) {
@@ -151,9 +155,11 @@ func TestRateLimitMiddlewareElevatedUserGetsMoreHeadroom(t *testing.T) {
 	// Elevated users get a higher configured limit (currently 2x; see DEVPROD-34486).
 	rw, _ := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "base"})
 	assert.Equal(t, "100", rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Equal(t, "1", rw.Header().Get(evergreen.RateLimitBurstHeader))
 
 	rw, _ = runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "elevated"})
 	assert.Equal(t, "200", rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Equal(t, "2", rw.Header().Get(evergreen.RateLimitBurstHeader))
 
 	// Elevated headroom is finite: burst=1 doubles to 2, so a third request is denied.
 	_, ran := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "elevated"})
@@ -263,6 +269,7 @@ func TestRateLimitMiddlewareZeroLimitUnblocksAfterExhaustion(t *testing.T) {
 	assert.True(t, ran, "setting limits to zero should unblock requests even with an exhausted bucket")
 	assert.Equal(t, http.StatusOK, rw.Code)
 	assert.Empty(t, rw.Header().Get(evergreen.RateLimitLimitHeader))
+	assert.Empty(t, rw.Header().Get(evergreen.RateLimitBurstHeader))
 }
 
 // Verifies that if Redis becomes unavailable after the limiter is already initialized,
