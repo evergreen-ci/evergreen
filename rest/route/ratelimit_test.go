@@ -60,9 +60,9 @@ func setupRateLimitEnv(t *testing.T, cfg evergreen.RateLimitConfig) *mock.Enviro
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
 	env.SetRedisClient(rdb)
+	env.EvergreenSettings.RateLimit = cfg
 
 	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
-	require.NoError(t, cfg.Set(t.Context()))
 	return env
 }
 
@@ -263,7 +263,7 @@ func TestRateLimitMiddlewareZeroLimitUnblocksAfterExhaustion(t *testing.T) {
 	_, ran = runRateLimit(t, mw, "/rest/v2/hosts", adminUser)
 	require.True(t, ran, "admin user has an independent bucket and should not be blocked")
 	zeroCfg := evergreen.RateLimitConfig{}
-	require.NoError(t, zeroCfg.Set(t.Context()))
+	env.EvergreenSettings.RateLimit = zeroCfg
 
 	rw, ran = runRateLimit(t, mw, "/rest/v2/hosts", demoUser)
 	assert.True(t, ran, "setting limits to zero should unblock requests even with an exhausted bucket")
@@ -282,9 +282,8 @@ func TestRateLimitMiddlewareRedisDropPassesThrough(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(t.Context()))
 	env.SetRedisClient(rdb)
+	env.EvergreenSettings.RateLimit = evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1}
 	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection))
-	cfg := evergreen.RateLimitConfig{RESTUserPerHour: 100, RESTUserBurst: 1}
-	require.NoError(t, cfg.Set(t.Context()))
 
 	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
