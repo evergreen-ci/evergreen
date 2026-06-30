@@ -215,6 +215,25 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		assert.Equal(t, "retry", p.Identifier)
 	})
 
+	t.Run("CachedPointerIsShared", func(t *testing.T) {
+		t.Cleanup(resetTranslationCacheForTesting)
+		// The LRU returns the same *Project pointer to all callers. Mutating the
+		// result of one call poisons the value seen by future callers. Callers must
+		// not mutate the returned project.
+		compute := func() (*Project, error) {
+			return &Project{Tasks: []ProjectTask{{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "dep"}}}}}, nil
+		}
+
+		p1, _, err := getOrComputeTranslation("k", true, compute)
+		require.NoError(t, err)
+		p2, _, err := getOrComputeTranslation("k", true, compute)
+		require.NoError(t, err)
+
+		p1.Tasks[0].DependsOn = nil
+
+		assert.Nil(t, p2.Tasks[0].DependsOn, "mutating one caller's result affects all other callers that hold the same pointer")
+	})
+
 	t.Run("ConcurrentReadersOfSharedPointerNoDataRace", func(t *testing.T) {
 		t.Cleanup(resetTranslationCacheForTesting)
 		// The LRU cache returns the same *Project pointer to concurrent callers.

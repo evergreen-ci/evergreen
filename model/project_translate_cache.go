@@ -26,6 +26,7 @@ func init() {
 	translationGroupPtr.Store(&singleflight.Group{})
 }
 
+// getTranslationCache returns the process-wide LRU cache for translated projects, initializing it on first call.
 func getTranslationCache() *expirable.LRU[string, *Project] {
 	translationCacheMu.Lock()
 	defer translationCacheMu.Unlock()
