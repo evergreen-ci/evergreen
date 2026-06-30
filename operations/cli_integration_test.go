@@ -80,7 +80,7 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
 	So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
-	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(ctx), ShouldBeNil)
+	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com", OnlyAPI: true}).Insert(ctx), ShouldBeNil)
 	localConfBytes, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
 	So(err, ShouldBeNil)
 
