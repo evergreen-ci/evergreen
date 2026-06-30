@@ -576,9 +576,12 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	return project, pp, nil
 }
 
-// parserProjectPreGenerationOtelAttribute records whether a translation used the
-// pre-generation parser project copy.
-const parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+const (
+	// ppPreGenerationOtelAttribute records whether a translation used the
+	// pre-generation parser project copy.
+	ppPreGenerationOtelAttribute       = "evergreen.parser_project.pre_generation"
+	ppTranslationCacheHitOtelAttribute = "evergreen.parser_project.translation_cache_hit"
+)
 
 // FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
 func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergreen.Settings, versionID string, preGeneration bool) (*Project, *ParserProject, error) {
@@ -600,8 +603,10 @@ func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergree
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
-// fetch and translate the parser project from before it was modified by generate.tasks
-// versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod are the fields from the version that are needed to translate the project.
+// fetch and translate the parser project from before it was modified by generate.tasks.
+//
+// When the translation cache is enabled the returned *Project is a shared pointer. Callers
+// must not mutate it; make a local copy of any fields that need modification before use.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
 	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
 }
@@ -609,7 +614,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) (*Project, *ParserProject, error) {
 	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
 		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
-		attribute.Bool(parserProjectPreGenerationOtelAttribute, preGeneration),
+		attribute.Bool(ppPreGenerationOtelAttribute, preGeneration),
 	))
 	defer span.End()
 
@@ -638,11 +643,14 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		pp.Identifier = utility.ToStringPtr(versionIdentifier)
 	}
 
-	// Coalesce concurrent translations for the same version into one compute.
+	// The cache is disabled, so this key is only used to coalesce concurrent translations of the same
+	// version. Before enabling the cache, switch to a content-derived key (contentTranslationKey),
+	// because a version ID would keep serving a stale config after generate.tasks rewrites the project.
 	key := versionTranslationKey(versionID, preGeneration)
-	p, err := getOrComputeTranslation(key, func() (*Project, error) {
+	p, cacheHit, err := getOrComputeTranslation(key, translationCacheEnabled, func() (*Project, error) {
 		return TranslateProject(pp)
 	})
+	span.SetAttributes(attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
 	}
