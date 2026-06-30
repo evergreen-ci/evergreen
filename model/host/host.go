@@ -2069,6 +2069,15 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return nil
 	}
 
+	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
+		grip.Info(ctx, message.Fields{
+			"message": "not marking host as reachable because it is in a down status",
+			"host_id": h.Id,
+			"status":  h.Status,
+		})
+		return nil
+	}
+
 	return h.setStatusAndFields(ctx, evergreen.HostRunning, nil, nil, nil, evergreen.User, "host marked reachable")
 }
 
