@@ -2060,3 +2060,34 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	}
 	return checkRun, nil
 }
+
+// ListMergeQueueRefs returns the gh-readonly-queue refs GitHub has created for the
+// merge queue on the given base branch. Each ref corresponds to a merge group
+// GitHub has staged and is waiting on, and should have a corresponding Evergreen
+// patch. Returns an empty slice (not an error) when the queue has no staged groups.
+func ListMergeQueueRefs(ctx context.Context, owner, repo, baseBranch string) ([]*github.Reference, error) {
+	caller := "ListMergeQueueRefs"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	refPrefix := fmt.Sprintf("heads/gh-readonly-queue/%s/", baseBranch)
+	refs, resp, err := githubClient.Git.ListMatchingRefs(ctx, owner, repo, &github.ReferenceListOptions{Ref: refPrefix})
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "listing merge queue refs for '%s/%s' branch '%s'", owner, repo, baseBranch)
+	}
+	return refs, nil
+}
