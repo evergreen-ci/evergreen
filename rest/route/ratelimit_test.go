@@ -152,7 +152,7 @@ func TestRateLimitMiddlewareElevatedUserGetsMoreHeadroom(t *testing.T) {
 	})
 	mw := NewRateLimitMiddleware(env, evergreen.RateLimitSurfaceREST)
 
-	// Elevated users get a higher configured limit (currently 2x; see DEVPROD-34486).
+	// Elevated users get a higher limit than regular users.
 	rw, _ := runRateLimit(t, mw, "/rest/v2/hosts", &user.DBUser{Id: "base"})
 	assert.Equal(t, "100", rw.Header().Get(evergreen.RateLimitLimitHeader))
 	assert.Equal(t, "1", rw.Header().Get(evergreen.RateLimitBurstHeader))
