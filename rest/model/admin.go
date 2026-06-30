@@ -2156,6 +2156,7 @@ type APIServiceFlags struct {
 	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
+	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2620,6 +2621,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
 		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
+		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2674,6 +2676,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
 		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
+		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,

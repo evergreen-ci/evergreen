@@ -46,6 +46,7 @@ type ServiceFlags struct {
 	WebhookSecretMigrationEnabled      bool `bson:"webhook_secret_migration_enabled" json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupEnabled        bool `bson:"webhook_secret_cleanup_enabled" json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
+	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -113,6 +114,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			webhookSecretMigrationEnabledKey:      c.WebhookSecretMigrationEnabled,
 			webhookSecretCleanupEnabledKey:        c.WebhookSecretCleanupEnabled,
 			retryFailedLogMoveEnabledKey:          c.RetryFailedLogMoveEnabled,
+			projectTranslationCacheEnabledKey:     c.ProjectTranslationCacheEnabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,

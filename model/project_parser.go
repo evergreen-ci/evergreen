@@ -643,8 +643,9 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		pp.Identifier = utility.ToStringPtr(versionIdentifier)
 	}
 
+	cacheEnabled := settings.ServiceFlags.ProjectTranslationCacheEnabled
 	var key string
-	if translationCacheEnabled {
+	if cacheEnabled {
 		var sha string
 		sha, err = parserProjectContentSHA(pp)
 		if err != nil {
@@ -658,7 +659,7 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		// in-flight calls and retains nothing that could go stale.
 		key = versionTranslationKey(versionID, preGeneration)
 	}
-	p, cacheHit, err := getOrComputeTranslation(key, translationCacheEnabled, func() (*Project, error) {
+	p, cacheHit, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
 		return TranslateProject(pp)
 	})
 	span.SetAttributes(attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit))
