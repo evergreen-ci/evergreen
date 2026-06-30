@@ -21,6 +21,10 @@ const (
 	SubscriberTypeNone              = "none"
 	RunChildPatchSubscriberType     = "run-child-patch"
 
+	// WebhookAuthorizationHeader is the standard HTTP header key used for a
+	// webhook subscriber's authorization token.
+	WebhookAuthorizationHeader = "Authorization"
+
 	webhookRetryLimit    = 10
 	webhookMinDelayLimit = 10000
 	webhookTimeoutLimit  = 30000

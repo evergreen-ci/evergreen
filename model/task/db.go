@@ -40,6 +40,14 @@ var (
 		{Key: OverrideDependenciesKey, Value: 1},
 		{Key: UnattainableDependencyKey, Value: 1},
 	}
+
+	// RetryFailedLogMoveIndex is the index used by the hourly retry-failed-log-move cron to find
+	// failed tasks whose logs still need to be copied to the failed-tasks bucket.
+	RetryFailedLogMoveIndex = bson.D{
+		{Key: StatusKey, Value: 1},
+		{Key: FinishTimeKey, Value: -1},
+		{Key: TaskOutputInfoKey + ".task_logs.bucket_config.name", Value: 1},
+	}
 )
 
 var (
@@ -2674,6 +2682,9 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 		return map[string]cost.Cost{}, nil
 	}
 
+	_, span := tracer.Start(ctx, "compute-predicted-costs")
+	defer span.End()
+
 	activatedTasks := make([]Task, 0, len(tasks))
 	for _, t := range tasks {
 		if t.Activated && !t.DisplayOnly {
@@ -2684,11 +2695,14 @@ func ComputePredictedCostsForTasks(ctx context.Context, tasks Tasks) (map[string
 	if len(activatedTasks) == 0 {
 		return map[string]cost.Cost{}, nil
 	}
+	span.SetAttributes(attribute.Int("evergreen.task.num_activated_tasks", len(activatedTasks)))
 
-	// Use background context to avoid MongoDB session races in parallel queries.
-	// The input ctx may have a transaction session which is not thread-safe.
-	bgCtx := context.Background()
-	predictions, err := computeCostPredictionsInParallel(bgCtx, activatedTasks)
+	// Detach from any DB transaction session to avoid races in the parallel
+	// queries (the input ctx may carry a session, which is not thread-safe),
+	// while still carrying the current span so the cost-prediction queries stay
+	// attached to this trace.
+	tracingCtx := trace.ContextWithSpan(context.Background(), span)
+	predictions, err := computeCostPredictionsInParallel(tracingCtx, activatedTasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "computing cost predictions")
 	}
@@ -2749,6 +2763,11 @@ func computeCostPredictionsInParallel(ctx context.Context, tasks []Task) (map[st
 	const maxWorkers = 20
 	numWorkers := util.Min(maxWorkers, len(tasksByVariant))
 	resultChan := make(chan predictionResult, len(tasks))
+
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Int("evergreen.task.num_cost_prediction_groups", len(tasksByVariant)),
+		attribute.Int("evergreen.task.num_cost_prediction_workers", numWorkers),
+	)
 
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
@@ -3107,14 +3126,56 @@ func GetPendingGenerateTasks(ctx context.Context) (int, error) {
 	}
 }
 
-// CountLargeParserProjectTasks counts the number of tasks running with parser projects stored in s3.
-func CountLargeParserProjectTasks(ctx context.Context) (int, error) {
-	return Count(ctx, db.Query(bson.M{
+// runningLargeParserProjectTasksQuery returns a query matching tasks that are
+// currently running with parser projects stored in S3.
+func runningLargeParserProjectTasksQuery() bson.M {
+	return bson.M{
 		StatusKey: bson.M{
 			"$in": evergreen.TaskInProgressStatuses,
 		},
 		CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
-	}))
+	}
+}
+
+// CountLargeParserProjectTasks counts the number of tasks running with parser projects stored in s3.
+func CountLargeParserProjectTasks(ctx context.Context) (int, error) {
+	return Count(ctx, db.Query(runningLargeParserProjectTasksQuery()))
+}
+
+// LargeParserProjectTaskStats contains the running task count for a single project
+// with parser projects stored in S3.
+type LargeParserProjectTaskStats struct {
+	Project      string `bson:"_id"`
+	RunningTasks int    `bson:"running_tasks"`
+}
+
+// GetLargeParserProjectTaskStats returns per-project counts of tasks currently
+// running with S3-stored parser projects.
+func GetLargeParserProjectTaskStats(ctx context.Context, env evergreen.Environment) ([]LargeParserProjectTaskStats, error) {
+	pipeline := []bson.M{
+		{
+			"$match": runningLargeParserProjectTasksQuery(),
+		},
+		{
+			"$group": bson.M{
+				"_id":           fmt.Sprintf("$%s", ProjectKey),
+				"running_tasks": bson.M{"$sum": 1},
+			},
+		},
+	}
+
+	coll := env.DB().Collection(Collection)
+	dbCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cursor, err := coll.Aggregate(dbCtx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating large parser project task stats")
+	}
+	var results []LargeParserProjectTaskStats
+	if err = cursor.All(dbCtx, &results); err != nil {
+		return nil, errors.Wrap(err, "iterating large parser project task stats")
+	}
+	return results, nil
 }
 
 // GetLatestTaskFromImage retrieves the latest task from all the distros corresponding to the imageID.

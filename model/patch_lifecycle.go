@@ -21,6 +21,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
 
@@ -124,6 +126,12 @@ type PatchUpdate struct {
 // ConfigurePatch validates and creates the updated tasks/variants if given, and updates description if needed.
 // Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
+	ctx, span := tracer.Start(ctx, "configure-patch", trace.WithAttributes(
+		attribute.String(evergreen.PatchIDOtelAttribute, p.Id.Hex()),
+		attribute.String(evergreen.ProjectIDOtelAttribute, p.Project),
+	))
+	defer span.End()
+
 	var err error
 	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 	if err != nil {
@@ -132,7 +140,12 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
 	tasks := VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
+
+	// We want to instrument IncludeDependencies, but it lacks context. To get around this, manually start and end span.
+	_, includeDepsSpan := tracer.Start(ctx, "include-dependencies")
 	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil)
+	includeDepsSpan.End()
+
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for patch",
 		"patch":   p.Id.Hex(),
@@ -557,6 +570,13 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 // Creates builds based on the Version
 // Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Version, error) {
+	ctx, span := tracer.Start(ctx, "finalize-patch", trace.WithAttributes(
+		attribute.String(evergreen.PatchIDOtelAttribute, p.Id.Hex()),
+		attribute.String(evergreen.ProjectIDOtelAttribute, p.Project),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, requester),
+	))
+	defer span.End()
+
 	projectRef, err := FindMergedProjectRef(ctx, p.Project, p.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
@@ -642,7 +662,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		AuthorEmail:          authorEmail,
 	}
 
-	mfst, err := constructManifest(ctx, patchVersion, projectRef, project.Modules)
+	manifestCtx, manifestSpan := tracer.Start(ctx, "construct-manifest")
+	mfst, err := constructManifest(manifestCtx, patchVersion, projectRef, project.Modules)
+	manifestSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -695,6 +717,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, errors.Wrapf(err, "getting create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
 	}
 
+	buildCreationCtx, buildCreationSpan := tracer.Start(ctx, "create-builds-from-version")
 	buildsToInsert := build.Builds{}
 	tasksToInsert := task.Tasks{}
 	for _, vt := range p.VariantsTasks {
@@ -730,8 +753,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		}
 		var build *build.Build
 		var tasks task.Tasks
-		build, tasks, err = CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)
+		build, tasks, err = CreateBuildFromVersionNoInsert(buildCreationCtx, buildCreationArgs)
 		if err != nil {
+			buildCreationSpan.End()
 			return nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
@@ -756,6 +780,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			},
 		)
 	}
+	buildCreationSpan.End()
+	span.SetAttributes(
+		attribute.Int(evergreen.PatchNumBuildsOtelAttribute, len(buildsToInsert)),
+		attribute.Int(evergreen.PatchNumTasksOtelAttribute, len(tasksToInsert)),
+	)
 	// We must set the NumDependents field for tasks prior to inserting them in the DB.
 	SetNumDependents(tasksToInsert)
 	numActivatedTasks := 0
@@ -812,7 +841,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, err
 	}
 
-	_, err = session.WithTransaction(ctx, txFunc)
+	txCtx, txSpan := tracer.Start(ctx, "finalize-patch-transaction")
+	_, err = session.WithTransaction(txCtx, txFunc)
+	txSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "finalizing patch")
 	}

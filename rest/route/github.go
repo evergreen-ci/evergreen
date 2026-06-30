@@ -554,13 +554,25 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 		"head_sha": event.GetMergeGroup().GetHeadSHA(),
 		"message":  "merge group received",
 	})
-	// Ensure that a project exists before creating an intent. Otherwise, intent creation will fail which will always yield an unactionable 'Evergreen error' posted to GitHub.
-	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, org, repo, branch)
+	// Ensure that a project has merge queue enabled before creating an intent.
+	// Otherwise, intent processing emits an unactionable failing status to GitHub.
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx, org, repo, branch)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
 	}
-	if len(projectRefs) == 0 {
-		return gimlet.NewJSONInternalErrorResponse(errors.New("no matching project ref"))
+	if projectRef == nil {
+		grip.Info(ctx, message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      org,
+			"repo":     repo,
+			"branch":   branch,
+			"base_sha": event.GetMergeGroup().GetBaseSHA(),
+			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+			"message":  "GitHub merge group ignored because Evergreen merge queue is not enabled",
+		})
+		return nil
 	}
 	if err := gh.AddIntentForGithubMerge(ctx, event); err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -909,7 +921,7 @@ func shouldSkipCIForGraphite(ctx context.Context, owner, repo string, prNumber i
 			"ref":      ref,
 			"head_ref": headRef,
 		})
-		return false, errors.New("invalid authentication for Graphite CI optimizer")
+		return false, nil
 	}
 
 	if resp.StatusCode == http.StatusPaymentRequired {

@@ -616,12 +616,16 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	// always has an identifier, but some old parser projects used to not be
 	// stored with the ID.
 	pp.Identifier = utility.ToStringPtr(v.Identifier)
-	var p *Project
-	p, err = TranslateProject(pp)
+
+	// Coalesce concurrent translations for the same version into one compute.
+	key := versionTranslationKey(v.Id, preGeneration)
+	p, err := getOrComputeTranslation(key, func() (*Project, error) {
+		return TranslateProject(pp)
+	})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
 	}
-	return p, pp, err
+	return p, pp, nil
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
@@ -733,12 +737,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	var anchorRegistry *anchorEntries
+	anchorRegistry := &anchorRegistry{}
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
-		if opts.EnableYAMLAnchors {
-			anchorRegistry = &anchorEntries{}
-		}
 	}
 	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, anchorRegistry)
 	if err != nil {
@@ -771,7 +772,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 }
 
 // mergeIncludes merges all included files into intermediateProject.
-func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorEntries, opts *GetProjectOpts) error {
+func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorRegistry, opts *GetProjectOpts) error {
 	ctx, span := tracer.Start(ctx, "mergeIncludes")
 	defer span.End()
 
@@ -1143,8 +1144,6 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
-	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
-	EnableYAMLAnchors bool
 }
 
 type PatchOpts struct {
@@ -1383,37 +1382,11 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-// When anchorRegistry is non-nil, cross-file anchor support is enabled: existing anchors are prepended so the
-// parser can resolve cross-file aliases, and any new anchor definitions are appended to the registry for future files.
-func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
-	p := ParserProject{}
-
-	if anchorRegistry == nil {
-		if unmarshalStrict {
-			strictProjectWithVariables := struct {
-				ParserProject       `yaml:"pp,inline"`
-				ProjectConfigFields `yaml:"pc,inline"`
-				// Variables is only used to suppress yaml unmarshalling errors related
-				// to a non-existent variables field.
-				Variables any `yaml:"variables,omitempty" bson:"-"`
-			}{}
-			if err := util.UnmarshalYAMLStrictWithFallback(parseBytes, &strictProjectWithVariables); err != nil {
-				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
-			}
-			p = strictProjectWithVariables.ParserProject
-		} else {
-			if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
-				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
-			}
-		}
-		if p.Functions == nil {
-			p.Functions = map[string]*YAMLCommandSet{}
-		}
-		return &p, nil
-	}
-
+// Existing anchors in anchorRegistry are prepended so the parser can resolve cross-file aliases,
+// and any new anchor definitions are appended to the registry for future files.
+func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (*ParserProject, error) {
 	// Prepend accumulated anchors as a preamble so the parser can resolve cross-file aliases.
-	if len(*anchorRegistry) > 0 {
+	if anchorRegistry.Length() > 0 {
 		preamble, err := buildAnchorPreamble(anchorRegistry)
 		if err != nil {
 			return nil, errors.Wrap(err, "building anchor preamble")
@@ -1434,7 +1407,7 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 // decodeWithAnchors decodes parseBytes into a ParserProject using a yaml.Node as an intermediate
 // representation, and merges any new anchor definitions found into anchorRegistry. Returns an
 // empty ParserProject for empty input.
-func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
+func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (*ParserProject, error) {
 	var node yaml.Node
 	if err := yaml.NewDecoder(bytes.NewReader(parseBytes)).Decode(&node); err != nil && !errors.Is(err, io.EOF) {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
@@ -1472,22 +1445,15 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 				yamlErr := thirdparty.YAMLFormatError{Message: err2.Error()}
 				return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 			}
+			grip.Debug(context.Background(), message.Fields{
+				"message":   "yaml v3 node decode failed, fell back to v2",
+				"operation": "yaml parsing",
+				"error":     err.Error(),
+			})
 		}
 	}
 
-	for _, anchor := range collectAnchors(&node) {
-		replaced := false
-		for i, existing := range *anchorRegistry {
-			if existing.name == anchor.name {
-				(*anchorRegistry)[i] = anchor
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			*anchorRegistry = append(*anchorRegistry, anchor)
-		}
-	}
+	anchorRegistry.mergeAnchorsFrom(&node)
 
 	return &p, nil
 }
@@ -1692,6 +1658,14 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	var unmatchedSelectors []string
 	var unmatchedCriteria []string
 	var evalErrs, errs []error
+	tasksByName := map[string]parserTask{}
+	for _, t := range tasks {
+		tasksByName[t.Name] = t
+	}
+	tgMap := map[string]TaskGroup{}
+	for _, tg := range tgs {
+		tgMap[tg.Name] = tg
+	}
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
 			DisplayName:        pbv.DisplayName,
@@ -1714,7 +1688,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:               pbv.Tags,
 			Paths:              pbv.Paths,
 		}
-		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasksByName)
 		if len(unmatchedSelectors) > 0 {
 			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched selector: '%s'", pbv.Name, strings.Join(unmatchedSelectors, "', '")))
 		}
@@ -1754,7 +1728,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 				var added []BuildVariantTaskUnit
 				pbv.Tasks = r.AddTasks
-				added, _, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+				added, _, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasksByName)
 				evalErrs = append(evalErrs, errs...)
 				// check for conflicting duplicates
 				for _, t := range added {
@@ -1771,10 +1745,6 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			}
 		}
 
-		tgMap := map[string]TaskGroup{}
-		for _, tg := range tgs {
-			tgMap[tg.Name] = tg
-		}
 		dtse := newDisplayTaskSelectorEvaluator(bv, tasks, tgMap)
 
 		// check that display tasks contain real tasks that are not duplicated
@@ -1846,16 +1816,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 // match anything, the list of criteria that did not match any tasks, and
 // any errors encountered during evaluation.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
+	pbv parserBV, tasksByName map[string]parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTaskUnit{}
 	unmatchedSelectors := []string{}
 	unmatchedCriteria := []string{}
 	taskUnitsByName := map[string]BuildVariantTaskUnit{}
-	tasksByName := map[string]parserTask{}
-	for _, t := range tasks {
-		tasksByName[t.Name] = t
-	}
 	for _, pbvt := range pbv.Tasks {
 		// Evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found

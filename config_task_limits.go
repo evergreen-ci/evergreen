@@ -51,6 +51,9 @@ type TaskLimitsConfig struct {
 
 	// MaxDailyAutomaticRestarts is the maximum number of times a project can automatically restart a task within a 24-hour period.
 	MaxDailyAutomaticRestarts int `bson:"max_daily_automatic_restarts" json:"max_daily_automatic_restarts" yaml:"max_daily_automatic_restarts"`
+
+	// MaxScheduledTasksPerDistro is the cap for the number of max tasks materialized into a distro's queue doc per pass.
+	MaxScheduledTasksPerDistro int `bson:"max_scheduled_tasks_per_distro" json:"max_scheduled_tasks_per_distro" yaml:"max_scheduled_tasks_per_distro"`
 }
 
 var (
@@ -66,6 +69,7 @@ var (
 	maxDegradedModeConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeConcurrentLargeParserProjectTasks")
 	maxTaskExecutionKey                              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskExecution")
 	maxDailyAutomaticRestartsKey                     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDailyAutomaticRestarts")
+	maxScheduledTasksPerDistroKey                    = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxScheduledTasksPerDistro")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -89,6 +93,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxDegradedModeConcurrentLargeParserProjectTasks: c.MaxDegradedModeConcurrentLargeParserProjectTasks,
 			maxTaskExecutionKey:                              c.MaxTaskExecution,
 			maxDailyAutomaticRestartsKey:                     c.MaxDailyAutomaticRestarts,
+			maxScheduledTasksPerDistroKey:                    c.MaxScheduledTasksPerDistro,
 		},
 	}), "updating config section '%s'", c.SectionId())
 }

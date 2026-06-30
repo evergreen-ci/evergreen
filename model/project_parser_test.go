@@ -749,7 +749,11 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
 		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
-		taskUnit, unmatchedSelectors, unmatchedCriteria, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
+		tasksByName := map[string]parserTask{}
+		for _, t := range taskDefs {
+			tasksByName[t.Name] = t
+		}
+		taskUnit, unmatchedSelectors, unmatchedCriteria, errs := evaluateBVTasks(tse, tsge, vse, pbv, tasksByName)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -3436,14 +3440,6 @@ func moduleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
 	return &GetProjectOpts{LocalModuleIncludes: includes}
 }
 
-// anchorModuleIncludeOpts is like moduleIncludeOpts but also enables cross-file
-// YAML anchor support, which is required for cross-file alias tests.
-func anchorModuleIncludeOpts(includes ...patch.LocalModuleInclude) *GetProjectOpts {
-	opts := moduleIncludeOpts(includes...)
-	opts.EnableYAMLAnchors = true
-	return opts
-}
-
 // mainYAMLWithModuleIncludes builds a minimal main YAML that declares one
 // module (named "m") and includes each filename under that module.
 func mainYAMLWithModuleIncludes(mainBody string, filenames ...string) string {
@@ -3503,7 +3499,8 @@ steps:
 	anchors := collectAnchors(&node)
 	require.Len(t, anchors, 2)
 
-	preamble, err := buildAnchorPreamble(&anchors)
+	registry := &anchorRegistry{entries: anchors}
+	preamble, err := buildAnchorPreamble(registry)
 	require.NoError(t, err)
 	require.NotEmpty(t, preamble)
 
@@ -3545,7 +3542,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3581,7 +3578,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3620,7 +3617,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 		), "proj", proj)
@@ -3662,7 +3659,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3728,7 +3725,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(
+		moduleIncludeOpts(
 			moduleInclude("first.yml", firstYAML),
 			moduleInclude("second.yml", secondYAML),
 			moduleInclude("third.yml", thirdYAML),
@@ -3764,7 +3761,7 @@ tasks:
 `
 	proj := &Project{}
 	pp, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	// Marshal the parser project back to YAML and confirm _evg_anchors is absent.
@@ -3794,7 +3791,7 @@ tasks:
   - *step
 `
 	proj := &Project{}
-	opts := anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML))
+	opts := moduleIncludeOpts(moduleInclude("include.yml", includeYAML))
 	opts.UnmarshalStrict = true
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
 	require.NoError(t, err)
@@ -3826,7 +3823,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3862,7 +3859,7 @@ buildvariants:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	require.Len(t, proj.BuildVariants, 1)
@@ -3894,7 +3891,7 @@ tasks:
 `
 	proj := &Project{}
 	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
-		anchorModuleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
 	require.NoError(t, err)
 
 	tasksByName := map[string]ProjectTask{}
@@ -3907,4 +3904,119 @@ tasks:
 	assert.Equal(t, "shell.exec", cmd.Command)
 	assert.Equal(t, "./run.sh", cmd.Params["script"])
 	assert.Equal(t, "src", cmd.Params["working_dir"])
+}
+
+// TestAnchorInFunctionsDefinition verifies that anchors defined inside a
+// functions block in the main file can be aliased in an include file.
+func TestAnchorInFunctionsDefinition(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+functions:
+  setup: &setup-cmds
+    command: shell.exec
+    params:
+      script: ./setup.sh
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: use-setup
+  commands:
+  - *setup-cmds
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+	require.Len(t, proj.Tasks, 1)
+	assert.Equal(t, "use-setup", proj.Tasks[0].Name)
+	require.Len(t, proj.Tasks[0].Commands, 1)
+	assert.Equal(t, "shell.exec", proj.Tasks[0].Commands[0].Command)
+}
+
+// TestAliasInMainReferencingIncludeAnchorShouldError documents that anchors
+// defined in an include file cannot be aliased in the main file, because the
+// main file is parsed before any includes are processed.
+func TestAliasInMainReferencingIncludeAnchorShouldError(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - *from-include
+`, "include.yml")
+
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - &from-include
+    command: shell.exec
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.Error(t, err)
+}
+
+// TestWithinSingleFileNoIncludes confirms that single-file projects with
+// anchors continue to work exactly as before (no regressions from always-on).
+func TestWithinSingleFileNoIncludes(t *testing.T) {
+	yml := `
+tasks:
+- name: base
+  commands:
+  - &cmd
+    command: shell.exec
+    params:
+      script: ./run.sh
+- name: derived
+  commands:
+  - *cmd
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(yml), nil, "proj", proj)
+	require.NoError(t, err)
+
+	byName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		byName[task.Name] = task
+	}
+	require.Contains(t, byName, "derived")
+	require.Len(t, byName["derived"].Commands, 1)
+	assert.Equal(t, "shell.exec", byName["derived"].Commands[0].Command)
+}
+
+// BenchmarkLoadProjectWithCrossFileAnchors measures end-to-end project loading
+// with cross-file anchors across several include files.
+func BenchmarkLoadProjectWithCrossFileAnchors(b *testing.B) {
+	const numIncludes = 10
+	includes := make([]patch.LocalModuleInclude, 0, numIncludes)
+	filenames := make([]string, 0, numIncludes)
+	for i := 0; i < numIncludes; i++ {
+		fn := fmt.Sprintf("inc%d.yml", i)
+		filenames = append(filenames, fn)
+		content := fmt.Sprintf(`
+tasks:
+- name: task-%d
+  commands:
+  - *common-setup
+`, i)
+		includes = append(includes, moduleInclude(fn, content))
+	}
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: setup
+  commands:
+  - &common-setup
+    command: shell.exec
+    params:
+      script: ./setup.sh
+`, filenames...)
+	opts := moduleIncludeOpts(includes...)
+
+	b.ResetTimer()
+	for range b.N {
+		proj := &Project{}
+		_, err := LoadProjectInto(b.Context(), []byte(mainYAML), opts, "proj", proj)
+		require.NoError(b, err)
+	}
 }

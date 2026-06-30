@@ -498,6 +498,7 @@ const (
 	TaskNameOtelAttribute                       = "evergreen.task.name"
 	TaskExecutionOtelAttribute                  = "evergreen.task.execution"
 	TaskStatusOtelAttribute                     = "evergreen.task.status"
+	TaskDisplayStatusOtelAttribute              = "evergreen.task.display_status"
 	TaskFailureTypeOtelAttribute                = "evergreen.task.failure_type"
 	TaskFailingCommandOtelAttribute             = "evergreen.task.failing_command"
 	TaskDescriptionOtelAttribute                = "evergreen.task.description"
@@ -611,6 +612,11 @@ const (
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
+	PatchIDOtelAttribute             = "evergreen.patch.id"
+	PatchIsFinalizeOtelAttribute     = "evergreen.patch.is_finalize"
+	PatchIsGithubPROtelAttribute     = "evergreen.patch.is_github_pr"
+	PatchNumBuildsOtelAttribute      = "evergreen.patch.num_builds"
+	PatchNumTasksOtelAttribute       = "evergreen.patch.num_tasks"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"

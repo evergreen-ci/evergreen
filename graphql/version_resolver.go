@@ -262,7 +262,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 
 // ProjectMetadata is the resolver for the projectMetadata field.
 func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIProjectRef, error) {
-	apiProjectRef, err := getProjectMetadata(ctx, obj.Project, obj.Id)
+	apiProjectRef, err := getAPIProjectRef(ctx, obj.Project)
 	return apiProjectRef, err
 }
 
@@ -638,6 +638,15 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	return versionBuilds, nil
 }
 
+// BaseVersion is the resolver for the baseVersion field.
+func (r *versionLiteResolver) BaseVersion(ctx context.Context, obj *model.Version) (*model.Version, error) {
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", obj.Id, err.Error()))
+	}
+	return baseVersion, nil
+}
+
 // ChildVersions is the resolver for the childVersions field.
 func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Version) ([]*model.Version, error) {
 	if !evergreen.IsPatchRequester(obj.Requester) {
@@ -659,7 +668,7 @@ func (r *versionLiteResolver) ChildVersions(ctx context.Context, obj *model.Vers
 		for _, cp := range childPatchIds {
 			v, err := loaders.GetVersion(ctx, cp)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child version '%s' for patch '%s': %s", cp, obj.Id, err.Error()), err)
 			}
 			if v != nil {
 				childVersions = append(childVersions, v)
@@ -677,9 +686,9 @@ func (r *versionLiteResolver) IsPatch(ctx context.Context, obj *model.Version) (
 
 // Project is the resolver for the project field.
 func (r *versionLiteResolver) Project(ctx context.Context, obj *model.Version) (*model.ProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRefSecondary(ctx, obj.Identifier, obj.Id, false)
+	projectRef, err := loaders.GetProject(ctx, obj.Identifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", obj.Identifier, err.Error()), err)
 	}
 	if projectRef == nil {
 		return nil, nil

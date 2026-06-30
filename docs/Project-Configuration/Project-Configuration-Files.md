@@ -355,9 +355,9 @@ include:
     module: module_name
 ```
 
-#### YAML Anchors (Beta)
+#### YAML Anchors
 
-YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files. Cross-file anchor support is in beta and requires passing `--yaml-anchors` to `evergreen validate` or `evergreen evaluate`.
+YAML anchors (`&name`) and aliases (`*name`) are supported within a single file and across include files.
 
 An anchor defined in the main config file or in an earlier include file can be referenced as an alias in any later include file. Files are processed in the order they are listed in `include`, so an alias can only refer to an anchor that was defined in a file that appears earlier in the list (or in the main config file).
 
@@ -980,6 +980,8 @@ Every task has some expansions available by default:
 - `${is_patch}` is "true" if the running task is in a patch build and
   undefined if it is not.
 - `${is_stepback}` is "true" if the running task was stepped back.
+- `${is_test_selection_enabled}` is "true" if test selection is enabled for the
+  running task and "false" if it is not.
 - `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
   OTel collector. Tasks can send traces to this endpoint.
 - `${otel_parent_id}` is the OTel span ID of the current command.

@@ -57,6 +57,7 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 		PopulateWebhookSecretMigrationJobs(),
 		// Cleanup runs after migration is verified complete in prod. Enable by setting WebhookSecretCleanupEnabled=true.
 		PopulateWebhookSecretCleanupJobs(),
+		PopulateLargeParserProjectTaskStatsJob(),
 	}
 
 	queue := j.env.RemoteQueue()

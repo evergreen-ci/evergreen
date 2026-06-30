@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
@@ -77,4 +78,21 @@ func TestUpdateLastRevision(t *testing.T) {
 			test(t, "my-project", "my-revision")
 		})
 	}
+}
+
+func TestFindLatestRepositoryRevisionByIngestTime(t *testing.T) {
+	require.NoError(t, db.ClearCollections(RepositoriesCollection, RepositoryRevisionsHistoryCollection))
+	now := time.Now()
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r1", now, 1))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r2", now.Add(time.Minute), 2))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r3", now.Add(3*time.Minute), 3))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "other", "other-r1", now.Add(2*time.Minute), 1))
+	require.NoError(t, UpsertRepositoryRevision(t.Context(), "proj", "r2", now.Add(4*time.Minute), 4))
+
+	revision, err := FindLatestRepositoryRevisionByIngestTime(t.Context(), "proj", now.Add(2*time.Minute))
+	require.NoError(t, err)
+	require.NotNil(t, revision)
+	assert.Equal(t, "r2", revision.Revision)
+	assert.Equal(t, 2, revision.Order)
+	assert.WithinDuration(t, now.Add(time.Minute), revision.IngestTime, time.Millisecond)
 }
