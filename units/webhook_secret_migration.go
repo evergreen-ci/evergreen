@@ -132,7 +132,7 @@ func (j *webhookSecretMigrationJob) Run(ctx context.Context) {
 		})
 	}
 
-	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationHeaderParameter == "" {
+	if authValue := webhookSub.GetHeader(event.WebhookAuthorizationHeader); authValue != "" && webhookSub.AuthorizationHeaderParameter == "" {
 		paramPath := event.GetWebhookAuthParameterPath(j.SubscriptionID)
 		param, err := paramMgr.Put(ctx, paramPath, authValue)
 		if err != nil {
@@ -175,7 +175,7 @@ var unmigratedWebhookQuery = bson.D{
 		},
 		bson.D{
 			{Key: "subscriber.target.headers", Value: bson.D{{Key: "$elemMatch", Value: bson.D{
-				{Key: "key", Value: "Authorization"},
+				{Key: "key", Value: event.WebhookAuthorizationHeader},
 				{Key: "value", Value: bson.D{{Key: "$ne", Value: ""}}},
 			}}}},
 			{Key: "subscriber.target.authorization_header_parameter", Value: bson.D{{Key: "$exists", Value: false}}},
@@ -334,10 +334,10 @@ func (j *webhookSecretCleanupJob) Run(ctx context.Context) {
 		})
 	}
 
-	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" && webhookSub.AuthorizationHeaderParameter != "" {
+	if authValue := webhookSub.GetHeader(event.WebhookAuthorizationHeader); authValue != "" && webhookSub.AuthorizationHeaderParameter != "" {
 		if err := db.Update(ctx, event.SubscriptionsCollection,
 			bson.D{{Key: "_id", Value: j.SubscriptionID}},
-			bson.D{{Key: "$pull", Value: bson.D{{Key: "subscriber.target.headers", Value: bson.D{{Key: "key", Value: "Authorization"}}}}}},
+			bson.D{{Key: "$pull", Value: bson.D{{Key: "subscriber.target.headers", Value: bson.D{{Key: "key", Value: event.WebhookAuthorizationHeader}}}}}},
 		); err != nil {
 			j.AddError(errors.Wrapf(err, "removing Authorization header from MongoDB for subscription '%s'", j.SubscriptionID))
 			return
@@ -363,7 +363,7 @@ var migratedWebhookQuery = bson.D{
 		},
 		bson.D{
 			{Key: "subscriber.target.headers", Value: bson.D{{Key: "$elemMatch", Value: bson.D{
-				{Key: "key", Value: "Authorization"},
+				{Key: "key", Value: event.WebhookAuthorizationHeader},
 				{Key: "value", Value: bson.D{{Key: "$ne", Value: ""}}},
 			}}}},
 			{Key: "subscriber.target.authorization_header_parameter", Value: bson.D{{Key: "$exists", Value: true}, {Key: "$ne", Value: ""}}},

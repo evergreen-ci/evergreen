@@ -2138,15 +2138,6 @@ func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir i
 	return projectRefs, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
 }
 
-// UpdateProjectRevision updates the given project's revision
-func UpdateProjectRevision(ctx context.Context, projectID, revision string) error {
-	if err := UpdateLastRevision(ctx, projectID, revision); err != nil {
-		return errors.Wrapf(err, "updating revision for project '%s'", projectID)
-	}
-
-	return nil
-}
-
 func FindHiddenProjectRefByOwnerRepoAndBranch(ctx context.Context, owner, repo, branch string) (*ProjectRef, error) {
 	// don't need to include undefined branches here since hidden projects explicitly define them
 	q := byOwnerRepoAndBranch(owner, repo, branch, false)

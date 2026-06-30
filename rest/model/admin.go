@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
@@ -776,10 +777,12 @@ func (a *APIOktaServiceConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket                        APIBucketConfig  `json:"log_bucket"`
-	LogBucketLongRetention           APIBucketConfig  `json:"log_bucket_long_retention"`
-	LogBucketFailedTasks             APIBucketConfig  `json:"log_bucket_failed_tasks"`
-	LongRetentionProjects            []string         `json:"long_retention_projects"`
+	LogBucket                      APIBucketConfig `json:"log_bucket"`
+	LogBucketLongRetention         APIBucketConfig `json:"log_bucket_long_retention"`
+	LogBucketFailedTasks           APIBucketConfig `json:"log_bucket_failed_tasks"`
+	LongRetentionProjects          []string        `json:"long_retention_projects"`
+	RetryFailedLogMoveLookbackDays *int            `json:"retry_failed_log_move_lookback_days,omitempty"`
+	// Kept for Spruce backward compatibility.
 	RetryFailedLogMoveLookbackMonths *int             `json:"retry_failed_log_move_lookback_months,omitempty"`
 	RetryFailedLogMoveMaxJobsPerRun  *int             `json:"retry_failed_log_move_max_jobs_per_run,omitempty"`
 	TestResultsBucket                APIBucketConfig  `json:"test_results_bucket"`
@@ -788,11 +791,16 @@ type APIBucketsConfig struct {
 }
 
 type APIBucketConfig struct {
-	Name              *string `json:"name"`
-	Type              *string `json:"type"`
-	DBName            *string `json:"db_name"`
-	TestResultsPrefix *string `json:"test_results_prefix"`
-	RoleARN           *string `json:"role_arn"`
+	Name                    *string    `json:"name"`
+	Type                    *string    `json:"type"`
+	DBName                  *string    `json:"db_name"`
+	TestResultsPrefix       *string    `json:"test_results_prefix"`
+	RoleARN                 *string    `json:"role_arn"`
+	ExpirationDays          *int       `json:"expiration_days,omitempty"`
+	TransitionToIADays      *int       `json:"transition_to_ia_days,omitempty"`
+	TransitionToGlacierDays *int       `json:"transition_to_glacier_days,omitempty"`
+	LifecycleLastSyncedAt   *time.Time `json:"lifecycle_last_synced_at,omitempty"`
+	LifecycleSyncError      *string    `json:"lifecycle_sync_error,omitempty"`
 }
 
 type APIProjectToPrefixMapping struct {
@@ -812,19 +820,41 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+		a.LogBucket.ExpirationDays = v.LogBucket.ExpirationDays
+		a.LogBucket.TransitionToIADays = v.LogBucket.TransitionToIADays
+		a.LogBucket.TransitionToGlacierDays = v.LogBucket.TransitionToGlacierDays
+		if !v.LogBucket.LifecycleLastSyncedAt.IsZero() {
+			a.LogBucket.LifecycleLastSyncedAt = &v.LogBucket.LifecycleLastSyncedAt
+		}
+		a.LogBucket.LifecycleSyncError = utility.ToStringPtr(v.LogBucket.LifecycleSyncError)
 
 		a.LogBucketLongRetention.Name = utility.ToStringPtr(v.LogBucketLongRetention.Name)
 		a.LogBucketLongRetention.Type = utility.ToStringPtr(string(v.LogBucketLongRetention.Type))
 		a.LogBucketLongRetention.DBName = utility.ToStringPtr(v.LogBucketLongRetention.DBName)
 		a.LogBucketLongRetention.RoleARN = utility.ToStringPtr(v.LogBucketLongRetention.RoleARN)
+		a.LogBucketLongRetention.ExpirationDays = v.LogBucketLongRetention.ExpirationDays
+		a.LogBucketLongRetention.TransitionToIADays = v.LogBucketLongRetention.TransitionToIADays
+		a.LogBucketLongRetention.TransitionToGlacierDays = v.LogBucketLongRetention.TransitionToGlacierDays
+		if !v.LogBucketLongRetention.LifecycleLastSyncedAt.IsZero() {
+			a.LogBucketLongRetention.LifecycleLastSyncedAt = &v.LogBucketLongRetention.LifecycleLastSyncedAt
+		}
+		a.LogBucketLongRetention.LifecycleSyncError = utility.ToStringPtr(v.LogBucketLongRetention.LifecycleSyncError)
 
 		a.LogBucketFailedTasks.Name = utility.ToStringPtr(v.LogBucketFailedTasks.Name)
 		a.LogBucketFailedTasks.Type = utility.ToStringPtr(string(v.LogBucketFailedTasks.Type))
 		a.LogBucketFailedTasks.DBName = utility.ToStringPtr(v.LogBucketFailedTasks.DBName)
 		a.LogBucketFailedTasks.RoleARN = utility.ToStringPtr(v.LogBucketFailedTasks.RoleARN)
+		a.LogBucketFailedTasks.ExpirationDays = v.LogBucketFailedTasks.ExpirationDays
+		a.LogBucketFailedTasks.TransitionToIADays = v.LogBucketFailedTasks.TransitionToIADays
+		a.LogBucketFailedTasks.TransitionToGlacierDays = v.LogBucketFailedTasks.TransitionToGlacierDays
+		if !v.LogBucketFailedTasks.LifecycleLastSyncedAt.IsZero() {
+			a.LogBucketFailedTasks.LifecycleLastSyncedAt = &v.LogBucketFailedTasks.LifecycleLastSyncedAt
+		}
+		a.LogBucketFailedTasks.LifecycleSyncError = utility.ToStringPtr(v.LogBucketFailedTasks.LifecycleSyncError)
 
 		a.LongRetentionProjects = v.LongRetentionProjects
-		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackMonths)
+		a.RetryFailedLogMoveLookbackDays = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
+		a.RetryFailedLogMoveLookbackMonths = utility.ToIntPtr(v.RetryFailedLogMoveLookbackDays)
 		a.RetryFailedLogMoveMaxJobsPerRun = utility.ToIntPtr(v.RetryFailedLogMoveMaxJobsPerRun)
 
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
@@ -854,6 +884,12 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 	}
 
+	// Prefer Days; fall back to Months for Spruce backward compatibility.
+	lookbackDays := a.RetryFailedLogMoveLookbackDays
+	if lookbackDays == nil {
+		lookbackDays = a.RetryFailedLogMoveLookbackMonths
+	}
+
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
 			Name:   utility.FromStringPtr(a.LogBucket.Name),
@@ -872,9 +908,9 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			DBName:  utility.FromStringPtr(a.LogBucketFailedTasks.DBName),
 			RoleARN: utility.FromStringPtr(a.LogBucketFailedTasks.RoleARN),
 		},
-		LongRetentionProjects:            a.LongRetentionProjects,
-		RetryFailedLogMoveLookbackMonths: utility.FromIntPtr(a.RetryFailedLogMoveLookbackMonths),
-		RetryFailedLogMoveMaxJobsPerRun:  utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
+		LongRetentionProjects:           a.LongRetentionProjects,
+		RetryFailedLogMoveLookbackDays:  utility.FromIntPtr(lookbackDays),
+		RetryFailedLogMoveMaxJobsPerRun: utility.FromIntPtr(a.RetryFailedLogMoveMaxJobsPerRun),
 		TestResultsBucket: evergreen.BucketConfig{
 			Name:              utility.FromStringPtr(a.TestResultsBucket.Name),
 			Type:              evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),

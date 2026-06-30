@@ -260,12 +260,19 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	defer span.End()
 
 	span.SetAttributes(attribute.Int(numGenerateTaskBVAttribute, len(g.BuildVariants)))
-	// Inherit priority from the parent generator task.
-	for i, projBv := range p.BuildVariants {
-		for j := range projBv.Tasks {
-			p.BuildVariants[i].Tasks[j].Priority = g.Task.Priority
+	// Copy the project so we don't mutate a pointer that may be shared with
+	// the translation cache, then inherit priority from the parent generator task.
+	pLocal := *p
+	pLocal.BuildVariants = make([]BuildVariant, len(p.BuildVariants))
+	for i, bv := range p.BuildVariants {
+		pLocal.BuildVariants[i] = bv
+		pLocal.BuildVariants[i].Tasks = make([]BuildVariantTaskUnit, len(bv.Tasks))
+		copy(pLocal.BuildVariants[i].Tasks, bv.Tasks)
+		for j := range pLocal.BuildVariants[i].Tasks {
+			pLocal.BuildVariants[i].Tasks[j].Priority = g.Task.Priority
 		}
 	}
+	p = &pLocal
 
 	existingBuilds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {

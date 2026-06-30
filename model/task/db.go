@@ -40,6 +40,14 @@ var (
 		{Key: OverrideDependenciesKey, Value: 1},
 		{Key: UnattainableDependencyKey, Value: 1},
 	}
+
+	// RetryFailedLogMoveIndex is the index used by the hourly retry-failed-log-move cron to find
+	// failed tasks whose logs still need to be copied to the failed-tasks bucket.
+	RetryFailedLogMoveIndex = bson.D{
+		{Key: StatusKey, Value: 1},
+		{Key: FinishTimeKey, Value: -1},
+		{Key: TaskOutputInfoKey + ".task_logs.bucket_config.name", Value: 1},
+	}
 )
 
 var (
