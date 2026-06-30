@@ -679,8 +679,9 @@ const (
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 
 	// Rate limiting response headers
-	RateLimitLimitHeader            = "X-RateLimit-Limit"
-	RateLimitRemainingHeader        = "X-RateLimit-Remaining"
+	RateLimitLimitHeader            = "X-RateLimit-Limit"             // Hourly request limit for the user.
+	RateLimitBurstHeader            = "X-RateLimit-Burst"             // Maximum number of requests that can be made in a short burst.
+	RateLimitRemainingHeader        = "X-RateLimit-Remaining"         // Remaining requests in the current window before hitting the limit.
 	RateLimitResetHeader            = "X-RateLimit-Reset"             // Absolute Unix timestamp (seconds) at which the window resets.
 	RateLimitExceededHeader         = "X-RateLimit-Exceeded"          // Set in warn-only mode (request still served) and on a 429.
 	RetryAfterHeader                = "Retry-After"                   // Standard HTTP header (RFC 9110), a delta in seconds, set alongside a 429.
