@@ -230,7 +230,7 @@ func CreateAndStart(ctx context.Context, cfg Config) (*TaskContainer, error) {
 	// typically ready within a few seconds of starting.
 	name := cfg.containerName()
 	var resp container.CreateResponse
-	for attempt := 0; attempt < containerCreateMaxAttempts; attempt++ {
+	for attempt := range containerCreateMaxAttempts {
 		resp, err = cli.ContainerCreate(ctx, containerCfg, hostCfg, nil, nil, name)
 		if err == nil {
 			break
@@ -306,10 +306,6 @@ func (tc *TaskContainer) Destroy(ctx context.Context) error {
 // entire task duration.
 const imagePullTimeout = 5 * time.Minute
 
-// ensureImage pulls the image if it is not already present locally. For ECR
-// registries it fetches a short-lived auth token via the instance's IAM role
-// dockerReadyTimeout caps how long we wait for the Docker daemon to become
-// healthy before attempting ContainerCreate. 30 seconds is generous but
 // isDockerEOF reports whether err is the specific "connection closed before
 // response" error returned by the Docker SDK when the daemon drops the socket
 // mid-request. This happens when Docker is restarting — the daemon accepts the
@@ -319,6 +315,8 @@ func isDockerEOF(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "EOF")
 }
 
+// ensureImage pulls the image if it is not already present locally. For ECR
+// registries it fetches a short-lived auth token via the instance's IAM role
 // and passes it directly to the Docker API, avoiding any dependency on
 // external credential helpers or CLI tooling.
 func ensureImage(ctx context.Context, cli *client.Client, img string, log grip.Journaler) error {
