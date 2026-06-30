@@ -1,6 +1,7 @@
 package model
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -92,20 +93,19 @@ func TestGetOrComputeTranslation(t *testing.T) {
 	t.Run("CoalescesConcurrentCallsLRUEnabled", func(t *testing.T) {
 		t.Cleanup(resetTranslationCacheForTesting)
 
-		entered := make(chan struct{})
-		release := make(chan struct{})
+		const n = 5
+		var calledCount atomic.Int64
 		var computeCount atomic.Int64
 		compute := func() (*Project, error) {
-			select {
-			case entered <- struct{}{}: // signal first entry
-			default:
+			// Yield until all goroutines have called getOrComputeTranslation so
+			// they are queued in singleflight before compute returns.
+			for calledCount.Load() < n {
+				runtime.Gosched()
 			}
-			<-release
 			computeCount.Add(1)
 			return &Project{Identifier: "coalesced"}, nil
 		}
 
-		const n = 5
 		projs := make([]*Project, n)
 		errs := make([]error, n)
 		var wg sync.WaitGroup
@@ -113,13 +113,11 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
+				calledCount.Add(1)
 				projs[i], _, errs[i] = getOrComputeTranslation("k", true, compute)
 			}(i)
 		}
 
-		<-entered                        // first goroutine is inside compute
-		time.Sleep(5 * time.Millisecond) // let remaining goroutines queue in singleflight
-		close(release)
 		wg.Wait()
 
 		assert.Equal(t, int64(1), computeCount.Load(), "concurrent calls should coalesce into one compute")
@@ -132,34 +130,48 @@ func TestGetOrComputeTranslation(t *testing.T) {
 	t.Run("CoalescesConcurrentCallsLRUDisabled", func(t *testing.T) {
 		t.Cleanup(resetTranslationCacheForTesting)
 		// Singleflight coalesces concurrent calls even without the LRU cache.
-		entered := make(chan struct{})
-		release := make(chan struct{})
+		// Unlike the LRU-enabled path, there is no re-check inside Do, so the
+		// test must ensure all followers have reached singleflight.Do before
+		// compute returns. We launch followers only after compute is running,
+		// then sleep briefly after all followers signal so they can enter Do.
+		const n = 5
 		var computeCount atomic.Int64
+
+		computeActive := make(chan struct{})
+		var followerCount atomic.Int64
+
 		compute := func() (*Project, error) {
-			select {
-			case entered <- struct{}{}: // signal first entry
-			default:
+			close(computeActive)
+			for followerCount.Load() < n-1 {
+				runtime.Gosched()
 			}
-			<-release
+			// Give followers time to reach singleflight.Do before returning.
+			time.Sleep(time.Millisecond)
 			computeCount.Add(1)
 			return &Project{Identifier: "coalesced-no-lru"}, nil
 		}
 
-		const n = 5
 		projs := make([]*Project, n)
 		errs := make([]error, n)
 		var wg sync.WaitGroup
-		for i := range n {
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			projs[0], _, errs[0] = getOrComputeTranslation("k", false, compute)
+		}()
+
+		<-computeActive
+
+		for i := 1; i < n; i++ {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
+				followerCount.Add(1)
 				projs[i], _, errs[i] = getOrComputeTranslation("k", false, compute)
 			}(i)
 		}
 
-		<-entered
-		time.Sleep(5 * time.Millisecond)
-		close(release)
 		wg.Wait()
 
 		assert.Equal(t, int64(1), computeCount.Load(), "singleflight coalesces even without LRU")
@@ -173,33 +185,42 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		t.Cleanup(resetTranslationCacheForTesting)
 		// All concurrent singleflight waiters receive the error when compute fails.
 		// The next sequential call must retry (singleflight does not cache errors).
-		entered := make(chan struct{})
-		release := make(chan struct{})
+		const n = 5
 		var computeCount atomic.Int64
+
+		computeActive := make(chan struct{})
+		var followerCount atomic.Int64
+
 		compute := func() (*Project, error) {
-			select {
-			case entered <- struct{}{}:
-			default:
+			close(computeActive)
+			for followerCount.Load() < n-1 {
+				runtime.Gosched()
 			}
-			<-release
+			time.Sleep(time.Millisecond)
 			computeCount.Add(1)
 			return nil, errors.New("compute error")
 		}
 
-		const n = 5
 		errs := make([]error, n)
 		var wg sync.WaitGroup
-		for i := range n {
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _, errs[0] = getOrComputeTranslation("k", false, compute)
+		}()
+
+		<-computeActive
+
+		for i := 1; i < n; i++ {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()
+				followerCount.Add(1)
 				_, _, errs[i] = getOrComputeTranslation("k", false, compute)
 			}(i)
 		}
 
-		<-entered
-		time.Sleep(5 * time.Millisecond)
-		close(release)
 		wg.Wait()
 
 		assert.Equal(t, int64(1), computeCount.Load(), "singleflight should coalesce concurrent failed computes")
