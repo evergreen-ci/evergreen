@@ -2640,7 +2640,7 @@ buildvariants:
 `
 	pp := &ParserProject{}
 	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(baseYAML), &pp))
-	p0, err := TranslateProject(pp)
+	p0, err := TranslateProject(t.Context(), pp)
 	require.NoError(t, err)
 
 	g, err := ParseProjectFromJSONString(generateTasksJSON)
@@ -2649,7 +2649,7 @@ buildvariants:
 	cached := cacheProjectData(p0)
 	mergedPP, err := g.addGeneratedProjectToConfig(pp, cached)
 	require.NoError(t, err)
-	p, err := TranslateProject(mergedPP)
+	p, err := TranslateProject(t.Context(), mergedPP)
 	require.NoError(t, err)
 
 	v := &Version{Requester: evergreen.RepotrackerVersionRequester}

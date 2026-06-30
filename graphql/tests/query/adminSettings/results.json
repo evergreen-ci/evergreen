@@ -204,6 +204,7 @@
               "generateTaskFactor": 50,
               "numDependentsFactor": 5,
               "stepbackTaskFactor": 10,
+              "translateProjectConcurrencyLimit": 15,
               "hostAllocator": "UTILIZATION",
               "hostAllocatorRoundingRule": "DOWN",
               "hostAllocatorFeedbackRule": "NO_FEEDBACK",
