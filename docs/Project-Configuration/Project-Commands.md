@@ -1842,8 +1842,8 @@ populate an output JSON file, which your task can use to decide which tests shou
 
 This command can only request selected tests if [the test selection feature is enabled by the
 project](Project-and-Distro-Settings#test-selection-settings) and the task is running in a patch. On mainline commits and
-other non-patch versions, the command writes an empty test list to the output file and does not select out any tests,
-even if the version page shows that test selection is enabled.
+other non-patch versions, the command writes an empty test list to the output file, so no tests are excluded, even if the
+version page shows that test selection is enabled.
 
 ```yaml
 - command: test_selection.get
