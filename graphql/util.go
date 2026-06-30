@@ -55,7 +55,8 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	hasUser := gimlet.GetUser(ctx) != nil
-	strippedFiles, err := artifact.StripHiddenFiles(ctx, taskFiles, hasUser)
+	baseURL := evergreen.GetEnvironment().Settings().Ui.Url
+	strippedFiles, err := artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution)
 	if err != nil {
 		return nil, err
 	}

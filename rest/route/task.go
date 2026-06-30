@@ -123,6 +123,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeArtifacts:         true,
 		LogURL:                   GetURL(ctx),
 		ParsleyLogURL:            tgh.parsleyURL,
+		BaseURL:                  GetURL(ctx),
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tgh.taskID))
@@ -135,7 +136,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(ctx, tasks, GetURL(ctx), tgh.parsleyURL); err != nil {
+		if err = taskModel.BuildPreviousExecutions(ctx, tasks, GetURL(ctx), tgh.parsleyURL, GetURL(ctx)); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding previous task executions to API model for task '%s'", tgh.taskID))
 		}
 	}

@@ -142,6 +142,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeArtifacts:         true,
 			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tph.parsleyURL,
+			BaseURL:                  GetURL(ctx),
 		})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
