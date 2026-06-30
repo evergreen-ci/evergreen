@@ -21,6 +21,7 @@ import (
 	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
+	serviceTestUtil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -61,6 +62,8 @@ type cliTestHarness struct {
 }
 
 func setupCLITestHarness(ctx context.Context) cliTestHarness {
+	serviceTestUtil.MockUser.OnlyAPI = true
+
 	// create a test API server
 	testServer, err := service.CreateTestServer(ctx, testConfig, nil, false)
 	So(err, ShouldBeNil)

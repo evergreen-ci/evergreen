@@ -14,7 +14,7 @@
       "result": {
         "data": {
           "userConfig": {
-            "api_key": "",
+            "api_key": "regular_api_key",
             "api_server_host": "https://localhost:8443/api",
             "corp_api_server_host": "https://localhost.corp:8443/api",
             "ui_server_host": "http://spruce.localhost",
@@ -33,7 +33,7 @@
       "result": {
         "data": {
           "userConfig": {
-            "api_key": "",
+            "api_key": "regular_api_key",
             "api_server_host": "https://localhost:8443/api",
             "corp_api_server_host": "https://localhost.corp:8443/api",
             "ui_server_host": "http://spruce.localhost",
