@@ -547,6 +547,45 @@ func TestGetFullPatchParams(t *testing.T) {
 	}
 }
 
+func TestGetFullPatchParamsMultiAlias(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectAliasCollection))
+	ctx := t.Context()
+	pRef := ProjectRef{Id: "proj"}
+	require.NoError(t, pRef.Insert(ctx))
+
+	noParamsA := ProjectAlias{ProjectID: "proj", Alias: "a", Variant: ".*", Task: ".*"}
+	noParamsB := ProjectAlias{ProjectID: "proj", Alias: "b", Variant: ".*", Task: ".*"}
+	withParam := ProjectAlias{ProjectID: "proj", Alias: "c", Variant: ".*", Task: ".*", Parameters: []patch.Parameter{{Key: "k", Value: "v"}}}
+	require.NoError(t, noParamsA.Upsert(ctx))
+	require.NoError(t, noParamsB.Upsert(ctx))
+	require.NoError(t, withParam.Upsert(ctx))
+
+	t.Run("MatchingParamSetsMerge", func(t *testing.T) {
+		p := patch.Patch{
+			Id:         patch.NewId("aaaaaaaaaaff001122334455"),
+			Project:    "proj",
+			Aliases:    []string{"a", "b"},
+			Parameters: []patch.Parameter{{Key: "user", Value: "1"}},
+		}
+		params, err := getFullPatchParams(ctx, &p)
+		require.NoError(t, err)
+		require.Len(t, params, 1)
+		assert.Equal(t, "user", params[0].Key)
+		assert.Equal(t, "1", params[0].Value)
+	})
+
+	t.Run("ConflictingParamSetsError", func(t *testing.T) {
+		p := patch.Patch{
+			Id:      patch.NewId("bbbbbbbbbbff001122334455"),
+			Project: "proj",
+			Aliases: []string{"a", "c"},
+		}
+		_, err := getFullPatchParams(ctx, &p)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "conflicting parameter")
+	})
+}
+
 func TestMakePatchedConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
