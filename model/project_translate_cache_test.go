@@ -351,3 +351,100 @@ func TestFindProjectFromVersionID(t *testing.T) {
 
 	assert.Equal(t, projectID, project.Identifier)
 }
+
+func TestParserProjectContentSHA(t *testing.T) {
+	t.Run("StableAcrossRepeatedCalls", func(t *testing.T) {
+		pp := &ParserProject{
+			Identifier: utility.ToStringPtr("my-project"),
+			Functions: map[string]*YAMLCommandSet{
+				"fn1": {SingleCommand: &PluginCommandConf{Command: "shell.exec"}},
+				"fn2": {SingleCommand: &PluginCommandConf{Command: "s3.put"}},
+			},
+		}
+		sha1, err := parserProjectContentSHA(pp)
+		require.NoError(t, err)
+		sha2, err := parserProjectContentSHA(pp)
+		require.NoError(t, err)
+		assert.Equal(t, sha1, sha2, "same struct must hash identically on every call")
+	})
+
+	t.Run("StableAcrossMapInsertionOrder", func(t *testing.T) {
+		// encoding/json sorts map keys, so two maps with the same entries produce the same
+		// hash regardless of which order the keys were inserted.
+		cmd1 := &PluginCommandConf{Command: "shell.exec"}
+		cmd2 := &PluginCommandConf{Command: "s3.put"}
+		pp1 := &ParserProject{
+			Functions: map[string]*YAMLCommandSet{
+				"alpha": {SingleCommand: cmd1},
+				"beta":  {SingleCommand: cmd2},
+			},
+		}
+		pp2 := &ParserProject{
+			Functions: map[string]*YAMLCommandSet{
+				"beta":  {SingleCommand: cmd2},
+				"alpha": {SingleCommand: cmd1},
+			},
+		}
+		sha1, err := parserProjectContentSHA(pp1)
+		require.NoError(t, err)
+		sha2, err := parserProjectContentSHA(pp2)
+		require.NoError(t, err)
+		assert.Equal(t, sha1, sha2, "map insertion order must not affect the hash")
+	})
+
+	t.Run("SensitiveToFieldChanges", func(t *testing.T) {
+		pp := &ParserProject{Identifier: utility.ToStringPtr("project-a")}
+		sha1, err := parserProjectContentSHA(pp)
+		require.NoError(t, err)
+		pp.Identifier = utility.ToStringPtr("project-b")
+		sha2, err := parserProjectContentSHA(pp)
+		require.NoError(t, err)
+		assert.NotEqual(t, sha1, sha2, "changed field must produce a different hash")
+	})
+}
+
+// TestParserProjectContentSHASelfInvalidation verifies that content-hash keying gives a cache hit
+// for unchanged content and a miss after content changes, with no invalidation call.
+func TestParserProjectContentSHASelfInvalidation(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+
+	identifier := "my-project"
+
+	pp := &ParserProject{
+		Identifier: utility.ToStringPtr(identifier),
+		Tasks:      []parserTask{{Name: "original-task"}},
+	}
+	sha, err := parserProjectContentSHA(pp)
+	require.NoError(t, err)
+	key := contentTranslationKey(sha, identifier)
+
+	_, hit, err := getOrComputeTranslation(key, true, func() (*Project, error) {
+		return &Project{Identifier: identifier, Tasks: []ProjectTask{{Name: "original-task"}}}, nil
+	})
+	require.NoError(t, err)
+	assert.False(t, hit, "first call is a cache miss")
+
+	_, hit, err = getOrComputeTranslation(key, true, func() (*Project, error) {
+		t.Fatal("compute must not be called on a cache hit")
+		return nil, nil
+	})
+	require.NoError(t, err)
+	assert.True(t, hit, "unchanged content key is a cache hit")
+
+	// Simulate generate.tasks: changed content → different hash → new key → miss, no invalidation.
+	ppGenerated := &ParserProject{
+		Identifier: utility.ToStringPtr(identifier),
+		Tasks:      []parserTask{{Name: "original-task"}, {Name: "generated-task"}},
+	}
+	shaGenerated, err := parserProjectContentSHA(ppGenerated)
+	require.NoError(t, err)
+	require.NotEqual(t, sha, shaGenerated, "new content must produce a different hash")
+	keyGenerated := contentTranslationKey(shaGenerated, identifier)
+
+	pGenerated, hit, err := getOrComputeTranslation(keyGenerated, true, func() (*Project, error) {
+		return &Project{Identifier: identifier, Tasks: []ProjectTask{{Name: "original-task"}, {Name: "generated-task"}}}, nil
+	})
+	require.NoError(t, err)
+	assert.False(t, hit, "changed content produces a new key that is a cache miss")
+	require.Len(t, pGenerated.Tasks, 2)
+}
