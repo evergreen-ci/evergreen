@@ -655,7 +655,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}
 	} else {
-		project, err = dbModel.FindProjectFromVersionID(ctx, dbVersion.Id)
+		project, _, err = dbModel.FindAndTranslateProjectForVersion(ctx, p.env.Settings(), dbVersion, false)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for version '%s'", dbVersion.Id))
 		}
