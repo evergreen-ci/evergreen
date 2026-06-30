@@ -1270,17 +1270,9 @@ func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
 }
 
 func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project, error) {
-	ver, err := VersionFindOne(ctx, VersionById(versionStr).WithFields(VersionIdKey))
-	if err != nil {
-		return nil, err
-	}
-	if ver == nil {
-		return nil, errors.Errorf("version '%s' not found", versionStr)
-	}
-
 	env := evergreen.GetEnvironment()
 
-	project, _, err := FindAndTranslateProjectForVersion(ctx, env.Settings(), ver, false)
+	project, _, err := FindAndTranslateProjectForVersionID(ctx, env.Settings(), versionStr, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "loading project config for version '%s'", versionStr)
 	}

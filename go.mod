@@ -1,6 +1,6 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.25.0
+go 1.24.9
 
 require (
 	github.com/99designs/gqlgen v0.17.86
@@ -13,7 +13,7 @@ require (
 	github.com/aws/smithy-go v1.25.1
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/docker/go-connections v0.6.0
+	github.com/docker/go-connections v0.7.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20260326190252-5ab5e35f6cb7
@@ -42,7 +42,7 @@ require (
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.17
-	github.com/vektah/gqlparser/v2 v2.5.35
+	github.com/vektah/gqlparser/v2 v2.5.32
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.64.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.64.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.64.0
@@ -66,7 +66,7 @@ require (
 )
 
 require (
-	github.com/Microsoft/go-winio v0.4.21 // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
@@ -113,7 +113,7 @@ require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/klauspost/pgzip v1.2.6
@@ -155,7 +155,7 @@ require (
 	go.opentelemetry.io/contrib v1.36.0 // indirect
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sync v0.21.0
+	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
@@ -175,9 +175,9 @@ require (
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
-	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
+	github.com/kanopy-platform/kanopy-oidc-lib v0.1.4
 	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
-	github.com/parquet-go/parquet-go v0.30.1
+	github.com/parquet-go/parquet-go v0.29.0
 	github.com/redis/go-redis/v9 v9.20.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/sirupsen/logrus v1.9.4

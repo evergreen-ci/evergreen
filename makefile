@@ -83,7 +83,7 @@ endif
 
 clientBuildDir := clients
 macOSPlatforms := $(if $(STAGING_ONLY),,darwin_amd64 darwin_arm64)
-linuxPlatforms := linux_amd64 $(if $(STAGING_ONLY),,linux_s390x linux_arm64 linux_ppc64le)
+linuxPlatforms := linux_amd64 linux_arm64 $(if $(STAGING_ONLY),,linux_s390x linux_ppc64le)
 windowsPlatforms := windows_amd64
 unixBinaryBasename := evergreen
 windowsBinaryBasename := evergreen.exe
