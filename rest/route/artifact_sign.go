@@ -8,6 +8,9 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
+// artifactSignHandler generates a presigned S3 URL for a signed artifact and
+// redirects the caller to it. It uses a raw http.HandlerFunc rather than a
+// gimlet.RouteHandler because the response is an HTTP redirect, not JSON.
 func artifactSignHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := gimlet.GetVars(r)["task_id"]
