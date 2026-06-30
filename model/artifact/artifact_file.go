@@ -130,7 +130,7 @@ func lazySignURL(baseURL, taskID string, execution int, fileName string) string 
 
 // StripHiddenFilesLazy filters files by visibility and replaces signed file
 // links with lazy redirect URLs instead of eagerly presigning them.
-func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID string, execution int) ([]File, error) {
+func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID string, execution int) []File {
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
@@ -145,7 +145,7 @@ func StripHiddenFilesLazy(files []File, hasUser bool, baseURL string, taskID str
 			publicFiles = append(publicFiles, file)
 		}
 	}
-	return publicFiles, nil
+	return publicFiles
 }
 
 // PresignFile generates a presigned S3 URL for the given artifact file.

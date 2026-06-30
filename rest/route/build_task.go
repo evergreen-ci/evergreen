@@ -110,7 +110,6 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeProjectIdentifier: true,
 			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tbh.parsleyURL,
-			BaseURL:                  GetURL(ctx),
 		}); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
 		}
@@ -123,7 +122,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived task '%s'", tasks[i].Id))
 			}
 
-			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, GetURL(ctx), tbh.parsleyURL, GetURL(ctx)); err != nil {
+			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, GetURL(ctx), tbh.parsleyURL); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
 			}
 		}

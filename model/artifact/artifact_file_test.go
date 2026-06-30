@@ -288,8 +288,7 @@ func TestStripHiddenFilesLazy(t *testing.T) {
 			{Name: "signed_file", Link: "https://s3.amazonaws.com/bucket/key", Visibility: Signed},
 			{Name: "public_file", Link: "https://example.com/public", Visibility: Public},
 		}
-		result, err := StripHiddenFilesLazy(files, true, baseURL, taskID, execution)
-		assert.NoError(t, err)
+		result := StripHiddenFilesLazy(files, true, baseURL, taskID, execution)
 		assert.Len(t, result, 2)
 		assert.Equal(t, "https://evergreen.example.com/rest/v2/tasks/task1/artifact/sign?execution=1&name=signed_file", result[0].Link)
 		assert.Equal(t, "https://example.com/public", result[1].Link)
@@ -300,16 +299,14 @@ func TestStripHiddenFilesLazy(t *testing.T) {
 			{Name: "private_no_user", Link: "https://example.com/private", Visibility: Private},
 			{Name: "signed_no_user", Link: "https://s3.amazonaws.com/bucket/key", Visibility: Signed},
 		}
-		result, err := StripHiddenFilesLazy(files, false, baseURL, taskID, execution)
-		assert.NoError(t, err)
+		result := StripHiddenFilesLazy(files, false, baseURL, taskID, execution)
 		assert.Empty(t, result)
 	})
 	t.Run("PrivateFilesVisibleWithUser", func(t *testing.T) {
 		files := []File{
 			{Name: "private_file", Link: "https://example.com/private", Visibility: Private},
 		}
-		result, err := StripHiddenFilesLazy(files, true, baseURL, taskID, execution)
-		assert.NoError(t, err)
+		result := StripHiddenFilesLazy(files, true, baseURL, taskID, execution)
 		assert.Len(t, result, 1)
 		assert.Equal(t, "https://example.com/private", result[0].Link)
 	})

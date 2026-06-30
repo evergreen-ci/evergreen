@@ -313,7 +313,7 @@ func (ar *APIResourceConstraintInfo) ToService() *apimodels.ResourceConstraintIn
 }
 
 // BuildPreviousExecutions adds the given previous executions to the given API task.
-func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Task, logURL, parsleyURL, baseURL string) error {
+func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Task, logURL, parsleyURL string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
 		if err := at.PreviousExecutions[i].BuildFromService(ctx, &tasks[i], &APITaskArgs{
@@ -322,7 +322,6 @@ func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Tas
 			IncludeArtifacts:         true,
 			LogURL:                   logURL,
 			ParsleyLogURL:            parsleyURL,
-			BaseURL:                  baseURL,
 		}); err != nil {
 			return errors.Wrapf(err, "converting previous task execution at index %d to API model", i)
 		}
@@ -477,7 +476,6 @@ type APITaskArgs struct {
 	IncludeArtifacts         bool
 	LogURL                   string
 	ParsleyLogURL            string
-	BaseURL                  string
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -519,7 +517,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.getArtifacts(ctx, args.BaseURL); err != nil {
+		if err := at.getArtifacts(ctx, args.LogURL); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}
@@ -681,12 +679,12 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 		var strippedFiles []artifact.File
 		// The route requires a user, so hasUser is always true.
 		if baseURL != "" {
-			strippedFiles, err = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution)
+			strippedFiles = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution)
 		} else {
 			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
-		}
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
 		}
 		for _, file := range strippedFiles {
 			apiFile := APIFile{}

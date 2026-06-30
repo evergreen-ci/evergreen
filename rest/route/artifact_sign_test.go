@@ -83,4 +83,14 @@ func TestArtifactSignHandler(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	})
+	t.Run("SignedFileRedirects", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/tasks/task1/artifact/sign?execution=0&name=signed_report", nil)
+		req = gimlet.SetURLVars(req, map[string]string{"task_id": "task1"})
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		assert.Equal(t, http.StatusTemporaryRedirect, rr.Code)
+		location := rr.Header().Get("Location")
+		assert.Contains(t, location, "test-bucket")
+		assert.Contains(t, location, "path/to/file")
+	})
 }
