@@ -1342,9 +1342,9 @@ by the Release Infrastructure team, and you may receive assistance with it in
     product: mongosh
     version: 1.0.0
     filenames:
-        - mongosh-linux-amd64.tar.gz
-        - mongosh-linux-arm64.tar.gz
-        - *.zip
+      - mongosh-linux-amd64.tar.gz
+      - mongosh-linux-arm64.tar.gz
+      - *.zip
 ```
 
 Parameters:
