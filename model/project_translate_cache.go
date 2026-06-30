@@ -17,7 +17,6 @@ import (
 const (
 	projectTranslationCacheSize = 512
 	projectTranslationCacheTTL  = 30 * time.Minute
-	translationCacheEnabled     = false
 )
 
 var (
