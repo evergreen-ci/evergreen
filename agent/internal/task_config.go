@@ -95,6 +95,15 @@ type TaskConfig struct {
 	// BackgroundFailures is the send-only end of a channel for background command failures; the agent reads from the bidirectional end on taskContext.
 	BackgroundFailures chan<- error
 
+	// ContainerID is the Docker container ID for this task's isolation container.
+	// Empty if container isolation is not enabled for this task.
+	// Set by the agent before task commands run; read by exec.go and shell.go.
+	ContainerID string
+
+	// EnvFileHostDir is the host-side tmpfs directory for env-file forwarding.
+	// Set alongside ContainerID when container isolation is enabled.
+	EnvFileHostDir string
+
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
 	PatchOrVersionDescription string

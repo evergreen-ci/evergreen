@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -552,14 +553,15 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /task/{task_id}/distro_view
 type getDistroViewHandler struct {
 	hostID string
+	env    evergreen.Environment
 }
 
-func makeGetDistroView() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+func makeGetDistroView(env evergreen.Environment) gimlet.RouteHandler {
+	return &getDistroViewHandler{env: env}
 }
 
 func (h *getDistroViewHandler) Factory() gimlet.RouteHandler {
-	return &getDistroViewHandler{}
+	return &getDistroViewHandler{env: h.env}
 }
 
 func (h *getDistroViewHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -589,6 +591,70 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		DisableShallowClone: foundHost.Distro.DisableShallowClone,
 		Mountpoints:         foundHost.Distro.Mountpoints,
 		ExecUser:            foundHost.Distro.ExecUser,
+	}
+	// Prefer live distro settings over the embedded snapshot for fields that
+	// affect task isolation. Hosts provisioned before container isolation was
+	// configured carry a stale snapshot; a live lookup ensures they pick up
+	// the current distro config. ExecUser is also refreshed because the distro
+	// validator couples it to ContainerIsolation.Enabled — they must be
+	// consistent or between-task process cleanup will be skipped.
+	//
+	// The live lookup is skipped when: (a) the host has no distro ID, or
+	// (b) the service-level kill switch is on (no isolation is active anywhere).
+	// This avoids an unconditional per-task-start DB round-trip on fleets where
+	// container isolation has not been enabled.
+	ci := foundHost.Distro.BootstrapSettings.ContainerIsolation
+	killSwitchOn := h.env != nil && h.env.Settings().ServiceFlags.ContainerIsolationDisabled
+	if foundHost.Distro.Id == "" {
+		grip.Warning(ctx, message.Fields{
+			"message": "host has no distro ID; skipping live distro lookup for container isolation",
+			"host_id": h.hostID,
+		})
+	} else if killSwitchOn {
+		// Kill switch is active — no live lookup needed; ci stays as embedded snapshot.
+	} else if liveDistro, err := distro.FindOneForDistroView(ctx, foundHost.Distro.Id); err != nil {
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message": "falling back to embedded distro snapshot for container isolation settings",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		}))
+	} else if liveDistro != nil {
+		ci = liveDistro.BootstrapSettings.ContainerIsolation
+		if liveDistro.ExecUser != "" {
+			dv.ExecUser = liveDistro.ExecUser
+		}
+	} else {
+		grip.Warning(ctx, message.Fields{
+			"message": "distro not found in live collection; using embedded snapshot for container isolation",
+			"host_id": h.hostID,
+			"distro":  foundHost.Distro.Id,
+		})
+	}
+
+	// Populate container isolation only when the distro has it enabled AND
+	// the admin kill switch (ContainerIsolationDisabled) is not set.
+	if ci.Enabled {
+		if h.env != nil && h.env.Settings().ServiceFlags.ContainerIsolationDisabled {
+			// Kill switch wins over per-distro settings, including RequireIsolation.
+			// Log a warning when the kill switch suppresses a fail-closed distro so
+			// the override is visible and operators can correlate host-mode tasks
+			// with the kill switch being active.
+			if ci.RequireIsolation {
+				grip.Warning(ctx, message.Fields{
+					"message": "container_isolation_disabled kill switch is overriding a require_isolation distro; tasks will run in host-mode",
+					"host_id": h.hostID,
+					"distro":  foundHost.Distro.Id,
+					"image":   ci.Image,
+				})
+			}
+		} else {
+			dv.ContainerIsolation = &apimodels.ContainerIsolationSettings{
+				Image:            ci.Image,
+				MemoryMB:         ci.MemoryMB,
+				CPUs:             ci.CPUs,
+				RequireIsolation: ci.RequireIsolation,
+			}
+		}
 	}
 	return gimlet.NewJSONResponse(dv)
 }

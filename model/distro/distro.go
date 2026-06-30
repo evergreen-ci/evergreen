@@ -129,9 +129,10 @@ type BootstrapSettings struct {
 	Communication string `bson:"communication,omitempty" json:"communication,omitempty" mapstructure:"communication,omitempty"`
 
 	// Optional
-	Env                 []EnvVar             `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
-	ResourceLimits      ResourceLimits       `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
-	PreconditionScripts []PreconditionScript `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
+	Env                 []EnvVar                   `bson:"env,omitempty" json:"env,omitempty" mapstructure:"env,omitempty"`
+	ResourceLimits      ResourceLimits             `bson:"resource_limits,omitempty" json:"resource_limits" mapstructure:"resource_limits,omitempty"`
+	ContainerIsolation  ContainerIsolationSettings `bson:"container_isolation,omitempty" json:"container_isolation,omitempty" mapstructure:"container_isolation,omitempty"`
+	PreconditionScripts []PreconditionScript       `bson:"precondition_scripts,omitempty" json:"precondition_scripts,omitempty" mapstructure:"precondition_scripts,omitempty"`
 
 	// Required for new provisioning
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
@@ -163,6 +164,21 @@ type ResourceLimits struct {
 	NumTasks        int `bson:"num_tasks,omitempty" json:"num_tasks,omitempty" mapstructure:"num_tasks,omitempty"`
 	LockedMemoryKB  int `bson:"locked_memory,omitempty" json:"locked_memory,omitempty" mapstructure:"locked_memory,omitempty"`
 	VirtualMemoryKB int `bson:"virtual_memory,omitempty" json:"virtual_memory,omitempty" mapstructure:"virtual_memory,omitempty"`
+}
+
+// ContainerIsolationSettings controls per-task container isolation.
+// When enabled, task commands (subprocess.exec, shell.exec) run inside
+// an ephemeral Docker container. The task working directory is bind-mounted
+// from the host into the container.
+type ContainerIsolationSettings struct {
+	Enabled  bool   `bson:"enabled" json:"enabled" mapstructure:"enabled"`
+	Image    string `bson:"image" json:"image" mapstructure:"image"`
+	MemoryMB int64  `bson:"memory_mb,omitempty" json:"memory_mb,omitempty" mapstructure:"memory_mb,omitempty"`
+	CPUs     int64  `bson:"cpus,omitempty" json:"cpus,omitempty" mapstructure:"cpus,omitempty"`
+	// RequireIsolation opts into fail-closed behavior. When true, container
+	// creation or image-pull failure fails the task immediately rather than
+	// degrading to host-mode. Default (false) is fail-open.
+	RequireIsolation bool `bson:"require_isolation,omitempty" json:"require_isolation,omitempty" mapstructure:"require_isolation,omitempty"`
 }
 
 type HomeVolumeSettings struct {
@@ -255,6 +271,14 @@ func (d *Distro) ValidateBootstrapSettings() error {
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.NumTasks < -1, "max number of tasks should be a positive number or -1")
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.LockedMemoryKB < -1, "max locked memory should be a positive number or -1")
 	catcher.NewWhen(d.IsLinux() && d.BootstrapSettings.ResourceLimits.VirtualMemoryKB < -1, "max virtual memory should be a positive number or -1")
+
+	if ci := d.BootstrapSettings.ContainerIsolation; ci.Enabled {
+		catcher.NewWhen(!d.IsLinux(), "container isolation is only supported on Linux")
+		catcher.NewWhen(ci.Image == "", "container image cannot be empty when container isolation is enabled")
+		catcher.NewWhen(d.ExecUser == "", "container isolation requires ExecUser to be set; it is used to scope between-task process cleanup inside the container's PID namespace")
+	} else if d.BootstrapSettings.ContainerIsolation.RequireIsolation {
+		catcher.New("require_isolation has no effect when container isolation is not enabled")
+	}
 
 	return catcher.Resolve()
 }
