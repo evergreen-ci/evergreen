@@ -839,7 +839,7 @@ selection when submitting a manual patch from [the CLI](../CLI.md#test-selection
 
 Test selection can appear enabled on mainline commit versions when these project and task settings are enabled. However,
 the [test selection command](Project-Commands#test_selectionget) only requests selected tests for patch tasks. On
-mainline commits and other non-patch versions, the command writes an empty test list and does not select out any tests.
+mainline commits and other non-patch versions, the command writes an empty test list, so no tests are excluded.
 
 ## GitHub App Settings
 
