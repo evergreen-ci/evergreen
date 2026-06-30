@@ -426,7 +426,7 @@ func TestTranslateTasks(t *testing.T) {
 			Tasks: []string{"tg_task"},
 		}},
 	}
-	out, err := TranslateProject(parserProject)
+	out, err := TranslateProject(t.Context(), parserProject)
 	assert.NoError(t, err)
 	assert.NotNil(t, out)
 	require.Len(t, out.Tasks, 6)
@@ -555,7 +555,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: "t2", Variant: &variantSelector{StringSelector: "v1"}}}},
 				},
 			}
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			deps := out.Tasks[2].DependsOn
@@ -579,7 +579,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: ".a !.b", Variant: &variantSelector{StringSelector: ".cool"}}}},
 				},
 			}
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(out.Tasks[1].DependsOn[0].Name, ShouldEqual, "*")
@@ -608,7 +608,7 @@ func TestTranslateDependsOn(t *testing.T) {
 				}},
 			}
 
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldNotBeNil)
 			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 6)
@@ -634,7 +634,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 				},
 			}}
 
-			out, err := TranslateProject(pp)
+			out, err := TranslateProject(t.Context(), pp)
 			So(out, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(out.BuildVariants), ShouldEqual, 1)
@@ -1374,7 +1374,7 @@ tasks:
 	assert.Len(pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 1)
 	assert.Equal(".even", pp.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
 
-	proj, err := TranslateProject(pp)
+	proj, err := TranslateProject(t.Context(), pp)
 	assert.NotNil(proj)
 	assert.NoError(err)
 	// assert parser project hasn't changed

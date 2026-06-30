@@ -618,7 +618,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	if projectInfo.Project == nil {
-		projectInfo.Project, err = model.TranslateProject(projectInfo.IntermediateProject)
+		projectInfo.Project, err = model.TranslateProject(ctx, projectInfo.IntermediateProject)
 		if err != nil {
 			return nil, errors.Wrap(err, "translating intermediate project")
 		}

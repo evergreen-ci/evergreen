@@ -186,7 +186,7 @@ func TestFindTaskGroupForTask(t *testing.T) {
 			{Name: "tg3", Tasks: []string{"tg3t1", "tg3t2"}},
 		},
 	}
-	p, err := TranslateProject(parserProject)
+	p, err := TranslateProject(t.Context(), parserProject)
 	require.NoError(t, err)
 	assert.NotNil(t, p)
 

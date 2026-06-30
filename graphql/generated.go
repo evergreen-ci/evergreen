@@ -1731,24 +1731,25 @@ type ComplexityRoot struct {
 	}
 
 	SchedulerConfig struct {
-		AcceptableHostIdleTimeSeconds func(childComplexity int) int
-		CacheDurationSeconds          func(childComplexity int) int
-		CommitQueueFactor             func(childComplexity int) int
-		ExpectedRuntimeFactor         func(childComplexity int) int
-		FutureHostFraction            func(childComplexity int) int
-		GenerateTaskFactor            func(childComplexity int) int
-		GroupVersions                 func(childComplexity int) int
-		HostAllocator                 func(childComplexity int) int
-		HostAllocatorFeedbackRule     func(childComplexity int) int
-		HostAllocatorRoundingRule     func(childComplexity int) int
-		HostsOverallocatedRule        func(childComplexity int) int
-		MainlineTimeInQueueFactor     func(childComplexity int) int
-		NumDependentsFactor           func(childComplexity int) int
-		PatchFactor                   func(childComplexity int) int
-		PatchTimeInQueueFactor        func(childComplexity int) int
-		StepbackTaskFactor            func(childComplexity int) int
-		TargetTimeSeconds             func(childComplexity int) int
-		TaskFinder                    func(childComplexity int) int
+		AcceptableHostIdleTimeSeconds    func(childComplexity int) int
+		CacheDurationSeconds             func(childComplexity int) int
+		CommitQueueFactor                func(childComplexity int) int
+		ExpectedRuntimeFactor            func(childComplexity int) int
+		FutureHostFraction               func(childComplexity int) int
+		GenerateTaskFactor               func(childComplexity int) int
+		GroupVersions                    func(childComplexity int) int
+		HostAllocator                    func(childComplexity int) int
+		HostAllocatorFeedbackRule        func(childComplexity int) int
+		HostAllocatorRoundingRule        func(childComplexity int) int
+		HostsOverallocatedRule           func(childComplexity int) int
+		MainlineTimeInQueueFactor        func(childComplexity int) int
+		NumDependentsFactor              func(childComplexity int) int
+		PatchFactor                      func(childComplexity int) int
+		PatchTimeInQueueFactor           func(childComplexity int) int
+		StepbackTaskFactor               func(childComplexity int) int
+		TargetTimeSeconds                func(childComplexity int) int
+		TaskFinder                       func(childComplexity int) int
+		TranslateProjectConcurrencyLimit func(childComplexity int) int
 	}
 
 	SearchReturnInfo struct {
@@ -10225,6 +10226,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SchedulerConfig.TaskFinder(childComplexity), true
+	case "SchedulerConfig.translateProjectConcurrencyLimit":
+		if e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit == nil {
+			break
+		}
+
+		return e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit(childComplexity), true
 
 	case "SearchReturnInfo.featuresURL":
 		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
@@ -20179,6 +20186,8 @@ func (ec *executionContext) fieldContext_AdminSettings_scheduler(_ context.Conte
 				return ec.fieldContext_SchedulerConfig_numDependentsFactor(ctx, field)
 			case "stepbackTaskFactor":
 				return ec.fieldContext_SchedulerConfig_stepbackTaskFactor(ctx, field)
+			case "translateProjectConcurrencyLimit":
+				return ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SchedulerConfig", field.Name)
 		},
@@ -60004,6 +60013,35 @@ func (ec *executionContext) fieldContext_SchedulerConfig_stepbackTaskFactor(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _SchedulerConfig_translateProjectConcurrencyLimit(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.TranslateProjectConcurrencyLimit, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SchedulerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -89689,7 +89727,7 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor"}
+	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89822,6 +89860,13 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.StepbackTaskFactor = data
+		case "translateProjectConcurrencyLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("translateProjectConcurrencyLimit"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TranslateProjectConcurrencyLimit = data
 		}
 	}
 
@@ -106161,6 +106206,8 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._SchedulerConfig_numDependentsFactor(ctx, field, obj)
 		case "stepbackTaskFactor":
 			out.Values[i] = ec._SchedulerConfig_stepbackTaskFactor(ctx, field, obj)
+		case "translateProjectConcurrencyLimit":
+			out.Values[i] = ec._SchedulerConfig_translateProjectConcurrencyLimit(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

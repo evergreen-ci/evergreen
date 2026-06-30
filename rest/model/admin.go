@@ -2048,24 +2048,25 @@ func (a *APIReleaseModeConfig) ToService() (any, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder                    *string `json:"task_finder"`
-	HostAllocator                 *string `json:"host_allocator"`
-	HostAllocatorRoundingRule     *string `json:"host_allocator_rounding_rule"`
-	HostAllocatorFeedbackRule     *string `json:"host_allocator_feedback_rule"`
-	HostsOverallocatedRule        *string `json:"hosts_overallocated_rule"`
-	FutureHostFraction            float64 `json:"free_host_fraction"`
-	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
-	TargetTimeSeconds             int     `json:"target_time_seconds"`
-	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
-	GroupVersions                 bool    `json:"group_versions"`
-	PatchFactor                   int64   `json:"patch_factor"`
-	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
-	CommitQueueFactor             int64   `json:"commit_queue_factor"`
-	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
-	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
-	GenerateTaskFactor            int64   `json:"generate_task_factor"`
-	NumDependentsFactor           float64 `json:"num_dependents_factor"`
-	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
+	TaskFinder                       *string `json:"task_finder"`
+	HostAllocator                    *string `json:"host_allocator"`
+	HostAllocatorRoundingRule        *string `json:"host_allocator_rounding_rule"`
+	HostAllocatorFeedbackRule        *string `json:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule           *string `json:"hosts_overallocated_rule"`
+	FutureHostFraction               float64 `json:"free_host_fraction"`
+	CacheDurationSeconds             int     `json:"cache_duration_seconds"`
+	TargetTimeSeconds                int     `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds    int     `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                    bool    `json:"group_versions"`
+	PatchFactor                      int64   `json:"patch_factor"`
+	PatchTimeInQueueFactor           int64   `json:"patch_time_in_queue_factor"`
+	CommitQueueFactor                int64   `json:"commit_queue_factor"`
+	MainlineTimeInQueueFactor        int64   `json:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor            int64   `json:"expected_runtime_factor"`
+	GenerateTaskFactor               int64   `json:"generate_task_factor"`
+	NumDependentsFactor              float64 `json:"num_dependents_factor"`
+	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
+	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h any) error {
@@ -2089,6 +2090,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.GenerateTaskFactor = v.GenerateTaskFactor
 		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
+		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
 	}
@@ -2097,24 +2099,25 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 
 func (a *APISchedulerConfig) ToService() (any, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
-		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
-		HostAllocatorRoundingRule:     utility.FromStringPtr(a.HostAllocatorRoundingRule),
-		HostAllocatorFeedbackRule:     utility.FromStringPtr(a.HostAllocatorFeedbackRule),
-		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
-		FutureHostFraction:            a.FutureHostFraction,
-		CacheDurationSeconds:          a.CacheDurationSeconds,
-		TargetTimeSeconds:             a.TargetTimeSeconds,
-		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
-		GroupVersions:                 a.GroupVersions,
-		PatchFactor:                   a.PatchFactor,
-		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
-		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
-		CommitQueueFactor:             a.CommitQueueFactor,
-		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
-		GenerateTaskFactor:            a.GenerateTaskFactor,
-		NumDependentsFactor:           a.NumDependentsFactor,
-		StepbackTaskFactor:            a.StepbackTaskFactor,
+		TaskFinder:                       utility.FromStringPtr(a.TaskFinder),
+		HostAllocator:                    utility.FromStringPtr(a.HostAllocator),
+		HostAllocatorRoundingRule:        utility.FromStringPtr(a.HostAllocatorRoundingRule),
+		HostAllocatorFeedbackRule:        utility.FromStringPtr(a.HostAllocatorFeedbackRule),
+		HostsOverallocatedRule:           utility.FromStringPtr(a.HostsOverallocatedRule),
+		FutureHostFraction:               a.FutureHostFraction,
+		CacheDurationSeconds:             a.CacheDurationSeconds,
+		TargetTimeSeconds:                a.TargetTimeSeconds,
+		AcceptableHostIdleTimeSeconds:    a.AcceptableHostIdleTimeSeconds,
+		GroupVersions:                    a.GroupVersions,
+		PatchFactor:                      a.PatchFactor,
+		ExpectedRuntimeFactor:            a.ExpectedRuntimeFactor,
+		PatchTimeInQueueFactor:           a.PatchTimeInQueueFactor,
+		CommitQueueFactor:                a.CommitQueueFactor,
+		MainlineTimeInQueueFactor:        a.MainlineTimeInQueueFactor,
+		GenerateTaskFactor:               a.GenerateTaskFactor,
+		NumDependentsFactor:              a.NumDependentsFactor,
+		StepbackTaskFactor:               a.StepbackTaskFactor,
+		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
 	}, nil
 }
 
