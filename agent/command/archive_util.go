@@ -16,6 +16,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// pathEscapesRoot reports whether a path relative to the root (as returned by
+// filepath.Rel) climbs above the root. A name that merely contains ".." (for
+// example a file literally named "..data") does not escape and is allowed.
+func pathEscapesRoot(relpath string) bool {
+	return relpath == ".." || strings.HasPrefix(relpath, ".."+string(filepath.Separator))
+}
+
 // validateRelativePath checks if the filePath is relative to the rootpath.
 func validateRelativePath(filePath, rootPath string) error {
 	if filepath.IsAbs(filePath) {
@@ -33,8 +40,8 @@ func validateRelativePath(filePath, rootPath string) error {
 	if err != nil {
 		return errors.Wrap(err, "getting relative path")
 	}
-	if strings.Contains(relpath, "..") {
-		return errors.New("relative path starts with '..'")
+	if pathEscapesRoot(relpath) {
+		return errors.New("relative path resolves outside the root path")
 	}
 	return nil
 }
@@ -53,7 +60,7 @@ func validateSymlinkTarget(linkname, linkPath, rootPath string) error {
 	if err != nil {
 		return errors.Wrap(err, "getting relative path of symlink target")
 	}
-	if relpath == ".." || strings.HasPrefix(relpath, ".."+string(filepath.Separator)) {
+	if pathEscapesRoot(relpath) {
 		return errors.New("symlink target resolves outside the root path")
 	}
 	return nil
