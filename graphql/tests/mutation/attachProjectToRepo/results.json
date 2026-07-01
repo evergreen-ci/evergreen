@@ -24,6 +24,22 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "no_repo_access.graphql",
+      "test_user_id": "branch_admin_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'branch_admin_user' is not an admin of repo 'evergreen-ci/commit-queue-sandbox'",
+            "path": ["attachProjectToRepo", "projectId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
     }
   ]
 }
