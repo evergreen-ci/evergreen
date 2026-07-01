@@ -163,6 +163,10 @@ models:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodSSH
       RPC:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodRPC
+  ContainerIsolationSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerIsolationSettings
+  ContainerIsolationSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIContainerIsolationSettings
   ContainerPool:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPool
   ContainerPoolInput:
