@@ -565,84 +565,122 @@ func TestRequireRepoAccess(t *testing.T) {
 	}
 	require.NoError(t, projectRef.Insert(t.Context()))
 
-	callCount := 0
-	next := func(rctx context.Context) (any, error) {
-		callCount++
-		return nil, nil
-	}
-
-	res, err := config.Directives.RequireRepoAccess(ctx, any(nil), next, AccessLevelAdmin)
-	require.EqualError(t, err, "input: converting args into map")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
-
-	res, err = config.Directives.RequireRepoAccess(ctx, any(map[string]any{}), next, AccessLevelAdmin)
-	require.EqualError(t, err, "input: project not specified")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
-
-	res, err = config.Directives.RequireRepoAccess(ctx, any(map[string]any{"projectId": "nonexistent"}), next, AccessLevelAdmin)
-	require.EqualError(t, err, "input: project 'nonexistent' not found")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
-
 	obj := any(map[string]any{"projectId": projectRef.Id})
 
-	// No repo ref exists yet and the user is not a project admin, so they may
-	// not attach.
-	res, err = config.Directives.RequireRepoAccess(ctx, obj, next, AccessLevelAdmin)
-	require.EqualError(t, err, "input: user 'test_user' must be an admin of project 'project_id' to attach it to a new repo")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
-
-	// A project admin may attach the project to a not-yet-existing repo.
-	require.NoError(t, usr.AddRole(t.Context(), "admin_project"))
-	res, err = config.Directives.RequireRepoAccess(ctx, obj, next, AccessLevelAdmin)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
-
-	// Once a repo ref exists, ADMIN access requires repo admin even for a
-	// project admin.
-	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-		Id:    "repo_id",
-		Owner: "evergreen-ci",
-		Repo:  "spruce",
-	}}
-	require.NoError(t, repoRef.Replace(t.Context()))
-
-	res, err = config.Directives.RequireRepoAccess(ctx, obj, next, AccessLevelAdmin)
-	require.EqualError(t, err, "input: user 'test_user' is not an admin of repo 'evergreen-ci/spruce'")
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
-
-	// An unsupported access level is rejected.
-	res, err = config.Directives.RequireRepoAccess(ctx, obj, next, AccessLevelEdit)
-	require.EqualError(t, err, "input: invalid access level 'EDIT' for repo")
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
-
-	// Grant the user repo edit access, making them a repo admin.
-	roleManager := evergreen.GetEnvironment().RoleManager()
-	repoScope := gimlet.Scope{
-		ID:        "repo_scope",
-		Name:      "repo scope",
-		Type:      evergreen.ProjectResourceType,
-		Resources: []string{repoRef.Id},
-	}
-	require.NoError(t, roleManager.AddScope(t.Context(), repoScope))
-	repoAdminRole := gimlet.Role{
-		ID:    "admin_repo",
-		Scope: repoScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+	// The cases run in order and share state; each setup builds on the
+	// permissions and repo refs established by earlier cases.
+	for _, tc := range []struct {
+		name        string
+		setup       func(t *testing.T)
+		obj         any
+		access      AccessLevel
+		expectedErr string
+		expectNext  bool
+	}{
+		{
+			name:        "NonMapInputErrors",
+			obj:         any(nil),
+			access:      AccessLevelAdmin,
+			expectedErr: "input: converting args into map",
 		},
-	}
-	require.NoError(t, roleManager.UpdateRole(t.Context(), repoAdminRole))
-	require.NoError(t, usr.AddRole(t.Context(), "admin_repo"))
+		{
+			name:        "MissingProjectIDErrors",
+			obj:         any(map[string]any{}),
+			access:      AccessLevelAdmin,
+			expectedErr: "input: project not specified",
+		},
+		{
+			name:        "NonexistentProjectErrors",
+			obj:         any(map[string]any{"projectId": "nonexistent"}),
+			access:      AccessLevelAdmin,
+			expectedErr: "input: project 'nonexistent' not found",
+		},
+		{
+			// No repo ref exists yet and the user is not a project admin, so
+			// they may not attach.
+			name:        "NonProjectAdminCannotAttachToNewRepo",
+			obj:         obj,
+			access:      AccessLevelAdmin,
+			expectedErr: "input: user 'test_user' must be an admin of project 'project_id' to attach it to a new repo",
+		},
+		{
+			// A project admin may attach the project to a not-yet-existing repo.
+			name: "ProjectAdminCanAttachToNewRepo",
+			setup: func(t *testing.T) {
+				require.NoError(t, usr.AddRole(t.Context(), "admin_project"))
+			},
+			obj:        obj,
+			access:     AccessLevelAdmin,
+			expectNext: true,
+		},
+		{
+			// Once a repo ref exists, ADMIN access requires repo admin even for
+			// a project admin.
+			name: "AdminAccessRequiresRepoAdmin",
+			setup: func(t *testing.T) {
+				repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
+					Id:    "repo_id",
+					Owner: "evergreen-ci",
+					Repo:  "spruce",
+				}}
+				require.NoError(t, repoRef.Replace(t.Context()))
+			},
+			obj:         obj,
+			access:      AccessLevelAdmin,
+			expectedErr: "input: user 'test_user' is not an admin of repo 'evergreen-ci/spruce'",
+		},
+		{
+			name:        "UnsupportedAccessLevelErrors",
+			obj:         obj,
+			access:      AccessLevelEdit,
+			expectedErr: "input: invalid access level 'EDIT' for repo",
+		},
+		{
+			// Grant the user repo edit access, making them a repo admin.
+			name: "RepoAdminHasAdminAccess",
+			setup: func(t *testing.T) {
+				roleManager := evergreen.GetEnvironment().RoleManager()
+				repoScope := gimlet.Scope{
+					ID:        "repo_scope",
+					Name:      "repo scope",
+					Type:      evergreen.ProjectResourceType,
+					Resources: []string{"repo_id"},
+				}
+				require.NoError(t, roleManager.AddScope(t.Context(), repoScope))
+				repoAdminRole := gimlet.Role{
+					ID:    "admin_repo",
+					Scope: repoScope.ID,
+					Permissions: map[string]int{
+						evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+					},
+				}
+				require.NoError(t, roleManager.UpdateRole(t.Context(), repoAdminRole))
+				require.NoError(t, usr.AddRole(t.Context(), "admin_repo"))
+			},
+			obj:        obj,
+			access:     AccessLevelAdmin,
+			expectNext: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.setup != nil {
+				tc.setup(t)
+			}
 
-	res, err = config.Directives.RequireRepoAccess(ctx, obj, next, AccessLevelAdmin)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 2, callCount)
+			nextCalled := false
+			next := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+
+			res, err := config.Directives.RequireRepoAccess(ctx, tc.obj, next, tc.access)
+			require.Nil(t, res)
+			if tc.expectedErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tc.expectedErr)
+			}
+			require.Equal(t, tc.expectNext, nextCalled)
+		})
+	}
 }
