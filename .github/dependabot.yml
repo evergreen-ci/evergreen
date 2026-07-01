@@ -19,8 +19,11 @@ updates:
       # TODO (DEVPROD-28491): Ignore upgrades that require Go 1.25.0,
       # which Evergreen cannot use for now (all packages below).
       - dependency-name: "go.opentelemetry.io/*"
+      - dependency-name: "github.com/99designs/gqlgen"
+      - dependency-name: "github.com/bradleyfalzon/ghinstallation/v2"
       - dependency-name: "github.com/parquet-go/parquet-go"
       - dependency-name: "github.com/vektah/gqlparser/v2"
+      - dependency-name: "golang.org/x/crypto"
       - dependency-name: "golang.org/x/sync"
       - dependency-name: "golang.org/x/text"
       - dependency-name: "golang.org/x/tools"

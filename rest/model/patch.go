@@ -68,6 +68,7 @@ type APIPatch struct {
 	// Repeated from GithubMergeData to preserve backwards compatibility.
 	InvalidatedByUpstream bool                 `json:"invalidated_by_upstream"`
 	Alias                 *string              `json:"alias,omitempty"`
+	Aliases               []string             `json:"aliases,omitempty"`
 	GithubPatchData       APIGithubPatch       `json:"github_patch_data"`
 	GithubMergeData       APIGithubMergeGroup  `json:"github_merge_data"`
 	ModuleCodeChanges     []APIModulePatch     `json:"module_code_changes"`
@@ -304,6 +305,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.VariantsTasks = variantTasks
 	apiPatch.Activated = p.Activated
 	apiPatch.Alias = utility.ToStringPtr(p.Alias)
+	apiPatch.Aliases = p.Aliases
 	apiPatch.Requester = utility.ToStringPtr(p.GetRequester())
 
 	if p.Parameters != nil {
@@ -512,6 +514,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	res.Version = utility.FromStringPtr(apiPatch.Version)
 	res.Status = utility.FromStringPtr(apiPatch.Status)
 	res.Alias = utility.FromStringPtr(apiPatch.Alias)
+	res.Aliases = apiPatch.Aliases
 	res.Activated = apiPatch.Activated
 	res.CreateTime, err = FromTimePtr(apiPatch.CreateTime)
 	catcher.Add(err)

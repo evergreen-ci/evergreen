@@ -56,7 +56,7 @@ const RunnerName = "scheduler"
 // GetDistroQueueInfo returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
 func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration, distroDurationOverThreshold time.Duration
-	var distroCountDurationOverThreshold, distroCountWaitOverThreshold, numTasksDepsMet, numMergeQueueTasks int
+	var distroCountDurationOverThreshold, distroCountWaitOverThreshold, numTasksDepsMet, numMergeQueueTasks, numLargeParserProjectTasks int
 	var isSecondaryQueue bool
 	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
 	depCache := make(map[string]task.Task, len(tasks))
@@ -103,6 +103,9 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 				numMergeQueueTasks++
 				info.CountDepFilledMergeQueueTasks++
 			}
+			if task.CachedProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
+				numLargeParserProjectTasks++
+			}
 		}
 		if !opts.IncludesDependencies || dependenciesMet {
 			task.ExpectedDuration = duration
@@ -144,16 +147,17 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 	}
 
 	distroQueueInfo := model.DistroQueueInfo{
-		Length:                        len(tasks),
-		LengthWithDependenciesMet:     numTasksDepsMet,
-		ExpectedDuration:              distroExpectedDuration,
-		MaxDurationThreshold:          maxDurationThreshold,
-		CountDepFilledMergeQueueTasks: numMergeQueueTasks,
-		CountDurationOverThreshold:    distroCountDurationOverThreshold,
-		DurationOverThreshold:         distroDurationOverThreshold,
-		CountWaitOverThreshold:        distroCountWaitOverThreshold,
-		TaskGroupInfos:                taskGroupInfos,
-		SecondaryQueue:                isSecondaryQueue,
+		Length:                           len(tasks),
+		LengthWithDependenciesMet:        numTasksDepsMet,
+		ExpectedDuration:                 distroExpectedDuration,
+		MaxDurationThreshold:             maxDurationThreshold,
+		CountDepFilledMergeQueueTasks:    numMergeQueueTasks,
+		CountDurationOverThreshold:       distroCountDurationOverThreshold,
+		DurationOverThreshold:            distroDurationOverThreshold,
+		CountWaitOverThreshold:           distroCountWaitOverThreshold,
+		NumQueuedLargeParserProjectTasks: numLargeParserProjectTasks,
+		TaskGroupInfos:                   taskGroupInfos,
+		SecondaryQueue:                   isSecondaryQueue,
 	}
 
 	return distroQueueInfo

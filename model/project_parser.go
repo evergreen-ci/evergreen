@@ -569,61 +569,102 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	}
 
 	// This fallback handles the case where the patch is already finalized.
-	v, err := VersionFindOneId(ctx, p.Version)
+	project, pp, err := FindAndTranslateProjectForVersionID(ctx, settings, p.Version, false)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		return nil, nil, errors.Wrapf(err, "finding project for patch '%s'", p.Id.Hex())
 	}
-	if v == nil {
-		return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
-	}
-	return FindAndTranslateProjectForVersion(ctx, settings, v, false)
+	return project, pp, nil
 }
 
-// parserProjectPreGenerationOtelAttribute records whether a translation used the
-// pre-generation parser project copy.
-const parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+const (
+	// ppPreGenerationOtelAttribute records whether a translation used the
+	// pre-generation parser project copy.
+	ppPreGenerationOtelAttribute       = "evergreen.parser_project.pre_generation"
+	ppTranslationCacheHitOtelAttribute = "evergreen.parser_project.translation_cache_hit"
+)
+
+// FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
+func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergreen.Settings, versionID string, preGeneration bool) (*Project, *ParserProject, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID).WithFields(
+		VersionIdKey,
+		VersionIdentifierKey,
+		VersionProjectStorageMethodKey,
+		VersionPreGenerationProjectStorageMethodKey,
+	))
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "finding version '%s'", versionID)
+	}
+	if v == nil {
+		return nil, nil, errors.Errorf("version '%s' not found", versionID)
+	}
+
+	return FindAndTranslateProjectForVersion(ctx, settings, v, preGeneration)
+}
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
-// fetch and translate the parser project from before it was modified by generate.tasks
+// fetch and translate the parser project from before it was modified by generate.tasks.
+//
+// When the translation cache is enabled the returned *Project is a shared pointer. Callers
+// must not mutate it; make a local copy of any fields that need modification before use.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
+}
+
+func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) (*Project, *ParserProject, error) {
 	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
-		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
-		attribute.Bool(parserProjectPreGenerationOtelAttribute, preGeneration),
+		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
+		attribute.Bool(ppPreGenerationOtelAttribute, preGeneration),
 	))
 	defer span.End()
 
 	var pp *ParserProject
 	var err error
 	if preGeneration {
-		preGeneratedId := preGeneratedParserProjectId(v.Id)
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.PreGenerationProjectStorageMethod, preGeneratedId)
+		preGeneratedId := preGeneratedParserProjectId(versionID)
+		pp, err = ParserProjectFindOneByID(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
 		}
 		// Fall back to the parser project post-generation if the pre-generation parser project was not found
 	}
 	if pp == nil {
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+		pp, err = ParserProjectFindOneByID(ctx, settings, projectStorageMethod, versionID)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", v.Id)
+			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", versionID)
 		}
 		if pp == nil {
-			return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
+			return nil, nil, errors.Errorf("parser project not found for version '%s'", versionID)
 		}
 	}
-	// Setting the translated project's ID is necessary here because the version
-	// always has an identifier, but some old parser projects used to not be
-	// stored with the ID.
-	pp.Identifier = utility.ToStringPtr(v.Identifier)
+	// Setting the translated project's ID is necessary here because some old
+	// parser projects used to not be stored with the ID.
+	if versionIdentifier != "" {
+		pp.Identifier = utility.ToStringPtr(versionIdentifier)
+	}
 
-	// Coalesce concurrent translations for the same version into one compute.
-	key := versionTranslationKey(v.Id, preGeneration)
-	p, err := getOrComputeTranslation(key, func() (*Project, error) {
+	cacheEnabled := settings.ServiceFlags.ProjectTranslationCacheEnabled
+	var key string
+	if cacheEnabled {
+		var sha string
+		sha, err = parserProjectContentSHA(pp)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "computing parser project content hash")
+		}
+		key = contentTranslationKey(sha, versionIdentifier)
+	} else {
+		// When the cache is off, we don't need a key that changes whenever the parser project changes
+		// (which the LRU requires so it never serves a stale config after generate.tasks). We can instead
+		// use the version ID. It's cheaper and enough for singleflight, which only coalesces concurrent
+		// in-flight calls and retains nothing that could go stale.
+		key = versionTranslationKey(versionID, preGeneration)
+	}
+	p, cacheHit, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
 		return TranslateProject(pp)
 	})
+	span.SetAttributes(attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit))
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
 	}
 	return p, pp, nil
 }
@@ -737,12 +778,9 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	var anchorRegistry *anchorEntries
+	anchorRegistry := &anchorRegistry{}
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
-		if opts.EnableYAMLAnchors {
-			anchorRegistry = &anchorEntries{}
-		}
 	}
 	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, anchorRegistry)
 	if err != nil {
@@ -775,7 +813,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 }
 
 // mergeIncludes merges all included files into intermediateProject.
-func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorEntries, opts *GetProjectOpts) error {
+func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorRegistry, opts *GetProjectOpts) error {
 	ctx, span := tracer.Start(ctx, "mergeIncludes")
 	defer span.End()
 
@@ -1147,8 +1185,6 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
-	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
-	EnableYAMLAnchors bool
 }
 
 type PatchOpts struct {
@@ -1387,37 +1423,11 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-// When anchorRegistry is non-nil, cross-file anchor support is enabled: existing anchors are prepended so the
-// parser can resolve cross-file aliases, and any new anchor definitions are appended to the registry for future files.
-func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
-	p := ParserProject{}
-
-	if anchorRegistry == nil {
-		if unmarshalStrict {
-			strictProjectWithVariables := struct {
-				ParserProject       `yaml:"pp,inline"`
-				ProjectConfigFields `yaml:"pc,inline"`
-				// Variables is only used to suppress yaml unmarshalling errors related
-				// to a non-existent variables field.
-				Variables any `yaml:"variables,omitempty" bson:"-"`
-			}{}
-			if err := util.UnmarshalYAMLStrictWithFallback(parseBytes, &strictProjectWithVariables); err != nil {
-				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
-			}
-			p = strictProjectWithVariables.ParserProject
-		} else {
-			if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
-				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
-			}
-		}
-		if p.Functions == nil {
-			p.Functions = map[string]*YAMLCommandSet{}
-		}
-		return &p, nil
-	}
-
+// Existing anchors in anchorRegistry are prepended so the parser can resolve cross-file aliases,
+// and any new anchor definitions are appended to the registry for future files.
+func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (*ParserProject, error) {
 	// Prepend accumulated anchors as a preamble so the parser can resolve cross-file aliases.
-	if len(*anchorRegistry) > 0 {
+	if anchorRegistry.Length() > 0 {
 		preamble, err := buildAnchorPreamble(anchorRegistry)
 		if err != nil {
 			return nil, errors.Wrap(err, "building anchor preamble")
@@ -1438,7 +1448,7 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 // decodeWithAnchors decodes parseBytes into a ParserProject using a yaml.Node as an intermediate
 // representation, and merges any new anchor definitions found into anchorRegistry. Returns an
 // empty ParserProject for empty input.
-func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
+func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (*ParserProject, error) {
 	var node yaml.Node
 	if err := yaml.NewDecoder(bytes.NewReader(parseBytes)).Decode(&node); err != nil && !errors.Is(err, io.EOF) {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
@@ -1476,22 +1486,15 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 				yamlErr := thirdparty.YAMLFormatError{Message: err2.Error()}
 				return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 			}
+			grip.Debug(context.Background(), message.Fields{
+				"message":   "yaml v3 node decode failed, fell back to v2",
+				"operation": "yaml parsing",
+				"error":     err.Error(),
+			})
 		}
 	}
 
-	for _, anchor := range collectAnchors(&node) {
-		replaced := false
-		for i, existing := range *anchorRegistry {
-			if existing.name == anchor.name {
-				(*anchorRegistry)[i] = anchor
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			*anchorRegistry = append(*anchorRegistry, anchor)
-		}
-	}
+	anchorRegistry.mergeAnchorsFrom(&node)
 
 	return &p, nil
 }
