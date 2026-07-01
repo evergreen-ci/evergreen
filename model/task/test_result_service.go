@@ -49,18 +49,8 @@ func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failed
 	return errors.Wrap(err, "appending DB test results")
 }
 
-func (s *testResultService) GetTaskTestResults(ctx context.Context, taskOpts []Task, opts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
-	allTaskResults, err := s.get(ctx, taskOpts, testResultsServiceGetOptions{
-		IncludeQuarantinedTests: opts.IncludeQuarantinedTests,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "getting test results")
-	}
-	return allTaskResults, nil
-}
-
 func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
-	allTaskResults, err := s.Get(ctx, taskOpts, testresult.StatsKey)
+	allTaskResults, err := s.Get(ctx, taskOpts, GetTaskTestResultsOptions{Fields: []string{testresult.StatsKey}})
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results")
 	}
@@ -76,11 +66,7 @@ func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpt
 
 // Get fetches the unmerged test results metadata for the given tasks from the cedar DB
 // and downloads the associated test results from s3.
-func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
-	return s.get(ctx, taskOpts, testResultsServiceGetOptions{Fields: fields})
-}
-
-func (s *testResultService) get(ctx context.Context, taskOpts []Task, getOpts testResultsServiceGetOptions) ([]testresult.TaskTestResults, error) {
+func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
 	var filter bson.M
 	if len(taskOpts) == 1 {
 		filter = ByTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)

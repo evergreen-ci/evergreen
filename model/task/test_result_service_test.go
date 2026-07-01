@@ -113,25 +113,19 @@ func TestEvergreenService(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		taskResults, err := svc.Get(ctx, []Task{task0})
+		taskResults, err := svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{})
 		require.NoError(t, err)
 		require.Len(t, taskResults, 1)
 		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
 		assert.Empty(t, taskResults[0].QuarantinedTests)
 
-		taskResults, err = svc.Get(ctx, []Task{task0}, testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey)
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{Fields: []string{testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey}})
 		require.NoError(t, err)
 		require.Len(t, taskResults, 1)
 		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
 		assert.Equal(t, quarantinedTests, taskResults[0].QuarantinedTests)
 
-		taskResults, err = svc.GetTaskTestResults(ctx, []Task{task0}, GetTaskTestResultsOptions{})
-		require.NoError(t, err)
-		require.Len(t, taskResults, 1)
-		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
-		assert.Empty(t, taskResults[0].QuarantinedTests)
-
-		taskResults, err = svc.GetTaskTestResults(ctx, []Task{task0}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
 		require.NoError(t, err)
 		require.Len(t, taskResults, 1)
 		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
