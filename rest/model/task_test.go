@@ -74,7 +74,8 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
-					HasAnnotations: true,
+					HasAnnotations:               true,
+					QuarantinedTestsSkippedCount: 3,
 				},
 				st: task.Task{
 					Id:            "testId",
@@ -112,7 +113,8 @@ func TestTaskBuildFromService(t *testing.T) {
 						LastPassingStepbackTaskId: "last_passing",
 						NextStepbackTaskId:        "next",
 					},
-					HasAnnotations: true,
+					HasAnnotations:             true,
+					NumQuarantinedTestsSkipped: 3,
 				},
 			},
 			{
@@ -236,6 +238,7 @@ func TestTaskBuildFromService(t *testing.T) {
 				}
 
 				So(apiTask.HasAnnotations, ShouldEqual, tc.at.HasAnnotations)
+				So(apiTask.QuarantinedTestsSkippedCount, ShouldEqual, tc.at.QuarantinedTestsSkippedCount)
 
 				if tc.at.S3Usage == nil {
 					So(apiTask.S3Usage, ShouldBeNil)

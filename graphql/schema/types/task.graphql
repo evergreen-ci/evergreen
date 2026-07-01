@@ -129,6 +129,10 @@ type Task {
   prevTaskPassing: Task
   priority: Int
   project: Project
+  """
+  quarantinedTestsSkippedCount is the number of tests this execution skipped because they were quarantined in TSS at execution time.
+  """
+  quarantinedTestsSkippedCount: Int!
   requester: String!
   resetWhenFinished: Boolean!
   revision: String
@@ -317,6 +321,25 @@ type TaskTestResultSample {
   matchingFailedTestNames: [String!]!
   taskId: String!
   totalTestCount: Int!
+}
+
+"""
+TaskQuarantinedTestsSample is the return value for the taskQuarantinedTestsSample query.
+It contains the execution-time snapshot of tests skipped because they were quarantined in TSS.
+"""
+type TaskQuarantinedTestsSample {
+  execution: Int!
+  quarantinedTests: [QuarantinedTest!]!
+  quarantinedTestsSkippedCount: Int!
+  taskId: String!
+}
+
+"""
+QuarantinedTest represents a test skipped because it was quarantined in TSS at execution time.
+"""
+type QuarantinedTest {
+  displayTestName: String
+  testName: String!
 }
 
 """
