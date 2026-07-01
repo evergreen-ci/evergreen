@@ -484,7 +484,7 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 		tasksByBuild[t.BuildId] = append(tasksByBuild[t.BuildId], t)
 	}
 
-	catcher := grip.NewBasicCatcher()
+	cachesByBuild := make(map[string][]build.TaskCache, len(buildIDs))
 	for _, buildID := range buildIDs {
 		buildTasks := tasksByBuild[buildID]
 		// trim out tasks that are part of a display task
@@ -502,10 +502,9 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 			}
 		}
 
-		cache := CreateTasksCache(buildTasks)
-		catcher.Wrapf(build.SetTasksCache(ctx, buildID, cache), "updating task cache for '%s'", buildID)
+		cachesByBuild[buildID] = CreateTasksCache(buildTasks)
 	}
-	return catcher.Resolve()
+	return errors.Wrap(build.SetTasksCaches(ctx, cachesByBuild), "updating task caches for builds")
 }
 
 // addTasksToBuild creates/activates the tasks for the given existing build.
