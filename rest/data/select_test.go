@@ -138,16 +138,16 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		assert.Contains(t, err.Error(), "boom")
 	})
 
-	t.Run("NotFoundStillReturnsWrappedError", func(t *testing.T) {
+	t.Run("NotFoundReturnsDefaultStatuses", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 		}))
 		t.Cleanup(srv.Close)
 		setTSSURL(t, srv.URL)
 
-		_, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "forwarding request to test selection service")
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
 }
 

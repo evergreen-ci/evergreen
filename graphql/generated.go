@@ -1070,7 +1070,6 @@ type ComplexityRoot struct {
 		RemovePublicKey               func(childComplexity int, keyName string) int
 		RemoveVolume                  func(childComplexity int, volumeID string) int
 		ReprovisionToNew              func(childComplexity int, hostIds []string) int
-		ResetAPIKey                   func(childComplexity int) int
 		RestartAdminTasks             func(childComplexity int, opts model1.RestartOptions) int
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
@@ -1208,6 +1207,7 @@ type ComplexityRoot struct {
 	Patch struct {
 		Activated             func(childComplexity int) int
 		Alias                 func(childComplexity int) int
+		Aliases               func(childComplexity int) int
 		Author                func(childComplexity int) int
 		AuthorDisplayName     func(childComplexity int) int
 		Builds                func(childComplexity int) int
@@ -2606,7 +2606,6 @@ type MutationResolver interface {
 	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
 	RemoveFavoriteProject(ctx context.Context, opts RemoveFavoriteProjectInput) (*model.APIProjectRef, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
-	ResetAPIKey(ctx context.Context) (*UserConfig, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdateBetaFeatures(ctx context.Context, opts UpdateBetaFeaturesInput) (*UpdateBetaFeaturesPayload, error)
 	UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*model.APIPubKey, error)
@@ -6924,12 +6923,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ReprovisionToNew(childComplexity, args["hostIds"].([]string)), true
-	case "Mutation.resetAPIKey":
-		if e.complexity.Mutation.ResetAPIKey == nil {
-			break
-		}
-
-		return e.complexity.Mutation.ResetAPIKey(childComplexity), true
 	case "Mutation.restartAdminTasks":
 		if e.complexity.Mutation.RestartAdminTasks == nil {
 			break
@@ -7623,6 +7616,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Patch.Alias(childComplexity), true
+	case "Patch.aliases":
+		if e.complexity.Patch.Aliases == nil {
+			break
+		}
+
+		return e.complexity.Patch.Aliases(childComplexity), true
 	case "Patch.author":
 		if e.complexity.Patch.Author == nil {
 			break
@@ -37995,6 +37994,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -38112,6 +38113,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -42578,53 +42581,6 @@ func (ec *executionContext) fieldContext_Mutation_removePublicKey(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_resetAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_resetAPIKey,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Mutation().ResetAPIKey(ctx)
-		},
-		nil,
-		ec.marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUserConfig,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_resetAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "api_key":
-				return ec.fieldContext_UserConfig_api_key(ctx, field)
-			case "api_server_host":
-				return ec.fieldContext_UserConfig_api_server_host(ctx, field)
-			case "corp_api_server_host":
-				return ec.fieldContext_UserConfig_corp_api_server_host(ctx, field)
-			case "ui_server_host":
-				return ec.fieldContext_UserConfig_ui_server_host(ctx, field)
-			case "user":
-				return ec.fieldContext_UserConfig_user(ctx, field)
-			case "oauth_issuer":
-				return ec.fieldContext_UserConfig_oauth_issuer(ctx, field)
-			case "oauth_client_id":
-				return ec.fieldContext_UserConfig_oauth_client_id(ctx, field)
-			case "oauth_connector_id":
-				return ec.fieldContext_UserConfig_oauth_connector_id(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UserConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_saveSubscription(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45021,6 +44977,35 @@ func (ec *executionContext) fieldContext_Patch_alias(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Patch_aliases(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Patch_aliases,
+		func(ctx context.Context) (any, error) {
+			return obj.Aliases, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Patch_aliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Patch_author(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45185,6 +45170,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -47049,6 +47036,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -53710,6 +53699,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -65582,6 +65573,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -76239,6 +76232,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_activated(ctx, field)
 			case "alias":
 				return ec.fieldContext_Patch_alias(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Patch_aliases(ctx, field)
 			case "author":
 				return ec.fieldContext_Patch_author(ctx, field)
 			case "authorDisplayName":
@@ -100078,10 +100073,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "resetAPIKey":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_resetAPIKey(ctx, field)
-			})
 		case "saveSubscription":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveSubscription(ctx, field)
@@ -100890,6 +100881,8 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "alias":
 			out.Values[i] = ec._Patch_alias(ctx, field, obj)
+		case "aliases":
+			out.Values[i] = ec._Patch_aliases(ctx, field, obj)
 		case "author":
 			out.Values[i] = ec._Patch_author(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

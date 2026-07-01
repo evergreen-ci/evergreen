@@ -113,7 +113,7 @@ require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/klauspost/pgzip v1.2.6
@@ -175,7 +175,7 @@ require (
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.5.2
-	github.com/kanopy-platform/kanopy-oidc-lib v0.1.3
+	github.com/kanopy-platform/kanopy-oidc-lib v0.1.4
 	github.com/mongodb/jasper v0.0.0-20260330133616-5411573646d1
 	github.com/parquet-go/parquet-go v0.29.0
 	github.com/redis/go-redis/v9 v9.20.1
