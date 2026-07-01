@@ -41,7 +41,7 @@ func validateRelativePath(filePath, rootPath string) error {
 		return errors.Wrap(err, "getting relative path")
 	}
 	if pathEscapesRoot(relpath) {
-		return errors.New("relative path escapes the root path")
+		return errors.New("relative path resolves outside the root path")
 	}
 	return nil
 }

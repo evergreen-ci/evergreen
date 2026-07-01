@@ -338,6 +338,8 @@ func TestValidateRelativePath(t *testing.T) {
 		{name: "NameWithDotsAllowed", filePath: "something..1.0.tgz", valid: true},
 		{name: "NameStartingWithDotsAllowed", filePath: "..data", valid: true},
 		{name: "NestedNameWithDotsAllowed", filePath: filepath.Join("sub", "foo..bar"), valid: true},
+		{name: "DottedDirectoryNameAllowed", filePath: filepath.Join("my..dir", "file.txt"), valid: true},
+		{name: "DirectoryNameStartingWithDotsAllowed", filePath: filepath.Join("..my_dir", "file.txt"), valid: true},
 		{name: "TraversalRejected", filePath: filepath.Join("..", "escape"), valid: false},
 		{name: "ParentRejected", filePath: "..", valid: false},
 		{name: "NestedTraversalRejected", filePath: filepath.Join("a", "..", "..", "b"), valid: false},
