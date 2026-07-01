@@ -17,7 +17,7 @@
 - **task group**: A task group is a set of tasks which run with project-specified setup and teardown code without cleaning up the task directory before or after each task and without any tasks running in between tasks in the group.
 - **task**: The fundamental unit of execution is the task. A task corresponds to a box on the waterfall page.
 - **test**: A test is sent to Evergreen in a known format by a command during a task, parsed by Evergreen, and displayed on the task page.
-- **user configuration file**: The user configuration file is a file parsed by the Evergreen CLI. It contains the user’s API key and various settings.
+- **user configuration file**: The user configuration file is a file parsed by the Evergreen CLI. It contains CLI settings and, for service users, static credentials.
 - **version**: A version, which corresponds to a vertical slice of tasks on the waterfall, is all tasks for a given commit or patch build.
 - **working directory**: The working directory is the temporary directory which Evergreen creates to run a task. It is available as [an expansion](../Project-Configuration/Project-Configuration-Files#default-expansions).
 

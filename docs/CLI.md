@@ -11,13 +11,7 @@ On macOS, the evergreen binary is currently not notarized. To allow running it, 
 
 ## Authentication
 
-[Service users](../Project-Configuration/Project-and-Distro-Settings#service-users) do not need any further authentication as they can rely on the api key in the `.evergreen.yml` file.
-
-API Keys will soon be deprecated for human users. The following will need to be done to authenticate when using the CLI.
-
-### (Legacy) Static Token Authentication
-
-We are currently in the process of deprecating static tokens for human users. If you are using a static token, please see the [Static Token Deprecation FAQ](../FAQ/Static-Token-Deprecation-FAQ.md) for more information.
+Human users authenticate with OAuth. [Service users](../Project-Configuration/Project-and-Distro-Settings#service-users), also called API users, authenticate with static credentials in the `.evergreen.yml` file.
 
 ### Ensure that your Evergreen CLI is not out of date
 
@@ -25,7 +19,7 @@ Please use `evergreen get-update` to upgrade your Evergreen CLI if you don't hav
 
 ### OAuth Authentication
 
-To start authenticating via OAuth, you will need to comment out or delete the `api_key` field from your `~/.evergreen.yml` file.
+Human users should comment out or delete the `api_key` field from their `~/.evergreen.yml` file.
 
 After doing so, the next time you run an evergreen command that requires authentication, you will be prompted to authenticate. If you would like to not use a browser to authenticate, please see the documentation [here](../Hosts/Spawn-Hosts.md#evergreen-cli-on-a-spawn-host).
 
@@ -164,7 +158,6 @@ For example, an enterprising server engineer might create a config file called `
 ```yaml
 api_server_host: #api
 ui_server_host: #ui
-api_key: #apikey
 user: #user
 projects:
   - name: mongodb-mongo-master
@@ -182,7 +175,6 @@ You might also want to create a config called `compile.yml` with
 ```yaml
 api_server_host: #api
 ui_server_host: #ui
-api_key: #apikey
 user: #user
 projects:
   - name: mongodb-mongo-master
@@ -220,7 +212,6 @@ Users can define local aliases in their `evergreen.yml` files and even override 
 ```yaml
 api_server_host: #api
 ui_server_host: #ui
-api_key: #apikey
 user: #user
 projects:
   - name: mongodb-mongo-master
