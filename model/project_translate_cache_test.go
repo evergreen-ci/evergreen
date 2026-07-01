@@ -22,6 +22,7 @@ func resetTranslationCacheForTesting() {
 	translationCache = nil
 	translationCacheMu.Unlock()
 	translationGroupPtr.Store(&singleflight.Group{})
+	translationCacheEvictions.Store(0)
 }
 
 func TestGetOrComputeTranslation(t *testing.T) {
@@ -35,14 +36,16 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			return &Project{Identifier: "test"}, nil
 		}
 
-		p1, hit1, err := getOrComputeTranslation("k", false, compute)
+		p1, hit1, deduped1, err := getOrComputeTranslation("k", false, compute)
 		require.NoError(t, err)
-		p2, hit2, err := getOrComputeTranslation("k", false, compute)
+		p2, hit2, deduped2, err := getOrComputeTranslation("k", false, compute)
 		require.NoError(t, err)
 
 		assert.Equal(t, 2, callCount)
 		assert.False(t, hit1, "cache disabled, never a hit")
 		assert.False(t, hit2, "cache disabled, never a hit")
+		assert.False(t, deduped1, "uncontended call is never deduped")
+		assert.False(t, deduped2, "uncontended call is never deduped")
 		assert.Equal(t, "test", p1.Identifier)
 		assert.Equal(t, "test", p2.Identifier)
 	})
@@ -56,14 +59,16 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			return &Project{Identifier: "cached"}, nil
 		}
 
-		p1, hit1, err := getOrComputeTranslation("k", true, compute)
+		p1, hit1, deduped1, err := getOrComputeTranslation("k", true, compute)
 		require.NoError(t, err)
-		p2, hit2, err := getOrComputeTranslation("k", true, compute)
+		p2, hit2, deduped2, err := getOrComputeTranslation("k", true, compute)
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, callCount, "second call should be served from cache")
 		assert.False(t, hit1, "first call computes")
 		assert.True(t, hit2, "second call is an LRU hit")
+		assert.False(t, deduped1, "uncontended call is never deduped")
+		assert.False(t, deduped2, "an LRU hit returns before singleflight is ever invoked")
 		assert.Equal(t, "cached", p1.Identifier)
 		assert.Equal(t, "cached", p2.Identifier)
 	})
@@ -80,10 +85,10 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			return &Project{Identifier: "retry"}, nil
 		}
 
-		_, _, err := getOrComputeTranslation("k", true, compute)
+		_, _, _, err := getOrComputeTranslation("k", true, compute)
 		require.Error(t, err)
 
-		p, _, err := getOrComputeTranslation("k", true, compute)
+		p, _, _, err := getOrComputeTranslation("k", true, compute)
 		require.NoError(t, err)
 
 		assert.Equal(t, 2, callCount, "error result must not be cached")
@@ -114,7 +119,7 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			go func(i int) {
 				defer wg.Done()
 				calledCount.Add(1)
-				projs[i], _, errs[i] = getOrComputeTranslation("k", true, compute)
+				projs[i], _, _, errs[i] = getOrComputeTranslation("k", true, compute)
 			}(i)
 		}
 
@@ -152,13 +157,14 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		}
 
 		projs := make([]*Project, n)
+		dedupedFlags := make([]bool, n)
 		errs := make([]error, n)
 		var wg sync.WaitGroup
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			projs[0], _, errs[0] = getOrComputeTranslation("k", false, compute)
+			projs[0], _, dedupedFlags[0], errs[0] = getOrComputeTranslation("k", false, compute)
 		}()
 
 		<-computeActive
@@ -168,7 +174,7 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			go func(i int) {
 				defer wg.Done()
 				followerCount.Add(1)
-				projs[i], _, errs[i] = getOrComputeTranslation("k", false, compute)
+				projs[i], _, dedupedFlags[i], errs[i] = getOrComputeTranslation("k", false, compute)
 			}(i)
 		}
 
@@ -178,6 +184,9 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		for i := range n {
 			require.NoError(t, errs[i])
 			assert.Equal(t, "coalesced-no-lru", projs[i].Identifier)
+			// singleflight.Do reports shared=true to the leader too once at least
+			// one follower has joined its in-flight call, not just to the followers.
+			assert.True(t, dedupedFlags[i], "every caller's request overlapped with another for the same key")
 		}
 	})
 
@@ -207,7 +216,7 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _, errs[0] = getOrComputeTranslation("k", false, compute)
+			_, _, _, errs[0] = getOrComputeTranslation("k", false, compute)
 		}()
 
 		<-computeActive
@@ -217,7 +226,7 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			go func(i int) {
 				defer wg.Done()
 				followerCount.Add(1)
-				_, _, errs[i] = getOrComputeTranslation("k", false, compute)
+				_, _, _, errs[i] = getOrComputeTranslation("k", false, compute)
 			}(i)
 		}
 
@@ -229,7 +238,7 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		}
 
 		// Error must not be cached — the next sequential call should retry.
-		p, _, err := getOrComputeTranslation("k", false, func() (*Project, error) {
+		p, _, _, err := getOrComputeTranslation("k", false, func() (*Project, error) {
 			return &Project{Identifier: "retry"}, nil
 		})
 		require.NoError(t, err)
@@ -245,9 +254,9 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			return &Project{Tasks: []ProjectTask{{Name: "t1", DependsOn: []TaskUnitDependency{{Name: "dep"}}}}}, nil
 		}
 
-		p1, _, err := getOrComputeTranslation("k", true, compute)
+		p1, _, _, err := getOrComputeTranslation("k", true, compute)
 		require.NoError(t, err)
-		p2, _, err := getOrComputeTranslation("k", true, compute)
+		p2, _, _, err := getOrComputeTranslation("k", true, compute)
 		require.NoError(t, err)
 
 		p1.Tasks[0].DependsOn = nil
@@ -263,7 +272,7 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		}
 
 		// Warm the cache so all subsequent callers receive the cached pointer.
-		_, _, err := getOrComputeTranslation("k", true, compute)
+		_, _, _, err := getOrComputeTranslation("k", true, compute)
 		require.NoError(t, err)
 
 		var wg sync.WaitGroup
@@ -271,7 +280,7 @@ func TestGetOrComputeTranslation(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				p, _, err := getOrComputeTranslation("k", true, compute)
+				p, _, _, err := getOrComputeTranslation("k", true, compute)
 				require.NoError(t, err)
 				_ = p.Identifier
 				_ = len(p.Tasks)
@@ -279,6 +288,31 @@ func TestGetOrComputeTranslation(t *testing.T) {
 		}
 		wg.Wait()
 	})
+}
+
+func TestTranslationCacheStats(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+
+	getTranslationCache().Resize(1)
+
+	var callCount int
+	compute := func() (*Project, error) {
+		callCount++
+		return &Project{Identifier: "stats"}, nil
+	}
+
+	_, _, _, err := getOrComputeTranslation("k1", true, compute)
+	require.NoError(t, err)
+	size, evictions := translationCacheStats()
+	assert.Equal(t, 1, size)
+	assert.Equal(t, int64(0), evictions, "no eviction yet, the single entry still fits")
+
+	// Adding a second entry evicts the first because the LRU was resized down to 1.
+	_, _, _, err = getOrComputeTranslation("k2", true, compute)
+	require.NoError(t, err)
+	size, evictions = translationCacheStats()
+	assert.Equal(t, 1, size, "capacity is still 1")
+	assert.Equal(t, int64(1), evictions, "adding past capacity evicted the older entry")
 }
 
 // TestContentTranslationKeySelfInvalidates shows that changed content yields a new key, so a stale
@@ -291,14 +325,14 @@ func TestContentTranslationKeySelfInvalidates(t *testing.T) {
 	keyAfter := contentTranslationKey("sha-after-generate", identifier)
 	require.NotEqual(t, keyBefore, keyAfter, "changed content must produce a different key")
 
-	pBefore, _, err := getOrComputeTranslation(keyBefore, true, func() (*Project, error) {
+	pBefore, _, _, err := getOrComputeTranslation(keyBefore, true, func() (*Project, error) {
 		return &Project{Identifier: identifier, Tasks: []ProjectTask{{Name: "original"}}}, nil
 	})
 	require.NoError(t, err)
 	require.Len(t, pBefore.Tasks, 1)
 
 	// generate.tasks rewrites the parser project: new content, new key, served fresh.
-	pAfter, hit, err := getOrComputeTranslation(keyAfter, true, func() (*Project, error) {
+	pAfter, hit, _, err := getOrComputeTranslation(keyAfter, true, func() (*Project, error) {
 		return &Project{Identifier: identifier, Tasks: []ProjectTask{{Name: "original"}, {Name: "generated"}}}, nil
 	})
 	require.NoError(t, err)
@@ -439,13 +473,13 @@ func TestParserProjectContentSHASelfInvalidation(t *testing.T) {
 	require.NoError(t, err)
 	key := contentTranslationKey(sha, identifier)
 
-	_, hit, err := getOrComputeTranslation(key, true, func() (*Project, error) {
+	_, hit, _, err := getOrComputeTranslation(key, true, func() (*Project, error) {
 		return &Project{Identifier: identifier, Tasks: []ProjectTask{{Name: "original-task"}}}, nil
 	})
 	require.NoError(t, err)
 	assert.False(t, hit, "first call is a cache miss")
 
-	_, hit, err = getOrComputeTranslation(key, true, func() (*Project, error) {
+	_, hit, _, err = getOrComputeTranslation(key, true, func() (*Project, error) {
 		t.Fatal("compute must not be called on a cache hit")
 		return nil, nil
 	})
@@ -462,7 +496,7 @@ func TestParserProjectContentSHASelfInvalidation(t *testing.T) {
 	require.NotEqual(t, sha, shaGenerated, "new content must produce a different hash")
 	keyGenerated := contentTranslationKey(shaGenerated, identifier)
 
-	pGenerated, hit, err := getOrComputeTranslation(keyGenerated, true, func() (*Project, error) {
+	pGenerated, hit, _, err := getOrComputeTranslation(keyGenerated, true, func() (*Project, error) {
 		return &Project{Identifier: identifier, Tasks: []ProjectTask{{Name: "original-task"}, {Name: "generated-task"}}}, nil
 	})
 	require.NoError(t, err)

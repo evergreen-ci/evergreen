@@ -579,8 +579,19 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 const (
 	// ppPreGenerationOtelAttribute records whether a translation used the
 	// pre-generation parser project copy.
-	ppPreGenerationOtelAttribute       = "evergreen.parser_project.pre_generation"
+	ppPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+	// ppTranslationCacheHitOtelAttribute records whether this call reused a translation already
+	// stored in the LRU, so it never had to recompute one at all.
 	ppTranslationCacheHitOtelAttribute = "evergreen.parser_project.translation_cache_hit"
+	// ppTranslationDedupedOtelAttribute records whether this call arrived while another request
+	// for the same version was already translating it, and shared that in-flight result instead
+	// of starting a redundant translation of its own.
+	ppTranslationDedupedOtelAttribute = "evergreen.parser_project.translation_deduped"
+	// ppTranslationCacheSizeOtelAttribute records how many translations the LRU is holding right now.
+	ppTranslationCacheSizeOtelAttribute = "evergreen.parser_project.translation_cache_size"
+	// ppTranslationCacheEvictionsOtelAttribute records the cumulative count of translations the LRU
+	// has dropped to make room for new ones (or because their TTL expired), before anything reused them.
+	ppTranslationCacheEvictionsOtelAttribute = "evergreen.parser_project.translation_cache_evictions"
 )
 
 // FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
@@ -659,10 +670,20 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		// in-flight calls and retains nothing that could go stale.
 		key = versionTranslationKey(versionID, preGeneration)
 	}
-	p, cacheHit, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
+	p, cacheHit, deduped, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
 		return TranslateProject(pp)
 	})
-	span.SetAttributes(attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit))
+	span.SetAttributes(
+		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
+		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
+	)
+	if cacheEnabled {
+		size, evictions := translationCacheStats()
+		span.SetAttributes(
+			attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
+			attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
+		)
+	}
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
 	}
