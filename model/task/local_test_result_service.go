@@ -37,7 +37,7 @@ func NewLocalService(env evergreen.Environment) *localTestResultsService {
 func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, _ []string, failedCount int, totalResults int, tr testresult.DbTaskTestResults) error {
 	update := bson.M{
 		"$push": bson.M{ResultsKey: bson.M{"$each": tr.Results}},
-		"$inc": bson.M{
+		"$set": bson.M{
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
 		},
