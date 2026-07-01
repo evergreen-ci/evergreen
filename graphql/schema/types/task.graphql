@@ -93,6 +93,12 @@ type Task {
   errors: [String!]
   estimatedStart: Duration
   execution: Int!
+  """
+  executionPlatform indicates the environment the task ran in: "host" for a
+  task that ran directly on the host, or "container" for a task that ran
+  inside a Docker container on the host.
+  """
+  executionPlatform: String!
   executionSteps: [TaskExecutionStep!]
   executionTasks: [String!]
   executionTasksFull: [Task!]

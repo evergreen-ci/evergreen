@@ -68,6 +68,10 @@ type APITask struct {
 	HostId *string `json:"host_id"`
 	// The number of the execution of this particular task
 	Execution int `json:"execution"`
+	// The execution environment that the task ran in (possible values are
+	// "host" and "container"). Empty is treated as "host" for tasks that
+	// predate this field.
+	ExecutionPlatform *string `json:"execution_platform"`
 	// For mainline commits, represents the position in the commit history of
 	// commit this task is associated with. For patches, this represents the
 	// number of total patches submitted by the user.
@@ -343,6 +347,10 @@ func (at *APITask) buildTask(t *task.Task) error {
 	if t.OldTaskId != "" {
 		id = t.OldTaskId
 	}
+	executionPlatform := t.ExecutionPlatform
+	if executionPlatform == "" {
+		executionPlatform = task.ExecutionPlatformHost
+	}
 	*at = APITask{
 		Id:                      utility.ToStringPtr(id),
 		ProjectId:               utility.ToStringPtr(t.Project),
@@ -366,6 +374,7 @@ func (at *APITask) buildTask(t *task.Task) error {
 		HostId:                  utility.ToStringPtr(t.HostId),
 		Tags:                    utility.ToStringPtrSlice(t.Tags),
 		Execution:               t.Execution,
+		ExecutionPlatform:       utility.ToStringPtr(string(executionPlatform)),
 		Order:                   t.RevisionOrderNumber,
 		Status:                  utility.ToStringPtr(t.Status),
 		DisplayStatus:           utility.ToStringPtr(t.DisplayStatusCache),
