@@ -81,6 +81,8 @@ models:
         value: github.com/evergreen-ci/evergreen/rest/model.MultiPreferredType
       KANOPY:
         value: github.com/evergreen-ci/evergreen/rest/model.KanopyPreferredType
+  QuarantinedTest:
+    model: github.com/evergreen-ci/evergreen/model/testresult.QuarantinedTest
   AuthUser:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAuthUser
   AuthUserInput:
@@ -948,6 +950,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQuarantineEntry
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
+  TaskQuarantinedTestsSample:
+    model: github.com/evergreen-ci/evergreen/model/testresult.TaskTestResultsQuarantinedSample
   TestLog:
     model: github.com/evergreen-ci/evergreen/rest/model.TestLogs
   TestQuarantineEntry:

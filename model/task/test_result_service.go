@@ -130,6 +130,7 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts Ge
 	}
 	for i, dbTaskResults := range allDBTaskResults {
 		allTaskResults[i].Stats = dbTaskResults.Stats
+		allTaskResults[i].Info = dbTaskResults.Info
 		allTaskResults[i].Results = dbTaskResults.Results
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
