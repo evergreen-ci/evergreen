@@ -930,8 +930,8 @@ func PopulateUnstickVolumesJob() amboy.QueueOperation {
 	}
 }
 
-// defaultRetryFailedLogMoveLookbackMonths is used when the admin setting is unset or <= 0.
-const defaultRetryFailedLogMoveLookbackMonths = 2
+// defaultRetryFailedLogMoveLookbackDays is used when the admin setting is unset or <= 0.
+const defaultRetryFailedLogMoveLookbackDays = 7
 
 // defaultRetryFailedLogMoveMaxJobsPerRun caps enqueued jobs to avoid S3 rate limiting.
 const defaultRetryFailedLogMoveMaxJobsPerRun = 50
@@ -980,22 +980,21 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 			return nil
 		}
 
-		lookbackMonths := settings.Buckets.RetryFailedLogMoveLookbackMonths
-		if lookbackMonths <= 0 {
-			lookbackMonths = defaultRetryFailedLogMoveLookbackMonths
+		lookbackDays := settings.Buckets.RetryFailedLogMoveLookbackDays
+		if lookbackDays <= 0 {
+			lookbackDays = defaultRetryFailedLogMoveLookbackDays
 		}
+		cutoff := time.Now().AddDate(0, 0, -lookbackDays)
 
 		maxJobs := settings.Buckets.RetryFailedLogMoveMaxJobsPerRun
 		if maxJobs <= 0 {
 			maxJobs = defaultRetryFailedLogMoveMaxJobsPerRun
 		}
-
-		cutoff := time.Now().AddDate(0, -lookbackMonths, 0)
 		filter := bson.M{
 			task.StatusKey:      evergreen.TaskFailed,
 			task.FinishTimeKey:  bson.M{"$gte": cutoff},
 			task.DisplayOnlyKey: bson.M{"$ne": true},
-			task.TaskOutputInfoKey + ".task_logs.bucket_config.name": bson.M{"$exists": true, "$ne": failedBucketCfg.Name},
+			task.TaskOutputInfoKey + ".task_logs.bucket_config.name": bson.M{"$nin": bson.A{nil, failedBucketCfg.Name}},
 		}
 		if len(settings.Buckets.LongRetentionProjects) > 0 {
 			filter[task.ProjectKey] = bson.M{"$nin": settings.Buckets.LongRetentionProjects}
@@ -1015,15 +1014,17 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 		if runInOldTaskCollection {
 			tasks, err = task.FindAllOld(findCtx, query)
 		} else {
-			tasks, err = task.FindAll(findCtx, query)
+			// Hint to bypass expensive replanning on a collection with 30+ indexes.
+			tasks, err = task.FindAll(findCtx, query.Hint(task.RetryFailedLogMoveIndex))
 		}
 		if err != nil {
-			grip.Error(ctx, message.WrapError(err, message.Fields{
+			logFields := message.Fields{
 				"message":          "retry failed log move jobs: finding candidate tasks failed",
-				"lookback_months":  lookbackMonths,
 				"max_jobs_per_run": maxJobs,
 				"query_limit":      queryLimit,
-			}))
+				"lookback_days":    lookbackDays,
+			}
+			grip.Error(ctx, message.WrapError(err, logFields))
 			return errors.Wrap(err, "finding failed tasks whose logs need moving")
 		}
 
@@ -1041,17 +1042,18 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 		}
 
 		if len(toRetry) == 0 {
-			grip.Info(ctx, message.Fields{
+			infoFields := message.Fields{
 				"message":                    "retry failed log move jobs",
 				"run_in_old_task_collection": runInOldTaskCollection,
 				"tasks_found":                0,
 				"tasks_queried":              len(tasks),
 				"task_ids_all_candidates":    []string{},
 				"task_ids_attempt":           []string{},
-				"lookback_months":            lookbackMonths,
 				"max_jobs_per_run":           maxJobs,
 				"query_limit":                queryLimit,
-			})
+				"lookback_days":              lookbackDays,
+			}
+			grip.Info(ctx, infoFields)
 			return nil
 		}
 
@@ -1105,12 +1107,12 @@ func populateRetryFailedLogMoveJobs(env evergreen.Environment, runInOldTaskColle
 			"task_ids_attempt":               logAttempted,
 			"task_count_attempt":             len(taskIDsAttempted),
 			"jobs_enqueued":                  len(taskIDsAttempted) - catcher.Len(),
-			"lookback_months":                lookbackMonths,
 			"max_jobs_per_run":               maxJobs,
 			"query_limit":                    queryLimit,
 			"task_id_log_truncated":          omittedCandidates > 0 || omittedAttempted > 0,
 			"task_id_log_omitted_candidates": omittedCandidates,
 			"task_id_log_omitted_attempt":    omittedAttempted,
+			"lookback_days":                  lookbackDays,
 		}
 		if err != nil {
 			fields["message"] = "retry failed log move jobs: one or more enqueue operations failed"
@@ -1252,6 +1254,14 @@ func hostIPAssociationJobs(ctx context.Context, env evergreen.Environment, ts ti
 func PopulateUnexpirableSpawnHostStatsJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		return amboy.EnqueueUniqueJob(ctx, queue, NewUnexpirableSpawnHostStatsJob(utility.RoundPartOfHour(0).Format(TSFormat)))
+	}
+}
+
+// PopulateLargeParserProjectTaskStatsJob populates a job to log stats about
+// running tasks with S3-stored parser projects.
+func PopulateLargeParserProjectTaskStatsJob() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewLargeParserProjectTaskStatsJob(utility.RoundPartOfHour(5).Format(TSFormat)))
 	}
 }
 

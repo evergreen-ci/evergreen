@@ -377,15 +377,7 @@ func (r *taskResolver) ExecutionSteps(ctx context.Context, obj *restModel.APITas
 		return nil, nil
 	}
 
-	v, err := model.VersionFindOneId(ctx, versionID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version: %s", err.Error()))
-	}
-	if v == nil {
-		return nil, nil
-	}
-
-	project, _, err := model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, false)
+	project, _, err := model.FindAndTranslateProjectForVersionID(ctx, evergreen.GetEnvironment().Settings(), versionID, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("loading project: %s", err.Error()))
 	}

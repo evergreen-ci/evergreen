@@ -304,7 +304,7 @@ func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 
 func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
 	s.Key = &h.Key
-	if h.Key == "Authorization" {
+	if h.Key == event.WebhookAuthorizationHeader {
 		s.Value = utility.ToStringPtr(evergreen.RedactedValue)
 	} else {
 		s.Value = &h.Value

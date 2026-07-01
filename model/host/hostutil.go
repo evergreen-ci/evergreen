@@ -1142,14 +1142,15 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 	}
 
 	conf := struct {
-		User          string `yaml:"user"`
-		APIKey        string `yaml:"api_key,omitempty"`
-		APIServerHost string `yaml:"api_server_host"`
-		UIServerHost  string `yaml:"ui_server_host"`
-		SpawnHostID   string `yaml:"spawn_host_id,omitempty"`
-		TaskID        string `yaml:"task_id,omitempty"`
-		ProjectID     string `yaml:"project_id,omitempty"`
-		OAuth         struct {
+		User              string `yaml:"user"`
+		APIKey            string `yaml:"api_key,omitempty"`
+		APIServerHost     string `yaml:"api_server_host"`
+		CorpAPIServerHost string `yaml:"corp_api_server_host"`
+		UIServerHost      string `yaml:"ui_server_host"`
+		SpawnHostID       string `yaml:"spawn_host_id,omitempty"`
+		TaskID            string `yaml:"task_id,omitempty"`
+		ProjectID         string `yaml:"project_id,omitempty"`
+		OAuth             struct {
 			Issuer               string        `yaml:"issuer"`
 			ClientID             string        `yaml:"client_id"`
 			ConnectorID          string        `yaml:"connector_id"`
@@ -1177,12 +1178,10 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		}
 	}
 	if settings != nil {
-		if !settings.ServiceFlags.JWTTokenForCLIDisabled {
-			conf.APIServerHost = settings.Api.CorpURL + "/api"
-		} else {
-			conf.APIServerHost = settings.Api.URL + "/api"
-		}
-		conf.UIServerHost = settings.Ui.Url
+		conf.APIServerHost = settings.Api.URL + "/api"
+		conf.CorpAPIServerHost = settings.Api.CorpURL + "/api"
+		conf.UIServerHost = settings.Ui.UIv2Url
+
 		if settings.AuthConfig.OAuth != nil {
 			conf.OAuth.Issuer = settings.AuthConfig.OAuth.Issuer
 			conf.OAuth.ClientID = settings.AuthConfig.OAuth.ClientID
@@ -1194,8 +1193,7 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		conf.OAuth.SpawnHostAccessToken = accessToken
 		// We do not need to remove the access token from the user's document because
 		// it automatically expires and other hosts may need to use it.
-	} else {
-		// If there is no access token, default to using the user's API key.
+	} else if owner.OnlyAPI {
 		conf.APIKey = owner.APIKey
 	}
 

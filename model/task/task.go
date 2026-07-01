@@ -120,7 +120,10 @@ type Task struct {
 	ResultsService        string                `bson:"results_service,omitempty" json:"results_service,omitempty"`
 	HasTestResults        bool                  `bson:"has_test_results,omitempty" json:"has_test_results,omitempty"`
 	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	// NumQuarantinedTestsSkipped is the number of tests this execution skipped
+	// because they were quarantined in TSS.
+	NumQuarantinedTestsSkipped int  `bson:"num_quarantined_tests_skipped,omitempty" json:"num_quarantined_tests_skipped,omitempty"`
+	MustHaveResults            bool `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -2359,6 +2362,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 		t.ResultsService = ""
 		t.ResultsFailed = false
 		t.HasTestResults = false
+		t.NumQuarantinedTestsSkipped = 0
 		t.ResetWhenFinished = false
 		t.ResetFailedWhenFinished = false
 		t.AgentVersion = ""
@@ -2402,6 +2406,7 @@ func resetTaskUpdate(t *Task, caller string, prediction *CostPredictionResult) [
 				TaskOutputInfoKey,
 				ResultsFailedKey,
 				HasTestResultsKey,
+				NumQuarantinedTestsSkippedKey,
 				ResetWhenFinishedKey,
 				IsAutomaticRestartKey,
 				ResetFailedWhenFinishedKey,
@@ -4428,14 +4433,6 @@ type CostPredictionResult struct {
 }
 
 func (t *Task) ComputePredictedCostForWeek(ctx context.Context) (CostPredictionResult, error) {
-	ctx, span := tracer.Start(ctx, "compute-predicted-cost-for-week")
-	defer span.End()
-	span.SetAttributes(
-		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
-		attribute.String(evergreen.BuildNameOtelAttribute, t.BuildVariant),
-		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
-	)
-
 	end := time.Now()
 	start := end.Add(-taskCompletionEstimateWindow)
 
@@ -4757,15 +4754,11 @@ func (t *Task) HasValidDistro(ctx context.Context) bool {
 	if t.DisplayOnly {
 		return true
 	}
-	_, err := distro.FindApplicableDistroIDs(ctx, t.DistroId)
-	if err == nil {
-		return true
+	// A task's distro may be referenced either by a distro's ID or by one of
+	// its aliases, so both must be considered valid.
+	hasValid, err := distro.HasAnyByIdOrAlias(ctx, append([]string{t.DistroId}, t.SecondaryDistros...))
+	if err != nil {
+		return false
 	}
-	for _, secondaryDistro := range t.SecondaryDistros {
-		_, err = distro.FindApplicableDistroIDs(ctx, secondaryDistro)
-		if err == nil {
-			return true
-		}
-	}
-	return false
+	return hasValid
 }

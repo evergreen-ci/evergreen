@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -456,10 +457,20 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	return cache
 }
 
-// RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
-// state of the tasks it represents.
-func RefreshTasksCache(ctx context.Context, buildId string) error {
-	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(buildId)))
+// RefreshTasksCache updates the given builds' documents so that their task
+// caches reflect the correct current state of the tasks they represent.
+func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
+	if len(buildIDs) == 0 {
+		return nil
+	}
+	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildIds(buildIDs)).WithFields(
+		task.IdKey,
+		task.BuildIdKey,
+		task.DisplayNameKey,
+		task.DependsOnKey,
+		task.DisplayOnlyKey,
+		task.ExecutionTasksKey,
+	))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -467,23 +478,34 @@ func RefreshTasksCache(ctx context.Context, buildId string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	// trim out tasks that are part of a display task
-	execTaskMap := map[string]bool{}
+
+	tasksByBuild := map[string][]task.Task{}
 	for _, t := range tasks {
-		if t.DisplayOnly {
-			for _, et := range t.ExecutionTasks {
-				execTaskMap[et] = true
-			}
-		}
-	}
-	for i := len(tasks) - 1; i >= 0; i-- {
-		if _, exists := execTaskMap[tasks[i].Id]; exists {
-			tasks = append(tasks[:i], tasks[i+1:]...)
-		}
+		tasksByBuild[t.BuildId] = append(tasksByBuild[t.BuildId], t)
 	}
 
-	cache := CreateTasksCache(tasks)
-	return errors.WithStack(build.SetTasksCache(ctx, buildId, cache))
+	catcher := grip.NewBasicCatcher()
+	for _, buildID := range buildIDs {
+		buildTasks := tasksByBuild[buildID]
+		// trim out tasks that are part of a display task
+		execTaskMap := map[string]bool{}
+		for _, t := range buildTasks {
+			if t.DisplayOnly {
+				for _, et := range t.ExecutionTasks {
+					execTaskMap[et] = true
+				}
+			}
+		}
+		for i := len(buildTasks) - 1; i >= 0; i-- {
+			if _, exists := execTaskMap[buildTasks[i].Id]; exists {
+				buildTasks = append(buildTasks[:i], buildTasks[i+1:]...)
+			}
+		}
+
+		cache := CreateTasksCache(buildTasks)
+		catcher.Wrapf(build.SetTasksCache(ctx, buildID, cache), "updating task cache for '%s'", buildID)
+	}
+	return catcher.Resolve()
 }
 
 // addTasksToBuild creates/activates the tasks for the given existing build.
@@ -495,12 +517,8 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 			creationInfo.Build.BuildVariant, creationInfo.Project.Identifier)
 	}
 
-	createTime, err := getTaskCreateTime(ctx, creationInfo)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", creationInfo.Version.Id)
-	}
-
 	var githubCheckAliases ProjectAliases
+	var err error
 	if creationInfo.Version.Requester == evergreen.RepotrackerVersionRequester && creationInfo.ProjectRef.IsGithubChecksEnabled() {
 		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(ctx, creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(ctx, message.WrapError(err, message.Fields{
@@ -511,7 +529,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		}))
 	}
 	creationInfo.GithubChecksAliases = githubCheckAliases
-	creationInfo.TaskCreateTime = createTime
 	// Create the new tasks for the build
 	tasks, err := createTasksForBuild(ctx, creationInfo)
 	if err != nil {
@@ -1473,6 +1490,13 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting create time for tasks")
 	}
+	// The distro alias lookup table is needed so that tasks whose run_on
+	// references a distro alias store the resolved distro ID, consistent with
+	// tasks created in already-existing builds.
+	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting distro alias lookup table")
+	}
 	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, pair := range creationInfo.Pairs.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
@@ -1500,6 +1524,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
 			ExplicitlyGeneratedTasks:            creationInfo.ExplicitlyGeneratedTasks,
 			TestSelectionParams:                 tsParams,
+			DistroAliases:                       distroAliases,
 		}
 
 		grip.Info(ctx, message.Fields{
@@ -1613,6 +1638,13 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	return newActivatedTaskIds, activatedDependencyIDs, nil
 }
 
+const (
+	numExistingBuildsAttribute     = "evergreen.add_new_tasks.num_existing_builds"
+	numBuildsWithNewTasksAttribute = "evergreen.add_new_tasks.num_builds_with_new_tasks"
+	numTasksAddedAttribute         = "evergreen.add_new_tasks.num_tasks_added"
+	numActivatedTasksAttribute     = "evergreen.add_new_tasks.num_activated_tasks"
+)
+
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds. Returns task IDs for activated
 // tasks and task IDs for activated dependencies.
@@ -1632,10 +1664,17 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		return nil, nil, errors.Wrap(err, "getting table of task IDs")
 	}
 
+	createTime, err := getTaskCreateTime(ctx, creationInfo)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", creationInfo.Version.Id)
+	}
+	creationInfo.TaskCreateTime = createTime
+
 	activatedTaskIds := []string{}
 	activatedTasks := []task.Task{}
 	allTasks := task.Tasks{}
 	var buildIdsToActivate []string
+	var buildIdsToRefresh []string
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
@@ -1688,6 +1727,8 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			return nil, nil, err
 		}
 
+		// This build received new tasks, so its tasks cache must be refreshed.
+		buildIdsToRefresh = append(buildIdsToRefresh, b.Id)
 		allTasks = append(allTasks, tasks...)
 		for _, t := range tasks {
 			if t.Activated {
@@ -1704,15 +1745,19 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
 		}
 	}
+	span.SetAttributes(
+		attribute.Int(numExistingBuildsAttribute, len(existingBuilds)),
+		attribute.Int(numBuildsWithNewTasksAttribute, len(buildIdsToRefresh)),
+		attribute.Int(numTasksAddedAttribute, len(allTasks)),
+		attribute.Int(numActivatedTasksAttribute, len(activatedTaskIds)),
+	)
 	SetNumDependents(allTasks)
 	if err = allTasks.InsertUnordered(ctx); err != nil {
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
-	// update each build to hold the new tasks
-	for _, b := range existingBuilds {
-		if err = RefreshTasksCache(ctx, b.Id); err != nil {
-			return nil, nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
-		}
+
+	if err = RefreshTasksCache(ctx, buildIdsToRefresh); err != nil {
+		return nil, nil, errors.Wrap(err, "refreshing task caches for updated builds")
 	}
 	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.AuthorID, false, activatedTasks...); err != nil {
 		return nil, nil, errors.Wrap(err, "updating patch task limit for user")

@@ -1342,9 +1342,9 @@ by the Release Infrastructure team, and you may receive assistance with it in
     product: mongosh
     version: 1.0.0
     filenames:
-        - mongosh-linux-amd64.tar.gz
-        - mongosh-linux-arm64.tar.gz
-        - *.zip
+      - mongosh-linux-amd64.tar.gz
+      - mongosh-linux-arm64.tar.gz
+      - *.zip
 ```
 
 Parameters:
@@ -1840,7 +1840,10 @@ This command allows a task to get a recommended list of tests from the [test sel
 service](https://wiki.corp.mongodb.com/spaces/DBDEVPROD/pages/385846915/Test+Selection+Services). The command will
 populate an output JSON file, which your task can use to decide which tests should run.
 
-This command can only be used if [the test selection feature is enabled by the project](Project-and-Distro-Settings#test-selection-settings).
+This command can only request selected tests if [the test selection feature is enabled by the
+project](Project-and-Distro-Settings#test-selection-settings) and the task is running in a patch. On mainline commits and
+other non-patch versions, the command writes an empty test list to the output file, so no tests are excluded, even if the
+version page shows that test selection is enabled.
 
 ```yaml
 - command: test_selection.get

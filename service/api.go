@@ -171,14 +171,15 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 	project := MustHaveProject(r)
 
-	// zero out the depends on and commands fields because they are
-	// unnecessary and may not get marshaled properly
-	for i := range project.Tasks {
-		project.Tasks[i].DependsOn = []model.TaskUnitDependency{}
-		project.Tasks[i].Commands = []model.PluginCommandConf{}
-
+	// Copy the slice before zeroing fields — the project pointer may be shared
+	// with the translation cache and must not be mutated.
+	tasks := make([]model.ProjectTask, len(project.Tasks))
+	copy(tasks, project.Tasks)
+	for i := range tasks {
+		tasks[i].DependsOn = []model.TaskUnitDependency{}
+		tasks[i].Commands = []model.PluginCommandConf{}
 	}
-	gimlet.WriteJSON(r.Context(), w, project.Tasks)
+	gimlet.WriteJSON(r.Context(), w, tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 	project := MustHaveProject(r)

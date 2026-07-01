@@ -561,7 +561,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 		if pp == nil {
 			return nil, nil, errors.Errorf("parser project '%s' not found in storage using method '%s'", p.Id.Hex(), p.ProjectStorageMethod)
 		}
-		project, err := TranslateProject(pp)
+		project, err := TranslateProject(ctx, pp)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "translating project '%s'", pp.Id)
 		}
@@ -569,59 +569,125 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	}
 
 	// This fallback handles the case where the patch is already finalized.
-	v, err := VersionFindOneId(ctx, p.Version)
+	project, pp, err := FindAndTranslateProjectForVersionID(ctx, settings, p.Version, false)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
+		return nil, nil, errors.Wrapf(err, "finding project for patch '%s'", p.Id.Hex())
 	}
-	if v == nil {
-		return nil, nil, errors.Errorf("version '%s' not found for patch '%s'", p.Version, p.Id.Hex())
-	}
-	return FindAndTranslateProjectForVersion(ctx, settings, v, false)
+	return project, pp, nil
 }
 
-// parserProjectPreGenerationOtelAttribute records whether a translation used the
-// pre-generation parser project copy.
-const parserProjectPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+const (
+	// ppPreGenerationOtelAttribute records whether a translation used the
+	// pre-generation parser project copy.
+	ppPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+	// ppTranslationCacheHitOtelAttribute records whether this call reused a translation already
+	// stored in the LRU, so it never had to recompute one at all.
+	ppTranslationCacheHitOtelAttribute = "evergreen.parser_project.translation_cache_hit"
+	// ppTranslationDedupedOtelAttribute records whether this call arrived while another request
+	// for the same version was already translating it, and shared that in-flight result instead
+	// of starting a redundant translation of its own.
+	ppTranslationDedupedOtelAttribute = "evergreen.parser_project.translation_deduped"
+	// ppTranslationCacheSizeOtelAttribute records how many translations the LRU is holding right now.
+	ppTranslationCacheSizeOtelAttribute = "evergreen.parser_project.translation_cache_size"
+	// ppTranslationCacheEvictionsOtelAttribute records the cumulative count of translations the LRU
+	// has dropped to make room for new ones (or because their TTL expired), before anything reused them.
+	ppTranslationCacheEvictionsOtelAttribute = "evergreen.parser_project.translation_cache_evictions"
+)
+
+// FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
+func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergreen.Settings, versionID string, preGeneration bool) (*Project, *ParserProject, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID).WithFields(
+		VersionIdKey,
+		VersionIdentifierKey,
+		VersionProjectStorageMethodKey,
+		VersionPreGenerationProjectStorageMethodKey,
+	))
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "finding version '%s'", versionID)
+	}
+	if v == nil {
+		return nil, nil, errors.Errorf("version '%s' not found", versionID)
+	}
+
+	return FindAndTranslateProjectForVersion(ctx, settings, v, preGeneration)
+}
 
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
-// fetch and translate the parser project from before it was modified by generate.tasks
+// fetch and translate the parser project from before it was modified by generate.tasks.
+//
+// When the translation cache is enabled the returned *Project is a shared pointer. Callers
+// must not mutate it; make a local copy of any fields that need modification before use.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
+}
+
+func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) (*Project, *ParserProject, error) {
 	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
-		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
-		attribute.Bool(parserProjectPreGenerationOtelAttribute, preGeneration),
+		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
+		attribute.Bool(ppPreGenerationOtelAttribute, preGeneration),
 	))
 	defer span.End()
 
 	var pp *ParserProject
 	var err error
 	if preGeneration {
-		preGeneratedId := preGeneratedParserProjectId(v.Id)
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.PreGenerationProjectStorageMethod, preGeneratedId)
+		preGeneratedId := preGeneratedParserProjectId(versionID)
+		pp, err = ParserProjectFindOneByID(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
 		}
 		// Fall back to the parser project post-generation if the pre-generation parser project was not found
 	}
 	if pp == nil {
-		pp, err = ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+		pp, err = ParserProjectFindOneByID(ctx, settings, projectStorageMethod, versionID)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", v.Id)
+			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", versionID)
 		}
 		if pp == nil {
-			return nil, nil, errors.Errorf("parser project not found for version '%s'", v.Id)
+			return nil, nil, errors.Errorf("parser project not found for version '%s'", versionID)
 		}
 	}
-	// Setting the translated project's ID is necessary here because the version
-	// always has an identifier, but some old parser projects used to not be
-	// stored with the ID.
-	pp.Identifier = utility.ToStringPtr(v.Identifier)
-	var p *Project
-	p, err = TranslateProject(pp)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", v.Id)
+	// Setting the translated project's ID is necessary here because some old
+	// parser projects used to not be stored with the ID.
+	if versionIdentifier != "" {
+		pp.Identifier = utility.ToStringPtr(versionIdentifier)
 	}
-	return p, pp, err
+
+	cacheEnabled := settings.ServiceFlags.ProjectTranslationCacheEnabled
+	var key string
+	if cacheEnabled {
+		var sha string
+		sha, err = parserProjectContentSHA(pp)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "computing parser project content hash")
+		}
+		key = contentTranslationKey(sha, versionIdentifier)
+	} else {
+		// When the cache is off, we don't need a key that changes whenever the parser project changes
+		// (which the LRU requires so it never serves a stale config after generate.tasks). We can instead
+		// use the version ID. It's cheaper and enough for singleflight, which only coalesces concurrent
+		// in-flight calls and retains nothing that could go stale.
+		key = versionTranslationKey(versionID, preGeneration)
+	}
+	p, cacheHit, deduped, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
+		return TranslateProject(ctx, pp)
+	})
+	span.SetAttributes(
+		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
+		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
+	)
+	if cacheEnabled {
+		size, evictions := translationCacheStats()
+		span.SetAttributes(
+			attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
+			attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
+		)
+	}
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
+	}
+	return p, pp, nil
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
@@ -653,12 +719,14 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 	}, nil
 }
 
+// GetProjectFromBSON is used by the CLI and agent, neither of which have a request-scoped
+// context available at this leaf call, so it translates with context.Background().
 func GetProjectFromBSON(data []byte) (*Project, error) {
 	pp := &ParserProject{}
 	if err := bson.Unmarshal(data, pp); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling BSON into parser project")
 	}
-	return TranslateProject(pp)
+	return TranslateProject(context.Background(), pp)
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, intermediateProject *ParserProject,
@@ -756,7 +824,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	// Return project even with errors.
-	p, err := TranslateProject(intermediateProject)
+	p, err := TranslateProject(ctx, intermediateProject)
 	if p != nil {
 		*project = *p
 	}
@@ -1511,7 +1579,13 @@ func capParserPriorities(p *ParserProject) {
 
 // TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses.
-func TranslateProject(pp *ParserProject) (*Project, error) {
+func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) {
+	release, err := acquireTranslateSlot(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "waiting for a translate concurrency slot")
+	}
+	defer release()
+
 	// Transfer top level fields
 	proj := &Project{
 

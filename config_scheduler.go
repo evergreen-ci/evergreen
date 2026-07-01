@@ -10,24 +10,25 @@ import (
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	TaskFinder                    string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
-	HostAllocator                 string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
-	HostAllocatorRoundingRule     string  `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
-	HostAllocatorFeedbackRule     string  `bson:"host_allocator_feedback_rule" json:"host_allocator_feedback_rule" mapstructure:"host_allocator_feedback_rule"`
-	HostsOverallocatedRule        string  `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
-	FutureHostFraction            float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
-	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
-	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
-	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
-	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
-	PatchFactor                   int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_zipper"`
-	PatchTimeInQueueFactor        int64   `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
-	CommitQueueFactor             int64   `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
-	MainlineTimeInQueueFactor     int64   `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
-	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
-	GenerateTaskFactor            int64   `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
-	NumDependentsFactor           float64 `bson:"num_dependents_factor" json:"num_dependents_factor" mapstructure:"num_dependents_factor"`
-	StepbackTaskFactor            int64   `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
+	TaskFinder                       string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	HostAllocator                    string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
+	HostAllocatorRoundingRule        string  `bson:"host_allocator_rounding_rule" json:"host_allocator_rounding_rule" mapstructure:"host_allocator_rounding_rule"`
+	HostAllocatorFeedbackRule        string  `bson:"host_allocator_feedback_rule" json:"host_allocator_feedback_rule" mapstructure:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule           string  `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
+	FutureHostFraction               float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
+	CacheDurationSeconds             int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
+	TargetTimeSeconds                int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds    int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
+	GroupVersions                    bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
+	PatchFactor                      int64   `bson:"patch_zipper_factor" json:"patch_factor" mapstructure:"patch_zipper"`
+	PatchTimeInQueueFactor           int64   `bson:"patch_time_in_queue_factor" json:"patch_time_in_queue_factor" mapstructure:"patch_time_in_queue_factor"`
+	CommitQueueFactor                int64   `bson:"commit_queue_factor" json:"commit_queue_factor" mapstructure:"commit_queue_factor"`
+	MainlineTimeInQueueFactor        int64   `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor            int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
+	GenerateTaskFactor               int64   `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
+	NumDependentsFactor              float64 `bson:"num_dependents_factor" json:"num_dependents_factor" mapstructure:"num_dependents_factor"`
+	StepbackTaskFactor               int64   `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
+	TranslateProjectConcurrencyLimit int     `bson:"translate_project_concurrency_limit" json:"translate_project_concurrency_limit" mapstructure:"translate_project_concurrency_limit"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -39,24 +40,25 @@ func (c *SchedulerConfig) Get(ctx context.Context) error {
 func (c *SchedulerConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			"task_finder":                       c.TaskFinder,
-			"host_allocator":                    c.HostAllocator,
-			"host_allocator_rounding_rule":      c.HostAllocatorRoundingRule,
-			"host_allocator_feedback_rule":      c.HostAllocatorFeedbackRule,
-			"hosts_overallocated_rule":          c.HostsOverallocatedRule,
-			"free_host_fraction":                c.FutureHostFraction,
-			"cache_duration_seconds":            c.CacheDurationSeconds,
-			"target_time_seconds":               c.TargetTimeSeconds,
-			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
-			"group_versions":                    c.GroupVersions,
-			"patch_zipper_factor":               c.PatchFactor,
-			"patch_time_in_queue_factor":        c.PatchTimeInQueueFactor,
-			"commit_queue_factor":               c.CommitQueueFactor,
-			"mainline_time_in_queue_factor":     c.MainlineTimeInQueueFactor,
-			"expected_runtime_factor":           c.ExpectedRuntimeFactor,
-			"generate_task_factor":              c.GenerateTaskFactor,
-			"num_dependents_factor":             c.NumDependentsFactor,
-			"stepback_task_factor":              c.StepbackTaskFactor,
+			"task_finder":                         c.TaskFinder,
+			"host_allocator":                      c.HostAllocator,
+			"host_allocator_rounding_rule":        c.HostAllocatorRoundingRule,
+			"host_allocator_feedback_rule":        c.HostAllocatorFeedbackRule,
+			"hosts_overallocated_rule":            c.HostsOverallocatedRule,
+			"free_host_fraction":                  c.FutureHostFraction,
+			"cache_duration_seconds":              c.CacheDurationSeconds,
+			"target_time_seconds":                 c.TargetTimeSeconds,
+			"acceptable_host_idle_time_seconds":   c.AcceptableHostIdleTimeSeconds,
+			"group_versions":                      c.GroupVersions,
+			"patch_zipper_factor":                 c.PatchFactor,
+			"patch_time_in_queue_factor":          c.PatchTimeInQueueFactor,
+			"commit_queue_factor":                 c.CommitQueueFactor,
+			"mainline_time_in_queue_factor":       c.MainlineTimeInQueueFactor,
+			"expected_runtime_factor":             c.ExpectedRuntimeFactor,
+			"generate_task_factor":                c.GenerateTaskFactor,
+			"num_dependents_factor":               c.NumDependentsFactor,
+			"stepback_task_factor":                c.StepbackTaskFactor,
+			"translate_project_concurrency_limit": c.TranslateProjectConcurrencyLimit,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
@@ -156,6 +158,9 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 	if c.StepbackTaskFactor < 0 || c.StepbackTaskFactor > 100 {
 		return errors.New("stepback task factor must be between 0 and 100")
+	}
+	if c.TranslateProjectConcurrencyLimit < 0 {
+		return errors.New("translate project concurrency limit cannot be negative")
 	}
 
 	return nil

@@ -831,7 +831,7 @@ func (h *reportHighExecTimeoutHandler) Run(ctx context.Context) gimlet.Responder
 	t := MustHaveTask(ctx)
 	// Ignore errors because the project identifier is a nice-to-have for
 	// alerting.
-	projectIdentifier, _ := model.GetIdentifierForProject(ctx, t.Project)
+	projectIdentifier, _ := model.GetIdentifierForProjectSecondary(ctx, t.Project)
 
 	grip.Warning(ctx, message.Fields{
 		"message":                          "task dynamically set an unusually high exec timeout",

@@ -1548,6 +1548,21 @@ func GetIdentifierForProject(ctx context.Context, id string) (string, error) {
 	return pRef.Identifier, nil
 }
 
+// GetIdentifierForProjectSecondary is the SecondaryPreferred sibling of
+// GetIdentifierForProject. It reads from a secondary node, so results may be
+// replication-lagged; use it only for display or serialization where a momentarily
+// stale identifier is acceptable, never in a read-after-write or ID-generation path.
+func GetIdentifierForProjectSecondary(ctx context.Context, id string) (string, error) {
+	pRef, err := findOneProjectRefQSecondary(ctx, byId(id).WithFields(ProjectRefIdentifierKey))
+	if err != nil {
+		return "", err
+	}
+	if pRef == nil {
+		return "", errors.Errorf("project '%s' does not exist", id)
+	}
+	return pRef.Identifier, nil
+}
+
 func CountProjectRefsWithIdentifier(ctx context.Context, identifier string) (int, error) {
 	return db.CountQ(ctx, ProjectRefCollection, byId(identifier))
 }
@@ -2121,15 +2136,6 @@ func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir i
 	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 
 	return projectRefs, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
-}
-
-// UpdateProjectRevision updates the given project's revision
-func UpdateProjectRevision(ctx context.Context, projectID, revision string) error {
-	if err := UpdateLastRevision(ctx, projectID, revision); err != nil {
-		return errors.Wrapf(err, "updating revision for project '%s'", projectID)
-	}
-
-	return nil
 }
 
 func FindHiddenProjectRefByOwnerRepoAndBranch(ctx context.Context, owner, repo, branch string) (*ProjectRef, error) {
