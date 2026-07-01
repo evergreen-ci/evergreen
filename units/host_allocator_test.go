@@ -1,6 +1,7 @@
 package units
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -238,6 +240,66 @@ func TestApplyTaskHostOverrides(t *testing.T) {
 		assert.Equal(t, nonZeroOverrides.ProviderAccount, d.ProviderAccount)
 		assert.Empty(t, d.ProviderSettingsList)
 	})
+}
+
+func TestAdjustForLargeParserProjectLimit(t *testing.T) {
+	ctx := testutil.TestSpan(t.Context(), t)
+
+	require.NoError(t, db.ClearCollections(task.Collection))
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	})
+
+	t.Run("NoAdjustmentWhenLimitNotSaturated", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection))
+		for i := 0; i < 2; i++ {
+			require.NoError(t, (&task.Task{
+				Id:                         fmt.Sprintf("running-%d", i),
+				Status:                     evergreen.TaskStarted,
+				CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+			}).Insert(ctx))
+		}
+		info := model.DistroQueueInfo{
+			LengthWithDependenciesMet:        10,
+			NumQueuedLargeParserProjectTasks: 5,
+		}
+		config := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxConcurrentLargeParserProjectTasks: 10,
+			},
+			ServiceFlags: evergreen.ServiceFlags{
+				CPUDegradedModeDisabled: true,
+			},
+		}
+		result := adjustForLargeParserProjectLimit(ctx, "distro-1", info, config)
+		assert.Equal(t, 10, result.LengthWithDependenciesMet)
+	})
+
+	t.Run("ReducesQueueLengthWhenLimitSaturated", func(t *testing.T) {
+		require.NoError(t, db.ClearCollections(task.Collection))
+		for i := 0; i < 3; i++ {
+			require.NoError(t, (&task.Task{
+				Id:                         fmt.Sprintf("running-%d", i),
+				Status:                     evergreen.TaskStarted,
+				CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+			}).Insert(ctx))
+		}
+		info := model.DistroQueueInfo{
+			LengthWithDependenciesMet:        10,
+			NumQueuedLargeParserProjectTasks: 5,
+		}
+		config := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxConcurrentLargeParserProjectTasks: 5,
+			},
+			ServiceFlags: evergreen.ServiceFlags{
+				CPUDegradedModeDisabled: true,
+			},
+		}
+		result := adjustForLargeParserProjectLimit(ctx, "distro-1", info, config)
+		assert.Equal(t, 7, result.LengthWithDependenciesMet)
+	})
+
 }
 
 func TestHostAllocatorJobTaskHostOverrides(t *testing.T) {
