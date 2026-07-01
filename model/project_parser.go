@@ -561,7 +561,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 		if pp == nil {
 			return nil, nil, errors.Errorf("parser project '%s' not found in storage using method '%s'", p.Id.Hex(), p.ProjectStorageMethod)
 		}
-		project, err := TranslateProject(pp)
+		project, err := TranslateProject(ctx, pp)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "translating project '%s'", pp.Id)
 		}
@@ -671,7 +671,7 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		key = versionTranslationKey(versionID, preGeneration)
 	}
 	p, cacheHit, deduped, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
-		return TranslateProject(pp)
+		return TranslateProject(ctx, pp)
 	})
 	span.SetAttributes(
 		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
@@ -719,12 +719,14 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 	}, nil
 }
 
+// GetProjectFromBSON is used by the CLI and agent, neither of which have a request-scoped
+// context available at this leaf call, so it translates with context.Background().
 func GetProjectFromBSON(data []byte) (*Project, error) {
 	pp := &ParserProject{}
 	if err := bson.Unmarshal(data, pp); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling BSON into parser project")
 	}
-	return TranslateProject(pp)
+	return TranslateProject(context.Background(), pp)
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, intermediateProject *ParserProject,
@@ -822,7 +824,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	// Return project even with errors.
-	p, err := TranslateProject(intermediateProject)
+	p, err := TranslateProject(ctx, intermediateProject)
 	if p != nil {
 		*project = *p
 	}
@@ -1577,7 +1579,13 @@ func capParserPriorities(p *ParserProject) {
 
 // TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses.
-func TranslateProject(pp *ParserProject) (*Project, error) {
+func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) {
+	release, err := acquireTranslateSlot(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "waiting for a translate concurrency slot")
+	}
+	defer release()
+
 	// Transfer top level fields
 	proj := &Project{
 
