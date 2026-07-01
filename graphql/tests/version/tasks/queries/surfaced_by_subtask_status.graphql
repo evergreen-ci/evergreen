@@ -1,0 +1,15 @@
+{
+  version(versionId: "5e4ff3abe3c3317e352062e4") {
+    tasks(options: { statuses: ["success"] }) {
+      data {
+        id
+        displayStatus
+        executionTasksFull(options: { statuses: ["success"] }) {
+          id
+          displayStatus
+        }
+      }
+      count
+    }
+  }
+}
