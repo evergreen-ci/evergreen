@@ -3103,6 +3103,62 @@ func TestAddNewTasks(t *testing.T) {
 	}
 }
 
+func TestAddNewTasksBatchesBuildFlagUpdates(t *testing.T) {
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
+	}()
+
+	buildIDs := []string{"b0", "b1", "b2"}
+	builds := []build.Build{
+		{Id: "b0", BuildVariant: "bv0", Version: "v0", Activated: true},
+		{Id: "b1", BuildVariant: "bv1", Version: "v0", Activated: true},
+		{Id: "b2", BuildVariant: "bv2", Version: "v0", Activated: true},
+	}
+	for _, b := range builds {
+		require.NoError(t, b.Insert(ctx))
+	}
+
+	v := &Version{Id: "v0", BuildIds: buildIDs}
+	require.NoError(t, v.Insert(ctx))
+
+	project := Project{
+		BuildVariants: []BuildVariant{
+			{Name: "bv0", Tasks: []BuildVariantTaskUnit{{Name: "t1", Variant: "bv0", RunOn: []string{"d0"}}}},
+			{Name: "bv1", Tasks: []BuildVariantTaskUnit{{Name: "t1", Variant: "bv1", RunOn: []string{"d0"}}}},
+			{Name: "bv2", Tasks: []BuildVariantTaskUnit{{Name: "t1", Variant: "bv2", RunOn: []string{"d0"}}}},
+		},
+		Tasks: []ProjectTask{{Name: "t1"}},
+	}
+	pairs := TaskVariantPairs{ExecTasks: []TVPair{
+		{Variant: "bv0", TaskName: "t1"},
+		{Variant: "bv1", TaskName: "t1"},
+		{Variant: "bv2", TaskName: "t1"},
+	}}
+	creationInfo := TaskCreationInfo{
+		Project:                             &project,
+		ProjectRef:                          &ProjectRef{},
+		Version:                             v,
+		Pairs:                               pairs,
+		ActivatedTasksAreEssentialToSucceed: true,
+	}
+
+	_, _, err := addNewTasksToExistingBuilds(ctx, creationInfo, builds, "")
+	require.NoError(t, err)
+
+	for _, id := range buildIDs {
+		dbBuild, err := build.FindOneId(ctx, id)
+		require.NoError(t, err)
+		require.NotNil(t, dbBuild)
+		assert.True(t, dbBuild.HasUnfinishedEssentialTask, "build '%s' should be flagged as having an unfinished essential task", id)
+
+		tasksInBuild, err := task.FindAll(ctx, db.Query(bson.M{task.BuildIdKey: id}))
+		require.NoError(t, err)
+		assert.Len(t, tasksInBuild, 1, "build '%s' should have its new task created", id)
+	}
+}
+
 func TestCanBuildVariantEnableTestSelection(t *testing.T) {
 	t.Run("ReturnsTrueIfBVIncludedInTestSelection", func(t *testing.T) {
 		creationInfo := TaskCreationInfo{
