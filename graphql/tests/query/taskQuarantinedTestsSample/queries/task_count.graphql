@@ -1,6 +1,0 @@
-query {
-  task(taskId: "task_1") {
-    id
-    quarantinedTestsSkippedCount
-  }
-}

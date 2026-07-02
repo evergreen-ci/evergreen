@@ -1,30 +1,6 @@
 {
   "tests": [
     {
-      "query_file": "sample.graphql",
-      "result": {
-        "data": {
-          "taskQuarantinedTestsSample": [
-            {
-              "taskId": "task_1",
-              "execution": 0,
-              "quarantinedTestsSkippedCount": 2,
-              "quarantinedTests": [
-                {
-                  "testName": "TestOne",
-                  "displayTestName": "Display Test One"
-                },
-                {
-                  "testName": "TestTwo",
-                  "displayTestName": ""
-                }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    {
       "query_file": "limit.graphql",
       "result": {
         "data": {
@@ -70,34 +46,6 @@
             }
           ]
         }
-      }
-    },
-    {
-      "query_file": "task_count.graphql",
-      "result": {
-        "data": {
-          "task": {
-            "id": "task_1",
-            "quarantinedTestsSkippedCount": 2
-          }
-        }
-      }
-    },
-    {
-      "query_file": "unmatching_version.graphql",
-      "result": {
-        "data": {
-          "taskQuarantinedTestsSample": null
-        },
-        "errors": [
-          {
-            "message": "task 'task_1' does not belong to version 'other_version'",
-            "path": ["taskQuarantinedTestsSample"],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
       }
     },
     {

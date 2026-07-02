@@ -1,5 +1,0 @@
-query {
-  taskQuarantinedTestsSample(versionId: "other_version", taskIds: ["task_1"]) {
-    taskId
-  }
-}

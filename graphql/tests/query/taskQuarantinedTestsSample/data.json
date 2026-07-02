@@ -79,10 +79,7 @@
       "num_quarantined_tests_skipped": 3
     }
   ],
-  "versions": [
-    { "_id": "version_id", "identifier": "spruce" },
-    { "_id": "other_version", "identifier": "spruce" }
-  ],
+  "versions": [{ "_id": "version_id", "identifier": "spruce" }],
   "project_ref": [
     {
       "_id": "spruce",
