@@ -3689,6 +3689,77 @@ tasks:
 	assert.Equal(t, "git.get_project", tasksByName["third-task"].Commands[0].Command)
 }
 
+// TestAnchorRedefinedWithAliasDependencyDoesNotError is a regression test for a
+// production bug where a project failed to load with "unknown anchor" errors.
+//
+// The failure pattern requires three files:
+//  1. first.yml defines &template-expansions with a plain string value (no aliases).
+//  2. second.yml defines &compile-dependency (a mapping) that contains a nested
+//     scalar anchor &compile-variant. It also redefines &template-expansions,
+//     replacing the plain string with an alias: compile_variant: *compile-variant.
+//  3. third.yml need not reference these anchors at all; the bug fires when
+//     building the preamble injected before third.yml is parsed.
+//
+// Before the fix, upsert updated the registry entry for &template-expansions
+// in-place, so it stayed at its original index K. The new entries
+// &compile-dependency and &compile-variant were appended after K. When the
+// preamble was marshaled, &template-expansions appeared before &compile-variant,
+// causing the re-parse to fail with "unknown anchor 'compile-variant' referenced".
+//
+// After the fix, when an anchor is redefined, the old entry is removed and the
+// new one is appended at the end, so all dependencies always precede their users.
+func TestAnchorRedefinedWithAliasDependencyDoesNotError(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes("", "first.yml", "second.yml", "third.yml")
+
+	// first.yml: &task-template has no alias dependencies.
+	firstYAML := `
+tasks:
+- name: first-task
+  commands:
+  - &task-template
+    command: shell.exec
+    params:
+      script: ./first.sh
+`
+	// second.yml: &compile-setup is a mapping anchor with a nested scalar anchor
+	// &compile-script (on the params.script value). It also redefines
+	// &task-template so that its params.script uses *compile-script.
+	secondYAML := `
+tasks:
+- name: second-task
+  commands:
+  - &compile-setup
+    command: shell.exec
+    params:
+      script: &compile-script ./compile.sh
+  - command: shell.exec
+    params:
+      script: *compile-script
+  - &task-template
+    command: shell.exec
+    params:
+      script: *compile-script
+`
+	// third.yml: nothing that references these anchors; the preamble parse still
+	// fails before any content is processed if the ordering is wrong.
+	thirdYAML := `
+tasks:
+- name: third-task
+  commands:
+  - command: shell.exec
+    params:
+      script: ./third.sh
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(
+			moduleInclude("first.yml", firstYAML),
+			moduleInclude("second.yml", secondYAML),
+			moduleInclude("third.yml", thirdYAML),
+		), "proj", proj)
+	require.NoError(t, err, "preamble ordering bug: anchor redefined with alias dependency should not produce unknown-anchor error")
+}
+
 // TestAnchorWithNestedAlias verifies that a file can use an alias from an
 // earlier file within an anchor it defines, and a subsequent file can use that
 // anchor as an alias. This exercises the preamble-within-preamble ordering.
