@@ -2048,24 +2048,25 @@ func (a *APIReleaseModeConfig) ToService() (any, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder                    *string `json:"task_finder"`
-	HostAllocator                 *string `json:"host_allocator"`
-	HostAllocatorRoundingRule     *string `json:"host_allocator_rounding_rule"`
-	HostAllocatorFeedbackRule     *string `json:"host_allocator_feedback_rule"`
-	HostsOverallocatedRule        *string `json:"hosts_overallocated_rule"`
-	FutureHostFraction            float64 `json:"free_host_fraction"`
-	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
-	TargetTimeSeconds             int     `json:"target_time_seconds"`
-	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
-	GroupVersions                 bool    `json:"group_versions"`
-	PatchFactor                   int64   `json:"patch_factor"`
-	PatchTimeInQueueFactor        int64   `json:"patch_time_in_queue_factor"`
-	CommitQueueFactor             int64   `json:"commit_queue_factor"`
-	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
-	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
-	GenerateTaskFactor            int64   `json:"generate_task_factor"`
-	NumDependentsFactor           float64 `json:"num_dependents_factor"`
-	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
+	TaskFinder                       *string `json:"task_finder"`
+	HostAllocator                    *string `json:"host_allocator"`
+	HostAllocatorRoundingRule        *string `json:"host_allocator_rounding_rule"`
+	HostAllocatorFeedbackRule        *string `json:"host_allocator_feedback_rule"`
+	HostsOverallocatedRule           *string `json:"hosts_overallocated_rule"`
+	FutureHostFraction               float64 `json:"free_host_fraction"`
+	CacheDurationSeconds             int     `json:"cache_duration_seconds"`
+	TargetTimeSeconds                int     `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds    int     `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                    bool    `json:"group_versions"`
+	PatchFactor                      int64   `json:"patch_factor"`
+	PatchTimeInQueueFactor           int64   `json:"patch_time_in_queue_factor"`
+	CommitQueueFactor                int64   `json:"commit_queue_factor"`
+	MainlineTimeInQueueFactor        int64   `json:"mainline_time_in_queue_factor"`
+	ExpectedRuntimeFactor            int64   `json:"expected_runtime_factor"`
+	GenerateTaskFactor               int64   `json:"generate_task_factor"`
+	NumDependentsFactor              float64 `json:"num_dependents_factor"`
+	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
+	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h any) error {
@@ -2089,6 +2090,7 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.GenerateTaskFactor = v.GenerateTaskFactor
 		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
+		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
 	}
@@ -2097,52 +2099,50 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 
 func (a *APISchedulerConfig) ToService() (any, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
-		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
-		HostAllocatorRoundingRule:     utility.FromStringPtr(a.HostAllocatorRoundingRule),
-		HostAllocatorFeedbackRule:     utility.FromStringPtr(a.HostAllocatorFeedbackRule),
-		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
-		FutureHostFraction:            a.FutureHostFraction,
-		CacheDurationSeconds:          a.CacheDurationSeconds,
-		TargetTimeSeconds:             a.TargetTimeSeconds,
-		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
-		GroupVersions:                 a.GroupVersions,
-		PatchFactor:                   a.PatchFactor,
-		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
-		PatchTimeInQueueFactor:        a.PatchTimeInQueueFactor,
-		CommitQueueFactor:             a.CommitQueueFactor,
-		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
-		GenerateTaskFactor:            a.GenerateTaskFactor,
-		NumDependentsFactor:           a.NumDependentsFactor,
-		StepbackTaskFactor:            a.StepbackTaskFactor,
+		TaskFinder:                       utility.FromStringPtr(a.TaskFinder),
+		HostAllocator:                    utility.FromStringPtr(a.HostAllocator),
+		HostAllocatorRoundingRule:        utility.FromStringPtr(a.HostAllocatorRoundingRule),
+		HostAllocatorFeedbackRule:        utility.FromStringPtr(a.HostAllocatorFeedbackRule),
+		HostsOverallocatedRule:           utility.FromStringPtr(a.HostsOverallocatedRule),
+		FutureHostFraction:               a.FutureHostFraction,
+		CacheDurationSeconds:             a.CacheDurationSeconds,
+		TargetTimeSeconds:                a.TargetTimeSeconds,
+		AcceptableHostIdleTimeSeconds:    a.AcceptableHostIdleTimeSeconds,
+		GroupVersions:                    a.GroupVersions,
+		PatchFactor:                      a.PatchFactor,
+		ExpectedRuntimeFactor:            a.ExpectedRuntimeFactor,
+		PatchTimeInQueueFactor:           a.PatchTimeInQueueFactor,
+		CommitQueueFactor:                a.CommitQueueFactor,
+		MainlineTimeInQueueFactor:        a.MainlineTimeInQueueFactor,
+		GenerateTaskFactor:               a.GenerateTaskFactor,
+		NumDependentsFactor:              a.NumDependentsFactor,
+		StepbackTaskFactor:               a.StepbackTaskFactor,
+		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
 	}, nil
 }
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled        bool `json:"task_dispatch_disabled"`
-	HostInitDisabled            bool `json:"host_init_disabled"`
-	LargeParserProjectsDisabled bool `json:"large_parser_projects_disabled"`
-	MonitorDisabled             bool `json:"monitor_disabled"`
-	AlertsDisabled              bool `json:"alerts_disabled"`
-	AgentStartDisabled          bool `json:"agent_start_disabled"`
-	RepotrackerDisabled         bool `json:"repotracker_disabled"`
-	SchedulerDisabled           bool `json:"scheduler_disabled"`
-	CheckBlockedTasksDisabled   bool `json:"check_blocked_tasks_disabled"`
-	GithubPRTestingDisabled     bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled          bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled     bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled         bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled       bool `json:"cache_stats_job_disabled"`
-	CacheStatsEndpointDisabled  bool `json:"cache_stats_endpoint_disabled"`
-	TaskReliabilityDisabled     bool `json:"task_reliability_disabled"`
-	HostAllocatorDisabled       bool `json:"host_allocator_disabled"`
-	BackgroundReauthDisabled    bool `json:"background_reauth_disabled"`
-	CloudCleanupDisabled        bool `json:"cloud_cleanup_disabled"`
-	SleepScheduleDisabled       bool `json:"sleep_schedule_disabled"`
-	StaticAPIKeysDisabled       bool `json:"static_api_keys_disabled"`
-	// JWTTokenForCLIDisabled disables the use of OAuth tokens for the CLI.
-	JWTTokenForCLIDisabled             bool `json:"jwt_token_for_cli_disabled"`
+	TaskDispatchDisabled               bool `json:"task_dispatch_disabled"`
+	HostInitDisabled                   bool `json:"host_init_disabled"`
+	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
+	MonitorDisabled                    bool `json:"monitor_disabled"`
+	AlertsDisabled                     bool `json:"alerts_disabled"`
+	AgentStartDisabled                 bool `json:"agent_start_disabled"`
+	RepotrackerDisabled                bool `json:"repotracker_disabled"`
+	SchedulerDisabled                  bool `json:"scheduler_disabled"`
+	CheckBlockedTasksDisabled          bool `json:"check_blocked_tasks_disabled"`
+	GithubPRTestingDisabled            bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled                 bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled            bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled                bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled              bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled         bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled            bool `json:"task_reliability_disabled"`
+	HostAllocatorDisabled              bool `json:"host_allocator_disabled"`
+	BackgroundReauthDisabled           bool `json:"background_reauth_disabled"`
+	CloudCleanupDisabled               bool `json:"cloud_cleanup_disabled"`
+	SleepScheduleDisabled              bool `json:"sleep_schedule_disabled"`
 	SystemFailedTaskRestartDisabled    bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled               bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled                 bool `json:"elastic_ips_disabled"`
@@ -2156,6 +2156,7 @@ type APIServiceFlags struct {
 	WebhookSecretMigrationEnabled      bool `json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupEnabled        bool `json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `json:"retry_failed_log_move_enabled"`
+	ProjectTranslationCacheEnabled     bool `json:"project_translation_cache_enabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2605,8 +2606,6 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
-		as.StaticAPIKeysDisabled = v.StaticAPIKeysDisabled
-		as.JWTTokenForCLIDisabled = v.JWTTokenForCLIDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
@@ -2620,6 +2619,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.WebhookSecretMigrationEnabled = v.WebhookSecretMigrationEnabled
 		as.WebhookSecretCleanupEnabled = v.WebhookSecretCleanupEnabled
 		as.RetryFailedLogMoveEnabled = v.RetryFailedLogMoveEnabled
+		as.ProjectTranslationCacheEnabled = v.ProjectTranslationCacheEnabled
 		as.BackgroundCommandFailureEnabled = v.BackgroundCommandFailureEnabled
 		as.APIRateLimiterDisabled = v.APIRateLimiterDisabled
 		as.GraphQLComplexityLimiterDisabled = v.GraphQLComplexityLimiterDisabled
@@ -2659,8 +2659,6 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		BackgroundReauthDisabled:           as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:               as.CloudCleanupDisabled,
 		SleepScheduleDisabled:              as.SleepScheduleDisabled,
-		StaticAPIKeysDisabled:              as.StaticAPIKeysDisabled,
-		JWTTokenForCLIDisabled:             as.JWTTokenForCLIDisabled,
 		SystemFailedTaskRestartDisabled:    as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:            as.DegradedModeDisabled,
 		ElasticIPsDisabled:                 as.ElasticIPsDisabled,
@@ -2674,6 +2672,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		WebhookSecretMigrationEnabled:      as.WebhookSecretMigrationEnabled,
 		WebhookSecretCleanupEnabled:        as.WebhookSecretCleanupEnabled,
 		RetryFailedLogMoveEnabled:          as.RetryFailedLogMoveEnabled,
+		ProjectTranslationCacheEnabled:     as.ProjectTranslationCacheEnabled,
 		BackgroundCommandFailureEnabled:    as.BackgroundCommandFailureEnabled,
 		APIRateLimiterDisabled:             as.APIRateLimiterDisabled,
 		GraphQLComplexityLimiterDisabled:   as.GraphQLComplexityLimiterDisabled,

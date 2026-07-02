@@ -31,8 +31,6 @@ type ServiceFlags struct {
 	BackgroundReauthDisabled           bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	CloudCleanupDisabled               bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled              bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
-	StaticAPIKeysDisabled              bool `bson:"static_api_keys_disabled" json:"static_api_keys_disabled"`
-	JWTTokenForCLIDisabled             bool `bson:"jwt_token_for_cli_disabled" json:"jwt_token_for_cli_disabled"`
 	SystemFailedTaskRestartDisabled    bool `bson:"system_failed_task_restart_disabled" json:"system_failed_task_restart_disabled"`
 	CPUDegradedModeDisabled            bool `bson:"cpu_degraded_mode_disabled" json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled                 bool `bson:"elastic_ips_disabled" json:"elastic_ips_disabled"`
@@ -46,6 +44,7 @@ type ServiceFlags struct {
 	WebhookSecretMigrationEnabled      bool `bson:"webhook_secret_migration_enabled" json:"webhook_secret_migration_enabled"`
 	WebhookSecretCleanupEnabled        bool `bson:"webhook_secret_cleanup_enabled" json:"webhook_secret_cleanup_enabled"`
 	RetryFailedLogMoveEnabled          bool `bson:"retry_failed_log_move_enabled" json:"retry_failed_log_move_enabled"`
+	ProjectTranslationCacheEnabled     bool `bson:"project_translation_cache_enabled" json:"project_translation_cache_enabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -98,8 +97,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			backgroundReauthDisabledKey:           c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:               c.CloudCleanupDisabled,
 			sleepScheduleDisabledKey:              c.SleepScheduleDisabled,
-			staticAPIKeysDisabledKey:              c.StaticAPIKeysDisabled,
-			JWTTokenForCLIDisabledKey:             c.JWTTokenForCLIDisabled,
 			elasticIPsDisabledKey:                 c.ElasticIPsDisabled,
 			systemFailedTaskRestartDisabledKey:    c.SystemFailedTaskRestartDisabled,
 			cpuDegradedModeDisabledKey:            c.CPUDegradedModeDisabled,
@@ -113,6 +110,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			webhookSecretMigrationEnabledKey:      c.WebhookSecretMigrationEnabled,
 			webhookSecretCleanupEnabledKey:        c.WebhookSecretCleanupEnabled,
 			retryFailedLogMoveEnabledKey:          c.RetryFailedLogMoveEnabled,
+			projectTranslationCacheEnabledKey:     c.ProjectTranslationCacheEnabled,
 			secondaryReadsDisabledKey:             c.SecondaryReadsDisabled,
 			backgroundCommandFailureEnabledKey:    c.BackgroundCommandFailureEnabled,
 			apiRateLimiterDisabledKey:             c.APIRateLimiterDisabled,

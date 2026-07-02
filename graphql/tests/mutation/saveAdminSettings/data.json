@@ -133,8 +133,6 @@
       "background_cleanup_disabled": false,
       "cloud_cleanup_disabled": false,
       "sleep_schedule_disabled": false,
-      "static_api_keys_disabled": false,
-      "jwt_token_for_cli_disabled": false,
       "cpu_degraded_mode_disabled": false,
       "elastic_ips_disabled": false,
       "system_failed_task_restart_disabled": false

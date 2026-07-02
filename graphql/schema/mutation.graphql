@@ -63,7 +63,7 @@ type Mutation {
 
   # project
   attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
-  attachProjectToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  attachProjectToRepo(projectId: String! @requireRepoAccess(access: ADMIN) @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin): Project!
   copyProject(project: CopyProjectInput! @requireProjectAdmin): Project! 
   deactivateStepbackTask(opts: DeactivateStepbackTaskInput!): Boolean!

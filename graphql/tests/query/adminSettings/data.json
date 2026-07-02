@@ -123,7 +123,8 @@
       "host_allocator_feedback_rule": "no-feedback",
       "hosts_overallocated_rule": "no-terminations-when-overallocated",
       "stepback_task_factor": 10,
-      "num_dependents_factor": 5
+      "num_dependents_factor": 5,
+      "translate_project_concurrency_limit": 15
     },
     {
       "_id": "task_limits",

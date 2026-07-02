@@ -328,6 +328,34 @@ func TestBuildArchivePreserveSymlinks(t *testing.T) {
 	})
 }
 
+func TestValidateRelativePath(t *testing.T) {
+	root := filepath.Join(string(filepath.Separator), "tmp", "root")
+	for _, tc := range []struct {
+		name     string
+		filePath string
+		valid    bool
+	}{
+		{name: "NameWithDotsAllowed", filePath: "something..1.0.tgz", valid: true},
+		{name: "NameStartingWithDotsAllowed", filePath: "..data", valid: true},
+		{name: "NestedNameWithDotsAllowed", filePath: filepath.Join("sub", "foo..bar"), valid: true},
+		{name: "DottedDirectoryNameAllowed", filePath: filepath.Join("my..dir", "file.txt"), valid: true},
+		{name: "DirectoryNameStartingWithDotsAllowed", filePath: filepath.Join("..my_dir", "file.txt"), valid: true},
+		{name: "TraversalRejected", filePath: filepath.Join("..", "escape"), valid: false},
+		{name: "ParentRejected", filePath: "..", valid: false},
+		{name: "NestedTraversalRejected", filePath: filepath.Join("a", "..", "..", "b"), valid: false},
+		{name: "AbsolutePathRejected", filePath: filepath.Join(root, "file"), valid: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateRelativePath(tc.filePath, root)
+			if tc.valid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
 func TestValidateSymlinkTarget(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink preservation is not supported on Windows")
@@ -343,8 +371,7 @@ func TestValidateSymlinkTarget(t *testing.T) {
 		{name: "TargetOfDotAllowed", linkname: ".", linkPath: filepath.Join(root, "link"), valid: true},
 		{name: "TargetTraversingWithinRootAllowed", linkname: "a/../b", linkPath: filepath.Join(root, "link"), valid: true},
 		{name: "TargetClimbingToRootFromSubdirAllowed", linkname: "../real.txt", linkPath: filepath.Join(root, "sub", "link"), valid: true},
-		// A name that merely starts with dots is not a traversal; the
-		// neighboring validateRelativePath would falsely reject this.
+		// A name that merely starts with dots is not a traversal.
 		{name: "TargetNameStartingWithDotsAllowed", linkname: "..data", linkPath: filepath.Join(root, "link"), valid: true},
 		{name: "TargetOfParentRejected", linkname: "..", linkPath: filepath.Join(root, "link"), valid: false},
 		{name: "TargetEscapingRootRejected", linkname: "../../escape", linkPath: filepath.Join(root, "sub", "link"), valid: false},

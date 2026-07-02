@@ -17,13 +17,13 @@ import (
 const (
 	projectTranslationCacheSize = 512
 	projectTranslationCacheTTL  = 30 * time.Minute
-	translationCacheEnabled     = false
 )
 
 var (
-	translationCacheMu  sync.Mutex
-	translationCache    *expirable.LRU[string, *Project]
-	translationGroupPtr atomic.Pointer[singleflight.Group]
+	translationCacheMu        sync.Mutex
+	translationCache          *expirable.LRU[string, *Project]
+	translationGroupPtr       atomic.Pointer[singleflight.Group]
+	translationCacheEvictions atomic.Int64
 )
 
 func init() {
@@ -35,22 +35,35 @@ func getTranslationCache() *expirable.LRU[string, *Project] {
 	translationCacheMu.Lock()
 	defer translationCacheMu.Unlock()
 	if translationCache == nil {
-		translationCache = expirable.NewLRU[string, *Project](projectTranslationCacheSize, nil, projectTranslationCacheTTL)
+		translationCache = expirable.NewLRU[string, *Project](projectTranslationCacheSize, func(_ string, _ *Project) {
+			translationCacheEvictions.Add(1)
+		}, projectTranslationCacheTTL)
 	}
 	return translationCache
+}
+
+// translationCacheStats returns the LRU's current entry count and its cumulative eviction count
+// (including TTL expirations, which expirable.LRU reports through the same callback).
+func translationCacheStats() (size int, evictions int64) {
+	return getTranslationCache().Len(), translationCacheEvictions.Load()
 }
 
 // getOrComputeTranslation coalesces concurrent calls via singleflight and, when cacheEnabled, also
 // serves and stores results in a per-process LRU. When cacheEnabled, key must capture every input
 // that determines the translation. The cached *Project is shared and must not be mutated.
-func getOrComputeTranslation(key string, cacheEnabled bool, compute func() (*Project, error)) (*Project, bool, error) {
+//
+// deduped reports whether this call's singleflight request was coalesced into another in-flight
+// call for the same key; it is meaningful whether or not the cache is enabled. cacheHit reports
+// whether the result was served from the LRU without calling compute at all, which is only
+// possible when the cache is enabled. The two are orthogonal.
+func getOrComputeTranslation(key string, cacheEnabled bool, compute func() (*Project, error)) (project *Project, cacheHit bool, deduped bool, err error) {
 	if cacheEnabled {
 		if v, ok := getTranslationCache().Get(key); ok {
-			return v, true, nil
+			return v, true, false, nil
 		}
 	}
 
-	v, err, _ := translationGroupPtr.Load().Do(key, func() (any, error) {
+	v, err, shared := translationGroupPtr.Load().Do(key, func() (any, error) {
 		// Re-check after winning the singleflight slot: another goroutine may
 		// have populated the cache while we were waiting.
 		if cacheEnabled {
@@ -68,9 +81,9 @@ func getOrComputeTranslation(key string, cacheEnabled bool, compute func() (*Pro
 		return result, nil
 	})
 	if err != nil {
-		return nil, false, err
+		return nil, false, shared, err
 	}
-	return v.(*Project), false, nil
+	return v.(*Project), false, shared, nil
 }
 
 // versionTranslationKey is the cheap singleflight key for the cache-disabled path. It must NOT be
