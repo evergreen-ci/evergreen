@@ -15,8 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const failedTestsSampleSize = 10
-
 // testResultService implements a test result service where test results are stored in s3 with relevant test
 // result metadata stored in the cedar DB cluster.
 type testResultService struct {
@@ -28,37 +26,21 @@ func NewTestResultService(env evergreen.Environment) *testResultService {
 	return &testResultService{env: env}
 }
 
-// AppendTestResultMetadata appends test results to the test results collection in the cedar database.
+// AppendTestResultMetadata sets cumulative test result metadata in the cedar database.
 func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
-	updatedFailedSample := record.FailedTestsSample
-	for _, sample := range failedTestSample {
-		if len(updatedFailedSample) < failedTestsSampleSize {
-			updatedFailedSample = append(updatedFailedSample, sample)
-		}
-	}
 	update := bson.M{
-		"$inc": bson.M{
+		"$set": bson.M{
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
-		},
-		"$set": bson.M{
-			testresult.TestResultsFailedTestsSampleKey: updatedFailedSample,
+			testresult.TestResultsFailedTestsSampleKey:                                failedTestSample,
 		},
 	}
 	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
 }
 
-func (s *testResultService) GetTaskTestResults(ctx context.Context, taskOpts []Task) ([]testresult.TaskTestResults, error) {
-	allTaskResults, err := s.Get(ctx, taskOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting test results")
-	}
-	return allTaskResults, nil
-}
-
 func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
-	allTaskResults, err := s.Get(ctx, taskOpts, testresult.StatsKey)
+	allTaskResults, err := s.Get(ctx, taskOpts, GetTaskTestResultsOptions{Fields: []string{testresult.StatsKey}})
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results")
 	}
@@ -74,7 +56,7 @@ func (s *testResultService) GetTaskTestResultsStats(ctx context.Context, taskOpt
 
 // Get fetches the unmerged test results metadata for the given tasks from the cedar DB
 // and downloads the associated test results from s3.
-func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
+func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
 	var filter bson.M
 	if len(taskOpts) == 1 {
 		filter = ByTaskIDAndExecution(taskOpts[0].Id, taskOpts[0].Execution)
@@ -90,12 +72,14 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey), Value: 1},
 		{Key: bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey), Value: 1},
 	})
-	if len(fields) > 0 {
+	if len(getOpts.Fields) > 0 {
 		projection := bson.M{}
-		for _, field := range fields {
+		for _, field := range getOpts.Fields {
 			projection[field] = 1
 		}
 		opts.SetProjection(projection)
+	} else if !getOpts.IncludeQuarantinedTests {
+		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
 	}
 
 	var allDBTaskResults []testresult.DbTaskTestResults
@@ -108,10 +92,10 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...
 	}
 	allTaskResults := make([]testresult.TaskTestResults, len(allDBTaskResults))
 
-	// The fields param will have a non-zero length if this request is coming from GetTaskTestResultsStats,
+	// The fields option will have a non-zero length if this request is coming from GetTaskTestResultsStats,
 	// in which case we only need to retrieve stats metadata from the cedar DB and do not need
 	// to download anything from s3.
-	if len(fields) == 0 {
+	if len(getOpts.Fields) == 0 {
 		toDownload := make(chan *testresult.DbTaskTestResults, len(allDBTaskResults))
 		for i := range allDBTaskResults {
 			toDownload <- &allDBTaskResults[i]
@@ -137,6 +121,8 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, fields ...
 	for i, dbTaskResults := range allDBTaskResults {
 		allTaskResults[i].Stats = dbTaskResults.Stats
 		allTaskResults[i].Results = dbTaskResults.Results
+		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
+		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
 	}
 
 	return allTaskResults, nil

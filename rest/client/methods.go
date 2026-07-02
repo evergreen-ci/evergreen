@@ -1968,6 +1968,7 @@ func GetOAuthToken(ctx context.Context, doNotUseBrowser bool, opts ...dex.Client
 		dex.WithContext(ctx),
 		dex.WithRefresh(),
 		dex.WithFallbackToStdOut(true),
+		dex.WithTokenExpiryBuffer(time.Minute),
 	)
 
 	flow := oauthFlowAuthCode

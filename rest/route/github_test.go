@@ -476,6 +476,7 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 	}
 	for testCase, test := range map[string]func(*testing.T){
 		"githubMergeQueueSelected": func(t *testing.T) {
+			p.CommitQueue.Enabled = utility.TruePtr()
 			require.NoError(t, p.Insert(t.Context()))
 			response := gh.handleMergeGroupChecksRequested(t.Context(), event)
 			// check for error returned by GitHub merge queue handler
@@ -483,12 +484,15 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 			assert.Contains(t, str, "message ID cannot be empty")
 			assert.NotContains(t, str, "200")
 		},
+		"githubMergeQueueDisabled": func(t *testing.T) {
+			p.CommitQueue.Enabled = utility.FalsePtr()
+			require.NoError(t, p.Insert(t.Context()))
+			response := gh.handleMergeGroupChecksRequested(t.Context(), event)
+			assert.Nil(t, response)
+		},
 		"nonexistentProject": func(t *testing.T) {
 			response := gh.handleMergeGroupChecksRequested(t.Context(), event)
-			// check for error returned by GitHub merge queue handler
-			str := fmt.Sprintf("%#v", response)
-			assert.Contains(t, str, "no matching project ref")
-			assert.NotContains(t, str, "200")
+			assert.Nil(t, response)
 		},
 	} {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))

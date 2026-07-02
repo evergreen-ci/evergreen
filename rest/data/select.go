@@ -174,6 +174,9 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 		defer resp.Body.Close()
 	}
 	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return testToQuarantineStatus, nil
+		}
 		logTSSError(ctx, err, resp, message.Fields{
 			"message":       "error getting tests quarantine status",
 			"endpoint":      GetTestsStateEndpoint,

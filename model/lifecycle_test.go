@@ -1166,7 +1166,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 		So(v.Insert(t.Context()), ShouldBeNil)
 
-		project, err := TranslateProject(parserProject)
+		project, err := TranslateProject(t.Context(), parserProject)
 		So(err, ShouldBeNil)
 		So(project, ShouldNotBeNil)
 		table := NewTaskIdConfigForRepotrackerVersion(t.Context(), project, v, TVPairSet{}, "", "")

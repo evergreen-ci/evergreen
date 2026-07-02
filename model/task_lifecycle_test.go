@@ -3020,7 +3020,7 @@ buildvariants:
 		pp.Id = "version_id"
 		assert.NoError(t, pp.Insert(t.Context()))
 
-		project, err := TranslateProject(pp)
+		project, err := TranslateProject(t.Context(), pp)
 		assert.NoError(t, err)
 		ver := &Version{
 			Id:         "version_id",
@@ -5358,7 +5358,7 @@ buildvariants:
 	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
 	assert.NoError(t, err)
 
-	project, err := TranslateProject(pp)
+	project, err := TranslateProject(t.Context(), pp)
 	assert.NoError(t, err)
 	for tName, testCase := range map[string]func(t *testing.T){
 		"TrueVariantDeactivatesPrevious": func(t *testing.T) {
@@ -5804,7 +5804,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				Stepback: utility.TruePtr(),
 			}
 			assert.NoError(pp.Insert(t.Context()))
-			project, err := TranslateProject(pp)
+			project, err := TranslateProject(t.Context(), pp)
 			assert.NoError(err)
 			// First task (which has passed).
 			t1 := task.Task{
@@ -5895,7 +5895,7 @@ tasks:
 	assert.NoError(err)
 	//pp.Id = v.Id
 	//assert.NoError(pp.Insert(t.Context()))
-	project, err := TranslateProject(pp)
+	project, err := TranslateProject(t.Context(), pp)
 	assert.NoError(err)
 	stepbackTask := task.Task{
 		Id:                  "t2",
@@ -6067,7 +6067,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 	pp := ParserProject{
 		Stepback: utility.TruePtr(),
 	}
-	project, err := TranslateProject(&pp)
+	project, err := TranslateProject(t.Context(), &pp)
 	require.NoError(t, err)
 
 	pRef := &ProjectRef{

@@ -135,7 +135,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.OktaServiceConfig.Scopes, settingsFromConnector.OktaServiceConfig.Scopes)
 	s.Equal(testSettings.OktaServiceConfig.Audience, settingsFromConnector.OktaServiceConfig.Audience)
 	s.Equal(testSettings.OktaServiceConfig.Issuer, settingsFromConnector.OktaServiceConfig.Issuer)
-	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackMonths)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackDays, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackDays)
 	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settingsFromConnector.Buckets.RetryFailedLogMoveMaxJobsPerRun)
 	s.EqualValues(testSettings.Buckets.TestResultsBucket, settingsFromConnector.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
@@ -182,8 +182,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
-	s.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, settingsFromConnector.ServiceFlags.StaticAPIKeysDisabled)
-	s.EqualValues(testSettings.ServiceFlags.JWTTokenForCLIDisabled, settingsFromConnector.ServiceFlags.JWTTokenForCLIDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settingsFromConnector.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settingsFromConnector.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settingsFromConnector.ServiceFlags.ElasticIPsDisabled)
@@ -338,7 +336,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.Equal(testSettings.FWS.URL, settingsFromConnector.FWS.URL)
 	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
-	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackMonths, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackMonths)
+	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveLookbackDays, settingsFromConnector.Buckets.RetryFailedLogMoveLookbackDays)
 	s.EqualValues(testSettings.Buckets.RetryFailedLogMoveMaxJobsPerRun, settingsFromConnector.Buckets.RetryFailedLogMoveMaxJobsPerRun)
 	s.EqualValues(testSettings.Buckets.TestResultsBucket, settingsFromConnector.Buckets.TestResultsBucket)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
@@ -369,8 +367,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
-	s.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, settingsFromConnector.ServiceFlags.StaticAPIKeysDisabled)
-	s.EqualValues(testSettings.ServiceFlags.JWTTokenForCLIDisabled, settingsFromConnector.ServiceFlags.JWTTokenForCLIDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settingsFromConnector.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settingsFromConnector.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settingsFromConnector.ServiceFlags.ElasticIPsDisabled)
@@ -428,29 +424,4 @@ func (s *AdminDataSuite) TestGetBanner() {
 	s.NoError(err)
 	s.Equal("banner text", text)
 	s.Equal(string(evergreen.Important), theme)
-}
-
-func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	settings := &evergreen.Settings{
-		ServiceFlags: evergreen.ServiceFlags{
-			HostInitDisabled:       true,
-			RepotrackerDisabled:    true,
-			TaskDispatchDisabled:   false,
-			CloudCleanupDisabled:   false,
-			StaticAPIKeysDisabled:  true,
-			JWTTokenForCLIDisabled: false,
-		},
-	}
-	s.NoError(evergreen.UpdateConfig(ctx, settings))
-
-	flags, err := GetNecessaryServiceFlags(ctx)
-	s.NoError(err)
-	neccesaryFlags := evergreen.ServiceFlags{
-		StaticAPIKeysDisabled:  true,
-		JWTTokenForCLIDisabled: false,
-	}
-	s.Equal(neccesaryFlags, flags)
 }

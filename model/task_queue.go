@@ -66,6 +66,8 @@ type DistroQueueInfo struct {
 	DurationOverThreshold time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
 	// CountWaitOverThreshold represents the number of tasks that have been waiting the MaxDurationThreshold since their dependencies were met
 	CountWaitOverThreshold int `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
+	// NumQueuedLargeParserProjectTasks is the number of dependency-met tasks in this queue that use S3 for their parser project.
+	NumQueuedLargeParserProjectTasks int `bson:"num_queued_large_parser_project_tasks" json:"num_queued_large_parser_project_tasks"`
 	// TaskGroupInfos is a list of info that contains the same information as in this struct, but granularized to be only for tasks in
 	// a specific group (standalone tasks are included as well, denoted by an empty string for the group name)
 	TaskGroupInfos []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`

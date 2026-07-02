@@ -5,7 +5,40 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
+
+func TestDbTaskTestResultsQuarantinedTestsBSONRoundTrip(t *testing.T) {
+	original := DbTaskTestResults{
+		ID:                    "task_results",
+		QuarantinedTestsCount: 2,
+		QuarantinedTests: []QuarantinedTest{
+			{TestName: "test_0", DisplayTestName: "Display test 0"},
+			{TestName: "test_1"},
+		},
+	}
+
+	data, err := bson.Marshal(original)
+	require.NoError(t, err)
+
+	var raw bson.M
+	require.NoError(t, bson.Unmarshal(data, &raw))
+	assert.Contains(t, raw, "quarantined_tests_count")
+	assert.Contains(t, raw, "quarantined_tests")
+	rawTests, ok := raw["quarantined_tests"].(bson.A)
+	require.True(t, ok)
+	require.NotEmpty(t, rawTests)
+	firstRawTest, ok := rawTests[0].(bson.M)
+	require.True(t, ok)
+	assert.Contains(t, firstRawTest, "test_name")
+	assert.Contains(t, firstRawTest, "display_test_name")
+
+	var roundTrip DbTaskTestResults
+	require.NoError(t, bson.Unmarshal(data, &roundTrip))
+	assert.Equal(t, original.QuarantinedTestsCount, roundTrip.QuarantinedTestsCount)
+	assert.Equal(t, original.QuarantinedTests, roundTrip.QuarantinedTests)
+}
 
 func TestGetLogURL(t *testing.T) {
 	evergreenBaseURL := "https://request.evergreen.example.com"

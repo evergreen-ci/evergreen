@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var materialTempAxes = []matrixAxis{
@@ -350,4 +352,25 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 		})
 	})
 
+}
+
+func TestEvalCriterionMemoizationReturnsSameResults(t *testing.T) {
+	defs := []tagged{
+		testSelectee{Name: "red", Tags: []string{"primary", "warm"}},
+		testSelectee{Name: "blue", Tags: []string{"primary", "cool"}},
+		testSelectee{Name: "green", Tags: []string{"secondary", "cool"}},
+	}
+	tse := newTagSelectorEvaluator(defs)
+
+	sc := selectCriterion{name: "primary", tagged: true}
+	first, err := tse.evalCriterion(sc)
+	require.NoError(t, err)
+
+	second, err := tse.evalCriterion(sc)
+	require.NoError(t, err)
+
+	assert.Equal(t, first, second, "repeated evalCriterion calls should return identical results")
+	cached, ok := tse.criterionCache[sc]
+	require.True(t, ok, "criterion should be in the cache after first evaluation")
+	assert.Equal(t, first, cached)
 }

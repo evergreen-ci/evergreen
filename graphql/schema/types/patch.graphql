@@ -68,6 +68,7 @@ type Patch {
   id: ID!
   activated: Boolean!
   alias: String
+  aliases: [String!]
   author: String!
   authorDisplayName: String!
   builds: [Build!]!
@@ -87,8 +88,6 @@ type Patch {
   patchNumber: Int!
   patchTriggerAliases: [PatchTriggerAlias!]!
   project: PatchProject
-  projectID: String!
-  projectIdentifier: String!
   projectMetadata: Project
   status: String!
   taskCount: Int

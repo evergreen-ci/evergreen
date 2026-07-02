@@ -35,6 +35,7 @@ query Runners {
       generateTaskFactor
       numDependentsFactor
       stepbackTaskFactor
+      translateProjectConcurrencyLimit
       hostAllocator
       hostAllocatorRoundingRule
       hostAllocatorFeedbackRule

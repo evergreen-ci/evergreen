@@ -115,6 +115,7 @@ type patchData struct {
 	Finalize                           bool                       `json:"finalize"`
 	TriggerAliases                     []string                   `json:"trigger_aliases"`
 	Alias                              string                     `json:"alias"`
+	Aliases                            []string                   `json:"aliases"`
 	RepeatFailed                       bool                       `json:"repeat_failed"`
 	RepeatDefinition                   bool                       `json:"reuse_definition"`
 	RepeatPatchId                      string                     `json:"repeat_patch_id"`
@@ -202,6 +203,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RegexTestSelectionTasks:            data.RegexTestSelectionTasks,
 		RegexTestSelectionExcludedTasks:    data.RegexTestSelectionExcludedTasks,
 		Alias:                              data.Alias,
+		Aliases:                            data.Aliases,
 		TriggerAliases:                     data.TriggerAliases,
 		GitInfo:                            data.GitMetadata,
 		RepeatDefinition:                   data.RepeatDefinition,
@@ -473,7 +475,7 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectName := project.Identifier // this might be the ID, so use identifier if we can
-	identifier, _ := model.GetIdentifierForProject(r.Context(), project.Identifier)
+	identifier, _ := model.GetIdentifierForProjectSecondary(r.Context(), project.Identifier)
 	if identifier != "" {
 		projectName = identifier
 	}

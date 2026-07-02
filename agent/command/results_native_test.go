@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -179,6 +180,9 @@ func TestAttachResultsExecute(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer){
 		"ExecuteWithRawLogs": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			conf.Task.TaskOutputInfo = agentutil.InitializeTaskOutput(t)
+			conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceEvergreen
+			conf.TestResultsCreatedAt = time.Time{}
 			cmd := &attachResults{
 				FileLoc: filepath.Join(cwd, "testdata", "attach", "plugin_attach_results_raw.json"),
 			}
@@ -189,6 +193,9 @@ func TestAttachResultsExecute(t *testing.T) {
 			assert.Equal(t, 0, comm.TestResultStats.FailedCount)
 		},
 		"ExecuteWithNoLogs": func(t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			conf.Task.TaskOutputInfo = agentutil.InitializeTaskOutput(t)
+			conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceEvergreen
+			conf.TestResultsCreatedAt = time.Time{}
 			cmd := &attachResults{
 				FileLoc: filepath.Join(cwd, "testdata", "attach", "plugin_attach_results.json"),
 			}

@@ -137,8 +137,6 @@ type Task {
   prevTaskPassing: Task
   priority: Int
   project: Project
-  projectId: String!
-  projectIdentifier: String
   requester: String!
   resetWhenFinished: Boolean!
   revision: String

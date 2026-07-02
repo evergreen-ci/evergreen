@@ -153,16 +153,6 @@ func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 	return "", errors.Errorf("Unable to find public key '%v' for user '%v'", keyname, u.Username())
 }
 
-// UpdateAPIKey updates the API key stored for the user.
-func (u *DBUser) UpdateAPIKey(ctx context.Context, newKey string) error {
-	update := bson.M{"$set": bson.M{APIKeyKey: newKey}}
-	if err := UpdateOne(ctx, bson.M{IdKey: u.Id}, update); err != nil {
-		return errors.Wrapf(err, "setting API key for user '%s'", u.Id)
-	}
-	u.APIKey = newKey
-	return nil
-}
-
 // UpdateTokenExchangeState updates the token exchange state for the user.
 func (u *DBUser) UpdateTokenExchangeState(ctx context.Context, state, codeVerifier string) error {
 	update := bson.M{"$set": bson.M{TokenExchangeStateKey: TokenExchangeState{CodeVerifier: codeVerifier, State: state}}}

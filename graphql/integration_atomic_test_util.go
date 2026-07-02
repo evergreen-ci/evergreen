@@ -198,7 +198,8 @@ func setupUsers(t *testing.T) {
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		},
-		APIKey: "admin_api_key",
+		APIKey:  "admin_api_key",
+		OnlyAPI: true,
 		PubKeys: []user.PubKey{
 			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
 			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
@@ -236,7 +237,8 @@ func setupUsers(t *testing.T) {
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		},
-		APIKey: "privileged_api_key",
+		APIKey:  "privileged_api_key",
+		OnlyAPI: true,
 		SystemRoles: []string{
 			evergreen.SuperUserProjectAccessRole,
 			evergreen.SuperUserDistroAccessRole,
@@ -262,7 +264,8 @@ func setupUsers(t *testing.T) {
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		},
-		APIKey: "regular_api_key",
+		APIKey:  "regular_api_key",
+		OnlyAPI: true,
 		SystemRoles: []string{
 			evergreen.BasicProjectAccessRole,
 			evergreen.BasicDistroAccessRole,
@@ -281,7 +284,8 @@ func setupUsers(t *testing.T) {
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		},
-		APIKey: "branch_admin_api_key",
+		APIKey:  "branch_admin_api_key",
+		OnlyAPI: true,
 		SystemRoles: []string{
 			evergreen.BasicProjectAccessRole,
 			"project_sandbox",

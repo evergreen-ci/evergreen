@@ -498,6 +498,7 @@ const (
 	TaskNameOtelAttribute                       = "evergreen.task.name"
 	TaskExecutionOtelAttribute                  = "evergreen.task.execution"
 	TaskStatusOtelAttribute                     = "evergreen.task.status"
+	TaskDisplayStatusOtelAttribute              = "evergreen.task.display_status"
 	TaskFailureTypeOtelAttribute                = "evergreen.task.failure_type"
 	TaskFailingCommandOtelAttribute             = "evergreen.task.failing_command"
 	TaskDescriptionOtelAttribute                = "evergreen.task.description"
@@ -611,6 +612,11 @@ const (
 
 	// patch otel attributes
 	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
+	PatchIDOtelAttribute             = "evergreen.patch.id"
+	PatchIsFinalizeOtelAttribute     = "evergreen.patch.is_finalize"
+	PatchIsGithubPROtelAttribute     = "evergreen.patch.is_github_pr"
+	PatchNumBuildsOtelAttribute      = "evergreen.patch.num_builds"
+	PatchNumTasksOtelAttribute       = "evergreen.patch.num_tasks"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"
@@ -673,8 +679,9 @@ const (
 	GraphQLAIAgentHeader = "X-Graphql-Ai-Agent"
 
 	// Rate limiting response headers
-	RateLimitLimitHeader            = "X-RateLimit-Limit"
-	RateLimitRemainingHeader        = "X-RateLimit-Remaining"
+	RateLimitLimitHeader            = "X-RateLimit-Limit"             // Hourly request limit for the user.
+	RateLimitBurstHeader            = "X-RateLimit-Burst"             // Maximum number of requests that can be made in a short burst.
+	RateLimitRemainingHeader        = "X-RateLimit-Remaining"         // Remaining requests in the current window before hitting the limit.
 	RateLimitResetHeader            = "X-RateLimit-Reset"             // Absolute Unix timestamp (seconds) at which the window resets.
 	RateLimitExceededHeader         = "X-RateLimit-Exceeded"          // Set in warn-only mode (request still served) and on a 429.
 	RetryAfterHeader                = "Retry-After"                   // Standard HTTP header (RFC 9110), a delta in seconds, set alongside a 429.

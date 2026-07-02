@@ -8,10 +8,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code.
 func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId string, version *model.Version, patchUpdateReq model.PatchUpdate) (int, error) {
+	ctx, span := tracer.Start(ctx, "schedule-patch", trace.WithAttributes(
+		attribute.String(evergreen.PatchIDOtelAttribute, patchId),
+	))
+	defer span.End()
+
 	var err error
 	p, err := patch.FindOneId(ctx, patchId)
 	if err != nil {
@@ -20,6 +27,12 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	if p == nil {
 		return http.StatusBadRequest, errors.Errorf("patch '%s' not found", patchId)
 	}
+	span.SetAttributes(
+		attribute.String(evergreen.ProjectIDOtelAttribute, p.Project),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, p.GetRequester()),
+		attribute.Bool(evergreen.PatchIsFinalizeOtelAttribute, p.Version == ""),
+		attribute.Bool(evergreen.PatchIsGithubPROtelAttribute, p.IsGithubPRPatch()),
+	)
 
 	if p.IsMergeQueuePatch() {
 		return http.StatusBadRequest, errors.New("can't schedule commit queue patch")

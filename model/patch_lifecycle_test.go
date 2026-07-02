@@ -547,6 +547,45 @@ func TestGetFullPatchParams(t *testing.T) {
 	}
 }
 
+func TestGetFullPatchParamsMultiAlias(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectAliasCollection))
+	ctx := t.Context()
+	pRef := ProjectRef{Id: "proj"}
+	require.NoError(t, pRef.Insert(ctx))
+
+	noParamsA := ProjectAlias{ProjectID: "proj", Alias: "a", Variant: ".*", Task: ".*"}
+	noParamsB := ProjectAlias{ProjectID: "proj", Alias: "b", Variant: ".*", Task: ".*"}
+	withParam := ProjectAlias{ProjectID: "proj", Alias: "c", Variant: ".*", Task: ".*", Parameters: []patch.Parameter{{Key: "k", Value: "v"}}}
+	require.NoError(t, noParamsA.Upsert(ctx))
+	require.NoError(t, noParamsB.Upsert(ctx))
+	require.NoError(t, withParam.Upsert(ctx))
+
+	t.Run("MatchingParamSetsMerge", func(t *testing.T) {
+		p := patch.Patch{
+			Id:         patch.NewId("aaaaaaaaaaff001122334455"),
+			Project:    "proj",
+			Aliases:    []string{"a", "b"},
+			Parameters: []patch.Parameter{{Key: "user", Value: "1"}},
+		}
+		params, err := getFullPatchParams(ctx, &p)
+		require.NoError(t, err)
+		require.Len(t, params, 1)
+		assert.Equal(t, "user", params[0].Key)
+		assert.Equal(t, "1", params[0].Value)
+	})
+
+	t.Run("ConflictingParamSetsError", func(t *testing.T) {
+		p := patch.Patch{
+			Id:      patch.NewId("bbbbbbbbbbff001122334455"),
+			Project: "proj",
+			Aliases: []string{"a", "c"},
+		}
+		_, err := getFullPatchParams(ctx, &p)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "conflicting parameter")
+	})
+}
+
 func TestMakePatchedConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -987,6 +1026,60 @@ func TestAddNewPatch(t *testing.T) {
 		}
 		assert.Equal(t.CreateTime.UTC(), baseCommitTime)
 	}
+}
+
+func TestAddNewBuildsResolvesDistroAlias(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, distro.Collection))
+
+	realDistro := distro.Distro{
+		Id:      "real-distro",
+		Aliases: []string{"distro-alias"},
+	}
+	require.NoError(t, realDistro.Insert(t.Context()))
+
+	v := &Version{
+		Id:         "version",
+		Revision:   "1234",
+		Requester:  evergreen.PatchVersionRequester,
+		CreateTime: time.Now(),
+	}
+	require.NoError(t, v.Insert(t.Context()))
+	ref := ProjectRef{
+		Id:         "project",
+		Identifier: "project_name",
+	}
+	require.NoError(t, ref.Insert(t.Context()))
+
+	// The variant references the distro by its alias; addNewBuilds must resolve
+	// it to the underlying distro ID when creating the task.
+	proj := &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			{
+				Name:  "variant",
+				Tasks: []BuildVariantTaskUnit{{Name: "task1", Variant: "variant"}},
+				RunOn: []string{"distro-alias"},
+			},
+		},
+		Tasks: []ProjectTask{{Name: "task1"}},
+	}
+	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
+		{Variant: "variant", Tasks: []string{"task1"}},
+	})
+	creationInfo := TaskCreationInfo{
+		Project:        proj,
+		ProjectRef:     &ref,
+		Version:        v,
+		Pairs:          tasks,
+		ActivationInfo: specificActivationInfo{},
+	}
+	_, _, err := addNewBuilds(t.Context(), creationInfo, nil)
+	require.NoError(t, err)
+
+	dbTasks, err := task.FindAll(t.Context(), db.Query(bson.M{}))
+	require.NoError(t, err)
+	require.Len(t, dbTasks, 1)
+	assert.Equal(t, realDistro.Id, dbTasks[0].DistroId)
 }
 
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {

@@ -284,6 +284,59 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 	assert.Equal(t, "ident_enabled", mergedProjects[0].Id)
 }
 
+func TestFindMergedProjectRefsByIdsOrIdentifiersSecondary(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
+
+	repoRef := &RepoRef{ProjectRef{
+		Id:                  "mongodb_mci",
+		SpawnHostScriptPath: "my-path",
+	}}
+	require.NoError(t, repoRef.Replace(t.Context()))
+
+	projectRefs := []ProjectRef{
+		{
+			Id:         "ident",
+			Identifier: "first-project",
+			RepoRefId:  "mongodb_mci",
+		},
+		{
+			Id:         "ident2",
+			Identifier: "second-project",
+		},
+	}
+	for _, pRef := range projectRefs {
+		require.NoError(t, pRef.Insert(t.Context()))
+	}
+
+	t.Run("EmptyInputReturnsNil", func(t *testing.T) {
+		merged, err := FindMergedProjectRefsByIdsOrIdentifiersSecondary(t.Context())
+		assert.NoError(t, err)
+		assert.Nil(t, merged)
+	})
+
+	t.Run("MatchesByIDAndIdentifier", func(t *testing.T) {
+		merged, err := FindMergedProjectRefsByIdsOrIdentifiersSecondary(t.Context(), "ident", "second-project")
+		assert.NoError(t, err)
+		require.Len(t, merged, 2)
+
+		byID := map[string]ProjectRef{}
+		for _, pRef := range merged {
+			byID[pRef.Id] = pRef
+		}
+		require.Contains(t, byID, "ident")
+		require.Contains(t, byID, "ident2")
+		// The repo-backed project should have its repo settings merged in.
+		assert.Equal(t, "my-path", byID["ident"].SpawnHostScriptPath)
+	})
+
+	t.Run("NonexistentValueIsOmitted", func(t *testing.T) {
+		merged, err := FindMergedProjectRefsByIdsOrIdentifiersSecondary(t.Context(), "ident", "nonexistent")
+		assert.NoError(t, err)
+		require.Len(t, merged, 1)
+		assert.Equal(t, "ident", merged[0].Id)
+	})
+}
+
 func TestFindAllMergedEnabledTrackedProjectRefs(t *testing.T) {
 	t.Run("MergesSharedRepoRefAcrossMultipleProjects", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))

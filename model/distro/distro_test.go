@@ -43,6 +43,30 @@ func TestFindDistroById(t *testing.T) {
 	assert.NotEqual(found.Id, -1, "The _ids should not match")
 }
 
+func TestHasAnyByIdOrAlias(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	d := Distro{Id: "distro", Aliases: []string{"distro-alias"}}
+	require.NoError(t, d.Insert(t.Context()))
+
+	for _, tc := range []struct {
+		name     string
+		ids      []string
+		expected bool
+	}{
+		{name: "MatchesByID", ids: []string{"distro"}, expected: true},
+		{name: "MatchesByAlias", ids: []string{"distro-alias"}, expected: true},
+		{name: "MatchesWhenAnyIDInListMatches", ids: []string{"nonexistent", "distro"}, expected: true},
+		{name: "DoesNotMatchUnknownID", ids: []string{"nonexistent"}, expected: false},
+		{name: "DoesNotMatchEmptyList", ids: []string{}, expected: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			found, err := HasAnyByIdOrAlias(t.Context(), tc.ids)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, found)
+		})
+	}
+}
+
 func TestFindAllDistros(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	assert := assert.New(t)

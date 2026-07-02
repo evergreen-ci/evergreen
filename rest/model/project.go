@@ -118,7 +118,7 @@ type APIPatchTriggerDefinition struct {
 
 func (t *APIPatchTriggerDefinition) BuildFromService(ctx context.Context, def patch.PatchTriggerDefinition) error {
 	t.ChildProjectId = utility.ToStringPtr(def.ChildProject) // we store the real ID in the child project field
-	identifier, err := model.GetIdentifierForProject(ctx, def.ChildProject)
+	identifier, err := model.GetIdentifierForProjectSecondary(ctx, def.ChildProject)
 	if err != nil {
 		return errors.Wrapf(err, "getting identifier for child project '%s'", def.ChildProject)
 	}

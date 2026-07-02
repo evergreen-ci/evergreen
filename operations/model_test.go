@@ -1,14 +1,13 @@
 package operations
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -249,11 +248,11 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 
 func TestShouldUseOAuth(t *testing.T) {
 	tests := []struct {
-		name           string
-		settings       *ClientSettings
-		serviceFlags   evergreen.ServiceFlags
-		flagsErr       error
-		expectedResult bool
+		name             string
+		settings         *ClientSettings
+		isServiceUser    bool
+		isServiceUserErr error
+		expectedResult   bool
 	}{
 		{
 			name:           "DoNotUseOAuth",
@@ -266,22 +265,35 @@ func TestShouldUseOAuth(t *testing.T) {
 			expectedResult: true,
 		},
 		{
-			name:     "JWTTokenForCLIDisabled",
-			settings: &ClientSettings{APIKey: "key"},
-			serviceFlags: evergreen.ServiceFlags{
-				JWTTokenForCLIDisabled: true,
-			},
+			name:           "HumanUserWithAPIKey",
+			settings:       &ClientSettings{APIKey: "key"},
+			expectedResult: true,
+		},
+		{
+			name:           "ServiceUserWithAPIKey",
+			settings:       &ClientSettings{APIKey: "key"},
+			isServiceUser:  true,
 			expectedResult: false,
+		},
+		{
+			name:             "UnauthorizedServiceUserCheck",
+			settings:         &ClientSettings{APIKey: "key"},
+			isServiceUserErr: errors.New("HTTP request returned unexpected status: 401"),
+			expectedResult:   true,
+		},
+		{
+			name:             "FailedServiceUserCheck",
+			settings:         &ClientSettings{APIKey: "key"},
+			isServiceUserErr: errors.New("HTTP request returned unexpected status: 500"),
+			expectedResult:   false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mock := &client.Mock{
-				MockServiceFlags: &restmodel.APIServiceFlags{
-					JWTTokenForCLIDisabled: test.serviceFlags.JWTTokenForCLIDisabled,
-				},
-				MockServiceFlagErr: test.flagsErr,
+				MockIsServiceUser:    test.isServiceUser,
+				MockIsServiceUserErr: test.isServiceUserErr,
 			}
 			result, _ := test.settings.shouldUseOAuth(t.Context(), mock)
 			assert.Equal(t, test.expectedResult, result)

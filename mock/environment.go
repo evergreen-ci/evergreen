@@ -50,6 +50,7 @@ type Environment struct {
 	roleManager             gimlet.RoleManager
 	userManager             gimlet.UserManager
 	userManagerInfo         evergreen.UserManagerInfo
+	redisClient             *redis.Client
 	Clients                 evergreen.ClientConfig
 	shutdownSequenceStarted bool
 	versionID               string
@@ -288,7 +289,17 @@ func (e *Environment) CertificateDepot() certdepot.Depot {
 }
 
 func (e *Environment) RedisClient() *redis.Client {
-	return nil
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.redisClient
+}
+
+func (e *Environment) SetRedisClient(client *redis.Client) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.redisClient = client
 }
 
 func (e *Environment) SetParameterManager(pm *parameterstore.ParameterManager) {

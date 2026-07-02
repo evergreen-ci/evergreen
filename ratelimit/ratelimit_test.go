@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/evergreen-ci/evergreen"
@@ -106,6 +107,36 @@ func TestAllowExhaustingOneUserDoesNotAffectAnother(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, 1, res.Allowed)
+}
+
+func TestAllowBucketResetsAfterFullWindow(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { assert.NoError(t, rdb.Close()) })
+	l, err := NewRateLimiter(rdb)
+	require.NoError(t, err)
+
+	ctx := t.Context()
+	// Exhaust the entire burst.
+	res, err := l.AllowN(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 5, 5)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 5, res.Allowed)
+
+	// Confirm the bucket is now empty.
+	res, err = l.Allow(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 5)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, 0, res.Allowed)
+
+	// Advance virtual time by one full hour so the bucket fully refills.
+	mr.FastForward(time.Hour)
+
+	// After refill, requests should be allowed again.
+	res, err = l.Allow(ctx, "user", evergreen.RateLimitSurfaceREST, 100, 5)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Greater(t, res.Allowed, 0)
 }
 
 func TestAllowExhaustingOneSurfaceDoesNotAffectAnother(t *testing.T) {

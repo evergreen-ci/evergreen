@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -21,6 +22,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
 
@@ -124,6 +127,12 @@ type PatchUpdate struct {
 // ConfigurePatch validates and creates the updated tasks/variants if given, and updates description if needed.
 // Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
+	ctx, span := tracer.Start(ctx, "configure-patch", trace.WithAttributes(
+		attribute.String(evergreen.PatchIDOtelAttribute, p.Id.Hex()),
+		attribute.String(evergreen.ProjectIDOtelAttribute, p.Project),
+	))
+	defer span.End()
+
 	var err error
 	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 	if err != nil {
@@ -132,7 +141,12 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
 	tasks := VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
+
+	// We want to instrument IncludeDependencies, but it lacks context. To get around this, manually start and end span.
+	_, includeDepsSpan := tracer.Start(ctx, "include-dependencies")
 	tasks.ExecTasks, err = IncludeDependencies(project, tasks.ExecTasks, p.GetRequester(), nil)
+	includeDepsSpan.End()
+
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for patch",
 		"patch":   p.Id.Hex(),
@@ -557,6 +571,13 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 // Creates builds based on the Version
 // Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Version, error) {
+	ctx, span := tracer.Start(ctx, "finalize-patch", trace.WithAttributes(
+		attribute.String(evergreen.PatchIDOtelAttribute, p.Id.Hex()),
+		attribute.String(evergreen.ProjectIDOtelAttribute, p.Project),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, requester),
+	))
+	defer span.End()
+
 	projectRef, err := FindMergedProjectRef(ctx, p.Project, p.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
@@ -642,7 +663,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		AuthorEmail:          authorEmail,
 	}
 
-	mfst, err := constructManifest(ctx, patchVersion, projectRef, project.Modules)
+	manifestCtx, manifestSpan := tracer.Start(ctx, "construct-manifest")
+	mfst, err := constructManifest(manifestCtx, patchVersion, projectRef, project.Modules)
+	manifestSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -695,6 +718,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, errors.Wrapf(err, "getting create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
 	}
 
+	buildCreationCtx, buildCreationSpan := tracer.Start(ctx, "create-builds-from-version")
 	buildsToInsert := build.Builds{}
 	tasksToInsert := task.Tasks{}
 	for _, vt := range p.VariantsTasks {
@@ -730,8 +754,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		}
 		var build *build.Build
 		var tasks task.Tasks
-		build, tasks, err = CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)
+		build, tasks, err = CreateBuildFromVersionNoInsert(buildCreationCtx, buildCreationArgs)
 		if err != nil {
+			buildCreationSpan.End()
 			return nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
@@ -756,6 +781,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			},
 		)
 	}
+	buildCreationSpan.End()
+	span.SetAttributes(
+		attribute.Int(evergreen.PatchNumBuildsOtelAttribute, len(buildsToInsert)),
+		attribute.Int(evergreen.PatchNumTasksOtelAttribute, len(tasksToInsert)),
+	)
 	// We must set the NumDependents field for tasks prior to inserting them in the DB.
 	SetNumDependents(tasksToInsert)
 	numActivatedTasks := 0
@@ -812,7 +842,9 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, err
 	}
 
-	_, err = session.WithTransaction(ctx, txFunc)
+	txCtx, txSpan := tracer.Start(ctx, "finalize-patch-transaction")
+	_, err = session.WithTransaction(txCtx, txFunc)
+	txSpan.End()
 	if err != nil {
 		return nil, errors.Wrap(err, "finalizing patch")
 	}
@@ -881,29 +913,47 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	return patchVersion, nil
 }
 
-// getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
-// with the parameters that were explicitly user-specified, with the latter taking precedence.
+// getFullPatchParams retrieves the parameters defined on the patch's alias(es)
+// merged with the user-specified parameters, with the latter taking precedence.
+// A version has a single global set of parameters, so when multiple aliases are
+// specified their fully-resolved parameter sets must be identical, otherwise the
+// patch cannot be finalized.
 func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter, error) {
-	paramsMap := map[string]string{}
-	if p.Alias == "" || !IsPatchAlias(p.Alias) {
+	aliasNames := p.AliasesToResolve()
+	// Internal aliases (commit queue, GitHub, etc.) don't carry user parameters.
+	if len(aliasNames) == 0 || (len(aliasNames) == 1 && !IsPatchAlias(aliasNames[0])) {
 		return p.Parameters, nil
 	}
-	aliases, err := findAliasesForPatch(ctx, p.Project, p.Alias, p)
-	if err != nil {
-		return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
-	}
-	for _, alias := range aliases {
-		if len(alias.Parameters) > 0 {
+
+	var commonParams map[string]string
+	for i, aliasName := range aliasNames {
+		aliases, err := findAliasesForPatch(ctx, p.Project, aliasName, p) // Get all records for the alias.
+		if err != nil {
+			return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", aliasName, p.Id.Hex())
+		}
+
+		// Overwrite configured parameters with user-specified ones, which take precedence.
+		paramsMap := map[string]string{}
+		for _, alias := range aliases {
 			for _, aliasParam := range alias.Parameters {
 				paramsMap[aliasParam.Key] = aliasParam.Value
 			}
 		}
+		for _, param := range p.Parameters {
+			paramsMap[param.Key] = param.Value
+		}
+		// Set the parameters from the first alias as the common set to compare against.
+		if i == 0 {
+			commonParams = paramsMap
+			continue
+		}
+		if !reflect.DeepEqual(paramsMap, commonParams) {
+			return nil, errors.Errorf("aliases %v resolve to conflicting parameter sets; a patch version has a single set of parameters, so specify a single alias or aliases whose parameters match", aliasNames)
+		}
 	}
-	for _, param := range p.Parameters {
-		paramsMap[param.Key] = param.Value
-	}
+
 	var fullParams []patch.Parameter
-	for k, v := range paramsMap {
+	for k, v := range commonParams {
 		fullParams = append(fullParams, patch.Parameter{
 			Key:   k,
 			Value: v,

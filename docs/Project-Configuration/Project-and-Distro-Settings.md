@@ -233,6 +233,10 @@ For example:
 
 Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
+#### Multiple Aliases
+
+A patch can be run with multiple aliases specified via the CLI. A deduplicated set of tasks from all specified patches will be scheduled, as long as parameters on all aliases match after user-supplied parameter overrides are applied.
+
 ### GitHub Pull Request Testing
 
 Definitions for this section exist under the GitHub "Pull Request Testing" tab.
@@ -823,21 +827,23 @@ task_annotation_settings:
 
 ## Test Selection Settings
 
-Test selection is an experimental feature to help projects reduce testing that provides low signal. For example, if you
-submit a patch for your change but one of the tests fails due to a known issue that's not related to your change, then
-the test did not need to run because it's giving a false negative signal about your patch's mergeability. This can
-improve the signal of a project's tests, reduce time for versions to finish, and save on the cost of running low-signal
-tasks.
+Test selection is a feature to help projects reduce testing that provides low signal. For example, if you submit a patch
+for your change but one of the tests fails due to a known issue that's not related to your change, then the test did not
+need to run because it's giving a false negative signal about your patch's mergeability. This can improve the signal of
+a project's tests, reduce time for versions to finish, and save on the cost of running low-signal tasks.
 
 To allow any test selection features to be used in your project, first go to "Test Selection" -> "Project-Level Test
-Selection" and enable it. Doing this will allow any test selection features to be used. Patches in the project may use
-the [test selection command](Project-Commands#test_selectionget) (note: only supported in patches currently, non-patch
-versions will not have test selection features enabled).
+Selection" and enable it. Doing this is necessary to allow any test selection features to be used. Patch tasks in the
+project may use the [test selection command](Project-Commands#test_selectionget).
 
 To enable test selection by default for all patch tasks, go to "Test Selection" -> "Task-Level Test Selection" and
 enable it. Doing this will enable the usage of the [test selection command](Project-Commands#test_selectionget) in all
 patch tasks by default. This default can still be overridden by choosing specific variants/tasks in which to enable test
-selection from [the CLI](../CLI.md#test-selection).
+selection when submitting a manual patch from [the CLI](../CLI.md#test-selection).
+
+Test selection can appear enabled on mainline commit versions when these project and task settings are enabled. However,
+the [test selection command](Project-Commands#test_selectionget) only requests selected tests for patch tasks. On
+mainline commits and other non-patch versions, the command writes an empty test list, so no tests are excluded.
 
 ## GitHub App Settings
 

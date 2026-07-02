@@ -44,12 +44,18 @@ func (s *cliUpdateConnectorSuite) Test() {
 	latestRevision := "abcdef"
 	env := &mock.Environment{
 		EvergreenSettings: &evergreen.Settings{
+			Api: evergreen.APIConfig{
+				CorpURL: "https://evergreen.corp.example.com",
+			},
 			AuthConfig: evergreen.AuthConfig{
 				OAuth: &evergreen.OAuthConfig{
 					Issuer:      "https://example.com",
 					ClientID:    "client_id",
 					ConnectorID: "connector_id",
 				},
+			},
+			Ui: evergreen.UIConfig{
+				UIv2Url: "https://spruce.example.com",
 			},
 		},
 	}
@@ -66,6 +72,10 @@ func (s *cliUpdateConnectorSuite) Test() {
 	s.Equal("client_id", *v.ClientConfig.OAuthClientID)
 	s.Require().NotNil(v.ClientConfig.OAuthConnectorID)
 	s.Equal("connector_id", *v.ClientConfig.OAuthConnectorID)
+	s.Require().NotNil(v.ClientConfig.CorpAPIServerHost)
+	s.Equal("https://evergreen.corp.example.com/api", *v.ClientConfig.CorpAPIServerHost)
+	s.Require().NotNil(v.ClientConfig.NewUIServerHost)
+	s.Equal("https://spruce.example.com", *v.ClientConfig.NewUIServerHost)
 }
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {

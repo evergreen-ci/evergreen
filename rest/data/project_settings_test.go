@@ -714,7 +714,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 							Value: utility.ToStringPtr("A new value"),
 						},
 						{
-							Key:   utility.ToStringPtr("Authorization"),
+							Key:   utility.ToStringPtr(event.WebhookAuthorizationHeader),
 							Value: utility.ToStringPtr(evergreen.RedactedValue), // This is testing that the webhook stays redacted.
 						},
 					},
@@ -767,7 +767,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 							Value: utility.ToStringPtr("A new value"),
 						},
 						{
-							Key:   utility.ToStringPtr("Authorization"),
+							Key:   utility.ToStringPtr(event.WebhookAuthorizationHeader),
 							Value: utility.ToStringPtr("a_different_secret"),
 						},
 					},
@@ -1213,7 +1213,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 							Value: "Value",
 						},
 						{
-							Key:   "Authorization",
+							Key:   event.WebhookAuthorizationHeader,
 							Value: "a_very_super_secret",
 						},
 					},

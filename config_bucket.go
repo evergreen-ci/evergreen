@@ -41,9 +41,9 @@ type BucketsConfig struct {
 	LogBucketFailedTasks BucketConfig `bson:"log_bucket_failed_tasks" json:"log_bucket_failed_tasks" yaml:"log_bucket_failed_tasks"`
 	// LongRetentionProjects is the list of project IDs that require long retention.
 	LongRetentionProjects []string `bson:"long_retention_projects" json:"long_retention_projects" yaml:"long_retention_projects"`
-	// RetryFailedLogMoveLookbackMonths is how many months back the hourly retry cron searches
-	// for failed tasks whose logs need moving. Default 2 when unset or 0.
-	RetryFailedLogMoveLookbackMonths int `bson:"retry_failed_log_move_lookback_months" json:"retry_failed_log_move_lookback_months" yaml:"retry_failed_log_move_lookback_months"`
+	// RetryFailedLogMoveLookbackDays is how many days back the hourly retry cron searches
+	// for failed tasks whose logs need moving. Defaults to 7 when unset or <= 0.
+	RetryFailedLogMoveLookbackDays int `bson:"retry_failed_log_move_lookback_days" json:"retry_failed_log_move_lookback_days" yaml:"retry_failed_log_move_lookback_days"`
 	// RetryFailedLogMoveMaxJobsPerRun caps how many move jobs the hourly retry cron enqueues
 	// per run to avoid S3 rate limiting. Newest failures are prioritized. Default 50 when unset or 0.
 	RetryFailedLogMoveMaxJobsPerRun int `bson:"retry_failed_log_move_max_jobs_per_run" json:"retry_failed_log_move_max_jobs_per_run" yaml:"retry_failed_log_move_max_jobs_per_run"`
@@ -54,14 +54,14 @@ type BucketsConfig struct {
 }
 
 var (
-	BucketsConfigLogBucketKey                        = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
-	BucketsConfigLogBucketLongRetentionKey           = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
-	BucketsConfigLogBucketFailedTasksKey             = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
-	BucketsConfigLongRetentionProjectsKey            = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
-	BucketsConfigRetryFailedLogMoveLookbackMonthsKey = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveLookbackMonths")
-	BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey  = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveMaxJobsPerRun")
-	BucketsConfigTestResultsBucketKey                = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
-	BucketsConfigCredentialsKey                      = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	BucketsConfigLogBucketKey                       = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	BucketsConfigLogBucketLongRetentionKey          = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketLongRetention")
+	BucketsConfigLogBucketFailedTasksKey            = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucketFailedTasks")
+	BucketsConfigLongRetentionProjectsKey           = bsonutil.MustHaveTag(BucketsConfig{}, "LongRetentionProjects")
+	BucketsConfigRetryFailedLogMoveLookbackDaysKey  = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveLookbackDays")
+	BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey = bsonutil.MustHaveTag(BucketsConfig{}, "RetryFailedLogMoveMaxJobsPerRun")
+	BucketsConfigTestResultsBucketKey               = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
+	BucketsConfigCredentialsKey                     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -111,14 +111,14 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(
 		setConfigSection(ctx, c.SectionId(), bson.M{
 			"$set": bson.M{
-				BucketsConfigLogBucketKey:                        c.LogBucket,
-				BucketsConfigLogBucketLongRetentionKey:           c.LogBucketLongRetention,
-				BucketsConfigLogBucketFailedTasksKey:             c.LogBucketFailedTasks,
-				BucketsConfigLongRetentionProjectsKey:            c.LongRetentionProjects,
-				BucketsConfigRetryFailedLogMoveLookbackMonthsKey: c.RetryFailedLogMoveLookbackMonths,
-				BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey:  c.RetryFailedLogMoveMaxJobsPerRun,
-				BucketsConfigTestResultsBucketKey:                c.TestResultsBucket,
-				BucketsConfigCredentialsKey:                      c.Credentials,
+				BucketsConfigLogBucketKey:                       c.LogBucket,
+				BucketsConfigLogBucketLongRetentionKey:          c.LogBucketLongRetention,
+				BucketsConfigLogBucketFailedTasksKey:            c.LogBucketFailedTasks,
+				BucketsConfigLongRetentionProjectsKey:           c.LongRetentionProjects,
+				BucketsConfigRetryFailedLogMoveLookbackDaysKey:  c.RetryFailedLogMoveLookbackDays,
+				BucketsConfigRetryFailedLogMoveMaxJobsPerRunKey: c.RetryFailedLogMoveMaxJobsPerRun,
+				BucketsConfigTestResultsBucketKey:               c.TestResultsBucket,
+				BucketsConfigCredentialsKey:                     c.Credentials,
 			},
 		}),
 		"updating config section '%s'", c.SectionId(),
@@ -130,8 +130,8 @@ func (c *BucketsConfig) ValidateAndDefault() error {
 	catcher.Add(c.LogBucket.validate())
 	catcher.Add(c.LogBucketLongRetention.validate())
 	catcher.Add(c.LogBucketFailedTasks.validate())
-	if c.RetryFailedLogMoveLookbackMonths < 0 {
-		catcher.Add(errors.New("retry_failed_log_move_lookback_months cannot be negative"))
+	if c.RetryFailedLogMoveLookbackDays < 0 {
+		catcher.Add(errors.New("retry_failed_log_move_lookback_days cannot be negative"))
 	}
 	if c.RetryFailedLogMoveMaxJobsPerRun < 0 {
 		catcher.Add(errors.New("retry_failed_log_move_max_jobs_per_run cannot be negative"))

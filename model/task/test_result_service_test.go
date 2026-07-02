@@ -18,6 +18,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() { testutil.Setup() }
@@ -97,6 +98,43 @@ func TestEvergreenService(t *testing.T) {
 		assert.Equal(t, len(savedResults0)+len(savedResults1)+len(savedResults2), stats.TotalCount)
 		assert.Equal(t, len(savedResults0)/2, stats.FailedCount)
 		assert.Nil(t, stats.FilteredCount)
+	})
+	t.Run("GetExcludesQuarantinedTestsByDefaultAndIncludesExplicitProjection", func(t *testing.T) {
+		quarantinedTests := []testresult.QuarantinedTest{
+			{TestName: "test_0", DisplayTestName: "Display test 0"},
+			{TestName: "test_1"},
+		}
+		_, err := env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx,
+			ByTaskIDAndExecution(task0.Id, task0.Execution),
+			bson.M{"$set": bson.M{
+				testresult.QuarantinedTestsCountKey: len(quarantinedTests),
+				testresult.QuarantinedTestsKey:      quarantinedTests,
+			}},
+		)
+		require.NoError(t, err)
+
+		taskResults, err := svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Empty(t, taskResults[0].QuarantinedTests)
+
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{Fields: []string{testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey}})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests, taskResults[0].QuarantinedTests)
+
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests, taskResults[0].QuarantinedTests)
+
+		mergedTaskResults, err := getMergedTaskTestResults(ctx, env, []Task{task0}, &FilterOptions{IncludeQuarantinedTests: true})
+		require.NoError(t, err)
+		assert.Equal(t, len(quarantinedTests), mergedTaskResults.QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests, mergedTaskResults.QuarantinedTests)
 	})
 	t.Run("GetFailedTestSamples", func(t *testing.T) {
 		t.Run("WithoutRegexFilters", func(t *testing.T) {

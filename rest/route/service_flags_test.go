@@ -2,10 +2,9 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -17,37 +16,15 @@ func TestServiceFlagsSuite(t *testing.T) {
 	suite.Run(t, new(ServiceFlagsSuite))
 }
 
-func (s *ServiceFlagsSuite) SetupSuite() {
-
-}
-
-func (s *ServiceFlagsSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection))
-}
-
 func (s *ServiceFlagsSuite) TestServiceFlagsGet() {
 	ctx := context.Background()
 	route := makeFetchServiceFlags().(*serviceFlagsGetHandler)
 
-	testSettings := &evergreen.Settings{
-		ServiceFlags: evergreen.ServiceFlags{
-			StaticAPIKeysDisabled:  true,
-			JWTTokenForCLIDisabled: true,
-			// this shouldn't be returned
-			HostInitDisabled: true,
-		},
-	}
-	s.NoError(evergreen.UpdateConfig(ctx, testSettings))
-
 	resp := route.Run(ctx)
 	s.NotNil(resp)
-	s.Equal(resp.Status(), 200)
+	s.Equal(200, resp.Status())
 
-	flags, ok := resp.Data().(evergreen.ServiceFlags)
-	s.True(ok)
-	s.Require().NotNil(flags)
-	s.Equal(testSettings.ServiceFlags.StaticAPIKeysDisabled, flags.StaticAPIKeysDisabled)
-	s.Equal(testSettings.ServiceFlags.JWTTokenForCLIDisabled, flags.JWTTokenForCLIDisabled)
-	// ensure it only returns the necessary flags
-	s.NotEqual(testSettings.ServiceFlags.HostInitDisabled, flags.HostInitDisabled)
+	data, err := json.Marshal(resp.Data())
+	s.NoError(err)
+	s.JSONEq(`{"static_api_keys_disabled":true}`, string(data))
 }

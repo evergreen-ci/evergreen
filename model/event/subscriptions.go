@@ -1068,7 +1068,7 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 		return nil
 	}
 
-	if authValue := webhookSub.GetHeader("Authorization"); authValue != "" {
+	if authValue := webhookSub.GetHeader(WebhookAuthorizationHeader); authValue != "" {
 		webhookSub.AuthorizationHeaderParameter = saveWebhookParameter(ctx, s.ID, getWebhookAuthParameterPath(s.ID), []byte(authValue))
 	} else if s.ID != "" {
 		// Authorization header was removed on update. Clean up the old PS entry if
@@ -1179,7 +1179,7 @@ func populateWebhookSecrets(ctx context.Context, subscriptions []Subscription) e
 				})
 				// Authorization header is already populated from the DB read — leave it as-is.
 			} else {
-				webhookSub.setHeader("Authorization", string(authValue))
+				webhookSub.setHeader(WebhookAuthorizationHeader, string(authValue))
 			}
 		}
 

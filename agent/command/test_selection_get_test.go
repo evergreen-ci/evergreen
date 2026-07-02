@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -71,6 +72,20 @@ func TestTestSelectionGet(t *testing.T) {
 			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
 
 			output = testSelectionOutputFile{}
+			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
+			assert.Empty(t, output.Tests)
+		},
+		"SkipsForNonPatchRequester": func(t *testing.T, conf *internal.TaskConfig, comm *client.Mock, logger client.LoggerProducer) {
+			cmd := &testSelectionGet{OutputFile: "test.json", Tests: []string{"test1", "test3"}}
+
+			// Test selection must not run on mainline commits even when allowed
+			// and enabled, so that it never changes which tests they run.
+			conf.Task.Requester = evergreen.RepotrackerVersionRequester
+			require.NoError(t, cmd.Execute(t.Context(), comm, logger, conf))
+
+			assert.False(t, comm.SelectTestsCalled)
+
+			var output testSelectionOutputFile
 			require.NoError(t, utility.ReadJSONFile(cmd.OutputFile, &output))
 			assert.Empty(t, output.Tests)
 		},
@@ -182,6 +197,7 @@ func TestTestSelectionGet(t *testing.T) {
 			require.NoError(t, err)
 
 			conf.Task.TestSelectionEnabled = true
+			conf.Task.Requester = evergreen.PatchVersionRequester
 			conf.ProjectRef.TestSelection.Allowed = utility.TruePtr()
 
 			tCase(t, conf, comm, logger)

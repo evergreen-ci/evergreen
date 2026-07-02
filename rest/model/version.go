@@ -144,7 +144,7 @@ func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Vers
 	}
 
 	if v.Identifier != "" {
-		identifier, err := model.GetIdentifierForProject(ctx, v.Identifier)
+		identifier, err := model.GetIdentifierForProjectSecondary(ctx, v.Identifier)
 		if err == nil {
 			apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}

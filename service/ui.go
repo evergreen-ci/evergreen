@@ -82,7 +82,7 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string) (*UI
 			CookieTTL:                       365 * 24 * time.Hour,
 			CookiePath:                      "/",
 			CookieDomain:                    settings.Ui.LoginDomain,
-			StaticKeysDisabledForHumanUsers: settings.ServiceFlags.StaticAPIKeysDisabled,
+			StaticKeysDisabledForHumanUsers: true,
 		},
 		hostCache: make(map[string]hostCacheItem),
 	}

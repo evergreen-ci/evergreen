@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/graphql/loaders"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -54,10 +55,8 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	hasUser := gimlet.GetUser(ctx) != nil
-	strippedFiles, err := artifact.StripHiddenFiles(ctx, taskFiles, hasUser)
-	if err != nil {
-		return nil, err
-	}
+	baseURL := evergreen.GetEnvironment().Settings().Ui.Url
+	strippedFiles := artifact.StripHiddenFilesLazy(taskFiles, hasUser, baseURL, taskID, execution)
 
 	env := evergreen.GetEnvironment()
 	apiFileList := []*restModel.APIFile{}
@@ -908,10 +907,20 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	return options, nil
 }
 
-func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRefSecondary(ctx, *projectId, *patchId, false)
+func getAPIProjectRef(ctx context.Context, projectId *string) (*restModel.APIProjectRef, error) {
+	// If project ID is the only field requested we can return it without a database call.
+	if graphql.HasOperationContext(ctx) {
+		requestedFields := graphql.CollectAllFields(ctx)
+		if len(requestedFields) == 1 && requestedFields[0] == "id" {
+			return &restModel.APIProjectRef{
+				Id: projectId,
+			}, nil
+		}
+	}
+
+	projectRef, err := loaders.GetProject(ctx, utility.FromStringPtr(projectId))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()), err)
 	}
 	if projectRef == nil {
 		return nil, nil

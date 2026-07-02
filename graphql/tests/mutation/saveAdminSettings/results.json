@@ -81,7 +81,8 @@
               "patchTimeInQueueFactor": 1,
               "stepbackTaskFactor": 1,
               "targetTimeSeconds": 1,
-              "taskFinder": "PARALLEL"
+              "taskFinder": "PARALLEL",
+              "translateProjectConcurrencyLimit": 1
             }
           }
         }

@@ -33,6 +33,8 @@ type Mock struct {
 	MockServiceFlags     *model.APIServiceFlags
 	MockServiceFlagErr   error
 	MockGetProjectResult *model.APIProjectRef
+	MockIsServiceUser    bool
+	MockIsServiceUserErr error
 
 	GetRecentVersionsResult             []restmodel.APIVersion
 	GetRecentVersionsResultsByRequester map[string][]restmodel.APIVersion
@@ -391,4 +393,6 @@ func (c *Mock) SetOAuth(oauth string) {}
 
 func (c *Mock) SetAPIServerHost(serverURL string) {}
 
-func (c *Mock) IsServiceUser(context.Context, string) (bool, error) { return false, nil }
+func (c *Mock) IsServiceUser(context.Context, string) (bool, error) {
+	return c.MockIsServiceUser, c.MockIsServiceUserErr
+}

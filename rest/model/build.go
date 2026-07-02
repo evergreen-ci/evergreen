@@ -146,7 +146,7 @@ func (apiBuild *APIBuild) BuildFromService(ctx context.Context, v build.Build, p
 	}
 	apiBuild.Origin = utility.ToStringPtr(origin)
 	if v.Project != "" {
-		identifier, err := model.GetIdentifierForProject(ctx, v.Project)
+		identifier, err := model.GetIdentifierForProjectSecondary(ctx, v.Project)
 		if err == nil {
 			apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}

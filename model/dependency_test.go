@@ -211,7 +211,7 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 					{Name: "tg4", Tasks: []string{"tg4t1", "tg4t2"}, MaxHosts: 1},
 				},
 			}
-			p, err := TranslateProject(parserProject)
+			p, err := TranslateProject(t.Context(), parserProject)
 			require.NoError(t, err)
 			require.NotNil(t, p)
 			tC(t, p)
@@ -259,7 +259,7 @@ func TestIncludeDependencies(t *testing.T) {
 				{Name: "tg1", Tasks: []string{"tgt1", "tgt2"}},
 			},
 		}
-		p, err := TranslateProject(parserProject)
+		p, err := TranslateProject(t.Context(), parserProject)
 		So(err, ShouldBeNil)
 		So(p, ShouldNotBeNil)
 
@@ -345,7 +345,7 @@ func TestIncludeDependencies(t *testing.T) {
 				{Name: "v4", Tasks: []parserBVTaskUnit{{Name: "t5"}}},
 			},
 		}
-		p, err := TranslateProject(parserProject)
+		p, err := TranslateProject(t.Context(), parserProject)
 		So(err, ShouldBeNil)
 		So(p, ShouldNotBeNil)
 
@@ -401,7 +401,7 @@ func TestIncludeDependencies(t *testing.T) {
 			},
 		}
 
-		p, err := TranslateProject(parserProject)
+		p, err := TranslateProject(t.Context(), parserProject)
 		So(err, ShouldBeNil)
 		So(p, ShouldNotBeNil)
 
@@ -446,7 +446,7 @@ func TestIncludeDependencies(t *testing.T) {
 				{Name: "initial-variant", Tasks: []parserBVTaskUnit{{Name: "a"}}},
 			},
 		}
-		p, err := TranslateProject(parserProject)
+		p, err := TranslateProject(t.Context(), parserProject)
 		So(err, ShouldBeNil)
 		So(p, ShouldNotBeNil)
 
@@ -465,7 +465,7 @@ func TestIncludeDependencies(t *testing.T) {
 				{Name: "bv", Tasks: []parserBVTaskUnit{{Name: "a"}}},
 			},
 		}
-		p, err := TranslateProject(parserProject)
+		p, err := TranslateProject(t.Context(), parserProject)
 		So(err, ShouldBeNil)
 		So(p, ShouldNotBeNil)
 
@@ -487,7 +487,7 @@ func TestIncludeDependencies(t *testing.T) {
 				{Name: "bv-with-group", Tasks: []parserBVTaskUnit{{Name: "task-group"}}},
 			},
 		}
-		p, err := TranslateProject(parserProject)
+		p, err := TranslateProject(t.Context(), parserProject)
 		So(err, ShouldBeNil)
 		So(p, ShouldNotBeNil)
 

@@ -25,29 +25,17 @@ func TestServerEndpoints(t *testing.T) {
 
 	testCases := []struct {
 		name                   string
-		staticAPIKeysDisabled  bool
 		authHeader             map[string]string
 		expectedStatusCode     int
 		expectedErrorSubstring string
 	}{
 		{
-			name:                  "UsingCookies",
-			staticAPIKeysDisabled: false,
-			authHeader:            map[string]string{evergreen.AuthTokenCookie: "token"},
-			expectedStatusCode:    200,
-		},
-		{
-			name:                  "UsingStaticAPIKeys",
-			staticAPIKeysDisabled: false,
-			authHeader: map[string]string{
-				evergreen.APIUserHeader: serviceTestUtil.MockUser.Id,
-				evergreen.APIKeyHeader:  serviceTestUtil.MockUser.APIKey,
-			},
+			name:               "UsingCookies",
+			authHeader:         map[string]string{evergreen.AuthTokenCookie: "token"},
 			expectedStatusCode: 200,
 		},
 		{
-			name:                  "UsingStaticAPIKeys/DisabledStaticAPIKeys",
-			staticAPIKeysDisabled: true,
+			name: "UsingStaticAPIKeys",
 			authHeader: map[string]string{
 				evergreen.APIUserHeader: serviceTestUtil.MockUser.Id,
 				evergreen.APIKeyHeader:  serviceTestUtil.MockUser.APIKey,
@@ -56,8 +44,7 @@ func TestServerEndpoints(t *testing.T) {
 			expectedErrorSubstring: "static API keys are disabled for human users",
 		},
 		{
-			name:                  "UsingCookiesAndStaticAPIKeys/DisabledStaticAPIKeys",
-			staticAPIKeysDisabled: true,
+			name: "UsingCookiesAndStaticAPIKeys",
 			authHeader: map[string]string{
 				evergreen.AuthTokenCookie: "token",
 				evergreen.APIUserHeader:   serviceTestUtil.MockUser.Id,
@@ -66,8 +53,7 @@ func TestServerEndpoints(t *testing.T) {
 			expectedStatusCode: 200,
 		},
 		{
-			name:                  "UsingStaticAPIKeys/ServiceUser/DisabledStaticAPIKeys",
-			staticAPIKeysDisabled: true,
+			name: "UsingStaticAPIKeys/ServiceUser",
 			authHeader: map[string]string{
 				evergreen.APIUserHeader: serviceTestUtil.MockServiceUser.Id,
 				evergreen.APIKeyHeader:  serviceTestUtil.MockServiceUser.APIKey,
@@ -80,7 +66,6 @@ func TestServerEndpoints(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 
-			evergreen.GetEnvironment().Settings().ServiceFlags.StaticAPIKeysDisabled = testCase.staticAPIKeysDisabled
 			testApiServer, err := CreateTestServer(t.Context(), testConfig, nil, false)
 			require.NoError(t, err, "failed to create new API server")
 			defer testApiServer.Close()

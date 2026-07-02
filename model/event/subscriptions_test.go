@@ -773,7 +773,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookSavesAuthHeaderToParameterStore() 
 		URL:    "https://example.com/webhook",
 		Secret: []byte("my-secret"),
 		Headers: []WebhookHeader{
-			{Key: "Authorization", Value: "Bearer my-token"},
+			{Key: WebhookAuthorizationHeader, Value: "Bearer my-token"},
 			{Key: "X-Custom", Value: "custom-value"},
 		},
 	}
@@ -805,7 +805,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookSavesAuthHeaderToParameterStore() 
 	s.Require().True(ok)
 	s.Require().NotNil(foundWebhook)
 	s.NotEmpty(foundWebhook.AuthorizationHeaderParameter, "authorization_header_parameter path should be stored in MongoDB")
-	s.Equal("Bearer my-token", foundWebhook.GetHeader("Authorization"), "Authorization header should be populated from Parameter Store on read")
+	s.Equal("Bearer my-token", foundWebhook.GetHeader(WebhookAuthorizationHeader), "Authorization header should be populated from Parameter Store on read")
 }
 
 func (s *subscriptionsSuite) TestUpsertWebhookWithoutAuthHeaderDoesNotCreateAuthParameter() {
@@ -839,7 +839,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionByIDPopulatesAuthHeaderFromPara
 		URL:    "https://example.com/webhook",
 		Secret: []byte("my-secret"),
 		Headers: []WebhookHeader{
-			{Key: "Authorization", Value: "Bearer ps-token"},
+			{Key: WebhookAuthorizationHeader, Value: "Bearer ps-token"},
 		},
 	}
 	sub := Subscription{
@@ -863,7 +863,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionByIDPopulatesAuthHeaderFromPara
 	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
 	s.Require().True(ok)
 	s.Require().NotNil(foundWebhook)
-	s.Equal("Bearer ps-token", foundWebhook.GetHeader("Authorization"))
+	s.Equal("Bearer ps-token", foundWebhook.GetHeader(WebhookAuthorizationHeader))
 	s.NotEmpty(foundWebhook.AuthorizationHeaderParameter)
 }
 
@@ -882,7 +882,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionByIDFallsBackToMongoDBAuthHeade
 				URL:    "https://legacy.example.com",
 				Secret: []byte("legacy-secret"),
 				Headers: []WebhookHeader{
-					{Key: "Authorization", Value: "Bearer legacy-token"},
+					{Key: WebhookAuthorizationHeader, Value: "Bearer legacy-token"},
 				},
 			},
 		},
@@ -897,7 +897,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionByIDFallsBackToMongoDBAuthHeade
 	foundWebhook, ok := found.Subscriber.Target.(*WebhookSubscriber)
 	s.Require().True(ok)
 	s.Require().NotNil(foundWebhook)
-	s.Equal("Bearer legacy-token", foundWebhook.GetHeader("Authorization"), "should fall back to MongoDB auth header")
+	s.Equal("Bearer legacy-token", foundWebhook.GetHeader(WebhookAuthorizationHeader), "should fall back to MongoDB auth header")
 	s.Empty(foundWebhook.AuthorizationHeaderParameter)
 }
 
@@ -906,7 +906,7 @@ func (s *subscriptionsSuite) TestRemoveSubscriptionDeletesAuthHeaderFromParamete
 		URL:    "https://example.com/webhook",
 		Secret: []byte("delete-me-secret"),
 		Headers: []WebhookHeader{
-			{Key: "Authorization", Value: "Bearer delete-me-token"},
+			{Key: WebhookAuthorizationHeader, Value: "Bearer delete-me-token"},
 		},
 	}
 	sub := Subscription{
@@ -942,7 +942,7 @@ func (s *subscriptionsSuite) TestUpsertWebhookDeletesAuthParameterWhenHeaderRemo
 		URL:    "https://example.com/webhook",
 		Secret: []byte("my-secret"),
 		Headers: []WebhookHeader{
-			{Key: "Authorization", Value: "Bearer original-token"},
+			{Key: WebhookAuthorizationHeader, Value: "Bearer original-token"},
 		},
 	}
 	sub := Subscription{
@@ -989,13 +989,13 @@ func TestSetHeader(t *testing.T) {
 	t.Run("UpdatesExistingKey", func(t *testing.T) {
 		ws := &WebhookSubscriber{
 			Headers: []WebhookHeader{
-				{Key: "Authorization", Value: "Bearer old-token"},
+				{Key: WebhookAuthorizationHeader, Value: "Bearer old-token"},
 				{Key: "X-Custom", Value: "custom"},
 			},
 		}
-		ws.setHeader("Authorization", "Bearer new-token")
+		ws.setHeader(WebhookAuthorizationHeader, "Bearer new-token")
 		require.Len(t, ws.Headers, 2)
-		assert.Equal(t, "Bearer new-token", ws.GetHeader("Authorization"))
+		assert.Equal(t, "Bearer new-token", ws.GetHeader(WebhookAuthorizationHeader))
 		assert.Equal(t, "custom", ws.GetHeader("X-Custom"))
 	})
 
@@ -1005,9 +1005,9 @@ func TestSetHeader(t *testing.T) {
 				{Key: "X-Custom", Value: "custom"},
 			},
 		}
-		ws.setHeader("Authorization", "Bearer new-token")
+		ws.setHeader(WebhookAuthorizationHeader, "Bearer new-token")
 		require.Len(t, ws.Headers, 2)
-		assert.Equal(t, "Bearer new-token", ws.GetHeader("Authorization"))
+		assert.Equal(t, "Bearer new-token", ws.GetHeader(WebhookAuthorizationHeader))
 	})
 }
 

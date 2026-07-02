@@ -36,6 +36,24 @@ var (
 	oneMs = time.Millisecond
 )
 
+func TestTaskNumQuarantinedTestsSkippedBSONRoundTrip(t *testing.T) {
+	original := Task{
+		Id:                         "task",
+		NumQuarantinedTestsSkipped: 7,
+	}
+
+	data, err := bson.Marshal(original)
+	require.NoError(t, err)
+
+	var raw bson.M
+	require.NoError(t, bson.Unmarshal(data, &raw))
+	assert.Contains(t, raw, "num_quarantined_tests_skipped")
+
+	var roundTrip Task
+	require.NoError(t, bson.Unmarshal(data, &roundTrip))
+	assert.Equal(t, original.NumQuarantinedTestsSkipped, roundTrip.NumQuarantinedTestsSkipped)
+}
+
 var depTaskIds = []Dependency{
 	{TaskId: "td1", Status: evergreen.TaskSucceeded},
 	{TaskId: "td2", Status: evergreen.TaskSucceeded},
@@ -4669,22 +4687,23 @@ func TestReset(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		t0 := Task{
-			Id:                      "t0",
-			Status:                  evergreen.TaskSucceeded,
-			Details:                 apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
-			TaskOutputInfo:          &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
-			ResultsFailed:           true,
-			HasTestResults:          true,
-			ResetWhenFinished:       true,
-			IsAutomaticRestart:      true,
-			ResetFailedWhenFinished: true,
-			OverrideDependencies:    true,
-			CanReset:                true,
-			HasAnnotations:          true,
-			AgentVersion:            "a1",
-			HostId:                  "h",
-			HostCreateDetails:       []HostCreateDetail{{HostId: "h"}},
-			NumNextTaskDispatches:   3,
+			Id:                         "t0",
+			Status:                     evergreen.TaskSucceeded,
+			Details:                    apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
+			TaskOutputInfo:             &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
+			ResultsFailed:              true,
+			HasTestResults:             true,
+			ResetWhenFinished:          true,
+			IsAutomaticRestart:         true,
+			ResetFailedWhenFinished:    true,
+			OverrideDependencies:       true,
+			CanReset:                   true,
+			HasAnnotations:             true,
+			AgentVersion:               "a1",
+			HostId:                     "h",
+			HostCreateDetails:          []HostCreateDetail{{HostId: "h"}},
+			NumNextTaskDispatches:      3,
+			NumQuarantinedTestsSkipped: 2,
 		}
 		assert.NoError(t, t0.Insert(t.Context()))
 
@@ -4705,6 +4724,7 @@ func TestReset(t *testing.T) {
 		assert.Empty(t, dbTask.TaskOutputInfo)
 		assert.Empty(t, dbTask.Details)
 		assert.Zero(t, dbTask.NumNextTaskDispatches)
+		assert.Zero(t, dbTask.NumQuarantinedTestsSkipped)
 
 	})
 
@@ -5649,7 +5669,8 @@ func TestHasValidDistro(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 	validDistro := distro.Distro{
-		Id: "valid-distro",
+		Id:      "valid-distro",
+		Aliases: []string{"valid-distro-alias"},
 	}
 	require.NoError(t, validDistro.Insert(ctx))
 
@@ -5657,6 +5678,23 @@ func TestHasValidDistro(t *testing.T) {
 		task := &Task{
 			Id:       "task-with-valid-distro",
 			DistroId: validDistro.Id,
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithPrimaryDistroReferencedByAlias", func(t *testing.T) {
+		task := &Task{
+			Id:       "task-with-distro-alias",
+			DistroId: "valid-distro-alias",
+		}
+		assert.Equal(t, true, task.HasValidDistro(ctx))
+	})
+
+	t.Run("TaskWithSecondaryDistroReferencedByAlias", func(t *testing.T) {
+		task := &Task{
+			Id:               "task-with-secondary-distro-alias",
+			DistroId:         "nonexistent-distro",
+			SecondaryDistros: []string{"valid-distro-alias"},
 		}
 		assert.Equal(t, true, task.HasValidDistro(ctx))
 	})

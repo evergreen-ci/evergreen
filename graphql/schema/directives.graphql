@@ -4,6 +4,11 @@ requireProjectAdmin is used to restrict certain actions to admins.
 directive @requireProjectAdmin on ARGUMENT_DEFINITION
 
 """
+requireProjectAccess is used to restrict admin, view, and edit access for repos.
+"""
+directive @requireRepoAccess(access: AccessLevel!) on ARGUMENT_DEFINITION
+
+"""
 requireProjectAccess is used to restrict admin, view, and edit access for projects.
 """
 directive @requireProjectAccess(permission: ProjectPermission!, access: AccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION

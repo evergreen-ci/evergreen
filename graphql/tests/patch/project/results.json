@@ -5,7 +5,9 @@
       "result": {
         "data": {
           "patch": {
-            "projectIdentifier": "spruce",
+            "projectMetadata": {
+              "identifier": "spruce"
+            },
             "project": {
               "variants": [
                 {

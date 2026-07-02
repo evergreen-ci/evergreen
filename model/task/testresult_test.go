@@ -493,7 +493,7 @@ func TestAppendResults(t *testing.T) {
 	_ = saveTestResults(t, ctx, testBucket, svc, &task1, 10)
 	_ = saveTestResults(t, ctx, testBucket, svc, &task2, 10)
 
-	dbResults, err := svc.Get(ctx, []Task{task0, task1, task2})
+	dbResults, err := svc.Get(ctx, []Task{task0, task1, task2}, GetTaskTestResultsOptions{})
 	require.NoError(t, err)
 	require.Len(t, dbResults, 3)
 	for i, result := range dbResults {

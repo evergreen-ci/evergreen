@@ -517,7 +517,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.getArtifacts(ctx); err != nil {
+		if err := at.getArtifacts(ctx, args.LogURL); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}
@@ -552,7 +552,7 @@ func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 		return
 	}
 	if utility.FromStringPtr(at.ProjectId) != "" {
-		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(at.ProjectId))
+		identifier, err := model.GetIdentifierForProjectSecondary(ctx, utility.FromStringPtr(at.ProjectId))
 		if err == nil {
 			at.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
@@ -657,7 +657,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 	return st, nil
 }
 
-func (at *APITask) getArtifacts(ctx context.Context) error {
+func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 	var err error
 	var entries []artifact.Entry
 	if at.DisplayOnly {
@@ -666,10 +666,10 @@ func (at *APITask) getArtifacts(ctx context.Context) error {
 			ets = append(ets, artifact.TaskIDAndExecution{TaskID: *t, Execution: at.Execution})
 		}
 		if len(ets) > 0 {
-			entries, err = artifact.FindAll(ctx, artifact.ByTaskIdsAndExecutions(ets))
+			entries, err = artifact.FindAllSecondary(ctx, artifact.ByTaskIdsAndExecutions(ets))
 		}
 	} else {
-		entries, err = artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
+		entries, err = artifact.FindAllSecondary(ctx, artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {
 		return errors.Wrap(err, "retrieving artifacts")
@@ -678,9 +678,13 @@ func (at *APITask) getArtifacts(ctx context.Context) error {
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
 		// The route requires a user, so hasUser is always true.
-		strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
-		if err != nil {
-			return err
+		if baseURL != "" {
+			strippedFiles = artifact.StripHiddenFilesLazy(entry.Files, true, baseURL, entry.TaskId, entry.Execution)
+		} else {
+			strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
+			if err != nil {
+				return err
+			}
 		}
 		for _, file := range strippedFiles {
 			apiFile := APIFile{}

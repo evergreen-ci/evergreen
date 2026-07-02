@@ -37,7 +37,7 @@ func NewLocalService(env evergreen.Environment) *localTestResultsService {
 func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, _ []string, failedCount int, totalResults int, tr testresult.DbTaskTestResults) error {
 	update := bson.M{
 		"$push": bson.M{ResultsKey: bson.M{"$each": tr.Results}},
-		"$inc": bson.M{
+		"$set": bson.M{
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
 		},
@@ -50,16 +50,8 @@ func (s *localTestResultsService) AppendTestResultMetadata(ctx context.Context, 
 	return errors.Wrap(err, "appending DB test results")
 }
 
-func (s *localTestResultsService) GetTaskTestResults(ctx context.Context, taskOpts []Task) ([]testresult.TaskTestResults, error) {
-	allTaskResults, err := s.Get(ctx, taskOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting local test results")
-	}
-	return allTaskResults, nil
-}
-
 func (s *localTestResultsService) GetTaskTestResultsStats(ctx context.Context, taskOpts []Task) (testresult.TaskTestResultsStats, error) {
-	allTaskResults, err := s.Get(ctx, taskOpts, testresult.StatsKey)
+	allTaskResults, err := s.Get(ctx, taskOpts, GetTaskTestResultsOptions{Fields: []string{testresult.StatsKey}})
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting local test results")
 	}
@@ -75,7 +67,7 @@ func (s *localTestResultsService) GetTaskTestResultsStats(ctx context.Context, t
 
 // Get fetches the unmerged test results for the given tasks from the local
 // store.
-func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, fields ...string) ([]testresult.TaskTestResults, error) {
+func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getOpts GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error) {
 	ids := make([]dbTaskTestResultsID, len(taskOpts))
 	for i, task := range taskOpts {
 		ids[i].TaskID = task.Id
@@ -85,12 +77,14 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, fiel
 	filter := bson.M{testresult.IdKey: bson.M{"$in": ids}}
 	opts := options.Find()
 	opts.SetSort(bson.D{{Name: TestResultTaskIDKey, Value: 1}, {Name: TestResultExecutionKey, Value: 1}})
-	if len(fields) > 0 {
+	if len(getOpts.Fields) > 0 {
 		projection := bson.M{}
-		for _, field := range fields {
+		for _, field := range getOpts.Fields {
 			projection[field] = 1
 		}
 		opts.SetProjection(projection)
+	} else if !getOpts.IncludeQuarantinedTests {
+		opts.SetProjection(bson.M{testresult.QuarantinedTestsKey: 0})
 	}
 
 	var allDBTaskResults []localDbTaskTestResults
@@ -106,6 +100,8 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, fiel
 	for i, dbTaskResults := range allDBTaskResults {
 		allTaskResults[i].Stats = dbTaskResults.Stats
 		allTaskResults[i].Results = dbTaskResults.Results
+		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
+		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
 	}
 
 	return allTaskResults, nil
@@ -122,6 +118,9 @@ type localDbTaskTestResults struct {
 	// limited number of failing tests for a task.
 	FailedTestsSample []string                `bson:"failed_tests_sample"`
 	Results           []testresult.TestResult `bson:"results"`
+
+	QuarantinedTestsCount int                          `bson:"quarantined_tests_count,omitempty"`
+	QuarantinedTests      []testresult.QuarantinedTest `bson:"quarantined_tests,omitempty"`
 }
 
 type dbTaskTestResultsID struct {
