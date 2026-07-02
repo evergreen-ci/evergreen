@@ -15,8 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const failedTestsSampleSize = 10
-
 // testResultService implements a test result service where test results are stored in s3 with relevant test
 // result metadata stored in the cedar DB cluster.
 type testResultService struct {
@@ -28,21 +26,13 @@ func NewTestResultService(env evergreen.Environment) *testResultService {
 	return &testResultService{env: env}
 }
 
-// AppendTestResultMetadata appends test results to the test results collection in the cedar database.
+// AppendTestResultMetadata sets cumulative test result metadata in the cedar database.
 func (s *testResultService) AppendTestResultMetadata(ctx context.Context, failedTestSample []string, failedCount int, totalResults int, record testresult.DbTaskTestResults) error {
-	updatedFailedSample := record.FailedTestsSample
-	for _, sample := range failedTestSample {
-		if len(updatedFailedSample) < failedTestsSampleSize {
-			updatedFailedSample = append(updatedFailedSample, sample)
-		}
-	}
 	update := bson.M{
-		"$inc": bson.M{
+		"$set": bson.M{
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  totalResults,
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
-		},
-		"$set": bson.M{
-			testresult.TestResultsFailedTestsSampleKey: updatedFailedSample,
+			testresult.TestResultsFailedTestsSampleKey:                                failedTestSample,
 		},
 	}
 	_, err := s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))

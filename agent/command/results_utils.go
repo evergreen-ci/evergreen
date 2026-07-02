@@ -95,6 +95,8 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 
 const maxTestResultsInterval = 24 * time.Hour
 
+const failedTestsSampleSize = 10
+
 func uploadTestResults(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, results []testresult.TestResult, td client.TaskData, output *task.TaskOutput) (bool, error) {
 	createdAt := conf.TestResultsCreatedAt
 	if createdAt.IsZero() {
@@ -127,15 +129,17 @@ func uploadTestResults(ctx context.Context, comm client.Communicator, conf *inte
 
 	var failedCount int
 	var failedTests []string
-	for _, result := range results {
+	for _, result := range allResults {
 		if result.Status == evergreen.TestFailedStatus {
-			failedTests = append(failedTests, result.GetDisplayTestName())
+			if len(failedTests) < failedTestsSampleSize {
+				failedTests = append(failedTests, result.GetDisplayTestName())
+			}
 			failedCount++
 		}
 	}
 	tr.Stats = testresult.TaskTestResultsStats{
 		FailedCount: failedCount,
-		TotalCount:  len(newResults),
+		TotalCount:  len(allResults),
 	}
 	tr.FailedTestsSample = failedTests
 

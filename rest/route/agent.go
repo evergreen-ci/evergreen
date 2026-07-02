@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -985,7 +986,12 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 			CreatedAt: h.body.CreatedAt,
 		}
 		_, err = h.env.CedarDB().Collection(testresult.Collection).InsertOne(ctx, record)
-		if err != nil {
+		if db.IsDuplicateKey(err) {
+			err = h.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.ByTaskIDAndExecution(h.body.Info.TaskID, h.body.Info.Execution)).Decode(&record)
+			if err != nil {
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding test result record"))
+			}
+		} else if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting test result record"))
 		}
 	} else {
