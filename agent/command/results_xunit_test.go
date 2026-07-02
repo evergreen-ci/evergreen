@@ -169,16 +169,22 @@ func TestXUnitParseAndUpload(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer){
 		"GlobMatchesAsteriskAndSendsTestResults": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			conf.Task.TaskOutputInfo = agentutil.InitializeTaskOutput(t)
+			conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceEvergreen
+			conf.TestResultsCreatedAt = time.Time{}
 			xr := xunitResults{
 				Files: []string{"*"},
 			}
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
-			assert.Len(t, comm.FailedTestSample, 12)
+			assert.Len(t, comm.FailedTestSample, 10)
 			assert.Equal(t, comm.TestResultStats.FailedCount, 12)
 			assert.Equal(t, comm.TestResultStats.TotalCount, 1114)
 		},
 		"GlobMatchesAbsolutePathContainingWorkDirPrefixAndSendsTestResults": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			conf.Task.TaskOutputInfo = agentutil.InitializeTaskOutput(t)
+			conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceEvergreen
+			conf.TestResultsCreatedAt = time.Time{}
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "junit*.xml")},
 			}
@@ -190,13 +196,16 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			assert.Equal(t, comm.TestResultStats.TotalCount, 683)
 		},
 		"GlobMatchesRelativePathAndSendsTestResults": func(ctx context.Context, t *testing.T, conf *internal.TaskConfig, logger client.LoggerProducer) {
+			conf.Task.TaskOutputInfo = agentutil.InitializeTaskOutput(t)
+			conf.Task.TaskOutputInfo.TestResults.Version = task.TestResultServiceEvergreen
+			conf.TestResultsCreatedAt = time.Time{}
 			xr := xunitResults{
 				Files: []string{filepath.Join(conf.WorkDir, "*")},
 			}
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 
-			assert.Len(t, comm.FailedTestSample, 12)
+			assert.Len(t, comm.FailedTestSample, 10)
 			assert.Equal(t, comm.TestResultStats.FailedCount, 12)
 			assert.Equal(t, comm.TestResultStats.TotalCount, 1114)
 		},

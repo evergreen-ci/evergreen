@@ -1193,8 +1193,7 @@ func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings
 		conf.OAuth.SpawnHostAccessToken = accessToken
 		// We do not need to remove the access token from the user's document because
 		// it automatically expires and other hosts may need to use it.
-	} else {
-		// If there is no access token, default to using the user's API key.
+	} else if owner.OnlyAPI {
 		conf.APIKey = owner.APIKey
 	}
 

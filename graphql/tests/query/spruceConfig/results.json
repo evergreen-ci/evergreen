@@ -158,9 +158,7 @@
         "data": {
           "spruceConfig": {
             "serviceFlags": {
-              "debugSpawnHostDisabled": true,
-              "jwtTokenForCLIDisabled": true,
-              "staticAPIKeysDisabled": true
+              "debugSpawnHostDisabled": true
             }
           }
         }

@@ -149,7 +149,7 @@ func (g *GeneratedProject) NewVersion(ctx context.Context, p *Project, pp *Parse
 		return nil, nil, nil, errors.Wrap(err, "creating config from generated config")
 	}
 	newPP.Id = v.Id
-	p, err = TranslateProject(newPP)
+	p, err = TranslateProject(ctx, newPP)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, TranslateProjectError)
 	}

@@ -107,6 +107,7 @@ type DirectiveRoot struct {
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireRepoAccess            func(ctx context.Context, obj any, next graphql.Resolver, access AccessLevel) (res any, err error)
 	RequireVolumeAccess          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 }
 
@@ -1731,24 +1732,25 @@ type ComplexityRoot struct {
 	}
 
 	SchedulerConfig struct {
-		AcceptableHostIdleTimeSeconds func(childComplexity int) int
-		CacheDurationSeconds          func(childComplexity int) int
-		CommitQueueFactor             func(childComplexity int) int
-		ExpectedRuntimeFactor         func(childComplexity int) int
-		FutureHostFraction            func(childComplexity int) int
-		GenerateTaskFactor            func(childComplexity int) int
-		GroupVersions                 func(childComplexity int) int
-		HostAllocator                 func(childComplexity int) int
-		HostAllocatorFeedbackRule     func(childComplexity int) int
-		HostAllocatorRoundingRule     func(childComplexity int) int
-		HostsOverallocatedRule        func(childComplexity int) int
-		MainlineTimeInQueueFactor     func(childComplexity int) int
-		NumDependentsFactor           func(childComplexity int) int
-		PatchFactor                   func(childComplexity int) int
-		PatchTimeInQueueFactor        func(childComplexity int) int
-		StepbackTaskFactor            func(childComplexity int) int
-		TargetTimeSeconds             func(childComplexity int) int
-		TaskFinder                    func(childComplexity int) int
+		AcceptableHostIdleTimeSeconds    func(childComplexity int) int
+		CacheDurationSeconds             func(childComplexity int) int
+		CommitQueueFactor                func(childComplexity int) int
+		ExpectedRuntimeFactor            func(childComplexity int) int
+		FutureHostFraction               func(childComplexity int) int
+		GenerateTaskFactor               func(childComplexity int) int
+		GroupVersions                    func(childComplexity int) int
+		HostAllocator                    func(childComplexity int) int
+		HostAllocatorFeedbackRule        func(childComplexity int) int
+		HostAllocatorRoundingRule        func(childComplexity int) int
+		HostsOverallocatedRule           func(childComplexity int) int
+		MainlineTimeInQueueFactor        func(childComplexity int) int
+		NumDependentsFactor              func(childComplexity int) int
+		PatchFactor                      func(childComplexity int) int
+		PatchTimeInQueueFactor           func(childComplexity int) int
+		StepbackTaskFactor               func(childComplexity int) int
+		TargetTimeSeconds                func(childComplexity int) int
+		TaskFinder                       func(childComplexity int) int
+		TranslateProjectConcurrencyLimit func(childComplexity int) int
 	}
 
 	SearchReturnInfo struct {
@@ -2306,8 +2308,6 @@ type ComplexityRoot struct {
 
 	UserServiceFlags struct {
 		DebugSpawnHostDisabled func(childComplexity int) int
-		JWTTokenForCLIDisabled func(childComplexity int) int
-		StaticAPIKeysDisabled  func(childComplexity int) int
 	}
 
 	UserSettings struct {
@@ -10225,6 +10225,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SchedulerConfig.TaskFinder(childComplexity), true
+	case "SchedulerConfig.translateProjectConcurrencyLimit":
+		if e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit == nil {
+			break
+		}
+
+		return e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit(childComplexity), true
 
 	case "SearchReturnInfo.featuresURL":
 		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
@@ -12545,18 +12551,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserServiceFlags.DebugSpawnHostDisabled(childComplexity), true
-	case "UserServiceFlags.jwtTokenForCLIDisabled":
-		if e.complexity.UserServiceFlags.JWTTokenForCLIDisabled == nil {
-			break
-		}
-
-		return e.complexity.UserServiceFlags.JWTTokenForCLIDisabled(childComplexity), true
-	case "UserServiceFlags.staticAPIKeysDisabled":
-		if e.complexity.UserServiceFlags.StaticAPIKeysDisabled == nil {
-			break
-		}
-
-		return e.complexity.UserServiceFlags.StaticAPIKeysDisabled(childComplexity), true
 
 	case "UserSettings.dateFormat":
 		if e.complexity.UserSettings.DateFormat == nil {
@@ -13760,6 +13754,17 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) dir_requireRepoAccess_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "access", ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel)
+	if err != nil {
+		return nil, err
+	}
+	args["access"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Host_events_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13973,6 +13978,18 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_argsProjectID(
 	}
 
 	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "ADMIN")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireRepoAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireRepoAccess is not implemented")
+		}
+		return ec.directives.RequireRepoAccess(ctx, rawArgs, directive0, access)
+	}
+	directive2 := func(ctx context.Context) (any, error) {
 		permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
 		if err != nil {
 			var zeroVal string
@@ -13987,10 +14004,10 @@ func (ec *executionContext) field_Mutation_attachProjectToRepo_argsProjectID(
 			var zeroVal string
 			return zeroVal, errors.New("directive requireProjectAccess is not implemented")
 		}
-		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
+		return ec.directives.RequireProjectAccess(ctx, rawArgs, directive1, permission, access)
 	}
 
-	tmp, err := directive1(ctx)
+	tmp, err := directive2(ctx)
 	if err != nil {
 		var zeroVal string
 		return zeroVal, graphql.ErrorOnPath(ctx, err)
@@ -20179,6 +20196,8 @@ func (ec *executionContext) fieldContext_AdminSettings_scheduler(_ context.Conte
 				return ec.fieldContext_SchedulerConfig_numDependentsFactor(ctx, field)
 			case "stepbackTaskFactor":
 				return ec.fieldContext_SchedulerConfig_stepbackTaskFactor(ctx, field)
+			case "translateProjectConcurrencyLimit":
+				return ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SchedulerConfig", field.Name)
 		},
@@ -60004,6 +60023,35 @@ func (ec *executionContext) fieldContext_SchedulerConfig_stepbackTaskFactor(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _SchedulerConfig_translateProjectConcurrencyLimit(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.TranslateProjectConcurrencyLimit, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SchedulerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -61537,10 +61585,6 @@ func (ec *executionContext) fieldContext_SpruceConfig_serviceFlags(_ context.Con
 			switch field.Name {
 			case "debugSpawnHostDisabled":
 				return ec.fieldContext_UserServiceFlags_debugSpawnHostDisabled(ctx, field)
-			case "jwtTokenForCLIDisabled":
-				return ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(ctx, field)
-			case "staticAPIKeysDisabled":
-				return ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserServiceFlags", field.Name)
 		},
@@ -74745,64 +74789,6 @@ func (ec *executionContext) _UserServiceFlags_debugSpawnHostDisabled(ctx context
 }
 
 func (ec *executionContext) fieldContext_UserServiceFlags_debugSpawnHostDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserServiceFlags_jwtTokenForCLIDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserServiceFlags_jwtTokenForCLIDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.JWTTokenForCLIDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserServiceFlags_jwtTokenForCLIDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserServiceFlags",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserServiceFlags_staticAPIKeysDisabled(ctx context.Context, field graphql.CollectedField, obj *model.APIServiceFlags) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserServiceFlags_staticAPIKeysDisabled,
-		func(ctx context.Context) (any, error) {
-			return obj.StaticAPIKeysDisabled, nil
-		},
-		nil,
-		ec.marshalOBoolean2bool,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserServiceFlags_staticAPIKeysDisabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UserServiceFlags",
 		Field:      field,
@@ -89689,7 +89675,7 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor"}
+	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89822,6 +89808,13 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.StepbackTaskFactor = data
+		case "translateProjectConcurrencyLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("translateProjectConcurrencyLimit"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TranslateProjectConcurrencyLimit = data
 		}
 	}
 
@@ -106161,6 +106154,8 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._SchedulerConfig_numDependentsFactor(ctx, field, obj)
 		case "stepbackTaskFactor":
 			out.Values[i] = ec._SchedulerConfig_stepbackTaskFactor(ctx, field, obj)
+		case "translateProjectConcurrencyLimit":
+			out.Values[i] = ec._SchedulerConfig_translateProjectConcurrencyLimit(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -111745,10 +111740,6 @@ func (ec *executionContext) _UserServiceFlags(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("UserServiceFlags")
 		case "debugSpawnHostDisabled":
 			out.Values[i] = ec._UserServiceFlags_debugSpawnHostDisabled(ctx, field, obj)
-		case "jwtTokenForCLIDisabled":
-			out.Values[i] = ec._UserServiceFlags_jwtTokenForCLIDisabled(ctx, field, obj)
-		case "staticAPIKeysDisabled":
-			out.Values[i] = ec._UserServiceFlags_staticAPIKeysDisabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

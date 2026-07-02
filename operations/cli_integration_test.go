@@ -21,6 +21,7 @@ import (
 	resultTestutil "github.com/evergreen-ci/evergreen/model/testresult/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
+	serviceTestUtil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -61,6 +62,8 @@ type cliTestHarness struct {
 }
 
 func setupCLITestHarness(ctx context.Context) cliTestHarness {
+	serviceTestUtil.MockUser.OnlyAPI = true
+
 	// create a test API server
 	testServer, err := service.CreateTestServer(ctx, testConfig, nil, false)
 	So(err, ShouldBeNil)
@@ -80,7 +83,7 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
 	So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
-	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(ctx), ShouldBeNil)
+	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com", OnlyAPI: true}).Insert(ctx), ShouldBeNil)
 	localConfBytes, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
 	So(err, ShouldBeNil)
 

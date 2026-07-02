@@ -107,9 +107,7 @@
     },
     {
       "_id": "service_flags",
-      "debug_spawn_host_disabled": true,
-      "jwt_token_for_cli_disabled": true,
-      "static_api_keys_disabled": true
+      "debug_spawn_host_disabled": true
     }
   ]
 }

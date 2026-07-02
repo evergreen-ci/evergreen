@@ -561,7 +561,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 		if pp == nil {
 			return nil, nil, errors.Errorf("parser project '%s' not found in storage using method '%s'", p.Id.Hex(), p.ProjectStorageMethod)
 		}
-		project, err := TranslateProject(pp)
+		project, err := TranslateProject(ctx, pp)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "translating project '%s'", pp.Id)
 		}
@@ -579,8 +579,19 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 const (
 	// ppPreGenerationOtelAttribute records whether a translation used the
 	// pre-generation parser project copy.
-	ppPreGenerationOtelAttribute       = "evergreen.parser_project.pre_generation"
+	ppPreGenerationOtelAttribute = "evergreen.parser_project.pre_generation"
+	// ppTranslationCacheHitOtelAttribute records whether this call reused a translation already
+	// stored in the LRU, so it never had to recompute one at all.
 	ppTranslationCacheHitOtelAttribute = "evergreen.parser_project.translation_cache_hit"
+	// ppTranslationDedupedOtelAttribute records whether this call arrived while another request
+	// for the same version was already translating it, and shared that in-flight result instead
+	// of starting a redundant translation of its own.
+	ppTranslationDedupedOtelAttribute = "evergreen.parser_project.translation_deduped"
+	// ppTranslationCacheSizeOtelAttribute records how many translations the LRU is holding right now.
+	ppTranslationCacheSizeOtelAttribute = "evergreen.parser_project.translation_cache_size"
+	// ppTranslationCacheEvictionsOtelAttribute records the cumulative count of translations the LRU
+	// has dropped to make room for new ones (or because their TTL expired), before anything reused them.
+	ppTranslationCacheEvictionsOtelAttribute = "evergreen.parser_project.translation_cache_evictions"
 )
 
 // FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
@@ -659,10 +670,20 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		// in-flight calls and retains nothing that could go stale.
 		key = versionTranslationKey(versionID, preGeneration)
 	}
-	p, cacheHit, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
-		return TranslateProject(pp)
+	p, cacheHit, deduped, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
+		return TranslateProject(ctx, pp)
 	})
-	span.SetAttributes(attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit))
+	span.SetAttributes(
+		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
+		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
+	)
+	if cacheEnabled {
+		size, evictions := translationCacheStats()
+		span.SetAttributes(
+			attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
+			attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
+		)
+	}
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
 	}
@@ -698,12 +719,14 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 	}, nil
 }
 
+// GetProjectFromBSON is used by the CLI and agent, neither of which have a request-scoped
+// context available at this leaf call, so it translates with context.Background().
 func GetProjectFromBSON(data []byte) (*Project, error) {
 	pp := &ParserProject{}
 	if err := bson.Unmarshal(data, pp); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling BSON into parser project")
 	}
-	return TranslateProject(pp)
+	return TranslateProject(context.Background(), pp)
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, intermediateProject *ParserProject,
@@ -778,9 +801,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	anchorRegistry := &anchorRegistry{}
+	var anchorRegistry *anchorEntries
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
+		if opts.EnableYAMLAnchors {
+			anchorRegistry = &anchorEntries{}
+		}
 	}
 	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, anchorRegistry)
 	if err != nil {
@@ -798,7 +824,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	// Return project even with errors.
-	p, err := TranslateProject(intermediateProject)
+	p, err := TranslateProject(ctx, intermediateProject)
 	if p != nil {
 		*project = *p
 	}
@@ -813,7 +839,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 }
 
 // mergeIncludes merges all included files into intermediateProject.
-func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorRegistry, opts *GetProjectOpts) error {
+func mergeIncludes(ctx context.Context, projectID string, intermediateProject *ParserProject, anchorRegistry *anchorEntries, opts *GetProjectOpts) error {
 	ctx, span := tracer.Start(ctx, "mergeIncludes")
 	defer span.End()
 
@@ -1185,6 +1211,8 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
+	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
+	EnableYAMLAnchors bool
 }
 
 type PatchOpts struct {
@@ -1423,11 +1451,37 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // createIntermediateProject marshals the supplied YAML into our intermediate project representation
 // (i.e. before selectors or matrix logic has been evaluated).
 // If unmarshalStrict is true, use the strict version of unmarshalling.
-// Existing anchors in anchorRegistry are prepended so the parser can resolve cross-file aliases,
-// and any new anchor definitions are appended to the registry for future files.
-func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (*ParserProject, error) {
+// When anchorRegistry is non-nil, cross-file anchor support is enabled: existing anchors are prepended so the
+// parser can resolve cross-file aliases, and any new anchor definitions are appended to the registry for future files.
+func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
+	p := ParserProject{}
+
+	if anchorRegistry == nil {
+		if unmarshalStrict {
+			strictProjectWithVariables := struct {
+				ParserProject       `yaml:"pp,inline"`
+				ProjectConfigFields `yaml:"pc,inline"`
+				// Variables is only used to suppress yaml unmarshalling errors related
+				// to a non-existent variables field.
+				Variables any `yaml:"variables,omitempty" bson:"-"`
+			}{}
+			if err := util.UnmarshalYAMLStrictWithFallback(parseBytes, &strictProjectWithVariables); err != nil {
+				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
+			}
+			p = strictProjectWithVariables.ParserProject
+		} else {
+			if err := util.UnmarshalYAMLWithFallback(parseBytes, &p); err != nil {
+				return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
+			}
+		}
+		if p.Functions == nil {
+			p.Functions = map[string]*YAMLCommandSet{}
+		}
+		return &p, nil
+	}
+
 	// Prepend accumulated anchors as a preamble so the parser can resolve cross-file aliases.
-	if anchorRegistry.Length() > 0 {
+	if len(*anchorRegistry) > 0 {
 		preamble, err := buildAnchorPreamble(anchorRegistry)
 		if err != nil {
 			return nil, errors.Wrap(err, "building anchor preamble")
@@ -1448,7 +1502,7 @@ func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRe
 // decodeWithAnchors decodes parseBytes into a ParserProject using a yaml.Node as an intermediate
 // representation, and merges any new anchor definitions found into anchorRegistry. Returns an
 // empty ParserProject for empty input.
-func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (*ParserProject, error) {
+func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorEntries) (*ParserProject, error) {
 	var node yaml.Node
 	if err := yaml.NewDecoder(bytes.NewReader(parseBytes)).Decode(&node); err != nil && !errors.Is(err, io.EOF) {
 		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
@@ -1486,15 +1540,22 @@ func decodeWithAnchors(parseBytes []byte, unmarshalStrict bool, anchorRegistry *
 				yamlErr := thirdparty.YAMLFormatError{Message: err2.Error()}
 				return nil, errors.Wrap(yamlErr, "unmarshalling parser project from YAML")
 			}
-			grip.Debug(context.Background(), message.Fields{
-				"message":   "yaml v3 node decode failed, fell back to v2",
-				"operation": "yaml parsing",
-				"error":     err.Error(),
-			})
 		}
 	}
 
-	anchorRegistry.mergeAnchorsFrom(&node)
+	for _, anchor := range collectAnchors(&node) {
+		replaced := false
+		for i, existing := range *anchorRegistry {
+			if existing.name == anchor.name {
+				(*anchorRegistry)[i] = anchor
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			*anchorRegistry = append(*anchorRegistry, anchor)
+		}
+	}
 
 	return &p, nil
 }
@@ -1518,7 +1579,13 @@ func capParserPriorities(p *ParserProject) {
 
 // TranslateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses.
-func TranslateProject(pp *ParserProject) (*Project, error) {
+func TranslateProject(ctx context.Context, pp *ParserProject) (*Project, error) {
+	release, err := acquireTranslateSlot(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "waiting for a translate concurrency slot")
+	}
+	defer release()
+
 	// Transfer top level fields
 	proj := &Project{
 
