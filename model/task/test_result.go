@@ -134,6 +134,56 @@ func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, tasks 
 	return samples, nil
 }
 
+// GetQuarantinedTestSamples returns tests skipped because they were
+// quarantined in TSS for each task specified.
+func GetQuarantinedTestSamples(ctx context.Context, env evergreen.Environment, tasks []Task, limit int) ([]testresult.TaskTestResultsQuarantinedSample, error) {
+	if len(tasks) == 0 {
+		return nil, errors.New("must specify task options")
+	}
+	output, ok := tasks[0].GetTaskOutputSafe()
+	if !ok {
+		return []testresult.TaskTestResultsQuarantinedSample{}, nil
+	}
+	svc, err := getTestResultService(env, output.TestResults.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results service")
+	}
+	allTaskResults, err := svc.Get(ctx, tasks, GetTaskTestResultsOptions{
+		Fields: []string{
+			testresult.TestResultsInfoKey,
+			testresult.QuarantinedTestsCountKey,
+			testresult.QuarantinedTestsKey,
+		},
+		QuarantinedTestsLimit: &limit,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results")
+	}
+
+	samples := make([]testresult.TaskTestResultsQuarantinedSample, 0, len(allTaskResults))
+	for _, taskResults := range allTaskResults {
+		if taskResults.Info.TaskID == "" {
+			if taskResults.QuarantinedTestsCount == 0 && len(taskResults.QuarantinedTests) == 0 {
+				continue
+			}
+			return nil, errors.New("test result metadata is missing task info")
+		}
+
+		quarantinedTests := taskResults.QuarantinedTests
+		if limit >= 0 && len(quarantinedTests) > limit {
+			quarantinedTests = quarantinedTests[:limit]
+		}
+		samples = append(samples, testresult.TaskTestResultsQuarantinedSample{
+			TaskID:                       taskResults.Info.TaskID,
+			Execution:                    taskResults.Info.Execution,
+			QuarantinedTestsSkippedCount: taskResults.QuarantinedTestsCount,
+			QuarantinedTests:             quarantinedTests,
+		})
+	}
+
+	return samples, nil
+}
+
 func getFailedTestSamples(allTaskResults []testresult.TaskTestResults, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
 	regexes := make([]*regexp.Regexp, len(regexFilters))
 	for i, filter := range regexFilters {

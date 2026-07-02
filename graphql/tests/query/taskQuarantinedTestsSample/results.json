@@ -1,0 +1,138 @@
+{
+  "tests": [
+    {
+      "query_file": "sample.graphql",
+      "result": {
+        "data": {
+          "taskQuarantinedTestsSample": [
+            {
+              "taskId": "task_1",
+              "execution": 0,
+              "quarantinedTestsSkippedCount": 2,
+              "quarantinedTests": [
+                {
+                  "testName": "TestOne",
+                  "displayTestName": "Display Test One"
+                },
+                {
+                  "testName": "TestTwo",
+                  "displayTestName": ""
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "limit.graphql",
+      "result": {
+        "data": {
+          "taskQuarantinedTestsSample": [
+            {
+              "taskId": "task_1",
+              "execution": 0,
+              "quarantinedTestsSkippedCount": 2,
+              "quarantinedTests": [
+                {
+                  "testName": "TestOne",
+                  "displayTestName": "Display Test One"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": {
+          "taskQuarantinedTestsSample": [
+            {
+              "taskId": "display_task",
+              "execution": 0,
+              "quarantinedTestsSkippedCount": 3,
+              "quarantinedTests": [
+                {
+                  "testName": "TestOne",
+                  "displayTestName": "Display Test One"
+                },
+                {
+                  "testName": "TestTwo",
+                  "displayTestName": ""
+                },
+                {
+                  "testName": "TestThree",
+                  "displayTestName": "Display Test Three"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_file": "task_count.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "id": "task_1",
+            "quarantinedTestsSkippedCount": 2
+          }
+        }
+      }
+    },
+    {
+      "query_file": "unmatching_version.graphql",
+      "result": {
+        "data": {
+          "taskQuarantinedTestsSample": null
+        },
+        "errors": [
+          {
+            "message": "task 'task_1' does not belong to version 'other_version'",
+            "path": ["taskQuarantinedTestsSample"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "negative_limit.graphql",
+      "result": {
+        "data": {
+          "taskQuarantinedTestsSample": null
+        },
+        "errors": [
+          {
+            "message": "limit cannot be negative",
+            "path": ["taskQuarantinedTestsSample"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "excessive_limit.graphql",
+      "result": {
+        "data": {
+          "taskQuarantinedTestsSample": null
+        },
+        "errors": [
+          {
+            "message": "limit exceeds max limit of 500",
+            "path": ["taskQuarantinedTestsSample"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

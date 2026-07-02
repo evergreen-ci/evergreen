@@ -125,6 +125,26 @@ func TestEvergreenService(t *testing.T) {
 		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
 		assert.Equal(t, quarantinedTests, taskResults[0].QuarantinedTests)
 
+		one := 1
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{
+			Fields:                []string{testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey},
+			QuarantinedTestsLimit: &one,
+		})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Equal(t, quarantinedTests[:one], taskResults[0].QuarantinedTests)
+
+		zero := 0
+		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{
+			Fields:                []string{testresult.QuarantinedTestsCountKey, testresult.QuarantinedTestsKey},
+			QuarantinedTestsLimit: &zero,
+		})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 1)
+		assert.Equal(t, len(quarantinedTests), taskResults[0].QuarantinedTestsCount)
+		assert.Empty(t, taskResults[0].QuarantinedTests)
+
 		taskResults, err = svc.Get(ctx, []Task{task0}, GetTaskTestResultsOptions{IncludeQuarantinedTests: true})
 		require.NoError(t, err)
 		require.Len(t, taskResults, 1)
