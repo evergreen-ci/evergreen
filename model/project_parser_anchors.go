@@ -29,25 +29,27 @@ func (a *anchorRegistry) Length() int {
 	return len(a.entries)
 }
 
-// mergeAnchorsFrom collects all anchor definitions from node and upserts them
+// mergeAnchorsFrom collects all anchor definitions from node and merges them
 // into the registry by name, so that later include files can resolve aliases
 // defined in earlier files. No-op if the receiver is nil.
+//
+// When an anchor name already exists in the registry, the old entry is removed
+// and the new one is appended at the end. This ensures that if a redefinition
+// introduces alias dependencies on anchors that were added by the same file,
+// those dependencies always appear earlier in the slice and therefore earlier
+// in the marshaled preamble, satisfying YAML's anchor-before-alias rule.
 func (a *anchorRegistry) mergeAnchorsFrom(node *yaml.Node) {
 	if a == nil {
 		return
 	}
 	for _, anchor := range collectAnchors(node) {
-		replaced := false
 		for i, existing := range a.entries {
 			if existing.name == anchor.name {
-				a.entries[i] = anchor
-				replaced = true
+				a.entries = append(a.entries[:i], a.entries[i+1:]...)
 				break
 			}
 		}
-		if !replaced {
-			a.entries = append(a.entries, anchor)
-		}
+		a.entries = append(a.entries, anchor)
 	}
 }
 
