@@ -310,6 +310,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
+	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {

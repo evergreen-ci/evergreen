@@ -45,7 +45,7 @@ func TestFetchRevisions(t *testing.T) {
 		repoTracker := RepoTracker{
 			testConfig,
 			evgProjectRef,
-			NewGithubRepositoryPoller(evgProjectRef),
+			NewGithubRepositoryPoller(evgProjectRef, testConfig),
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
@@ -86,7 +86,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	Convey("When storing revisions gotten from a repository...", t, func() {
 		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
-		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef)}
+		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef, testConfig)}
 
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)

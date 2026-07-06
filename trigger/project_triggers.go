@@ -154,5 +154,5 @@ func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, fi
 		Revision:     ref.Branch,
 		ReadFileFrom: model.ReadFromGithub,
 	}
-	return model.GetProjectFromFile(ctx, opts)
+	return model.GetProjectFromFile(ctx, opts, nil)
 }
