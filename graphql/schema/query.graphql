@@ -59,9 +59,6 @@ type Query {
   myHosts: [Host!]!
   myVolumes: [Volume!]!
 
-  # logkeeper
-  logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
-
   # task
   task(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW), execution: Int): Task
   taskAllExecutions(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): [Task!]!
