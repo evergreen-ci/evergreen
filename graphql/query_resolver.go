@@ -28,11 +28,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-const (
-	defaultTaskQuarantinedTestsSampleLimit = 50
-	maxTaskQuarantinedTestsSampleLimit     = 500
-)
-
 // BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
 	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
