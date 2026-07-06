@@ -53,7 +53,6 @@ var (
 	ProjectStorageMethodKey        = bsonutil.MustHaveTag(Patch{}, "ProjectStorageMethod")
 	PatchedProjectConfigKey        = bsonutil.MustHaveTag(Patch{}, "PatchedProjectConfig")
 	AliasKey                       = bsonutil.MustHaveTag(Patch{}, "Alias")
-	AliasesKey                     = bsonutil.MustHaveTag(Patch{}, "Aliases")
 	GithubMergeDataKey             = bsonutil.MustHaveTag(Patch{}, "GithubMergeData")
 	githubPatchDataKey             = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey                  = bsonutil.MustHaveTag(Patch{}, "MergePatch")
