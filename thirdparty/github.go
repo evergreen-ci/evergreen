@@ -34,7 +34,8 @@ import (
 )
 
 const (
-	githubAccessURL = "https://github.com/login/oauth/access_token"
+	githubAccessURL  = "https://github.com/login/oauth/access_token"
+	githubGraphQLURL = "https://api.github.com/graphql"
 
 	Github502Error   = "502 Server Error"
 	commitObjectType = "commit"
@@ -2064,7 +2065,7 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 // ListMergeQueueRefs returns the gh-readonly-queue refs GitHub has created for the
 // merge queue on the given base branch. Each ref corresponds to a merge group
 // GitHub has staged and is waiting on, and should have a corresponding Evergreen
-// patch. Returns an empty slice (not an error) when the queue has no staged groups.
+// patch.
 func ListMergeQueueRefs(ctx context.Context, owner, repo, baseBranch string) ([]*github.Reference, error) {
 	caller := "ListMergeQueueRefs"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -2081,6 +2082,7 @@ func ListMergeQueueRefs(ctx context.Context, owner, repo, baseBranch string) ([]
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
+	// All merge group refs have this naming scheme according to GitHub docs.
 	refPrefix := fmt.Sprintf("heads/gh-readonly-queue/%s/", baseBranch)
 	refs, resp, err := githubClient.Git.ListMatchingRefs(ctx, owner, repo, &github.ReferenceListOptions{Ref: refPrefix})
 	if resp != nil {
@@ -2090,4 +2092,86 @@ func ListMergeQueueRefs(ctx context.Context, owner, repo, baseBranch string) ([]
 		return nil, errors.Wrapf(err, "listing merge queue refs for '%s/%s' branch '%s'", owner, repo, baseBranch)
 	}
 	return refs, nil
+}
+
+type mergeQueueFrontSHAResponse struct {
+	Data struct {
+		Repository struct {
+			MergeQueue struct {
+				Entries struct {
+					Nodes []struct {
+						HeadCommit struct {
+							Oid string `json:"oid"`
+						} `json:"headCommit"`
+					} `json:"nodes"`
+				} `json:"entries"`
+			} `json:"mergeQueue"`
+		} `json:"repository"`
+	} `json:"data"`
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
+}
+
+// GetMergeQueueFrontSHA returns the head commit SHA of the merge group at the front of the
+// GitHub merge queue (queue position 1) for the given branch. It returns ok=false if the queue is
+// currently empty. The REST API used by ListMergeQueueRefs has no notion of queue position, so
+// this queries the GraphQL API's mergeQueue.entries field instead, which is position-ordered.
+func GetMergeQueueFrontSHA(ctx context.Context, owner, repo, baseBranch string) (headSHA string, ok bool, err error) {
+	caller := "GetMergeQueueFrontSHA"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", false, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	reqBody, err := json.Marshal(map[string]any{
+		"query": `query($owner: String!, $repo: String!, $branch: String!) {
+			repository(owner: $owner, name: $repo) {
+				mergeQueue(branch: $branch) {
+					entries(first: 1) {
+						nodes { headCommit { oid } }
+					}
+				}
+			}
+		}`,
+		"variables": map[string]string{"owner": owner, "repo": repo, "branch": baseBranch},
+	})
+	if err != nil {
+		return "", false, errors.Wrap(err, "marshalling GraphQL request body")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, githubGraphQLURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return "", false, errors.Wrap(err, "creating GraphQL request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := githubClient.Client.Client().Do(req)
+	if err != nil {
+		return "", false, errors.Wrap(err, "sending GraphQL request")
+	}
+	defer resp.Body.Close()
+
+	var parsed mergeQueueFrontSHAResponse
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return "", false, errors.Wrap(err, "decoding GraphQL response")
+	}
+	if len(parsed.Errors) > 0 {
+		return "", false, errors.Errorf("GraphQL error: %s", parsed.Errors[0].Message)
+	}
+
+	nodes := parsed.Data.Repository.MergeQueue.Entries.Nodes
+	if len(nodes) == 0 {
+		return "", false, nil
+	}
+	return nodes[0].HeadCommit.Oid, true, nil
 }

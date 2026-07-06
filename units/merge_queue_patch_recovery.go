@@ -22,15 +22,7 @@ import (
 
 const (
 	mergeQueuePatchRecoveryJobName = "merge-queue-patch-recovery"
-
-	// mergeQueueRecoveryMinStagedAge is how long a merge group must have been
-	// staged (per its merge commit's creation time) before this job creates a
-	// patch for it. It exceeds the 5-minute cron interval so a merge group staged
-	// shortly before a run is not recovered while GitHub's merge_group webhook may
-	// still be in flight, which would race the webhook and create a duplicate
-	// patch. A genuinely stuck merge group is recovered on a later run once it is
-	// old enough.
-	mergeQueueRecoveryMinStagedAge = 10 * time.Minute
+	minimumStuckTime               = 5 * time.Minute
 )
 
 func init() {
@@ -44,8 +36,7 @@ type mergeQueuePatchRecoveryJob struct {
 
 // NewMergeQueuePatchRecoveryJob returns a job that checks every project with the
 // GitHub merge queue enabled for merge groups GitHub has staged but that have no
-// Evergreen patch — which happens when GitHub fails to deliver the merge_group
-// webhook — and creates the missing patch so the merge queue does not hang.
+// Evergreen patch.
 func NewMergeQueuePatchRecoveryJob() amboy.Job {
 	j := &mergeQueuePatchRecoveryJob{
 		Base: job.Base{
@@ -58,8 +49,6 @@ func NewMergeQueuePatchRecoveryJob() amboy.Job {
 	j.SetID(fmt.Sprintf("%s.%s", mergeQueuePatchRecoveryJobName, utility.RoundPartOfHour(5).Format(TSFormat)))
 	const maxAttempts = 3
 	const maxTime = 2 * time.Minute
-	// A single global instance avoids two runs creating patches for the same
-	// merge group concurrently.
 	j.SetScopes([]string{mergeQueuePatchRecoveryJobName})
 	j.SetEnqueueAllScopes(true)
 	j.SetTimeInfo(amboy.JobTimeInfo{MaxTime: maxTime})
@@ -107,52 +96,46 @@ func (j *mergeQueuePatchRecoveryJob) Run(ctx context.Context) {
 	}
 }
 
-// recoverProject creates a patch for any merge group GitHub has staged for the
-// project's merge queue that has neither an active patch nor a pending intent.
+// recoverProject creates a patch for the merge group at the front of the project's GitHub merge
+// queue (queue position 1) if it has neither an active patch nor a pending intent.
 func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, projectRef *model.ProjectRef, pending map[string]bool) error {
+	frontSHA, ok, err := thirdparty.GetMergeQueueFrontSHA(ctx, projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil {
+		return errors.Wrap(err, "getting merge queue front entry")
+	}
+	if !ok || pending[frontSHA] {
+		return nil
+	}
+
 	existingPatches, err := patch.FindMergeQueuePatchesByProject(ctx, projectRef.Id)
 	if err != nil {
 		return errors.Wrap(err, "finding active merge queue patches")
 	}
-	covered := make(map[string]bool, len(existingPatches))
 	for _, p := range existingPatches {
-		covered[p.GithubMergeData.HeadSHA] = true
+		if p.GithubMergeData.HeadSHA == frontSHA {
+			return nil
+		}
 	}
 
 	refs, err := thirdparty.ListMergeQueueRefs(ctx, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return errors.Wrap(err, "listing merge queue refs")
 	}
-
-	catcher := grip.NewBasicCatcher()
 	for _, ref := range refs {
-		headSHA := ref.GetObject().GetSHA()
 		headRef := ref.GetRef()
-		if headSHA == "" || headRef == "" {
+		if ref.GetObject().GetSHA() != frontSHA || headRef == "" {
 			continue
 		}
-		if covered[headSHA] || pending[headSHA] {
-			continue
+		if _, err := j.recoverMergeGroup(ctx, projectRef, headRef, frontSHA); err != nil {
+			return errors.Wrapf(err, "recovering merge group with head SHA '%s'", frontSHA)
 		}
-		created, err := j.recoverMergeGroup(ctx, projectRef, headRef, headSHA)
-		if err != nil {
-			catcher.Wrapf(err, "recovering merge group with head SHA '%s'", headSHA)
-			continue
-		}
-		if created {
-			// Guard against creating a second patch for another ref in this same
-			// run that resolves to the same head SHA.
-			covered[headSHA] = true
-		}
+		break
 	}
-	return catcher.Resolve()
+	return nil
 }
 
 // recoverMergeGroup creates a patch for a staged merge group that has no
-// Evergreen patch, reusing the same intent → patch pipeline as the webhook
-// handler. It returns false without creating anything when the merge group was
-// staged too recently to be confident GitHub's webhook was lost rather than
-// merely still in flight.
+// Evergreen patch.
 func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, projectRef *model.ProjectRef, headRef, headSHA string) (bool, error) {
 	headCommit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner, projectRef.Repo, headSHA)
 	if err != nil {
@@ -160,15 +143,8 @@ func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, proj
 	}
 
 	stagedAt := mergeGroupStagedAt(headCommit)
-	if stagedAt.IsZero() || time.Since(stagedAt) < mergeQueueRecoveryMinStagedAge {
-		grip.Debug(ctx, message.Fields{
-			"message":    "merge group staged too recently; deferring recovery to avoid racing the webhook",
-			"project_id": projectRef.Id,
-			"head_ref":   headRef,
-			"head_sha":   headSHA,
-			"staged_at":  stagedAt,
-			"job_id":     j.ID(),
-		})
+	// Only recover a patch if the queue doesn't have patch since the last recover job.
+	if !stagedAt.IsZero() && time.Since(stagedAt) < minimumStuckTime {
 		return false, nil
 	}
 
