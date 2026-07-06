@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -913,47 +912,29 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	return patchVersion, nil
 }
 
-// getFullPatchParams retrieves the parameters defined on the patch's alias(es)
-// merged with the user-specified parameters, with the latter taking precedence.
-// A version has a single global set of parameters, so when multiple aliases are
-// specified their fully-resolved parameter sets must be identical, otherwise the
-// patch cannot be finalized.
+// getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
+// with the parameters that were explicitly user-specified, with the latter taking precedence.
 func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter, error) {
-	aliasNames := p.AliasesToResolve()
-	// Internal aliases (commit queue, GitHub, etc.) don't carry user parameters.
-	if len(aliasNames) == 0 || (len(aliasNames) == 1 && !IsPatchAlias(aliasNames[0])) {
+	paramsMap := map[string]string{}
+	if p.Alias == "" || !IsPatchAlias(p.Alias) {
 		return p.Parameters, nil
 	}
-
-	var commonParams map[string]string
-	for i, aliasName := range aliasNames {
-		aliases, err := findAliasesForPatch(ctx, p.Project, aliasName, p) // Get all records for the alias.
-		if err != nil {
-			return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", aliasName, p.Id.Hex())
-		}
-
-		// Overwrite configured parameters with user-specified ones, which take precedence.
-		paramsMap := map[string]string{}
-		for _, alias := range aliases {
+	aliases, err := findAliasesForPatch(ctx, p.Project, p.Alias, p)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
+	}
+	for _, alias := range aliases {
+		if len(alias.Parameters) > 0 {
 			for _, aliasParam := range alias.Parameters {
 				paramsMap[aliasParam.Key] = aliasParam.Value
 			}
 		}
-		for _, param := range p.Parameters {
-			paramsMap[param.Key] = param.Value
-		}
-		// Set the parameters from the first alias as the common set to compare against.
-		if i == 0 {
-			commonParams = paramsMap
-			continue
-		}
-		if !reflect.DeepEqual(paramsMap, commonParams) {
-			return nil, errors.Errorf("aliases %v resolve to conflicting parameter sets; a patch version has a single set of parameters, so specify a single alias or aliases whose parameters match", aliasNames)
-		}
 	}
-
+	for _, param := range p.Parameters {
+		paramsMap[param.Key] = param.Value
+	}
 	var fullParams []patch.Parameter
-	for k, v := range commonParams {
+	for k, v := range paramsMap {
 		fullParams = append(fullParams, patch.Parameter{
 			Key:   k,
 			Value: v,

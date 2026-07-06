@@ -350,7 +350,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	if err = j.verifyValidAliases(ctx, pref.Id, patchDoc.AliasesToResolve(), patchDoc.PatchedProjectConfig); err != nil {
+	if err = j.verifyValidAlias(ctx, pref.Id, patchDoc.PatchedProjectConfig); err != nil {
 		j.gitHubError = invalidAlias
 		return err
 	}
@@ -647,7 +647,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(ctx, patchDoc, patchDoc.AliasesToResolve())
+		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
 	}
 	return nil
 }
@@ -1366,8 +1366,9 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 	return v, project, pp, nil
 }
 
-func (j *patchIntentProcessor) verifyValidAliases(ctx context.Context, projectId string, aliases []string, configStr string) error {
-	if len(aliases) == 0 {
+func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId string, configStr string) error {
+	alias := j.intent.GetAlias()
+	if alias == "" {
 		return nil
 	}
 	var projectConfig *model.ProjectConfig
@@ -1378,16 +1379,14 @@ func (j *patchIntentProcessor) verifyValidAliases(ctx context.Context, projectId
 			return errors.Wrap(err, "creating project config")
 		}
 	}
-	for _, alias := range aliases {
-		found, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
-		if err != nil {
-			return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
-		}
-		if len(found) == 0 {
-			return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
-		}
+	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
+	if err != nil {
+		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
 	}
-	return nil
+	if len(aliases) > 0 {
+		return nil
+	}
+	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }
 
 func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, error) {

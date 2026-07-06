@@ -233,10 +233,6 @@ For example:
 
 Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
-#### Multiple Aliases
-
-A patch can be run with multiple aliases specified via the CLI. A deduplicated set of tasks from all specified patches will be scheduled, as long as parameters on all aliases match after user-supplied parameter overrides are applied.
-
 ### GitHub Pull Request Testing
 
 Definitions for this section exist under the GitHub "Pull Request Testing" tab.

@@ -131,23 +131,6 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.NoError(err)
 }
 
-func (s *CliIntentSuite) TestNewCliIntentSetsAliases() {
-	intent, err := NewCliIntent(CLIIntentParams{
-		User:        s.user,
-		Project:     s.projectID,
-		BaseGitHash: s.hash,
-		Finalize:    true,
-		Aliases:     []string{"a", "b"},
-	})
-	s.Require().NoError(err)
-	s.Require().NotNil(intent)
-
-	cIntent, ok := intent.(*cliIntent)
-	s.Require().True(ok)
-	s.Equal([]string{"a", "b"}, cIntent.Aliases)
-	s.Equal([]string{"a", "b"}, intent.NewPatch().Aliases)
-}
-
 func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 	intent, err := NewCliIntent(CLIIntentParams{
 		Project:      s.projectID,
