@@ -163,6 +163,8 @@ type parserTask struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 	Ps                *string                   `yaml:"ps,omitempty" bson:"ps,omitempty"`
@@ -354,6 +356,8 @@ type parserBV struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	Paths             parserStringSlice         `yaml:"paths,omitempty" bson:"paths,omitempty"`
 	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 
@@ -425,6 +429,8 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.AllowForGitTag == nil &&
 		pbv.GitTagOnly == nil &&
 		len(pbv.AllowedRequesters) == 0 &&
+		len(pbv.AllowedBranches) == 0 &&
+		len(pbv.IgnoredBranches) == 0 &&
 		len(pbv.Paths) == 0 &&
 		pbv.ExecTimeoutSecs == 0 &&
 		pbv.MatrixId == "" &&
@@ -442,6 +448,8 @@ type parserBVTaskUnit struct {
 	AllowForGitTag    *bool                     `yaml:"allow_for_git_tag,omitempty" bson:"allow_for_git_tag,omitempty"`
 	GitTagOnly        *bool                     `yaml:"git_tag_only,omitempty" bson:"git_tag_only,omitempty"`
 	AllowedRequesters []evergreen.UserRequester `yaml:"allowed_requesters,omitempty" bson:"allowed_requesters,omitempty"`
+	AllowedBranches   parserStringSlice         `yaml:"allowed_branches,omitempty" bson:"allowed_branches,omitempty"`
+	IgnoredBranches   parserStringSlice         `yaml:"ignored_branches,omitempty" bson:"ignored_branches,omitempty"`
 	ExecTimeoutSecs   int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	Priority          int64                     `yaml:"priority,omitempty" bson:"priority,omitempty"`
 	DependsOn         parserDependencies        `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
@@ -1712,6 +1720,8 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			evalErrs = append(evalErrs, errors.Errorf("spaces are not allowed in task names ('%s')", pt.Name))
 		}
 		t.AllowedRequesters = pt.AllowedRequesters
+		t.AllowedBranches = pt.AllowedBranches
+		t.IgnoredBranches = pt.IgnoredBranches
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
@@ -1789,6 +1799,8 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			AllowForGitTag:     pbv.AllowForGitTag,
 			GitTagOnly:         pbv.GitTagOnly,
 			AllowedRequesters:  pbv.AllowedRequesters,
+			AllowedBranches:    pbv.AllowedBranches,
+			IgnoredBranches:    pbv.IgnoredBranches,
 			ExecTimeoutSecs:    pbv.ExecTimeoutSecs,
 			Stepback:           pbv.Stepback,
 			DeactivatePrevious: pbv.DeactivatePrevious,
@@ -2032,6 +2044,8 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		AllowForGitTag:    bvt.AllowForGitTag,
 		GitTagOnly:        bvt.GitTagOnly,
 		AllowedRequesters: bvt.AllowedRequesters,
+		AllowedBranches:   bvt.AllowedBranches,
+		IgnoredBranches:   bvt.IgnoredBranches,
 		ExecTimeoutSecs:   bvt.ExecTimeoutSecs,
 		Priority:          bvt.Priority,
 		Stepback:          bvt.Stepback,
@@ -2062,6 +2076,12 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = pt.AllowedRequesters
+	}
+	if len(res.AllowedBranches) == 0 {
+		res.AllowedBranches = pt.AllowedBranches
+	}
+	if len(res.IgnoredBranches) == 0 {
+		res.IgnoredBranches = pt.IgnoredBranches
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = pt.ExecTimeoutSecs
@@ -2096,6 +2116,12 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 	}
 	if len(res.AllowedRequesters) == 0 {
 		res.AllowedRequesters = bv.AllowedRequesters
+	}
+	if len(res.AllowedBranches) == 0 {
+		res.AllowedBranches = bv.AllowedBranches
+	}
+	if len(res.IgnoredBranches) == 0 {
+		res.IgnoredBranches = bv.IgnoredBranches
 	}
 	if res.ExecTimeoutSecs == 0 {
 		res.ExecTimeoutSecs = bv.ExecTimeoutSecs
