@@ -83003,11 +83003,28 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 			it.BFSuggestionFeaturesURL = data
 		case "bfSuggestionPassword":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionPassword"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.directives.RedactSecrets == nil {
+					var zeroVal *string
+					return zeroVal, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
 			}
-			it.BFSuggestionPassword = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(*string); ok {
+				it.BFSuggestionPassword = data
+			} else if tmp == nil {
+				it.BFSuggestionPassword = nil
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "bfSuggestionServer":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionServer"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)

@@ -110,7 +110,7 @@ input WebhookInput {
 
 input BuildBaronSettingsInput {
   bfSuggestionFeaturesURL: String
-  bfSuggestionPassword: String
+  bfSuggestionPassword: String @redactSecrets
   bfSuggestionServer: String
   bfSuggestionTimeoutSecs: Int
   bfSuggestionUsername: String
