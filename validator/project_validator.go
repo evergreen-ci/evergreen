@@ -1680,7 +1680,7 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 		for _, pattern := range bvtu.AllowedBranches {
 			if _, err := regexp.Compile(pattern); err != nil {
 				errs = append(errs, ValidationError{
-					Level: Error,
+					Level: Warning,
 					Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid allowed_branches regex '%s': %s",
 						bvtu.Name, bvtu.Variant, pattern, err.Error()),
 				})
@@ -1689,7 +1689,7 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 		for _, pattern := range bvtu.IgnoredBranches {
 			if _, err := regexp.Compile(pattern); err != nil {
 				errs = append(errs, ValidationError{
-					Level: Error,
+					Level: Warning,
 					Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid ignored_branches regex '%s': %s",
 						bvtu.Name, bvtu.Variant, pattern, err.Error()),
 				})
