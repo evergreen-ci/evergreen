@@ -64,23 +64,6 @@
           }
         ]
       }
-    },
-    {
-      "query_file": "excessive_limit.graphql",
-      "result": {
-        "data": {
-          "taskQuarantinedTestsSample": null
-        },
-        "errors": [
-          {
-            "message": "limit exceeds max limit of 500",
-            "path": ["taskQuarantinedTestsSample"],
-            "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
-            }
-          }
-        ]
-      }
     }
   ]
 }

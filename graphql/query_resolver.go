@@ -738,9 +738,6 @@ func (r *queryResolver) TaskQuarantinedTestsSample(ctx context.Context, versionI
 	if sampleLimit < 0 {
 		return nil, InputValidationError.Send(ctx, "limit cannot be negative")
 	}
-	if sampleLimit > maxTaskQuarantinedTestsSampleLimit {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", maxTaskQuarantinedTestsSampleLimit))
-	}
 
 	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
 	if err != nil {

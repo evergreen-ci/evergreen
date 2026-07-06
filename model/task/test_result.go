@@ -169,15 +169,11 @@ func GetQuarantinedTestSamples(ctx context.Context, env evergreen.Environment, t
 			return nil, errors.New("test result metadata is missing task info")
 		}
 
-		quarantinedTests := taskResults.QuarantinedTests
-		if limit >= 0 && len(quarantinedTests) > limit {
-			quarantinedTests = quarantinedTests[:limit]
-		}
 		samples = append(samples, testresult.TaskTestResultsQuarantinedSample{
 			TaskID:                       taskResults.Info.TaskID,
 			Execution:                    taskResults.Info.Execution,
 			QuarantinedTestsSkippedCount: taskResults.QuarantinedTestsCount,
-			QuarantinedTests:             quarantinedTests,
+			QuarantinedTests:             taskResults.QuarantinedTests,
 		})
 	}
 

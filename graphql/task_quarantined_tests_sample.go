@@ -1,6 +1,3 @@
 package graphql
 
-const (
-	defaultTaskQuarantinedTestsSampleLimit = 50
-	maxTaskQuarantinedTestsSampleLimit     = 500
-)
+const defaultTaskQuarantinedTestsSampleLimit = 50
