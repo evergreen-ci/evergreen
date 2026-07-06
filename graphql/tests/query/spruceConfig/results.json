@@ -110,6 +110,7 @@
               "amboyDB",
               "apiKey",
               "appId",
+              "bfSuggestionPassword",
               "ciOptimizationToken",
               "clientId",
               "clientSecret",
