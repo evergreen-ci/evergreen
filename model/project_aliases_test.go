@@ -804,3 +804,45 @@ func TestFilterByLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateProjectAliasesRequiredLabels(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		requiredLabels []string
+		expectedErrs   []string
+	}{
+		{
+			name:           "EmptyRequiredLabelErrors",
+			requiredLabels: []string{""},
+			expectedErrs:   []string{"aliasType: required label #1 on line #1 can't be empty string"},
+		},
+		{
+			name:           "WhitespaceOnlyRequiredLabelErrors",
+			requiredLabels: []string{"   "},
+			expectedErrs:   []string{"aliasType: required label #1 on line #1 can't be empty string"},
+		},
+		{
+			name:           "NonEmptyRequiredLabelsAreValid",
+			requiredLabels: []string{"evergreen:e2e", "evergreen:full"},
+			expectedErrs:   []string{},
+		},
+		{
+			name:           "NilRequiredLabelsAreValid",
+			requiredLabels: nil,
+			expectedErrs:   []string{},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			aliases := []ProjectAlias{
+				{
+					Alias:          evergreen.GithubPRAlias,
+					Variant:        "^e2e$",
+					Task:           "^test$",
+					RequiredLabels: tc.requiredLabels,
+				},
+			}
+			errs := ValidateProjectAliases(aliases, "aliasType")
+			assert.Equal(t, tc.expectedErrs, errs)
+		})
+	}
+}

@@ -681,8 +681,19 @@ func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
 			errs = append(errs, fmt.Sprintf("%s: cannot define git tag or remote path on line #%d", aliasType, i+1))
 		}
 		errs = append(errs, validateAliasPatchDefinition(pd, aliasType, i+1)...)
+		errs = append(errs, validateRequiredLabels(pd, aliasType, i+1)...)
 	}
 
+	return errs
+}
+
+func validateRequiredLabels(pd ProjectAlias, aliasType string, lineNum int) []string {
+	errs := []string{}
+	for i, label := range pd.RequiredLabels {
+		if strings.TrimSpace(label) == "" {
+			errs = append(errs, fmt.Sprintf("%s: required label #%d on line #%d can't be empty string", aliasType, i+1, lineNum))
+		}
+	}
 	return errs
 }
 
