@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -78,10 +79,12 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, stats, err := data.FindRecentTasks(ctx, h.minutes)
+	tasks, _, err := data.FindRecentTasks(ctx, h.minutes)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding recent tasks"))
 	}
+
+	tasks = filterTasksByProjectAccess(ctx, tasks)
 
 	if h.taskType != "" {
 		tasks = task.FilterTasksOnStatus(tasks, h.taskType)
@@ -105,14 +108,19 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.byDistro || h.byProject || h.byAgentVersion {
+		u := MustHaveUser(ctx)
+		viewableProjects, err := u.GetViewableProjects(ctx)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting user's viewable projects"))
+		}
 		var stats *model.APIRecentTaskStatsList
 		switch {
 		case h.byDistro:
-			stats, err = data.FindRecentTaskListDistro(ctx, h.minutes)
+			stats, err = data.FindRecentTaskListDistro(ctx, h.minutes, viewableProjects)
 		case h.byProject:
-			stats, err = data.FindRecentTaskListProject(ctx, h.minutes)
+			stats, err = data.FindRecentTaskListProject(ctx, h.minutes, viewableProjects)
 		case h.byAgentVersion:
-			stats, err = data.FindRecentTaskListAgentVersion(ctx, h.minutes)
+			stats, err = data.FindRecentTaskListAgentVersion(ctx, h.minutes, viewableProjects)
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding recent task list by filter"))
@@ -122,10 +130,29 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	statsModel := &model.APIRecentTaskStats{}
-	if stats != nil {
-		statsModel.BuildFromService(*stats)
-	}
+	stats := task.GetResultCounts(tasks)
+	statsModel.BuildFromService(*stats)
 	return gimlet.NewJSONResponse(statsModel)
+}
+
+func filterTasksByProjectAccess(ctx context.Context, tasks []task.Task) []task.Task {
+	u := MustHaveUser(ctx)
+	projectPermitted := make(map[string]bool)
+	filtered := make([]task.Task, 0, len(tasks))
+	for _, t := range tasks {
+		if _, checked := projectPermitted[t.Project]; !checked {
+			projectPermitted[t.Project] = u.HasPermission(ctx, gimlet.PermissionOpts{
+				Resource:      t.Project,
+				ResourceType:  evergreen.ProjectResourceType,
+				Permission:    evergreen.PermissionTasks,
+				RequiredLevel: evergreen.TasksView.Value,
+			})
+		}
+		if projectPermitted[t.Project] {
+			filtered = append(filtered, t)
+		}
+	}
+	return filtered
 }
 
 // this is the route manager for /status/hosts/distros, which returns a count of up hosts grouped by distro

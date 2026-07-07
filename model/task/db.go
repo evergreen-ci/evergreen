@@ -789,14 +789,19 @@ type StatusItem struct {
 	Stats  []Stat `bson:"stats"`
 }
 
-func GetRecentTaskStats(ctx context.Context, period time.Duration, nameKey string) ([]StatusItem, error) {
+func GetRecentTaskStats(ctx context.Context, period time.Duration, nameKey string, viewableProjects []string) ([]StatusItem, error) {
+	match := bson.M{
+		StatusKey: bson.M{"$exists": true},
+		FinishTimeKey: bson.M{
+			"$gt": time.Now().Add(-period),
+		},
+	}
+	if viewableProjects != nil {
+		match[ProjectKey] = bson.M{"$in": viewableProjects}
+	}
+
 	pipeline := []bson.M{
-		{"$match": bson.M{
-			StatusKey: bson.M{"$exists": true},
-			FinishTimeKey: bson.M{
-				"$gt": time.Now().Add(-period),
-			},
-		}},
+		{"$match": match},
 		{"$group": bson.M{
 			"_id":   bson.M{"status": "$" + StatusKey, "name": "$" + nameKey},
 			"count": bson.M{"$sum": 1},
