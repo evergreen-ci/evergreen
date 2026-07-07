@@ -48,6 +48,7 @@ mutation Runners {
         targetTimeSeconds: 1
         taskFinder: PARALLEL
         translateProjectConcurrencyLimit: 1
+        translateProjectCacheBytesLimit: 1
       }
     }
   ) {
@@ -102,6 +103,7 @@ mutation Runners {
       targetTimeSeconds
       taskFinder
       translateProjectConcurrencyLimit
+      translateProjectCacheBytesLimit
     }
   }
 }
