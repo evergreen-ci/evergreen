@@ -264,17 +264,23 @@ func TestLooksAlreadyEscaped(t *testing.T) {
 }
 
 func TestLazySignURL(t *testing.T) {
-	t.Run("BasicURL", func(t *testing.T) {
-		url := lazySignURL("https://evergreen.example.com", "task123", 0, "coverage.html")
-		assert.Equal(t, "https://evergreen.example.com/rest/v2/tasks/task123/artifact/sign?execution=0&name=coverage.html", url)
+	secret := []byte("test-secret")
+	t.Run("ContainsTokenAndExpiry", func(t *testing.T) {
+		result := lazySignURL("https://evergreen.example.com", "task123", 0, "coverage.html", secret)
+		assert.Contains(t, result, "https://evergreen.example.com/rest/v2/tasks/task123/artifact/sign?execution=0&name=coverage.html&token=")
+		assert.Contains(t, result, "&exp=")
 	})
 	t.Run("SpecialCharsInFileName", func(t *testing.T) {
-		url := lazySignURL("https://evergreen.example.com", "task123", 2, "file with spaces & symbols.tar.gz")
-		assert.Equal(t, "https://evergreen.example.com/rest/v2/tasks/task123/artifact/sign?execution=2&name=file+with+spaces+%26+symbols.tar.gz", url)
+		result := lazySignURL("https://evergreen.example.com", "task123", 2, "file with spaces & symbols.tar.gz", secret)
+		assert.Contains(t, result, "name=file+with+spaces+%26+symbols.tar.gz")
+		assert.Contains(t, result, "&token=")
+		assert.Contains(t, result, "&exp=")
 	})
 	t.Run("SpecialCharsInTaskID", func(t *testing.T) {
-		url := lazySignURL("https://evergreen.example.com", "task/with/slashes", 1, "report.html")
-		assert.Equal(t, "https://evergreen.example.com/rest/v2/tasks/task%2Fwith%2Fslashes/artifact/sign?execution=1&name=report.html", url)
+		result := lazySignURL("https://evergreen.example.com", "task/with/slashes", 1, "report.html", secret)
+		assert.Contains(t, result, "tasks/task%2Fwith%2Fslashes/artifact/sign")
+		assert.Contains(t, result, "&token=")
+		assert.Contains(t, result, "&exp=")
 	})
 }
 
@@ -282,15 +288,16 @@ func TestStripHiddenFilesLazy(t *testing.T) {
 	baseURL := "https://evergreen.example.com"
 	taskID := "task1"
 	execution := 1
+	secret := []byte("test-secret")
 
 	t.Run("SignedFilesGetLazyURL", func(t *testing.T) {
 		files := []File{
 			{Name: "signed_file", Link: "https://s3.amazonaws.com/bucket/key", Visibility: Signed},
 			{Name: "public_file", Link: "https://example.com/public", Visibility: Public},
 		}
-		result := StripHiddenFilesLazy(files, true, baseURL, taskID, execution)
+		result := StripHiddenFilesLazy(files, true, baseURL, taskID, execution, secret)
 		assert.Len(t, result, 2)
-		assert.Equal(t, "https://evergreen.example.com/rest/v2/tasks/task1/artifact/sign?execution=1&name=signed_file", result[0].Link)
+		assert.Contains(t, result[0].Link, "https://evergreen.example.com/rest/v2/tasks/task1/artifact/sign?execution=1&name=signed_file&token=")
 		assert.Equal(t, "https://example.com/public", result[1].Link)
 	})
 	t.Run("HiddenFilesFiltered", func(t *testing.T) {
@@ -299,14 +306,14 @@ func TestStripHiddenFilesLazy(t *testing.T) {
 			{Name: "private_no_user", Link: "https://example.com/private", Visibility: Private},
 			{Name: "signed_no_user", Link: "https://s3.amazonaws.com/bucket/key", Visibility: Signed},
 		}
-		result := StripHiddenFilesLazy(files, false, baseURL, taskID, execution)
+		result := StripHiddenFilesLazy(files, false, baseURL, taskID, execution, secret)
 		assert.Empty(t, result)
 	})
 	t.Run("PrivateFilesVisibleWithUser", func(t *testing.T) {
 		files := []File{
 			{Name: "private_file", Link: "https://example.com/private", Visibility: Private},
 		}
-		result := StripHiddenFilesLazy(files, true, baseURL, taskID, execution)
+		result := StripHiddenFilesLazy(files, true, baseURL, taskID, execution, secret)
 		assert.Len(t, result, 1)
 		assert.Equal(t, "https://example.com/private", result[0].Link)
 	})

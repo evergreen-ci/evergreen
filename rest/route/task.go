@@ -123,6 +123,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeArtifacts:         true,
 		LogURL:                   GetURL(ctx),
 		ParsleyLogURL:            tgh.parsleyURL,
+		AppSecret:                []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tgh.taskID))
@@ -135,7 +136,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}
 
-		if err = taskModel.BuildPreviousExecutions(ctx, tasks, GetURL(ctx), tgh.parsleyURL); err != nil {
+		if err = taskModel.BuildPreviousExecutions(ctx, tasks, GetURL(ctx), tgh.parsleyURL, []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret)); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding previous task executions to API model for task '%s'", tgh.taskID))
 		}
 	}
@@ -287,7 +288,7 @@ func (h *updateArtifactURLHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiTask := &model.APITask{}
-	if err := apiTask.BuildFromService(ctx, taskForResponse, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true}); err != nil {
+	if err := apiTask.BuildFromService(ctx, taskForResponse, &model.APITaskArgs{IncludeProjectIdentifier: true, IncludeAMI: true, IncludeArtifacts: true, AppSecret: []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret)}); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "building API task model after artifact update"))
 	}
 	return gimlet.NewJSONResponse(apiTask)
