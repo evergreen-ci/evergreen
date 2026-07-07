@@ -106,7 +106,21 @@ func (j *githubPRLabelInjectJob) Run(ctx context.Context) {
 		return
 	}
 
-	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, v.Identifier, evergreen.GithubPRAlias, nil)
+	// Label-gated PR aliases (github_pr_aliases with required_labels) are defined
+	// in the project's YAML, which the finalized patch stores as its patched
+	// project config rather than in the ProjectAliasCollection. Build a
+	// ProjectConfig from it so FindAliasInProjectRepoOrProjectConfig resolves the
+	// YAML-defined aliases, mirroring patch_intent's verifyValidAlias.
+	var projectConfig *model.ProjectConfig
+	if p.PatchedProjectConfig != "" {
+		projectConfig, err = model.CreateProjectConfig([]byte(p.PatchedProjectConfig), "")
+		if err != nil {
+			j.AddError(errors.Wrap(err, "creating project config"))
+			return
+		}
+	}
+
+	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, v.Identifier, evergreen.GithubPRAlias, projectConfig)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding PR aliases for project '%s'", v.Identifier))
 		return

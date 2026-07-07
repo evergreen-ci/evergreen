@@ -167,6 +167,97 @@ func TestInjectTasksIntoVersionAddsDeltaAndUpdatesPatch(t *testing.T) {
 	assert.True(t, found, "injected task should be persisted in patch VariantsTasks")
 }
 
+func TestInjectTasksIntoVersionExistingBuildOnUnactivatedVersionStaysUnactivated(t *testing.T) {
+	ctx := testutil.TestSpan(t.Context(), t)
+	settings := testutil.TestConfig()
+
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection, build.Collection, task.Collection, patch.Collection, ParserProjectCollection))
+
+	const (
+		projectID = "myproj"
+		variant   = "bv1"
+		existing  = "task_existing"
+		injected  = "task_new"
+	)
+
+	oid := mgobson.NewObjectId()
+	versionID := oid.Hex()
+
+	// An outside-org PR version is created unactivated pending maintainer authorization.
+	v := &Version{
+		Id:         versionID,
+		Identifier: projectID,
+		Requester:  evergreen.GithubPRRequester,
+		CreateTime: time.Now(),
+		Activated:  utility.FalsePtr(),
+		BuildIds:   []string{"b1"},
+		BuildVariants: []VersionBuildStatus{{
+			BuildVariant: variant,
+			BuildId:      "b1",
+		}},
+	}
+	require.NoError(t, v.Insert(t.Context()))
+
+	// The build for the injected task's variant already exists but is unactivated.
+	b := build.Build{
+		Id:           "b1",
+		BuildVariant: variant,
+		Version:      versionID,
+		Activated:    false,
+	}
+	require.NoError(t, b.Insert(t.Context()))
+
+	projectRef := ProjectRef{Id: projectID, Identifier: projectID}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	pp := ParserProject{}
+	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(injectTasksConfig), &pp))
+	pp.Id = versionID
+	pp.Identifier = utility.ToStringPtr(projectID)
+	require.NoError(t, pp.Insert(t.Context()))
+
+	p, err := TranslateProject(ctx, &pp)
+	require.NoError(t, err)
+	require.NotNil(t, p)
+	p.Identifier = projectID
+
+	existingTask := task.Task{
+		Id:           "existing_task_id",
+		Version:      versionID,
+		BuildId:      "b1",
+		Project:      projectID,
+		DisplayName:  existing,
+		BuildVariant: variant,
+		Activated:    false,
+	}
+	require.NoError(t, existingTask.Insert(t.Context()))
+
+	patchDoc := patch.Patch{
+		Id:      oid,
+		Project: projectID,
+		Version: versionID,
+		VariantsTasks: []patch.VariantTasks{{
+			Variant: variant,
+			Tasks:   []string{existing},
+		}},
+	}
+	require.NoError(t, patchDoc.Insert(t.Context()))
+
+	// Inject a task onto bv1, whose build already exists, exercising the
+	// existing-build path.
+	pairs := TaskVariantPairs{ExecTasks: TVPairSet{{Variant: variant, TaskName: injected}}}
+
+	createdIDs, err := InjectTasksIntoVersion(ctx, settings, v, p, pairs)
+	require.NoError(t, err)
+	require.Len(t, createdIDs, 1)
+
+	injectedTask, err := task.FindOneId(ctx, createdIDs[0])
+	require.NoError(t, err)
+	require.NotNil(t, injectedTask)
+	assert.Equal(t, variant, injectedTask.BuildVariant)
+	assert.False(t, injectedTask.Activated, "injected task on an existing build of an unactivated version must not be activated")
+}
+
 func TestInjectTasksIntoVersionNewVariantOnUnactivatedVersionStaysUnactivated(t *testing.T) {
 	ctx := testutil.TestSpan(t.Context(), t)
 	settings := testutil.TestConfig()

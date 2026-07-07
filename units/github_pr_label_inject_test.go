@@ -120,10 +120,22 @@ func TestGithubPRLabelInjectAddsGatedTasks(t *testing.T) {
 	}
 	require.NoError(t, existingTask.Insert(t.Context()))
 
+	// The label-gated github_pr_aliases entry lives in the project YAML, which a
+	// finalized PR patch stores as its patched project config. This is the only
+	// supported configuration for the feature, so the test must exercise the
+	// config path (not a DB alias).
+	patchedProjectConfig := `
+github_pr_aliases:
+  - variant: "^bv1$"
+    task: "^task_gated$"
+    required_labels: ["` + label + `"]
+`
+
 	patchDoc := patch.Patch{
-		Id:      oid,
-		Project: projectID,
-		Version: versionID,
+		Id:                   oid,
+		Project:              projectID,
+		Version:              versionID,
+		PatchedProjectConfig: patchedProjectConfig,
 		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: owner,
 			BaseRepo:  repo,
@@ -136,16 +148,6 @@ func TestGithubPRLabelInjectAddsGatedTasks(t *testing.T) {
 		}},
 	}
 	require.NoError(t, patchDoc.Insert(t.Context()))
-
-	// A label-gated PR alias that only applies when the PR carries the label.
-	alias := model.ProjectAlias{
-		ProjectID:      projectID,
-		Alias:          evergreen.GithubPRAlias,
-		Variant:        "^bv1$",
-		Task:           "^task_gated$",
-		RequiredLabels: []string{label},
-	}
-	require.NoError(t, alias.Upsert(t.Context()))
 
 	j := NewGithubPRLabelInjectJob(env, owner, repo, prNumber, headSHA, []string{label}, "ts")
 	j.Run(ctx)
