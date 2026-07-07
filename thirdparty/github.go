@@ -175,6 +175,10 @@ type GithubPatch struct {
 	MergeBase     string `bson:"merge_base"`
 	// the patchId to copy the definitions for for the next patch the pr creates
 	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
+
+	// Labels is the set of GitHub PR label names present when the patch was
+	// created. Used to gate github_pr_aliases entries via required_labels.
+	Labels []string `bson:"labels,omitempty"`
 }
 
 // GithubMergeGroup stores patch data for patches created from GitHub merge groups

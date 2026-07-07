@@ -140,6 +140,23 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(patchId, ghIntent.RepeatPatchId)
 }
 
+func (s *GithubSuite) TestNewGithubIntentPopulatesLabels() {
+	pr := testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title)
+	pr.Labels = []*github.Label{
+		{Name: github.String("evergreen:e2e")},
+		{Name: github.String("evergreen:upgrade")},
+	}
+
+	intent, err := NewGithubIntent(s.T().Context(), "labels-1", "", "", "", "", pr)
+	s.Require().NoError(err)
+	s.Require().NotNil(intent)
+
+	ghIntent, ok := intent.(*githubIntent)
+	s.Require().True(ok)
+	s.Equal([]string{"evergreen:e2e", "evergreen:upgrade"}, ghIntent.Labels)
+	s.Equal([]string{"evergreen:e2e", "evergreen:upgrade"}, intent.NewPatch().GithubPatchData.Labels)
+}
+
 func (s *GithubSuite) TestNewGithubIntentSageBotUsesAssignee() {
 	assigneeLogin := "real-human"
 	var assigneeID int64 = 9999

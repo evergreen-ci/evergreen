@@ -100,6 +100,9 @@ type githubIntent struct {
 
 	// Alias defines the variants and tasks to run this patch on. It will default to __github if not set.
 	Alias string `bson:"alias"`
+
+	// Labels is the set of GitHub PR label names present on the PR when the intent was created.
+	Labels []string `bson:"labels,omitempty"`
 }
 
 // BSON fields for the patches
@@ -190,7 +193,20 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 		CalledBy:      calledBy,
 		RepeatPatchId: repeat,
 		Alias:         alias,
+		Labels:        githubPRLabelNames(pr),
 	}, nil
+}
+
+// githubPRLabelNames returns the label names currently attached to the PR.
+func githubPRLabelNames(pr *github.PullRequest) []string {
+	if len(pr.Labels) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(pr.Labels))
+	for _, l := range pr.Labels {
+		names = append(names, l.GetName())
+	}
+	return names
 }
 
 // getRepeatPatchId returns the patch id to repeat the definitions from
@@ -312,6 +328,7 @@ func (g *githubIntent) NewPatch() *Patch {
 			MergeBase:  g.MergeBase,
 			Author:     g.User,
 			AuthorUID:  g.UID,
+			Labels:     g.Labels,
 		},
 	}
 	return patchDoc
