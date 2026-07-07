@@ -142,6 +142,55 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.Equal(1, count)
 }
 
+func (s *GithubWebhookRouteSuite) TestLabeledEnqueuesInjectJobAndUnlabeledIsNoop() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.IntentCollection))
+
+	doc := &model.ProjectRef{
+		Owner:            "evergreen-ci",
+		Repo:             "evergreen",
+		Branch:           "main",
+		Enabled:          true,
+		BatchTime:        10,
+		Id:               "ident0",
+		PRTestingEnabled: utility.TruePtr(),
+	}
+	s.NoError(doc.Insert(s.T().Context()))
+
+	rawEvent, err := github.ParseWebHook("pull_request", s.prBody)
+	s.NoError(err)
+	event, ok := rawEvent.(*github.PullRequestEvent)
+	s.Require().True(ok)
+
+	labeledAction := githubActionLabeled
+	event.Action = &labeledAction
+	label := &github.Label{Name: utility.ToStringPtr("evg-added-label")}
+	event.Label = label
+	event.PullRequest.Labels = []*github.Label{label}
+
+	s.h.event = event
+	s.h.msgID = "labeled-1"
+
+	statsBefore, err := s.queue.Stats(s.T().Context()), error(nil)
+	s.NoError(err)
+
+	resp := s.h.Run(s.T().Context())
+	s.Equal(http.StatusOK, resp.Status())
+
+	statsAfterLabeled := s.queue.Stats(s.T().Context())
+	s.Equal(statsBefore.Total+1, statsAfterLabeled.Total)
+
+	unlabeledAction := githubActionUnlabeled
+	event.Action = &unlabeledAction
+	s.h.event = event
+	s.h.msgID = "unlabeled-1"
+
+	resp = s.h.Run(s.T().Context())
+	s.Equal(http.StatusOK, resp.Status())
+
+	statsAfterUnlabeled := s.queue.Stats(s.T().Context())
+	s.Equal(statsAfterLabeled.Total, statsAfterUnlabeled.Total)
+}
+
 func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	ctx := context.Background()
 	secret := []byte(s.conf.GithubWebhookSecret)

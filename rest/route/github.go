@@ -39,6 +39,8 @@ const (
 	githubActionChecksRequested = "checks_requested"
 	githubActionRerequested     = "rerequested"
 	githubActionDestroyed       = "destroyed"
+	githubActionLabeled         = "labeled"
+	githubActionUnlabeled       = "unlabeled"
 
 	// pull request comments
 	retryComment            = "evergreen retry"
@@ -294,7 +296,43 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}
 
 			return gimlet.NewJSONResponse(struct{}{})
+		} else if action == githubActionLabeled {
+			labels := make([]string, 0, len(event.GetPullRequest().Labels))
+			for _, label := range event.GetPullRequest().Labels {
+				labels = append(labels, label.GetName())
+			}
+
+			grip.Info(ctx, message.Fields{
+				"source":    "GitHub hook",
+				"msg_id":    gh.msgID,
+				"event":     gh.eventType,
+				"action":    action,
+				"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+				"pr_number": event.GetPullRequest().GetNumber(),
+				"label":     event.GetLabel().GetName(),
+				"message":   "pull request labeled; injecting label-implied tasks",
+			})
+
+			j := units.NewGithubPRLabelInjectJob(evergreen.GetEnvironment(), event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.PullRequest.GetNumber(), event.PullRequest.GetHead().GetSHA(), labels, gh.msgID)
+			if err := amboy.EnqueueUniqueJob(ctx, gh.queue, j); err != nil {
+				grip.Error(ctx, message.WrapError(err, message.Fields{
+					"source":    "GitHub hook",
+					"msg_id":    gh.msgID,
+					"event":     gh.eventType,
+					"action":    action,
+					"repo":      event.GetPullRequest().GetBase().GetRepo().GetFullName(),
+					"pr_number": event.GetPullRequest().GetNumber(),
+					"message":   "can't enqueue label inject job",
+				}))
+				return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "enqueueing label inject job"))
+			}
+
+			return gimlet.NewJSONResponse(struct{}{})
 		}
+		// The "unlabeled" action is intentionally not handled: removing a label
+		// never cancels tasks that are running or have already been added to a
+		// version. It only affects which tasks get added to the next version
+		// created for the PR.
 	case *github.PushEvent:
 		fromApp := event.GetInstallation() != nil
 		if gh.shouldSkipWebhook(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), fromApp) {
