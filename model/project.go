@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
 	"sort"
@@ -83,6 +84,25 @@ func (p *Project) buildTaskCache() {
 	for i := range p.Tasks {
 		p.tasksByName[p.Tasks[i].Name] = &p.Tasks[i]
 	}
+}
+
+// cloneForCacheReturn shallow-clones p's top-level slices and maps, and rebuilds the task cache
+// to point into the clone's Tasks. Nested structures below the top level remain shared and must
+// stay read-only. We do this instead of a deeper clone because that costs orders of magnitude more,
+// up to more than a full TranslateProject, which would defeat the point of caching.
+func (p *Project) cloneForCacheReturn() *Project {
+	cp := *p
+	cp.Ignore = slices.Clone(p.Ignore)
+	cp.Parameters = slices.Clone(p.Parameters)
+	cp.Modules = slices.Clone(p.Modules)
+	cp.BuildVariants = slices.Clone(p.BuildVariants)
+	cp.TaskGroups = slices.Clone(p.TaskGroups)
+	cp.Tasks = slices.Clone(p.Tasks)
+	if p.Functions != nil {
+		cp.Functions = maps.Clone(p.Functions)
+	}
+	cp.buildTaskCache()
+	return &cp
 }
 
 type ProjectInfo struct {
