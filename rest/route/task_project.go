@@ -143,7 +143,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeArtifacts:         true,
 			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tph.parsleyURL,
-			AppSecret:                []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
+			ArtifactSignSecret:                []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
 		})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)

@@ -111,7 +111,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeProjectIdentifier: true,
 			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tbh.parsleyURL,
-			AppSecret:                []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
+			ArtifactSignSecret:                []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
 		}); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
 		}
