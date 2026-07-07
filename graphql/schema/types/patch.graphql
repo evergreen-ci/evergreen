@@ -68,7 +68,6 @@ type Patch {
   id: ID!
   activated: Boolean!
   alias: String
-  aliases: [String!]
   author: String!
   authorDisplayName: String!
   builds: [Build!]!

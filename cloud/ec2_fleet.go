@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -304,8 +305,20 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		return errors.Wrap(err, "creating client")
 	}
 
+	instanceID := h.Id
+	if !IsEC2InstanceID(instanceID) {
+		instance, err := m.client.GetInstanceInfo(ctx, h.Id)
+		if err != nil {
+			if isEC2InstanceNotFound(err) {
+				return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("no cloud instance found for host '%s'", h.Id)), "terminating instance in DB")
+			}
+			return errors.Wrapf(err, "finding cloud instance for host '%s'", h.Id)
+		}
+		instanceID = aws.ToString(instance.InstanceId)
+	}
+
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
-		InstanceIds: []string{h.Id},
+		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{

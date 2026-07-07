@@ -1514,7 +1514,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				return nil, errors.Wrap(err, "getting admin settings")
 			}
 		}
-		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath)
+		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, gh.settings)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading project info from file")
 		}

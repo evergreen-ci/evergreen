@@ -266,12 +266,49 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, StatusNonExistent, info.Status)
 		},
 		"TerminateInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "i-12345"
+			require.NoError(t, db.Clear(host.Collection))
+			require.NoError(t, h.Insert(ctx))
+
 			assert.NoError(t, m.TerminateInstance(ctx, h, "evergreen", ""))
 
 			assert.Len(t, client.TerminateInstancesInput.InstanceIds, 1)
-			assert.Equal(t, "h1", client.TerminateInstancesInput.InstanceIds[0])
+			assert.Equal(t, "i-12345", client.TerminateInstancesInput.InstanceIds[0])
 
-			hDb, err := host.FindOneId(ctx, "h1")
+			hDb, err := host.FindOneId(ctx, "i-12345")
+			assert.NoError(t, err)
+			assert.Equal(t, evergreen.HostTerminated, hDb.Status)
+		},
+		"TerminateInstanceWithIntentHostID": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-distro-20260518093717-1234567890"
+			require.NoError(t, db.Clear(host.Collection))
+			require.NoError(t, h.Insert(ctx))
+
+			client.Instance = &types.Instance{
+				InstanceId: aws.String("i-real-instance"),
+			}
+
+			assert.NoError(t, m.TerminateInstance(ctx, h, "evergreen", ""))
+
+			assert.Len(t, client.TerminateInstancesInput.InstanceIds, 1)
+			assert.Equal(t, "i-real-instance", client.TerminateInstancesInput.InstanceIds[0])
+
+			hDb, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			assert.Equal(t, evergreen.HostTerminated, hDb.Status)
+		},
+		"TerminateInstanceWithIntentHostIDNotFoundInCloud": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			h.Id = "evg-distro-20260518093717-1234567890"
+			require.NoError(t, db.Clear(host.Collection))
+			require.NoError(t, h.Insert(ctx))
+
+			client.RequestGetInstanceInfoError = noReservationError
+
+			assert.NoError(t, m.TerminateInstance(ctx, h, "evergreen", ""))
+
+			assert.Nil(t, client.TerminateInstancesInput, "should not call TerminateInstances when instance is not found")
+
+			hDb, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, hDb.Status)
 		},

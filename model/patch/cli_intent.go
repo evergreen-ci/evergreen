@@ -90,9 +90,6 @@ type cliIntent struct {
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
 
-	// aliases defines a list of aliases when one or more patch aliases are specified.
-	Aliases []string `bson:"aliases,omitempty"`
-
 	// path defines the path to an evergreen project configuration file.
 	Path string `bson:"path"`
 
@@ -203,7 +200,6 @@ func (c *cliIntent) NewPatch() *Patch {
 		RegexTestSelectionExcludedBuildVariants: c.RegexTestSelectionExcludedBuildVariants,
 		Parameters:                              c.Parameters,
 		Alias:                                   c.Alias,
-		Aliases:                                 c.Aliases,
 		Triggers:                                TriggerInfo{Aliases: c.TriggerAliases},
 		Tasks:                                   c.Tasks,
 		RegexTasks:                              c.RegexTasks,
@@ -246,7 +242,6 @@ type CLIIntentParams struct {
 	RegexTestSelectionTasks            []string
 	RegexTestSelectionExcludedTasks    []string
 	Alias                              string
-	Aliases                            []string
 	TriggerAliases                     []string
 	RepeatDefinition                   bool
 	RepeatFailed                       bool
@@ -264,7 +259,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	if params.BaseGitHash == "" {
 		return nil, errors.New("no base hash provided")
 	}
-	if params.Finalize && params.Alias == "" && len(params.Aliases) == 0 && !params.RepeatFailed && !params.RepeatDefinition {
+	if params.Finalize && params.Alias == "" && !params.RepeatFailed && !params.RepeatDefinition {
 		if len(params.Variants)+len(params.RegexVariants)+len(params.Tasks)+len(params.RegexTasks) == 0 {
 			return nil, errors.New("no tasks or variants provided")
 		}
@@ -297,7 +292,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Finalize:                                params.Finalize,
 		Module:                                  params.Module,
 		Alias:                                   params.Alias,
-		Aliases:                                 params.Aliases,
 		TriggerAliases:                          params.TriggerAliases,
 		GitInfo:                                 params.GitInfo,
 		RepeatDefinition:                        params.RepeatDefinition,

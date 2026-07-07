@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -23,6 +24,9 @@ func resetTranslationCacheForTesting() {
 	translationCacheMu.Unlock()
 	translationGroupPtr.Store(&singleflight.Group{})
 	translationCacheEvictions.Store(0)
+	translationKeyHitsMu.Lock()
+	translationKeyHits = map[string]int64{}
+	translationKeyHitsMu.Unlock()
 }
 
 func TestGetOrComputeTranslation(t *testing.T) {
@@ -344,11 +348,12 @@ func TestContentTranslationKeySelfInvalidates(t *testing.T) {
 }
 
 func TestTranslationKeysAreDistinctAndStable(t *testing.T) {
-	// Distinct prefixes: an identical SHA never collides across the two key namespaces.
-	assert.NotEqual(t, contentTranslationKey("sha", "id"), fileTranslationKey("id", "rev", "sha"))
+	// Distinct prefixes: content and version keys never collide across namespaces.
+	assert.NotEqual(t, contentTranslationKey("sha", "id"), versionTranslationKey("id", false))
 	// Keys are deterministic for identical inputs.
 	assert.Equal(t, contentTranslationKey("s", "i"), contentTranslationKey("s", "i"))
-	assert.Equal(t, fileTranslationKey("p", "r", "s"), fileTranslationKey("p", "r", "s"))
+	// Different identifiers with identical content yield distinct keys.
+	assert.NotEqual(t, contentTranslationKey("s", "a"), contentTranslationKey("s", "b"))
 }
 
 func TestFindAndTranslateProjectForVersion(t *testing.T) {
@@ -377,6 +382,57 @@ func TestFindAndTranslateProjectForVersion(t *testing.T) {
 	require.NotNil(t, project)
 
 	assert.Equal(t, projectID, project.Identifier)
+}
+
+// TestFindAndTranslateProjectForVersionReturnedCopyIsolatesCallerMutations reproduces the manifest
+// path's real in-place mutation of a returned project (rest/route/agent.go's CreateManifest expands
+// Module fields via util.ExpandValues, which writes into the Module struct in place) and confirms it
+// cannot corrupt what a later call for the same version sees, with the cache both off and on.
+func TestFindAndTranslateProjectForVersionReturnedCopyIsolatesCallerMutations(t *testing.T) {
+	ctx := t.Context()
+	t.Cleanup(resetTranslationCacheForTesting)
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+	})
+
+	for _, cacheEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("CacheEnabled=%v", cacheEnabled), func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ParserProjectCollection, VersionCollection))
+			t.Cleanup(resetTranslationCacheForTesting)
+
+			versionID := "version_id"
+			projectID := "project_id"
+			pp := ParserProject{
+				Id:         versionID,
+				Identifier: utility.ToStringPtr(projectID),
+				Modules: []Module{
+					{Name: "m1", Owner: "orig-owner", Repo: "orig-repo", Ref: "orig-ref"},
+				},
+			}
+			require.NoError(t, pp.Insert(ctx))
+
+			settings := &evergreen.Settings{}
+			settings.ServiceFlags.ProjectTranslationCacheEnabled = cacheEnabled
+			v := &Version{Id: versionID, ProjectStorageMethod: evergreen.ProjectStorageMethodDB}
+
+			first, _, err := FindAndTranslateProjectForVersion(ctx, settings, v, false)
+			require.NoError(t, err)
+			require.Len(t, first.Modules, 1)
+
+			// Reproduce util.ExpandValues writing into the Module struct in place, as the manifest
+			// path does.
+			first.Modules[0].Owner = "expanded-owner"
+			first.Modules[0].Repo = "expanded-repo"
+			first.Modules[0].Ref = "expanded-ref"
+
+			second, _, err := FindAndTranslateProjectForVersion(ctx, settings, v, false)
+			require.NoError(t, err)
+			require.Len(t, second.Modules, 1)
+			assert.Equal(t, "orig-owner", second.Modules[0].Owner, "a later call must not see the first caller's in-place expansion")
+			assert.Equal(t, "orig-repo", second.Modules[0].Repo)
+			assert.Equal(t, "orig-ref", second.Modules[0].Ref)
+		})
+	}
 }
 
 func TestFindProjectFromVersionID(t *testing.T) {
