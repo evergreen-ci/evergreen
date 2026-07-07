@@ -590,12 +590,8 @@ func RemoveSubscription(ctx context.Context, id string) error {
 	}
 	if sub != nil {
 		if ws, ok := sub.Subscriber.Target.(*WebhookSubscriber); ok && ws != nil {
-			if ws.SecretParameter != "" {
-				webhookSecretParamToDelete = ws.SecretParameter
-			}
-			if ws.AuthorizationHeaderParameter != "" {
-				authHeaderParamToDelete = ws.AuthorizationHeaderParameter
-			}
+			webhookSecretParamToDelete = ws.SecretParameter
+			authHeaderParamToDelete = ws.AuthorizationHeaderParameter
 		}
 	}
 
