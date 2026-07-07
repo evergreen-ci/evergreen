@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"strings"
 
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
@@ -172,9 +173,10 @@ func (s *WebhookSubscriber) validate() error {
 }
 
 // GetHeader gets the value for the given key.
+// kim: TODO: test case-insensitivity.
 func (s *WebhookSubscriber) GetHeader(key string) string {
 	for _, h := range s.Headers {
-		if h.Key == key {
+		if strings.EqualFold(h.Key, key) {
 			return h.Value
 		}
 	}
@@ -183,7 +185,7 @@ func (s *WebhookSubscriber) GetHeader(key string) string {
 
 func (s *WebhookSubscriber) setHeader(key, value string) {
 	for i := range s.Headers {
-		if s.Headers[i].Key == key {
+		if strings.EqualFold(s.Headers[i].Key, key) {
 			s.Headers[i].Value = value
 			return
 		}
