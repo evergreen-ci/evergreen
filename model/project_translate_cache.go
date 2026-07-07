@@ -91,14 +91,14 @@ func currentTranslationCacheBytesLimit() int64 {
 
 // estimateProjectSize approximates p's memory cost as the length of its JSON encoding. This
 // underestimates live heap size but is proportional to it and, unlike the parser project, reflects
-// matrix and variant expansion. It returns 0 if p can't be marshaled, so an unsizable entry doesn't
-// block the cache.
-func estimateProjectSize(p *Project) int64 {
+// matrix and variant expansion. The bool is false if p can't be marshaled, in which case the caller
+// must not cache it: an unsizable entry would escape the byte budget entirely.
+func estimateProjectSize(p *Project) (int64, bool) {
 	data, err := json.Marshal(p)
 	if err != nil {
-		return 0
+		return 0, false
 	}
-	return int64(len(data))
+	return int64(len(data)), true
 }
 
 // addToTranslationCache inserts p under key and evicts least-recently-used entries until the running
@@ -107,7 +107,10 @@ func estimateProjectSize(p *Project) int64 {
 // are dropped first. A single entry larger than the whole budget is kept rather than immediately
 // evicted, so the budget can be exceeded transiently in that degenerate case.
 func addToTranslationCache(key string, p *Project) {
-	size := estimateProjectSize(p)
+	size, ok := estimateProjectSize(p)
+	if !ok {
+		return
+	}
 	c := getTranslationCache()
 
 	translationCacheWriteMu.Lock()

@@ -347,7 +347,8 @@ func TestByteBoundedCacheEvictsLRUToBudget(t *testing.T) {
 		}
 		return p
 	}
-	entrySize := estimateProjectSize(makeProject("sample"))
+	entrySize, ok := estimateProjectSize(makeProject("sample"))
+	require.True(t, ok)
 	require.Positive(t, entrySize)
 
 	// Budget holds ~3 entries at a time.
