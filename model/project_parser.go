@@ -647,7 +647,9 @@ func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergree
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
 // fetch and translate the parser project from before it was modified by generate.tasks.
 //
-// The returned *Project is always the caller's own copy, safe to read or mutate.
+// The returned *Project is the caller's own value: its top-level slices and maps (BuildVariants,
+// Tasks, Modules, etc.) are safe to reorder, append to, or replace. Structures nested below that
+// level are shared with the cache and must not be mutated.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
 	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
 }
