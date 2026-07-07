@@ -600,7 +600,38 @@ const (
 	// ppTranslationCacheEvictionsOtelAttribute records the cumulative count of translations the LRU
 	// has dropped to make room for new ones (or because their TTL expired), before anything reused them.
 	ppTranslationCacheEvictionsOtelAttribute = "evergreen.parser_project.translation_cache_evictions"
+	// ppTranslationCacheHottestKeyOtelAttribute records the cache key with the most hits right now, so
+	// the hottest cached configs are identifiable in Honeycomb for tuning.
+	ppTranslationCacheHottestKeyOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key"
+	// ppTranslationCacheHottestKeyHitsOtelAttribute records how many hits the hottest key has served.
+	ppTranslationCacheHottestKeyHitsOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key_hits"
 )
+
+// projectTranslationCacheEnabled reports whether the project translation cache ServiceFlag is on.
+// Callers thread settings from the entry point rather than reading the global environment.
+func projectTranslationCacheEnabled(settings *evergreen.Settings) bool {
+	return settings != nil && settings.ServiceFlags.ProjectTranslationCacheEnabled
+}
+
+// setTranslationCacheSpanAttributes records the cache hit/dedup outcome on span, plus the LRU's
+// size, evictions, and hottest key when the cache is enabled.
+func setTranslationCacheSpanAttributes(span trace.Span, cacheHit, deduped, cacheEnabled bool) {
+	span.SetAttributes(
+		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
+		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
+	)
+	if !cacheEnabled {
+		return
+	}
+	size, evictions := translationCacheStats()
+	hottestKey, hottestHits := hottestTranslationKey()
+	span.SetAttributes(
+		attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
+		attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
+		attribute.String(ppTranslationCacheHottestKeyOtelAttribute, hottestKey),
+		attribute.Int64(ppTranslationCacheHottestKeyHitsOtelAttribute, hottestHits),
+	)
+}
 
 // FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
 func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergreen.Settings, versionID string, preGeneration bool) (*Project, *ParserProject, error) {
@@ -624,8 +655,9 @@ func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergree
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
 // fetch and translate the parser project from before it was modified by generate.tasks.
 //
-// When the translation cache is enabled the returned *Project is a shared pointer. Callers
-// must not mutate it; make a local copy of any fields that need modification before use.
+// The returned *Project is the caller's own value: its top-level slices and maps (BuildVariants,
+// Tasks, Modules, etc.) are safe to reorder, append to, or replace. Structures nested below that
+// level are shared with the cache and must not be mutated.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
 	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
 }
@@ -662,36 +694,8 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		pp.Identifier = utility.ToStringPtr(versionIdentifier)
 	}
 
-	cacheEnabled := settings.ServiceFlags.ProjectTranslationCacheEnabled
-	var key string
-	if cacheEnabled {
-		var sha string
-		sha, err = parserProjectContentSHA(pp)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "computing parser project content hash")
-		}
-		key = contentTranslationKey(sha, versionIdentifier)
-	} else {
-		// When the cache is off, we don't need a key that changes whenever the parser project changes
-		// (which the LRU requires so it never serves a stale config after generate.tasks). We can instead
-		// use the version ID. It's cheaper and enough for singleflight, which only coalesces concurrent
-		// in-flight calls and retains nothing that could go stale.
-		key = versionTranslationKey(versionID, preGeneration)
-	}
-	p, cacheHit, deduped, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
-		return TranslateProject(ctx, pp)
-	})
-	span.SetAttributes(
-		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
-		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
-	)
-	if cacheEnabled {
-		size, evictions := translationCacheStats()
-		span.SetAttributes(
-			attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
-			attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
-		)
-	}
+	cacheEnabled := projectTranslationCacheEnabled(settings)
+	p, err := translateAndCache(ctx, span, pp, versionIdentifier, versionTranslationKey(versionID, preGeneration), cacheEnabled)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
 	}
@@ -832,7 +836,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	// Return project even with errors.
-	p, err := TranslateProject(ctx, intermediateProject)
+	cacheEnabled := opts != nil && opts.cacheEnabled
+	var revision string
+	if opts != nil {
+		revision = opts.Revision
+	}
+	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, cacheEnabled)
 	if p != nil {
 		*project = *p
 	}
@@ -844,6 +853,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	intermediateProject.Include = nil
 
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+}
+
+// loadTranslateProject translates the post-merge intermediate project, optionally serving the
+// result from the content-hash translation cache keyed on its content and projectID.
+func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProject *ParserProject, projectID, revision string, cacheEnabled bool) (*Project, error) {
+	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision), cacheEnabled)
 }
 
 // mergeIncludes merges all included files into intermediateProject.
@@ -1221,6 +1236,9 @@ type GetProjectOpts struct {
 	LocalIncludeDir string
 	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
 	EnableYAMLAnchors bool
+	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
+	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
+	cacheEnabled bool
 }
 
 type PatchOpts struct {
@@ -1428,9 +1446,11 @@ const fetchProjectFilesTimeout = time.Minute
 
 // GetProjectFromFile fetches project configuration files from its source (e.g.
 // from a patch diff, GitHub, etc).
-func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, error) {
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *evergreen.Settings) (ProjectInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, fetchProjectFilesTimeout)
 	defer cancel()
+
+	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
 
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {

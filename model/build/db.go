@@ -11,6 +11,8 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // The MongoDB collection for build documents.
@@ -172,6 +174,23 @@ func UpdateAllBuilds(ctx context.Context, query any, update any) error {
 		update,
 	)
 	return err
+}
+
+// SetTasksCaches sets the task cache for multiple builds in a single bulk write,
+// where the keys of tasksByBuild are build IDs and the values are the task
+// caches to set for each build.
+func SetTasksCaches(ctx context.Context, tasksByBuild map[string][]TaskCache) error {
+	if len(tasksByBuild) == 0 {
+		return nil
+	}
+	writes := make([]mongo.WriteModel, 0, len(tasksByBuild))
+	for buildID, tasks := range tasksByBuild {
+		writes = append(writes, mongo.NewUpdateOneModel().
+			SetFilter(bson.M{IdKey: buildID}).
+			SetUpdate(bson.M{"$set": bson.M{TasksKey: tasks}}))
+	}
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).BulkWrite(ctx, writes, options.BulkWrite().SetOrdered(false))
+	return errors.Wrap(err, "bulk updating task caches")
 }
 
 func FindProjectForBuild(ctx context.Context, buildID string) (string, error) {

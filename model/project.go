@@ -1,9 +1,9 @@
 package model
 
 import (
-	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"regexp"
 	"slices"
@@ -85,6 +85,25 @@ func (p *Project) buildTaskCache() {
 	for i := range p.Tasks {
 		p.tasksByName[p.Tasks[i].Name] = &p.Tasks[i]
 	}
+}
+
+// cloneForCacheReturn shallow-clones p's top-level slices and maps, and rebuilds the task cache
+// to point into the clone's Tasks. Nested structures below the top level remain shared and must
+// stay read-only. We do this instead of a deeper clone because that costs orders of magnitude more,
+// up to more than a full TranslateProject, which would defeat the point of caching.
+func (p *Project) cloneForCacheReturn() *Project {
+	cp := *p
+	cp.Ignore = slices.Clone(p.Ignore)
+	cp.Parameters = slices.Clone(p.Parameters)
+	cp.Modules = slices.Clone(p.Modules)
+	cp.BuildVariants = slices.Clone(p.BuildVariants)
+	cp.TaskGroups = slices.Clone(p.TaskGroups)
+	cp.Tasks = slices.Clone(p.Tasks)
+	if p.Functions != nil {
+		cp.Functions = maps.Clone(p.Functions)
+	}
+	cp.buildTaskCache()
+	return &cp
 }
 
 type ProjectInfo struct {
@@ -843,14 +862,6 @@ type TVPair struct {
 }
 
 type TVPairSet []TVPair
-
-// dedupeTVPairs removes duplicate task/variant pairs
-func dedupeTVPairs(pairs TVPairSet) TVPairSet {
-	slices.SortFunc(pairs, func(a, b TVPair) int {
-		return cmp.Or(cmp.Compare(a.Variant, b.Variant), cmp.Compare(a.TaskName, b.TaskName))
-	})
-	return slices.Compact(pairs)
-}
 
 // ByVariant returns a list of TVPairs filtered to include only those
 // for the given variant
@@ -1798,8 +1809,8 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // variants will run and which tasks will run on each build variant. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, aliases []string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), aliases, true, "")
+func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, alias string) {
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), alias, true, "")
 
 	// Connect the execution tasks to the display tasks.
 	displayTasksToExecTasks := map[string][]string{}
@@ -1830,7 +1841,7 @@ func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch
 // variant. If includeDeps is set, it will also resolve task dependencies. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester string, aliases []string, includeDeps bool, branch string) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester, alias string, includeDeps bool, branch string) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
 		// Tags should start with "."
@@ -1909,17 +1920,14 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 
-	for _, alias := range aliases {
-		if alias == "" {
-			continue
-		}
+	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		aliasDefs, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
+		aliases, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		aliasPairs := TaskVariantPairs{}
 		if !catcher.HasErrors() {
-			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliasDefs, requester, branch)
+			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliases, requester, branch)
 			catcher.Wrap(err, "getting task/variant pairs for alias")
 		}
 		grip.Error(ctx, message.WrapError(catcher.Resolve(), message.Fields{
@@ -1934,11 +1942,6 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		}
 	}
 
-	// Aliases can select overlapping task/variant pairs, so deduplicate them.
-	if len(aliases) > 1 {
-		pairs.ExecTasks = dedupeTVPairs(pairs.ExecTasks)
-		pairs.DisplayTasks = dedupeTVPairs(pairs.DisplayTasks)
-	}
 	pairs = p.extractDisplayTasks(pairs)
 	if includeDeps {
 		var err error
@@ -2014,7 +2017,6 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-// findAliasesForPatch finds all DB entries matching the given alias on the project.
 func findAliasesForPatch(ctx context.Context, projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
 	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectId, alias)
 	if err != nil {
