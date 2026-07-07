@@ -19,17 +19,18 @@ import (
 )
 
 var (
-	idKey          = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
-	projectIDKey   = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
-	aliasKey       = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
-	gitTagKey      = bsonutil.MustHaveTag(ProjectAlias{}, "GitTag")
-	remotePathKey  = bsonutil.MustHaveTag(ProjectAlias{}, "RemotePath")
-	variantKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
-	descriptionKey = bsonutil.MustHaveTag(ProjectAlias{}, "Description")
-	taskKey        = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
-	parametersKey  = bsonutil.MustHaveTag(ProjectAlias{}, "Parameters")
-	variantTagsKey = bsonutil.MustHaveTag(ProjectAlias{}, "VariantTags")
-	taskTagsKey    = bsonutil.MustHaveTag(ProjectAlias{}, "TaskTags")
+	idKey             = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
+	projectIDKey      = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
+	aliasKey          = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
+	gitTagKey         = bsonutil.MustHaveTag(ProjectAlias{}, "GitTag")
+	remotePathKey     = bsonutil.MustHaveTag(ProjectAlias{}, "RemotePath")
+	variantKey        = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
+	descriptionKey    = bsonutil.MustHaveTag(ProjectAlias{}, "Description")
+	taskKey           = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
+	parametersKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Parameters")
+	variantTagsKey    = bsonutil.MustHaveTag(ProjectAlias{}, "VariantTags")
+	taskTagsKey       = bsonutil.MustHaveTag(ProjectAlias{}, "TaskTags")
+	requiredLabelsKey = bsonutil.MustHaveTag(ProjectAlias{}, "RequiredLabels")
 )
 
 const (
@@ -428,16 +429,17 @@ func (p *ProjectAlias) Upsert(ctx context.Context) error {
 		p.ID = mgobson.NewObjectId()
 	}
 	update := bson.M{
-		aliasKey:       p.Alias,
-		gitTagKey:      p.GitTag,
-		remotePathKey:  p.RemotePath,
-		projectIDKey:   p.ProjectID,
-		variantKey:     p.Variant,
-		descriptionKey: p.Description,
-		variantTagsKey: p.VariantTags,
-		taskTagsKey:    p.TaskTags,
-		taskKey:        p.Task,
-		parametersKey:  p.Parameters,
+		aliasKey:          p.Alias,
+		gitTagKey:         p.GitTag,
+		remotePathKey:     p.RemotePath,
+		projectIDKey:      p.ProjectID,
+		variantKey:        p.Variant,
+		descriptionKey:    p.Description,
+		variantTagsKey:    p.VariantTags,
+		taskTagsKey:       p.TaskTags,
+		taskKey:           p.Task,
+		parametersKey:     p.Parameters,
+		requiredLabelsKey: p.RequiredLabels,
 	}
 
 	_, err := db.Upsert(ctx, ProjectAliasCollection, bson.M{

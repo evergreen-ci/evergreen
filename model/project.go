@@ -1846,6 +1846,12 @@ func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, re
 		aliases, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
+		// GitHub PR alias entries may be gated on PR labels; only include the
+		// entries whose required labels are satisfied by the PR's current labels.
+		if alias == evergreen.GithubPRAlias {
+			aliases = ProjectAliases(aliases).FilterByLabels(patchDoc.GithubPatchData.Labels)
+		}
+
 		aliasPairs := TaskVariantPairs{}
 		if !catcher.HasErrors() {
 			aliasPairs, err = p.BuildProjectTVPairsWithAlias(aliases, requester)
