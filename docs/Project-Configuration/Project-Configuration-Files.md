@@ -768,7 +768,8 @@ expensive cache hydration) are only beneficial on the main branch.
 
 `allowed_branches` specifies a list of regex patterns. The task will only run if
 the version's branch matches at least one pattern. If the branch does not match
-any pattern, the task is not created.
+any pattern, the task is not created and any tasks that depend on it will not
+have a dependency on the skipped task (similar to `disable`).
 
 ```yaml
 tasks:
@@ -814,9 +815,8 @@ buildvariants:
           - "^master$"
 ```
 
-The inheritance priority follows the same rules as other task-level settings: the
-task listed under a build variant takes highest priority, then the project task
-definition, then the build variant definition.
+The inheritance priority follows the same rules as other task-level settings,
+documented in [Task Fields Override Hierarchy](#task-fields-override-hierarchy).
 
 Patterns are Go regular expressions (not globs). Use anchors like `^` and `$`
 for exact matching. For example, `master` matches any branch containing

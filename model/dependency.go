@@ -19,7 +19,7 @@ type dependencyIncluder struct {
 // for the given set of tasks.
 // If any dependency is cross-variant, it will include the variant and task for that dependency.
 // This function can return an error, but it should be treated as an informational warning.
-func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo, branch string) ([]TVPair, error) {
+func IncludeDependencies(project *Project, tvpairs []TVPair, requester, branch string, activationInfo *specificActivationInfo) ([]TVPair, error) {
 	di := &dependencyIncluder{Project: project, requester: requester, branch: branch}
 	return di.include(tvpairs, activationInfo, nil)
 }
@@ -28,7 +28,7 @@ func IncludeDependencies(project *Project, tvpairs []TVPair, requester string, a
 // activationInfo and generatedVariants are required in the case for generate tasks to detect if
 // new generated dependency's task/variant pairs are depended on by inactive tasks. If so,
 // we also set these new dependencies to inactive.
-func IncludeDependenciesWithGenerated(project *Project, tvpairs []TVPair, requester string, activationInfo *specificActivationInfo, generatedVariants []parserBV, branch string) ([]TVPair, error) {
+func IncludeDependenciesWithGenerated(project *Project, tvpairs []TVPair, requester, branch string, activationInfo *specificActivationInfo, generatedVariants []parserBV) ([]TVPair, error) {
 	di := &dependencyIncluder{Project: project, requester: requester, branch: branch}
 	return di.include(tvpairs, activationInfo, generatedVariants)
 }

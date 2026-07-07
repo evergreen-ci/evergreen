@@ -526,7 +526,7 @@ func (g *GeneratedProject) getNewTasksWithDependencies(ctx context.Context, v *V
 	}
 
 	var err error
-	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, activationInfo, g.BuildVariants, v.Branch)
+	newTVPairs.ExecTasks, err = IncludeDependenciesWithGenerated(p, newTVPairs.ExecTasks, v.Requester, v.Branch, activationInfo, g.BuildVariants)
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
 		"message": "error including dependencies for generator",
 		"task":    g.Task.Id,
