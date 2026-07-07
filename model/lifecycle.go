@@ -1507,6 +1507,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		taskNames := creationInfo.Pairs.ExecTasks.TaskNames(pair.Variant)
 		displayNames := creationInfo.Pairs.DisplayTasks.TaskNames(pair.Variant)
 		activateVariant := !creationInfo.ActivationInfo.variantHasSpecificActivation(pair.Variant)
+		if creationInfo.RespectVersionActivation {
+			activateVariant = activateVariant && utility.FromBoolPtr(creationInfo.Version.Activated)
+		}
 		tsParams := creationInfo.TestSelectionParams
 		tsParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(pair.Variant, creationInfo)
 		buildCreationArgs := TaskCreationInfo{
@@ -1767,13 +1770,18 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			return nil, nil, err
 		}
 	}
-	if creationInfo.ActivationInfo.hasActivationTasks() {
-		if err = creationInfo.Version.ActivateAndSetBuildVariants(ctx); err != nil {
-			return nil, nil, errors.Wrap(err, "activating version and adding batchtime tasks")
-		}
-	} else {
-		if err = creationInfo.Version.SetActivated(ctx, true); err != nil {
-			return nil, nil, errors.Wrap(err, "setting version activation to true")
+	// When respecting the version's activation state (e.g. injecting tasks into an
+	// unactivated PR version pending authorization), leave the version's activation
+	// untouched rather than forcing it active.
+	if !creationInfo.RespectVersionActivation {
+		if creationInfo.ActivationInfo.hasActivationTasks() {
+			if err = creationInfo.Version.ActivateAndSetBuildVariants(ctx); err != nil {
+				return nil, nil, errors.Wrap(err, "activating version and adding batchtime tasks")
+			}
+		} else {
+			if err = creationInfo.Version.SetActivated(ctx, true); err != nil {
+				return nil, nil, errors.Wrap(err, "setting version activation to true")
+			}
 		}
 	}
 

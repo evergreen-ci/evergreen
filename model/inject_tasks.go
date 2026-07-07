@@ -81,6 +81,11 @@ func InjectTasksIntoVersion(ctx context.Context, settings *evergreen.Settings, v
 		Version:    v,
 		TaskIDs:    taskIDs,
 		Pairs:      pairsForExistingVariants,
+		// Injected tasks must follow the version's activation state so that an
+		// unactivated version (e.g. an outside-org PR pending authorization) is
+		// neither itself activated nor given an activated build/task from an
+		// injected new variant.
+		RespectVersionActivation: true,
 	}
 	// Only populated for patches, not mainline commits.
 	if evergreen.IsPatchRequester(v.Requester) {
