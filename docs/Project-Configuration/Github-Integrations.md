@@ -20,6 +20,15 @@ If you'd like the option of creating patches but wouldn't like it to happen auto
 
 You can read more about these options [here](../Project-Configuration/Project-and-Distro-Settings#github-pull-request-testing).
 
+### Label-gated tasks
+
+You can gate GitHub patch definitions on PR labels using `required_labels` on
+`github_pr_aliases` entries (see [PR Aliases](../Project-Configuration/Project-and-Distro-Settings#pr-aliases)).
+Adding a label that matches an entry's `required_labels` runs that entry's tasks on
+the current PR version; removing the label does not cancel tasks that are already
+running. If the label is added before a PR version exists (for example on a
+manual-testing project), the tasks are selected the next time a version is created.
+
 ### Retry a patch
 
 ```bash
