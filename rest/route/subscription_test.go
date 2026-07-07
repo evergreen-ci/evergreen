@@ -8,12 +8,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -268,6 +272,65 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	s.NoError(d.Parse(ctx, r))
 	resp = d.Run(ctx)
 	s.Equal(401, resp.Status())
+}
+
+func TestGetProjectSubscriptionRequiresPermission(t *testing.T) {
+	t.Cleanup(func() {
+		assert.NoError(t, db.ClearCollections(dbModel.ProjectRefCollection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	})
+
+	for tName, tCase := range map[string]func(t *testing.T, pRef *dbModel.ProjectRef, role string){
+		"AuthorizedUserResolvesProjectID": func(t *testing.T, pRef *dbModel.ProjectRef, role string) {
+			usr := &user.DBUser{Id: "authorized", SystemRoles: []string{role}}
+			ctx := gimlet.AttachUser(t.Context(), usr)
+			r, err := http.NewRequest(http.MethodGet, "/subscriptions?owner="+pRef.Identifier+"&type=project", nil)
+			require.NoError(t, err)
+
+			h := &subscriptionGetHandler{}
+			require.NoError(t, h.Parse(ctx, r))
+			require.NoError(t, err)
+			assert.Equal(t, pRef.Id, h.owner)
+		},
+		"UnauthorizedUserIsRejected": func(t *testing.T, pRef *dbModel.ProjectRef, role string) {
+			usr := &user.DBUser{Id: "unauthorized"}
+			ctx := gimlet.AttachUser(t.Context(), usr)
+			r, err := http.NewRequest(http.MethodGet, "/subscriptions?owner="+pRef.Identifier+"&type=project", nil)
+			require.NoError(t, err)
+
+			h := &subscriptionGetHandler{}
+			err = h.Parse(ctx, r)
+			assert.Error(t, err)
+			respErr, ok := err.(gimlet.ErrorResponse)
+			require.True(t, ok)
+			assert.Equal(t, http.StatusUnauthorized, respErr.StatusCode)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(dbModel.ProjectRefCollection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+
+			pRef := &dbModel.ProjectRef{
+				Id:         "project-id",
+				Identifier: "my-project",
+			}
+			require.NoError(t, pRef.Insert(t.Context()))
+
+			roleManager := evergreen.GetEnvironment().RoleManager()
+			scope := gimlet.Scope{
+				ID:        "project-view-scope",
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{pRef.Id},
+			}
+			require.NoError(t, roleManager.AddScope(t.Context(), scope))
+			role := gimlet.Role{
+				ID:          "project-viewer",
+				Scope:       scope.ID,
+				Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value},
+			}
+			require.NoError(t, roleManager.UpdateRole(t.Context(), role))
+
+			tCase(t, pRef, role.ID)
+		})
+	}
 }
 
 func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
