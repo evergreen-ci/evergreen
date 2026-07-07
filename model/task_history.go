@@ -16,6 +16,8 @@ import (
 
 const (
 	maxTaskHistoryLimit = 50
+	maxInactiveTaskHistoryLimit = 300
+	taskHistoryQueryMaxTime = 30 * time.Second
 )
 
 // FindTaskHistoryOptions defines options that can be passed to queries for task history.
@@ -67,7 +69,7 @@ func findActiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions)
 		queryLimit = utility.FromIntPtr(opts.Limit)
 	}
 
-	q := db.Query(filter).Sort(querySort).Limit(queryLimit)
+	q := db.Query(filter).Sort(querySort).Limit(queryLimit).Hint(TaskHistoryIndex).MaxTime(taskHistoryQueryMaxTime)
 	tasks, err := task.FindAll(ctx, q)
 
 	// We want the result to be sorted in descending order numbers. If it's currently sorted in ascending order,
@@ -94,7 +96,7 @@ func findInactiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOption
 	}
 	filter[task.RevisionOrderNumberKey] = revisionFilter
 
-	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey})
+	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(maxInactiveTaskHistoryLimit).Hint(TaskHistoryIndex).MaxTime(taskHistoryQueryMaxTime)
 	tasks, err := task.FindAll(ctx, q)
 	return tasks, err
 }
@@ -304,7 +306,7 @@ func findActiveTasksForHistoryByCreateTime(ctx context.Context, opts FindTaskHis
 		queryLimit = utility.FromIntPtr(opts.Limit)
 	}
 
-	q := db.Query(filter).Sort(querySort).Limit(queryLimit)
+	q := db.Query(filter).Sort(querySort).Limit(queryLimit).MaxTime(taskHistoryQueryMaxTime)
 	tasks, err := task.FindAll(ctx, q)
 
 	// We want the result sorted in descending create_time. If it's currently sorted ascending, reverse it.
@@ -342,7 +344,7 @@ func findInactiveTasksForHistoryByCreateTime(ctx context.Context, opts FindTaskH
 	}
 	filter[task.CreateTimeKey] = createTimeFilter
 
-	q := db.Query(filter).Sort([]string{"-" + task.CreateTimeKey})
+	q := db.Query(filter).Sort([]string{"-" + task.CreateTimeKey}).Limit(maxInactiveTaskHistoryLimit).MaxTime(taskHistoryQueryMaxTime)
 	tasks, err := task.FindAll(ctx, q)
 	return tasks, err
 }
