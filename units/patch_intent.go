@@ -40,6 +40,12 @@ const (
 	maxPatchIntentJobTime      = 10 * time.Minute
 )
 
+var (
+	githubUserInOrganization     = thirdparty.GithubUserInOrganization
+	appAuthorizedForOrg          = thirdparty.AppAuthorizedForOrg
+	githubUserHasWritePermission = thirdparty.GitHubUserHasWritePermission
+)
+
 func init() {
 	registry.AddJobType(patchIntentJobName,
 		func() amboy.Job { return makePatchIntentProcessor() })
@@ -1457,7 +1463,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	}
 	// Checking if the GitHub user is in the organization is more permissive than checking permission level
 	// for the owner/repo specified, however this is okay since for the purposes of this check its to run patches.
-	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrganization, githubUser)
+	isMember, err := githubUserInOrganization(ctx, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"job":          j.ID(),
@@ -1475,7 +1481,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return isMember, nil
 	}
 
-	isAuthorizedForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, requiredOrganization, githubUser)
+	isAuthorizedForOrg, err := appAuthorizedForOrg(ctx, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"job":          j.ID(),
@@ -1492,18 +1498,18 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return isAuthorizedForOrg, nil
 	}
 
-	// Verify external collaborators separately.
-	hasWritePermission, err := thirdparty.GitHubUserHasWritePermission(ctx,
-		patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo, githubUser)
+	// Verify external collaborators against the base repository.
+	hasWritePermission, err := githubUserHasWritePermission(ctx,
+		patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, githubUser)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"job":        j.ID(),
-			"message":    "failed to check if user has write permission for repo",
-			"source":     "patch intents",
-			"creator":    githubUser,
-			"head_owner": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.HeadOwner),
-			"head_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-			"pr_number":  patchDoc.GithubPatchData.PRNumber,
+			"job":       j.ID(),
+			"message":   "failed to check if user has write permission for repo",
+			"source":    "patch intents",
+			"creator":   githubUser,
+			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number": patchDoc.GithubPatchData.PRNumber,
 		}))
 	}
 	return hasWritePermission, nil
