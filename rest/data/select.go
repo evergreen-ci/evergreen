@@ -18,6 +18,9 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -110,6 +113,18 @@ func newTestSelectionClient(c *http.Client) *testselection.APIClient {
 // to run based on the provided SelectTestsRequest. It returns the list of
 // selected tests.
 func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, error) {
+	ctx, span := otel.Tracer("github.com/evergreen-ci/evergreen/rest/data").Start(ctx, "test_selection.select_tests")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("project_id", req.Project),
+		attribute.String("requester", req.Requester),
+		attribute.String("build_variant", req.BuildVariant),
+		attribute.String("task_id", req.TaskID),
+		attribute.String("task_name", req.TaskName),
+		attribute.Int("input_test_count", len(req.Tests)),
+		attribute.Int("strategy_count", len(req.Strategies)),
+	)
+
 	c := newTestSelectionClient(testSelectionHTTPClient)
 	var strategies []testselection.StrategyEnum
 	for _, s := range req.Strategies {
@@ -148,6 +163,8 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 			"task_name":     req.TaskName,
 			"test_count":    len(req.Tests),
 		})
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, wrapTSSError(err)
 	}
 	selectedTests := make([]string, 0, len(selectedTestPtrs))
@@ -156,6 +173,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 			selectedTests = append(selectedTests, *t)
 		}
 	}
+	span.SetAttributes(attribute.Int("selected_test_count", len(selectedTests)))
 	return selectedTests, nil
 }
 
