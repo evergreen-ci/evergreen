@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"time"
 
@@ -30,24 +29,17 @@ const (
 
 const (
 	testSelectionWriteTimeout                     = 10 * time.Second
-	testSelectionStatusTimeout                    = 2 * time.Second
+	testSelectionStatusTimeout                    = 4 * time.Second
+	testSelectionDecorationTimeout                = 5 * time.Second
 	testSelectionDisplayTaskStatusRequestParallel = 8
 )
 
 var testSelectionHTTPClient = newTestSelectionHTTPClient()
 
 func newTestSelectionHTTPClient() *http.Client {
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   5 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		MaxIdleConnsPerHost:   100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   5 * time.Second,
-		ExpectContinueTimeout: time.Second,
-	}
+	// Each request's overall duration is bounded by the caller's context deadline but increase the idle connection pool to reduce the number of reconnects.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConnsPerHost = 100
 
 	return &http.Client{
 		Timeout:   testSelectionWriteTimeout,
@@ -334,11 +326,13 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 	if len(results) == 0 {
 		return nil
 	}
+	if !t.DisplayOnly && !t.TestSelectionEnabled {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, testSelectionDecorationTimeout)
+	defer cancel()
 	if t.DisplayOnly {
 		return decorateDisplayTaskQuarantineStatus(ctx, t.Id, results)
-	}
-	if !t.TestSelectionEnabled {
-		return nil
 	}
 	testNames := make([]string, 0, len(results))
 	for _, r := range results {
