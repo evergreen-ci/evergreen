@@ -53,6 +53,7 @@ type Config struct {
 type ResolverRoot interface {
 	AdminSettings() AdminSettingsResolver
 	Annotation() AnnotationResolver
+	ContainerIsolationSettings() ContainerIsolationSettingsResolver
 	ContainerPool() ContainerPoolResolver
 	Cost() CostResolver
 	Distro() DistroResolver
@@ -2467,6 +2468,9 @@ type AdminSettingsResolver interface {
 }
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
+}
+type ContainerIsolationSettingsResolver interface {
+	Image(ctx context.Context, obj *model.APIContainerIsolationSettings) (string, error)
 }
 type ContainerPoolResolver interface {
 	Port(ctx context.Context, obj *model.APIContainerPool) (int, error)
@@ -24444,10 +24448,10 @@ func (ec *executionContext) _ContainerIsolationSettings_image(ctx context.Contex
 		field,
 		ec.fieldContext_ContainerIsolationSettings_image,
 		func(ctx context.Context) (any, error) {
-			return obj.Image, nil
+			return ec.resolvers.ContainerIsolationSettings().Image(ctx, obj)
 		},
 		nil,
-		ec.marshalNString2ᚖstring,
+		ec.marshalNString2string,
 		true,
 		true,
 	)
@@ -24457,8 +24461,8 @@ func (ec *executionContext) fieldContext_ContainerIsolationSettings_image(_ cont
 	fc = &graphql.FieldContext{
 		Object:     "ContainerIsolationSettings",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -93618,17 +93622,48 @@ func (ec *executionContext) _ContainerIsolationSettings(ctx context.Context, sel
 		case "enabled":
 			out.Values[i] = ec._ContainerIsolationSettings_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "image":
-			out.Values[i] = ec._ContainerIsolationSettings_image(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ContainerIsolationSettings_image(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "requireIsolation":
 			out.Values[i] = ec._ContainerIsolationSettings_requireIsolation(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))

@@ -165,6 +165,9 @@ models:
         value: github.com/evergreen-ci/evergreen/model/distro.CommunicationMethodRPC
   ContainerIsolationSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerIsolationSettings
+    fields:
+      image:
+        resolver: true
   ContainerIsolationSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerIsolationSettings
   ContainerPool:
