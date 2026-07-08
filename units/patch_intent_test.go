@@ -2519,3 +2519,54 @@ func TestGitHubStatusRuleTarget(t *testing.T) {
 		assert.Equal(t, "project-branch", branch)
 	})
 }
+
+func TestIsUserAuthorized(t *testing.T) {
+	t.Run("ForkPRExternalCollaboratorPermissionChecksBaseRepository", func(t *testing.T) {
+		originalGitHubUserInOrganization := githubUserInOrganization
+		originalAppAuthorizedForOrg := appAuthorizedForOrg
+		originalGitHubUserHasWritePermission := githubUserHasWritePermission
+		t.Cleanup(func() {
+			githubUserInOrganization = originalGitHubUserInOrganization
+			appAuthorizedForOrg = originalAppAuthorizedForOrg
+			githubUserHasWritePermission = originalGitHubUserHasWritePermission
+		})
+
+		githubUserInOrganization = func(ctx context.Context, org, username string) (bool, error) {
+			assert.Equal(t, "required-org", org)
+			assert.Equal(t, "external-user", username)
+			return false, nil
+		}
+		appAuthorizedForOrg = func(ctx context.Context, org, username string) (bool, error) {
+			assert.Equal(t, "required-org", org)
+			assert.Equal(t, "external-user", username)
+			return false, nil
+		}
+
+		var checkedOwner, checkedRepo string
+		githubUserHasWritePermission = func(ctx context.Context, owner, repo, username string) (bool, error) {
+			checkedOwner = owner
+			checkedRepo = repo
+			assert.Equal(t, "external-user", username)
+			return owner == "base-owner" && repo == "base-repo", nil
+		}
+
+		j := &patchIntentProcessor{}
+		patchDoc := &patch.Patch{
+			GithubPatchData: thirdparty.GithubPatch{
+				BaseOwner: "base-owner",
+				BaseRepo:  "base-repo",
+				HeadOwner: "fork-owner",
+				HeadRepo:  "fork-repo",
+				PRNumber:  123,
+				Author:    "external-user",
+			},
+		}
+
+		authorized, err := j.isUserAuthorized(t.Context(), patchDoc, "required-org", "external-user")
+
+		assert.NoError(t, err)
+		assert.True(t, authorized)
+		assert.Equal(t, "base-owner", checkedOwner)
+		assert.Equal(t, "base-repo", checkedRepo)
+	})
+}

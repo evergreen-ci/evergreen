@@ -23,20 +23,8 @@ type DbTaskTestResults struct {
 	// FailedTestsSample is the first X failing tests of the test Results.
 	// This is an optimization for Evergreen's UI features that display a
 	// limited number of failing tests for a task.
-	FailedTestsSample []string `bson:"failed_tests_sample"`
-	// QuarantinedTestsCount is the total number of tests skipped because they
-	// were quarantined in TSS.
-	QuarantinedTestsCount int `bson:"quarantined_tests_count,omitempty"`
-	// QuarantinedTests is the snapshot of tests skipped because they were
-	// quarantined in TSS at execution time.
-	QuarantinedTests []QuarantinedTest `bson:"quarantined_tests,omitempty"`
-	Results          []TestResult      `bson:"-"`
-}
-
-// QuarantinedTest represents a test skipped because it was quarantined in TSS.
-type QuarantinedTest struct {
-	TestName        string `bson:"test_name" json:"test_name"`
-	DisplayTestName string `bson:"display_test_name,omitempty" json:"display_test_name,omitempty"`
+	FailedTestsSample []string     `bson:"failed_tests_sample"`
+	Results           []TestResult `bson:"-"`
 }
 
 // ID creates a unique hash for a TestResultsInfo.
@@ -61,16 +49,12 @@ func PartitionKey(createdAt time.Time, project string, id string) string {
 }
 
 var (
-	IdKey                             = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
-	StatsKey                          = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
-	TotalCountKey                     = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
-	FailedCountKey                    = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
-	TestResultsInfoKey                = bsonutil.MustHaveTag(DbTaskTestResults{}, "Info")
-	TestResultsFailedTestsSampleKey   = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
-	QuarantinedTestsCountKey          = bsonutil.MustHaveTag(DbTaskTestResults{}, "QuarantinedTestsCount")
-	QuarantinedTestsKey               = bsonutil.MustHaveTag(DbTaskTestResults{}, "QuarantinedTests")
-	TestResultsInfoTaskIDKey          = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
-	TestResultsInfoExecutionKey       = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
-	QuarantinedTestNameKey            = bsonutil.MustHaveTag(QuarantinedTest{}, "TestName")
-	QuarantinedTestDisplayTestNameKey = bsonutil.MustHaveTag(QuarantinedTest{}, "DisplayTestName")
+	IdKey                           = bsonutil.MustHaveTag(DbTaskTestResults{}, "ID")
+	StatsKey                        = bsonutil.MustHaveTag(DbTaskTestResults{}, "Stats")
+	TotalCountKey                   = bsonutil.MustHaveTag(TaskTestResultsStats{}, "TotalCount")
+	FailedCountKey                  = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
+	TestResultsInfoKey              = bsonutil.MustHaveTag(DbTaskTestResults{}, "Info")
+	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
+	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
+	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
 )
