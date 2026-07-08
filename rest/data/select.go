@@ -35,7 +35,7 @@ const (
 	testSelectionWriteTimeout                     = 10 * time.Second
 	testSelectionStatusTimeout                    = 4 * time.Second
 	testSelectionDecorationTimeout                = 5 * time.Second
-	testSelectionDisplayTaskStatusRequestParallel = 8
+	testSelectionDisplayTaskStatusRequestParallel = 15
 )
 
 // Using a shared HTTP client so we can reuse idle connections between TSS calls and reduce the number of reconnects.
