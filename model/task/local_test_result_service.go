@@ -97,9 +97,13 @@ func (s *localTestResultsService) Get(ctx context.Context, taskOpts []Task, getO
 	}
 
 	allTaskResults := make([]testresult.TaskTestResults, len(allDBTaskResults))
+	bounds := newTestResultBounds(getOpts)
 	for i, dbTaskResults := range allDBTaskResults {
+		skip, limit, include := bounds.forTask(dbTaskResults.Stats.TotalCount)
 		allTaskResults[i].Stats = dbTaskResults.Stats
-		allTaskResults[i].Results = dbTaskResults.Results
+		if include {
+			allTaskResults[i].Results = sliceTestResults(dbTaskResults.Results, skip, limit)
+		}
 		allTaskResults[i].QuarantinedTestsCount = dbTaskResults.QuarantinedTestsCount
 		allTaskResults[i].QuarantinedTests = dbTaskResults.QuarantinedTests
 	}

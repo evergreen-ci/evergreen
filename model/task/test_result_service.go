@@ -96,9 +96,17 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts Ge
 	// in which case we only need to retrieve stats metadata from the cedar DB and do not need
 	// to download anything from s3.
 	if len(getOpts.Fields) == 0 {
-		toDownload := make(chan *testresult.DbTaskTestResults, len(allDBTaskResults))
+		bounds := newTestResultBounds(getOpts)
+		toDownload := make(chan testResultsDownload, len(allDBTaskResults))
 		for i := range allDBTaskResults {
-			toDownload <- &allDBTaskResults[i]
+			skip, limit, include := bounds.forTask(allDBTaskResults[i].Stats.TotalCount)
+			if include {
+				toDownload <- testResultsDownload{
+					dbTaskResults: &allDBTaskResults[i],
+					skip:          skip,
+					limit:         limit,
+				}
+			}
 		}
 		close(toDownload)
 
@@ -128,19 +136,25 @@ func (s *testResultService) Get(ctx context.Context, taskOpts []Task, getOpts Ge
 	return allTaskResults, nil
 }
 
-func workerDownload(ctx context.Context, toDownload <-chan *testresult.DbTaskTestResults, config *evergreen.Settings, catcher grip.Catcher, wg *sync.WaitGroup) {
+type testResultsDownload struct {
+	dbTaskResults *testresult.DbTaskTestResults
+	skip          int
+	limit         int
+}
+
+func workerDownload(ctx context.Context, toDownload <-chan testResultsDownload, config *evergreen.Settings, catcher grip.Catcher, wg *sync.WaitGroup) {
 	defer func() {
 		catcher.Add(recovery.HandlePanicWithError(recover(), nil, "test results download producer"))
 		wg.Done()
 	}()
 
 	for trs := range toDownload {
-		results, err := download(ctx, config, trs)
+		results, err := download(ctx, config, trs.dbTaskResults)
 		if err != nil {
 			catcher.Add(err)
 			return
 		}
-		trs.Results = results
+		trs.dbTaskResults.Results = sliceTestResults(results, trs.skip, trs.limit)
 
 		if err = ctx.Err(); err != nil {
 			catcher.Add(err)
