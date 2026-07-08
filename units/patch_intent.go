@@ -1659,37 +1659,116 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 		return ignoredVariants
 	}
 
-	filteredVariantsTasks := []patch.VariantTasks{}
-	filteredBuildVariants := []string{}
-
 	changedFiles := patchDoc.FilesChanged()
-	// Check each variant in VariantsTasks to see if it should be ignored
+
+	// keptVTs tracks those tasks are not impacted by path filtering (i.e. they
+	// either don't use path filtering or the changed files match the path
+	// filter).
+	keptVTs := []patch.VariantTasks{}
+	// candidateVTsToIgnore tracks those tasks that have path filtering and
+	// their changed files don't match the path filter (i.e. the path filter
+	// says to ignore them).
+	candidateVTsToIgnore := []patch.VariantTasks{}
 	for _, vt := range patchDoc.VariantsTasks {
 		bv := patchedProject.FindBuildVariant(vt.Variant)
-		if bv == nil {
-			// If we can't find the build variant, keep it (don't ignore)
-			filteredVariantsTasks = append(filteredVariantsTasks, vt)
-			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
+		if bv != nil && len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
+			candidateVTsToIgnore = append(candidateVTsToIgnore, vt)
 			continue
 		}
+		keptVTs = append(keptVTs, vt)
+	}
 
-		// If the variant has path patterns and none of the changed files match, ignore it
-		if len(bv.Paths) > 0 && !bv.ChangedFilesMatchPaths(changedFiles) {
-			ignoredVariants = append(ignoredVariants, vt.Variant)
-		} else {
-			// Keep this variant
-			filteredVariantsTasks = append(filteredVariantsTasks, vt)
-			filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
+	filteredVTs := keptVTs
+	if len(candidateVTsToIgnore) > 0 {
+		// A kept task may depend on a task that's going to be ignored due to
+		// path filtering. However, that task should not be path filtered out
+		// because it's a cross-variant dependency and Evergreen should preserve
+		// dependencies regardless of path filtering.
+		// Recompute dependencies for the kept tasks to determine which tasks in
+		// the ignored variants are depended on by the kept tasks.
+		keptPairs := model.VariantTasksToTVPairs(keptVTs)
+		requiredTasksAndDependencies, err := model.IncludeDependencies(patchedProject, keptPairs.ExecTasks, patchDoc.GetRequester(), nil)
+		grip.Warning(ctx, message.WrapError(err, message.Fields{
+			"message":  "resolving dependencies while filtering ignored variants",
+			"job":      j.ID(),
+			"patch_id": patchDoc.Id.Hex(),
+		}))
+
+		variantsToNeededTasks := map[string]map[string]bool{}
+		for _, pair := range requiredTasksAndDependencies {
+			if variantsToNeededTasks[pair.Variant] == nil {
+				variantsToNeededTasks[pair.Variant] = map[string]bool{}
+			}
+			variantsToNeededTasks[pair.Variant][pair.TaskName] = true
+		}
+
+		for _, vt := range candidateVTsToIgnore {
+			variant := vt.Variant
+			neededTasks := variantsToNeededTasks[variant]
+			if len(neededTasks) == 0 {
+				// The variant is path-filtered out and none of the tasks are
+				// depended on by a kept task. Therefore, it's safe to ignore
+				// the entire variant.
+				ignoredVariants = append(ignoredVariants, variant)
+				continue
+			}
+
+			// The variant is path-filtered but holds tasks that a kept task
+			// depends on. Reinstate only those dependency tasks (and their
+			// parent display tasks) rather than the whole variant.
+			// Note that because tasks can depend on a subset of execution
+			// tasks within a display task, it's possible for the display task
+			// to not contain all the execution tasks it would typically have
+			// because only the necessary execution tasks are kept for
+			// dependencies.
+			depVT := patch.VariantTasks{Variant: variant}
+			for _, t := range vt.Tasks {
+				if neededTasks[t] {
+					depVT.Tasks = append(depVT.Tasks, t)
+				}
+			}
+			if bv := patchedProject.FindBuildVariant(variant); bv != nil {
+				for _, dt := range vt.DisplayTasks {
+					projectDT := bv.GetDisplayTask(dt.Name)
+					if projectDT == nil {
+						continue
+					}
+					for _, et := range projectDT.ExecTasks {
+						if neededTasks[et] {
+							depVT.DisplayTasks = append(depVT.DisplayTasks, patch.DisplayTask{Name: dt.Name})
+							break
+						}
+					}
+				}
+			}
+
+			// kim: TODO: remove this temporary debug log once the interaction
+			// between path filtering and cross-variant dependencies is confirmed.
+			grip.Info(ctx, message.Fields{
+				"message":                  "kim: reinstating path-filtered variant because a non-filtered task depends on its tasks",
+				"job":                      j.ID(),
+				"patch_id":                 patchDoc.Id.Hex(),
+				"variant":                  variant,
+				"reinstated_tasks":         depVT.Tasks,
+				"reinstated_display_tasks": depVT.DisplayTasks,
+			})
+
+			filteredVTs = append(filteredVTs, depVT)
 		}
 	}
 
+	filteredBuildVariants := make([]string, 0, len(filteredVTs))
+	for _, vt := range filteredVTs {
+		filteredBuildVariants = append(filteredBuildVariants, vt.Variant)
+	}
+
 	// Update the patch document with the filtered variants
-	patchDoc.VariantsTasks = filteredVariantsTasks
+	patchDoc.VariantsTasks = filteredVTs
 	patchDoc.BuildVariants = filteredBuildVariants
 
 	// Update Tasks to only include tasks that are still used by remaining variants
 	usedTasks := make(map[string]bool)
-	for _, vt := range filteredVariantsTasks {
+	for _, vt := range filteredVTs {
 		for _, task := range vt.Tasks {
 			usedTasks[task] = true
 		}
