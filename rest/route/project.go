@@ -770,7 +770,7 @@ func makeGetProjectVersionsHandler() gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Param			project_id			path	string		true	"the project ID"
 //	@Param			skip				query	int			false	"Number of versions to skip."
-//	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 20."
+//	@Param			limit				query	int			false	"The number of versions to be returned per page of pagination. Defaults to 5, and cannot exceed 100."
 //	@Param			start				query	int			false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int			false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
 //	@Param			requester			query	string		false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds). Can be specified multiple times to include multiple requesters."
