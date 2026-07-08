@@ -744,7 +744,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /rest/v2/projects/{project_id}/versions
 
-const defaultVersionLimit = 20
+const defaultVersionLimit = 5
 
 // maxVersionLimit bounds how many versions a single request may fetch. Each returned version carries
 // its embedded build-variant status (and, with include_builds, looked-up build documents), so an
