@@ -3762,6 +3762,46 @@ tasks:
 	require.NoError(t, err, "preamble ordering bug: anchor redefined with alias dependency should not produce unknown-anchor error")
 }
 
+// TestAnchorPreambleFailureFallsBack verifies that if the anchor preamble itself is
+// invalid (alias-before-definition ordering), createIntermediateProject falls back to
+// parsing without the preamble rather than propagating the error. This guards against
+// any future preamble-construction bugs breaking projects that don't use cross-file anchors.
+func TestAnchorPreambleFailureFallsBack(t *testing.T) {
+	// Build a registry with broken ordering: entry 0 is a mapping that contains
+	// *my-anchor (an AliasNode), but entry 1 is the node that defines &my-anchor.
+	// Marshaling this produces alias-before-definition in the preamble YAML.
+	scalarNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "hello", Anchor: "my-anchor"}
+	aliasNode := &yaml.Node{Kind: yaml.AliasNode, Value: "my-anchor", Alias: scalarNode}
+	mappingNode := &yaml.Node{
+		Kind:   yaml.MappingNode,
+		Anchor: "my-template",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "key"},
+			aliasNode,
+		},
+	}
+	registry := &anchorRegistry{
+		entries: []anchorEntry{
+			{name: "my-template", node: mappingNode},
+			{name: "my-anchor", node: scalarNode},
+		},
+	}
+
+	// Confirm the preamble is invalid on re-parse (alias appears before its definition).
+	preamble, err := buildAnchorPreamble(registry)
+	require.NoError(t, err)
+	var preambleNode yaml.Node
+	require.Error(t, yaml.NewDecoder(bytes.NewReader(preamble)).Decode(&preambleNode),
+		"preamble should fail to parse due to alias-before-definition")
+
+	// createIntermediateProject should fall back to parsing without the preamble.
+	simpleYAML := []byte("tasks:\n- name: my-task\n  commands:\n  - command: shell.exec\n")
+	result, err := createIntermediateProject(simpleYAML, false, registry)
+	require.NoError(t, err, "should succeed via fallback when preamble is invalid")
+	require.Len(t, result.Tasks, 1)
+	assert.Equal(t, "my-task", result.Tasks[0].Name)
+}
+
 // TestAnchorWithNestedAlias verifies that a file can use an alias from an
 // earlier file within an anchor it defines, and a subsequent file can use that
 // anchor as an alias. This exercises the preamble-within-preamble ordering.
