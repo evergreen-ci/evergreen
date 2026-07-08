@@ -847,11 +847,26 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	}, nil
 }
 
+// Filter out the quarantine status for test results that are not manually quarantined.
 func shouldDecorateTestQuarantineStatus(ctx context.Context) bool {
 	if !gqlgen.HasOperationContext(ctx) {
 		return true
 	}
-	return utility.StringSliceContains(gqlgen.CollectAllFields(ctx), "isManuallyQuarantined")
+	return collectedFieldsContain(gqlgen.GetOperationContext(ctx), gqlgen.CollectFieldsCtx(ctx, nil), "isManuallyQuarantined")
+}
+
+// collectedFieldsContain reports whether target is selected anywhere within the given fields or
+// their descendants.
+func collectedFieldsContain(opCtx *gqlgen.OperationContext, fields []gqlgen.CollectedField, target string) bool {
+	for _, field := range fields {
+		if field.Name == target {
+			return true
+		}
+		if collectedFieldsContain(opCtx, gqlgen.CollectFields(opCtx, field.Selections, nil), target) {
+			return true
+		}
+	}
+	return false
 }
 
 // TotalTestCount is the resolver for the totalTestCount field.
