@@ -3167,6 +3167,7 @@ type APICostConfig struct {
 	OnDemandDiscount    *float64          `json:"on_demand_discount"`
 	S3Cost              *APIS3CostConfig  `json:"s3_cost"`
 	EBSCost             *APIEBSCostConfig `json:"ebs_cost"`
+	HiddenCostProjects  []string          `json:"hidden_cost_projects"`
 }
 
 type APIEBSCostConfig struct {
@@ -3205,6 +3206,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	case evergreen.CostConfig:
 		a.FinanceFormula = &v.FinanceFormula
 		a.SavingsPlanDiscount = &v.SavingsPlanDiscount
@@ -3217,6 +3219,7 @@ func (a *APICostConfig) BuildFromService(h any) error {
 		if err := a.EBSCost.BuildFromService(&v.EBSCost); err != nil {
 			return errors.Wrap(err, "building EBS cost config")
 		}
+		a.HiddenCostProjects = v.HiddenCostProjects
 	default:
 		return errors.Errorf("incorrect type %T", v)
 	}
@@ -3246,6 +3249,7 @@ func (a *APICostConfig) ToService() (any, error) {
 		OnDemandDiscount:    utility.FromFloat64Ptr(a.OnDemandDiscount),
 		S3Cost:              s3Cost,
 		EBSCost:             ebsCost,
+		HiddenCostProjects:  a.HiddenCostProjects,
 	}, nil
 }
 
