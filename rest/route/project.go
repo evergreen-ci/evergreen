@@ -746,6 +746,11 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 const defaultVersionLimit = 20
 
+// maxVersionLimit bounds how many versions a single request may fetch. Each returned version carries
+// its embedded build-variant status (and, with include_builds, looked-up build documents), so an
+// unbounded limit lets one request materialize gigabytes server-side and can OOM the process.
+const maxVersionLimit = 100
+
 type getProjectVersionsHandler struct {
 	projectName string
 	opts        dbModel.GetVersionsOptions
@@ -821,6 +826,9 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 	}
 	if h.opts.Limit < 1 {
 		return errors.New("limit must be a positive integer")
+	}
+	if h.opts.Limit > maxVersionLimit {
+		return errors.Errorf("limit cannot exceed %d", maxVersionLimit)
 	}
 
 	startStr := params.Get("start")
