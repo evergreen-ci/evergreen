@@ -38,6 +38,7 @@ const (
 	testSelectionDisplayTaskStatusRequestParallel = 8
 )
 
+// Using a shared HTTP client so we can reuse idle connections between TSS calls and reduce the number of reconnects.
 var testSelectionHTTPClient = newTestSelectionHTTPClient()
 
 func newTestSelectionHTTPClient() *http.Client {
@@ -109,8 +110,6 @@ func newTestSelectionClient(c *http.Client) *testselection.APIClient {
 // to run based on the provided SelectTestsRequest. It returns the list of
 // selected tests.
 func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
-	defer cancel()
 	c := newTestSelectionClient(testSelectionHTTPClient)
 	var strategies []testselection.StrategyEnum
 	for _, s := range req.Strategies {
@@ -415,7 +414,6 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID stri
 		if !execTask.TestSelectionEnabled {
 			continue
 		}
-		execTask := execTask
 		indices := slices.Clone(resultIndicesByExecTaskID[execTask.Id])
 		eg.Go(func() error {
 			testNames := make([]string, 0, len(indices))
