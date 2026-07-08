@@ -878,7 +878,7 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	}, nil
 }
 
-// Filter out the quarantine status for test results that are not manually quarantined.
+// Filter out the quarantine status for test results that are not selecting for manually quarantined tests for TSS optimization.
 func shouldDecorateTestQuarantineStatus(ctx context.Context) bool {
 	if !gqlgen.HasOperationContext(ctx) {
 		return true
