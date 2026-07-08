@@ -22,6 +22,9 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // Total is the field resolver for Cost.total.
@@ -808,18 +811,46 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 		return nil, err
 	}
 
-	taskResults, err := dbTask.GetTestResults(ctx, evergreen.GetEnvironment(), filterOpts)
+	tracer := otel.Tracer("github.com/evergreen-ci/evergreen/graphql")
+	getTestResultsCtx, getTestResultsSpan := tracer.Start(ctx, "task_tests.get_test_results")
+	getTestResultsSpan.SetAttributes(
+		attribute.String("task_id", dbTask.Id),
+		attribute.Int("execution", dbTask.Execution),
+		attribute.Bool("display_only", dbTask.DisplayOnly),
+		attribute.Bool("test_selection_enabled", dbTask.TestSelectionEnabled),
+	)
+	taskResults, err := dbTask.GetTestResults(getTestResultsCtx, evergreen.GetEnvironment(), filterOpts)
 	if err != nil {
+		getTestResultsSpan.RecordError(err)
+		getTestResultsSpan.SetStatus(codes.Error, err.Error())
+		getTestResultsSpan.End()
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for APITask '%s': %s", dbTask.Id, err.Error()))
 	}
+	getTestResultsSpan.SetAttributes(
+		attribute.Int("test_results.count", len(taskResults.Results)),
+		attribute.Int("test_results.total_count", taskResults.Stats.TotalCount),
+		attribute.Int("test_results.filtered_count", utility.FromIntPtr(taskResults.Stats.FilteredCount)),
+	)
+	getTestResultsSpan.End()
 
 	if shouldDecorateTestQuarantineStatus(ctx) {
-		if err := data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results); err != nil {
+		decorateCtx, decorateSpan := tracer.Start(ctx, "task_tests.decorate_quarantine_status")
+		decorateSpan.SetAttributes(
+			attribute.String("task_id", dbTask.Id),
+			attribute.Int("execution", dbTask.Execution),
+			attribute.Bool("display_only", dbTask.DisplayOnly),
+			attribute.Bool("test_selection_enabled", dbTask.TestSelectionEnabled),
+			attribute.Int("test_results.count", len(taskResults.Results)),
+		)
+		if err := data.DecorateQuarantineStatus(decorateCtx, dbTask, taskResults.Results); err != nil {
+			decorateSpan.RecordError(err)
+			decorateSpan.SetStatus(codes.Error, err.Error())
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "decorating test quarantine statuses",
 				"task_id": dbTask.Id,
 			}))
 		}
+		decorateSpan.End()
 	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
