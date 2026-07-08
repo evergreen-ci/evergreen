@@ -1553,6 +1553,9 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
+		if tc.taskConfig.ContainerID != "" {
+			detail.ExecutionPlatform = string(task.ExecutionPlatformContainer)
+		}
 	}
 	return detail
 }
