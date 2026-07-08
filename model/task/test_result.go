@@ -64,9 +64,9 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results service")
 	}
 
-	svcOpts := GetTaskTestResultsOptions{}
-	if getOpts != nil {
-		svcOpts.IncludeQuarantinedTests = getOpts.IncludeQuarantinedTests
+	svcOpts, isServicePaginated, err := getTaskTestResultsServiceOptions(getOpts)
+	if err != nil {
+		return testresult.TaskTestResults{}, err
 	}
 	allTestResults, err := svc.Get(ctx, tasks, svcOpts)
 	if err != nil {
@@ -82,6 +82,11 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 		mergedTaskResults.QuarantinedTests = append(mergedTaskResults.QuarantinedTests, taskResults.QuarantinedTests...)
 	}
 
+	if isServicePaginated {
+		mergedTaskResults.Stats.FilteredCount = utility.ToIntPtr(mergedTaskResults.Stats.TotalCount)
+		return mergedTaskResults, nil
+	}
+
 	filteredResults, filteredCount, err := filterAndSortTestResults(ctx, env, mergedTaskResults.Results, getOpts)
 	if err != nil {
 		return testresult.TaskTestResults{}, err
@@ -90,6 +95,33 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 	mergedTaskResults.Stats.FilteredCount = &filteredCount
 
 	return mergedTaskResults, nil
+}
+
+func getTaskTestResultsServiceOptions(getOpts *FilterOptions) (GetTaskTestResultsOptions, bool, error) {
+	svcOpts := GetTaskTestResultsOptions{}
+	if getOpts == nil {
+		return svcOpts, false, nil
+	}
+	if err := validateFilterOptions(getOpts); err != nil {
+		return svcOpts, false, errors.Wrap(err, "invalid filter options")
+	}
+
+	svcOpts.IncludeQuarantinedTests = getOpts.IncludeQuarantinedTests
+	if canPaginateTestResultsInService(getOpts) {
+		svcOpts.Limit = getOpts.Limit
+		svcOpts.Skip = getOpts.Limit * getOpts.Page
+		return svcOpts, true, nil
+	}
+	return svcOpts, false, nil
+}
+
+func canPaginateTestResultsInService(getOpts *FilterOptions) bool {
+	return getOpts.Limit > 0 &&
+		getOpts.TestName == "" &&
+		len(getOpts.Statuses) == 0 &&
+		getOpts.GroupID == "" &&
+		len(getOpts.Sort) == 0 &&
+		len(getOpts.BaseTasks) == 0
 }
 
 // getTaskTestResultsStats returns test results belonging to the specified task run.

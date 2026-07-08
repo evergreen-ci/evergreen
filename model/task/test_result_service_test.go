@@ -89,6 +89,29 @@ func TestEvergreenService(t *testing.T) {
 				require.Equal(t, savedResults0[2*i], result)
 			}
 		})
+		t.Run("WithPaginationOpts", func(t *testing.T) {
+			taskOpts := []Task{task0}
+			filterOpts := &FilterOptions{Limit: 3, Page: 1}
+			taskResults, err := getMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
+			require.NoError(t, err)
+
+			assert.Equal(t, len(savedResults0), taskResults.Stats.TotalCount)
+			assert.Equal(t, len(savedResults0), utility.FromIntPtr(taskResults.Stats.FilteredCount))
+			assert.Equal(t, savedResults0[3:6], taskResults.Results)
+		})
+	})
+	t.Run("GetAppliesResultBoundsAcrossTasks", func(t *testing.T) {
+		taskResults, err := svc.Get(ctx, []Task{task0, task1}, GetTaskTestResultsOptions{
+			Skip:  len(savedResults0) - 2,
+			Limit: 5,
+		})
+		require.NoError(t, err)
+		require.Len(t, taskResults, 2)
+
+		assert.Equal(t, len(savedResults0), taskResults[0].Stats.TotalCount)
+		assert.Equal(t, savedResults0[len(savedResults0)-2:], taskResults[0].Results)
+		assert.Equal(t, len(savedResults1), taskResults[1].Stats.TotalCount)
+		assert.Equal(t, savedResults1[:3], taskResults[1].Results)
 	})
 	t.Run("GetTaskTestResultsStats", func(t *testing.T) {
 		taskOpts := []Task{task1, task2, task0, emptyTask}
