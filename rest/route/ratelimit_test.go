@@ -68,6 +68,8 @@ func setupRateLimitEnv(t *testing.T, cfg evergreen.RateLimitConfig) *mock.Enviro
 
 // runRateLimit sends a single request with the given user attached through the
 // middleware and reports the recorder plus whether the next handler ran.
+// Note that the surfacePath is cosmetic and does not actually test whether the
+// middleware is wrapped around the route correctly.
 func runRateLimit(t *testing.T, mw gimlet.Middleware, surfacePath string, u *user.DBUser) (*httptest.ResponseRecorder, bool) {
 	r, err := http.NewRequest(http.MethodGet, surfacePath, nil)
 	require.NoError(t, err)
