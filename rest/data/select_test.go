@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -139,17 +138,16 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
 
-	t.Run("ContextDeadlineReturnsDefaultStatuses", func(t *testing.T) {
+	t.Run("CanceledContextReturnsDefaultStatuses", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(200 * time.Millisecond)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"test_a":{"state":"manually_quarantined"}}`))
 		}))
 		t.Cleanup(srv.Close)
 		setTSSURL(t, srv.URL)
 
-		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
-		defer cancel()
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
 		statuses, err := GetTestsQuarantineStatus(ctx, projectID, bvName, taskName, []string{"test_a"})
 		require.NoError(t, err)
 		assert.Equal(t, map[string]bool{"test_a": false}, statuses)

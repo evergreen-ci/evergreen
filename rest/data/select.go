@@ -5,6 +5,7 @@ import (
 	stderrors "errors"
 	"net"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -45,7 +46,6 @@ func newTestSelectionHTTPClient() *http.Client {
 	transport.MaxIdleConnsPerHost = 100
 
 	return &http.Client{
-		Timeout:   testSelectionWriteTimeout,
 		Transport: otelhttp.NewTransport(transport),
 	}
 }
@@ -416,7 +416,7 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID stri
 			continue
 		}
 		execTask := execTask
-		indices := append([]int(nil), resultIndicesByExecTaskID[execTask.Id]...)
+		indices := slices.Clone(resultIndicesByExecTaskID[execTask.Id])
 		eg.Go(func() error {
 			testNames := make([]string, 0, len(indices))
 			for _, i := range indices {
