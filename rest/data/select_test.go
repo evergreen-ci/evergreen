@@ -1,12 +1,14 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -125,17 +127,32 @@ func TestGetTestsQuarantineStatus(t *testing.T) {
 		assert.Equal(t, map[string]bool{"test_a": true, "test_missing": false}, statuses)
 	})
 
-	t.Run("ServiceErrorReturnsWrappedError", func(t *testing.T) {
+	t.Run("ServiceErrorReturnsDefaultStatuses", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "boom", http.StatusInternalServerError)
 		}))
 		t.Cleanup(srv.Close)
 		setTSSURL(t, srv.URL)
 
-		_, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "forwarding request to test selection service")
-		assert.Contains(t, err.Error(), "boom")
+		statuses, err := GetTestsQuarantineStatus(t.Context(), projectID, bvName, taskName, []string{"test_a"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
+	})
+
+	t.Run("ContextDeadlineReturnsDefaultStatuses", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(200 * time.Millisecond)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"test_a":{"state":"manually_quarantined"}}`))
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURL(t, srv.URL)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
+		defer cancel()
+		statuses, err := GetTestsQuarantineStatus(ctx, projectID, bvName, taskName, []string{"test_a"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]bool{"test_a": false}, statuses)
 	})
 
 	t.Run("NotFoundReturnsDefaultStatuses", func(t *testing.T) {
@@ -344,6 +361,25 @@ func TestDecorateQuarantineStatus(t *testing.T) {
 		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, results))
 		assert.True(t, results[0].IsManuallyQuarantined)
 		assert.False(t, results[1].IsManuallyQuarantined)
+	})
+
+	t.Run("ExecutionTaskTSSFailureDoesNotError", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		}))
+		t.Cleanup(srv.Close)
+		setTSSURL(t, srv.URL)
+
+		parent := &task.Task{
+			Id:                   "exec_task",
+			Project:              "p",
+			BuildVariant:         "bv",
+			DisplayName:          "exec_task",
+			TestSelectionEnabled: true,
+		}
+		results := []testresult.TestResult{{TaskID: "exec_task", TestName: "TestFoo"}}
+		require.NoError(t, DecorateQuarantineStatus(t.Context(), parent, results))
+		assert.False(t, results[0].IsManuallyQuarantined)
 	})
 
 	t.Run("DisplayTaskFansOutAcrossExecutionTasks", func(t *testing.T) {

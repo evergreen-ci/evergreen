@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	gqlgen "github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/graphql/loaders"
@@ -812,11 +813,13 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for APITask '%s': %s", dbTask.Id, err.Error()))
 	}
 
-	if err := data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results); err != nil {
-		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"message": "decorating test quarantine statuses",
-			"task_id": dbTask.Id,
-		}))
+	if shouldDecorateTestQuarantineStatus(ctx) {
+		if err := data.DecorateQuarantineStatus(ctx, dbTask, taskResults.Results); err != nil {
+			grip.Error(ctx, message.WrapError(err, message.Fields{
+				"message": "decorating test quarantine statuses",
+				"task_id": dbTask.Id,
+			}))
+		}
 	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
@@ -842,6 +845,13 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 		TotalTestCount:    taskResults.Stats.TotalCount,
 		FilteredTestCount: utility.FromIntPtr(taskResults.Stats.FilteredCount),
 	}, nil
+}
+
+func shouldDecorateTestQuarantineStatus(ctx context.Context) bool {
+	if !gqlgen.HasOperationContext(ctx) {
+		return true
+	}
+	return utility.StringSliceContains(gqlgen.CollectAllFields(ctx), "isManuallyQuarantined")
 }
 
 // TotalTestCount is the resolver for the totalTestCount field.
