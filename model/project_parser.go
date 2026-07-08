@@ -1385,23 +1385,41 @@ func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, 
 // Existing anchors in anchorRegistry are prepended so the parser can resolve cross-file aliases,
 // and any new anchor definitions are appended to the registry for future files.
 func createIntermediateProject(parseBytes []byte, unmarshalStrict bool, anchorRegistry *anchorRegistry) (*ParserProject, error) {
-	// Prepend accumulated anchors as a preamble so the parser can resolve cross-file aliases.
 	if anchorRegistry.Length() > 0 {
-		preamble, err := buildAnchorPreamble(anchorRegistry)
-		if err != nil {
-			return nil, errors.Wrap(err, "building anchor preamble")
+		result, err := decodeWithAnchorPreamble(parseBytes, unmarshalStrict, anchorRegistry)
+		if err == nil {
+			if result.Functions == nil {
+				result.Functions = map[string]*YAMLCommandSet{}
+			}
+			return result, nil
 		}
-		parseBytes = append(preamble, parseBytes...)
+		// If parsing with the anchor preamble fails, log and fall back to parsing without it.
+		// This preserves pre-cross-file-anchor behavior for projects that don't rely on the feature.
+		grip.Warning(context.Background(), message.Fields{
+			"message": "parsing with cross-file anchor preamble failed, retrying without",
+			"error":   err.Error(),
+		})
 	}
 
 	result, err := decodeWithAnchors(parseBytes, unmarshalStrict, anchorRegistry)
 	if err != nil {
-		return nil, errors.Wrap(err, "decoding project with anchors")
+		return nil, errors.Wrap(err, "decoding project")
 	}
 	if result.Functions == nil {
 		result.Functions = map[string]*YAMLCommandSet{}
 	}
 	return result, nil
+}
+
+// decodeWithAnchorPreamble prepends the anchor registry as a YAML preamble to parseBytes and
+// calls decodeWithAnchors. If this call fails, anchorRegistry is guaranteed to be unmodified
+// because decodeWithAnchors only updates the registry after a successful parse.
+func decodeWithAnchorPreamble(parseBytes []byte, unmarshalStrict bool, registry *anchorRegistry) (*ParserProject, error) {
+	preamble, err := buildAnchorPreamble(registry)
+	if err != nil {
+		return nil, errors.Wrap(err, "building anchor preamble")
+	}
+	return decodeWithAnchors(append(preamble, parseBytes...), unmarshalStrict, registry)
 }
 
 // decodeWithAnchors decodes parseBytes into a ParserProject using a yaml.Node as an intermediate
