@@ -1667,7 +1667,7 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 		// filtering would otherwise ignore. Cross-variant dependencies must be
 		// preserved regardless of path filtering. Determine which tasks in the
 		// ignored variants need to be kept due to cross-variant dependencies.
-		variantsToNeededTasks := j.getTasksNeededByDependencies(ctx, patchDoc, patchedProject, vtsNotIgnored)
+		variantsToNeededTasks := j.getTasksAndDependencies(ctx, patchDoc, patchedProject, vtsNotIgnored)
 		for _, vt := range candidateVTsToIgnore {
 			neededTasks := variantsToNeededTasks[vt.Variant]
 			if len(neededTasks) == 0 {
@@ -1678,10 +1678,10 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 				continue
 			}
 
-			// The variant is path-filtered but holds tasks that a kept task
-			// depends on, so reinstate specifically those tasks (not the entire
-			// variant).
-			depVT := reinstateNeededTasksForVariant(patchedProject, vt, neededTasks)
+			// The variant is path-filtered but holds tasks that a non-ignored
+			// task in another variant depends on, so reinstate specifically
+			// those tasks (not the entire variant).
+			depVT := reinstateDependenciesForVariant(patchedProject, vt, neededTasks)
 
 			filteredVTs = append(filteredVTs, depVT)
 		}
@@ -1709,13 +1709,15 @@ func partitionVariantsByPathFilter(patchDoc *patch.Patch, patchedProject *model.
 	return vtsNotIgnored, candidateVTsToIgnore
 }
 
-// getTasksNeededByDependencies returns, for each variant, the set of that
-// variant's task names that the tasks depend on.
-func (j *patchIntentProcessor) getTasksNeededByDependencies(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project, vts []patch.VariantTasks) map[string]map[string]bool {
-	keptPairs := model.VariantTasksToTVPairs(vts)
-	requiredTasksAndDependencies, err := model.IncludeDependencies(patchedProject, keptPairs.ExecTasks, patchDoc.GetRequester(), nil)
+// getTasksAndDependencies returns a map of variants to the tasks that should
+// run in those variants. This includes:
+// 1. the initial set of tasks in vts and
+// 2. tasks that are required as dependencies of tasks in vts.
+func (j *patchIntentProcessor) getTasksAndDependencies(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project, vts []patch.VariantTasks) map[string]map[string]bool {
+	tvPairs := model.VariantTasksToTVPairs(vts)
+	requiredTasksAndDependencies, err := model.IncludeDependencies(patchedProject, tvPairs.ExecTasks, patchDoc.GetRequester(), nil)
 	grip.Warning(ctx, message.WrapError(err, message.Fields{
-		"message":  "hit warnings trying to resolve cross-variant dependencies on ignored variants",
+		"message":  "error resolving cross-variant dependencies on path-filtered variants",
 		"job":      j.ID(),
 		"patch_id": patchDoc.Id.Hex(),
 	}))
@@ -1730,11 +1732,14 @@ func (j *patchIntentProcessor) getTasksNeededByDependencies(ctx context.Context,
 	return variantsToNeededTasks
 }
 
-// reinstateNeededTasksForVariant builds the subset of neededTasksInVariant (and
-// their parent display tasks) that are needed as a dependency for a task in vt.
-// A reinstated display task may not include all of the execution tasks it would
-// normally have.
-func reinstateNeededTasksForVariant(patchedProject *model.Project, vt patch.VariantTasks, neededTasksInVariant map[string]bool) patch.VariantTasks {
+// reinstateDependenciesForVariant builds the subset of neededTasksInVariant
+// (and their parent display tasks) that are needed as a dependency for a task
+// in vt. This includes all regular tasks, execution tasks, and parent display
+// tasks needed for dependencies.
+// A reinstated display task includes only the minimal set of tasks that are
+// needed as dependencies, so not all of display task's execution tasks are
+// guaranteed to be included.
+func reinstateDependenciesForVariant(patchedProject *model.Project, vt patch.VariantTasks, neededTasksInVariant map[string]bool) patch.VariantTasks {
 	depVT := patch.VariantTasks{Variant: vt.Variant}
 	for _, t := range vt.Tasks {
 		if neededTasksInVariant[t] {
