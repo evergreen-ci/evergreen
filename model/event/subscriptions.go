@@ -490,6 +490,16 @@ func (s *Subscription) Upsert(ctx context.Context) error {
 		s.ID = mgobson.NewObjectId().Hex()
 	}
 
+	if s.Owner != "" {
+		existing, err := FindSubscriptionByID(ctx, s.ID)
+		if err != nil {
+			return errors.Wrap(err, "checking subscription ownership")
+		}
+		if existing != nil && existing.Owner != s.Owner {
+			return errors.New("cannot modify a subscription owned by another user or project")
+		}
+	}
+
 	if err := s.saveWebhookSecretIfNeeded(ctx); err != nil {
 		return errors.Wrap(err, "saving webhook secret to Parameter Store")
 	}
@@ -1081,6 +1091,9 @@ func (s *Subscription) saveWebhookAuthHeaderIfNeeded(ctx context.Context) error 
 				"error":           err.Error(),
 				"ticket":          "DEVPROD-15500",
 			})
+			return nil
+		}
+		if existing != nil && existing.Owner != s.Owner {
 			return nil
 		}
 		if existing != nil {

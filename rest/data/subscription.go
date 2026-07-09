@@ -105,6 +105,24 @@ func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restMo
 
 	}
 
+	for _, subscription := range dbSubscriptions {
+		if subscription.ID != "" {
+			existing, err := event.FindSubscriptionByID(ctx, subscription.ID)
+			if err != nil {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "checking subscription ownership").Error(),
+				}
+			}
+			if existing != nil && existing.Owner != owner {
+				return gimlet.ErrorResponse{
+					StatusCode: http.StatusUnauthorized,
+					Message:    "cannot modify a subscription owned by another user or project",
+				}
+			}
+		}
+	}
+
 	catcher := grip.NewSimpleCatcher()
 	for _, subscription := range dbSubscriptions {
 		catcher.Add(subscription.Upsert(ctx))
