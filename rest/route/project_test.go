@@ -1033,6 +1033,55 @@ func TestGetProjectVersionsParseRequesters(t *testing.T) {
 	}
 }
 
+func TestGetProjectVersionsParseLimit(t *testing.T) {
+	ctx := t.Context()
+
+	for tName, tCase := range map[string]func(t *testing.T){
+		"DefaultsWhenUnset": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, defaultVersionLimit, h.opts.Limit)
+		},
+		"AcceptsLimitAtMax": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://example.com/rest/v2/projects/proj/versions?limit=%d", maxVersionLimit), http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, maxVersionLimit, h.opts.Limit)
+		},
+		"RejectsLimitAboveMax": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://example.com/rest/v2/projects/proj/versions?limit=%d", maxVersionLimit+1), http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			assert.Error(t, h.Parse(ctx, req))
+		},
+		"ZeroLimitDefaults": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?limit=0", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			require.NoError(t, h.Parse(ctx, req))
+			assert.Equal(t, defaultVersionLimit, h.opts.Limit)
+		},
+		"RejectsNegativeLimit": func(t *testing.T) {
+			h := &getProjectVersionsHandler{}
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/projects/proj/versions?limit=-1", http.NoBody)
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj"})
+			assert.Error(t, h.Parse(ctx, req))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tCase(t)
+		})
+	}
+}
+
 func TestDeleteProject(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
