@@ -1381,6 +1381,10 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	}
 	err = data.SaveSubscriptions(ctx, username, []restModel.APISubscription{subscription}, false)
 	if err != nil {
+		gimletErr, ok := err.(gimlet.ErrorResponse)
+		if ok {
+			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
+		}
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving subscription: %s", err.Error()))
 	}
 	return true, nil
