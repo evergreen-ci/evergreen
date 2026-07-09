@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -87,6 +88,7 @@ func TestFindActiveTasksForHistory(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(task.Collection))
+			assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
 
 			t1 := task.Task{
 				Id:                  "t_1",
@@ -191,6 +193,7 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(task.Collection))
+			assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
 			t1 := task.Task{
 				Id:                  "t_1",
 				Requester:           evergreen.GithubPRRequester,
@@ -249,6 +252,47 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 			tCase(t, t.Context())
 		})
 	}
+}
+
+func TestFindInactiveTasksForHistoryCapsResults(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
+	assert.NoError(t, db.ClearCollections(task.Collection))
+	assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	// Insert more inactive tasks than the cap so we can assert the query bounds the result set instead
+	// of streaming every inactive doc in the range (the cause of the History-tab timeouts).
+	total := maxInactiveTaskHistoryLimit + 5
+	for i := 0; i < total; i++ {
+		tsk := task.Task{
+			Id:                  fmt.Sprintf("t_%d", i),
+			Requester:           evergreen.RepotrackerVersionRequester,
+			RevisionOrderNumber: i + 1,
+			Activated:           false,
+			Project:             projectId,
+			DisplayName:         taskName,
+			BuildVariant:        buildVariant,
+		}
+		require.NoError(t, tsk.Insert(t.Context()))
+	}
+
+	tasks, err := findInactiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+		TaskName:     taskName,
+		BuildVariant: buildVariant,
+		ProjectId:    projectId,
+		LowerBound:   utility.ToIntPtr(1),
+		UpperBound:   utility.ToIntPtr(total),
+	})
+	require.NoError(t, err)
+	// The result is capped and returns the most recent (highest order) inactive tasks, sorted descending.
+	require.Len(t, tasks, maxInactiveTaskHistoryLimit)
+	assert.Equal(t, total, tasks[0].RevisionOrderNumber)
+	assert.Equal(t, total-maxInactiveTaskHistoryLimit+1, tasks[len(tasks)-1].RevisionOrderNumber)
 }
 
 func TestFindTasksForHistory(t *testing.T) {
@@ -324,6 +368,7 @@ func TestFindTasksForHistory(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(task.Collection))
+			assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
 			t1 := task.Task{
 				Id:                  "t_1",
 				Requester:           evergreen.GithubPRRequester,
