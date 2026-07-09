@@ -313,7 +313,7 @@ func (ar *APIResourceConstraintInfo) ToService() *apimodels.ResourceConstraintIn
 }
 
 // BuildPreviousExecutions adds the given previous executions to the given API task.
-func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Task, logURL, parsleyURL string, artifactSignSecret []byte) error {
+func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Task, logURL, parsleyURL string) error {
 	at.PreviousExecutions = make([]APITask, len(tasks))
 	for i := range at.PreviousExecutions {
 		if err := at.PreviousExecutions[i].BuildFromService(ctx, &tasks[i], &APITaskArgs{
@@ -322,7 +322,6 @@ func (at *APITask) BuildPreviousExecutions(ctx context.Context, tasks []task.Tas
 			IncludeArtifacts:         true,
 			LogURL:                   logURL,
 			ParsleyLogURL:            parsleyURL,
-			ArtifactSignSecret:       artifactSignSecret,
 		}); err != nil {
 			return errors.Wrapf(err, "converting previous task execution at index %d to API model", i)
 		}
@@ -477,7 +476,6 @@ type APITaskArgs struct {
 	IncludeArtifacts         bool
 	LogURL                   string
 	ParsleyLogURL            string
-	ArtifactSignSecret       []byte
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -519,7 +517,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.getArtifacts(ctx, args.LogURL, args.ArtifactSignSecret); err != nil {
+		if err := at.getArtifacts(ctx, args.LogURL); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}
@@ -659,7 +657,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 	return st, nil
 }
 
-func (at *APITask) getArtifacts(ctx context.Context, baseURL string, artifactSignSecret []byte) error {
+func (at *APITask) getArtifacts(ctx context.Context, baseURL string) error {
 	var err error
 	var entries []artifact.Entry
 	if at.DisplayOnly {
@@ -677,6 +675,7 @@ func (at *APITask) getArtifacts(ctx context.Context, baseURL string, artifactSig
 		return errors.Wrap(err, "retrieving artifacts")
 	}
 	env := evergreen.GetEnvironment()
+	artifactSignSecret := []byte(env.Settings().ArtifactSignSecret)
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
 		if baseURL != "" && len(artifactSignSecret) > 0 {

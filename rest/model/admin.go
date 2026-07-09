@@ -86,6 +86,7 @@ type APIAdminSettings struct {
 	GithubPRCreatorOrg      *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs              []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret     *string                       `json:"github_webhook_secret,omitempty"`
+	ArtifactSignSecret      *string                       `json:"artifact_sign_secret,omitempty"`
 	DisabledGQLQueries      []string                      `json:"disabled_gql_queries"`
 	HostInit                *APIHostInitConfig            `json:"hostinit,omitempty"`
 	HostJasper              *APIHostJasperConfig          `json:"host_jasper,omitempty"`
@@ -176,6 +177,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.Expansions = v.Expansions
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		as.ArtifactSignSecret = utility.ToStringPtr(v.ArtifactSignSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
@@ -280,6 +282,7 @@ func (as *APIAdminSettings) ToService() (any, error) {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
 	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
+	settings.ArtifactSignSecret = utility.FromStringPtr(as.ArtifactSignSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}

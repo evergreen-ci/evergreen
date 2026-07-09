@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/gimlet"
@@ -16,6 +17,7 @@ import (
 const testSecret = "test-app-secret"
 
 func TestArtifactSignHandler(t *testing.T) {
+	evergreen.GetEnvironment().Settings().ArtifactSignSecret = testSecret
 	require.NoError(t, db.ClearCollections(artifact.Collection))
 
 	entry := artifact.Entry{

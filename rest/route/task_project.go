@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -143,7 +142,6 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeArtifacts:         true,
 			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tph.parsleyURL,
-			ArtifactSignSecret:       []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
 		})
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)

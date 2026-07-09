@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -111,7 +110,6 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			IncludeProjectIdentifier: true,
 			LogURL:                   GetURL(ctx),
 			ParsleyLogURL:            tbh.parsleyURL,
-			ArtifactSignSecret:       []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
 		}); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tasks[i].Id))
 		}
@@ -124,7 +122,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived task '%s'", tasks[i].Id))
 			}
 
-			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, GetURL(ctx), tbh.parsleyURL, []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret)); err != nil {
+			if err = taskModel.BuildPreviousExecutions(ctx, oldTasks, GetURL(ctx), tbh.parsleyURL); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding previous task executions to API model"))
 			}
 		}
