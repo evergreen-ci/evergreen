@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -332,6 +333,8 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
+const gitOperationTimeout = 15 * time.Second
+
 // GitCreateWorktree creates a new git worktree in worktreeDir based on gitDir.
 // It does not perform a checkout. Callers are assumed to have already cloned
 // the repo into gitDir and HEAD is assumed to be already pointing to the
@@ -340,8 +343,6 @@ func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
 	ctx, span := tracer.Start(ctx, "GitCreateWorktree")
 	defer span.End()
 
-	// This depends on fetching from GitHub, so limit how long this can spend
-	// creating the worktree to prevent this from running too long.
 	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
 	defer cancel()
 
