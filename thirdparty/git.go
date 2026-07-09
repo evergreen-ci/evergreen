@@ -280,7 +280,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	))
 	defer span.End()
 
-	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	ctx, cancel := context.WithTimeout(ctx, GitOperationTimeout)
 	defer cancel()
 
 	token, err := getInstallationToken(ctx, owner, repo, nil)
@@ -336,7 +336,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
-const gitOperationTimeout = 15 * time.Second
+const GitOperationTimeout = 15 * time.Second
 
 // GitCreateWorktree creates a new git worktree in worktreeDir based on gitDir.
 // It does not perform a checkout. Callers are assumed to have already cloned
@@ -346,7 +346,7 @@ func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
 	ctx, span := tracer.Start(ctx, "GitCreateWorktree")
 	defer span.End()
 
-	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	ctx, cancel := context.WithTimeout(ctx, GitOperationTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "worktree", "add",
@@ -392,7 +392,7 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 	))
 	defer span.End()
 
-	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	ctx, cancel := context.WithTimeout(ctx, GitOperationTimeout)
 	defer cancel()
 
 	// Validate that the file is within the git directory to prevent attempts to
