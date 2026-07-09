@@ -565,7 +565,7 @@ func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree 
 	if useGit {
 		// Fetching files with git can be slow/network dependent. Bound how long
 		// it can run so it can fall back faster to the GitHub API when needed.
-		gitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		gitCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
 
 		gitFile, err := GetGitHubFileFromGit(gitCtx, owner, repo, ref, path, worktree)
