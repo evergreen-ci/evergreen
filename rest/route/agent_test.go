@@ -221,8 +221,11 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 		Id: "aaaaaaaaaaff001122334455",
 	}
 	debugHost := host.Host{
-		Id:              "debug_host",
-		IsDebug:         true,
+		Id:      "debug_host",
+		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "t1",
+		},
 		ServicePassword: "secret_password",
 	}
 	nonDebugHost := host.Host{
@@ -270,6 +273,27 @@ func TestExpansionsAndVarsHostOwnership(t *testing.T) {
 		require.NotZero(t, resp)
 		assert.Equal(t, http.StatusOK, resp.Status())
 	})
+
+	t.Run("UserRequestRedactsServicePassword", func(t *testing.T) {
+		userCtx := gimlet.AttachUser(t.Context(), &user.DBUser{Id: "test_user"})
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(userCtx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+		require.True(t, ok)
+		assert.Empty(t, data.InternalRedactions[hostServicePasswordPlaceholder])
+	})
+
+	t.Run("TaskRequestStillReturnsServicePassword", func(t *testing.T) {
+		rh := &getExpansionsAndVarsHandler{settings: env.Settings(), taskID: "t1", hostID: "debug_host"}
+		resp := rh.Run(t.Context())
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.ExpansionsAndVars)
+		require.True(t, ok)
+		assert.Equal(t, "secret_password", data.InternalRedactions[hostServicePasswordPlaceholder])
+	})
 }
 
 func TestGetDistroViewHostOwnership(t *testing.T) {
@@ -283,13 +307,25 @@ func TestGetDistroViewHostOwnership(t *testing.T) {
 	debugHost := host.Host{
 		Id:      "debug_host",
 		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "t1",
+		},
+		Distro: distro.Distro{
+			DisableShallowClone: true,
+			ExecUser:            "admin",
+		},
 	}
 	nonDebugHost := host.Host{
-		Id: "non_debug_host",
+		Id:     "non_debug_host",
+		Distro: distro.Distro{ExecUser: "other"},
 	}
 	wrongTaskDebugHost := host.Host{
 		Id:      "wrong_task_debug_host",
 		IsDebug: true,
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "other_task",
+		},
+		Distro: distro.Distro{ExecUser: "wrong"},
 	}
 	require.NoError(t, debugHost.Insert(t.Context()))
 	require.NoError(t, nonDebugHost.Insert(t.Context()))
@@ -314,6 +350,10 @@ func TestGetDistroViewHostOwnership(t *testing.T) {
 		resp := rh.Run(t.Context())
 		require.NotZero(t, resp)
 		assert.Equal(t, http.StatusOK, resp.Status())
+		data, ok := resp.Data().(apimodels.DistroView)
+		require.True(t, ok)
+		assert.True(t, data.DisableShallowClone)
+		assert.Equal(t, "admin", data.ExecUser)
 	})
 }
 
