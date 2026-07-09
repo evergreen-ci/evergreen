@@ -358,14 +358,9 @@ type ComplexityRoot struct {
 	}
 
 	BuildBaronSettings struct {
-		BFSuggestionFeaturesURL func(childComplexity int) int
-		BFSuggestionPassword    func(childComplexity int) int
-		BFSuggestionServer      func(childComplexity int) int
-		BFSuggestionTimeoutSecs func(childComplexity int) int
-		BFSuggestionUsername    func(childComplexity int) int
-		TicketCreateIssueType   func(childComplexity int) int
-		TicketCreateProject     func(childComplexity int) int
-		TicketSearchProjects    func(childComplexity int) int
+		TicketCreateIssueType func(childComplexity int) int
+		TicketCreateProject   func(childComplexity int) int
+		TicketSearchProjects  func(childComplexity int) int
 	}
 
 	BuildVariantTuple struct {
@@ -1731,10 +1726,9 @@ type ComplexityRoot struct {
 	}
 
 	SearchReturnInfo struct {
-		FeaturesURL func(childComplexity int) int
-		Issues      func(childComplexity int) int
-		Search      func(childComplexity int) int
-		Source      func(childComplexity int) int
+		Issues func(childComplexity int) int
+		Search func(childComplexity int) int
+		Source func(childComplexity int) int
 	}
 
 	Selector struct {
@@ -4018,36 +4012,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BuildBaron.SearchReturnInfo(childComplexity), true
 
-	case "BuildBaronSettings.bfSuggestionFeaturesURL":
-		if e.complexity.BuildBaronSettings.BFSuggestionFeaturesURL == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionFeaturesURL(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionPassword":
-		if e.complexity.BuildBaronSettings.BFSuggestionPassword == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionPassword(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionServer":
-		if e.complexity.BuildBaronSettings.BFSuggestionServer == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionServer(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionTimeoutSecs":
-		if e.complexity.BuildBaronSettings.BFSuggestionTimeoutSecs == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionTimeoutSecs(childComplexity), true
-	case "BuildBaronSettings.bfSuggestionUsername":
-		if e.complexity.BuildBaronSettings.BFSuggestionUsername == nil {
-			break
-		}
-
-		return e.complexity.BuildBaronSettings.BFSuggestionUsername(childComplexity), true
 	case "BuildBaronSettings.ticketCreateIssueType":
 		if e.complexity.BuildBaronSettings.TicketCreateIssueType == nil {
 			break
@@ -10108,12 +10072,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit(childComplexity), true
 
-	case "SearchReturnInfo.featuresURL":
-		if e.complexity.SearchReturnInfo.FeaturesURL == nil {
-			break
-		}
-
-		return e.complexity.SearchReturnInfo.FeaturesURL(childComplexity), true
 	case "SearchReturnInfo.issues":
 		if e.complexity.SearchReturnInfo.Issues == nil {
 			break
@@ -23773,8 +23731,6 @@ func (ec *executionContext) fieldContext_BuildBaron_searchReturnInfo(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "featuresURL":
-				return ec.fieldContext_SearchReturnInfo_featuresURL(ctx, field)
 			case "issues":
 				return ec.fieldContext_SearchReturnInfo_issues(ctx, field)
 			case "search":
@@ -23783,151 +23739,6 @@ func (ec *executionContext) fieldContext_BuildBaron_searchReturnInfo(_ context.C
 				return ec.fieldContext_SearchReturnInfo_source(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SearchReturnInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionFeaturesURL(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionFeaturesURL, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionPassword(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionPassword,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionPassword, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionPassword(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionServer(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionServer,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionServer, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionServer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionTimeoutSecs(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionTimeoutSecs, nil
-		},
-		nil,
-		ec.marshalOInt2ᚖint,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BuildBaronSettings_bfSuggestionUsername(ctx context.Context, field graphql.CollectedField, obj *model.APIBuildBaronSettings) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_BuildBaronSettings_bfSuggestionUsername,
-		func(ctx context.Context) (any, error) {
-			return obj.BFSuggestionUsername, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_BuildBaronSettings_bfSuggestionUsername(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BuildBaronSettings",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -47408,16 +47219,6 @@ func (ec *executionContext) fieldContext_Project_buildBaronSettings(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "bfSuggestionFeaturesURL":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field)
-			case "bfSuggestionPassword":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionPassword(ctx, field)
-			case "bfSuggestionServer":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionServer(ctx, field)
-			case "bfSuggestionTimeoutSecs":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field)
-			case "bfSuggestionUsername":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionUsername(ctx, field)
 			case "ticketCreateProject":
 				return ec.fieldContext_BuildBaronSettings_ticketCreateProject(ctx, field)
 			case "ticketSearchProjects":
@@ -55785,16 +55586,6 @@ func (ec *executionContext) fieldContext_RepoRef_buildBaronSettings(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "bfSuggestionFeaturesURL":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field)
-			case "bfSuggestionPassword":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionPassword(ctx, field)
-			case "bfSuggestionServer":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionServer(ctx, field)
-			case "bfSuggestionTimeoutSecs":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field)
-			case "bfSuggestionUsername":
-				return ec.fieldContext_BuildBaronSettings_bfSuggestionUsername(ctx, field)
 			case "ticketCreateProject":
 				return ec.fieldContext_BuildBaronSettings_ticketCreateProject(ctx, field)
 			case "ticketSearchProjects":
@@ -59244,35 +59035,6 @@ func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectCacheBy
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SearchReturnInfo_featuresURL(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SearchReturnInfo_featuresURL,
-		func(ctx context.Context) (any, error) {
-			return obj.FeaturesURL, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SearchReturnInfo_featuresURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SearchReturnInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -82180,48 +81942,13 @@ func (ec *executionContext) unmarshalInputBuildBaronSettingsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"bfSuggestionFeaturesURL", "bfSuggestionPassword", "bfSuggestionServer", "bfSuggestionTimeoutSecs", "bfSuggestionUsername", "ticketCreateProject", "ticketSearchProjects", "ticketCreateIssueType"}
+	fieldsInOrder := [...]string{"ticketCreateProject", "ticketSearchProjects", "ticketCreateIssueType"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "bfSuggestionFeaturesURL":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionFeaturesURL"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionFeaturesURL = data
-		case "bfSuggestionPassword":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionPassword"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionPassword = data
-		case "bfSuggestionServer":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionServer"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionServer = data
-		case "bfSuggestionTimeoutSecs":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionTimeoutSecs"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionTimeoutSecs = data
-		case "bfSuggestionUsername":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bfSuggestionUsername"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.BFSuggestionUsername = data
 		case "ticketCreateProject":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ticketCreateProject"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -93401,16 +93128,6 @@ func (ec *executionContext) _BuildBaronSettings(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("BuildBaronSettings")
-		case "bfSuggestionFeaturesURL":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionFeaturesURL(ctx, field, obj)
-		case "bfSuggestionPassword":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionPassword(ctx, field, obj)
-		case "bfSuggestionServer":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionServer(ctx, field, obj)
-		case "bfSuggestionTimeoutSecs":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionTimeoutSecs(ctx, field, obj)
-		case "bfSuggestionUsername":
-			out.Values[i] = ec._BuildBaronSettings_bfSuggestionUsername(ctx, field, obj)
 		case "ticketCreateProject":
 			out.Values[i] = ec._BuildBaronSettings_ticketCreateProject(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -105199,11 +104916,6 @@ func (ec *executionContext) _SearchReturnInfo(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("SearchReturnInfo")
-		case "featuresURL":
-			out.Values[i] = ec._SearchReturnInfo_featuresURL(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "issues":
 			out.Values[i] = ec._SearchReturnInfo_issues(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

@@ -1341,13 +1341,6 @@ type BuildBaronSettings struct {
 	TicketCreateProject   string   `mapstructure:"ticket_create_project" bson:"ticket_create_project" json:"ticket_create_project" yaml:"ticket_create_project"`
 	TicketCreateIssueType string   `mapstructure:"ticket_create_issue_type" bson:"ticket_create_issue_type" json:"ticket_create_issue_type" yaml:"ticket_create_issue_type"`
 	TicketSearchProjects  []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects" json:"ticket_search_projects" yaml:"ticket_search_projects"`
-
-	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
-	BFSuggestionServer      string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server" json:"bf_suggestion_server" yaml:"bf_suggestion_server"`
-	BFSuggestionUsername    string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username" json:"bf_suggestion_username" yaml:"bf_suggestion_username"`
-	BFSuggestionPassword    string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password" json:"bf_suggestion_password" yaml:"bf_suggestion_password"`
-	BFSuggestionTimeoutSecs int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs" json:"bf_suggestion_timeout_secs" yaml:"bf_suggestion_timeout_secs"`
-	BFSuggestionFeaturesURL string `mapstructure:"bf_suggestion_features_url" bson:"bf_suggestion_features_url" json:"bf_suggestion_features_url" yaml:"bf_suggestion_features_url"`
 }
 
 type AnnotationsSettings struct {
