@@ -2083,20 +2083,6 @@ func TestMakeMergeQueueDescriptionOmitsMergeBaseWhenEmpty(t *testing.T) {
 	assert.Equal(t, "GitHub Merge Queue: I'm a commit! (0e312ff)", makeMergeQueueDescription(mergeGroup))
 }
 
-// kim: TODO: remove this temporary standalone test. It bypasses the suite's
-// integration-test gating (SetupTest -> ConfigureIntegrationTest) so the pure
-// in-memory filtering logic can be verified locally without integration
-// credentials. The real coverage lives in
-// PatchIntentUnitsSuite.TestFilterOutIgnoredVariants.
-func TestFilterOutIgnoredVariantsStandalone(t *testing.T) {
-	s := &PatchIntentUnitsSuite{}
-	s.project = "mci"
-	s.user = evergreen.GithubPatchUser
-	s.hash = "8b9b7ee42ef46d40e391910e3afd00e187a9dae8"
-	s.SetT(t)
-	s.TestFilterOutIgnoredVariants()
-}
-
 func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 	testCases := []struct {
 		name                    string

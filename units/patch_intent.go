@@ -1683,17 +1683,6 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 			// variant).
 			depVT := reinstateNeededTasksForVariant(patchedProject, vt, neededTasks)
 
-			// kim: TODO: remove this temporary debug log once the interaction
-			// between path filtering and cross-variant dependencies is confirmed.
-			grip.Info(ctx, message.Fields{
-				"message":                  "kim: reinstating path-filtered variant because a non-filtered task depends on its tasks",
-				"job":                      j.ID(),
-				"patch_id":                 patchDoc.Id.Hex(),
-				"variant":                  vt.Variant,
-				"reinstated_tasks":         depVT.Tasks,
-				"reinstated_display_tasks": depVT.DisplayTasks,
-			})
-
 			filteredVTs = append(filteredVTs, depVT)
 		}
 	}
