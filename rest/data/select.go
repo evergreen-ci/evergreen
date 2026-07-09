@@ -32,10 +32,9 @@ const (
 )
 
 const (
-	testSelectionWriteTimeout                     = 10 * time.Second
-	testSelectionStatusTimeout                    = 4 * time.Second
-	testSelectionDecorationTimeout                = 5 * time.Second
-	testSelectionDisplayTaskStatusRequestParallel = 15
+	testSelectionWriteTimeout      = 10 * time.Second
+	testSelectionStatusTimeout     = 4 * time.Second
+	testSelectionDecorationTimeout = 5 * time.Second
 )
 
 // Using a shared HTTP client so we can reuse idle connections between TSS calls and reduce the number of reconnects.
@@ -409,7 +408,6 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID stri
 		"missing_exec_task_ids": missingExecTaskIDs,
 	})
 	eg, ctx := errgroup.WithContext(ctx)
-	eg.SetLimit(testSelectionDisplayTaskStatusRequestParallel)
 	for _, execTask := range execTasks {
 		if !execTask.TestSelectionEnabled {
 			continue
