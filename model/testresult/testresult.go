@@ -15,10 +15,8 @@ import (
 // from a single task run or multiple related task runs, such as execution
 // tasks within a display task.
 type TaskTestResults struct {
-	Stats                 TaskTestResultsStats `json:"stats"`
-	Results               []TestResult         `json:"results"`
-	QuarantinedTestsCount int                  `json:"quarantined_tests_count,omitempty"`
-	QuarantinedTests      []QuarantinedTest    `json:"quarantined_tests,omitempty"`
+	Stats   TaskTestResultsStats `json:"stats"`
+	Results []TestResult         `json:"results"`
 }
 
 // TaskTestResultsStats represents basic statistics of a set of test results.

@@ -26,6 +26,7 @@ IGNORED_PACKAGES=(
     "golang.org/x/crypto"               # DEVPROD-33754 Go crypto package vulnerability tracking
     "golang.org/x/sys"                  # DEVPROD-33756 Go sys package vulnerability tracking
     "github.com/go-jose/go-jose/v4"     # DEVPROD-33891 go-jose vulnerability tracking
+    "github.com/slack-go/slack"         # DEVPROD-25290 slack-go vulnerability tracking (fix requires Go 1.25)
 )
 
 # Validate that each ignored package has a tracking ticket

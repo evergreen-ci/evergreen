@@ -589,6 +589,9 @@ const (
 	ppTranslationDedupedOtelAttribute = "evergreen.parser_project.translation_deduped"
 	// ppTranslationCacheSizeOtelAttribute records how many translations the LRU is holding right now.
 	ppTranslationCacheSizeOtelAttribute = "evergreen.parser_project.translation_cache_size"
+	// ppTranslationCacheBytesOtelAttribute records the estimated byte total of the translations the
+	// LRU is holding right now, which the byte budget bounds.
+	ppTranslationCacheBytesOtelAttribute = "evergreen.parser_project.translation_cache_bytes"
 	// ppTranslationCacheEvictionsOtelAttribute records the cumulative count of translations the LRU
 	// has dropped to make room for new ones (or because their TTL expired), before anything reused them.
 	ppTranslationCacheEvictionsOtelAttribute = "evergreen.parser_project.translation_cache_evictions"
@@ -615,10 +618,11 @@ func setTranslationCacheSpanAttributes(span trace.Span, cacheHit, deduped, cache
 	if !cacheEnabled {
 		return
 	}
-	size, evictions := translationCacheStats()
+	size, evictions, bytes := translationCacheStats()
 	hottestKey, hottestHits := hottestTranslationKey()
 	span.SetAttributes(
 		attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
+		attribute.Int64(ppTranslationCacheBytesOtelAttribute, bytes),
 		attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
 		attribute.String(ppTranslationCacheHottestKeyOtelAttribute, hottestKey),
 		attribute.Int64(ppTranslationCacheHottestKeyHitsOtelAttribute, hottestHits),
@@ -1173,6 +1177,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 // for the specific revision. Once the git clone is finished, it creates git
 // worktrees under the clone directory based on numWorktrees.
 func gitCloneAndCreateWorktrees(ctx context.Context, ownerRepo gitOwnerRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, thirdparty.GitOperationTimeout)
+	defer cancel()
+
 	dir, err := thirdparty.GitCloneMinimal(ctx, ownerRepo.owner, ownerRepo.repo, revision)
 	if err != nil {
 		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerRepo.owner, ownerRepo.repo, revision)
