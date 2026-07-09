@@ -99,7 +99,7 @@ func (j *mergeQueuePatchRecoveryJob) Run(ctx context.Context) {
 // recoverProject creates a patch for the merge group at the front of the project's GitHub merge
 // queue (queue position 1) if it has neither an active patch nor a pending intent.
 func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, projectRef *model.ProjectRef, pending map[string]bool) error {
-	frontSHA, ok, err := thirdparty.GetMergeQueueFrontSHA(ctx, projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	frontRef, frontSHA, ok, err := thirdparty.GetMergeQueueFrontEntry(ctx, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return errors.Wrap(err, "getting merge queue front entry")
 	}
@@ -117,54 +117,43 @@ func (j *mergeQueuePatchRecoveryJob) recoverProject(ctx context.Context, project
 		}
 	}
 
-	refs, err := thirdparty.ListMergeQueueRefs(ctx, projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	if err != nil {
-		return errors.Wrap(err, "listing merge queue refs")
-	}
-	for _, ref := range refs {
-		headRef := ref.GetRef()
-		if ref.GetObject().GetSHA() != frontSHA || headRef == "" {
-			continue
-		}
-		if _, err := j.recoverMergeGroup(ctx, projectRef, headRef, frontSHA); err != nil {
-			return errors.Wrapf(err, "recovering merge group with head SHA '%s'", frontSHA)
-		}
-		break
+	if err := j.recoverMergeGroup(ctx, projectRef, frontRef, frontSHA); err != nil {
+		return errors.Wrapf(err, "recovering merge group with head SHA '%s'", frontSHA)
 	}
 	return nil
 }
 
 // recoverMergeGroup creates a patch for a staged merge group that has no
 // Evergreen patch.
-func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, projectRef *model.ProjectRef, headRef, headSHA string) (bool, error) {
+func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, projectRef *model.ProjectRef, headRef, headSHA string) error {
 	headCommit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner, projectRef.Repo, headSHA)
 	if err != nil {
-		return false, errors.Wrap(err, "getting merge group head commit")
+		return errors.Wrap(err, "getting merge group head commit")
 	}
 
 	stagedAt := mergeGroupStagedAt(headCommit)
 	// Only recover a patch if the queue doesn't have patch since the last recover job.
 	if !stagedAt.IsZero() && time.Since(stagedAt) < minimumStuckTime {
-		return false, nil
+		return nil
 	}
 
 	baseSHA := firstParentSHA(headCommit)
 	if baseSHA == "" {
-		return false, errors.Errorf("merge group head commit '%s' has no parent to use as the base SHA", headSHA)
+		return errors.Errorf("merge group head commit '%s' has no parent to use as the base SHA", headSHA)
 	}
 
 	event := newMergeGroupEvent(projectRef.Owner, projectRef.Repo, headRef, headSHA, baseSHA, headCommit)
 	msgID := fmt.Sprintf("%s-%s-%s", mergeQueuePatchRecoveryJobName, headSHA, mgobson.NewObjectId().Hex())
 	intent, err := patch.NewGithubMergeIntent(ctx, msgID, patch.AutomatedCaller, event)
 	if err != nil {
-		return false, errors.Wrap(err, "creating merge intent")
+		return errors.Wrap(err, "creating merge intent")
 	}
 	if err := intent.Insert(ctx); err != nil {
-		return false, errors.Wrap(err, "inserting merge intent")
+		return errors.Wrap(err, "inserting merge intent")
 	}
 	processor := NewPatchIntentProcessor(j.env, mgobson.NewObjectId(), intent)
 	if err := j.env.RemoteQueue().Put(ctx, processor); err != nil {
-		return false, errors.Wrap(err, "enqueueing merge queue patch intent processor")
+		return errors.Wrap(err, "enqueueing merge queue patch intent processor")
 	}
 
 	grip.Info(ctx, message.Fields{
@@ -174,7 +163,7 @@ func (j *mergeQueuePatchRecoveryJob) recoverMergeGroup(ctx context.Context, proj
 		"head_sha":   headSHA,
 		"job_id":     j.ID(),
 	})
-	return true, nil
+	return nil
 }
 
 // mergeGroupStagedAt returns when GitHub created the merge group's commit, which

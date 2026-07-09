@@ -2062,39 +2062,7 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	return checkRun, nil
 }
 
-// ListMergeQueueRefs returns the gh-readonly-queue refs GitHub has created for the
-// merge queue on the given base branch. Each ref corresponds to a merge group
-// GitHub has staged and is waiting on, and should have a corresponding Evergreen
-// patch.
-func ListMergeQueueRefs(ctx context.Context, owner, repo, baseBranch string) ([]*github.Reference, error) {
-	caller := "ListMergeQueueRefs"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-	))
-	defer span.End()
-
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-
-	// All merge group refs have this naming scheme according to GitHub docs.
-	refPrefix := fmt.Sprintf("heads/gh-readonly-queue/%s/", baseBranch)
-	refs, resp, err := githubClient.Git.ListMatchingRefs(ctx, owner, repo, &github.ReferenceListOptions{Ref: refPrefix})
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return nil, errors.Wrapf(err, "listing merge queue refs for '%s/%s' branch '%s'", owner, repo, baseBranch)
-	}
-	return refs, nil
-}
-
-type mergeQueueFrontSHAResponse struct {
+type mergeQueueFrontEntryResponse struct {
 	Data struct {
 		Repository struct {
 			MergeQueue struct {
@@ -2103,6 +2071,9 @@ type mergeQueueFrontSHAResponse struct {
 						HeadCommit struct {
 							Oid string `json:"oid"`
 						} `json:"headCommit"`
+						PullRequest struct {
+							Number int `json:"number"`
+						} `json:"pullRequest"`
 					} `json:"nodes"`
 				} `json:"entries"`
 			} `json:"mergeQueue"`
@@ -2113,12 +2084,12 @@ type mergeQueueFrontSHAResponse struct {
 	} `json:"errors"`
 }
 
-// GetMergeQueueFrontSHA returns the head commit SHA of the merge group at the front of the
-// GitHub merge queue (queue position 1) for the given branch. It returns ok=false if the queue is
-// currently empty. The REST API used by ListMergeQueueRefs has no notion of queue position, so
-// this queries the GraphQL API's mergeQueue.entries field instead, which is position-ordered.
-func GetMergeQueueFrontSHA(ctx context.Context, owner, repo, baseBranch string) (headSHA string, ok bool, err error) {
-	caller := "GetMergeQueueFrontSHA"
+// GetMergeQueueFrontEntry returns the head ref and head commit SHA of the merge group at the
+// front of the GitHub merge queue (queue position 1) for the given branch. It returns ok=false if
+// the queue is currently empty. There is no REST API with a notion of queue position, so this
+// queries the GraphQL API's mergeQueue.entries field instead, which is position-ordered.
+func GetMergeQueueFrontEntry(ctx context.Context, owner, repo, baseBranch string) (headRef, headSHA string, ok bool, err error) {
+	caller := "GetMergeQueueFrontEntry"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubOwnerAttribute, owner),
 		attribute.String(githubRepoAttribute, repo),
@@ -2127,7 +2098,7 @@ func GetMergeQueueFrontSHA(ctx context.Context, owner, repo, baseBranch string) 
 
 	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
-		return "", false, errors.Wrap(err, "getting installation token")
+		return "", "", false, errors.Wrap(err, "getting installation token")
 	}
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
@@ -2138,7 +2109,7 @@ func GetMergeQueueFrontSHA(ctx context.Context, owner, repo, baseBranch string) 
 			repository(owner: $owner, name: $repo) {
 				mergeQueue(branch: $branch) {
 					entries(first: 1) {
-						nodes { headCommit { oid } }
+						nodes { headCommit { oid } pullRequest { number } }
 					}
 				}
 			}
@@ -2146,32 +2117,44 @@ func GetMergeQueueFrontSHA(ctx context.Context, owner, repo, baseBranch string) 
 		"variables": map[string]string{"owner": owner, "repo": repo, "branch": baseBranch},
 	})
 	if err != nil {
-		return "", false, errors.Wrap(err, "marshalling GraphQL request body")
+		return "", "", false, errors.Wrap(err, "marshalling GraphQL request body")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, githubGraphQLURL, bytes.NewReader(reqBody))
 	if err != nil {
-		return "", false, errors.Wrap(err, "creating GraphQL request")
+		return "", "", false, errors.Wrap(err, "creating GraphQL request")
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := githubClient.Client.Client().Do(req)
 	if err != nil {
-		return "", false, errors.Wrap(err, "sending GraphQL request")
+		return "", "", false, errors.Wrap(err, "sending GraphQL request")
 	}
 	defer resp.Body.Close()
 
-	var parsed mergeQueueFrontSHAResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return "", false, errors.Wrap(err, "decoding GraphQL response")
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", false, errors.Wrap(err, "reading GraphQL response body")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", "", false, errors.Errorf("GraphQL request failed with status %d: %s", resp.StatusCode, body)
+	}
+
+	var parsed mergeQueueFrontEntryResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", "", false, errors.Wrap(err, "decoding GraphQL response")
 	}
 	if len(parsed.Errors) > 0 {
-		return "", false, errors.Errorf("GraphQL error: %s", parsed.Errors[0].Message)
+		return "", "", false, errors.Errorf("GraphQL error: %s", parsed.Errors[0].Message)
 	}
 
 	nodes := parsed.Data.Repository.MergeQueue.Entries.Nodes
 	if len(nodes) == 0 {
-		return "", false, nil
+		return "", "", false, nil
 	}
-	return nodes[0].HeadCommit.Oid, true, nil
+
+	node := nodes[0]
+	// Merge group refs follow this naming scheme according to GitHub docs.
+	headRef = fmt.Sprintf("refs/heads/gh-readonly-queue/%s/pr-%d-%s", baseBranch, node.PullRequest.Number, node.HeadCommit.Oid)
+	return headRef, node.HeadCommit.Oid, true, nil
 }
