@@ -164,15 +164,20 @@ func (s *WebhookSubscriber) validate() error {
 	catcher.AddWhen(s.TimeoutMS < 0, errors.New("timeout cannot be negative"))
 	catcher.AddWhen(s.TimeoutMS > webhookTimeoutLimit, errors.Errorf("timeout cannot be greater than %d ms", webhookTimeoutLimit))
 
+	seenHeaders := map[string]struct{}{}
 	for _, header := range s.Headers {
 		catcher.AddWhen(header.Key == "", errors.New("header key cannot be empty"))
 		catcher.AddWhen(header.Value == "", errors.New("header value cannot be empty"))
+		for seenHeader := range seenHeaders {
+			catcher.ErrorfWhen(strings.EqualFold(header.Key, seenHeader), "duplicate header key '%s'", header.Key)
+		}
+		seenHeaders[header.Key] = struct{}{}
 	}
 
 	return catcher.Resolve()
 }
 
-// GetHeader gets the value for the given key (case-insensitive).
+// GetHeader gets the value for the given key.
 func (s *WebhookSubscriber) GetHeader(key string) string {
 	for _, h := range s.Headers {
 		if strings.EqualFold(h.Key, key) {
