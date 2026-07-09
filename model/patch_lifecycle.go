@@ -853,6 +853,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		"version":   patchVersion.Id,
 		"project":   patchVersion.Identifier,
 		"requester": requester,
+		"num_tasks": len(tasksToInsert),
 	})
 
 	// Update aggregate costs after transaction commits. We use a goroutine with
