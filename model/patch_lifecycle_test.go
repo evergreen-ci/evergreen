@@ -306,7 +306,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = ppStorageMethod
 			require.NoError(t, p.Insert(t.Context()))
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -366,7 +366,7 @@ func TestFinalizePatch(t *testing.T) {
 			_, err = baseManifest.TryInsert(t.Context())
 			require.NoError(t, err)
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			// Ensure that the manifest was created and that auto_update worked for
@@ -421,7 +421,7 @@ func TestFinalizePatch(t *testing.T) {
 			_, err = baseManifest.TryInsert(t.Context())
 			require.NoError(t, err)
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 
@@ -445,13 +445,13 @@ func TestFinalizePatch(t *testing.T) {
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert(t.Context()))
 
-			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
 			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
-			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester)
+			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester, nil)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no builds or tasks for merge queue version")
 		},
@@ -461,7 +461,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 			require.NoError(t, p.Insert(t.Context()))
 
-			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -1228,7 +1228,7 @@ func TestConfigurePatch(t *testing.T) {
 			req := PatchUpdate{
 				Description: "updating the description only!",
 			}
-			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
+			_, _, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req, nil)
 			assert.NoError(t, err)
 
 			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())
@@ -1263,7 +1263,7 @@ func TestConfigurePatch(t *testing.T) {
 			for _, vt := range req.VariantsTasks {
 				expectedVarsTasks[vt.Variant] = vt
 			}
-			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req)
+			_, _, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req, nil)
 			assert.NoError(t, err)
 
 			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())

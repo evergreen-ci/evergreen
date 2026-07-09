@@ -457,7 +457,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	event.LogPatchStateChangeEvent(ctx, patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity()); err != nil {
+		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), nil); err != nil {
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
