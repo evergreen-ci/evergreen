@@ -280,6 +280,9 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	))
 	defer span.End()
 
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	defer cancel()
+
 	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "creating GitHub app installation token")
@@ -388,6 +391,9 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 		attribute.String(githubPathAttribute, fileName),
 	))
 	defer span.End()
+
+	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
+	defer cancel()
 
 	// Validate that the file is within the git directory to prevent attempts to
 	// access files outside the git repo. The requested file could be
