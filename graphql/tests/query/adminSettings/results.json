@@ -205,6 +205,7 @@
               "numDependentsFactor": 5,
               "stepbackTaskFactor": 10,
               "translateProjectConcurrencyLimit": 15,
+              "translateProjectCacheBytesLimit": 1048576,
               "hostAllocator": "UTILIZATION",
               "hostAllocatorRoundingRule": "DOWN",
               "hostAllocatorFeedbackRule": "NO_FEEDBACK",
