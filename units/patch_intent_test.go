@@ -2483,71 +2483,6 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 					},
 				},
 				VariantsTasks: []patch.VariantTasks{
-					{Variant: "bvA", Tasks: []string{"taskA"}},
-					{Variant: "bvB", Tasks: []string{"taskB"}},
-				},
-				BuildVariants: []string{"bvA", "bvB"},
-				Tasks:         []string{"taskA", "taskB"},
-			},
-			project: &model.Project{
-				Identifier: s.project,
-				Tasks: []model.ProjectTask{
-					{Name: "taskA"},
-					{Name: "taskB"},
-				},
-				BuildVariants: model.BuildVariants{
-					{
-						Name:  "bvA",
-						Paths: []string{"src/**"},
-						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "taskA", Variant: "bvA"},
-						},
-					},
-					{
-						Name: "bvB",
-						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "taskB", Variant: "bvB", DependsOn: []model.TaskUnitDependency{
-								{Name: "taskA", Variant: "bvA"},
-							}},
-						},
-					},
-				},
-			},
-			// bvA is path-filtered but taskB (in the unfiltered bvB) depends on
-			// taskA, so bvA must be reinstated rather than ignored.
-			expectedIgnoredVariants: []string{},
-			expectedVariantsTasks:   2,
-			expectedBuildVariants:   2,
-			expectedTasks:           2,
-			expectedVariantTasks: map[string][]string{
-				"bvA": {"taskA"},
-				"bvB": {"taskB"},
-			},
-		},
-		{
-			name: "OnlyDependencyTaskReinstatedNotWholeVariant",
-			patchDoc: &patch.Patch{
-				Id:      mgobson.NewObjectId(),
-				Project: s.project,
-				Author:  s.user,
-				Githash: s.hash,
-				GithubPatchData: thirdparty.GithubPatch{
-					PRNumber:  123,
-					BaseOwner: "owner",
-					BaseRepo:  "repo",
-					HeadOwner: "contributor",
-					HeadRepo:  "repo",
-				},
-				Patches: []patch.ModulePatch{
-					{
-						PatchSet: patch.PatchSet{
-							Summary: []thirdparty.Summary{
-								{Name: "docs/README.md", Additions: 1, Deletions: 0},
-							},
-						},
-					},
-				},
-				VariantsTasks: []patch.VariantTasks{
 					{Variant: "bvA", Tasks: []string{"taskA", "taskX"}},
 					{Variant: "bvB", Tasks: []string{"taskB"}},
 				},
@@ -2592,7 +2527,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 			},
 		},
 		{
-			name: "TransitiveCrossVariantDependencyPreserved",
+			name: "TransitiveCrossVariantDependencyIntoIgnoredVariantPreserved",
 			patchDoc: &patch.Patch{
 				Id:      mgobson.NewObjectId(),
 				Project: s.project,
@@ -2631,32 +2566,32 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 				},
 				BuildVariants: model.BuildVariants{
 					{
-						Name:  "bvA",
-						Paths: []string{"src/**"},
+						Name: "bvA",
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "taskA", Variant: "bvA", DependsOn: []model.TaskUnitDependency{
+								{Name: "taskB", Variant: "bvB"},
+							}},
+						},
+					},
+					{
+						Name:  "bvB",
+						Paths: []string{"lib/**"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "taskB", Variant: "bvB", DependsOn: []model.TaskUnitDependency{
 								{Name: "taskC", Variant: "bvC"},
 							}},
 						},
 					},
 					{
-						Name: "bvB",
-						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "taskB", Variant: "bvB", DependsOn: []model.TaskUnitDependency{
-								{Name: "taskA", Variant: "bvA"},
-							}},
-						},
-					},
-					{
 						Name:  "bvC",
-						Paths: []string{"lib/**"},
+						Paths: []string{"src/**"},
 						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "taskC", Variant: "bvC"},
 						},
 					},
 				},
 			},
-			// taskB depends on taskA (bvA) which depends on taskC (bvC); both
+			// taskA depends on taskB (bvB) which depends on taskC (bvC); both
 			// path-filtered variants must be reinstated transitively.
 			expectedIgnoredVariants: []string{},
 			expectedVariantsTasks:   3,
@@ -2669,7 +2604,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 			},
 		},
 		{
-			name: "DisplayTaskWrapperPreservedForReinstatedDependency",
+			name: "DisplayTaskPreservedForCrossVariantDependencyIntoIgnoredVariant",
 			patchDoc: &patch.Patch{
 				Id:      mgobson.NewObjectId(),
 				Project: s.project,
@@ -2818,7 +2753,7 @@ func (s *PatchIntentUnitsSuite) TestFilterOutIgnoredVariants() {
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			j := &patchIntentProcessor{}
-			ctx := context.Background()
+			ctx := t.Context()
 			ignoredVariants := j.filterOutIgnoredVariants(ctx, tc.patchDoc, tc.project)
 
 			assert.Equal(t, tc.expectedIgnoredVariants, ignoredVariants)

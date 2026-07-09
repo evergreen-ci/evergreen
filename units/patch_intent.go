@@ -1650,9 +1650,12 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 	return utility.UniqueStrings(allRules)
 }
 
-// filterOutIgnoredVariants checks which variants should be ignored based on their path patterns
-// and the changed files in the patch. It removes ignored variants from all relevant patch fields
-// and returns the list of ignored variant names.
+// filterOutIgnoredVariants checks which variants should be ignored based on
+// their path patterns and the changed files in the patch.If a variant is
+// ignored by path filtering but has tasks that are required for cross-variant
+// dependencies, those dependencies will not be ignored (in other words,
+// dependencies can override path filtering). It removes ignored variants from
+// all relevant patch fields and returns the list of ignored variant names.
 func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, patchDoc *patch.Patch, patchedProject *model.Project) []string {
 	ignoredVariants := []string{}
 	if j.skipFilteringIgnoredVariants(ctx, patchDoc, patchedProject) {
@@ -1663,10 +1666,11 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 
 	filteredVTs := vtsNotIgnored
 	if len(candidateVTsToIgnore) > 0 {
-		// A task that's not ignored may depend on a task in a variant that path
-		// filtering would otherwise ignore. Cross-variant dependencies must be
-		// preserved regardless of path filtering. Determine which tasks in the
-		// ignored variants need to be kept due to cross-variant dependencies.
+		// A task that's not ignored may have a cross-variant dependency on a
+		// task in a variant that path filtering would otherwise ignore.
+		// Cross-variant dependencies must be preserved regardless of path
+		// filtering, so determine which tasks in the ignored variants need to
+		// be kept for cross-variant dependencies.
 		variantsToNeededTasks := j.getTasksAndDependencies(ctx, patchDoc, patchedProject, vtsNotIgnored)
 		for _, vt := range candidateVTsToIgnore {
 			neededTasks := variantsToNeededTasks[vt.Variant]
@@ -1692,10 +1696,10 @@ func (j *patchIntentProcessor) filterOutIgnoredVariants(ctx context.Context, pat
 	return ignoredVariants
 }
 
-// partitionVariantsByPathFilter splits the patch's variant tasks into those that
-// are kept and those that can potentially be ignored A variant is a candidate
-// to be ignored when it has path filters and none of the patch's changed
-// files match them.
+// partitionVariantsByPathFilter splits the patch's variant tasks into those
+// that are kept and those that can potentially be ignored. A variant is a
+// candidate to be ignored when it has path filters and none of the patch's
+// changed files match them.
 func partitionVariantsByPathFilter(patchDoc *patch.Patch, patchedProject *model.Project) (vtsNotIgnored, candidateVTsToIgnore []patch.VariantTasks) {
 	changedFiles := patchDoc.FilesChanged()
 	for _, vt := range patchDoc.VariantsTasks {
