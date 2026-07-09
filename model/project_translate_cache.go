@@ -89,16 +89,28 @@ func currentTranslationCacheBytesLimit() int64 {
 	return defaultTranslationCacheBytesLimit
 }
 
+// byteCounter is an io.Writer that counts the bytes written to it without retaining them, so a value
+// can be JSON-sized (or hashed) by streaming its encoding into a sink instead of materializing the
+// full serialized form as a []byte.
+type byteCounter struct{ n int64 }
+
+func (c *byteCounter) Write(p []byte) (int, error) {
+	c.n += int64(len(p))
+	return len(p), nil
+}
+
 // estimateProjectSize approximates p's memory cost as the length of its JSON encoding. This
 // underestimates live heap size but is proportional to it and, unlike the parser project, reflects
 // matrix and variant expansion. The bool is false if p can't be marshaled, in which case the caller
 // must not cache it: an unsizable entry would escape the byte budget entirely.
+//
+// The encoding is streamed through a byteCounter so the full JSON []byte is never allocated.
 func estimateProjectSize(p *Project) (int64, bool) {
-	data, err := json.Marshal(p)
-	if err != nil {
+	var c byteCounter
+	if err := json.NewEncoder(&c).Encode(p); err != nil {
 		return 0, false
 	}
-	return int64(len(data)), true
+	return c.n, true
 }
 
 // addToTranslationCache inserts p under key and evicts least-recently-used entries until the running
@@ -243,13 +255,16 @@ func translateAndCache(ctx context.Context, span trace.Span, pp *ParserProject, 
 	return p.cloneForCacheReturn(), err
 }
 
-// parserProjectContentSHA returns the hex-encoded SHA-256 of pp marshaled as JSON.
+// parserProjectContentSHA returns the hex-encoded SHA-256 of pp's JSON encoding.
 // Must be called after pp.Identifier is set so the identifier is included in the hash.
+//
+// The encoding is streamed into the hasher so the full JSON []byte is never allocated. json.Encoder
+// sorts map keys exactly as json.Marshal does, so the hash is stable: identical parser-project
+// content yields the same key, and any generate.tasks rewrite yields a different key.
 func parserProjectContentSHA(pp *ParserProject) (string, error) {
-	data, err := json.Marshal(pp)
-	if err != nil {
-		return "", errors.Wrap(err, "marshaling parser project")
+	h := sha256.New()
+	if err := json.NewEncoder(h).Encode(pp); err != nil {
+		return "", errors.Wrap(err, "hashing parser project")
 	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
