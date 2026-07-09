@@ -1150,6 +1150,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"project":   v.Identifier,
 			"requester": v.Requester,
 			"runner":    RunnerName,
+			"num_tasks": len(tasksToCreate),
 		})
 		return nil
 	}

@@ -10,17 +10,8 @@ import (
 // underlying test results store.
 type TestResultsService interface {
 	AppendTestResultMetadata(context.Context, []string, int, int, testresult.DbTaskTestResults) error
-	Get(context.Context, []Task, GetTaskTestResultsOptions) ([]testresult.TaskTestResults, error)
+	GetTaskTestResults(context.Context, []Task) ([]testresult.TaskTestResults, error)
 	GetTaskTestResultsStats(context.Context, []Task) (testresult.TaskTestResultsStats, error)
-}
-
-// GetTaskTestResultsOptions configures how test result metadata is fetched.
-type GetTaskTestResultsOptions struct {
-	// Fields limits the returned test result metadata to the specified fields.
-	Fields []string
-	// IncludeQuarantinedTests includes quarantined test snapshots. The snapshots
-	// are omitted by default because they can be large.
-	IncludeQuarantinedTests bool
 }
 
 // FilterOptions represents the filtering arguments for fetching test results.
@@ -33,6 +24,4 @@ type FilterOptions struct {
 	Limit               int
 	Page                int
 	BaseTasks           []Task
-
-	IncludeQuarantinedTests bool
 }
