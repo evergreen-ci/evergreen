@@ -123,7 +123,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		IncludeArtifacts:         true,
 		LogURL:                   GetURL(ctx),
 		ParsleyLogURL:            tgh.parsleyURL,
-		ArtifactSignSecret:                []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
+		ArtifactSignSecret:       []byte(evergreen.GetEnvironment().Settings().ArtifactSignSecret),
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting task '%s' to API model", tgh.taskID))
