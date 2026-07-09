@@ -563,7 +563,12 @@ func parseGithubErrorResponse(resp *github.Response) error {
 // file can be retrieved with git, it reduces the amount of GitHub API calls.
 func GetGitHubFileContent(ctx context.Context, owner, repo, ref, path, worktree string, ghAppAuth *githubapp.GithubAppAuth, useGit bool) ([]byte, error) {
 	if useGit {
-		gitFile, err := GetGitHubFileFromGit(ctx, owner, repo, ref, path, worktree)
+		// Fetching files with git can be slow/network dependent. Bound how long
+		// it can run so it can fall back faster to the GitHub API when needed.
+		gitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		gitFile, err := GetGitHubFileFromGit(gitCtx, owner, repo, ref, path, worktree)
 		if err == nil {
 			return gitFile, nil
 		}

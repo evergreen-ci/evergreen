@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -268,8 +267,6 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file, worktree 
 	return fileContent, errors.Wrap(err, "restoring git file")
 }
 
-const gitOperationTimeout = 15 * time.Second
-
 // GitCloneMinimal performs a minimal git clone of a repository using the GitHub
 // app. The minimal clone contains only git metadata for the one revision and
 // has no file content. Callers are expected to clean up the returned git
@@ -293,13 +290,6 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	}
 
 	repoURL := FormGitURLForApp(owner, repo, token)
-
-	// Limit how long this can clone to prevent this from running too long. This
-	// is an experimental feature and should not meaningfully impact performance
-	// while it's being tested out. Realistically, if it took more than this
-	// long to do a minimal clone, it would be too slow to be usable.
-	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
-	defer cancel()
 
 	// Clone the repository with the bare minimum metadata for just the one
 	// commit. Don't fetch any actual file blobs yet.
@@ -350,11 +340,8 @@ func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
 	ctx, span := tracer.Start(ctx, "GitCreateWorktree")
 	defer span.End()
 
-	// Limit how long this can spend creating the worktree to prevent this from
-	// running too long. This is an experimental feature and should not
-	// meaningfully impact performance while it's being tested out.
-	// Realistically, if it took more than this long to create a worktree,
-	// it would be too slow to be usable.
+	// This depends on fetching from GitHub, so limit how long this can spend
+	// creating the worktree to prevent this from running too long.
 	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
 	defer cancel()
 
@@ -407,14 +394,6 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 	if err := validateFileIsWithinDirectory(gitDir, fileName); err != nil {
 		return nil, errors.Wrapf(err, "validating file path '%s' is within git repo directory", fileName)
 	}
-
-	// Limit how long this can spend restoring the file to prevent this from
-	// running too long. This is an experimental feature and should not
-	// meaningfully impact performance while it's being tested out.
-	// Realistically, if it took more than this long to restore a single file,
-	// it would be too slow to be usable.
-	ctx, cancel := context.WithTimeout(ctx, gitOperationTimeout)
-	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", fileName)
 	cmd.Dir = gitDir
