@@ -138,10 +138,14 @@ compare_results() {
     local report=$3
     local regressed_files=$4
 
-    print_status "Comparing validation results..."
+    print_status "Comparing baseline vs patch validation results..."
+    print_status "(Timeout-based failures are excluded from regression detection)"
 
     if python3 scripts/compare-validation-results.py "$baseline" "$patch" "$report" "$regressed_files"; then
         print_status "No regressions found!"
+        if [ -f "$report" ]; then
+            cat "$report"
+        fi
         return 0
     else
         print_error "Regressions detected!"
@@ -155,6 +159,7 @@ retry_regressions() {
     local attempt=1
 
     if [ ! -f "$regressed_files" ] || [ ! -s "$regressed_files" ]; then
+        print_error "No regressed files list to retry"
         return 1
     fi
 
@@ -164,6 +169,10 @@ retry_regressions() {
     num_files=$(wc -l < "$regressed_files" | tr -d ' ')
 
     print_status "Retrying $num_files suspected regression(s) $REGRESSION_RETRIES time(s) to confirm..."
+    print_status "Regressed configs:"
+    while IFS= read -r line; do
+        print_status "  - $line"
+    done < "$regressed_files"
 
     while [ $attempt -le $REGRESSION_RETRIES ]; do
         print_status "Retry attempt $attempt/$REGRESSION_RETRIES..."
@@ -176,18 +185,31 @@ retry_regressions() {
             return 1
         fi
 
-        local all_passed
-        all_passed=$(python3 -c "
+        local retry_stats
+        retry_stats=$(python3 -c "
 import json
 with open('$RETRY_RESULTS', 'r') as f:
     data = json.load(f)
-    print('true' if data['failed'] == 0 else 'false')
+    failed_files = [r['file'] + ': ' + r.get('errors', 'unknown error') for r in data['results'] if not r['passed']]
+    print(f\"{data['passed']} {data['failed']}\")
+    for ff in failed_files:
+        print(ff)
 ")
+        local retry_passed
+        retry_passed=$(echo "$retry_stats" | head -1 | cut -d' ' -f1)
+        local retry_failed
+        retry_failed=$(echo "$retry_stats" | head -1 | cut -d' ' -f2)
+        print_status "Retry result: $retry_passed passed, $retry_failed failed"
 
-        if [ "$all_passed" = "true" ]; then
+        if [ "$retry_failed" = "0" ]; then
             print_status "All suspected regressions passed on retry attempt $attempt — flaky failure, not a real regression"
             return 0
         fi
+
+        print_status "Still failing on retry:"
+        echo "$retry_stats" | tail -n +2 | while IFS= read -r line; do
+            print_status "  - $line"
+        done
 
         attempt=$((attempt + 1))
     done

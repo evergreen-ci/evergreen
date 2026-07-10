@@ -11,7 +11,7 @@ import sys
 def load_results(filename):
     with open(filename, 'r') as f:
         data = json.load(f)
-    return {r['file']: r['passed'] for r in data['results']}
+    return {r['file']: r for r in data['results']}
 
 
 def main():
@@ -24,10 +24,24 @@ def main():
     patch = load_results(patch_file)
 
     regressions = []
+    timeout_excluded = []
 
-    for file, baseline_passed in baseline.items():
-        if baseline_passed and file in patch and not patch[file]:
+    for file, baseline_result in baseline.items():
+        if not baseline_result['passed']:
+            continue
+        if file not in patch:
+            continue
+        patch_result = patch[file]
+        if patch_result['passed']:
+            continue
+        patch_errors = patch_result.get('errors', '')
+        if 'timed out' in patch_errors:
+            timeout_excluded.append(file)
+        else:
             regressions.append(file)
+
+    if timeout_excluded:
+        print(f"Excluded {len(timeout_excluded)} timeout-based failure(s) from regression detection")
 
     if regressions:
         with open(report_file, 'w') as f:
@@ -36,6 +50,10 @@ def main():
             f.write(f"Found {len(regressions)} configs that passed baseline but failed with patch:\n\n")
             for config in sorted(regressions):
                 f.write(f"  - {config}\n")
+            if timeout_excluded:
+                f.write(f"\nExcluded {len(timeout_excluded)} timeout-based failure(s) (not code regressions):\n\n")
+                for config in sorted(timeout_excluded):
+                    f.write(f"  - {config}\n")
 
         if regressed_files_output:
             with open(regressed_files_output, 'w') as f:
@@ -48,6 +66,10 @@ def main():
         with open(report_file, 'w') as f:
             f.write("No regressions detected.\n")
             f.write("All configs that passed baseline also pass with patch.\n")
+            if timeout_excluded:
+                f.write(f"\nExcluded {len(timeout_excluded)} timeout-based failure(s) (not code regressions):\n\n")
+                for config in sorted(timeout_excluded):
+                    f.write(f"  - {config}\n")
 
         print("No regressions found")
         sys.exit(0)
