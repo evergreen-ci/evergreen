@@ -3325,8 +3325,6 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 
 // RedactSecrets clears out sensitive fields.
 func (p *ProjectRef) RedactSecrets() {
-	p.BuildBaronSettings.BFSuggestionPassword = ""
-	p.BuildBaronSettings.BFSuggestionUsername = ""
 	p.TaskAnnotationSettings = evergreen.AnnotationsSettings{}
 	p.WorkstationConfig = WorkstationConfig{}
 }

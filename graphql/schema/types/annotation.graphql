@@ -38,7 +38,6 @@ type BuildBaron {
 }
 
 type SearchReturnInfo {
-  featuresURL: String!
   issues: [JiraTicket!]!
   search: String!
   source: String!

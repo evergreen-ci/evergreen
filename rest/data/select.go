@@ -32,10 +32,9 @@ const (
 )
 
 const (
-	testSelectionWriteTimeout                     = 10 * time.Second
-	testSelectionStatusTimeout                    = 4 * time.Second
-	testSelectionDecorationTimeout                = 5 * time.Second
-	testSelectionDisplayTaskStatusRequestParallel = 15
+	testSelectionWriteTimeout      = 10 * time.Second
+	testSelectionStatusTimeout     = 4 * time.Second
+	testSelectionDecorationTimeout = 5 * time.Second
 )
 
 // Using a shared HTTP client so we can reuse idle connections between TSS calls and reduce the number of reconnects.
@@ -56,6 +55,12 @@ func logTSSError(ctx context.Context, err error, resp *http.Response, duration t
 	// service yet, which is expected and too noisy for Splunk. The error is
 	// still returned to the caller.
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		return
+	}
+	if ctx.Err() == context.Canceled || stderrors.Is(err, context.Canceled) {
+		return
+	}
+	if endpoint, ok := info["endpoint"].(string); ok && endpoint == GetTestsStateEndpoint && isTimeoutError(ctx, err) {
 		return
 	}
 	if resp != nil {
@@ -409,7 +414,6 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID stri
 		"missing_exec_task_ids": missingExecTaskIDs,
 	})
 	eg, ctx := errgroup.WithContext(ctx)
-	eg.SetLimit(testSelectionDisplayTaskStatusRequestParallel)
 	for _, execTask := range execTasks {
 		if !execTask.TestSelectionEnabled {
 			continue

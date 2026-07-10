@@ -11,10 +11,9 @@ import (
 )
 
 type SearchReturnInfo struct {
-	Issues      []JiraTicket `json:"issues"`
-	Search      string       `json:"search"`
-	Source      string       `json:"source"`
-	FeaturesURL string       `json:"features_url"`
+	Issues []JiraTicket `json:"issues"`
+	Search string       `json:"search"`
+	Source string       `json:"source"`
 }
 
 // JiraTicket marshals to and unmarshals from the json issue

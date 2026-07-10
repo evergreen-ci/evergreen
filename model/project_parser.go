@@ -1177,6 +1177,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 // for the specific revision. Once the git clone is finished, it creates git
 // worktrees under the clone directory based on numWorktrees.
 func gitCloneAndCreateWorktrees(ctx context.Context, ownerRepo gitOwnerRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, thirdparty.GitOperationTimeout)
+	defer cancel()
+
 	dir, err := thirdparty.GitCloneMinimal(ctx, ownerRepo.owner, ownerRepo.repo, revision)
 	if err != nil {
 		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerRepo.owner, ownerRepo.repo, revision)
