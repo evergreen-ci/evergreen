@@ -37,6 +37,7 @@ query Runners {
       stepbackTaskFactor
       translateProjectConcurrencyLimit
       translateProjectCacheBytesLimit
+      translateProjectCacheTTLSeconds
       hostAllocator
       hostAllocatorRoundingRule
       hostAllocatorFeedbackRule
