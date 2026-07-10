@@ -301,12 +301,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			break
 		}
 		grip.Debug(ctx, message.Fields{
-			"source":     "GitHub hook",
-			"msg_id":     gh.msgID,
-			"event":      gh.eventType,
-			"event_data": event,
-			"ref":        event.GetRef(),
-			"is_tag":     isTag(event.GetRef()),
+			"source": "GitHub hook",
+			"msg_id": gh.msgID,
+			"event":  gh.eventType,
+			"ref":    event.GetRef(),
+			"is_tag": isTag(event.GetRef()),
 		})
 		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
 		// to ensure we're up-to-date on the commit the tag is being pushed to.
