@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -32,7 +33,7 @@ func (s *SubscriptionRouteSuite) SetupSuite() {
 }
 
 func (s *SubscriptionRouteSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.SubscriptionsCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 }
 
 func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
@@ -108,7 +109,22 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 
 func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+
+	rm := evergreen.GetEnvironment().RoleManager()
+	s.NoError(rm.AddScope(s.T().Context(), gimlet.Scope{
+		ID:        "myproj_scope",
+		Resources: []string{"myproj"},
+		Type:      evergreen.ProjectResourceType,
+	}))
+	s.NoError(rm.UpdateRole(s.T().Context(), gimlet.Role{
+		ID:    "myproj_edit_role",
+		Scope: "myproj_scope",
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		},
+	}))
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me", SystemRoles: []string{"myproj_edit_role"}})
 	body := []map[string]any{{
 		"resource_type": event.ResourceTypeTask,
 		"trigger":       "outcome",
