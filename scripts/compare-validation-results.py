@@ -25,23 +25,41 @@ def main():
 
     regressions = []
     timeout_excluded = []
+    fixes = []
 
     for file, baseline_result in baseline.items():
-        if not baseline_result['passed']:
-            continue
         if file not in patch:
             continue
         patch_result = patch[file]
-        if patch_result['passed']:
-            continue
-        patch_errors = patch_result.get('errors', '')
-        if 'timed out' in patch_errors:
-            timeout_excluded.append(file)
-        else:
-            regressions.append(file)
+
+        if baseline_result['passed'] and not patch_result['passed']:
+            patch_errors = patch_result.get('errors', '')
+            if 'timed out' in patch_errors:
+                timeout_excluded.append(file)
+            else:
+                regressions.append(file)
+        elif not baseline_result['passed'] and patch_result['passed']:
+            fixes.append(file)
+
+    if fixes:
+        print(f"Note: {len(fixes)} config(s) failed baseline but passed patch (indicates non-determinism):")
+        for config in sorted(fixes):
+            baseline_errors = baseline[config].get('errors', 'unknown')
+            print(f"  [fixed in patch] {config}: baseline error was: {baseline_errors}")
 
     if timeout_excluded:
         print(f"Excluded {len(timeout_excluded)} timeout-based failure(s) from regression detection")
+        for config in sorted(timeout_excluded):
+            print(f"  [timeout excluded] {config}")
+
+    # Log details for all regressions to help diagnose flakiness
+    if regressions or timeout_excluded:
+        print(f"\nRegression details (baseline passed -> patch failed):")
+        for config in sorted(regressions + timeout_excluded):
+            patch_errors = patch[config].get('errors', 'unknown')
+            is_timeout = 'timed out' in patch_errors
+            label = "[TIMEOUT]" if is_timeout else "[REGRESSION]"
+            print(f"  {label} {config}: {patch_errors}")
 
     if regressions:
         with open(report_file, 'w') as f:
@@ -49,7 +67,9 @@ def main():
             f.write("==================\n\n")
             f.write(f"Found {len(regressions)} configs that passed baseline but failed with patch:\n\n")
             for config in sorted(regressions):
+                patch_errors = patch[config].get('errors', 'unknown')
                 f.write(f"  - {config}\n")
+                f.write(f"    patch error: {patch_errors}\n")
             if timeout_excluded:
                 f.write(f"\nExcluded {len(timeout_excluded)} timeout-based failure(s) (not code regressions):\n\n")
                 for config in sorted(timeout_excluded):
