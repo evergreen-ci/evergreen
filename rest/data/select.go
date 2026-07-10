@@ -58,6 +58,12 @@ func logTSSError(ctx context.Context, err error, resp *http.Response, duration t
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		return
 	}
+	if ctx.Err() == context.Canceled || stderrors.Is(err, context.Canceled) {
+		return
+	}
+	if endpoint, ok := info["endpoint"].(string); ok && endpoint == GetTestsStateEndpoint && isTimeoutError(ctx, err) {
+		return
+	}
 	if resp != nil {
 		info["status"] = resp.StatusCode
 	}

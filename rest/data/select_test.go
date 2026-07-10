@@ -8,14 +8,65 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func captureGripMessages(t *testing.T) *send.InternalSender {
+	originalSender := grip.GetSender()
+	sender := send.MakeInternalLogger()
+	require.NoError(t, grip.SetSender(sender))
+	t.Cleanup(func() {
+		require.NoError(t, grip.SetSender(originalSender))
+	})
+	return sender
+}
+
+func TestLogTSSError(t *testing.T) {
+	t.Run("CanceledRequestIsNotLogged", func(t *testing.T) {
+		sender := captureGripMessages(t)
+
+		logTSSError(t.Context(), context.Canceled, nil, time.Second, message.Fields{
+			"message":  "test selection request canceled",
+			"endpoint": GetTestsStateEndpoint,
+		})
+
+		assert.Zero(t, sender.Len())
+	})
+
+	t.Run("GetTestsStateTimeoutIsNotLogged", func(t *testing.T) {
+		sender := captureGripMessages(t)
+
+		logTSSError(t.Context(), context.DeadlineExceeded, nil, time.Second, message.Fields{
+			"message":  "test selection request timed out",
+			"endpoint": GetTestsStateEndpoint,
+		})
+
+		assert.Zero(t, sender.Len())
+	})
+
+	t.Run("MutationTimeoutIsError", func(t *testing.T) {
+		sender := captureGripMessages(t)
+
+		logTSSError(t.Context(), context.DeadlineExceeded, nil, time.Second, message.Fields{
+			"message":  "test selection request timed out",
+			"endpoint": TransitionTestsEndpoint,
+		})
+
+		require.Equal(t, 1, sender.Len())
+		assert.Equal(t, level.Error, sender.GetMessage().Priority)
+	})
+}
 
 func TestGetTestsQuarantineStatus(t *testing.T) {
 	const (
