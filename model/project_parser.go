@@ -672,9 +672,10 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, true)
 }
 
-// FindAndTranslateProjectForVersionWithOpts is like FindAndTranslateProjectForVersion but lets the
-// caller opt out of read coalescing. A caller that mutates the returned *ParserProject must pass
-// coalesceRead=false so it gets its own (unshared) parser project.
+// FindAndTranslateProjectForVersionWithOpts is like FindAndTranslateProjectForVersion but exposes two flags:
+//   - preGeneration: true for the parser project from before generate.tasks modified it; false (typical) for the current one.
+//   - coalesceRead: true (typical) to share one read across concurrent same-version callers, yielding a shared read-only
+//     *ParserProject. Pass false only if you must mutate the returned *ParserProject, which guarantees an unshared copy.
 func FindAndTranslateProjectForVersionWithOpts(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration, coalesceRead bool) (*Project, *ParserProject, error) {
 	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, coalesceRead)
 }
