@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUserSubscriptionsOwnership(t *testing.T) {
+func TestUserSubscriptionsPermissions(t *testing.T) {
 	require.NoError(t, db.ClearCollections(event.SubscriptionsCollection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	t.Cleanup(func() {
 		assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection, user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
