@@ -737,11 +737,14 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	defer span.End()
 
 	unmarshalStrict := false
-	anchorRegistry := &anchorRegistry{}
+	var registry *anchorRegistry
+	if opts == nil || !opts.DisableCrossFileAnchors {
+		registry = &anchorRegistry{}
+	}
 	if opts != nil {
 		unmarshalStrict = opts.UnmarshalStrict
 	}
-	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, anchorRegistry)
+	intermediateProject, err := createIntermediateProject(data, unmarshalStrict, registry)
 	if err != nil {
 		return nil, errors.Wrapf(err, LoadProjectError)
 	}
@@ -751,7 +754,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	if len(intermediateProject.Include) > 0 {
-		if err := mergeIncludes(ctx, projectID, intermediateProject, anchorRegistry, opts); err != nil {
+		if err := mergeIncludes(ctx, projectID, intermediateProject, registry, opts); err != nil {
 			return nil, errors.Wrap(err, "merging included files")
 		}
 	}
@@ -1144,6 +1147,11 @@ type GetProjectOpts struct {
 	// LocalIncludeDir is the base directory for resolving relative include
 	// file paths when ReadFileFrom is ReadFromLocal.
 	LocalIncludeDir string
+	// DisableCrossFileAnchors disables cross-file YAML anchor resolution.
+	// When set, include files are parsed in isolation without a preamble of
+	// anchors from prior files, matching pre-feature behavior.
+	// Callers should set this from ServiceFlags.CrossFileYAMLAnchorsDisabled.
+	DisableCrossFileAnchors bool
 }
 
 type PatchOpts struct {
