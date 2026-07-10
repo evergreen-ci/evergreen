@@ -1353,7 +1353,9 @@ func FindLatestVersionWithValidProject(ctx context.Context, projectId string, pr
 		}
 
 		env := evergreen.GetEnvironment()
-		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion, preGeneration)
+		// The preGeneration path returns a pp that the caller (patch intent) mutates and re-upserts,
+		// so it must not share a coalesced read. Other callers discard pp and can coalesce.
+		project, pp, err = FindAndTranslateProjectForVersionWithOpts(ctx, env.Settings(), lastGoodVersion, preGeneration, !preGeneration)
 		if err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message": "last known good version has malformed config",
