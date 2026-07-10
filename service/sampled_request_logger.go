@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -18,8 +19,6 @@ import (
 const (
 	heartbeatRouteSuffix = "/heartbeat"
 	nextTaskRouteSuffix  = "/agent/next_task"
-
-	sampledRouteWindow = time.Minute
 )
 
 var sampledRouteSuffixes = []string{
@@ -37,13 +36,13 @@ func sampledRouteKey(path string) (string, bool) {
 }
 
 type routeWindow struct {
-	start time.Time
-	count int
-	paths map[string]struct{}
+	count  int
+	status int
+	paths  map[string]struct{}
 }
 
 // sampledRequestLogger wraps gimlet's recovery logger. Requests matching
-// sampledRouteSuffixes are counted and summarized once per sampledRouteWindow
+// sampledRouteSuffixes are counted and summarized once per minute
 // instead of logged individually; every other request falls back to
 // gimlet's normal per-request logging and panic recovery, unchanged.
 type sampledRequestLogger struct {
@@ -53,11 +52,22 @@ type sampledRequestLogger struct {
 	windows map[string]*routeWindow
 }
 
-func newSampledRequestLogger() gimlet.Middleware {
-	return &sampledRequestLogger{
+// newSampledRequestLogger starts a background goroutine that flushes each
+// sampled route's summary every minute.
+func newSampledRequestLogger(ctx context.Context) gimlet.Middleware {
+	l := &sampledRequestLogger{
 		fallback: gimlet.MakeRecoveryLogger(),
 		windows:  map[string]*routeWindow{},
 	}
+
+	ticker := time.NewTicker(time.Minute)
+	go func() {
+		for range ticker.C {
+			l.flush(ctx)
+		}
+	}()
+
+	return l
 }
 
 func (l *sampledRequestLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -98,43 +108,49 @@ func (l *sampledRequestLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request
 		return
 	}
 
-	l.recordSuccess(r, key, status)
+	l.recordSuccess(key, r.URL.Path, status)
 }
 
-// recordSuccess counts a successful call to a sampled route and flushes a
-// summary log line within one sample window.
-func (l *sampledRequestLogger) recordSuccess(r *http.Request, key string, status int) {
+// recordSuccess counts a successful call to a sampled route.
+func (l *sampledRequestLogger) recordSuccess(key, path string, status int) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	w, ok := l.windows[key]
 	if !ok {
-		w = &routeWindow{start: time.Now(), paths: map[string]struct{}{}}
+		w = &routeWindow{paths: map[string]struct{}{}}
 		l.windows[key] = w
 	}
 	w.count++
-	w.paths[r.URL.Path] = struct{}{}
+	w.status = status
+	w.paths[path] = struct{}{}
+}
 
-	if time.Since(w.start) < sampledRouteWindow {
-		return
+// flush logs and resets every route's accumulated count and paths.
+func (l *sampledRequestLogger) flush(ctx context.Context) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	for key, w := range l.windows {
+		if w.count == 0 {
+			continue
+		}
+
+		paths := make([]string, 0, len(w.paths))
+		for path := range w.paths {
+			paths = append(paths, path)
+		}
+		sort.Strings(paths)
+
+		grip.Info(ctx, message.Fields{
+			"action":        "completed",
+			"route":         key,
+			"status":        w.status,
+			"count":         w.count,
+			"sampled_paths": paths,
+		})
+
+		w.count = 0
+		w.paths = map[string]struct{}{}
 	}
-
-	paths := make([]string, 0, len(w.paths))
-	for path := range w.paths {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-
-	grip.Info(r.Context(), message.Fields{
-		"action":        "completed",
-		"route":         key,
-		"status":        status,
-		"count":         w.count,
-		"window_secs":   time.Since(w.start).Seconds(),
-		"sampled_paths": paths,
-	})
-
-	w.start = time.Now()
-	w.count = 0
-	w.paths = map[string]struct{}{}
 }
