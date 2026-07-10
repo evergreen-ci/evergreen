@@ -306,7 +306,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = ppStorageMethod
 			require.NoError(t, p.Insert(t.Context()))
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -321,6 +321,37 @@ func TestFinalizePatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
+			tasks, err := task.Find(ctx, bson.M{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+		},
+		"VersionCreationWithPreTranslatedProject": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
+			ppStorageMethod := evergreen.ProjectStorageMethodDB
+			p.ProjectStorageMethod = ppStorageMethod
+			require.NoError(t, p.Insert(t.Context()))
+
+			translatedProject, _, err := FindAndTranslateProjectForPatch(ctx, patchTestConfig, p)
+			require.NoError(t, err)
+			require.NotNil(t, translatedProject)
+
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, translatedProject)
+			require.NoError(t, err)
+			require.NotNil(t, version)
+			assert.Len(t, version.Parameters, 1)
+			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.True(t, dbPatch.Activated)
+
+			builds, err := build.Find(t.Context(), build.All)
+			require.NoError(t, err)
+			assert.Len(t, builds, 1)
+			assert.Len(t, builds[0].Tasks, 2)
+
 			tasks, err := task.Find(ctx, bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
@@ -366,7 +397,7 @@ func TestFinalizePatch(t *testing.T) {
 			_, err = baseManifest.TryInsert(t.Context())
 			require.NoError(t, err)
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			// Ensure that the manifest was created and that auto_update worked for
@@ -421,7 +452,7 @@ func TestFinalizePatch(t *testing.T) {
 			_, err = baseManifest.TryInsert(t.Context())
 			require.NoError(t, err)
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 
@@ -445,13 +476,13 @@ func TestFinalizePatch(t *testing.T) {
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert(t.Context()))
 
-			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
 			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
-			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester)
+			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester, nil)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no builds or tasks for merge queue version")
 		},
@@ -461,7 +492,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 			require.NoError(t, p.Insert(t.Context()))
 
-			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester)
+			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester, nil)
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -545,45 +576,6 @@ func TestGetFullPatchParams(t *testing.T) {
 			assert.Equal(t, "3", param.Value)
 		}
 	}
-}
-
-func TestGetFullPatchParamsMultiAlias(t *testing.T) {
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectAliasCollection))
-	ctx := t.Context()
-	pRef := ProjectRef{Id: "proj"}
-	require.NoError(t, pRef.Insert(ctx))
-
-	noParamsA := ProjectAlias{ProjectID: "proj", Alias: "a", Variant: ".*", Task: ".*"}
-	noParamsB := ProjectAlias{ProjectID: "proj", Alias: "b", Variant: ".*", Task: ".*"}
-	withParam := ProjectAlias{ProjectID: "proj", Alias: "c", Variant: ".*", Task: ".*", Parameters: []patch.Parameter{{Key: "k", Value: "v"}}}
-	require.NoError(t, noParamsA.Upsert(ctx))
-	require.NoError(t, noParamsB.Upsert(ctx))
-	require.NoError(t, withParam.Upsert(ctx))
-
-	t.Run("MatchingParamSetsMerge", func(t *testing.T) {
-		p := patch.Patch{
-			Id:         patch.NewId("aaaaaaaaaaff001122334455"),
-			Project:    "proj",
-			Aliases:    []string{"a", "b"},
-			Parameters: []patch.Parameter{{Key: "user", Value: "1"}},
-		}
-		params, err := getFullPatchParams(ctx, &p)
-		require.NoError(t, err)
-		require.Len(t, params, 1)
-		assert.Equal(t, "user", params[0].Key)
-		assert.Equal(t, "1", params[0].Value)
-	})
-
-	t.Run("ConflictingParamSetsError", func(t *testing.T) {
-		p := patch.Patch{
-			Id:      patch.NewId("bbbbbbbbbbff001122334455"),
-			Project: "proj",
-			Aliases: []string{"a", "c"},
-		}
-		_, err := getFullPatchParams(ctx, &p)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "conflicting parameter")
-	})
 }
 
 func TestMakePatchedConfig(t *testing.T) {
@@ -1267,7 +1259,7 @@ func TestConfigurePatch(t *testing.T) {
 			req := PatchUpdate{
 				Description: "updating the description only!",
 			}
-			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
+			_, _, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req, nil)
 			assert.NoError(t, err)
 
 			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())
@@ -1302,7 +1294,7 @@ func TestConfigurePatch(t *testing.T) {
 			for _, vt := range req.VariantsTasks {
 				expectedVarsTasks[vt.Variant] = vt
 			}
-			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req)
+			_, _, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req, nil)
 			assert.NoError(t, err)
 
 			dbPatch, err := patch.FindOneId(ctx, p.Id.Hex())

@@ -2067,6 +2067,8 @@ type APISchedulerConfig struct {
 	NumDependentsFactor              float64 `json:"num_dependents_factor"`
 	StepbackTaskFactor               int64   `json:"stepback_task_factor"`
 	TranslateProjectConcurrencyLimit int     `json:"translate_project_concurrency_limit"`
+	TranslateProjectCacheBytesLimit  int64   `json:"translate_project_cache_bytes_limit"`
+	TranslateProjectCacheTTLSeconds  int64   `json:"translate_project_cache_ttl_seconds"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h any) error {
@@ -2091,6 +2093,8 @@ func (a *APISchedulerConfig) BuildFromService(h any) error {
 		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
 		a.TranslateProjectConcurrencyLimit = v.TranslateProjectConcurrencyLimit
+		a.TranslateProjectCacheBytesLimit = v.TranslateProjectCacheBytesLimit
+		a.TranslateProjectCacheTTLSeconds = v.TranslateProjectCacheTTLSeconds
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
 	}
@@ -2118,6 +2122,8 @@ func (a *APISchedulerConfig) ToService() (any, error) {
 		NumDependentsFactor:              a.NumDependentsFactor,
 		StepbackTaskFactor:               a.StepbackTaskFactor,
 		TranslateProjectConcurrencyLimit: a.TranslateProjectConcurrencyLimit,
+		TranslateProjectCacheBytesLimit:  a.TranslateProjectCacheBytesLimit,
+		TranslateProjectCacheTTLSeconds:  a.TranslateProjectCacheTTLSeconds,
 	}, nil
 }
 

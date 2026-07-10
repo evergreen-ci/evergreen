@@ -587,12 +587,52 @@ const (
 	// for the same version was already translating it, and shared that in-flight result instead
 	// of starting a redundant translation of its own.
 	ppTranslationDedupedOtelAttribute = "evergreen.parser_project.translation_deduped"
+	// ppReadDedupedOtelAttribute records whether this call was a follower that shared another
+	// in-flight request's parser-project read + translate for the same version instead of doing its
+	// own read. It counts followers only (reads saved), not the leader, so it reflects raw
+	// same-version request concurrency independent of the LRU state.
+	ppReadDedupedOtelAttribute = "evergreen.parser_project.read_deduped"
 	// ppTranslationCacheSizeOtelAttribute records how many translations the LRU is holding right now.
 	ppTranslationCacheSizeOtelAttribute = "evergreen.parser_project.translation_cache_size"
+	// ppTranslationCacheBytesOtelAttribute records the estimated byte total of the translations the
+	// LRU is holding right now, which the byte budget bounds.
+	ppTranslationCacheBytesOtelAttribute = "evergreen.parser_project.translation_cache_bytes"
 	// ppTranslationCacheEvictionsOtelAttribute records the cumulative count of translations the LRU
 	// has dropped to make room for new ones (or because their TTL expired), before anything reused them.
 	ppTranslationCacheEvictionsOtelAttribute = "evergreen.parser_project.translation_cache_evictions"
+	// ppTranslationCacheHottestKeyOtelAttribute records the cache key with the most hits right now, so
+	// the hottest cached configs are identifiable in Honeycomb for tuning.
+	ppTranslationCacheHottestKeyOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key"
+	// ppTranslationCacheHottestKeyHitsOtelAttribute records how many hits the hottest key has served.
+	ppTranslationCacheHottestKeyHitsOtelAttribute = "evergreen.parser_project.translation_cache_hottest_key_hits"
 )
+
+// projectTranslationCacheEnabled reports whether the project translation cache ServiceFlag is on.
+// Callers thread settings from the entry point rather than reading the global environment.
+func projectTranslationCacheEnabled(settings *evergreen.Settings) bool {
+	return settings != nil && settings.ServiceFlags.ProjectTranslationCacheEnabled
+}
+
+// setTranslationCacheSpanAttributes records the cache hit/dedup outcome on span, plus the LRU's
+// size, evictions, and hottest key when the cache is enabled.
+func setTranslationCacheSpanAttributes(span trace.Span, cacheHit, deduped, cacheEnabled bool) {
+	span.SetAttributes(
+		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
+		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
+	)
+	if !cacheEnabled {
+		return
+	}
+	size, evictions, bytes := translationCacheStats()
+	hottestKey, hottestHits := hottestTranslationKey()
+	span.SetAttributes(
+		attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
+		attribute.Int64(ppTranslationCacheBytesOtelAttribute, bytes),
+		attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
+		attribute.String(ppTranslationCacheHottestKeyOtelAttribute, hottestKey),
+		attribute.Int64(ppTranslationCacheHottestKeyHitsOtelAttribute, hottestHits),
+	)
+}
 
 // FindAndTranslateProjectForVersionID translates a parser project for a version into a Project.
 func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergreen.Settings, versionID string, preGeneration bool) (*Project, *ParserProject, error) {
@@ -612,40 +652,108 @@ func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergree
 	return FindAndTranslateProjectForVersion(ctx, settings, v, preGeneration)
 }
 
+// parserProjectReadTimeout bounds a single coalesced read + translate, so a hung S3 read can't pin
+// the read singleflight slot indefinitely for the whole burst waiting behind it.
+const parserProjectReadTimeout = 90 * time.Second
+
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
 // fetch and translate the parser project from before it was modified by generate.tasks.
 //
-// When the translation cache is enabled the returned *Project is a shared pointer. Callers
-// must not mutate it; make a local copy of any fields that need modification before use.
+// The returned *Project is the caller's own value: its top-level slices and maps (BuildVariants,
+// Tasks, Modules, etc.) are safe to reorder, append to, or replace. Structures nested below that
+// level are shared with the cache and must not be mutated.
+//
+// The returned *ParserProject is shared and read-only: concurrent same-version callers may receive
+// the same pointer via read coalescing, so it must not be mutated. Callers that transform the parser
+// project must clone it first or use FindAndTranslateProjectForVersionWithOpts to opt out of the
+// coalesced read.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
-	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, true)
 }
 
-func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) (*Project, *ParserProject, error) {
+// FindAndTranslateProjectForVersionWithOpts is like FindAndTranslateProjectForVersion but exposes two flags:
+//   - preGeneration: true for the parser project from before generate.tasks modified it; false (typical) for the current one.
+//   - coalesceRead: true (typical) to share one read across concurrent same-version callers, yielding a shared read-only
+//     *ParserProject. Pass false only if you must mutate the returned *ParserProject, which guarantees an unshared copy.
+func FindAndTranslateProjectForVersionWithOpts(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration, coalesceRead bool) (*Project, *ParserProject, error) {
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, coalesceRead)
+}
+
+// readTranslationResult packages the shared read + translate result so read-coalesced followers get
+// the same partial result (including any error) as the leader, mirroring the inner translationResult
+// pattern.
+type readTranslationResult struct {
+	project *Project
+	pp      *ParserProject
+	err     error
+}
+
+func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration, coalesceRead bool) (*Project, *ParserProject, error) {
 	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
 		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
 		attribute.Bool(ppPreGenerationOtelAttribute, preGeneration),
 	))
 	defer span.End()
 
+	res, readDeduped := readAndTranslateProjectForVersionCoalesced(ctx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration, coalesceRead)
+	span.SetAttributes(attribute.Bool(ppReadDedupedOtelAttribute, readDeduped))
+	return res.project, res.pp, res.err
+}
+
+// readAndTranslateProjectForVersionCoalesced runs the read + translate, optionally coalescing
+// concurrent same-version requests through the read singleflight. readDeduped reports whether this
+// call was a follower that shared another in-flight request's result (leaders and non-coalesced
+// calls report false), so it counts reads saved.
+func readAndTranslateProjectForVersionCoalesced(ctx context.Context, span trace.Span, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration, coalesceRead bool) (readTranslationResult, bool) {
+	if !coalesceRead {
+		return readAndTranslateProjectForVersion(ctx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration), false
+	}
+
+	storageMethod := projectStorageMethod
+	if preGeneration {
+		storageMethod = preGenerationProjectStorageMethod
+	}
+	key := versionReadKey(versionID, preGeneration, storageMethod)
+
+	// leader is set only inside the executed closure, so followers can be counted separately from the
+	// single leader for an accurate "reads saved" metric.
+	leader := false
+	v, sfErr, shared := getReadTranslationGroup().Do(key, func() (any, error) {
+		leader = true
+		// Detach from the leader's cancellation but keep an explicit deadline, so a follower with a
+		// live context isn't failed by the leader cancelling, while a hung read can't pin the slot
+		// forever. Failures are not cached: singleflight forgets the key when the closure returns.
+		readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), parserProjectReadTimeout)
+		defer cancel()
+		return readAndTranslateProjectForVersion(readCtx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration), nil
+	})
+	if sfErr != nil {
+		return readTranslationResult{err: sfErr}, false
+	}
+	return v.(readTranslationResult), shared && !leader
+}
+
+// readAndTranslateProjectForVersion performs the parser-project read (with a bounded retry) and
+// translate for a version. It is the shared body run under the read singleflight.
+func readAndTranslateProjectForVersion(ctx context.Context, span trace.Span, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) readTranslationResult {
 	var pp *ParserProject
 	var err error
 	if preGeneration {
 		preGeneratedId := preGeneratedParserProjectId(versionID)
-		pp, err = ParserProjectFindOneByID(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
+		pp, err = findParserProjectWithRetry(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
+			return readTranslationResult{err: errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)}
 		}
 		// Fall back to the parser project post-generation if the pre-generation parser project was not found
 	}
 	if pp == nil {
-		pp, err = ParserProjectFindOneByID(ctx, settings, projectStorageMethod, versionID)
+		pp, err = findParserProjectWithRetry(ctx, settings, projectStorageMethod, versionID)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", versionID)
+			return readTranslationResult{err: errors.Wrapf(err, "finding parser project '%s'", versionID)}
 		}
 		if pp == nil {
-			return nil, nil, errors.Errorf("parser project not found for version '%s'", versionID)
+			return readTranslationResult{err: errors.Errorf("parser project not found for version '%s'", versionID)}
 		}
 	}
 	// Setting the translated project's ID is necessary here because some old
@@ -654,40 +762,29 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 		pp.Identifier = utility.ToStringPtr(versionIdentifier)
 	}
 
-	cacheEnabled := settings.ServiceFlags.ProjectTranslationCacheEnabled
-	var key string
-	if cacheEnabled {
-		var sha string
-		sha, err = parserProjectContentSHA(pp)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "computing parser project content hash")
-		}
-		key = contentTranslationKey(sha, versionIdentifier)
-	} else {
-		// When the cache is off, we don't need a key that changes whenever the parser project changes
-		// (which the LRU requires so it never serves a stale config after generate.tasks). We can instead
-		// use the version ID. It's cheaper and enough for singleflight, which only coalesces concurrent
-		// in-flight calls and retains nothing that could go stale.
-		key = versionTranslationKey(versionID, preGeneration)
-	}
-	p, cacheHit, deduped, err := getOrComputeTranslation(key, cacheEnabled, func() (*Project, error) {
-		return TranslateProject(ctx, pp)
-	})
-	span.SetAttributes(
-		attribute.Bool(ppTranslationCacheHitOtelAttribute, cacheHit),
-		attribute.Bool(ppTranslationDedupedOtelAttribute, deduped),
-	)
-	if cacheEnabled {
-		size, evictions := translationCacheStats()
-		span.SetAttributes(
-			attribute.Int(ppTranslationCacheSizeOtelAttribute, size),
-			attribute.Int64(ppTranslationCacheEvictionsOtelAttribute, evictions),
-		)
-	}
+	cacheEnabled := projectTranslationCacheEnabled(settings)
+	p, err := translateAndCache(ctx, span, pp, versionIdentifier, versionTranslationKey(versionID, preGeneration), cacheEnabled)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
+		return readTranslationResult{err: errors.Wrapf(err, "translating parser project '%s'", versionID)}
 	}
-	return p, pp, nil
+	return readTranslationResult{project: p, pp: pp}
+}
+
+// parserProjectFindOneByID is the parser-project read seam, overridable in tests to count reads and
+// inject failures.
+var parserProjectFindOneByID = ParserProjectFindOneByID
+
+// findParserProjectWithRetry reads a parser project with a bounded retry. Because read coalescing
+// correlates one transient failure across the whole burst and several callers don't retry, one
+// retry absorbs a transient blip for the entire burst without multiplying load.
+func findParserProjectWithRetry(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string) (*ParserProject, error) {
+	var pp *ParserProject
+	err := utility.Retry(ctx, func() (bool, error) {
+		var err error
+		pp, err = parserProjectFindOneByID(ctx, settings, method, id)
+		return true, err
+	}, utility.RetryOptions{MaxAttempts: 2, MinDelay: 100 * time.Millisecond, MaxDelay: time.Second})
+	return pp, err
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.
@@ -824,7 +921,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	}
 
 	// Return project even with errors.
-	p, err := TranslateProject(ctx, intermediateProject)
+	cacheEnabled := opts != nil && opts.cacheEnabled
+	var revision string
+	if opts != nil {
+		revision = opts.Revision
+	}
+	p, err := loadTranslateProject(ctx, span, intermediateProject, projectID, revision, cacheEnabled)
 	if p != nil {
 		*project = *p
 	}
@@ -836,6 +938,12 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, pro
 	intermediateProject.Include = nil
 
 	return intermediateProject, errors.Wrapf(err, LoadProjectError)
+}
+
+// loadTranslateProject translates the post-merge intermediate project, optionally serving the
+// result from the content-hash translation cache keyed on its content and projectID.
+func loadTranslateProject(ctx context.Context, span trace.Span, intermediateProject *ParserProject, projectID, revision string, cacheEnabled bool) (*Project, error) {
+	return translateAndCache(ctx, span, intermediateProject, projectID, fileTranslationKey(projectID, revision), cacheEnabled)
 }
 
 // mergeIncludes merges all included files into intermediateProject.
@@ -1158,6 +1266,9 @@ func setupParallelGitIncludeDirs(ctx context.Context, modules ModuleList, includ
 // for the specific revision. Once the git clone is finished, it creates git
 // worktrees under the clone directory based on numWorktrees.
 func gitCloneAndCreateWorktrees(ctx context.Context, ownerRepo gitOwnerRepo, revision string, numWorktrees int) (cloneDir string, worktreeDirs []string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, thirdparty.GitOperationTimeout)
+	defer cancel()
+
 	dir, err := thirdparty.GitCloneMinimal(ctx, ownerRepo.owner, ownerRepo.repo, revision)
 	if err != nil {
 		return "", []string{}, errors.Wrapf(err, "git cloning repo '%s/%s' at revision '%s'", ownerRepo.owner, ownerRepo.repo, revision)
@@ -1213,6 +1324,9 @@ type GetProjectOpts struct {
 	LocalIncludeDir string
 	// EnableYAMLAnchors opts into cross-file YAML anchor and alias support.
 	EnableYAMLAnchors bool
+	// cacheEnabled routes the translate step through the content-hash translation cache. It is only
+	// set internally by GetProjectFromFile from the ServiceFlag, so external callers stay uncached.
+	cacheEnabled bool
 }
 
 type PatchOpts struct {
@@ -1420,9 +1534,11 @@ const fetchProjectFilesTimeout = time.Minute
 
 // GetProjectFromFile fetches project configuration files from its source (e.g.
 // from a patch diff, GitHub, etc).
-func GetProjectFromFile(ctx context.Context, opts GetProjectOpts) (ProjectInfo, error) {
+func GetProjectFromFile(ctx context.Context, opts GetProjectOpts, settings *evergreen.Settings) (ProjectInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, fetchProjectFilesTimeout)
 	defer cancel()
+
+	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
 
 	fileContents, err := retrieveFile(ctx, opts)
 	if err != nil {

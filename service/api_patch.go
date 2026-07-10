@@ -115,7 +115,6 @@ type patchData struct {
 	Finalize                           bool                       `json:"finalize"`
 	TriggerAliases                     []string                   `json:"trigger_aliases"`
 	Alias                              string                     `json:"alias"`
-	Aliases                            []string                   `json:"aliases"`
 	RepeatFailed                       bool                       `json:"repeat_failed"`
 	RepeatDefinition                   bool                       `json:"reuse_definition"`
 	RepeatPatchId                      string                     `json:"repeat_patch_id"`
@@ -203,7 +202,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RegexTestSelectionTasks:            data.RegexTestSelectionTasks,
 		RegexTestSelectionExcludedTasks:    data.RegexTestSelectionExcludedTasks,
 		Alias:                              data.Alias,
-		Aliases:                            data.Aliases,
 		TriggerAliases:                     data.TriggerAliases,
 		GitInfo:                            data.GitMetadata,
 		RepeatDefinition:                   data.RepeatDefinition,
@@ -428,7 +426,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		}
 
-		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
+		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, nil)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

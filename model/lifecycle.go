@@ -484,7 +484,7 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 		tasksByBuild[t.BuildId] = append(tasksByBuild[t.BuildId], t)
 	}
 
-	catcher := grip.NewBasicCatcher()
+	cachesByBuild := make(map[string][]build.TaskCache, len(buildIDs))
 	for _, buildID := range buildIDs {
 		buildTasks := tasksByBuild[buildID]
 		// trim out tasks that are part of a display task
@@ -502,18 +502,17 @@ func RefreshTasksCache(ctx context.Context, buildIDs []string) error {
 			}
 		}
 
-		cache := CreateTasksCache(buildTasks)
-		catcher.Wrapf(build.SetTasksCache(ctx, buildID, cache), "updating task cache for '%s'", buildID)
+		cachesByBuild[buildID] = CreateTasksCache(buildTasks)
 	}
-	return catcher.Resolve()
+	return errors.Wrap(build.SetTasksCaches(ctx, cachesByBuild), "updating task caches for builds")
 }
 
 // addTasksToBuild creates/activates the tasks for the given existing build.
-func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
+func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, bool, bool, error) {
 	// Find the build variant for this project/build
 	creationInfo.BuildVariant = creationInfo.Project.FindBuildVariant(creationInfo.Build.BuildVariant)
 	if creationInfo.BuildVariant == nil {
-		return nil, nil, errors.Errorf("could not find build '%s' in project file '%s'",
+		return nil, nil, false, false, errors.Errorf("could not find build '%s' in project file '%s'",
 			creationInfo.Build.BuildVariant, creationInfo.Project.Identifier)
 	}
 
@@ -532,7 +531,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	// Create the new tasks for the build
 	tasks, err := createTasksForBuild(ctx, creationInfo)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", creationInfo.Build.Id)
+		return nil, nil, false, false, errors.Wrapf(err, "creating tasks for build '%s'", creationInfo.Build.Id)
 	}
 
 	var hasGitHubCheck bool
@@ -544,14 +543,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if t.IsEssentialToSucceed {
 			hasUnfinishedEssentialTask = true
 		}
-	}
-	if hasGitHubCheck {
-		if err := creationInfo.Build.SetIsGithubCheck(ctx); err != nil {
-			return nil, nil, errors.Wrapf(err, "setting build '%s' as a GitHub check", creationInfo.Build.Id)
-		}
-	}
-	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(ctx, hasUnfinishedEssentialTask); err != nil {
-		return nil, nil, errors.Wrapf(err, "setting build '%s' as having an unfinished essential task", creationInfo.Build.Id)
 	}
 
 	batchTimeTaskStatuses := []BatchTimeTaskStatus{}
@@ -580,7 +571,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	}
 
 	if _, err := creationInfo.Version.GetBuildVariants(ctx); err != nil {
-		return nil, nil, errors.Wrapf(err, "getting build variant info for version '%s'", creationInfo.Version.Id)
+		return nil, nil, false, false, errors.Wrapf(err, "getting build variant info for version '%s'", creationInfo.Version.Id)
 	}
 	// update the build in the variant
 	for i, status := range creationInfo.Version.BuildVariants {
@@ -596,7 +587,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		"version": creationInfo.Version.Id,
 	}))
 
-	return creationInfo.Build, tasks, nil
+	return creationInfo.Build, tasks, hasGitHubCheck, hasUnfinishedEssentialTask, nil
 }
 
 // CreateBuildFromVersionNoInsert creates a build given all of the necessary information
@@ -1601,6 +1592,13 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	if err = allTasks.InsertUnordered(ctx); err != nil {
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":   "inserted tasks",
+		"num_tasks": len(allTasks),
+		"version":   creationInfo.Version.Id,
+		"project":   creationInfo.Version.Identifier,
+		"runner":    "addNewBuilds",
+	})
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
 	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
@@ -1670,18 +1668,31 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	}
 	creationInfo.TaskCreateTime = createTime
 
+	existingBuildIDs := make([]string, 0, len(existingBuilds))
+	for _, b := range existingBuilds {
+		existingBuildIDs = append(existingBuildIDs, b.Id)
+	}
+	allExistingTasks, err := task.FindAll(ctx, db.Query(task.ByBuildIds(existingBuildIDs)).WithFields(task.BuildIdKey, task.DisplayNameKey, task.ActivatedKey))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding existing tasks for builds")
+	}
+	existingTasksByBuild := map[string][]task.Task{}
+	for _, t := range allExistingTasks {
+		existingTasksByBuild[t.BuildId] = append(existingTasksByBuild[t.BuildId], t)
+	}
+
 	activatedTaskIds := []string{}
 	activatedTasks := []task.Task{}
 	allTasks := task.Tasks{}
 	var buildIdsToActivate []string
 	var buildIdsToRefresh []string
+	var buildIdsToSetGithubCheck []string
+	var buildIdsToSetEssentialTask []string
+	var buildIdsToUnsetEssentialTask []string
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
-		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
-		if err != nil {
-			return nil, nil, err
-		}
+		tasksInBuild := existingTasksByBuild[b.Id]
 		existingTasksIndex := map[string]bool{}
 		hasActivatedTask := false
 		for _, t := range tasksInBuild {
@@ -1722,9 +1733,20 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		creationInfo.DisplayNames = displayTasksToAdd
 		creationInfo.DistroAliases = distroAliases
 		creationInfo.TestSelectionParams.CanBuildVariantEnableTestSelection = canBuildVariantEnableTestSelection(b.BuildVariant, creationInfo)
-		_, tasks, err := addTasksToBuild(ctx, creationInfo)
+		_, tasks, hasGitHubCheck, hasUnfinishedEssentialTask, err := addTasksToBuild(ctx, creationInfo)
 		if err != nil {
 			return nil, nil, err
+		}
+
+		if hasGitHubCheck && !b.IsGithubCheck {
+			buildIdsToSetGithubCheck = append(buildIdsToSetGithubCheck, b.Id)
+		}
+		if hasUnfinishedEssentialTask != b.HasUnfinishedEssentialTask {
+			if hasUnfinishedEssentialTask {
+				buildIdsToSetEssentialTask = append(buildIdsToSetEssentialTask, b.Id)
+			} else {
+				buildIdsToUnsetEssentialTask = append(buildIdsToUnsetEssentialTask, b.Id)
+			}
 		}
 
 		// This build received new tasks, so its tasks cache must be refreshed.
@@ -1751,10 +1773,41 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		attribute.Int(numTasksAddedAttribute, len(allTasks)),
 		attribute.Int(numActivatedTasksAttribute, len(activatedTaskIds)),
 	)
+
+	buildFlagCatcher := grip.NewBasicCatcher()
+	if len(buildIdsToSetGithubCheck) > 0 {
+		buildFlagCatcher.Wrap(build.UpdateAllBuilds(ctx,
+			bson.M{build.IdKey: bson.M{"$in": buildIdsToSetGithubCheck}},
+			bson.M{"$set": bson.M{build.IsGithubCheckKey: true}},
+		), "setting builds as GitHub checks")
+	}
+	if len(buildIdsToSetEssentialTask) > 0 {
+		buildFlagCatcher.Wrap(build.UpdateAllBuilds(ctx,
+			bson.M{build.IdKey: bson.M{"$in": buildIdsToSetEssentialTask}},
+			bson.M{"$set": bson.M{build.HasUnfinishedEssentialTaskKey: true}},
+		), "setting builds as having an unfinished essential task")
+	}
+	if len(buildIdsToUnsetEssentialTask) > 0 {
+		buildFlagCatcher.Wrap(build.UpdateAllBuilds(ctx,
+			bson.M{build.IdKey: bson.M{"$in": buildIdsToUnsetEssentialTask}},
+			bson.M{"$set": bson.M{build.HasUnfinishedEssentialTaskKey: false}},
+		), "setting builds as not having an unfinished essential task")
+	}
+	if buildFlagCatcher.HasErrors() {
+		return nil, nil, buildFlagCatcher.Resolve()
+	}
+
 	SetNumDependents(allTasks)
 	if err = allTasks.InsertUnordered(ctx); err != nil {
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
+	grip.Info(ctx, message.Fields{
+		"message":   "inserted tasks",
+		"num_tasks": len(allTasks),
+		"version":   creationInfo.Version.Id,
+		"project":   creationInfo.Version.Identifier,
+		"runner":    "addNewTasksToExistingBuilds",
+	})
 
 	if err = RefreshTasksCache(ctx, buildIdsToRefresh); err != nil {
 		return nil, nil, errors.Wrap(err, "refreshing task caches for updated builds")

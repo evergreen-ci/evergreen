@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -125,8 +124,9 @@ type PatchUpdate struct {
 }
 
 // ConfigurePatch validates and creates the updated tasks/variants if given, and updates description if needed.
-// Returns an http status code and error.
-func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
+// It returns the translated project so callers (e.g. FinalizePatch) can reuse it, along with an http status
+// code and an error. When translatedProject is nil the project is translated from storage.
+func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate, translatedProject *Project) (*Project, int, error) {
 	ctx, span := tracer.Start(ctx, "configure-patch", trace.WithAttributes(
 		attribute.String(evergreen.PatchIDOtelAttribute, p.Id.Hex()),
 		attribute.String(evergreen.ProjectIDOtelAttribute, p.Project),
@@ -134,9 +134,12 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 	defer span.End()
 
 	var err error
-	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
-	if err != nil {
-		return http.StatusInternalServerError, errors.Wrap(err, "unmarshalling project config")
+	project := translatedProject
+	if project == nil {
+		project, _, err = FindAndTranslateProjectForPatch(ctx, settings, p)
+		if err != nil {
+			return nil, http.StatusInternalServerError, errors.Wrap(err, "unmarshalling project config")
+		}
 	}
 
 	addDisplayTasksToPatchReq(&patchUpdateReq, *project)
@@ -152,43 +155,43 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 		"patch":   p.Id.Hex(),
 	}))
 	if err = ValidateTVPairs(project, tasks.ExecTasks); err != nil {
-		return http.StatusBadRequest, err
+		return nil, http.StatusBadRequest, err
 	}
 
 	// only modify parameters if the patch hasn't been finalized
 	if len(patchUpdateReq.Parameters) > 0 && p.Version == "" {
 		if err = p.SetParameters(ctx, patchUpdateReq.Parameters); err != nil {
-			return http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
+			return nil, http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
 		}
 	}
 	// update the description for both reconfigured and new patches
 	if err = p.SetDescription(ctx, patchUpdateReq.Description); err != nil {
-		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
+		return nil, http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}
 
 	patchVariantTasks := tasks.TVPairsToVariantTasks()
 	if len(patchVariantTasks) > 0 {
 		if err = p.SetVariantsTasks(ctx, patchVariantTasks); err != nil {
-			return http.StatusInternalServerError, errors.Wrap(err, "setting description")
+			return nil, http.StatusInternalServerError, errors.Wrap(err, "setting description")
 		}
 	}
 
 	if p.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
 		if version == nil {
-			return http.StatusInternalServerError, errors.Errorf("finding patch for version '%s'", p.Version)
+			return nil, http.StatusInternalServerError, errors.Errorf("finding patch for version '%s'", p.Version)
 		}
 
 		if version.Message != patchUpdateReq.Description {
 			if err = UpdateVersionMessage(ctx, p.Version, patchUpdateReq.Description); err != nil {
-				return http.StatusInternalServerError, errors.Wrap(err, "setting version message")
+				return nil, http.StatusInternalServerError, errors.Wrap(err, "setting version message")
 			}
 		}
 
 		if len(patchVariantTasks) > 0 {
 			tsParams, err := newTestSelectionParams(p)
 			if err != nil {
-				return http.StatusInternalServerError, errors.Wrap(err, "making test selection parameters for task creation")
+				return nil, http.StatusInternalServerError, errors.Wrap(err, "making test selection parameters for task creation")
 			}
 			// Add new tasks to existing builds, if necessary
 			creationInfo := TaskCreationInfo{
@@ -202,7 +205,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			}
 			err = addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
-				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
+				return nil, http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 			}
 		}
 	}
@@ -210,11 +213,11 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 	if p.IsGithubPRPatch() {
 		numCheckRuns := project.GetNumCheckRunsFromVariantTasks(p.VariantsTasks)
 		if err := VerifyCheckRunLimit(numCheckRuns, settings.GitHubCheckRun.CheckRunLimit, proj.HasGitHubAppAuth(ctx)); err != nil {
-			return http.StatusInternalServerError, err
+			return nil, http.StatusInternalServerError, err
 		}
 	}
 
-	return http.StatusOK, nil
+	return project, http.StatusOK, nil
 }
 
 func addDisplayTasksToPatchReq(req *PatchUpdate, p Project) {
@@ -310,6 +313,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
+	opts.cacheEnabled = projectTranslationCacheEnabled(settings)
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {
@@ -570,7 +574,7 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
 // Creates a manifest based on the Version
-func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Version, error) {
+func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, translatedProject *Project) (*Version, error) {
 	ctx, span := tracer.Start(ctx, "finalize-patch", trace.WithAttributes(
 		attribute.String(evergreen.PatchIDOtelAttribute, p.Id.Hex()),
 		attribute.String(evergreen.ProjectIDOtelAttribute, p.Project),
@@ -586,13 +590,16 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		return nil, errors.Errorf("project '%s' not found", p.Project)
 	}
 
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting evergreen config")
-	}
-	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
+	project := translatedProject
+	if project == nil {
+		settings, err := evergreen.GetConfig(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting evergreen config")
+		}
+		project, _, err = FindAndTranslateProjectForPatch(ctx, settings, p)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
+		}
 	}
 	var config *ProjectConfig
 	if projectRef.IsVersionControlEnabled() {
@@ -853,6 +860,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		"version":   patchVersion.Id,
 		"project":   patchVersion.Identifier,
 		"requester": requester,
+		"num_tasks": len(tasksToInsert),
 	})
 
 	// Update aggregate costs after transaction commits. We use a goroutine with
@@ -913,47 +921,29 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	return patchVersion, nil
 }
 
-// getFullPatchParams retrieves the parameters defined on the patch's alias(es)
-// merged with the user-specified parameters, with the latter taking precedence.
-// A version has a single global set of parameters, so when multiple aliases are
-// specified their fully-resolved parameter sets must be identical, otherwise the
-// patch cannot be finalized.
+// getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
+// with the parameters that were explicitly user-specified, with the latter taking precedence.
 func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter, error) {
-	aliasNames := p.AliasesToResolve()
-	// Internal aliases (commit queue, GitHub, etc.) don't carry user parameters.
-	if len(aliasNames) == 0 || (len(aliasNames) == 1 && !IsPatchAlias(aliasNames[0])) {
+	paramsMap := map[string]string{}
+	if p.Alias == "" || !IsPatchAlias(p.Alias) {
 		return p.Parameters, nil
 	}
-
-	var commonParams map[string]string
-	for i, aliasName := range aliasNames {
-		aliases, err := findAliasesForPatch(ctx, p.Project, aliasName, p) // Get all records for the alias.
-		if err != nil {
-			return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", aliasName, p.Id.Hex())
-		}
-
-		// Overwrite configured parameters with user-specified ones, which take precedence.
-		paramsMap := map[string]string{}
-		for _, alias := range aliases {
+	aliases, err := findAliasesForPatch(ctx, p.Project, p.Alias, p)
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
+	}
+	for _, alias := range aliases {
+		if len(alias.Parameters) > 0 {
 			for _, aliasParam := range alias.Parameters {
 				paramsMap[aliasParam.Key] = aliasParam.Value
 			}
 		}
-		for _, param := range p.Parameters {
-			paramsMap[param.Key] = param.Value
-		}
-		// Set the parameters from the first alias as the common set to compare against.
-		if i == 0 {
-			commonParams = paramsMap
-			continue
-		}
-		if !reflect.DeepEqual(paramsMap, commonParams) {
-			return nil, errors.Errorf("aliases %v resolve to conflicting parameter sets; a patch version has a single set of parameters, so specify a single alias or aliases whose parameters match", aliasNames)
-		}
 	}
-
+	for _, param := range p.Parameters {
+		paramsMap[param.Key] = param.Value
+	}
 	var fullParams []patch.Parameter
-	for k, v := range commonParams {
+	for k, v := range paramsMap {
 		fullParams = append(fullParams, patch.Parameter{
 			Key:   k,
 			Value: v,
@@ -1077,7 +1067,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		if childPatchDoc == nil {
 			return errors.Errorf("could not find child patch '%s'", childPatchId)
 		}
-		if _, err := FinalizePatch(ctx, childPatchDoc, requester); err != nil {
+		if _, err := FinalizePatch(ctx, childPatchDoc, requester, nil); err != nil {
 			grip.Error(ctx, message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
 				"source":        requester,

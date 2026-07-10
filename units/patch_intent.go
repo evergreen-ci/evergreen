@@ -40,6 +40,12 @@ const (
 	maxPatchIntentJobTime      = 10 * time.Minute
 )
 
+var (
+	githubUserInOrganization     = thirdparty.GithubUserInOrganization
+	appAuthorizedForOrg          = thirdparty.AppAuthorizedForOrg
+	githubUserHasWritePermission = thirdparty.GitHubUserHasWritePermission
+)
+
 func init() {
 	registry.AddJobType(patchIntentJobName,
 		func() amboy.Job { return makePatchIntentProcessor() })
@@ -350,7 +356,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	if err = j.verifyValidAliases(ctx, pref.Id, patchDoc.AliasesToResolve(), patchDoc.PatchedProjectConfig); err != nil {
+	if err = j.verifyValidAlias(ctx, pref.Id, patchDoc.PatchedProjectConfig); err != nil {
 		j.gitHubError = invalidAlias
 		return err
 	}
@@ -451,7 +457,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	event.LogPatchStateChangeEvent(ctx, patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity()); err != nil {
+		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), nil); err != nil {
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
@@ -647,7 +653,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(ctx, patchDoc, patchDoc.AliasesToResolve())
+		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
 	}
 	return nil
 }
@@ -1353,7 +1359,9 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 		if v == nil {
 			return nil, nil, nil, errors.Errorf("version at revision '%s' not found", patchDoc.Triggers.DownstreamRevision)
 		}
-		project, pp, err := model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, true)
+		// Opt out of read coalescing: this pp is later mutated via Init and re-upserted, so it must
+		// not share the pointer with concurrent readers.
+		project, pp, err := model.FindAndTranslateProjectForVersionWithOpts(ctx, evergreen.GetEnvironment().Settings(), v, true, false)
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "getting downstream version at revision '%s' to use for patch '%s'", patchDoc.Triggers.DownstreamRevision, patchDoc.Id.Hex())
 		}
@@ -1366,8 +1374,9 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 	return v, project, pp, nil
 }
 
-func (j *patchIntentProcessor) verifyValidAliases(ctx context.Context, projectId string, aliases []string, configStr string) error {
-	if len(aliases) == 0 {
+func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId string, configStr string) error {
+	alias := j.intent.GetAlias()
+	if alias == "" {
 		return nil
 	}
 	var projectConfig *model.ProjectConfig
@@ -1378,16 +1387,14 @@ func (j *patchIntentProcessor) verifyValidAliases(ctx context.Context, projectId
 			return errors.Wrap(err, "creating project config")
 		}
 	}
-	for _, alias := range aliases {
-		found, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
-		if err != nil {
-			return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
-		}
-		if len(found) == 0 {
-			return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
-		}
+	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
+	if err != nil {
+		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
 	}
-	return nil
+	if len(aliases) > 0 {
+		return nil
+	}
+	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }
 
 func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, error) {
@@ -1458,7 +1465,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	}
 	// Checking if the GitHub user is in the organization is more permissive than checking permission level
 	// for the owner/repo specified, however this is okay since for the purposes of this check its to run patches.
-	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrganization, githubUser)
+	isMember, err := githubUserInOrganization(ctx, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"job":          j.ID(),
@@ -1476,7 +1483,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return isMember, nil
 	}
 
-	isAuthorizedForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, requiredOrganization, githubUser)
+	isAuthorizedForOrg, err := appAuthorizedForOrg(ctx, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
 			"job":          j.ID(),
@@ -1493,18 +1500,18 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return isAuthorizedForOrg, nil
 	}
 
-	// Verify external collaborators separately.
-	hasWritePermission, err := thirdparty.GitHubUserHasWritePermission(ctx,
-		patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo, githubUser)
+	// Verify external collaborators against the base repository.
+	hasWritePermission, err := githubUserHasWritePermission(ctx,
+		patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, githubUser)
 	if err != nil {
 		grip.Error(ctx, message.WrapError(err, message.Fields{
-			"job":        j.ID(),
-			"message":    "failed to check if user has write permission for repo",
-			"source":     "patch intents",
-			"creator":    githubUser,
-			"head_owner": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.HeadOwner),
-			"head_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-			"pr_number":  patchDoc.GithubPatchData.PRNumber,
+			"job":       j.ID(),
+			"message":   "failed to check if user has write permission for repo",
+			"source":    "patch intents",
+			"creator":   githubUser,
+			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number": patchDoc.GithubPatchData.PRNumber,
 		}))
 	}
 	return hasWritePermission, nil

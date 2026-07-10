@@ -2,7 +2,11 @@ package data
 
 import (
 	"context"
+	stderrors "errors"
+	"net"
 	"net/http"
+	"slices"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,10 +14,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	testselection "github.com/evergreen-ci/test-selection-client"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"golang.org/x/sync/errgroup"
 )
 
 // Test selection service endpoint identifiers.
@@ -26,22 +31,57 @@ const (
 	GetVariantStateEndpoint   = "get_variant_state"
 )
 
-func logTSSError(ctx context.Context, err error, resp *http.Response, info message.Fields) {
+const (
+	testSelectionWriteTimeout      = 10 * time.Second
+	testSelectionStatusTimeout     = 4 * time.Second
+	testSelectionDecorationTimeout = 5 * time.Second
+)
+
+// Using a shared HTTP client so we can reuse idle connections between TSS calls and reduce the number of reconnects.
+var testSelectionHTTPClient = newTestSelectionHTTPClient()
+
+func newTestSelectionHTTPClient() *http.Client {
+	// Each request's overall duration is bounded by the caller's context deadline but increase the idle connection pool to reduce the number of reconnects.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConnsPerHost = 100
+
+	return &http.Client{
+		Transport: otelhttp.NewTransport(transport),
+	}
+}
+
+func logTSSError(ctx context.Context, err error, resp *http.Response, duration time.Duration, info message.Fields) {
 	// A 404 means the requested resource isn't tracked in the test selection
 	// service yet, which is expected and too noisy for Splunk. The error is
 	// still returned to the caller.
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		return
 	}
+	if ctx.Err() == context.Canceled || stderrors.Is(err, context.Canceled) {
+		return
+	}
+	if endpoint, ok := info["endpoint"].(string); ok && endpoint == GetTestsStateEndpoint && isTimeoutError(ctx, err) {
+		return
+	}
 	if resp != nil {
 		info["status"] = resp.StatusCode
 	}
+	info["duration_ms"] = duration.Milliseconds()
+	info["timeout"] = isTimeoutError(ctx, err)
 	info["error"] = err.Error()
 	var openAPIErr *testselection.GenericOpenAPIError
 	if errors.As(err, &openAPIErr) {
 		info["response_body"] = string(openAPIErr.Body())
 	}
 	grip.Error(ctx, info)
+}
+
+func isTimeoutError(ctx context.Context, err error) bool {
+	if ctx.Err() == context.DeadlineExceeded || stderrors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 // wrapTSSError wraps test selection service errors with the response body in the message. Callers handle logging and adding context.
@@ -75,10 +115,7 @@ func newTestSelectionClient(c *http.Client) *testselection.APIClient {
 // to run based on the provided SelectTestsRequest. It returns the list of
 // selected tests.
 func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, error) {
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-
-	c := newTestSelectionClient(httpClient)
+	c := newTestSelectionClient(testSelectionHTTPClient)
 	var strategies []testselection.StrategyEnum
 	for _, s := range req.Strategies {
 		strategies = append(strategies, testselection.StrategyEnum(s))
@@ -89,6 +126,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 		resp             *http.Response
 		err              error
 	)
+	startAt := time.Now()
 	if len(req.Tests) == 0 {
 		selectedTestPtrs, resp, err = c.TestSelectionAPI.SelectAllKnownTestsOfATaskApiTestSelectionSelectKnownTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, req.Project, req.Requester, req.BuildVariant, req.TaskID, req.TaskName).StrategyEnum(strategies).Execute()
 	} else {
@@ -105,7 +143,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		logTSSError(ctx, err, resp, message.Fields{
+		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
 			"message":       "error selecting tests",
 			"endpoint":      SelectTestsEndpoint,
 			"project_id":    req.Project,
@@ -113,6 +151,7 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 			"build_variant": req.BuildVariant,
 			"task_id":       req.TaskID,
 			"task_name":     req.TaskName,
+			"test_count":    len(req.Tests),
 		})
 		return nil, wrapTSSError(err)
 	}
@@ -128,10 +167,11 @@ func SelectTests(ctx context.Context, req model.SelectTestsRequest) ([]string, e
 // SetTestQuarantined marks the test as quarantined or unquarantined in the test
 // selection service.
 func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testName string, isManuallyQuarantined bool) error {
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-	c := newTestSelectionClient(httpClient)
+	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
+	defer cancel()
+	c := newTestSelectionClient(testSelectionHTTPClient)
 
+	startAt := time.Now()
 	_, resp, err := c.StateTransitionAPI.MarkTestsAsManuallyQuarantinedApiTestSelectionTransitionTestsProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
 		IsManuallyQuarantined(isManuallyQuarantined).
 		RequestBody([]*string{&testName}).
@@ -140,7 +180,7 @@ func SetTestQuarantined(ctx context.Context, projectID, bvName, taskName, testNa
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		logTSSError(ctx, err, resp, message.Fields{
+		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
 			"message":       "error setting test quarantine status",
 			"endpoint":      TransitionTestsEndpoint,
 			"project_id":    projectID,
@@ -163,10 +203,11 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 	if len(testNames) == 0 {
 		return testToQuarantineStatus, nil
 	}
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-	c := newTestSelectionClient(httpClient)
+	ctx, cancel := context.WithTimeout(ctx, testSelectionStatusTimeout)
+	defer cancel()
+	c := newTestSelectionClient(testSelectionHTTPClient)
 
+	startAt := time.Now()
 	result, resp, err := c.StateTransitionAPI.GetTestsStateApiTestSelectionGetTestsStateProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
 		RequestBody(testNames).
 		Execute()
@@ -177,17 +218,27 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 		if resp != nil && resp.StatusCode == http.StatusNotFound {
 			return testToQuarantineStatus, nil
 		}
-		logTSSError(ctx, err, resp, message.Fields{
-			"message":       "error getting tests quarantine status",
+		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
+			"message":       "error getting tests quarantine status; continuing with default statuses",
 			"endpoint":      GetTestsStateEndpoint,
 			"project_id":    projectID,
 			"build_variant": bvName,
 			"task_name":     taskName,
+			"test_count":    len(testNames),
 		})
-		return nil, wrapTSSError(err)
+		return testToQuarantineStatus, nil
 	}
 	if result == nil {
-		return nil, errors.New("nil response from test selection service")
+		grip.Error(ctx, message.Fields{
+			"message":       "nil response from test selection service; continuing with default statuses",
+			"endpoint":      GetTestsStateEndpoint,
+			"project_id":    projectID,
+			"build_variant": bvName,
+			"task_name":     taskName,
+			"duration_ms":   time.Since(startAt).Milliseconds(),
+			"test_count":    len(testNames),
+		})
+		return testToQuarantineStatus, nil
 	}
 
 	for testName, stateInfo := range *result {
@@ -203,10 +254,11 @@ func GetTestsQuarantineStatus(ctx context.Context, projectID, bvName, taskName s
 // SetTaskQuarantined marks all known tests of a task as manually quarantined
 // (or unquarantines them) in the test selection service.
 func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string, isManuallyQuarantined bool) error {
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-	c := newTestSelectionClient(httpClient)
+	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
+	defer cancel()
+	c := newTestSelectionClient(testSelectionHTTPClient)
 
+	startAt := time.Now()
 	_, resp, err := c.StateTransitionAPI.MarkTaskAsManuallyQuarantinedApiTestSelectionTransitionTaskProjectIdBuildVariantNameTaskNamePost(ctx, projectID, bvName, taskName).
 		IsManuallyQuarantined(isManuallyQuarantined).
 		Execute()
@@ -214,7 +266,7 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string,
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		logTSSError(ctx, err, resp, message.Fields{
+		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
 			"message":       "error setting task quarantine status",
 			"endpoint":      TransitionTaskEndpoint,
 			"project_id":    projectID,
@@ -228,10 +280,11 @@ func SetTaskQuarantined(ctx context.Context, projectID, bvName, taskName string,
 // SetVariantQuarantined marks all known tests of a build variant as manually
 // quarantined (or unquarantines them) in the test selection service.
 func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManuallyQuarantined bool) error {
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-	c := newTestSelectionClient(httpClient)
+	ctx, cancel := context.WithTimeout(ctx, testSelectionWriteTimeout)
+	defer cancel()
+	c := newTestSelectionClient(testSelectionHTTPClient)
 
+	startAt := time.Now()
 	_, resp, err := c.StateTransitionAPI.MarkVariantAsManuallyQuarantinedApiTestSelectionTransitionVariantProjectIdBuildVariantNamePost(ctx, projectID, bvName).
 		IsManuallyQuarantined(isManuallyQuarantined).
 		Execute()
@@ -239,7 +292,7 @@ func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManu
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		logTSSError(ctx, err, resp, message.Fields{
+		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
 			"message":       "error setting variant quarantine status",
 			"endpoint":      TransitionVariantEndpoint,
 			"project_id":    projectID,
@@ -254,16 +307,17 @@ func SetVariantQuarantined(ctx context.Context, projectID, bvName string, isManu
 // precedence rule: if override_state is present and non-null, it determines
 // the result; otherwise state is used.
 func GetVariantQuarantineStatus(ctx context.Context, projectID, bvName string) (map[string]map[string]bool, error) {
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-	c := newTestSelectionClient(httpClient)
+	ctx, cancel := context.WithTimeout(ctx, testSelectionStatusTimeout)
+	defer cancel()
+	c := newTestSelectionClient(testSelectionHTTPClient)
 
+	startAt := time.Now()
 	result, resp, err := c.StateTransitionAPI.GetVariantStateApiTestSelectionGetVariantStateProjectIdBuildVariantNamePost(ctx, projectID, bvName).Execute()
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		logTSSError(ctx, err, resp, message.Fields{
+		logTSSError(ctx, err, resp, time.Since(startAt), message.Fields{
 			"message":       "error getting variant quarantine status",
 			"endpoint":      GetVariantStateEndpoint,
 			"project_id":    projectID,
@@ -299,11 +353,13 @@ func DecorateQuarantineStatus(ctx context.Context, t *task.Task, results []testr
 	if len(results) == 0 {
 		return nil
 	}
+	if !t.DisplayOnly && !t.TestSelectionEnabled {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, testSelectionDecorationTimeout)
+	defer cancel()
 	if t.DisplayOnly {
 		return decorateDisplayTaskQuarantineStatus(ctx, t.Id, results)
-	}
-	if !t.TestSelectionEnabled {
-		return nil
 	}
 	testNames := make([]string, 0, len(results))
 	for _, r := range results {
@@ -357,25 +413,26 @@ func decorateDisplayTaskQuarantineStatus(ctx context.Context, displayTaskID stri
 		"display_task_id":       displayTaskID,
 		"missing_exec_task_ids": missingExecTaskIDs,
 	})
-	// TODO: issue these GetTestsQuarantineStatus calls concurrently with a
-	// bounded semaphore to reduce latency on display tasks with many execution
-	// tasks.
+	eg, ctx := errgroup.WithContext(ctx)
 	for _, execTask := range execTasks {
 		if !execTask.TestSelectionEnabled {
 			continue
 		}
-		indices := resultIndicesByExecTaskID[execTask.Id]
-		testNames := make([]string, 0, len(indices))
-		for _, i := range indices {
-			testNames = append(testNames, results[i].GetDisplayTestName())
-		}
-		statuses, err := GetTestsQuarantineStatus(ctx, execTask.Project, execTask.BuildVariant, execTask.DisplayName, testNames)
-		if err != nil {
-			return errors.Wrapf(err, "fetching test quarantine statuses for execution task '%s'", execTask.Id)
-		}
-		for _, i := range indices {
-			results[i].IsManuallyQuarantined = statuses[results[i].GetDisplayTestName()]
-		}
+		indices := slices.Clone(resultIndicesByExecTaskID[execTask.Id])
+		eg.Go(func() error {
+			testNames := make([]string, 0, len(indices))
+			for _, i := range indices {
+				testNames = append(testNames, results[i].GetDisplayTestName())
+			}
+			statuses, err := GetTestsQuarantineStatus(ctx, execTask.Project, execTask.BuildVariant, execTask.DisplayName, testNames)
+			if err != nil {
+				return errors.Wrapf(err, "fetching test quarantine statuses for execution task '%s'", execTask.Id)
+			}
+			for _, i := range indices {
+				results[i].IsManuallyQuarantined = statuses[results[i].GetDisplayTestName()]
+			}
+			return nil
+		})
 	}
-	return nil
+	return eg.Wait()
 }
