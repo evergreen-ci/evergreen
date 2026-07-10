@@ -21,6 +21,7 @@ import (
 func resetTranslationCacheForTesting() {
 	translationCacheMu.Lock()
 	translationCache = nil
+	translationCacheTTL = 0
 	translationCacheMu.Unlock()
 	translationGroupPtr.Store(&singleflight.Group{})
 	translationCacheEvictions.Store(0)
@@ -332,6 +333,38 @@ func TestTranslationCacheBytesLimitFallsBackToDefault(t *testing.T) {
 
 	SetTranslationCacheBytesLimit(4096)
 	assert.Equal(t, int64(4096), currentTranslationCacheBytesLimit(), "positive limit is used as-is")
+}
+
+func TestTranslationCacheTTLFallsBackToDefault(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+
+	readTTL := func() time.Duration {
+		translationCacheMu.Lock()
+		defer translationCacheMu.Unlock()
+		return currentTranslationCacheTTL()
+	}
+
+	SetTranslationCacheTTL(0)
+	assert.Equal(t, defaultTranslationCacheTTL, readTTL(), "non-positive TTL falls back to the default")
+
+	SetTranslationCacheTTL(-5 * time.Minute)
+	assert.Equal(t, defaultTranslationCacheTTL, readTTL(), "negative TTL falls back to the default")
+
+	SetTranslationCacheTTL(time.Hour)
+	assert.Equal(t, time.Hour, readTTL(), "positive TTL is used as-is")
+}
+
+func TestSetTranslationCacheTTLRebuildsAndClearsEntries(t *testing.T) {
+	t.Cleanup(resetTranslationCacheForTesting)
+
+	addToTranslationCache("k", &Project{Identifier: "test"})
+	require.Equal(t, 1, getTranslationCache().Len(), "entry is cached before the TTL change")
+	require.Positive(t, translationCacheBytes.Load(), "byte total reflects the cached entry")
+
+	SetTranslationCacheTTL(time.Hour)
+
+	assert.Equal(t, 0, getTranslationCache().Len(), "changing the TTL rebuilds the cache and drops entries")
+	assert.Zero(t, translationCacheBytes.Load(), "byte accounting is reset to match the empty cache")
 }
 
 // TestByteBoundedCacheEvictsLRUToBudget shows the cache stays within the configured byte budget by

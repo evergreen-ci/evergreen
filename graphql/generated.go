@@ -1722,6 +1722,7 @@ type ComplexityRoot struct {
 		TargetTimeSeconds                func(childComplexity int) int
 		TaskFinder                       func(childComplexity int) int
 		TranslateProjectCacheBytesLimit  func(childComplexity int) int
+		TranslateProjectCacheTTLSeconds  func(childComplexity int) int
 		TranslateProjectConcurrencyLimit func(childComplexity int) int
 	}
 
@@ -10065,6 +10066,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SchedulerConfig.TranslateProjectCacheBytesLimit(childComplexity), true
+	case "SchedulerConfig.translateProjectCacheTTLSeconds":
+		if e.complexity.SchedulerConfig.TranslateProjectCacheTTLSeconds == nil {
+			break
+		}
+
+		return e.complexity.SchedulerConfig.TranslateProjectCacheTTLSeconds(childComplexity), true
 	case "SchedulerConfig.translateProjectConcurrencyLimit":
 		if e.complexity.SchedulerConfig.TranslateProjectConcurrencyLimit == nil {
 			break
@@ -20022,6 +20029,8 @@ func (ec *executionContext) fieldContext_AdminSettings_scheduler(_ context.Conte
 				return ec.fieldContext_SchedulerConfig_translateProjectConcurrencyLimit(ctx, field)
 			case "translateProjectCacheBytesLimit":
 				return ec.fieldContext_SchedulerConfig_translateProjectCacheBytesLimit(ctx, field)
+			case "translateProjectCacheTTLSeconds":
+				return ec.fieldContext_SchedulerConfig_translateProjectCacheTTLSeconds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SchedulerConfig", field.Name)
 		},
@@ -59040,6 +59049,35 @@ func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectCacheBy
 	return fc, nil
 }
 
+func (ec *executionContext) _SchedulerConfig_translateProjectCacheTTLSeconds(ctx context.Context, field graphql.CollectedField, obj *model.APISchedulerConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SchedulerConfig_translateProjectCacheTTLSeconds,
+		func(ctx context.Context) (any, error) {
+			return obj.TranslateProjectCacheTTLSeconds, nil
+		},
+		nil,
+		ec.marshalOInt2int64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SchedulerConfig_translateProjectCacheTTLSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SchedulerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SearchReturnInfo_issues(ctx context.Context, field graphql.CollectedField, obj *thirdparty.SearchReturnInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -88595,7 +88633,7 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit", "translateProjectCacheBytesLimit"}
+	fieldsInOrder := [...]string{"taskFinder", "hostAllocator", "hostAllocatorRoundingRule", "hostAllocatorFeedbackRule", "hostsOverallocatedRule", "futureHostFraction", "cacheDurationSeconds", "targetTimeSeconds", "acceptableHostIdleTimeSeconds", "groupVersions", "patchFactor", "patchTimeInQueueFactor", "commitQueueFactor", "mainlineTimeInQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "stepbackTaskFactor", "translateProjectConcurrencyLimit", "translateProjectCacheBytesLimit", "translateProjectCacheTTLSeconds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88742,6 +88780,13 @@ func (ec *executionContext) unmarshalInputSchedulerConfigInput(ctx context.Conte
 				return it, err
 			}
 			it.TranslateProjectCacheBytesLimit = data
+		case "translateProjectCacheTTLSeconds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("translateProjectCacheTTLSeconds"))
+			data, err := ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TranslateProjectCacheTTLSeconds = data
 		}
 	}
 
@@ -104882,6 +104927,8 @@ func (ec *executionContext) _SchedulerConfig(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._SchedulerConfig_translateProjectConcurrencyLimit(ctx, field, obj)
 		case "translateProjectCacheBytesLimit":
 			out.Values[i] = ec._SchedulerConfig_translateProjectCacheBytesLimit(ctx, field, obj)
+		case "translateProjectCacheTTLSeconds":
+			out.Values[i] = ec._SchedulerConfig_translateProjectCacheTTLSeconds(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
