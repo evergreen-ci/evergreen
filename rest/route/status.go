@@ -105,20 +105,20 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.byDistro || h.byProject || h.byAgentVersion {
-		var listStats *model.APIRecentTaskStatsList
+		var stats *model.APIRecentTaskStatsList
 		switch {
 		case h.byDistro:
-			listStats, err = data.FindRecentTaskListDistro(ctx, h.minutes)
+			stats, err = data.FindRecentTaskListDistro(ctx, h.minutes)
 		case h.byProject:
-			listStats, err = data.FindRecentTaskListProject(ctx, h.minutes)
+			stats, err = data.FindRecentTaskListProject(ctx, h.minutes)
 		case h.byAgentVersion:
-			listStats, err = data.FindRecentTaskListAgentVersion(ctx, h.minutes)
+			stats, err = data.FindRecentTaskListAgentVersion(ctx, h.minutes)
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding recent task list by filter"))
 		}
 
-		return gimlet.NewJSONResponse(listStats)
+		return gimlet.NewJSONResponse(stats)
 	}
 
 	statsModel := &model.APIRecentTaskStats{}
