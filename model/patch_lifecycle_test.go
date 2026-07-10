@@ -325,6 +325,37 @@ func TestFinalizePatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 		},
+		"VersionCreationWithPreTranslatedProject": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
+			patchConfig.PatchedParserProject.Id = p.Id.Hex()
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
+			ppStorageMethod := evergreen.ProjectStorageMethodDB
+			p.ProjectStorageMethod = ppStorageMethod
+			require.NoError(t, p.Insert(t.Context()))
+
+			translatedProject, _, err := FindAndTranslateProjectForPatch(ctx, patchTestConfig, p)
+			require.NoError(t, err)
+			require.NotNil(t, translatedProject)
+
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, translatedProject)
+			require.NoError(t, err)
+			require.NotNil(t, version)
+			assert.Len(t, version.Parameters, 1)
+			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod)
+
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
+			require.NoError(t, err)
+			require.NotZero(t, dbPatch)
+			assert.True(t, dbPatch.Activated)
+
+			builds, err := build.Find(t.Context(), build.All)
+			require.NoError(t, err)
+			assert.Len(t, builds, 1)
+			assert.Len(t, builds[0].Tasks, 2)
+
+			tasks, err := task.Find(ctx, bson.M{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+		},
 		"VersionCreationWithAutoUpdateModules": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			modules := ModuleList{
 				{
