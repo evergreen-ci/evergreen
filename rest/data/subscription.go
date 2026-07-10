@@ -114,7 +114,7 @@ func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restMo
 					Message:    errors.Wrap(err, "checking subscription ownership").Error(),
 				}
 			}
-			if existing != nil && existing.Owner != owner {
+			if existing != nil && existing.Owner != subscription.Owner {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusUnauthorized,
 					Message:    "cannot modify a subscription owned by another user or project",
