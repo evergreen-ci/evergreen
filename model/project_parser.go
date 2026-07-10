@@ -587,6 +587,11 @@ const (
 	// for the same version was already translating it, and shared that in-flight result instead
 	// of starting a redundant translation of its own.
 	ppTranslationDedupedOtelAttribute = "evergreen.parser_project.translation_deduped"
+	// ppReadDedupedOtelAttribute records whether this call was a follower that shared another
+	// in-flight request's parser-project read + translate for the same version instead of doing its
+	// own read. It counts followers only (reads saved), not the leader, so it reflects raw
+	// same-version request concurrency independent of the LRU state.
+	ppReadDedupedOtelAttribute = "evergreen.parser_project.read_deduped"
 	// ppTranslationCacheSizeOtelAttribute records how many translations the LRU is holding right now.
 	ppTranslationCacheSizeOtelAttribute = "evergreen.parser_project.translation_cache_size"
 	// ppTranslationCacheBytesOtelAttribute records the estimated byte total of the translations the
@@ -647,6 +652,10 @@ func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergree
 	return FindAndTranslateProjectForVersion(ctx, settings, v, preGeneration)
 }
 
+// parserProjectReadTimeout bounds a single coalesced read + translate, so a hung S3 read can't pin
+// the read singleflight slot indefinitely for the whole burst waiting behind it.
+const parserProjectReadTimeout = 90 * time.Second
+
 // FindAndTranslateProjectForVersion translates a parser project for a version into a Project.
 // Also sets the project ID. If the preGeneration flag is true, this function will attempt to
 // fetch and translate the parser project from before it was modified by generate.tasks.
@@ -654,34 +663,97 @@ func FindAndTranslateProjectForVersionID(ctx context.Context, settings *evergree
 // The returned *Project is the caller's own value: its top-level slices and maps (BuildVariants,
 // Tasks, Modules, etc.) are safe to reorder, append to, or replace. Structures nested below that
 // level are shared with the cache and must not be mutated.
+//
+// The returned *ParserProject is shared and read-only: concurrent same-version callers may receive
+// the same pointer via read coalescing, so it must not be mutated. Callers that transform the parser
+// project must clone it first or use FindAndTranslateProjectForVersionWithOpts to opt out of the
+// coalesced read.
 func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration bool) (*Project, *ParserProject, error) {
-	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration)
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, true)
 }
 
-func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) (*Project, *ParserProject, error) {
+// FindAndTranslateProjectForVersionWithOpts is like FindAndTranslateProjectForVersion but exposes two flags:
+//   - preGeneration: true for the parser project from before generate.tasks modified it; false (typical) for the current one.
+//   - coalesceRead: true (typical) to share one read across concurrent same-version callers, yielding a shared read-only
+//     *ParserProject. Pass false only if you must mutate the returned *ParserProject, which guarantees an unshared copy.
+func FindAndTranslateProjectForVersionWithOpts(ctx context.Context, settings *evergreen.Settings, v *Version, preGeneration, coalesceRead bool) (*Project, *ParserProject, error) {
+	return findAndTranslateProjectForVersion(ctx, settings, v.Id, v.Identifier, v.ProjectStorageMethod, v.PreGenerationProjectStorageMethod, preGeneration, coalesceRead)
+}
+
+// readTranslationResult packages the shared read + translate result so read-coalesced followers get
+// the same partial result (including any error) as the leader, mirroring the inner translationResult
+// pattern.
+type readTranslationResult struct {
+	project *Project
+	pp      *ParserProject
+	err     error
+}
+
+func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration, coalesceRead bool) (*Project, *ParserProject, error) {
 	ctx, span := tracer.Start(ctx, "FindAndTranslateProjectForVersion", trace.WithAttributes(
 		attribute.String(evergreen.VersionIDOtelAttribute, versionID),
 		attribute.Bool(ppPreGenerationOtelAttribute, preGeneration),
 	))
 	defer span.End()
 
+	res, readDeduped := readAndTranslateProjectForVersionCoalesced(ctx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration, coalesceRead)
+	span.SetAttributes(attribute.Bool(ppReadDedupedOtelAttribute, readDeduped))
+	return res.project, res.pp, res.err
+}
+
+// readAndTranslateProjectForVersionCoalesced runs the read + translate, optionally coalescing
+// concurrent same-version requests through the read singleflight. readDeduped reports whether this
+// call was a follower that shared another in-flight request's result (leaders and non-coalesced
+// calls report false), so it counts reads saved.
+func readAndTranslateProjectForVersionCoalesced(ctx context.Context, span trace.Span, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration, coalesceRead bool) (readTranslationResult, bool) {
+	if !coalesceRead {
+		return readAndTranslateProjectForVersion(ctx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration), false
+	}
+
+	storageMethod := projectStorageMethod
+	if preGeneration {
+		storageMethod = preGenerationProjectStorageMethod
+	}
+	key := versionReadKey(versionID, preGeneration, storageMethod)
+
+	// leader is set only inside the executed closure, so followers can be counted separately from the
+	// single leader for an accurate "reads saved" metric.
+	leader := false
+	v, sfErr, shared := getReadTranslationGroup().Do(key, func() (any, error) {
+		leader = true
+		// Detach from the leader's cancellation but keep an explicit deadline, so a follower with a
+		// live context isn't failed by the leader cancelling, while a hung read can't pin the slot
+		// forever. Failures are not cached: singleflight forgets the key when the closure returns.
+		readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), parserProjectReadTimeout)
+		defer cancel()
+		return readAndTranslateProjectForVersion(readCtx, span, settings, versionID, versionIdentifier, projectStorageMethod, preGenerationProjectStorageMethod, preGeneration), nil
+	})
+	if sfErr != nil {
+		return readTranslationResult{err: sfErr}, false
+	}
+	return v.(readTranslationResult), shared && !leader
+}
+
+// readAndTranslateProjectForVersion performs the parser-project read (with a bounded retry) and
+// translate for a version. It is the shared body run under the read singleflight.
+func readAndTranslateProjectForVersion(ctx context.Context, span trace.Span, settings *evergreen.Settings, versionID, versionIdentifier string, projectStorageMethod, preGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod, preGeneration bool) readTranslationResult {
 	var pp *ParserProject
 	var err error
 	if preGeneration {
 		preGeneratedId := preGeneratedParserProjectId(versionID)
-		pp, err = ParserProjectFindOneByID(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
+		pp, err = findParserProjectWithRetry(ctx, settings, preGenerationProjectStorageMethod, preGeneratedId)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)
+			return readTranslationResult{err: errors.Wrapf(err, "finding parser project '%s'", preGeneratedId)}
 		}
 		// Fall back to the parser project post-generation if the pre-generation parser project was not found
 	}
 	if pp == nil {
-		pp, err = ParserProjectFindOneByID(ctx, settings, projectStorageMethod, versionID)
+		pp, err = findParserProjectWithRetry(ctx, settings, projectStorageMethod, versionID)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "finding parser project '%s'", versionID)
+			return readTranslationResult{err: errors.Wrapf(err, "finding parser project '%s'", versionID)}
 		}
 		if pp == nil {
-			return nil, nil, errors.Errorf("parser project not found for version '%s'", versionID)
+			return readTranslationResult{err: errors.Errorf("parser project not found for version '%s'", versionID)}
 		}
 	}
 	// Setting the translated project's ID is necessary here because some old
@@ -693,9 +765,26 @@ func findAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 	cacheEnabled := projectTranslationCacheEnabled(settings)
 	p, err := translateAndCache(ctx, span, pp, versionIdentifier, versionTranslationKey(versionID, preGeneration), cacheEnabled)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "translating parser project '%s'", versionID)
+		return readTranslationResult{err: errors.Wrapf(err, "translating parser project '%s'", versionID)}
 	}
-	return p, pp, nil
+	return readTranslationResult{project: p, pp: pp}
+}
+
+// parserProjectFindOneByID is the parser-project read seam, overridable in tests to count reads and
+// inject failures.
+var parserProjectFindOneByID = ParserProjectFindOneByID
+
+// findParserProjectWithRetry reads a parser project with a bounded retry. Because read coalescing
+// correlates one transient failure across the whole burst and several callers don't retry, one
+// retry absorbs a transient blip for the entire burst without multiplying load.
+func findParserProjectWithRetry(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod, id string) (*ParserProject, error) {
+	var pp *ParserProject
+	err := utility.Retry(ctx, func() (bool, error) {
+		var err error
+		pp, err = parserProjectFindOneByID(ctx, settings, method, id)
+		return true, err
+	}, utility.RetryOptions{MaxAttempts: 2, MinDelay: 100 * time.Millisecond, MaxDelay: time.Second})
+	return pp, err
 }
 
 // LoadProjectInfoForVersion returns the project info for a version from its parser project.

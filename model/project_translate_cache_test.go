@@ -24,6 +24,7 @@ func resetTranslationCacheForTesting() {
 	translationCacheTTL = 0
 	translationCacheMu.Unlock()
 	translationGroupPtr.Store(&singleflight.Group{})
+	readTranslationGroupPtr.Store(&singleflight.Group{})
 	translationCacheEvictions.Store(0)
 	translationCacheBytes.Store(0)
 	translationCacheBytesLimit.Store(0)

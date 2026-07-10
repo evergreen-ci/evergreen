@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/trace"
@@ -44,6 +45,13 @@ var (
 	// translationCacheMu. A value <= 0 falls back to defaultTranslationCacheTTL.
 	translationCacheTTL time.Duration
 
+	// readTranslationGroupPtr coalesces the parser-project read + translate for concurrent
+	// same-version requests within one process. It sits in front of the LRU (the read is required to
+	// compute the content-hash key), so it reflects raw same-version request concurrency independent
+	// of cache state. It is separate from translationGroupPtr, which coalesces only the inner
+	// content-hash translate.
+	readTranslationGroupPtr atomic.Pointer[singleflight.Group]
+
 	// translationCacheWriteMu serializes each insert together with the eviction that brings the cache
 	// back within budget, so the byte total stays consistent with the cache's contents across
 	// concurrent inserts of different keys.
@@ -61,6 +69,13 @@ var (
 
 func init() {
 	translationGroupPtr.Store(&singleflight.Group{})
+	readTranslationGroupPtr.Store(&singleflight.Group{})
+}
+
+// getReadTranslationGroup returns the process-wide singleflight group that coalesces the
+// parser-project read + translate on the version path.
+func getReadTranslationGroup() *singleflight.Group {
+	return readTranslationGroupPtr.Load()
 }
 
 // getTranslationCache returns the process-wide LRU cache for translated projects, initializing it on
@@ -254,6 +269,13 @@ func getOrComputeTranslation(key string, cacheEnabled bool, compute func() (*Pro
 // disabled. It must NOT be used as an LRU key; see getOrComputeTranslation.
 func versionTranslationKey(versionID string, preGeneration bool) string {
 	return fmt.Sprintf("v:%s:%v", versionID, preGeneration)
+}
+
+// versionReadKey keys the read singleflight for the version path. It extends versionTranslationKey
+// with the storage method so a version mid DB->S3 fallback can't cross-share a read with a
+// stale-method caller.
+func versionReadKey(versionID string, preGeneration bool, storageMethod evergreen.ParserProjectStorageMethod) string {
+	return fmt.Sprintf("%s:%s", versionTranslationKey(versionID, preGeneration), storageMethod)
 }
 
 // fileTranslationKey is the cheap singleflight-only key for the file path when the cache is
