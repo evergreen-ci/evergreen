@@ -1688,7 +1688,7 @@ func TestGetRecentTaskStats(t *testing.T) {
 		assert.NoError(task.Insert(t.Context()))
 	}
 
-	list, err := GetRecentTaskStats(ctx, time.Minute, DistroIdKey, nil)
+	list, err := GetRecentTaskStats(ctx, time.Minute, DistroIdKey)
 	assert.NoError(err)
 
 	// Two statuses

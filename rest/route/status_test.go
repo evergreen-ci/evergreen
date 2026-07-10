@@ -12,17 +12,14 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
 // StatusSuite enables testing for version related routes.
 type StatusSuite struct {
-	h   *recentTasksGetHandler
-	ctx context.Context
+	h *recentTasksGetHandler
 
 	suite.Suite
 }
@@ -32,49 +29,31 @@ func TestStatusSuite(t *testing.T) {
 }
 
 func (s *StatusSuite) SetupTest() {
-	s.NoError(db.ClearCollections(task.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
-	rm := evergreen.GetEnvironment().RoleManager()
-	s.NoError(rm.AddScope(s.T().Context(), gimlet.Scope{
-		ID:        "permitted_scope",
-		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"permitted-project", "other-permitted"},
-	}))
-	s.NoError(rm.UpdateRole(s.T().Context(), gimlet.Role{
-		ID:          "task_viewer",
-		Scope:       "permitted_scope",
-		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
-	}))
-	u := &user.DBUser{Id: "test_user", SystemRoles: []string{"task_viewer"}}
-	s.ctx = gimlet.AttachUser(s.T().Context(), u)
-
+	s.NoError(db.Clear(task.Collection))
 	tasks := []task.Task{
 		{
 			Id:         "task1",
 			Status:     evergreen.TaskUndispatched,
 			FinishTime: time.Now().Add(time.Second),
 			DistroId:   "d2",
-			Project:    "permitted-project",
 		},
 		{
 			Id:         "task2",
 			Status:     evergreen.TaskStarted,
 			FinishTime: time.Now().Add(time.Second),
 			DistroId:   "d2",
-			Project:    "permitted-project",
 		},
 		{
 			Id:         "task3",
 			Status:     evergreen.TaskStarted,
 			FinishTime: time.Now().Add(time.Second),
 			DistroId:   "d3",
-			Project:    "permitted-project",
 		},
 		{
 			Id:         "task4",
 			Status:     evergreen.TaskStarted,
 			FinishTime: time.Now().Add(time.Second),
 			DistroId:   "d3",
-			Project:    "permitted-project",
 		},
 		{
 			Id:     "task5",
@@ -85,7 +64,6 @@ func (s *StatusSuite) SetupTest() {
 			},
 			FinishTime: time.Now().Add(time.Second),
 			DistroId:   "d3",
-			Project:    "permitted-project",
 		},
 	}
 	for _, t := range tasks {
@@ -183,7 +161,7 @@ func (s *StatusSuite) TestExecuteDefault() {
 	s.h.minutes = 0
 	s.h.verbose = false
 
-	resp := s.h.Run(s.ctx)
+	resp := s.h.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
 	res := resp.Data().(*model.APIRecentTaskStats)
@@ -197,7 +175,7 @@ func (s *StatusSuite) TestExecuteVerbose() {
 	s.h.minutes = 0
 	s.h.verbose = true
 
-	resp := s.h.Run(s.ctx)
+	resp := s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	tasks := resp.Data().([]model.APITask)
@@ -210,7 +188,7 @@ func (s *StatusSuite) TestExecuteVerbose() {
 func (s *StatusSuite) TestExecuteByDistro() {
 	s.h.byDistro = true
 
-	resp := s.h.Run(s.ctx)
+	resp := s.h.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
 	res := *resp.Data().(*model.APIRecentTaskStatsList)
@@ -229,90 +207,26 @@ func (s *StatusSuite) TestExecuteByDistro() {
 	s.Equal(1, res[evergreen.TaskUndispatched][0].Count)
 }
 
-func (s *StatusSuite) TestVerboseFiltersUnpermittedProjects() {
-	restrictedTask := task.Task{
-		Id:         "restricted_task",
-		Status:     evergreen.TaskStarted,
-		FinishTime: time.Now().Add(time.Second),
-		DistroId:   "d2",
-		Project:    "restricted-project",
-	}
-	s.NoError(restrictedTask.Insert(s.T().Context()))
-
-	s.h.minutes = 0
-	s.h.verbose = true
-
-	resp := s.h.Run(s.ctx)
-	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
-	tasks := resp.Data().([]model.APITask)
-	s.Len(tasks, 5)
-	for _, t := range tasks {
-		s.NotEqual(utility.ToStringPtr("restricted_task"), t.Id)
-	}
-}
-
-func (s *StatusSuite) TestDefaultFiltersUnpermittedProjects() {
-	restrictedTask := task.Task{
-		Id:         "restricted_task",
-		Status:     evergreen.TaskFailed,
-		FinishTime: time.Now().Add(time.Second),
-		DistroId:   "d2",
-		Project:    "restricted-project",
-	}
-	s.NoError(restrictedTask.Insert(s.T().Context()))
-
-	s.h.minutes = 0
-	s.h.verbose = false
-
-	resp := s.h.Run(s.ctx)
-	s.Equal(http.StatusOK, resp.Status())
-	res := resp.Data().(*model.APIRecentTaskStats)
-	s.Equal(5, res.Total)
-}
-
-func (s *StatusSuite) TestByProjectFiltersUnpermittedProjects() {
-	restrictedTask := task.Task{
-		Id:         "restricted_task",
-		Status:     evergreen.TaskStarted,
-		FinishTime: time.Now().Add(time.Second),
-		DistroId:   "d2",
-		Project:    "restricted-project",
-	}
-	s.NoError(restrictedTask.Insert(s.T().Context()))
-
-	s.h.byProject = true
-
-	resp := s.h.Run(s.ctx)
-	s.Equal(http.StatusOK, resp.Status())
-	res := *resp.Data().(*model.APIRecentTaskStatsList)
-	for _, stats := range res {
-		for _, stat := range stats {
-			s.NotEqual(utility.ToStringPtr("restricted-project"), stat.Name)
-		}
-	}
-}
-
 func (s *StatusSuite) TaskTaskType() {
 	s.h.minutes = 0
 	s.h.verbose = true
 
 	s.h.taskType = evergreen.TaskUnscheduled
-	resp := s.h.Run(s.ctx)
+	resp := s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	found := resp.Data().([]any)[0].(*model.APITask)
 	s.Equal(utility.ToStringPtr("task1"), found.Id)
 
 	s.h.taskType = evergreen.TaskStarted
-	resp = s.h.Run(s.ctx)
+	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	found = resp.Data().([]any)[0].(*model.APITask)
 	s.Equal(utility.ToStringPtr("task2"), found.Id)
 
 	s.h.taskType = evergreen.TaskSucceeded
-	resp = s.h.Run(s.ctx)
+	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	found = resp.Data().([]any)[0].(*model.APITask)
@@ -321,7 +235,7 @@ func (s *StatusSuite) TaskTaskType() {
 	s.Equal(utility.ToStringPtr("task4"), found.Id)
 
 	s.h.taskType = evergreen.TaskSystemTimedOut
-	resp = s.h.Run(s.ctx)
+	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	found = resp.Data().([]any)[0].(*model.APITask)

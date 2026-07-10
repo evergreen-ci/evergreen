@@ -222,7 +222,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchCLIVersionRoute(env))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostStatusByDistroRoute())
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchNotifcationStatusRoute())
-	app.AddRoute("/status/recent_tasks").Version(2).Get().Wrap(requireUser).RouteHandler(makeRecentTaskStatusHandler())
+	app.AddRoute("/status/recent_tasks").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeRecentTaskStatusHandler())
 	app.AddRoute("/subscriptions").Version(2).Delete().Wrap(requireUser).RouteHandler(makeDeleteSubscription())
 	app.AddRoute("/subscriptions").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchSubscription())
 	app.AddRoute("/subscriptions").Version(2).Post().Wrap(requireUser).RouteHandler(makeSetSubscription())

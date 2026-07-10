@@ -23,23 +23,23 @@ func FindRecentTasks(ctx context.Context, minutes int) ([]task.Task, *task.Resul
 	return tasks, stats, nil
 }
 
-func FindRecentTaskListDistro(ctx context.Context, minutes int, viewableProjects []string) (*model.APIRecentTaskStatsList, error) {
-	apiList, err := FindRecentTaskList(ctx, minutes, task.DistroIdKey, viewableProjects)
+func FindRecentTaskListDistro(ctx context.Context, minutes int) (*model.APIRecentTaskStatsList, error) {
+	apiList, err := FindRecentTaskList(ctx, minutes, task.DistroIdKey)
 	return apiList, errors.WithStack(err)
 }
 
-func FindRecentTaskListProject(ctx context.Context, minutes int, viewableProjects []string) (*model.APIRecentTaskStatsList, error) {
-	apiList, err := FindRecentTaskList(ctx, minutes, task.ProjectKey, viewableProjects)
+func FindRecentTaskListProject(ctx context.Context, minutes int) (*model.APIRecentTaskStatsList, error) {
+	apiList, err := FindRecentTaskList(ctx, minutes, task.ProjectKey)
 	return apiList, errors.WithStack(err)
 }
 
-func FindRecentTaskListAgentVersion(ctx context.Context, minutes int, viewableProjects []string) (*model.APIRecentTaskStatsList, error) {
-	apiList, err := FindRecentTaskList(ctx, minutes, task.AgentVersionKey, viewableProjects)
+func FindRecentTaskListAgentVersion(ctx context.Context, minutes int) (*model.APIRecentTaskStatsList, error) {
+	apiList, err := FindRecentTaskList(ctx, minutes, task.AgentVersionKey)
 	return apiList, errors.WithStack(err)
 }
 
-func FindRecentTaskList(ctx context.Context, minutes int, key string, viewableProjects []string) (*model.APIRecentTaskStatsList, error) {
-	stats, err := task.GetRecentTaskStats(ctx, time.Duration(minutes)*time.Minute, key, viewableProjects)
+func FindRecentTaskList(ctx context.Context, minutes int, key string) (*model.APIRecentTaskStatsList, error) {
+	stats, err := task.GetRecentTaskStats(ctx, time.Duration(minutes)*time.Minute, key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting recent task stats from the last %d minutes", minutes)
 	}
