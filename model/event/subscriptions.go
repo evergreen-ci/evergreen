@@ -595,19 +595,22 @@ func RemoveSubscription(ctx context.Context, id string) error {
 		}
 	}
 
-	if err := db.Remove(ctx, SubscriptionsCollection, bson.M{
-		subscriptionIDKey: id,
-	}); err != nil {
-		return err
-	}
-
 	catcher := grip.NewBasicCatcher()
+	// Continue on error while deleting the secrets from Parameter Store because
+	// the secrets could have been deleted already (e.g. if this is a
+	// retry attempt to delete the subscription). Secret cleanup is best-effort
+	// and leaving behind a lingering secret is preferable over blocking
+	// the deletion of the subscription entirely.
 	if webhookSecretParamToDelete != "" {
 		catcher.Wrap(deleteWebhookSecretFromParameterStore(ctx, webhookSecretParamToDelete), "cleaning up webhook secret parameter")
 	}
 	if authHeaderParamToDelete != "" {
 		catcher.Wrap(deleteWebhookSecretFromParameterStore(ctx, authHeaderParamToDelete), "cleaning up webhook Authorization header parameter")
 	}
+
+	catcher.Wrap(db.Remove(ctx, SubscriptionsCollection, bson.M{
+		subscriptionIDKey: id,
+	}), "removing DB subscription")
 
 	return catcher.Resolve()
 }
