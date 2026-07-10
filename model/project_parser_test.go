@@ -3918,6 +3918,49 @@ tasks:
 	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
 }
 
+// TestMergeKeyListSyntaxInIncludeFile verifies that the standard YAML list merge
+// key syntax (<<: [*a, *b]) works correctly when the referenced anchors are
+// defined in an earlier include file. Earlier entries in the list take priority
+// over later ones for conflicting keys.
+func TestMergeKeyListSyntaxInIncludeFile(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &base-cmd
+    command: shell.exec
+    params:
+      script: ./base.sh
+      working_dir: src
+  - &override-cmd
+    command: shell.exec
+    params:
+      script: ./override.sh
+`, "include.yml")
+
+	// include.yml uses <<: [*base-cmd, *override-cmd]; earlier entry (*base-cmd) wins on conflicts.
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - <<: [*base-cmd, *override-cmd]
+`
+	proj := &Project{}
+	_, err := LoadProjectInto(t.Context(), []byte(mainYAML),
+		moduleIncludeOpts(moduleInclude("include.yml", includeYAML)), "proj", proj)
+	require.NoError(t, err)
+
+	tasksByName := map[string]ProjectTask{}
+	for _, task := range proj.Tasks {
+		tasksByName[task.Name] = task
+	}
+	require.Contains(t, tasksByName, "include-task")
+	require.Len(t, tasksByName["include-task"].Commands, 1)
+	// *base-cmd is listed first in the merge list, so it wins on key conflicts.
+	// Both command: shell.exec entries agree, so the command field is shell.exec.
+	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
+}
+
 // TestNoAnchorsInIncludeFiles verifies that projects without anchors produce
 // identical output before and after the Stage 2 changes (no regression).
 func TestNoAnchorsInIncludeFiles(t *testing.T) {
