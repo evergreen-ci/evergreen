@@ -38,22 +38,35 @@ func main() {
 	var (
 		configsDir string
 		outputFile string
+		filesFlag  string
 	)
 
 	flag.StringVar(&configsDir, "configs-dir", "downloaded_configs", "Directory containing config files")
 	flag.StringVar(&outputFile, "output", "", "Output file for validation results (JSON)")
+	flag.StringVar(&filesFlag, "files", "", "Comma-separated list of specific files to validate (overrides configs-dir scan)")
 	flag.Parse()
 
-	if err := validateConfigs(configsDir, outputFile); err != nil {
+	var configFiles []string
+	if filesFlag != "" {
+		configFiles = strings.Split(filesFlag, ",")
+	}
+
+	if err := validateConfigs(configsDir, outputFile, configFiles); err != nil {
 		grip.Error(context.Background(), err)
 		os.Exit(1)
 	}
 }
 
-func validateConfigs(configsDir, outputFile string) error {
-	configFiles, err := findConfigFiles(configsDir)
-	if err != nil {
-		return fmt.Errorf("finding config files: %w", err)
+func validateConfigs(configsDir, outputFile string, specificFiles []string) error {
+	var configFiles []string
+	var err error
+	if len(specificFiles) > 0 {
+		configFiles = specificFiles
+	} else {
+		configFiles, err = findConfigFiles(configsDir)
+		if err != nil {
+			return fmt.Errorf("finding config files: %w", err)
+		}
 	}
 
 	if len(configFiles) == 0 {

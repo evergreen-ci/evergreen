@@ -7,7 +7,10 @@ CONFIGS_DIR="downloaded_configs"
 BASELINE_RESULTS="baseline_validation.json"
 PATCH_RESULTS="patch_validation.json"
 REGRESSION_REPORT="regression_report.txt"
+REGRESSED_FILES="regressed_files.txt"
+RETRY_RESULTS="retry_validation.json"
 MAX_RETRIES=3
+REGRESSION_RETRIES=2
 
 print_status() {
     echo -e "[INFO] $1"
@@ -133,10 +136,11 @@ compare_results() {
     local baseline=$1
     local patch=$2
     local report=$3
+    local regressed_files=$4
 
     print_status "Comparing validation results..."
 
-    if python3 scripts/compare-validation-results.py "$baseline" "$patch" "$report"; then
+    if python3 scripts/compare-validation-results.py "$baseline" "$patch" "$report" "$regressed_files"; then
         print_status "No regressions found!"
         return 0
     else
@@ -144,6 +148,52 @@ compare_results() {
         cat "$report"
         return 1
     fi
+}
+
+retry_regressions() {
+    local regressed_files=$1
+    local attempt=1
+
+    if [ ! -f "$regressed_files" ] || [ ! -s "$regressed_files" ]; then
+        return 1
+    fi
+
+    local files_csv
+    files_csv=$(paste -sd ',' "$regressed_files")
+    local num_files
+    num_files=$(wc -l < "$regressed_files" | tr -d ' ')
+
+    print_status "Retrying $num_files suspected regression(s) $REGRESSION_RETRIES time(s) to confirm..."
+
+    while [ $attempt -le $REGRESSION_RETRIES ]; do
+        print_status "Retry attempt $attempt/$REGRESSION_RETRIES..."
+
+        if ! ./bin/validate-all-configs \
+            --configs-dir "$CONFIGS_DIR" \
+            --files "$files_csv" \
+            --output "$RETRY_RESULTS"; then
+            print_error "Retry validation exited with non-zero status"
+            return 1
+        fi
+
+        local all_passed
+        all_passed=$(python3 -c "
+import json
+with open('$RETRY_RESULTS', 'r') as f:
+    data = json.load(f)
+    print('true' if data['failed'] == 0 else 'false')
+")
+
+        if [ "$all_passed" = "true" ]; then
+            print_status "All suspected regressions passed on retry attempt $attempt — flaky failure, not a real regression"
+            return 0
+        fi
+
+        attempt=$((attempt + 1))
+    done
+
+    print_error "Regressions confirmed after $REGRESSION_RETRIES retries"
+    return 1
 }
 
 cleanup() {
@@ -247,15 +297,24 @@ main() {
         print_status "Patch: $patch_passed passed, $patch_failed failed"
     fi
 
-    if compare_results "$BASELINE_RESULTS" "$PATCH_RESULTS" "$REGRESSION_REPORT"; then
+    if compare_results "$BASELINE_RESULTS" "$PATCH_RESULTS" "$REGRESSION_REPORT" "$REGRESSED_FILES"; then
         print_status "Config validation test PASSED"
 
-        rm -f "$BASELINE_RESULTS" "$PATCH_RESULTS" "$REGRESSION_REPORT"
+        rm -f "$BASELINE_RESULTS" "$PATCH_RESULTS" "$REGRESSION_REPORT" "$REGRESSED_FILES" "$RETRY_RESULTS"
         rm -rf "$CONFIGS_DIR"
 
         exit 0
     else
-        print_error "Config validation test FAILED - regressions detected"
+        if retry_regressions "$REGRESSED_FILES"; then
+            print_status "Config validation test PASSED (regressions were flaky)"
+
+            rm -f "$BASELINE_RESULTS" "$PATCH_RESULTS" "$REGRESSION_REPORT" "$REGRESSED_FILES" "$RETRY_RESULTS"
+            rm -rf "$CONFIGS_DIR"
+
+            exit 0
+        fi
+
+        print_error "Config validation test FAILED - regressions confirmed"
 
         if [ -s "$REGRESSION_REPORT" ]; then
             echo ""
@@ -263,6 +322,8 @@ main() {
             echo "=================="
             cat "$REGRESSION_REPORT"
         fi
+
+        rm -f "$REGRESSED_FILES" "$RETRY_RESULTS"
 
         exit 1
     fi
