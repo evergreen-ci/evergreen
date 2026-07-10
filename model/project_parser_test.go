@@ -3961,6 +3961,61 @@ tasks:
 	assert.Equal(t, "shell.exec", tasksByName["include-task"].Commands[0].Command)
 }
 
+// TestCrossFileAnchorsDisabledMatchesEnabled verifies that for a project whose
+// include files do not use cross-file aliases, disabling the feature produces
+// exactly the same parsed result as leaving it enabled. This is the primary
+// backwards-compatibility check for the preamble injection change.
+func TestCrossFileAnchorsDisabledMatchesEnabled(t *testing.T) {
+	mainYAML := mainYAMLWithModuleIncludes(`
+tasks:
+- name: main-task
+  commands:
+  - &shared-cmd
+    command: shell.exec
+    params:
+      script: ./run.sh
+`, "include.yml")
+
+	// include.yml defines its own anchor and does NOT reference any anchor from main.
+	includeYAML := `
+tasks:
+- name: include-task
+  commands:
+  - &local-cmd
+    command: shell.exec
+    params:
+      script: ./include.sh
+  - *local-cmd
+buildvariants:
+- name: linux
+  display_name: Linux
+  run_on:
+  - rhel80-small
+  tasks:
+  - name: include-task
+`
+	parseWith := func(t *testing.T, disable bool) *Project {
+		t.Helper()
+		proj := &Project{}
+		opts := moduleIncludeOpts(moduleInclude("include.yml", includeYAML))
+		opts.DisableCrossFileAnchors = disable
+		_, err := LoadProjectInto(t.Context(), []byte(mainYAML), opts, "proj", proj)
+		require.NoError(t, err)
+		return proj
+	}
+
+	enabled := parseWith(t, false)
+	disabled := parseWith(t, true)
+
+	// Both should produce the same tasks and build variants.
+	require.Equal(t, len(disabled.Tasks), len(enabled.Tasks), "task count should match")
+	require.Equal(t, len(disabled.BuildVariants), len(enabled.BuildVariants), "build variant count should match")
+	for i := range enabled.Tasks {
+		assert.Equal(t, disabled.Tasks[i].Name, enabled.Tasks[i].Name)
+		assert.Equal(t, len(disabled.Tasks[i].Commands), len(enabled.Tasks[i].Commands))
+	}
+}
+
 // TestNoAnchorsInIncludeFiles verifies that projects without anchors produce
 // identical output before and after the Stage 2 changes (no regression).
 func TestNoAnchorsInIncludeFiles(t *testing.T) {

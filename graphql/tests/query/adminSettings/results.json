@@ -587,6 +587,7 @@
               { "name": "task_dispatch_disabled", "enabled": false },
               { "name": "host_init_disabled", "enabled": false },
               { "name": "large_parser_projects_disabled", "enabled": false },
+              { "name": "cross_file_yaml_anchors_disabled", "enabled": false },
               { "name": "monitor_disabled", "enabled": false },
               { "name": "merge_queue_recovery_enabled", "enabled": false },
               { "name": "alerts_disabled", "enabled": false },
