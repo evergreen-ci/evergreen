@@ -2133,6 +2133,7 @@ type APIServiceFlags struct {
 	HostInitDisabled                   bool `json:"host_init_disabled"`
 	LargeParserProjectsDisabled        bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                    bool `json:"monitor_disabled"`
+	MergeQueueRecoveryEnabled          bool `json:"merge_queue_recovery_enabled"`
 	AlertsDisabled                     bool `json:"alerts_disabled"`
 	AgentStartDisabled                 bool `json:"agent_start_disabled"`
 	RepotrackerDisabled                bool `json:"repotracker_disabled"`
@@ -2589,6 +2590,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.HostInitDisabled = v.HostInitDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
+		as.MergeQueueRecoveryEnabled = v.MergeQueueRecoveryEnabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
@@ -2642,6 +2644,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		HostInitDisabled:                   as.HostInitDisabled,
 		LargeParserProjectsDisabled:        as.LargeParserProjectsDisabled,
 		MonitorDisabled:                    as.MonitorDisabled,
+		MergeQueueRecoveryEnabled:          as.MergeQueueRecoveryEnabled,
 		AlertsDisabled:                     as.AlertsDisabled,
 		AgentStartDisabled:                 as.AgentStartDisabled,
 		RepotrackerDisabled:                as.RepotrackerDisabled,
