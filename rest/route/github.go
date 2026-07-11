@@ -306,6 +306,9 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"event":  gh.eventType,
 			"ref":    event.GetRef(),
 			"is_tag": isTag(event.GetRef()),
+			"repo":   event.Repo.GetName(),
+			"owner":  event.Repo.Owner.GetLogin(),
+			"action": event.GetAction(),
 		})
 		// Regardless of whether a tag or commit is being pushed, we want to trigger the repotracker
 		// to ensure we're up-to-date on the commit the tag is being pushed to.
