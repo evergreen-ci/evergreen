@@ -408,17 +408,19 @@ func (at *APITask) buildTask(t *task.Task) error {
 		at.TimeTaken = NewAPIDuration(time.Since(t.StartTime))
 	}
 
-	if !t.TaskCost.IsZero() {
-		taskCost := t.TaskCost
-		taskCost.Total = taskCost.AdjustedTotal()
-		at.TaskCost = &taskCost
-	}
+	if !shouldHideCostForProject(t.Project) {
+		if !t.TaskCost.IsZero() {
+			taskCost := t.TaskCost
+			taskCost.Total = taskCost.AdjustedTotal()
+			at.TaskCost = &taskCost
+		}
 
-	// Populate expected cost fields if they exist (not zero)
-	if !t.PredictedTaskCost.IsZero() {
-		predictedCost := t.PredictedTaskCost
-		predictedCost.Total = predictedCost.AdjustedTotal()
-		at.PredictedTaskCost = &predictedCost
+		// Populate expected cost fields if they exist (not zero)
+		if !t.PredictedTaskCost.IsZero() {
+			predictedCost := t.PredictedTaskCost
+			predictedCost.Total = predictedCost.AdjustedTotal()
+			at.PredictedTaskCost = &predictedCost
+		}
 	}
 
 	if !t.S3Usage.IsZero() {
