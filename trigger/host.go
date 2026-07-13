@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"text/template"
+	"html/template"
+	"strings"
+	ttemplate "text/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -27,22 +29,22 @@ func init() {
 const (
 	// notification templates
 	expiringHostEmailSubject         = `{{.Distro}} host termination reminder`
-	expiringHostEmailBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>spawnhost page</a> to extend its lifetime.`
+	expiringHostEmailBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <a href="{{.URL}}">spawnhost page</a> to extend its lifetime.`
 	expiringHostSlackBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its lifetime.`
 	expiringHostSlackAttachmentTitle = "Spawn Host Page"
 
 	expiringHostTemporaryExemptionEmailSubject         = `{{.Distro}} host temporary exemption reminder`
-	expiringHostTemporaryExemptionEmailBody            = `Your {{.Distro}} host '{{.Name}}' has a temporary exemption that will end at {{.ExpirationTime}}. Visit the <a href={{.URL}}>spawnhost page</a> to extend its temporary exemption if needed.`
+	expiringHostTemporaryExemptionEmailBody            = `Your {{.Distro}} host '{{.Name}}' has a temporary exemption that will end at {{.ExpirationTime}}. Visit the <a href="{{.URL}}">spawnhost page</a> to extend its temporary exemption if needed.`
 	expiringHostTemporaryExemptionSlackAttachmentTitle = "Spawn Host Page"
 	expiringHostTemporaryExemptionSlackBody            = `Your {{.Distro}} host '{{.Name}}' has a temporary exemption that will end at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its temporary exemption if needed.`
 
 	idleHostEmailSubject     = `{{.Distro}} idle stopped host notice`
 	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle for at least three months.
 In order to be responsible about resource consumption (as stopped instances still have EBS volumes attached and thus still incur costs),
-please consider terminating from the <a href={{.URL}}>spawnhost page</a> if the host is no longer in use.`
+please consider terminating from the <a href="{{.URL}}">spawnhost page</a> if the host is no longer in use.`
 
 	alertableInstanceTypeEmailSubject         = `Large instance type reminder`
-	alertableInstanceTypeEmailBody            = `Your host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development to reduce costs. Visit the <a href={{.URL}}>spawnhost page</a> to modify your host.`
+	alertableInstanceTypeEmailBody            = `Your host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development to reduce costs. Visit the <a href="{{.URL}}">spawnhost page</a> to modify your host.`
 	alertableInstanceTypeSlackBody            = `Your host '{{.Name}}' is using a large instance type ({{.InstanceType}}). Please remember to switch to smaller instance types when you're finished with development to reduce costs. Visit the <{{.URL}}|spawnhost page> to modify your host.`
 	alertableInstanceTypeSlackAttachmentTitle = "Spawn Host Page"
 )
@@ -197,8 +199,10 @@ func (t *hostTriggers) generateAlertableInstanceType(sub *event.Subscription) (*
 }
 
 func (t *hostTemplateData) hostEmailPayload(subjectString, bodyString string, attributes event.Attributes) (*message.Email, error) {
+	// The subject is a plain-text email header and none of the host subjects
+	// interpolate attacker-controlled fields, so it's rendered with text/template.
 	subjectBuf := &bytes.Buffer{}
-	subjectTemplate, err := template.New("subject").Parse(subjectString)
+	subjectTemplate, err := ttemplate.New("subject").Parse(subjectString)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing subject template")
 	}
@@ -206,6 +210,8 @@ func (t *hostTemplateData) hostEmailPayload(subjectString, bodyString string, at
 		return nil, errors.Wrap(err, "executing subject template")
 	}
 
+	// The body is live HTML, so it's rendered with html/template to contextually
+	// escape the host name and URL, which are attacker-controlled.
 	bodyBuf := &bytes.Buffer{}
 	bodyTemplate, err := template.New("body").Parse(bodyString)
 	if err != nil {
@@ -224,13 +230,18 @@ func (t *hostTemplateData) hostEmailPayload(subjectString, bodyString string, at
 }
 
 func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle string) (*notification.SlackPayload, error) {
-	messageTemplate, err := template.New("subject").Parse(messageString)
+	messageTemplate, err := ttemplate.New("subject").Parse(messageString)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing Slack template")
 	}
 
+	// The host name is attacker-controlled, so escape the Slack mrkdwn control
+	// characters to prevent it from injecting links or breaking out of the message.
+	slackData := *t
+	slackData.Name = escapeSlackMrkdwn(slackData.Name)
+
 	msgBuf := &bytes.Buffer{}
-	if err = messageTemplate.Execute(msgBuf, t); err != nil {
+	if err = messageTemplate.Execute(msgBuf, &slackData); err != nil {
 		return nil, errors.Wrap(err, "executing Slack template")
 	}
 
@@ -242,6 +253,15 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 			Color:     evergreenSuccessColor,
 		}},
 	}, nil
+}
+
+// slackMrkdwnEscaper escapes the characters Slack reserves for building links
+// (<url|text>) so that user-controlled text can't inject a link or break out of
+// the surrounding message. See https://api.slack.com/reference/surfaces/formatting#escaping.
+var slackMrkdwnEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
+
+func escapeSlackMrkdwn(s string) string {
+	return slackMrkdwnEscaper.Replace(s)
 }
 
 func (t *hostTriggers) hostExpiration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
