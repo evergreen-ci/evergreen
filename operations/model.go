@@ -138,9 +138,7 @@ type ClientSettings struct {
 	// APIServerHost is the legacy API server host. This should only be used by service
 	// users who need to use the legacy way of authenticating (static keys).
 	APIServerHost string `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	// CorpAPIServerHost is the modern API server host. This is used by human users
-	// authenticating with OAuth. We need the legacy and this url while we transition
-	// from static keys to OAuth for both human and service users.
+	// CorpAPIServerHost is the modern API server host used for OAuth authentication.
 	CorpAPIServerHost          string                      `json:"corp_api_server_host" yaml:"corp_api_server_host,omitempty"`
 	UIServerHost               string                      `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                     string                      `json:"api_key" yaml:"api_key,omitempty"`
@@ -342,25 +340,6 @@ func (s *ClientSettings) checkCLIVersion(ctx context.Context, c client.Communica
 		if isCLIVersionTooOld {
 			return errors.Errorf("CLI version '%s' is older than the oldest allowed CLI version '%s'. "+
 				"Run '%s get-update --install' to update.\n", evergreen.ClientVersion, clients.OldestAllowedCLIVersion, os.Args[0])
-		}
-	}
-	if clients.OAuthIssuer != "" && s.OAuth.Issuer == "" {
-		s.OAuth.ClientID = clients.OAuthClientID
-		s.OAuth.ConnectorID = clients.OAuthConnectorID
-		s.OAuth.Issuer = clients.OAuthIssuer
-
-		if err := s.Write(""); err != nil {
-			// This shouldn't prevent users from using the CLI so just log a warning.
-			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
-		}
-	}
-	if clients.CorpAPIServerHost != "" && s.CorpAPIServerHost == "" {
-		s.CorpAPIServerHost = clients.CorpAPIServerHost
-		s.UIServerHost = clients.NewUIServerHost
-
-		if err := s.Write(""); err != nil {
-			// This shouldn't prevent users from using the CLI so just log an error.
-			grip.Warning(ctx, errors.Wrap(err, "saving configuration file"))
 		}
 	}
 	return nil
