@@ -199,7 +199,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	var nextTask *task.Task
 	var shouldRunTeardown bool
-	var primaryQueueLen, secondaryQueueLen int
 
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
@@ -212,8 +211,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	// if the task queue exists, try to assign a task from it:
 	if taskQueue != nil {
-		primaryQueueLen = taskQueue.Length()
-		// assign the task to a host and retrieve the task
 		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, taskQueue, h.taskDispatcher, h.host, h.details)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
@@ -224,14 +221,11 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	// try again from the alias queue. (this code runs if the
 	// primary queue doesn't exist or is empty)
 	if nextTask == nil && !shouldRunTeardown {
-		// if we couldn't find a task in the task queue,
-		// check the alias queue...
 		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(ctx, h.host.Distro.Id)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		if secondaryQueue != nil {
-			secondaryQueueLen = secondaryQueue.Length()
 			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, secondaryQueue, h.taskAliasDispatcher, h.host, h.details)
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(err)
@@ -261,32 +255,28 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 				"host_id": h.host.Id,
 			})
 
-			totalQueueLen := primaryQueueLen + secondaryQueueLen
-			if totalQueueLen > 0 {
-				distroQueueInfo, queueInfoErr := model.GetDistroQueueInfo(ctx, h.host.Distro.Id)
-				if queueInfoErr != nil {
-					grip.Error(ctx, message.WrapError(queueInfoErr, message.Fields{
-						"op":      "next_task",
-						"message": "getting distro queue info for dispatch alert",
-						"host_id": h.host.Id,
-						"distro":  h.host.Distro.Id,
-					}))
-				}
+			distroQueueInfo, queueInfoErr := model.GetDistroQueueInfo(ctx, h.host.Distro.Id)
+			if queueInfoErr != nil {
+				grip.Error(ctx, message.WrapError(queueInfoErr, message.Fields{
+					"op":      "next_task",
+					"message": "getting distro queue info for dispatch alert",
+					"host_id": h.host.Id,
+					"distro":  h.host.Distro.Id,
+				}))
+			}
 
-				if distroQueueInfo.LengthWithDependenciesMet > 0 {
-					grip.WarningWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-						"op":                         "next_task",
-						"message":                    "non-empty queue but no task assigned to host",
-						"host_id":                    h.host.Id,
-						"distro":                     h.host.Distro.Id,
-						"primary_queue_len":          primaryQueueLen,
-						"secondary_queue_len":        secondaryQueueLen,
-						"total_queue_len":            totalQueueLen,
-						"queue_length_with_deps_met": distroQueueInfo.LengthWithDependenciesMet,
-						"queue_plan_created_at":      distroQueueInfo.PlanCreatedAt,
-						"agent_task_group":           h.details.TaskGroup,
-					})
-				}
+			if distroQueueInfo.LengthWithDependenciesMet > 0 {
+				grip.WarningWhen(ctx, sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+					"op":                         "next_task",
+					"message":                    "non-empty queue but no task assigned to host",
+					"host_id":                    h.host.Id,
+					"distro":                     h.host.Distro.Id,
+					"queue_length":               distroQueueInfo.Length,
+					"queue_length_with_deps_met": distroQueueInfo.LengthWithDependenciesMet,
+					"queue_plan_created_at":      distroQueueInfo.PlanCreatedAt,
+					"agent_task_group":           h.details.TaskGroup,
+				})
+
 			}
 		}
 
