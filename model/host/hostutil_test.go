@@ -47,7 +47,7 @@ func TestCurlCommand(t *testing.T) {
 			},
 			User: "user",
 		}
-		expected := "cd /home/user && curl -fLO https://foo.com/linux_amd64/evergreen && chmod +x evergreen"
+		expected := "cd /home/user && curl -fL -o evergreen_agent_monitor https://foo.com/linux_amd64/evergreen && chmod +x evergreen_agent_monitor && (cp evergreen_agent_monitor evergreen || true)"
 		cmd, err := h.CurlCommand(env)
 		require.NoError(t, err)
 		assert.Equal(t, expected, cmd)
@@ -60,7 +60,7 @@ func TestCurlCommand(t *testing.T) {
 			},
 			User: "user",
 		}
-		expected := "cd /Users/user && rm -f evergreen && curl -fLO https://foo.com/darwin_arm64/evergreen && chmod +x evergreen"
+		expected := "cd /Users/user && rm -f evergreen_agent_monitor evergreen && curl -fL -o evergreen_agent_monitor https://foo.com/darwin_arm64/evergreen && chmod +x evergreen_agent_monitor && (cp evergreen_agent_monitor evergreen || true)"
 		cmd, err := h.CurlCommand(env)
 		require.NoError(t, err)
 		assert.Equal(t, expected, cmd)
@@ -79,7 +79,7 @@ func TestSpawnHostGetTaskDataCommand(t *testing.T) {
 			WorkDir: "/some/directory",
 		},
 	}
-	expected := []string{"/home/evergreen", "-c", "/home/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/some/directory", "--use-app-token", "--revoke-tokens", "--token", "gh_something_token", "-m", "module:gh_module_token", "-m", "module2:gh_module2_token"}
+	expected := []string{"/home/evergreen_agent_monitor", "-c", "/home/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/some/directory", "--use-app-token", "--revoke-tokens", "--token", "gh_something_token", "-m", "module:gh_module_token", "-m", "module2:gh_module2_token"}
 	cmd := h.SpawnHostGetTaskDataCommand(ctx, "gh_something_token", []string{"module:gh_module_token", "module2:gh_module2_token"})
 	assert.Equal(t, expected, cmd)
 }
@@ -98,7 +98,7 @@ func TestCurlCommandWithRetry(t *testing.T) {
 		},
 		User: "user",
 	}
-	expected := "cd /home/user && curl -fLO https://foo.com/linux_amd64/evergreen --retry 5 --retry-max-time 10 && chmod +x evergreen"
+	expected := "cd /home/user && curl -fL -o evergreen_agent_monitor https://foo.com/linux_amd64/evergreen --retry 5 --retry-max-time 10 && chmod +x evergreen_agent_monitor && (cp evergreen_agent_monitor evergreen || true)"
 	cmd, err := h.CurlCommandWithRetry(env, 5, 10)
 	require.NoError(t, err)
 	assert.Equal(t, expected, cmd)
@@ -1312,14 +1312,14 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 
 			makeJasperDirs := h.MakeJasperDirsCommand()
 			fetchClient, err := h.CurlCommandWithDefaultRetry(env)
-			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+			fixClientOwner := h.changeOwnerCommand(h.AgentMonitorBinary(), h.AgentBinary())
 			require.NoError(t, err)
 
 			expectedParts := []string{
 				makeJasperDirs,
 				fetchClient,
 				fixClientOwner,
-				"/home/user/evergreen host provision",
+				"/home/user/evergreen_agent_monitor host provision",
 				"--api_server=https://example.com",
 				"--host_id=host_id",
 				"--host_secret=host_secret",
@@ -1339,13 +1339,13 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 			makeJasperDirs := h.MakeJasperDirsCommand()
 			fetchClient, err := h.CurlCommandWithDefaultRetry(env)
 			require.NoError(t, err)
-			fixClientOwner := h.changeOwnerCommand(filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
+			fixClientOwner := h.changeOwnerCommand(h.AgentMonitorBinary(), h.AgentBinary())
 
 			expectedParts := []string{
 				makeJasperDirs,
 				fetchClient,
 				fixClientOwner,
-				"/home/user/evergreen.exe host provision",
+				"/home/user/evergreen_agent_monitor.exe host provision",
 				"--api_server=https://example.com",
 				"--host_id=host_id",
 				"--host_secret=host_secret",
