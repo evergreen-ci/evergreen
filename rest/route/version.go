@@ -673,6 +673,10 @@ type versionManifestProofHistoryItem struct {
 	Version                *versionManifestProofSnapshot `json:"version"`
 	OnlyOneRevisionChanged bool                          `json:"only_one_revision_changed"`
 	ChangedRevisionCount   int                           `json:"changed_revision_count"`
+	// ModulesChanged is true when a module was added or removed between this
+	// version and the previous one. Membership changes are reported separately
+	// and do not count toward ChangedRevisionCount.
+	ModulesChanged bool `json:"modules_changed"`
 }
 
 func makeGetVersionManifestProofHistory() gimlet.RouteHandler {
@@ -682,7 +686,7 @@ func makeGetVersionManifestProofHistory() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Fetch version manifest proof history by version ID
-//	@Description	Checks whether each recent system version changed exactly one project or module revision. This is for projects that use modules with project triggers on all modules.
+//	@Description	Checks whether each recent system version changed exactly one project or module commit revision. Module add/remove is reported separately via modules_changed and does not count as a revision change. This is for projects that use modules with project triggers on all modules.
 //	@Tags			manifests
 //	@Router			/versions/{version_id}/manifest/proof/history [get]
 //	@Security		Api-User || Api-Key
@@ -750,11 +754,12 @@ func (h *versionManifestProofHistoryGetHandler) Run(ctx context.Context) gimlet.
 			comparisonManifest = manifests[comparisonVersion.Id]
 		}
 
-		changedRevisionCount := countChangedRevisionsForProof(&versions[i], manifests[versions[i].Id], comparisonVersion, comparisonManifest)
+		diff := compareProofRevisions(&versions[i], manifests[versions[i].Id], comparisonVersion, comparisonManifest)
 		response.Versions = append(response.Versions, versionManifestProofHistoryItem{
 			Version:                buildManifestProofSnapshot(&versions[i], manifests[versions[i].Id], comparisonVersion, comparisonManifest),
-			OnlyOneRevisionChanged: changedRevisionCount == 1,
-			ChangedRevisionCount:   changedRevisionCount,
+			OnlyOneRevisionChanged: diff.changedRevisionCount == 1,
+			ChangedRevisionCount:   diff.changedRevisionCount,
+			ModulesChanged:         diff.modulesChanged,
 		})
 	}
 
@@ -864,17 +869,26 @@ func buildManifestProofSnapshot(v *dbModel.Version, mfst *manifest.Manifest, com
 	return snapshot
 }
 
-func countChangedRevisionsForProof(v *dbModel.Version, mfst *manifest.Manifest, comparisonVersion *dbModel.Version, comparisonManifest *manifest.Manifest) int {
+type proofRevisionDiff struct {
+	changedRevisionCount int
+	modulesChanged       bool
+}
+
+// compareProofRevisions counts project/module commit revision changes between
+// two versions. A module appearing or disappearing sets modulesChanged but does
+// not increment changedRevisionCount; only shared modules with differing
+// revisions count as a commit change.
+func compareProofRevisions(v *dbModel.Version, mfst *manifest.Manifest, comparisonVersion *dbModel.Version, comparisonManifest *manifest.Manifest) proofRevisionDiff {
 	if v == nil || comparisonVersion == nil {
-		return 0
+		return proofRevisionDiff{}
 	}
 
-	count := 0
+	diff := proofRevisionDiff{}
 	if v.Revision != comparisonVersion.Revision {
-		count++
+		diff.changedRevisionCount++
 	}
 	if mfst == nil || comparisonManifest == nil {
-		return count
+		return diff
 	}
 
 	moduleNames := map[string]struct{}{}
@@ -892,10 +906,14 @@ func countChangedRevisionsForProof(v *dbModel.Version, mfst *manifest.Manifest, 
 	for moduleName := range moduleNames {
 		module := mfst.Modules[moduleName]
 		comparisonModule := comparisonManifest.Modules[moduleName]
-		if module == nil || comparisonModule == nil || module.Revision != comparisonModule.Revision {
-			count++
+		if module == nil || comparisonModule == nil {
+			diff.modulesChanged = true
+			continue
+		}
+		if module.Revision != comparisonModule.Revision {
+			diff.changedRevisionCount++
 		}
 	}
 
-	return count
+	return diff
 }

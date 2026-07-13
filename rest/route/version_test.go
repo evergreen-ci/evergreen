@@ -661,26 +661,80 @@ func TestGetVersionManifestProofHistory(t *testing.T) {
 			require.NotNil(t, unchangedItem)
 			assert.False(t, unchangedItem.OnlyOneRevisionChanged)
 			assert.Equal(t, 0, unchangedItem.ChangedRevisionCount)
+			assert.False(t, unchangedItem.ModulesChanged)
 
 			projectAndModuleChangedItem := proofHistoryItemByID(history.Versions, projectAndModuleChanged.Id)
 			require.NotNil(t, projectAndModuleChangedItem)
 			assert.False(t, projectAndModuleChangedItem.OnlyOneRevisionChanged)
 			assert.Equal(t, 2, projectAndModuleChangedItem.ChangedRevisionCount)
+			assert.False(t, projectAndModuleChangedItem.ModulesChanged)
 
 			moduleChangedItem := proofHistoryItemByID(history.Versions, moduleChanged.Id)
 			require.NotNil(t, moduleChangedItem)
 			assert.True(t, moduleChangedItem.OnlyOneRevisionChanged)
 			assert.Equal(t, 1, moduleChangedItem.ChangedRevisionCount)
+			assert.False(t, moduleChangedItem.ModulesChanged)
 
 			projectChangedItem := proofHistoryItemByID(history.Versions, projectChanged.Id)
 			require.NotNil(t, projectChangedItem)
 			assert.True(t, projectChangedItem.OnlyOneRevisionChanged)
 			assert.Equal(t, 1, projectChangedItem.ChangedRevisionCount)
+			assert.False(t, projectChangedItem.ModulesChanged)
 
 			baseItem := proofHistoryItemByID(history.Versions, base.Id)
 			require.NotNil(t, baseItem)
 			assert.False(t, baseItem.OnlyOneRevisionChanged)
 			assert.Equal(t, 0, baseItem.ChangedRevisionCount)
+			assert.False(t, baseItem.ModulesChanged)
+		},
+		"ModuleAppearOrDisappearSetsModulesChangedWithoutCountingRevision": func(t *testing.T) {
+			projectID := "proof-history-module-membership-project"
+			base := insertProofVersion(t, projectID, "proof-history-module-membership-base", "project-revision-1", 1)
+			moduleAdded := insertProofVersion(t, projectID, "proof-history-module-membership-added", "project-revision-1", 2)
+			moduleRemoved := insertProofVersion(t, projectID, "proof-history-module-membership-removed", "project-revision-1", 3)
+			moduleAddedWithProjectChange := insertProofVersion(t, projectID, "proof-history-module-membership-added-project", "project-revision-2", 4)
+
+			insertProofManifestWithModules(t, base, map[string]*manifest.Module{
+				"module1": {Branch: "main", Repo: "module-repo", Revision: "module-revision-1", Owner: "module-owner", URL: "module-url"},
+			})
+			insertProofManifestWithModules(t, moduleAdded, map[string]*manifest.Module{
+				"module1": {Branch: "main", Repo: "module-repo", Revision: "module-revision-1", Owner: "module-owner", URL: "module-url"},
+				"module2": {Branch: "main", Repo: "module-repo-2", Revision: "module-revision-2", Owner: "module-owner", URL: "module-url-2"},
+			})
+			insertProofManifestWithModules(t, moduleRemoved, map[string]*manifest.Module{
+				"module1": {Branch: "main", Repo: "module-repo", Revision: "module-revision-1", Owner: "module-owner", URL: "module-url"},
+			})
+			insertProofManifestWithModules(t, moduleAddedWithProjectChange, map[string]*manifest.Module{
+				"module1": {Branch: "main", Repo: "module-repo", Revision: "module-revision-1", Owner: "module-owner", URL: "module-url"},
+				"module2": {Branch: "main", Repo: "module-repo-2", Revision: "module-revision-2", Owner: "module-owner", URL: "module-url-2"},
+			})
+
+			handler := &versionManifestProofHistoryGetHandler{versionId: moduleAddedWithProjectChange.Id}
+			res := handler.Run(t.Context())
+			require.NotNil(t, res)
+			require.Equal(t, http.StatusOK, res.Status(), res.Data())
+
+			history, ok := res.Data().(*versionManifestProofHistoryResponse)
+			require.True(t, ok)
+			require.Len(t, history.Versions, 4)
+
+			addedWithProjectItem := proofHistoryItemByID(history.Versions, moduleAddedWithProjectChange.Id)
+			require.NotNil(t, addedWithProjectItem)
+			assert.True(t, addedWithProjectItem.OnlyOneRevisionChanged)
+			assert.Equal(t, 1, addedWithProjectItem.ChangedRevisionCount)
+			assert.True(t, addedWithProjectItem.ModulesChanged)
+
+			removedItem := proofHistoryItemByID(history.Versions, moduleRemoved.Id)
+			require.NotNil(t, removedItem)
+			assert.False(t, removedItem.OnlyOneRevisionChanged)
+			assert.Equal(t, 0, removedItem.ChangedRevisionCount)
+			assert.True(t, removedItem.ModulesChanged)
+
+			addedItem := proofHistoryItemByID(history.Versions, moduleAdded.Id)
+			require.NotNil(t, addedItem)
+			assert.False(t, addedItem.OnlyOneRevisionChanged)
+			assert.Equal(t, 0, addedItem.ChangedRevisionCount)
+			assert.True(t, addedItem.ModulesChanged)
 		},
 		"IgnoresNonSystemVersionsInHistory": func(t *testing.T) {
 			projectID := "proof-history-ignore-patch-project"
@@ -776,21 +830,26 @@ func insertProofVersionWithRequester(t *testing.T, projectID, versionID, request
 
 func insertProofManifest(t *testing.T, v serviceModel.Version, moduleRevision string) {
 	t.Helper()
+	insertProofManifestWithModules(t, v, map[string]*manifest.Module{
+		"module1": {
+			Branch:   "main",
+			Repo:     "module-repo",
+			Revision: moduleRevision,
+			Owner:    "module-owner",
+			URL:      "module-url",
+		},
+	})
+}
+
+func insertProofManifestWithModules(t *testing.T, v serviceModel.Version, modules map[string]*manifest.Module) {
+	t.Helper()
 	mfst := manifest.Manifest{
 		Id:          v.Id,
 		Revision:    v.Revision,
 		ProjectName: v.Identifier,
 		Branch:      "main",
 		IsBase:      true,
-		Modules: map[string]*manifest.Module{
-			"module1": {
-				Branch:   "main",
-				Repo:     "module-repo",
-				Revision: moduleRevision,
-				Owner:    "module-owner",
-				URL:      "module-url",
-			},
-		},
+		Modules:     modules,
 	}
 	exists, err := mfst.TryInsert(t.Context())
 	require.NoError(t, err)
