@@ -25,9 +25,6 @@ type APIClientConfig struct {
 	OAuthIssuer      *string `json:"oauth_issuer,omitempty"`
 	OAuthClientID    *string `json:"oauth_client_id,omitempty"`
 	OAuthConnectorID *string `json:"oauth_connector_id,omitempty"`
-
-	CorpAPIServerHost *string `json:"corp_api_server_host,omitempty"`
-	NewUIServerHost   *string `json:"new_ui_server_host,omitempty"`
 }
 
 func (a *APIClientConfig) BuildFromService(c evergreen.ClientConfig) {
@@ -41,8 +38,6 @@ func (a *APIClientConfig) BuildFromService(c evergreen.ClientConfig) {
 	a.OAuthIssuer = utility.ToStringPtr(c.OAuthIssuer)
 	a.OAuthClientID = utility.ToStringPtr(c.OAuthClientID)
 	a.OAuthConnectorID = utility.ToStringPtr(c.OAuthConnectorID)
-	a.CorpAPIServerHost = utility.ToStringPtr(c.CorpAPIServerHost)
-	a.NewUIServerHost = utility.ToStringPtr(c.NewUIServerHost)
 }
 
 func (a *APIClientConfig) ToService() evergreen.ClientConfig {
@@ -57,8 +52,6 @@ func (a *APIClientConfig) ToService() evergreen.ClientConfig {
 	c.OAuthIssuer = utility.FromStringPtr(a.OAuthIssuer)
 	c.OAuthClientID = utility.FromStringPtr(a.OAuthClientID)
 	c.OAuthConnectorID = utility.FromStringPtr(a.OAuthConnectorID)
-	c.CorpAPIServerHost = utility.FromStringPtr(a.CorpAPIServerHost)
-	c.NewUIServerHost = utility.FromStringPtr(a.NewUIServerHost)
 
 	return c
 }

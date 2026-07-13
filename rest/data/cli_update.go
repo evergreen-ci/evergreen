@@ -40,13 +40,6 @@ func GetCLIUpdate(ctx context.Context, env evergreen.Environment) (*model.APICLI
 			update.ClientConfig.OAuthClientID = utility.ToStringPtr(settings.AuthConfig.OAuth.ClientID)
 			update.ClientConfig.OAuthConnectorID = utility.ToStringPtr(settings.AuthConfig.OAuth.ConnectorID)
 		}
-
-		if settings.Api.CorpURL != "" {
-			update.ClientConfig.CorpAPIServerHost = utility.ToStringPtr(settings.Api.CorpURL + "/api")
-		}
-		if settings.Ui.UIv2Url != "" {
-			update.ClientConfig.NewUIServerHost = utility.ToStringPtr(settings.Ui.UIv2Url)
-		}
 	}
 
 	return update, nil

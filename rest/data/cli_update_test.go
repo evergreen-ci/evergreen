@@ -72,10 +72,6 @@ func (s *cliUpdateConnectorSuite) Test() {
 	s.Equal("client_id", *v.ClientConfig.OAuthClientID)
 	s.Require().NotNil(v.ClientConfig.OAuthConnectorID)
 	s.Equal("connector_id", *v.ClientConfig.OAuthConnectorID)
-	s.Require().NotNil(v.ClientConfig.CorpAPIServerHost)
-	s.Equal("https://evergreen.corp.example.com/api", *v.ClientConfig.CorpAPIServerHost)
-	s.Require().NotNil(v.ClientConfig.NewUIServerHost)
-	s.Equal("https://spruce.example.com", *v.ClientConfig.NewUIServerHost)
 }
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {
