@@ -211,6 +211,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	// if the task queue exists, try to assign a task from it:
 	if taskQueue != nil {
+		// assign the task to a host and retrieve the task
 		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, taskQueue, h.taskDispatcher, h.host, h.details)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
@@ -221,6 +222,8 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	// try again from the alias queue. (this code runs if the
 	// primary queue doesn't exist or is empty)
 	if nextTask == nil && !shouldRunTeardown {
+		// if we couldn't find a task in the task queue,
+		// check the alias queue...
 		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(ctx, h.host.Distro.Id)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
