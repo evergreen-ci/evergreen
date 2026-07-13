@@ -16,41 +16,45 @@ type anchorEntry struct {
 	node *yaml.Node
 }
 
-// anchorEntries accumulates YAML anchor definitions across include files for cross-file alias resolution.
-type anchorEntries []anchorEntry
+// anchorRegistry accumulates YAML anchor definitions across include files for cross-file alias resolution.
+type anchorRegistry struct {
+	entries []anchorEntry
+}
 
-// mergeAnchorsFrom collects all anchor definitions from node and merges them into
-// the registry by name, so that later include files can resolve aliases defined in
-// earlier files. No-op if the receiver is nil.
-//
-// When an anchor name already exists, the old entry is removed and the new one is
-// appended at the end. This ensures that if a redefinition introduces alias
-// dependencies on anchors added by the same file, those dependencies always appear
-// earlier in the slice, and therefore earlier in the marshaled preamble, satisfying
-// YAML's anchor-before-alias rule.
-func (a *anchorEntries) mergeAnchorsFrom(node *yaml.Node) {
+// Length returns the number of accumulated anchors, treating a nil registry as empty.
+func (a *anchorRegistry) Length() int {
+	if a == nil {
+		return 0
+	}
+	return len(a.entries)
+}
+
+// mergeAnchorsFrom adds node's anchor definitions to the registry, keyed by name.
+// A redefined anchor is removed and re-appended so that any sibling anchors its
+// definition aliases stay ahead of it, keeping the marshaled preamble in
+// anchor-before-alias order. No-op if the receiver is nil.
+func (a *anchorRegistry) mergeAnchorsFrom(node *yaml.Node) {
 	if a == nil {
 		return
 	}
 	for _, anchor := range collectAnchors(node) {
-		for i, existing := range *a {
+		for i, existing := range a.entries {
 			if existing.name == anchor.name {
-				*a = append((*a)[:i], (*a)[i+1:]...)
+				a.entries = append(a.entries[:i], a.entries[i+1:]...)
 				break
 			}
 		}
-		*a = append(*a, anchor)
+		a.entries = append(a.entries, anchor)
 	}
 }
 
-// collectAnchors walks node in pre-order and returns all anchored nodes in
-// encounter order. AliasNodes are not followed, so only anchor definitions
-// (&name) are collected, never alias uses (*name).
-func collectAnchors(node *yaml.Node) anchorEntries {
+// collectAnchors walks node in pre-order and returns its anchor definitions
+// (&name) in encounter order. Alias uses (*name) are skipped.
+func collectAnchors(node *yaml.Node) []anchorEntry {
 	if node == nil {
 		return nil
 	}
-	var entries anchorEntries
+	var entries []anchorEntry
 	var walk func(*yaml.Node)
 	walk = func(n *yaml.Node) {
 		if n == nil || n.Kind == yaml.AliasNode {
@@ -67,20 +71,15 @@ func collectAnchors(node *yaml.Node) anchorEntries {
 	return entries
 }
 
-// buildAnchorPreamble marshals all registry entries into a YAML document under
-// the _evg_anchors key. Prepending the returned bytes to an include file's raw
-// bytes before parsing makes all accumulated anchor definitions visible to the
-// YAML parser, enabling cross-file alias resolution.
-//
-// Entries must be in encounter order so that any alias references within anchor
-// values (e.g. an anchor whose value itself uses an alias to an earlier anchor)
-// are valid when the preamble is parsed.
-func buildAnchorPreamble(entries *anchorEntries) ([]byte, error) {
-	if entries == nil || len(*entries) == 0 {
+// buildAnchorPreamble marshals the registry's anchors into a YAML document under
+// the _evg_anchors key. Prepending it to an include file makes all accumulated
+// anchors visible to the parser, enabling cross-file alias resolution.
+func buildAnchorPreamble(registry *anchorRegistry) ([]byte, error) {
+	if registry.Length() == 0 {
 		return nil, nil
 	}
-	seqContent := make([]*yaml.Node, 0, len(*entries))
-	for _, e := range *entries {
+	seqContent := make([]*yaml.Node, 0, len(registry.entries))
+	for _, e := range registry.entries {
 		seqContent = append(seqContent, e.node)
 	}
 	preambleDoc := &yaml.Node{
@@ -98,9 +97,8 @@ func buildAnchorPreamble(entries *anchorEntries) ([]byte, error) {
 	return yaml.Marshal(preambleDoc)
 }
 
-// stripEvgAnchorsKey removes the _evg_anchors key and its value from the
-// top-level mapping in node. Returns true if the key was found and removed.
-// No-op (returns false) when the key is absent.
+// stripEvgAnchorsKey removes the _evg_anchors key and its value from node's
+// top-level mapping, returning whether it was present.
 func stripEvgAnchorsKey(node *yaml.Node) bool {
 	mapping := node
 	if node.Kind == yaml.DocumentNode && len(node.Content) == 1 {

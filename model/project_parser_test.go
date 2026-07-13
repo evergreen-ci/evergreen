@@ -3509,7 +3509,7 @@ steps:
 	anchors := collectAnchors(&node)
 	require.Len(t, anchors, 2)
 
-	preamble, err := buildAnchorPreamble(&anchors)
+	preamble, err := buildAnchorPreamble(&anchorRegistry{entries: anchors})
 	require.NoError(t, err)
 	require.NotEmpty(t, preamble)
 
@@ -3717,21 +3717,21 @@ shared: &shared
   <<: *base
   a: 3
 `
-	registry := &anchorEntries{}
+	registry := &anchorRegistry{}
 
 	var firstNode yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(first), &firstNode))
 	registry.mergeAnchorsFrom(&firstNode)
-	require.Len(t, *registry, 1)
-	assert.Equal(t, "shared", (*registry)[0].name)
+	require.Equal(t, 1, registry.Length())
+	assert.Equal(t, "shared", registry.entries[0].name)
 
 	var secondNode yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(second), &secondNode))
 	registry.mergeAnchorsFrom(&secondNode)
 
-	require.Len(t, *registry, 2)
-	assert.Equal(t, "base", (*registry)[0].name, "sibling dependency must precede the redefined anchor")
-	assert.Equal(t, "shared", (*registry)[1].name, "redefined anchor must move to the end")
+	require.Equal(t, 2, registry.Length())
+	assert.Equal(t, "base", registry.entries[0].name, "sibling dependency must precede the redefined anchor")
+	assert.Equal(t, "shared", registry.entries[1].name, "redefined anchor must move to the end")
 
 	// The resulting preamble must resolve cleanly (no alias-before-definition).
 	preamble, err := buildAnchorPreamble(registry)
