@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 )
 
 // GetCLIUpdate fetches the current cli version and the urls to download
@@ -31,16 +30,6 @@ func GetCLIUpdate(ctx context.Context, env evergreen.Environment) (*model.APICLI
 
 	update.BuildFromService(*config)
 	update.IgnoreUpdate = flags.CLIUpdatesDisabled
-
-	settings := env.Settings()
-
-	if settings != nil {
-		if settings.AuthConfig.OAuth != nil {
-			update.ClientConfig.OAuthIssuer = utility.ToStringPtr(settings.AuthConfig.OAuth.Issuer)
-			update.ClientConfig.OAuthClientID = utility.ToStringPtr(settings.AuthConfig.OAuth.ClientID)
-			update.ClientConfig.OAuthConnectorID = utility.ToStringPtr(settings.AuthConfig.OAuth.ConnectorID)
-		}
-	}
 
 	return update, nil
 }
