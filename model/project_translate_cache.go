@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/trace"
@@ -17,7 +18,9 @@ import (
 )
 
 const (
-	projectTranslationCacheTTL = 30 * time.Minute
+	// defaultTranslationCacheTTL is the entry lifetime used when the admin setting is unset or
+	// non-positive.
+	defaultTranslationCacheTTL = 30 * time.Minute
 
 	// defaultTranslationCacheBytesLimit bounds the cache when the admin setting is unset or
 	// non-positive, so a missing config never leaves the cache unbounded. The budget is measured
@@ -38,6 +41,16 @@ var (
 	translationCache          *expirable.LRU[string, cachedTranslation]
 	translationGroupPtr       atomic.Pointer[singleflight.Group]
 	translationCacheEvictions atomic.Int64
+	// translationCacheTTL is the entry lifetime the cache is (re)built with; it's guarded by
+	// translationCacheMu. A value <= 0 falls back to defaultTranslationCacheTTL.
+	translationCacheTTL time.Duration
+
+	// readTranslationGroupPtr coalesces the parser-project read + translate for concurrent
+	// same-version requests within one process. It sits in front of the LRU (the read is required to
+	// compute the content-hash key), so it reflects raw same-version request concurrency independent
+	// of cache state. It is separate from translationGroupPtr, which coalesces only the inner
+	// content-hash translate.
+	readTranslationGroupPtr atomic.Pointer[singleflight.Group]
 
 	// translationCacheWriteMu serializes each insert together with the eviction that brings the cache
 	// back within budget, so the byte total stays consistent with the cache's contents across
@@ -56,6 +69,13 @@ var (
 
 func init() {
 	translationGroupPtr.Store(&singleflight.Group{})
+	readTranslationGroupPtr.Store(&singleflight.Group{})
+}
+
+// getReadTranslationGroup returns the process-wide singleflight group that coalesces the
+// parser-project read + translate on the version path.
+func getReadTranslationGroup() *singleflight.Group {
+	return readTranslationGroupPtr.Load()
 }
 
 // getTranslationCache returns the process-wide LRU cache for translated projects, initializing it on
@@ -71,9 +91,42 @@ func getTranslationCache() *expirable.LRU[string, cachedTranslation] {
 			translationKeyHitsMu.Lock()
 			delete(translationKeyHits, key)
 			translationKeyHitsMu.Unlock()
-		}, projectTranslationCacheTTL)
+		}, currentTranslationCacheTTL())
 	}
 	return translationCache
+}
+
+// currentTranslationCacheTTL returns the configured entry lifetime, falling back to the default when
+// unset. Callers must hold translationCacheMu.
+func currentTranslationCacheTTL() time.Duration {
+	if translationCacheTTL > 0 {
+		return translationCacheTTL
+	}
+	return defaultTranslationCacheTTL
+}
+
+// SetTranslationCacheTTL sets the entry lifetime for the process-wide translation cache. A value <= 0
+// restores the built-in default. Changing the TTL rebuilds the cache, dropping any cached entries,
+// because the underlying LRU's TTL is fixed at construction.
+func SetTranslationCacheTTL(d time.Duration) {
+	if d <= 0 {
+		d = defaultTranslationCacheTTL
+	}
+
+	translationCacheMu.Lock()
+	defer translationCacheMu.Unlock()
+	if d == currentTranslationCacheTTL() {
+		return
+	}
+	translationCacheTTL = d
+
+	// Drop the existing cache so the next getTranslationCache rebuilds it with the new TTL, and
+	// reset byte accounting to match the now-empty cache since the eviction callback won't fire.
+	translationCache = nil
+	translationCacheBytes.Store(0)
+	translationKeyHitsMu.Lock()
+	translationKeyHits = map[string]int64{}
+	translationKeyHitsMu.Unlock()
 }
 
 // SetTranslationCacheBytesLimit sets the byte budget for the process-wide translation cache. A value
@@ -216,6 +269,13 @@ func getOrComputeTranslation(key string, cacheEnabled bool, compute func() (*Pro
 // disabled. It must NOT be used as an LRU key; see getOrComputeTranslation.
 func versionTranslationKey(versionID string, preGeneration bool) string {
 	return fmt.Sprintf("v:%s:%v", versionID, preGeneration)
+}
+
+// versionReadKey keys the read singleflight for the version path. It extends versionTranslationKey
+// with the storage method so a version mid DB->S3 fallback can't cross-share a read with a
+// stale-method caller.
+func versionReadKey(versionID string, preGeneration bool, storageMethod evergreen.ParserProjectStorageMethod) string {
+	return fmt.Sprintf("%s:%s", versionTranslationKey(versionID, preGeneration), storageMethod)
 }
 
 // fileTranslationKey is the cheap singleflight-only key for the file path when the cache is

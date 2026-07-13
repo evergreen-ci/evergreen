@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"strings"
 
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
@@ -163,9 +164,14 @@ func (s *WebhookSubscriber) validate() error {
 	catcher.AddWhen(s.TimeoutMS < 0, errors.New("timeout cannot be negative"))
 	catcher.AddWhen(s.TimeoutMS > webhookTimeoutLimit, errors.Errorf("timeout cannot be greater than %d ms", webhookTimeoutLimit))
 
+	seenHeaders := map[string]struct{}{}
 	for _, header := range s.Headers {
 		catcher.AddWhen(header.Key == "", errors.New("header key cannot be empty"))
 		catcher.AddWhen(header.Value == "", errors.New("header value cannot be empty"))
+		for seenHeader := range seenHeaders {
+			catcher.ErrorfWhen(strings.EqualFold(header.Key, seenHeader), "duplicate header key '%s'", header.Key)
+		}
+		seenHeaders[header.Key] = struct{}{}
 	}
 
 	return catcher.Resolve()
@@ -174,7 +180,7 @@ func (s *WebhookSubscriber) validate() error {
 // GetHeader gets the value for the given key.
 func (s *WebhookSubscriber) GetHeader(key string) string {
 	for _, h := range s.Headers {
-		if h.Key == key {
+		if strings.EqualFold(h.Key, key) {
 			return h.Value
 		}
 	}
@@ -183,7 +189,7 @@ func (s *WebhookSubscriber) GetHeader(key string) string {
 
 func (s *WebhookSubscriber) setHeader(key, value string) {
 	for i := range s.Headers {
-		if s.Headers[i].Key == key {
+		if strings.EqualFold(s.Headers[i].Key, key) {
 			s.Headers[i].Value = value
 			return
 		}

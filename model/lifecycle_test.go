@@ -2767,7 +2767,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 			},
 		},
 	}
-	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
+	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester, "")
 	require.Len(t, bvts, 2)
 	for _, bvtu := range bvts {
 		require.Len(t, bvtu.DependsOn, 1)
