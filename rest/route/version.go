@@ -721,13 +721,17 @@ func (h *versionManifestProofHistoryGetHandler) Run(ctx context.Context) gimlet.
 	versions = append(versions, *current)
 	versions = append(versions, previousVersions...)
 
-	manifests := map[string]*manifest.Manifest{}
+	manifestIDs := make([]string, 0, len(versions))
 	for i := range versions {
-		mfst, err := findManifestForProof(ctx, &versions[i])
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifest for proof history version '%s'", versions[i].Id))
-		}
-		manifests[versions[i].Id] = mfst
+		manifestIDs = append(manifestIDs, versions[i].Id)
+	}
+	foundManifests, err := manifest.Find(ctx, manifest.ByIds(manifestIDs))
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding manifests for proof history version '%s'", h.versionId))
+	}
+	manifests := make(map[string]*manifest.Manifest, len(foundManifests))
+	for i := range foundManifests {
+		manifests[foundManifests[i].Id] = &foundManifests[i]
 	}
 
 	numVersionsToReturn := len(versions)

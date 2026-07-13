@@ -36,6 +36,13 @@ func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 	return m, err
 }
 
+// Find gets every Manifest matching the given query.
+func Find(ctx context.Context, query db.Q) ([]Manifest, error) {
+	manifests := []Manifest{}
+	err := db.FindAllQ(ctx, Collection, query, &manifests)
+	return manifests, err
+}
+
 // TryInsert writes the manifest to the database if possible.
 // If the document already exists, it returns true and the error
 // If it does not it will return false and the error
@@ -56,6 +63,11 @@ func (m *Manifest) Insert(ctx context.Context) error {
 // ById returns a query that contains an Id selector on the string, id.
 func ById(id string) db.Q {
 	return db.Query(bson.M{IdKey: id})
+}
+
+// ByIds creates a query that finds all manifests with the given ids.
+func ByIds(ids []string) db.Q {
+	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
 }
 
 func ByBaseProjectAndRevision(project, revision string) db.Q {
