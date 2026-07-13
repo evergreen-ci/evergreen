@@ -1670,6 +1670,32 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 			}
 		}
 
+		if len(bvtu.AllowedBranches) > 0 && len(bvtu.IgnoredBranches) > 0 {
+			errs = append(errs, ValidationError{
+				Level: Warning,
+				Message: fmt.Sprintf("task '%s' in build variant '%s' specifies both allowed_branches and ignored_branches; allowed_branches takes precedence",
+					bvtu.Name, bvtu.Variant),
+			})
+		}
+		for _, pattern := range bvtu.AllowedBranches {
+			if _, err := regexp.Compile(pattern); err != nil {
+				errs = append(errs, ValidationError{
+					Level: Warning,
+					Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid allowed_branches regex '%s': %s",
+						bvtu.Name, bvtu.Variant, pattern, err.Error()),
+				})
+			}
+		}
+		for _, pattern := range bvtu.IgnoredBranches {
+			if _, err := regexp.Compile(pattern); err != nil {
+				errs = append(errs, ValidationError{
+					Level: Warning,
+					Message: fmt.Sprintf("task '%s' in build variant '%s' has invalid ignored_branches regex '%s': %s",
+						bvtu.Name, bvtu.Variant, pattern, err.Error()),
+				})
+			}
+		}
+
 		if hasValidAllowedRequester {
 			if bvtu.SkipOnPatchBuild() && bvtu.SkipOnNonPatchBuild() {
 				errs = append(errs, ValidationError{

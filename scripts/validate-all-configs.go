@@ -158,7 +158,7 @@ func validateSingleConfig(configFile string) validationResult {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if _, err := model.LoadProjectInto(ctx, yamlBytes, nil, "", &project); err != nil {
+	if _, err := model.LoadProjectInto(ctx, yamlBytes, nil, configFile, &project); err != nil {
 		result.Passed = false
 		if errors.Is(err, context.DeadlineExceeded) {
 			result.Errors = "validation timed out after 30 seconds"
