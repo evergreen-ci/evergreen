@@ -2012,6 +2012,7 @@ func buildTaskCompletedSpanAttributes(t *task.Task) []attribute.KeyValue {
 		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
 		attribute.String(evergreen.TaskNameOtelAttribute, t.DisplayName),
 		attribute.String(evergreen.TaskVariantOtelAttribute, t.BuildVariant),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester),
 	}
 	if !utility.IsZeroTime(t.ActivatedTime) && !utility.IsZeroTime(t.ScheduledTime) {
 		attrs = append(attrs, attribute.Int64(evergreen.TaskTimeWaitingForSchedulingMsOtelAttribute,

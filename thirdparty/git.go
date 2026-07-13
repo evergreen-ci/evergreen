@@ -268,6 +268,15 @@ func GetGitHubFileFromGit(ctx context.Context, owner, repo, ref, file, worktree 
 	return fileContent, errors.Wrap(err, "restoring git file")
 }
 
+// GitOperationTimeout is the maximum time to wait for a git operation to
+// complete.
+const GitOperationTimeout = 15 * time.Second
+
+// gitOperationWaitDelay bounds how long to wait for a single git command to
+// return after the command times out. This is intentionally short because git
+// commands are expected to return quickly.
+const gitOperationWaitDelay = 100 * time.Millisecond
+
 // GitCloneMinimal performs a minimal git clone of a repository using the GitHub
 // app. The minimal clone contains only git metadata for the one revision and
 // has no file content. Callers are expected to clean up the returned git
@@ -312,6 +321,7 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 		repoURL,
 		tmpDir,
 	)
+	cmd.WaitDelay = gitOperationWaitDelay
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -336,8 +346,6 @@ func GitCloneMinimal(ctx context.Context, owner, repo, revision string) (string,
 	return tmpDir, nil
 }
 
-const GitOperationTimeout = 15 * time.Second
-
 // GitCreateWorktree creates a new git worktree in worktreeDir based on gitDir.
 // It does not perform a checkout. Callers are assumed to have already cloned
 // the repo into gitDir and HEAD is assumed to be already pointing to the
@@ -354,6 +362,7 @@ func GitCreateWorktree(ctx context.Context, gitDir, worktreeDir string) error {
 		"--detach",
 		worktreeDir)
 	cmd.Dir = gitDir
+	cmd.WaitDelay = gitOperationWaitDelay
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -404,6 +413,7 @@ func GitRestoreFile(ctx context.Context, owner, repo, revision, gitDir string, f
 
 	cmd := exec.CommandContext(ctx, "git", "restore", "--source=HEAD", fileName)
 	cmd.Dir = gitDir
+	cmd.WaitDelay = gitOperationWaitDelay
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
