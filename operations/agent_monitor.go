@@ -92,7 +92,7 @@ func agentMonitor() cli.Command {
 	const (
 		credentialsPathFlagName = "credentials"
 		clientPathFlagName      = "client_path"
-		// compactClientPathFlagName is the compatabile client path for
+		// compactClientPathFlagName is the compatible client path for
 		// legacy tasks that still rely on it.
 		compatClientPathFlagName = "compat_client_path"
 		distroIDFlagName         = "distro"
